@@ -162,11 +162,9 @@
     <div id="invoiceModalComponent">
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
-                <!-- company details -->
                 <div class="flex flex-wrap justify-between px-4">
                     <div class=" shrink-0 items-center text-black dark:text-white">
                         <x-application-logo class="h-20 w-auto" />
-
                         <div class="pl-2">
                             @if ($company)
                             <h3>{{ $company->name }}</h3>
@@ -177,7 +175,6 @@
                             <p>No company assigned</p>
                             @endif
                         </div>
-
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
                             <div
@@ -189,11 +186,9 @@
                                 </div>
                                 @endforeach
                             </div>
-
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
                     </div>
-                    <!-- invoice details -->
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
 
                         <div class="flex items-center">
@@ -219,14 +214,11 @@
                             </div>
                         </form>
 
-
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Due Date:</label>
                             <input id="duedate" type="date" name="duedate" class="w-full form-input"
                                 value={{ $dueDate }} disabled />
                         </div>
-
-
                     </div>
                 </div>
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
@@ -274,11 +266,9 @@
                         </div>
 
                     </div>
-                    <!-- ./client details -->
 
                     <!-- Agent details -->
                     <div class="w-full">
-
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
@@ -338,16 +328,11 @@
                                 value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone_number : '' }}"
                                 disabled />
                         </div>
-
-
-
                     </div>
-                    <!-- ./Agent details -->
                 </div>
 
                 <!-- choose items -->
                 <div class="mt-8">
-                    <!-- choose items -->
                     <form id="updateAmountForm" method="POST" action="{{ route('invoice.updateAmount', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}">
                         @csrf
                         @method('PUT')
@@ -373,7 +358,6 @@
                                 </tbody>
                             </table>
                         </div>
-                        <!-- ./choose items -->
 
                         <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
                             <div class="mb-6 sm:mb-0">
@@ -546,7 +530,7 @@
                                                         <span class="font-semibold">{{ $invoice->currency }} {{ number_format($partial->amount, 2) }}</span>
                                                     </div>
 
-                                                <!-- Gateway Selection -->
+                                                    <!-- Gateway Selection -->
                                                     <div class="mb-2">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Payment Gateway</label>
                                                         <select 
@@ -593,7 +577,6 @@
                                             @endif
                                         </div>
 
-                                        <!-- Footer -->
                                         <div class="flex justify-end items-center pt-3">
                                             <button type="button"
                                                 class="text-gray-600 text-sm px-4 py-2 border rounded-full shadow-md hover:bg-gray-100"
@@ -650,7 +633,6 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            
                                         @else
                                             @if ($creditUsed && $creditUsed->amount < 0)
                                                 <!-- Credit already used - no locking needed, just display -->
@@ -1029,9 +1011,9 @@
                                                 </form>
                                         </div>
                                     </div>
-                                    @endif
+                                @endif
 
-                                    @if($invoice->status !== 'paid')
+                                @if($invoice->status !== 'paid')
                                     <!-- Payment Gateway Section -->
                                     <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>
                                         @php
@@ -1162,95 +1144,166 @@
 
                                         </div>
                                     </section>
-                                    @endif
+                                @endif
 
-                                    <!-- Added Buttons/Links Section -->
-                                    <section id="additional-actions" class="mt-6">
-                                        <div class="flex flex-wrap gap-4">
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
-                                            <!-- Share Buttons -->
-                                            <div class="flex items-center gap-2 w-full">
-                                                <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}"
-                                                    method="POST" onsubmit="showSpinner()">
-                                                    @csrf
-                                                    <!-- Assuming you have a $client object or list -->
-                                                    <input type="hidden" name="client_id" id="clientid"
-                                                        value="{{ $client->id ?? '' }}">
-                                                    <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
+                                <!-- Added Buttons/Links Section -->
+                                <section id="additional-actions" class="mt-6">
+                                    <div class="flex flex-wrap gap-4">
+                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
+                                        <!-- Share Buttons -->
+                                        <div class="flex items-center gap-2 w-full">
+                                            <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}"
+                                                method="POST" onsubmit="showSpinner()">
+                                                @csrf
+                                                <!-- Assuming you have a $client object or list -->
+                                                <input type="hidden" name="client_id" id="clientid"
+                                                    value="{{ $client->id ?? '' }}">
+                                                <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
 
-                                                    <button id="submitButton" type="submit"
-                                                        class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
-                                                        <span id="buttonText">Share via WhatsApp</span>
-                                                        <span id="spinner" class="hidden ml-2">
-                                                            <svg class="w-4 h-4 animate-spin text-white"
-                                                                xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                                viewBox="0 0 24 24">
-                                                                <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                                    stroke="currentColor" stroke-width="4"></circle>
-                                                                <path class="opacity-75" fill="currentColor"
-                                                                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                                                            </svg>
-                                                        </span>
-                                                    </button>
-                                                </form>
-
-                                                <button onclick="shareViaEmail()"
-                                                    class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
-                                                    Share via Email
+                                                <button id="submitButton" type="submit"
+                                                    class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                                    <span id="buttonText">Share via WhatsApp</span>
+                                                    <span id="spinner" class="hidden ml-2">
+                                                        <svg class="w-4 h-4 animate-spin text-white"
+                                                            xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                            viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                                stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor"
+                                                                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                                        </svg>
+                                                    </span>
                                                 </button>
+                                            </form>
 
-                                            </div>
-                                            <div class="my-2 flex items-center w-full">
-                                                <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
-                                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                        <polyline points="14,2 14,8 20,8" />
-                                                        <line x1="16" y1="13" x2="8" y2="13" />
-                                                        <line x1="16" y1="17" x2="8" y2="17" />
-                                                        <polyline points="10,9 9,9 8,9" />
-                                                    </svg>
-                                                    Proforma Invoice
-                                                </a>
-                                            </div>
-                                            <button onclick="copyLink()"
-                                                class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                    viewBox="0 0 24 24">
-                                                    <g fill="none" stroke="#ffff" stroke-linecap="round"
-                                                        stroke-linejoin="round" stroke-width="1.5">
-                                                        <path
-                                                            d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
-                                                        <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
-                                                    </g>
-                                                </svg>
-                                                Copy Link
+                                            <button onclick="shareViaEmail()"
+                                                class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
+                                                Share via Email
                                             </button>
-                                            @if($invoice->payment_type !== 'cash')
-                                            <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
-                                                class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                                    xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                                    <path opacity="0.5"
-                                                        d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                                        stroke="currentColor" stroke-width="1.5"></path>
-                                                    <path
-                                                        d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                                        stroke="currentColor" stroke-width="1.5"></path>
-                                                </svg>
-                                                View
-                                            </a>
-                                            @endif
 
-                                            <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
-                                                clipboard!</p>
                                         </div>
-                                    </section>
+                                        <div class="my-2 flex items-center w-full">
+                                            <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
+                                                class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                    <polyline points="14,2 14,8 20,8" />
+                                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                                    <polyline points="10,9 9,9 8,9" />
+                                                </svg>
+                                                Proforma Invoice
+                                            </a>
+                                        </div>
+                                        <button onclick="copyLink()"
+                                            class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24">
+                                                <g fill="none" stroke="#ffff" stroke-linecap="round"
+                                                    stroke-linejoin="round" stroke-width="1.5">
+                                                    <path
+                                                        d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
+                                                    <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
+                                                </g>
+                                            </svg>
+                                            Copy Link
+                                        </button>
+                                        @if($invoice->payment_type !== 'cash')
+                                        <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
+                                            class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
+                                                <path opacity="0.5"
+                                                    d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
+                                                    stroke="currentColor" stroke-width="1.5"></path>
+                                                <path
+                                                    d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
+                                                    stroke="currentColor" stroke-width="1.5"></path>
+                                            </svg>
+                                            View
+                                        </a>
+                                        @endif
+
+                                        <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to clipboard!</p>
+                                    </div>
+                                </section>
+
+                                <section id="email-actions" class="mt-4">
+                                    <h2 id="quick-actions-header" class="text-lg font-semibold mb-3 text-gray-700">Quick Actions</h2>
+                                    <div class="flex flex-wrap gap-4">
+                                        <button type="button" id="openSendEmailModal" class="w-full flex items-center justify-center py-3 px-5 text-sm text-white bg-indigo-600 hover:bg-indigo-900 rounded-full transition">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                            </svg>
+                                            Send Invoice Email
+                                        </button>
+                                        <div id="sendEmailModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
+                                            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                                                <div class="flex items-center justify-between mb-4">
+                                                    <h2 class="text-xl font-bold text-gray-800">Send Invoice via Email</h2>
+                                                    <button type="button" id="closeSendEmailModal" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+                                                </div>
+
+                                                <form id="sendEmailForm" class="space-y-4">
+                                                    @csrf
+                                                    
+                                                    <div class="space-y-3">
+                                                        <p class="text-sm text-gray-600">Select recipients for invoice <strong>{{ $invoiceNumber }}</strong></p>
+                                                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                            <input type="checkbox" name="send_to_agent" id="send_to_agent" value="1" 
+                                                                class="form-checkbox h-5 w-5 text-indigo-600 rounded" checked>
+                                                            <div class="ml-3">
+                                                                <span class="block font-medium text-gray-800">Agent</span>
+                                                                <span class="block text-sm text-gray-500">{{ $selectedAgent->email ?? 'No email available' }}</span>
+                                                            </div>
+                                                        </label>
+                                                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                            <input type="checkbox" name="send_to_client" id="send_to_client" value="1"
+                                                                class="form-checkbox h-5 w-5 text-indigo-600 rounded">
+                                                            <div class="ml-3">
+                                                                <span class="block font-medium text-gray-800">Client</span>
+                                                                <span class="block text-sm text-gray-500">{{ $selectedClient->email ?? 'No email available' }}</span>
+                                                            </div>
+                                                        </label>
+                                                        <div class="pt-2">
+                                                            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Email Addresses</label>
+                                                            <input type="text" name="custom_emails" id="custom_emails" 
+                                                                class="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                                                placeholder="email1@example.com, email2@example.com">
+                                                            <p class="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div id="emailSuccessMessage" class="hidden p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm"></div>
+                                                    <div id="emailErrorMessage" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm"></div>
+
+                                                    <div class="flex justify-between pt-4">
+                                                        <button type="button" id="cancelSendEmail"
+                                                            class="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 transition">
+                                                            Cancel
+                                                        </button>
+                                                        <button type="submit" id="submitSendEmail"
+                                                            class="px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition flex items-center">
+                                                            <span id="sendEmailBtnText">Send Email</span>
+                                                            <span id="sendEmailSpinner" class="hidden ml-2">
+                                                                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
                             </div>
                         </div>
                     </div>
 
-                    <div class="panel">
+                    <div>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
 
                             <input id="invoiceId" type="hidden" name="invoiceId" />
@@ -2031,6 +2084,7 @@
             const paymentModal = document.getElementById('paymentModal');
             const paymentModal1 = document.getElementById('paymentModal1');
             const creditModal = document.getElementById('clientCreditModal');
+            const quickActionsHeader = document.getElementById('quick-actions-header');
 
             const show = (el) => el && (el.style.display = 'block');
             const hide = (el) => el && (el.style.display = 'none');
@@ -2038,26 +2092,31 @@
             if (paymentType === 'full' || paymentType === 'cash') {
                 show(paymentGatewaySection);
                 show(additionalActions);
+                hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.remove('hidden');
                 hideModal();
             } else if (paymentType === 'partial') {
                 show(paymentGatewaySection);
                 show(additionalActions);
+                hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
                 paymentModal1?.classList.add('hidden');
             } else if (paymentType === 'split') {
                 show(paymentGatewaySection);
                 show(additionalActions);
+                hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
                 paymentModal?.classList.add('hidden');
             } else if (paymentType === 'credit') {
                 show(paymentGatewaySection);
                 show(additionalActions);
+                hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
                 creditModal?.classList.add('hidden');
             } else {
                 hide(paymentGatewaySection);
                 hide(additionalActions);
+                show(quickActionsHeader);
             }
         }
 
@@ -2109,6 +2168,7 @@
             setupSaveButton();
             setupPaymentTypesAndTasks();
             setupImportModal();
+            setupSendEmailModal();
 
             // Run initial checks
             checkInvoiceId();
@@ -4523,6 +4583,119 @@
             const methodSection = document.getElementById(`method_section_${partialId}`);
             const selectedGateway = gatewaySelect.value.toLowerCase();
         }
-        </script>
+
+        function setupSendEmailModal() {
+            const modal = document.getElementById('sendEmailModal');
+            const openBtn = document.getElementById('openSendEmailModal');
+            const closeBtn = document.getElementById('closeSendEmailModal');
+            const cancelBtn = document.getElementById('cancelSendEmail');
+            const form = document.getElementById('sendEmailForm');
+            const successMsg = document.getElementById('emailSuccessMessage');
+            const errorMsg = document.getElementById('emailErrorMessage');
+            const submitBtn = document.getElementById('submitSendEmail');
+            const btnText = document.getElementById('sendEmailBtnText');
+            const spinner = document.getElementById('sendEmailSpinner');
+
+            if (!modal || !openBtn) return;
+
+            openBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+                successMsg.classList.add('hidden');
+                errorMsg.classList.add('hidden');
+            });
+
+            function closeModal() {
+                modal.classList.add('hidden');
+            }
+
+            closeBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const recipients = [];
+                const sendToAgent = document.getElementById('send_to_agent')?.checked;
+                const sendToClient = document.getElementById('send_to_client')?.checked;
+                const customEmails = document.getElementById('custom_emails')?.value || '';
+
+                const agentEmail = '{{ $selectedAgent->email ?? "" }}';
+                const clientEmail = '{{ $selectedClient->email ?? "" }}';
+
+                if (sendToAgent && agentEmail) recipients.push(agentEmail);
+                if (sendToClient && clientEmail) recipients.push(clientEmail);
+
+                if (customEmails) {
+                    customEmails.split(',').forEach(email => {
+                        const trimmed = email.trim();
+                        if (trimmed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+                            recipients.push(trimmed);
+                        }
+                    });
+                }
+
+                if (recipients.length === 0) {
+                    errorMsg.textContent = 'Please select at least one recipient or enter a valid email address.';
+                    errorMsg.classList.remove('hidden');
+                    successMsg.classList.add('hidden');
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                btnText.textContent = 'Sending...';
+                spinner.classList.remove('hidden');
+                successMsg.classList.add('hidden');
+                errorMsg.classList.add('hidden');
+
+                try {
+                    const companyId = '{{ $companyId }}';
+                    const invoiceNumber = '{{ $invoiceNumber }}';
+                    const url = `/invoice/${companyId}/${invoiceNumber}/send-email`;
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            recipients: recipients,
+                            send_to_agent: sendToAgent,
+                            send_to_client: sendToClient,
+                            custom_emails: customEmails
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        successMsg.textContent = result.message;
+                        successMsg.classList.remove('hidden');
+                        errorMsg.classList.add('hidden');
+
+                        setTimeout(() => {
+                            closeModal();
+                        }, 2000);
+                    } else {
+                        throw new Error(result.message || 'Failed to send email');
+                    }
+
+                } catch (error) {
+                    errorMsg.textContent = error.message || 'An error occurred while sending the email.';
+                    errorMsg.classList.remove('hidden');
+                    successMsg.classList.add('hidden');
+                } finally {
+                    submitBtn.disabled = false;
+                    btnText.textContent = 'Send Email';
+                    spinner.classList.add('hidden');
+                }
+            });
+        }
+    </script>
 
 </x-app-layout>

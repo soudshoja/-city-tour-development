@@ -4096,7 +4096,7 @@ class PaymentController extends Controller
                 $storeNotificationData['payment'] = $payment;
             }
             
-            $this->storeNotificationWithSendingPdf($storeNotificationData);
+            $this->storeNotification($storeNotificationData);
 
             (new ResayilController())->message(
                 $receiptInfo['agent']->phone_number,
@@ -5167,7 +5167,7 @@ class PaymentController extends Controller
 
             Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
 
-            $this->storeNotificationWithSendingPdf($storeNotificationData);
+            $this->storeNotification($storeNotificationData);
 
             (new ResayilController())->message(
                 $agent->phone_number,
@@ -5875,7 +5875,7 @@ class PaymentController extends Controller
 
             Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
 
-            $this->storeNotificationWithSendingPdf($storeNotificationData);
+            $this->storeNotification($storeNotificationData);
 
             (new ResayilController())->message(
                 $agent->phone_number,
@@ -6197,7 +6197,7 @@ class PaymentController extends Controller
 
                 Log::info('Hesabe webhook: Storing notification', $storeNotificationData);
 
-                $this->storeNotificationWithSendingPdf($storeNotificationData);
+                $this->storeNotification($storeNotificationData);
 
                 (new ResayilController())->message(
                     $receiptInfo['agent']->phone_number,

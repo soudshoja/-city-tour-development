@@ -92,7 +92,7 @@
     </div>
     @endif
     @if (in_array($invoice->status, ['paid', 'paid by refund', 'refunded']))
-        <div class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 text-white rounded-lg">
+        <div class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 my-2 text-white rounded-lg">
             <p class="text-3xl">PAID</p>
             @if ($invoice->status === 'paid')
                 <p class="text-sm">This invoice has been fully paid</p>
@@ -598,22 +598,46 @@
                 </thead>
                 <tbody>
                     @foreach ($paidPartials as $partial)
+                    @php
+                        // Check if this credit payment has PaymentApplication records (new audit trail system)
+                        $paymentApps = $partial->paymentApplications()->with('payment')->get();
+                        $hasPaymentApplications = $paymentApps->isNotEmpty();
+                        
+                        // Old way: get credit utilization amount
+                        $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
+                    @endphp
                     <tr class="text-sm text-gray-700">
                         <td class="px-4 py-2 border">
-                            @if(optional($partial->payment)->voucher_number)
-                            <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
-                                class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
-                            </a>
+                            @if($hasPaymentApplications)
+                                {{-- New system: show linked payment voucher numbers --}}
+                                @foreach($paymentApps as $app)
+                                    @if($app->payment)
+                                        <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $app->payment->voucher_number]) }}"
+                                            class="text-blue-500 underline" target="_blank">{{ $app->payment->voucher_number }}</a>
+                                        @if(!$loop->last)<br>@endif
+                                    @endif
+                                @endforeach
+                            @elseif(optional($partial->payment)->voucher_number)
+                                <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
+                                    class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
+                                </a>
                             @elseif ($partial->payment_gateway === 'Tabby')
-                            <span class="text-gray-600 italic">Receipt voucher TBA</span>
+                                <span class="text-gray-600 italic">Receipt voucher TBA</span>
                             @else
-                            <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">Credit</a>
+                                <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">Credit</a>
                             @endif
                         </td>
-                        @php
-                        $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
-                        @endphp
-                        @if ($paymentReferenceCredit)
+                        @if ($hasPaymentApplications)
+                            {{-- New system: show specific payment vouchers used --}}
+                            <td class="px-4 py-2 border">
+                                @foreach($paymentApps as $app)
+                                    @if($app->payment)
+                                        {{ $app->payment->voucher_number }} ({{ number_format($app->amount, 3) }})
+                                        @if(!$loop->last)<br>@endif
+                                    @endif
+                                @endforeach
+                            </td>
+                        @elseif ($paymentReferenceCredit)
                             <td class="px-4 py-2 border">Client Credit by {{ $partial->client->full_name }}
                                 ({{ $paymentReferenceCredit }})
                             </td>
@@ -627,10 +651,10 @@
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
-                        @if ($paymentReferenceCredit)
-                        <td class="px-4 py-2 border">Client Credit</td>
+                        @if ($hasPaymentApplications || $paymentReferenceCredit)
+                            <td class="px-4 py-2 border">Client Credit</td>
                         @else
-                        <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                            <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         @endif
                         <td class="px-4 py-2 border">
                             {{ number_format($partial->amount ?? 0, 2) }}

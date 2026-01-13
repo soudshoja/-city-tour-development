@@ -2776,7 +2776,7 @@ class PaymentController extends Controller
 
         $payment = Payment::with('agent', 'client', 'paymentItems')->where('id', $payment->id)->first();
 
-        $fatoorahPayment = $payment->findMyFatoorahPayment();
+        $fatoorahPayment = $payment->myFatoorahPayment;
 
         $invoiceRef = null;
         $authorizationId = null;

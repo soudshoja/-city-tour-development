@@ -405,6 +405,14 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-slate-700 text-sm">
                             @foreach($partials as $partial)
+                            @php
+                                $voucher = trim(optional($partial->payment)->voucher_number ?? '');
+                                $isCredit = (stripos($partial->payment_gateway ?? '', 'credit') !== false);
+                                
+                                // Check if this credit payment has PaymentApplication records (new audit trail system)
+                                $paymentApps = $partial->paymentApplications()->with('payment')->get();
+                                $hasPaymentApplications = $paymentApps->isNotEmpty();
+                            @endphp
                             <tr>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-200">
                                     {{ optional($partial->created_at)->format('d M Y') }}
@@ -412,16 +420,21 @@
                                 <td class="px-6 py-3 text-gray-800 dark:text-slate-100">
                                     {{ $partial->payment_gateway ?? '—' }}
                                 </td>
-                                @php
-                                $voucher = trim(optional($partial->payment)->voucher_number ?? '');
-                                $isCredit = (stripos($partial->payment_gateway ?? '', 'credit') !== false);
-                                @endphp
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-300">
-                                    @if($voucher)
-                                    <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $voucher]) }}"
-                                        class="text-blue-500 hover:text-blue-700" target="_blank">{{ $voucher }}</a>
+                                    @if($hasPaymentApplications)
+                                        @foreach($paymentApps as $app)
+                                            @if($app->payment)
+                                                <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $app->payment->voucher_number]) }}"
+                                                    class="text-blue-500 hover:text-blue-700" target="_blank">{{ $app->payment->voucher_number }}</a>
+                                                <span class="text-xs text-gray-500">({{ number_format($app->amount, 3) }})</span>
+                                                @if(!$loop->last)<br>@endif
+                                            @endif
+                                        @endforeach
+                                    @elseif($voucher)
+                                        <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $voucher]) }}"
+                                            class="text-blue-500 hover:text-blue-700" target="_blank">{{ $voucher }}</a>
                                     @else
-                                    {{ $isCredit ? 'Client Credit' : 'TBA' }}
+                                        {{ $isCredit ? 'Client Credit' : 'TBA' }}
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">

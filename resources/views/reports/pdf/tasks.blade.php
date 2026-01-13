@@ -247,7 +247,7 @@
     @endif
 
     <div class="footer">
-        <div>Total Tasks: {{ number_format($totalTasks) }} | Debit: {{ number_format($totalDebit, 3) }} KWD | Credit: {{ number_format($totalCredit, 3) }} KWD | Net: {{ number_format($totalAmount, 3) }} KWD</div>
+        <div>Total Tasks: {{ number_format($totalTasks) }} | Debit: {{ number_format($totalDebit, 3) }} KWD | Credit: {{ number_format($totalCredit, 3) }} KWD | Net: {{ number_format($netBalance, 3) }} KWD</div>
         <div style="margin-top: 3px;">This report was automatically generated on {{ $generatedAt }}</div>
     </div>
 </body>

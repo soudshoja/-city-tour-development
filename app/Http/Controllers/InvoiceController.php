@@ -4649,5 +4649,115 @@ class InvoiceController extends Controller
             'invoice_id' => $invoice->id ?? null,
         ];
     }
+
+    /**
+     * Send invoice details via email
+     */
+    public function sendInvoiceEmail(Request $request, int $companyId, string $invoiceNumber)
+    {
+        $request->validate([
+            'recipients' => 'required|array|min:1',
+            'recipients.*' => 'required|email',
+            'send_to_agent' => 'nullable|boolean',
+            'send_to_client' => 'nullable|boolean',
+            'custom_emails' => 'nullable|string',
+        ]);
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with(['client', 'agent.branch.company', 'invoiceDetails.task.supplier', 'invoicePartials'])
+            ->first();
+
+        if (!$invoice) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invoice not found'
+            ], 404);
+        }
+
+        $recipients = [];
+        $sentTo = [];
+
+        if ($request->boolean('send_to_agent') && $invoice->agent && $invoice->agent->email) {
+            $recipients[] = $invoice->agent->email;
+            $sentTo[] = "Agent ({$invoice->agent->name})";
+        }
+
+        if ($request->boolean('send_to_client') && $invoice->client && $invoice->client->email) {
+            $recipients[] = $invoice->client->email;
+            $sentTo[] = "Client ({$invoice->client->full_name})";
+        }
+
+        if ($request->filled('custom_emails')) {
+            $customEmails = array_map('trim', explode(',', $request->custom_emails));
+            foreach ($customEmails as $email) {
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $recipients[] = $email;
+                    $sentTo[] = $email;
+                }
+            }
+        }
+
+        $recipients = array_unique($recipients);
+
+        if (empty($recipients)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid email recipients provided'
+            ], 400);
+        }
+
+        try {
+            $mailable = new \App\Mail\InvoiceMail($invoice->id);
+
+            // if (app()->environment('local')) {
+            //     $localEmail = env('EMAIL_LOCAL', 'it@alphia.net');
+
+            //     \Illuminate\Support\Facades\Mail::to($localEmail)->send($mailable);
+
+            //     Log::info('Invoice email sent to LOCAL override', [
+            //         'invoice_number' => $invoiceNumber,
+            //         'original_recipients' => $recipients,
+            //         'actual_recipient' => $localEmail,
+            //         'sent_by' => Auth::user()->id ?? null,
+            //     ]);
+
+            //     return response()->json([
+            //         'success' => true,
+            //         'message' => 'Invoice sent successfully to: ' . implode(', ', $sentTo),
+            //         'recipients_count' => count($recipients)
+            //     ]);
+            // }
+
+            foreach ($recipients as $recipient) {
+                \Illuminate\Support\Facades\Mail::to($recipient)->send($mailable);
+            }
+
+            Log::info('Invoice email sent successfully', [
+                'invoice_number' => $invoiceNumber,
+                'recipients' => $recipients,
+                'sent_by' => Auth::user()->id ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice sent successfully to: ' . implode(', ', $sentTo),
+                'recipients_count' => count($recipients)
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Failed to send invoice email', [
+                'invoice_number' => $invoiceNumber,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send email: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
 

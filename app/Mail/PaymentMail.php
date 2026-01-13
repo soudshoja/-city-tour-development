@@ -15,18 +15,24 @@ class PaymentMail extends Mailable
     protected $paymentId;
     protected $type;
 
-    public function __construct(int $paymentId,PaymentMailTypeEnum $type)
+    public function __construct(int $paymentId, PaymentMailTypeEnum $type)
     {
         $this->paymentId = $paymentId;
         $this->type = $type;
     }
 
-    public function build(){
+    public function build()
+    {
         $subject = '';
         $view = '';
         $data = [];
 
-        $payment = Payment::findOrFail($this->paymentId);
+        $payment = Payment::with([
+            'client',
+            'agent.branch.company',
+            'paymentMethod',
+            'paymentItems'
+        ])->findOrFail($this->paymentId);
 
         switch ($this->type) {
             case PaymentMailTypeEnum::PAYMENT_LINK:
@@ -42,10 +48,18 @@ class PaymentMail extends Mailable
                 // break;
 
             case PaymentMailTypeEnum::PAYMENT_SUCCESS:
-                $subject = 'Payment Successful';
+                $subject = 'Payment Successful - ' . $payment->voucher_number;
                 $view = 'payment.pdf.success';
+
+                $invoiceRef = null;
+                if ($payment->invoice_id) {
+                    $invoiceRef = $payment->invoice->invoice_number ?? null;
+                }
+
                 $data = [
                     'payment' => $payment,
+                    'invoiceRef' => $invoiceRef,
+                    'isPdf' => false,
                 ];
                 break;
 
@@ -63,8 +77,7 @@ class PaymentMail extends Mailable
         }
 
         return $this->subject($subject)
-                    ->view($view)
-                    ->with($data);
-
+            ->view($view)
+            ->with($data);
     }
 }

@@ -31,6 +31,7 @@ use App\Models\Credit;
 use App\Models\InvoiceReceipt;
 use App\Models\Setting;
 use App\Services\ChargeService;
+use App\Services\PaymentApplicationService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
@@ -560,6 +561,9 @@ class InvoiceController extends Controller
             ->where('status', 'unpaid')
             ->get(); 
 
+        // Get available payments for client credit with payment selection
+        $availablePayments = Credit::getAvailablePaymentsForClient($invoice->client_id);
+
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -588,6 +592,7 @@ class InvoiceController extends Controller
             'receiptVoucher',
             'unpaidPartial',
             'companyIdForPartials',
+            'availablePayments',
         ));
     }
 
@@ -945,20 +950,42 @@ class InvoiceController extends Controller
                 ]);
 
                 if ($credit) {
-                    //insert credit record to reduce client's existing credit balance
-                    try {
-                        Credit::create([
-                            'company_id'  => $invoicePartial->client->agent->branch->company_id,
-                            'client_id'   => $invoicePartial->client->id,
-                            'invoice_id'  => $invoice->id,
-                            'invoice_partial_id'  => $invoicePartial->id,
-                            'type'        => 'Invoice',
-                            'description' => 'Payment for ' . $invoice->invoice_number,
-                            'amount'      => - ($amount),
-                        ]);
-                    } catch (Exception $e) {
-                        Log::error('Failed to create Credit: ' . $e->getMessage());
-                        throw new \Exception('Failed to create credit record: ' . $e->getMessage());
+                    $paymentAllocations = $request->input('payment_allocations', []);
+                    
+                    if (!empty($paymentAllocations)) {
+                        // Use PaymentApplicationService to link to specific payments
+                        try {
+                            $paymentService = app(PaymentApplicationService::class);
+                            $paymentService->linkPaymentsToInvoicePartial(
+                                $invoice,
+                                $invoicePartial,
+                                $paymentAllocations
+                            );
+                            Log::info('Payment allocations applied via PaymentApplicationService', [
+                                'invoice_id' => $invoice->id,
+                                'invoice_partial_id' => $invoicePartial->id,
+                                'allocations' => $paymentAllocations,
+                            ]);
+                        } catch (Exception $e) {
+                            Log::error('Failed to apply payment allocations: ' . $e->getMessage());
+                            throw new \Exception('Failed to apply payment allocations: ' . $e->getMessage());
+                        }
+                    } else {
+                        // Fallback: create credit record without linking to specific payment (legacy behavior)
+                        try {
+                            Credit::create([
+                                'company_id'  => $invoicePartial->client->agent->branch->company_id,
+                                'client_id'   => $invoicePartial->client->id,
+                                'invoice_id'  => $invoice->id,
+                                'invoice_partial_id'  => $invoicePartial->id,
+                                'type'        => 'Invoice',
+                                'description' => 'Payment for ' . $invoice->invoice_number,
+                                'amount'      => - ($amount),
+                            ]);
+                        } catch (Exception $e) {
+                            Log::error('Failed to create Credit: ' . $e->getMessage());
+                            throw new \Exception('Failed to create credit record: ' . $e->getMessage());
+                        }
                     }
                 }
 
@@ -4758,6 +4785,164 @@ class InvoiceController extends Controller
                 'message' => 'Failed to send email: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get available payments for a client that can be used to pay invoices
+     * AJAX endpoint for loading payments when Credit gateway is selected
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getAvailablePayments(Request $request): JsonResponse
+    {
+        Log::info('[INVOICE] getAvailablePayments - Request', [
+            'client_id' => $request->input('client_id'),
+            'user_id' => auth()->id(),
+        ]);
+
+        $request->validate([
+            'client_id' => 'required|integer|exists:clients,id',
+        ]);
+
+        $clientId = $request->input('client_id');
+        $availablePayments = Credit::getAvailablePaymentsForClient($clientId);
+
+        $response = [
+            'success' => true,
+            'payments' => array_map(function ($item) {
+                return [
+                    'payment' => [
+                        'id' => $item['payment']->id,
+                        'voucher_number' => $item['payment']->voucher_number,
+                        'payment_date' => $item['payment']->payment_date?->format('d M Y'),
+                        'original_amount' => $item['payment']->amount,
+                    ],
+                    'available_balance' => $item['available_balance'],
+                ];
+            }, $availablePayments),
+            'total_available' => array_sum(array_column($availablePayments, 'available_balance')),
+        ];
+
+        Log::info('[INVOICE] getAvailablePayments - Response', [
+            'client_id' => $clientId,
+            'payment_count' => count($availablePayments),
+            'total_available' => $response['total_available'],
+        ]);
+
+        return response()->json($response);
+    }
+
+    /**
+     * Apply selected payments to an invoice (credit payment with payment selection)
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function applyPaymentsToInvoice(Request $request): JsonResponse
+    {
+        Log::info('[INVOICE] applyPaymentToInvoice - Raw Request', [
+            'all' => $request->all(),
+            'user_id' => auth()->id(),
+        ]);
+
+        $request->validate([
+            'invoice_id' => 'required|integer|exists:invoices,id',
+            'payment_allocations' => 'required|array|min:1',
+            'payment_allocations.*.payment_id' => 'required|integer|exists:payments,id',
+            'payment_allocations.*.amount' => 'required|numeric|min:0.001',
+            'payment_mode' => 'required|in:full,partial,split',
+            'other_gateway' => 'nullable|string',
+            'other_method' => 'nullable|string',
+            'charge_id' => 'nullable|integer',
+        ]);
+
+        Log::info('[INVOICE] applyPaymentToInvoice - Validation passed');
+
+        $service = new PaymentApplicationService();
+
+        $options = [];
+        if ($request->input('payment_mode') === 'split') {
+            $options = [
+                'other_gateway' => $request->input('other_gateway'),
+                'other_method' => $request->input('other_method'),
+                'charge_id' => $request->input('charge_id'),
+            ];
+        }
+
+        $result = $service->applyPaymentsToInvoice(
+            $request->input('invoice_id'),
+            $request->input('payment_allocations'),
+            $request->input('payment_mode', 'full'),
+            $options
+        );
+
+        Log::info('[INVOICE] applyPaymentToInvoice - Response', $result);
+
+        if ($result['success']) {
+            return response()->json($result);
+        } else {
+            return response()->json($result, 422);
+        }
+    }
+
+    /**
+     * Validate payment selection before applying
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function validatePaymentSelection(Request $request): JsonResponse
+    {
+        $request->validate([
+            'required_amount' => 'required|numeric|min:0.001',
+            'payment_allocations' => 'required|array|min:1',
+            'payment_allocations.*.payment_id' => 'required|integer|exists:payments,id',
+            'payment_allocations.*.amount' => 'required|numeric|min:0.001',
+        ]);
+
+        $service = new PaymentApplicationService();
+
+        $result = $service->validatePaymentSelection(
+            $request->input('payment_allocations'),
+            $request->input('required_amount')
+        );
+
+        return response()->json($result);
+    }
+
+    /**
+     * Get payment history for an invoice (which payments paid this invoice)
+     * 
+     * @param int $invoiceId
+     * @return JsonResponse
+     */
+    public function getInvoicePaymentHistory(int $invoiceId): JsonResponse
+    {
+        $invoice = Invoice::findOrFail($invoiceId);
+        $service = new PaymentApplicationService();
+        $applications = $service->getPaymentHistoryForInvoice($invoiceId);
+
+        return response()->json([
+            'success' => true,
+            'invoice' => [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'amount' => $invoice->amount,
+                'status' => $invoice->status,
+            ],
+            'payment_applications' => $applications->map(function ($app) {
+                return [
+                    'id' => $app->id,
+                    'payment_id' => $app->payment_id,
+                    'voucher_number' => $app->payment?->voucher_number,
+                    'amount' => $app->amount,
+                    'applied_at' => $app->applied_at?->format('Y-m-d H:i:s'),
+                    'applied_by' => $app->appliedBy?->name,
+                ];
+            }),
+            'total_paid' => $applications->sum('amount'),
+        ]);
     }
 }
 

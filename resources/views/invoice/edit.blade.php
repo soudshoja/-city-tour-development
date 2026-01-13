@@ -613,23 +613,131 @@
                                                 </button>
                                             </label>
                                             
-                                            <!-- Credit Modal -->
+                                            <!-- Credit Modal with Payment Selection -->
                                             <div id="clientCreditModal"
                                                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-                                                <div class="bg-white rounded-lg p-6 shadow-lg">
-                                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
-                                                    <p class="text-gray-600">The client has a credit limit of
-                                                        {{ $balanceCredit }} KWD.
-                                                    </p>
-                                                    <p>
-                                                        <span>After payment: {{ $balanceCredit }} - {{ $invoice->amount }} =
-                                                            {{ $balanceCredit - $invoice->amount }} KWD</span>
-                                                    </p>
-                                                    <div class="mt-4 flex justify-end">
-                                                        <button @click="savePartial('credit')"
-                                                            class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
+                                                <div class="bg-white rounded-lg p-6 shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Pay Invoice with Client Credit</h2>
+                                                    <p class="text-gray-600 mb-2">Total Credit Balance: <strong>{{ $balanceCredit }} KWD</strong></p>
+                                                    <p class="text-gray-600 mb-4">Invoice Amount: <strong>{{ $invoice->amount }} KWD</strong></p>
+                                                    
+                                                    <!-- Payment Mode Selection -->
+                                                    <div class="mb-4">
+                                                        <h3 class="font-medium text-gray-700 mb-2">Payment Mode:</h3>
+                                                        <div class="flex gap-4">
+                                                            <label class="flex items-center cursor-pointer">
+                                                                <input type="radio" name="credit_payment_mode" value="full" 
+                                                                    class="credit-payment-mode mr-2" checked
+                                                                    onchange="updatePaymentMode()">
+                                                                <span>Full Payment</span>
+                                                            </label>
+                                                        </div>
+                                                        <p id="paymentModeDescription" class="text-sm text-gray-500 mt-1">
+                                                            Credit must cover entire invoice amount.
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    <!-- Payment Selection Section -->
+                                                    <div class="mb-4">
+                                                        <h3 class="font-medium text-gray-700 mb-2">Select Payment(s) to Apply:</h3>
+                                                        <div id="availablePaymentsList" class="space-y-2 max-h-60 overflow-y-auto border rounded p-2">
+                                                            @forelse($availablePayments as $index => $paymentData)
+                                                                <div class="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100">
+                                                                    <label class="flex items-center flex-1 cursor-pointer">
+                                                                        <input type="checkbox" 
+                                                                            class="payment-checkbox mr-3" 
+                                                                            data-payment-id="{{ $paymentData['payment']->id }}"
+                                                                            data-available-balance="{{ $paymentData['available_balance'] }}"
+                                                                            data-voucher="{{ $paymentData['payment']->voucher_number }}"
+                                                                            onchange="updatePaymentSelection()">
+                                                                        <div>
+                                                                            <span class="font-medium">{{ $paymentData['payment']->voucher_number }}</span>
+                                                                            <span class="text-sm text-gray-500 ml-2">
+                                                                                ({{ $paymentData['payment']->payment_date?->format('d M Y') ?? 'N/A' }})
+                                                                            </span>
+                                                                        </div>
+                                                                    </label>
+                                                                    <div class="flex items-center gap-2">
+                                                                        <span class="text-sm text-green-600">Available: {{ number_format($paymentData['available_balance'], 3) }} KWD</span>
+                                                                        <input type="number" 
+                                                                            class="payment-amount-input w-24 px-2 py-1 border rounded text-sm"
+                                                                            data-payment-id="{{ $paymentData['payment']->id }}"
+                                                                            data-max="{{ $paymentData['available_balance'] }}"
+                                                                            data-user-edited="false"
+                                                                            placeholder="Amount"
+                                                                            step="0.001"
+                                                                            min="0"
+                                                                            max="{{ $paymentData['available_balance'] }}"
+                                                                            disabled
+                                                                            oninput="markAsUserEdited(this)">
+                                                                    </div>
+                                                                </div>
+                                                            @empty
+                                                                <p class="text-gray-500 text-center py-4">No available payments found for this client.</p>
+                                                            @endforelse
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Split Payment Gateway Selection (hidden by default) -->
+                                                    <div id="splitGatewaySection" class="mb-4 hidden">
+                                                        <h3 class="font-medium text-gray-700 mb-2">Pay Remaining Amount With:</h3>
+                                                        <div class="grid grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label class="block text-sm text-gray-600 mb-1">Payment Gateway</label>
+                                                                <select id="splitGateway" class="w-full p-2 border border-gray-300 rounded">
+                                                                    @foreach ($paymentGateways as $gateway)
+                                                                        <option value="{{ $gateway->name }}" data-charge-id="{{ $gateway->id }}">{{ $gateway->name }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                            <div id="splitMethodSection">
+                                                                <label class="block text-sm text-gray-600 mb-1">Payment Method</label>
+                                                                <select id="splitMethod" class="w-full p-2 border border-gray-300 rounded">
+                                                                    @foreach ($paymentMethods as $method)
+                                                                        <option value="{{ $method->id }}">{{ $method->english_name }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <p class="text-sm text-blue-600 mt-2">
+                                                            Remaining <span id="splitRemainingAmount">0.000</span> KWD will be paid via selected gateway.
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    <!-- Summary Section -->
+                                                    <div class="bg-gray-100 rounded p-3 mb-4">
+                                                        <div class="flex justify-between mb-1">
+                                                            <span>Invoice Amount:</span>
+                                                            <span id="creditModalInvoiceAmount">{{ number_format($invoice->amount, 3) }} KWD</span>
+                                                        </div>
+                                                        <div class="flex justify-between mb-1">
+                                                            <span>Credit Selected:</span>
+                                                            <span id="creditModalTotalSelected" class="font-medium">0.000 KWD</span>
+                                                        </div>
+                                                        <div class="flex justify-between border-t pt-1">
+                                                            <span>Remaining:</span>
+                                                            <span id="creditModalDifference" class="font-bold">{{ number_format($invoice->amount, 3) }} KWD</span>
+                                                        </div>
+                                                        <div id="creditModalExcessWarning" class="text-amber-600 text-sm mt-2 hidden">
+                                                            ⚠️ Excess amount will remain available for future invoices.
+                                                        </div>
+                                                        <div id="creditModalShortageWarning" class="text-red-600 text-sm mt-2 hidden">
+                                                            ❌ Insufficient credit for full payment. Select more payments or change payment mode.
+                                                        </div>
+                                                        <div id="creditModalSplitInfo" class="text-blue-600 text-sm mt-2 hidden">
+                                                            ℹ️ Remaining amount will be charged via selected gateway.
+                                                        </div>
+                                                        <div id="creditModalPartialInfo" class="text-amber-600 text-sm mt-2 hidden">
+                                                            ℹ️ Remaining amount will stay as unpaid balance on invoice.
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mt-4 flex justify-end gap-2">
                                                         <button onclick="hideModal()"
-                                                            class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                                                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+                                                        <button id="applyPaymentsBtn" onclick="applySelectedPayments()"
+                                                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            disabled>Apply Payments</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -896,7 +1004,6 @@
                                                     class="space-y-4"
                                                     x-data="{ source: 'placeholder', gateway: '' }"
                                                     x-effect="
-                                                        // reset fields when source changes
                                                         if (source !== 'gateway') { gateway=''; }
                                                         if (source !== 'receipt') { $refs.receiptRef && ($refs.receiptRef.value=''); }
                                                     ">
@@ -1312,12 +1419,12 @@
                                 <!-- Error message -->
                             </div>
 
-                            <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col">
-                                    <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
+                            <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-2 md:p-6 grid place-items-center overscroll-contain">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col overflow-hidden">
+                                    <div class="px-4 md:px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
                                         <h3 class="text-xl font-bold">Split Payment Details</h3>
                                     </div>
-                                    <div class="flex-1 overflow-y-auto px-6 py-4">
+                                    <div class="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-6 py-4">
                                         <form id="split-payment-container" class="space-y-5">
                                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div>
@@ -1349,23 +1456,25 @@
                                                 <label class="block text-sm font-medium mb-1">Description *</label>
                                                 <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
                                             </div>
-                                            <div class="overflow-x-auto">
-                                                <table class="min-w-full bg-white border border-gray-300 text-center">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="border-b px-4 py-2">S.No</th>
-                                                            <th class="border-b px-4 py-2">Choose Client</th>
-                                                            <th class="border-b px-4 py-2">Credit</th>
-                                                            <th class="border-b px-4 py-2">Expiry Date</th>
-                                                            <th class="border-b px-4 py-2">Amount</th>
-                                                            <th class="border-b px-4 py-2">Payment Gateway</th>
-                                                            <th class="border-b px-4 py-2">Payment Method</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="split-rows">
-                                                        <!-- Dynamic rows will be generated here -->
-                                                    </tbody>
-                                                </table>
+                                            <div class="overflow-x-auto -mx-4 md:-mx-6">
+                                                <div class="px-4 md:px-6 inline-block min-w-full">
+                                                    <table class="min-w-full bg-white border border-gray-300 text-center text-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">S.No</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Client</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Credit</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Expiry</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Amount</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Gateway</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Method</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="split-rows">
+                                                            <!-- Dynamic rows will be generated here -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                             <div class="flex">
                                                 <button type="button" id="splitbutton" onclick="savePartial('split')"
@@ -1377,7 +1486,7 @@
                                             </div>
                                         </form>
                                     </div>
-                                    <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-end">
+                                    <div class="px-4 md:px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-end">
                                         <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                     </div>
                                 </div>
@@ -1710,6 +1819,9 @@
         </div>
     </div>
 
+    <!-- Payment Selection Module for Credit Payments -->
+    <script src="{{ asset('js/invoice-payment-selection.js') }}"></script>
+    
     <script>
         let invoice = @json($invoice);
         let items = [];
@@ -2303,14 +2415,14 @@
             for (let i = 1; i <= splitInto; i++) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                        <td class="border-b px-4 py-2">${i}</td>
-                        <td class="border-b px-4 py-2">
-                            <div class="w-[180px] relative">
+                        <td class="border-b px-2 py-2 whitespace-nowrap">${i}</td>
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[120px] relative">
                                 <div id="searchable_dropdown_${i}" class="w-full">
                                     <div class="relative">
                                         <button type="button"
                                                 onclick="toggleSearchableDropdown(${i})"
-                                                class="w-full border border-gray-300 p-2 rounded text-base text-left bg-white text-black">
+                                                class="w-full border border-gray-300 p-2 rounded text-sm text-left bg-white text-black">
                                             <span id="selected_text_${i}" class="text-gray-400">Select Client</span>
                                         </button>
 
@@ -2341,25 +2453,25 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="border-b px-4 py-2">
-                            <div class="w-[180px]" id="credit_display_${i}">
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[80px] whitespace-nowrap" id="credit_display_${i}">
                                 Credit: 0.00
                             </div>
                         </td>
-                        <td class="border-b px-4 py-2">
-                            <div class="w-[140px]">
-                                <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="w-full border-gray-300 rounded-md shadow-sm" />
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[100px]">
+                                <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="w-full border-gray-300 rounded-md shadow-sm text-sm" />
                             </div>
                         </td>
-                        <td class="border-b px-4 py-2">
-                            <div class="w-[110px]">
-                                <input type="number" id="amount_${i}" name="amount_${i}" class="w-full border-gray-300 rounded-md no-spin" value="${perRowAmount}"
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[80px]">
+                                <input type="number" id="amount_${i}" name="amount_${i}" class="w-full border-gray-300 rounded-md no-spin text-sm" value="${perRowAmount}"
                                     onblur="checkInputAmount('split', ${i})" oninput="checkInputAmount('split', ${i})" />
                             </div>
                         </td>
-                        <td class="border-b px-4 py-2">
-                            <div class="w-[140px]">
-                                <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[100px]">
+                                <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-1 rounded text-sm">
                                     <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
                                     <option value="Cash">Cash</option>
                                     @foreach ($invoiceGateways as $gateway)
@@ -2368,12 +2480,12 @@
                                 </select>
                             </div>
                         </td>
-                        <td class="border-b px-4 py-2">
-                            <div class="w-[220px]">
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[120px]">
                                 <div id="payment_method_container_${i}" class="hidden">
-                                    <select id="payment_method_${i}" name="payment_method_${i}" class="w-full border border-gray-300 p-2 rounded"></select>
+                                    <select id="payment_method_${i}" name="payment_method_${i}" class="w-full border border-gray-300 p-1 rounded text-sm"></select>
                                 </div>
-                                <div id="payment_method_text_${i}" class="text-gray-500 p-2">No specific method required</div>
+                                <div id="payment_method_text_${i}" class="text-gray-500 p-1 text-sm">No method required</div>
                             </div>
                         </td>
                     `;
@@ -2399,6 +2511,9 @@
 
                     if (key === gwKey('credit')) {
                         handleCreditPaymentSelection(i);
+                    } else {
+                        // Hide payment selection when switching away from Credit
+                        PaymentSelection.hideForRow('split', i);
                     }
                 }
 
@@ -2407,32 +2522,41 @@
             }
         }
 
-        // Handle credit payment selection
+        // Handle credit payment selection for SPLIT payments
         function handleCreditPaymentSelection(rowIndex) {
             const clientIdInput = document.getElementById(`customer_name_${rowIndex}`);
             const amountInput = document.getElementById(`amount_${rowIndex}`);
+            const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
 
             if (!clientIdInput || !clientIdInput.value) {
                 alert('Please select a client first before choosing credit payment.');
-                // Reset gateway selection
-                const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
                 gatewaySelect.selectedIndex = 1; // Select first non-credit option
                 return;
             }
 
-            const clientId = clientIdInput.value;
+            const clientId = parseInt(clientIdInput.value);
             const amount = parseFloat(amountInput.value) || 0;
-            const clientCredit = clientCredits[rowIndex] || 0;
 
-            if (amount > clientCredit) {
-                alert(`Insufficient credit. Client has ${clientCredit} credit but trying to pay ${amount}.`);
-                // Reset gateway selection
-                const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
-                gatewaySelect.selectedIndex = 1; // Select first non-credit option
-                return;
+            // Show payment selection UI
+            PaymentSelection.showForRow('split', rowIndex, clientId, amount);
+        }
+
+        // Handle credit payment selection for PARTIAL payments
+        function handleCreditPaymentSelectionPartial(rowIndex) {
+            const clientId = {{ $invoice->client_id }};
+            const amountInput = document.getElementById(`amount_${rowIndex}`);
+            const amount = parseFloat(amountInput.value) || 0;
+
+            // Show payment selection UI
+            PaymentSelection.showForRow('partial', rowIndex, clientId, amount);
+        }
+
+        // Hide payment selection when gateway changes away from Credit
+        function handleGatewayChange(modalType, rowIndex, gatewayValue) {
+            const key = gwKey(gatewayValue);
+            if (key !== gwKey('credit')) {
+                PaymentSelection.hideForRow(modalType, rowIndex);
             }
-
-            // Credit payment selected - processing will happen with normal save flow
         }
 
         function updateCreditUI(splitCount) {
@@ -2519,6 +2643,9 @@
                     const prevUsed = Number(creditUsed[i] || 0);
 
                     if (key === gwKey('credit')) {
+                        // Show payment selection UI for this row
+                        handleCreditPaymentSelectionPartial(i);
+                        
                         if (prevUsed > 0) {
                             creditRemaining += prevUsed;
                             creditUsed[i] = 0;
@@ -2529,8 +2656,12 @@
                         } else {
                             alert(`Not enough credit. Remaining: ${creditRemaining.toFixed(2)}; Row ${i} needs: ${amt.toFixed(2)}.`);
                             gatewaySelect.value = '';
+                            PaymentSelection.hideForRow('partial', i);
                         }
                     } else {
+                        // Hide payment selection if switching away from Credit
+                        PaymentSelection.hideForRow('partial', i);
+                        
                         if (prevUsed > 0) {
                             creditRemaining += prevUsed;
                             creditUsed[i] = 0;
@@ -3739,16 +3870,17 @@
             } else if (mode === 'split') {
                 const rows = document.querySelectorAll('#split-rows tr');
                 rows.forEach((row, index) => {
-                    const clientSelectElement = row.querySelector(`#customer_name_${index + 1}`);
+                    const i = index + 1;
+                    const clientSelectElement = row.querySelector(`#customer_name_${i}`);
 
                     if (!clientSelectElement) {
-                        console.error(`Client select element not found for row ${index + 1}`);
+                        console.error(`Client select element not found for row ${i}`);
                         return;
                     }
 
                     const clientId = clientSelectElement.value;
                     // Get client name from the display text instead of select options
-                    const selectedTextElement = row.querySelector(`#selected_text_${index + 1}`);
+                    const selectedTextElement = row.querySelector(`#selected_text_${i}`);
                     const clientName = selectedTextElement ? selectedTextElement.textContent : '';
 
                     const dateInput = row.querySelector(`input[type="date"]`);
@@ -3757,11 +3889,19 @@
                     const amountInput = row.querySelector(`input[type="number"]`);
                     const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
 
-                    const gatewaySelect = row.querySelector(`#payment_gateway_${index + 1}`);
+                    const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
                     const gateway = gatewaySelect ? gatewaySelect.value : null;
 
-                    const methodSelect = row.querySelector(`#payment_method_${index + 1}`);
+                    const methodSelect = row.querySelector(`#payment_method_${i}`);
                     const method = methodSelect ? methodSelect.value : null;
+
+                    // Get selected payments if gateway is Credit
+                    let paymentAllocations = [];
+                    if (gateway === 'Credit') {
+                        const rowId = `split_${i}`;
+                        paymentAllocations = PaymentSelection.getSelectedPaymentsForRow(rowId);
+                        console.log(`Split row ${i} payment allocations:`, paymentAllocations);
+                    }
 
                     requests.push(save('split', {
                         clientId,
@@ -3769,7 +3909,8 @@
                         date,
                         amount,
                         gateway,
-                        method
+                        method,
+                        payment_allocations: paymentAllocations
                     }));
                 });
 
@@ -3814,11 +3955,21 @@
 
                     const gateway = gatewayEl ? gatewayEl.value : null;
                     const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+                    
+                    // Get selected payments if gateway is Credit
+                    let paymentAllocations = [];
+                    if (gateway === 'Credit') {
+                        const rowId = `partial_${i}`;
+                        paymentAllocations = PaymentSelection.getSelectedPaymentsForRow(rowId);
+                        console.log(`Partial row ${i} payment allocations:`, paymentAllocations);
+                    }
+                    
                     requests.push(save('partial', {
                         date,
                         amount,
                         gateway,
-                        method
+                        method,
+                        payment_allocations: paymentAllocations
                     }));
 
                     console.log(`row ${i}`, {
@@ -3899,12 +4050,22 @@
             } else if (type === 'partial') {
                 payload.clientId = document.getElementById('receiverId').value;
                 payload.method = item.method;
+                
+                // Include payment allocations for credit payments
+                if (payload.gateway === 'Credit' && item.payment_allocations && item.payment_allocations.length > 0) {
+                    payload.credit = true;
+                    payload.payment_allocations = item.payment_allocations;
+                }
             } else if (type === 'split') {
                 payload.clientId = item.clientId;
                 payload.method = item.method;
 
                 if (payload.gateway === 'Credit') {
                     payload.credit = true;
+                    // Include payment allocations for credit payments
+                    if (item.payment_allocations && item.payment_allocations.length > 0) {
+                        payload.payment_allocations = item.payment_allocations;
+                    }
                 }
 
             } else if (type === 'cash') {
@@ -4695,6 +4856,236 @@
                     spinner.classList.add('hidden');
                 }
             });
+        }
+
+        // Payment Application Functions for Credit Payment
+        const invoiceAmount = "{{ $invoice->amount }}";
+        let currentPaymentMode = 'full';
+        
+        function updatePaymentMode() {
+            const modeRadio = document.querySelector('input[name="credit_payment_mode"]:checked');
+            currentPaymentMode = modeRadio ? modeRadio.value : 'full';
+            
+            const splitSection = document.getElementById('splitGatewaySection');
+            const descriptionEl = document.getElementById('paymentModeDescription');
+            
+            // Update description and show/hide split gateway section
+            if (currentPaymentMode === 'full') {
+                descriptionEl.textContent = 'Credit must cover entire invoice amount.';
+                splitSection.classList.add('hidden');
+            } else if (currentPaymentMode === 'split') {
+                descriptionEl.textContent = 'Pay part with credit, rest with another gateway.';
+                splitSection.classList.remove('hidden');
+            } else if (currentPaymentMode === 'partial') {
+                descriptionEl.textContent = 'Pay part with credit, remaining stays as unpaid balance.';
+                splitSection.classList.add('hidden');
+            }
+            
+            // Re-validate the current selection
+            updatePaymentSelection();
+        }
+        
+        function updatePaymentSelection() {
+            const checkboxes = document.querySelectorAll('.payment-checkbox');
+            
+            // First pass: collect checked payments in FIFO order (list is already sorted by date)
+            const checkedPayments = [];
+            checkboxes.forEach(checkbox => {
+                const paymentId = checkbox.dataset.paymentId;
+                const amountInput = document.querySelector(`.payment-amount-input[data-payment-id="${paymentId}"]`);
+                const maxAmount = parseFloat(checkbox.dataset.availableBalance);
+                
+                if (checkbox.checked) {
+                    amountInput.disabled = false;
+                    checkedPayments.push({
+                        paymentId: paymentId,
+                        amountInput: amountInput,
+                        maxAmount: maxAmount,
+                        hasUserValue: amountInput.dataset.userEdited === 'true'
+                    });
+                } else {
+                    amountInput.disabled = true;
+                    amountInput.value = '';
+                    amountInput.dataset.userEdited = 'false';
+                }
+            });
+            
+            // Second pass: FIFO auto-fill for payments without user-edited values
+            let remainingToAllocate = invoiceAmount;
+            let totalSelected = 0;
+            
+            checkedPayments.forEach(payment => {
+                if (payment.hasUserValue && parseFloat(payment.amountInput.value) > 0) {
+                    // User has manually set this value, respect it
+                    const userAmount = parseFloat(payment.amountInput.value) || 0;
+                    totalSelected += userAmount;
+                    remainingToAllocate -= userAmount;
+                } else {
+                    // Auto-fill using FIFO: allocate as much as possible from oldest payments first
+                    const autoAmount = Math.min(payment.maxAmount, Math.max(0, remainingToAllocate));
+                    payment.amountInput.value = autoAmount.toFixed(3);
+                    totalSelected += autoAmount;
+                    remainingToAllocate -= autoAmount;
+                }
+            });
+            
+            // Update summary
+            const totalSelectedEl = document.getElementById('creditModalTotalSelected');
+            const differenceEl = document.getElementById('creditModalDifference');
+            const excessWarning = document.getElementById('creditModalExcessWarning');
+            const shortageWarning = document.getElementById('creditModalShortageWarning');
+            const splitInfo = document.getElementById('creditModalSplitInfo');
+            const partialInfo = document.getElementById('creditModalPartialInfo');
+            const splitRemainingEl = document.getElementById('splitRemainingAmount');
+            const applyBtn = document.getElementById('applyPaymentsBtn');
+            
+            const remaining = invoiceAmount - totalSelected;
+            
+            totalSelectedEl.textContent = totalSelected.toFixed(3) + ' KWD';
+            differenceEl.textContent = remaining.toFixed(3) + ' KWD';
+            
+            if (splitRemainingEl) {
+                splitRemainingEl.textContent = remaining.toFixed(3);
+            }
+            
+            // Update difference color
+            if (remaining <= 0) {
+                differenceEl.classList.remove('text-red-600');
+                differenceEl.classList.add('text-green-600');
+            } else {
+                differenceEl.classList.remove('text-green-600');
+                differenceEl.classList.add('text-red-600');
+            }
+            
+            // Hide all info messages first
+            excessWarning.classList.add('hidden');
+            shortageWarning.classList.add('hidden');
+            splitInfo.classList.add('hidden');
+            partialInfo.classList.add('hidden');
+            
+            // Validate based on payment mode
+            let isValid = false;
+            
+            if (currentPaymentMode === 'full') {
+                // Full payment: credit must cover entire invoice
+                if (totalSelected >= invoiceAmount) {
+                    isValid = true;
+                    if (totalSelected > invoiceAmount) {
+                        excessWarning.classList.remove('hidden');
+                    }
+                } else {
+                    shortageWarning.classList.remove('hidden');
+                }
+            } else if (currentPaymentMode === 'split') {
+                
+                if (totalSelected > 0 && totalSelected < invoiceAmount) {
+                    isValid = true;
+                    splitInfo.classList.remove('hidden');
+                } else if (totalSelected >= invoiceAmount) {
+                    excessWarning.classList.remove('hidden');
+                    document.getElementById('creditModalExcessWarning').innerHTML = 
+                        '⚠️ Credit covers entire invoice. Consider using Full Payment mode.';
+                    isValid = true; 
+                } else {
+                    shortageWarning.classList.remove('hidden');
+                    document.getElementById('creditModalShortageWarning').innerHTML = 
+                        '❌ Please select at least some credit amount.';
+                }
+            } else if (currentPaymentMode === 'partial') {
+              
+                if (totalSelected > 0 && totalSelected < invoiceAmount) {
+                    isValid = true;
+                    partialInfo.classList.remove('hidden');
+                } else if (totalSelected >= invoiceAmount) {
+                   
+                    excessWarning.classList.remove('hidden');
+                    document.getElementById('creditModalExcessWarning').innerHTML = 
+                        '⚠️ Credit covers entire invoice. Consider using Full Payment mode.';
+                    isValid = true; 
+                } else {
+                    shortageWarning.classList.remove('hidden');
+                    document.getElementById('creditModalShortageWarning').innerHTML = 
+                        '❌ Please select at least some credit amount.';
+                }
+            }
+            
+            applyBtn.disabled = !isValid || totalSelected === 0;
+        }
+        
+        function markAsUserEdited(input) {
+            input.dataset.userEdited = 'true';
+            updatePaymentSelection();
+        }
+        
+        async function applySelectedPayments() {
+            const checkboxes = document.querySelectorAll('.payment-checkbox:checked');
+            const paymentAllocations = [];
+            
+            checkboxes.forEach(checkbox => {
+                const paymentId = checkbox.dataset.paymentId;
+                const amountInput = document.querySelector(`.payment-amount-input[data-payment-id="${paymentId}"]`);
+                const amount = parseFloat(amountInput.value) || 0;
+                
+                if (amount > 0) {
+                    paymentAllocations.push({
+                        payment_id: parseInt(paymentId),
+                        amount: amount
+                    });
+                }
+            });
+            
+            if (paymentAllocations.length === 0) {
+                alert('Please select at least one payment and enter an amount.');
+                return;
+            }
+            
+            const applyBtn = document.getElementById('applyPaymentsBtn');
+            const originalText = applyBtn.textContent;
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Processing...';
+            
+            const requestBody = {
+                invoice_id: "{{ $invoice->id }}",
+                payment_allocations: paymentAllocations,
+                payment_mode: currentPaymentMode
+            };
+            
+            if (currentPaymentMode === 'split') {
+                const gatewaySelect = document.getElementById('splitGateway');
+                const methodSelect = document.getElementById('splitMethod');
+                
+                requestBody.other_gateway = gatewaySelect.value;
+                requestBody.other_method = methodSelect.value;
+                requestBody.charge_id = gatewaySelect.options[gatewaySelect.selectedIndex].dataset.chargeId || null;
+            }
+            
+            try {
+                const response = await fetch('{{ route("invoice.apply-payments") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(result.message || 'Payments applied successfully!');
+                    window.location.reload();
+                } else {
+                    alert(result.message || 'Failed to apply payments. Please try again.');
+                    applyBtn.disabled = false;
+                    applyBtn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Error applying payments:', error);
+                alert('An error occurred. Please try again.');
+                applyBtn.disabled = false;
+                applyBtn.textContent = originalText;
+            }
         }
     </script>
 

@@ -422,6 +422,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
         Route::post('/{companyId}/{invoiceNumber}/send-email', [InvoiceController::class, 'sendInvoiceEmail'])->name('send-email');
+        
+        // Payment Application Routes (Credit payment with payment selection)
+        Route::post('/available-payments', [InvoiceController::class, 'getAvailablePayments'])->name('available-payments');
+        Route::post('/apply-payments', [InvoiceController::class, 'applyPaymentsToInvoice'])->name('apply-payments');
+        Route::post('/validate-payment-selection', [InvoiceController::class, 'validatePaymentSelection'])->name('validate-payment-selection');
+        Route::get('/payment-history/{invoiceId}', [InvoiceController::class, 'getInvoicePaymentHistory'])->name('payment-history');
 
         Route::get('/{invoiceNumber}', function () {
             return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);

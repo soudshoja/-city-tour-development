@@ -72,6 +72,49 @@ class Credit extends Model
             ->sum('amount');
     }
 
+    public static function getAvailableBalanceByPayment($paymentId)
+    {
+        return self::where('payment_id', $paymentId)->sum('amount');
+    }
+
+    public static function getAvailablePaymentsForClient($clientId)
+    {
+        $topupPaymentIds = self::where('client_id', $clientId)
+            ->where('type', self::TOPUP)
+            ->pluck('payment_id')
+            ->unique()
+            ->filter();
+
+        $availablePayments = [];
+
+        foreach ($topupPaymentIds as $paymentId) {
+            $balance = self::getAvailableBalanceByPayment($paymentId);
+            if ($balance > 0) {
+                $payment = Payment::with('client')->find($paymentId);
+                if ($payment) {
+                    $availablePayments[] = [
+                        'payment' => $payment,
+                        'available_balance' => $balance,
+                    ];
+                }
+            }
+        }
+
+        // Sort by payment date (FIFO - oldest first) to deduct from oldest payments first
+        usort($availablePayments, function ($a, $b) {
+            $dateA = $a['payment']->payment_date ?? $a['payment']->created_at;
+            $dateB = $b['payment']->payment_date ?? $b['payment']->created_at;
+            return $dateA <=> $dateB;
+        });
+
+        return $availablePayments;
+    }
+
+    public static function hasEnoughBalance($paymentId, $amount)
+    {
+        return self::getAvailableBalanceByPayment($paymentId) >= $amount;
+    }
+
     public function payment() {
         return $this->belongsTo(Payment::class);
     }

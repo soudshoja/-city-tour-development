@@ -461,10 +461,7 @@
                             @if ($payments->count() > 0)
                             @foreach ($payments as $payment)
                             @php
-                            $paymentUrl = route('payment.link.show', [
-                            'companyId' => $payment->agent->branch->company_id,
-                            'voucherNumber' => $payment->voucher_number,
-                            ]);
+                            $paymentUrl = route('payment.show', $payment->id);
                             $gateway = $payment->payment_gateway ?? 'N/A';
                             $method = $payment->paymentMethod->english_name ?? null;
                             @endphp
@@ -500,6 +497,9 @@
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     @php
                                     $payment_reference = $payment->payment_reference ? ($payment->invoice_ref ? $payment->payment_reference . '/' . $payment->invoice_ref : $payment->payment_reference) : 'N/A';
+                                    if(strtolower($payment->payment_gateway) == 'myfatoorah' && $payment->myFatoorahPayment){
+                                        $payment_reference = $payment->myfatoorahPayment->invoice_ref;
+                                    }
                                     $isTrimmed = strlen($payment_reference) > 15;
                                     $trimmedValue = \Illuminate\Support\Str::limit($payment_reference, 15);
                                     @endphp
@@ -534,7 +534,7 @@
                                         {{ ucfirst($payment->status) }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap relative text-sm">
+                                <td class="px-3 py-2 whitespace-nowrap text-sm">
                                     <div x-data="{
                                                     open: false, 
                                                     editPaymentLink: false,
@@ -564,7 +564,7 @@
                                                             this.checkPosition();
                                                         }
                                                     }
-                                                }" class="relative inline-block text-left">
+                                                }" class=" inline-block text-left">
                                         <button
                                             x-ref="dropdownButton"
                                             @click="toggleDropdown()"

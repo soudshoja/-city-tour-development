@@ -92,17 +92,6 @@ class Payment extends Model
         return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
     }
 
-    public function findMyFatoorahPayment()
-    {
-        if (empty($this->payment_reference)) {
-            return null;
-        }
-        
-        return MyFatoorahPayment::where('invoice_id', $this->payment_reference)
-            ->orWhere('payment_id', $this->payment_reference)
-            ->first();
-    }
-
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
@@ -148,5 +137,38 @@ class Payment extends Model
     public function paymentFiles()
     {
         return $this->hasMany(PaymentFile::class, 'payment_id');
+    }
+
+    /**
+     * Get all payment applications (where this payment was applied to invoices)
+     */
+    public function paymentApplications()
+    {
+        return $this->hasMany(PaymentApplication::class, 'payment_id');
+    }
+
+    /**
+     * Get the available balance from this payment (for topup payments)
+     * Calculated from Credit records: Topup amount - Used amounts
+     */
+    public function getAvailableBalanceAttribute()
+    {
+        return Credit::getAvailableBalanceByPayment($this->id);
+    }
+
+    /**
+     * Get total amount applied from this payment to invoices
+     */
+    public function getTotalAppliedAttribute()
+    {
+        return PaymentApplication::getTotalAppliedByPayment($this->id);
+    }
+
+    /**
+     * Check if this payment has available balance to use
+     */
+    public function hasAvailableBalance()
+    {
+        return $this->available_balance > 0;
     }
 }

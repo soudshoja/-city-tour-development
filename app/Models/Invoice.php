@@ -112,6 +112,38 @@ class Invoice extends Model
 
     public function reminders()
     {
-        return $this->hasMany(Reminder::class, 'invoice_id')   ;
+        return $this->hasMany(Reminder::class, 'invoice_id');
+    }
+
+    /**
+     * Get all payment applications (payments applied to this invoice)
+     */
+    public function paymentApplications()
+    {
+        return $this->hasMany(PaymentApplication::class, 'invoice_id');
+    }
+
+    /**
+     * Get total amount paid via payment applications
+     */
+    public function getTotalPaidViaApplicationsAttribute()
+    {
+        return PaymentApplication::getTotalAppliedToInvoice($this->id);
+    }
+
+    /**
+     * Get remaining balance on this invoice
+     */
+    public function getRemainingBalanceAttribute()
+    {
+        return $this->amount - $this->total_paid_via_applications;
+    }
+
+    /**
+     * Check if invoice is fully paid via payment applications
+     */
+    public function isFullyPaidViaApplications()
+    {
+        return $this->remaining_balance <= 0;
     }
 }

@@ -163,7 +163,9 @@
                                         class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
                                 </td>
                                 <td class="px-3 py-2 text-sm break-words max-w-[350px] font-semibold">
-                                    {{ $payment->client ? $payment->client->full_name : 'N/A' }}
+                                    <a href="{{ route('clients.show', $payment->client_id) }}" class="hover:underline hover:text-blue-600">
+                                        {{ $payment->client ? $payment->client->full_name : 'N/A' }}
+                                    </a>
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     {{ $payment->client ? $payment->client->country_code . $payment->client->phone : 'N/A' }}

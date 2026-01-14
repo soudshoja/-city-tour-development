@@ -23,10 +23,16 @@ class SettingController extends Controller
             'company_id' => 'nullable|exists:companies,id',
         ]);
 
-        if (!$request->has('company_id') && session()->has('company_id')) {
-            return redirect()->route('settings.index', [
-                'company_id' => session('company_id')
-            ]);
+        if(auth()->user()->role_id == Role::ADMIN){
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('settings.index', [
+                    'company_id' => session('company_id')
+                ]);
+            } 
+        } else {
+            if ($request->has('company_id')) {
+                return redirect()->route('settings.index');
+            }
         }
 
         $companyId = getCompanyId(auth()->user());
@@ -110,6 +116,10 @@ class SettingController extends Controller
 
     public function getCharges(Request $request)
     {
+        Gate::authorize('viewAny', Charge::class);
+
+        Log::info('[SETTINGS] Fetching charges', ['request' => $request->all()]);
+
         $request->validate([
             'company_id' => 'nullable|integer|exists:companies,id',
         ]);

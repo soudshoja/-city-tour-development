@@ -66,6 +66,7 @@ use App\Models\PaymentTransaction;
 use App\Models\Refund;
 use App\Models\TBO;
 use App\Models\SupplierCompany;
+use App\Models\UserSetting;
 use App\Services\TBOHolidayService;
 use App\Support\PaymentGateway\Knet;
 use Carbon\Carbon;
@@ -2497,6 +2498,9 @@ class PaymentController extends Controller
         $can_import = Charge::where('company_id', $companyId)
             ->where('can_import', true)
             ->get();
+
+        $sendPaymentReceipt = UserSetting::getValue(auth()->id(), 'payment_whatsapp_notification');
+
         return view('payment.link.create', compact(
             'payments',
             'clients',
@@ -2507,7 +2511,8 @@ class PaymentController extends Controller
             'paymentMethods',
             'gatewayMethods',
             'can_import',
-            'paymentMethodChose'
+            'paymentMethodChose',
+            'sendPaymentReceipt'
         ));
     }
 
@@ -4096,7 +4101,7 @@ class PaymentController extends Controller
                 $storeNotificationData['payment'] = $payment;
             }
             
-            $this->storeNotification($storeNotificationData);
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $receiptInfo['agent']->phone_number,
@@ -4555,6 +4560,11 @@ class PaymentController extends Controller
 
     public function paymentUpdateLink($paymentId, Request $request)
     {
+        Log::info("[PAYMENT LINK] Update request received", [
+            'payment_id' => $paymentId,
+            'request_data' => $request->all(),
+        ]);
+
         $payment = Payment::find($paymentId);
         
         if (!$payment) {
@@ -4582,7 +4592,7 @@ class PaymentController extends Controller
         if ($request->language) $payment->language = $request->language;
 
         // Handle payment method based on flow
-        if ($payment->payment_gateway === 'Multi') {
+        if ($payment->availablePaymentMethodGroups()->exists()) {
             // New flow: Multi payment method groups
             if ($request->has('payment_method_groups') && is_array($request->payment_method_groups)) {
                 // Sync the many-to-many relationship with GROUPS
@@ -4604,6 +4614,11 @@ class PaymentController extends Controller
             ]);
             return redirect()->back()->with('error', 'Failed to update payment link.');
         }
+
+
+        Log::info("[PAYMENT LINK] Updated successfully", [
+            'payment' => $payment->toArray(),
+        ]);
 
         return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
     }
@@ -4696,6 +4711,19 @@ class PaymentController extends Controller
                 'message' => 'Failed to update payment items.'
             ], 500);
         }
+    }
+
+    public function updateReceipt(Request $request, $id)
+    {
+        $payment = Payment::findOrFail($id);
+
+        if ($payment->status === 'completed') {
+            return back()->with('error', 'Cannot update receipt settings for completed payments.');
+        }
+
+        $payment->update(['send_payment_receipt' => $request->boolean('send_payment_receipt')]);
+
+        return back()->with('success', 'Receipt settings updated successfully.');
     }
 
     public function paymentDeleteLink($paymentId)
@@ -5167,7 +5195,7 @@ class PaymentController extends Controller
 
             Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
 
-            $this->storeNotification($storeNotificationData);
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $agent->phone_number,
@@ -5285,7 +5313,7 @@ class PaymentController extends Controller
 
                 Log::info('[UPAYMENT] Storing notification for failed payment for agent ID: ' . $receiptInfo['agent']->id, $storeNotificationData);
 
-                $this->storeNotification($storeNotificationData);
+                $this->storeNotificationWithSendingPdf($storeNotificationData);
 
                 (new ResayilController())->message(
                     $receiptInfo['agent']->phone_number,
@@ -5875,7 +5903,7 @@ class PaymentController extends Controller
 
             Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
 
-            $this->storeNotification($storeNotificationData);
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $agent->phone_number,
@@ -6197,7 +6225,7 @@ class PaymentController extends Controller
 
                 Log::info('Hesabe webhook: Storing notification', $storeNotificationData);
 
-                $this->storeNotification($storeNotificationData);
+                $this->storeNotificationWithSendingPdf($storeNotificationData);
 
                 (new ResayilController())->message(
                     $receiptInfo['agent']->phone_number,
@@ -6989,6 +7017,7 @@ class PaymentController extends Controller
             'currency' => 'required|string',
             'client_id' => 'required|integer|exists:clients,id',
             'agent_id' => 'required|integer|exists:agents,id',
+            'send_payment_receipt' => 'required|boolean',
             'items' => 'nullable|array|min:1',
             'items.*.product_name' => 'required_with:items|string|max:255',
             'items.*.quantity' => 'required_with:items|numeric|min:1',
@@ -7084,6 +7113,7 @@ class PaymentController extends Controller
                     'agent_id' => $agent->id,
                     'notes' => $request->notes,
                     'terms_conditions' => $request->terms_conditions,
+                    'send_payment_receipt' => $request->send_payment_receipt,
                     'language' => $request->language,
                     'created_by' => Auth::id(),
                 ]);

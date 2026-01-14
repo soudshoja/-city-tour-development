@@ -20,6 +20,7 @@
             importFatoorahModal: false,
             showUploadForm: false,
             showManualForm: false,
+            sendPaymentReceipt: {{ $sendPaymentReceipt }},
             toggleUploadForm() {
                 this.showUploadForm = true;
                 this.showManualForm = false;
@@ -476,32 +477,56 @@
                         placeholder="Add notes"
                         class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
                 </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
+                        <p class="text-xs text-gray-500 mb-3">Select the language for the payment voucher sent to client</p>
+    
+                        <div class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
+                            <input type="hidden" name="language" :value="currentLanguage">
+    
+                            <button type="button"
+                                @click="currentLanguage = 'EN'"
+                                :class="currentLanguage === 'EN' 
+                                    ? 'bg-white text-gray-900 shadow-sm' 
+                                    : 'text-gray-500 hover:text-gray-700'"
+                                class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                                <span>🇬🇧</span> English
+                            </button>
+    
+                            <button type="button"
+                                @click="currentLanguage = 'ARB'"
+                                :class="currentLanguage === 'ARB' 
+                                    ? 'bg-white text-gray-900 shadow-sm' 
+                                    : 'text-gray-500 hover:text-gray-700'"
+                                class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                                <span>🇸🇦</span> العربية
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-between">
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5 text">Send Payment Receipt To Client</label>
+                        <p class="text-xs text-gray-500 mb-3">Send receipt via Whatsapp after successfully paid</p>
+                        <input type="hidden" name="send_payment_receipt" :value="sendPaymentReceipt ? 1 : 0">
 
-                <!-- Language -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
-                    <p class="text-xs text-gray-500 mb-3">Select the language for the payment voucher sent to client</p>
-
-                    <div class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
-                        <input type="hidden" name="language" :value="currentLanguage">
-
-                        <button type="button"
-                            @click="currentLanguage = 'EN'"
-                            :class="currentLanguage === 'EN' 
-                                ? 'bg-white text-gray-900 shadow-sm' 
-                                : 'text-gray-500 hover:text-gray-700'"
-                            class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
-                            <span>🇬🇧</span> English
-                        </button>
-
-                        <button type="button"
-                            @click="currentLanguage = 'ARB'"
-                            :class="currentLanguage === 'ARB' 
-                                ? 'bg-white text-gray-900 shadow-sm' 
-                                : 'text-gray-500 hover:text-gray-700'"
-                            class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
-                            <span>🇸🇦</span> العربية
-                        </button>
+                        <div class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100 w-fit">
+                            <button type="button"
+                                @click="sendPaymentReceipt = true"
+                                :class="sendPaymentReceipt
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'"
+                                class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                                Yes
+                            </button>
+                            <button type="button"
+                                @click="sendPaymentReceipt = false"
+                                :class="!sendPaymentReceipt
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'"
+                                class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                                No
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -23,7 +23,7 @@ class PaymentApplicationService
      * - 'split': Pay a portion with credit, pay rest with another gateway (cash, card, etc.)
      * 
      * @param int $invoiceId
-     * @param array $paymentAllocations Array of ['payment_id' => X, 'amount' => Y]
+     * @param array $paymentAllocations Array of ['credit_id' => X, 'amount' => Y]
      * @param string $paymentMode 'full', 'partial', or 'split'
      * @param array $options Additional options for split/partial modes:
      *   - 'other_gateway' => gateway name for remaining amount (for split)
@@ -32,8 +32,8 @@ class PaymentApplicationService
      * @return array Result with status and message
      */
     public function applyPaymentsToInvoice(
-        int $invoiceId, 
-        array $paymentAllocations, 
+        int $invoiceId,
+        array $paymentAllocations,
         string $paymentMode = 'full',
         array $options = []
     ): array {
@@ -124,24 +124,36 @@ class PaymentApplicationService
             foreach ($paymentAllocations as $allocation) {
                 if ($remainingToApply <= 0) break;
 
-                $paymentId = $allocation['payment_id'];
+                $creditId = $allocation['credit_id'];
                 $requestedAmount = $allocation['amount'];
-                $payment = Payment::findOrFail($paymentId);
 
-                // Check available balance
-                $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
-                
-                Log::info('[PAYMENT APPLICATION] Processing payment', [
-                    'payment_id' => $paymentId,
-                    'voucher_number' => $payment->voucher_number,
+                $sourceCredit = Credit::findOrFail($creditId);
+
+                if ($sourceCredit->type === Credit::TOPUP) {
+                    $availableBalance = Credit::getAvailableBalanceByPayment($sourceCredit->payment_id);
+                    $voucherNumber = $sourceCredit->payment?->voucher_number ?? 'TOPUP';
+                } elseif ($sourceCredit->type === Credit::REFUND) {
+                    $availableBalance = Credit::getAvailableBalanceByRefund($sourceCredit->refund_id);
+                    $voucherNumber = $sourceCredit->refund?->refund_number ?? ('RF-' . $sourceCredit->refund_id);
+                } else {
+                    throw new Exception("This credit type cannot be used: {$sourceCredit->type}");
+                }
+
+                Log::info('[PAYMENT APPLICATION] Processing credit allocation', [
+                    'credit_id' => $sourceCredit->id,
+                    'credit_type' => $sourceCredit->type,
+                    'payment_id' => $sourceCredit->payment_id,
+                    'refund_id' => $sourceCredit->refund_id,
+                    'voucher_number' => $voucherNumber,
                     'requested_amount' => $requestedAmount,
                     'available_balance' => $availableBalance,
                     'remaining_to_apply' => $remainingToApply,
                 ]);
 
+
                 if ($availableBalance < $requestedAmount) {
                     throw new Exception(
-                        "Payment {$payment->voucher_number} only has {$availableBalance} available, but {$requestedAmount} was requested."
+                        "Credit source {$voucherNumber} only has {$availableBalance} available, but {$requestedAmount} was requested."
                     );
                 }
 
@@ -174,41 +186,46 @@ class PaymentApplicationService
                     'company_id' => $invoice->agent?->branch?->company_id,
                     'branch_id' => $invoice->agent?->branch_id,
                     'client_id' => $invoice->client_id,
-                    'payment_id' => $paymentId,
+                    'payment_id' => $sourceCredit->payment_id,
+                    'refund_id'  => $sourceCredit->refund_id,
                     'invoice_id' => $invoiceId,
                     'invoice_partial_id' => $invoicePartial->id,
                     'type' => Credit::INVOICE,
                     'amount' => -$applyFromThis,
-                    'description' => "Payment for INV-{$invoice->invoice_number} via {$payment->voucher_number}",
+                    'description' => "Payment for $invoice->invoice_number via {$voucherNumber}",
                 ]);
 
                 Log::info('[PAYMENT APPLICATION] Created Credit record', [
                     'credit_id' => $credit->id,
                     'amount' => -$applyFromThis,
-                    'payment_id' => $paymentId,
+                    'payment_id' => $credit->payment_id,
+                    'refund_id' => $credit->refund_id,
                 ]);
 
                 // Create PaymentApplication record (audit trail)
                 $paymentApplication = PaymentApplication::create([
-                    'payment_id' => $paymentId,
+                    'payment_id' => $sourceCredit->payment_id,
+                    'credit_id' => $sourceCredit->id,
                     'invoice_id' => $invoiceId,
                     'invoice_partial_id' => $invoicePartial->id,
                     'amount' => $applyFromThis,
                     'applied_by' => Auth::id(),
                     'applied_at' => now(),
-                    'notes' => "Applied from {$payment->voucher_number} ({$paymentMode} payment)",
+                    'notes' => "Applied from {$voucherNumber} ({$paymentMode} payment)",
                 ]);
 
                 Log::info('[PAYMENT APPLICATION] Created PaymentApplication record', [
                     'payment_application_id' => $paymentApplication->id,
-                    'payment_id' => $paymentId,
+                    'payment_id' => $sourceCredit->payment_id,
                     'invoice_partial_id' => $invoicePartial->id,
                     'amount' => $applyFromThis,
                 ]);
 
                 $appliedPayments[] = [
-                    'payment_id' => $paymentId,
-                    'voucher_number' => $payment->voucher_number,
+                    'credit_id' => $sourceCredit->id,
+                    'payment_id' => $sourceCredit->payment_id,
+                    'refund_id' => $sourceCredit->refund_id,
+                    'voucher_number' => $voucherNumber,
                     'amount_applied' => $applyFromThis,
                     'remaining_balance' => $availableBalance - $applyFromThis,
                     'invoice_partial_id' => $invoicePartial->id,
@@ -231,7 +248,6 @@ class PaymentApplicationService
                 $invoice->save();
 
                 Log::info('[PAYMENT APPLICATION] Full payment - Invoice marked as paid');
-
             } elseif ($paymentMode === 'split') {
                 // Split payment - create unpaid partial for remaining amount
                 $splitPartial = InvoicePartial::create([
@@ -263,7 +279,6 @@ class PaymentApplicationService
                 $invoice->save();
 
                 Log::info('[PAYMENT APPLICATION] Split payment - Invoice marked as partial');
-
             } elseif ($paymentMode === 'partial') {
                 // Partial payment - leave remaining unpaid (no second partial needed)
                 $invoice->status = 'partial';
@@ -290,20 +305,19 @@ class PaymentApplicationService
             Log::info('[PAYMENT APPLICATION] applyPaymentsToInvoice - Success', $response);
 
             return $response;
-
         } catch (Exception $e) {
             DB::rollBack();
-            
+
             $response = [
                 'success' => false,
                 'message' => 'Failed to apply payments: ' . $e->getMessage(),
             ];
-            
+
             Log::error('[PAYMENT APPLICATION] applyPaymentsToInvoice - Error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return $response;
         }
     }
@@ -316,14 +330,14 @@ class PaymentApplicationService
         switch ($mode) {
             case 'full':
                 return "Successfully paid invoice in full using {$creditApplied} KWD credit.";
-            
+
             case 'split':
                 $gateway = $options['other_gateway'] ?? 'other method';
                 return "Successfully applied {$creditApplied} KWD credit. Remaining {$remaining} KWD to be paid via {$gateway}.";
-            
+
             case 'partial':
                 return "Successfully applied {$creditApplied} KWD credit. Remaining {$remaining} KWD balance on invoice.";
-            
+
             default:
                 return "Payment applied successfully.";
         }
@@ -353,21 +367,53 @@ class PaymentApplicationService
         $issues = [];
 
         foreach ($paymentAllocations as $allocation) {
-            $paymentId = $allocation['payment_id'];
-            $requestedAmount = $allocation['amount'];
-            
-            $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
-            
-            if ($requestedAmount > $availableBalance) {
-                $payment = Payment::find($paymentId);
-                $issues[] = "Payment {$payment->voucher_number} only has {$availableBalance} available, but {$requestedAmount} was requested.";
+            $requestedAmount = (float) ($allocation['amount'] ?? 0);
+
+            if (isset($allocation['payment_id'])) {
+                $paymentId = (int) $allocation['payment_id'];
+                $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
+
+                if ($requestedAmount > $availableBalance) {
+                    $payment = Payment::find($paymentId);
+                    $voucher = $payment?->voucher_number ?? 'UNKNOWN';
+                    $issues[] = "Payment {$voucher} only has {$availableBalance} available, but {$requestedAmount} was requested.";
+                }
+
+                $totalSelected += min($requestedAmount, $availableBalance);
+                continue;
             }
-            
-            $totalSelected += min($requestedAmount, $availableBalance);
+
+            if (isset($allocation['credit_id'])) {
+                $creditId = (int) $allocation['credit_id'];
+                $credit = Credit::find($creditId);
+
+                if (!$credit) {
+                    $issues[] = "Credit source {$creditId} not found.";
+                    continue;
+                }
+
+                if ($credit->type === Credit::TOPUP) {
+                    $availableBalance = Credit::getAvailableBalanceByPayment($credit->payment_id);
+                } elseif ($credit->type === Credit::REFUND) {
+                    $availableBalance = Credit::getAvailableBalanceByRefund($credit->refund_id);
+                } else {
+                    $issues[] = "This credit type cannot be used: {$credit->type}";
+                    continue;
+                }
+
+                if ($requestedAmount > $availableBalance) {
+                    $issues[] = "Credit source only has {$availableBalance} available, but {$requestedAmount} was requested.";
+                }
+
+                $totalSelected += min($requestedAmount, $availableBalance);
+                continue;
+            }
+
+            $issues[] = "Invalid allocation format. Must include payment_id or credit_id.";
         }
 
         $isValid = empty($issues) && $totalSelected >= $requiredAmount;
-        
+
         return [
             'valid' => $isValid,
             'total_selected' => $totalSelected,
@@ -408,7 +454,7 @@ class PaymentApplicationService
      * 
      * @param Invoice $invoice
      * @param InvoicePartial $invoicePartial
-     * @param array $paymentAllocations Array of ['payment_id' => X, 'amount' => Y]
+     * @param array $paymentAllocations Array of ['credit_id' => X, 'amount' => Y]
      * @return array Result with status and applied payments
      */
     public function linkPaymentsToInvoicePartial(
@@ -429,16 +475,34 @@ class PaymentApplicationService
         foreach ($paymentAllocations as $allocation) {
             if ($remainingToApply <= 0) break;
 
-            $paymentId = $allocation['payment_id'];
             $requestedAmount = $allocation['amount'];
-            $payment = Payment::findOrFail($paymentId);
 
-            // Check available balance
-            $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
-            
+            $paymentId = null;
+            $sourceCredit = null;
+
+            if (isset($allocation['credit_id'])) {
+                $sourceCredit = Credit::findOrFail($allocation['credit_id']);
+
+                if ($sourceCredit->type === Credit::TOPUP) {
+                    $paymentId = $sourceCredit->payment_id;
+                    $voucherNumber = $sourceCredit->payment?->voucher_number ?? 'TOPUP';
+                    $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
+                } elseif ($sourceCredit->type === Credit::REFUND) {
+                    $voucherNumber = $sourceCredit->refund?->refund_number ?? ('RF-' . $sourceCredit->refund_id);
+                    $availableBalance = Credit::getAvailableBalanceByRefund($sourceCredit->refund_id);
+                } else {
+                    throw new Exception("This credit type cannot be used: {$sourceCredit->type}");
+                }
+            } else {
+                $paymentId = $allocation['payment_id'];
+                $payment = Payment::findOrFail($paymentId);
+                $voucherNumber = $payment->voucher_number;
+                $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
+            }
+
             Log::info('[PAYMENT APPLICATION] Processing payment allocation', [
                 'payment_id' => $paymentId,
-                'voucher_number' => $payment->voucher_number,
+                'voucher_number' => $voucherNumber,
                 'requested_amount' => $requestedAmount,
                 'available_balance' => $availableBalance,
                 'remaining_to_apply' => $remainingToApply,
@@ -446,53 +510,39 @@ class PaymentApplicationService
 
             if ($availableBalance < $requestedAmount) {
                 throw new Exception(
-                    "Payment {$payment->voucher_number} only has {$availableBalance} available, but {$requestedAmount} was requested."
+                    "Credit source {$voucherNumber} only has {$availableBalance} available, but {$requestedAmount} was requested."
                 );
             }
 
-            // Calculate how much to actually apply from this payment
             $applyFromThis = min($requestedAmount, $remainingToApply);
 
-            // Create Credit record (negative - deducting from balance)
             $credit = Credit::create([
                 'company_id' => $invoice->agent?->branch?->company_id,
                 'branch_id' => $invoice->agent?->branch_id,
                 'client_id' => $invoice->client_id,
                 'payment_id' => $paymentId,
+                'refund_id' => $sourceCredit?->refund_id,
                 'invoice_id' => $invoice->id,
                 'invoice_partial_id' => $invoicePartial->id,
                 'type' => Credit::INVOICE,
                 'amount' => -$applyFromThis,
-                'description' => "Payment for INV-{$invoice->invoice_number} via {$payment->voucher_number}",
+                'description' => "Payment for $invoice->invoice_number via {$voucherNumber}",
             ]);
 
-            Log::info('[PAYMENT APPLICATION] Created Credit record', [
-                'credit_id' => $credit->id,
-                'amount' => -$applyFromThis,
-                'payment_id' => $paymentId,
-            ]);
-
-            // Create PaymentApplication record (audit trail)
             $paymentApplication = PaymentApplication::create([
-                'payment_id' => $paymentId,
+                'payment_id' => $paymentId, // can be null for refund
+                'credit_id' => $sourceCredit?->id,
                 'invoice_id' => $invoice->id,
                 'invoice_partial_id' => $invoicePartial->id,
                 'amount' => $applyFromThis,
                 'applied_by' => Auth::id(),
                 'applied_at' => now(),
-                'notes' => "Applied from {$payment->voucher_number}",
-            ]);
-
-            Log::info('[PAYMENT APPLICATION] Created PaymentApplication record', [
-                'payment_application_id' => $paymentApplication->id,
-                'payment_id' => $paymentId,
-                'invoice_partial_id' => $invoicePartial->id,
-                'amount' => $applyFromThis,
+                'notes' => "Applied from {$voucherNumber}",
             ]);
 
             $appliedPayments[] = [
                 'payment_id' => $paymentId,
-                'voucher_number' => $payment->voucher_number,
+                'voucher_number' => $voucherNumber,
                 'amount_applied' => $applyFromThis,
                 'remaining_balance' => $availableBalance - $applyFromThis,
             ];

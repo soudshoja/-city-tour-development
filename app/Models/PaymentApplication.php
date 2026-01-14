@@ -11,6 +11,7 @@ class PaymentApplication extends Model
 
     protected $fillable = [
         'payment_id',
+        'credit_id',
         'invoice_id',
         'invoice_partial_id',
         'amount',

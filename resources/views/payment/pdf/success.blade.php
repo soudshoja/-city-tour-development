@@ -194,14 +194,14 @@
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-left:auto;min-width:{{ ($isPdf ?? false) ? '180px' : '220px' }};background-color:#f9fafb;{{ ($isPdf ?? false) ? '' : 'border-radius:8px;' }}padding:{{ ($isPdf ?? false) ? '12px' : '16px' }};">
                                             <tr>
                                                 <td style="padding:{{ ($isPdf ?? false) ? '4px 15px 4px 0' : '6px 20px 6px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Amount:</td>
-                                                <td style="padding:{{ ($isPdf ?? false) ? '4px 0' : '6px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;text-align:right;font-weight:bold;">{{ number_format($payment->amount, 3) }} {{ $payment->currency }}</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '4px 0' : '6px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;text-align:right;font-weight:bold;">{{ number_format($payment->amount + $payment->service_charge, 3) }} {{ $payment->currency }}</td>
                                             </tr>
                                             <tr>
                                                 <td colspan="2" style="padding:{{ ($isPdf ?? false) ? '6px' : '10px' }} 0 0 0;border-top:2px solid #166534;"></td>
                                             </tr>
                                             <tr>
                                                 <td style="padding:{{ ($isPdf ?? false) ? '6px 15px 6px 0' : '8px 20px 8px 0' }};font-size:{{ ($isPdf ?? false) ? '12px' : '16px' }};font-weight:bold;color:#166534;text-align:right;">Total Paid:</td>
-                                                <td style="padding:{{ ($isPdf ?? false) ? '6px 0' : '8px 0' }};font-size:{{ ($isPdf ?? false) ? '14px' : '18px' }};font-weight:bold;color:#166534;text-align:right;">{{ number_format($payment->amount, 3) }} {{ $payment->currency }}</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '6px 0' : '8px 0' }};font-size:{{ ($isPdf ?? false) ? '14px' : '18px' }};font-weight:bold;color:#166534;text-align:right;">{{ number_format($payment->amount + $payment->service_charge, 3) }} {{ $payment->currency }}</td>
                                             </tr>
                                         </table>
                                     </td>

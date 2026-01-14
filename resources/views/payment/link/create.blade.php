@@ -20,7 +20,7 @@
             importFatoorahModal: false,
             showUploadForm: false,
             showManualForm: false,
-            sendPaymentReceipt: {{ $sendPaymentReceipt }},
+            sendPaymentReceipt: @json($sendPaymentReceipt),
             toggleUploadForm() {
                 this.showUploadForm = true;
                 this.showManualForm = false;

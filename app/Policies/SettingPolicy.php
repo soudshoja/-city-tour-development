@@ -11,4 +11,9 @@ class SettingPolicy
     {
         return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
+
+    public function settingCompanyInvoice(User $user){
+        return $user->hasPermissionTo('setting company invoice');
+
+    }
 }

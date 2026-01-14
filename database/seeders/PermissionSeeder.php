@@ -87,5 +87,6 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view daily sales', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'manage payment method groups', 'group' => 'charges']);
         Permission::firstOrCreate(['name' => 'view task report', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'setting company invoice', 'group' => 'setting']);
     }
 }

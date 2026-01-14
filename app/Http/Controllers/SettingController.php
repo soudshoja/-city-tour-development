@@ -8,6 +8,7 @@ use App\Models\PaymentMethodGroup;
 use App\Models\PaymentMethodChose;
 use App\Models\Role;
 use App\Models\Setting;
+use App\Models\UserSetting;
 use Database\Seeders\SettingSeeder;
 use Exception;
 use Illuminate\Http\Request;
@@ -18,25 +19,20 @@ class SettingController extends Controller
 {
     public function index(Request $request)
     {
-        Gate::authorize('viewAny', Setting::class);
-
         $request->validate([
             'company_id' => 'nullable|exists:companies,id',
         ]);
 
-        // If no company_id in URL but exists in session, redirect to include it
-        if (!$request->has('company_id') && session()->has('settings_company_id')) {
+        if (!$request->has('company_id') && session()->has('company_id')) {
             return redirect()->route('settings.index', [
-                'company_id' => session('settings_company_id')
+                'company_id' => session('company_id')
             ]);
         }
 
-        // Use URL param first, then session, then default to 1
-        $companyId = $request->input('company_id') 
-            ?? session('settings_company_id', 1);
+        $companyId = getCompanyId(auth()->user());
 
         Setting::all()->each(function ($setting) {
-            $setting->value = $setting->value; // Ensure value is cast correctly
+            $setting->value = $setting->value;
         });
 
         $settings = Setting::where('company_id', $companyId)
@@ -46,25 +42,32 @@ class SettingController extends Controller
         $isAdmin = auth()->user()->role_id == Role::ADMIN && auth()->user()->hasRole('admin');
         $activeTab = session('settings_active_tab', 'invoice');
 
+        $invoiceWhatsappSetting = UserSetting::getValue(auth()->id(), 'invoice_whatsapp_notification', false);
+
         return view('settings.index', compact(
             'invoiceExpiryDefault',
             'isAdmin',
             'companyId',
-            'activeTab'
+            'activeTab',
+            'invoiceWhatsappSetting'
         ));
     }
 
     public function saveTab(Request $request)
     {
         $request->validate([
-            'tab' => 'required|in:invoice,terms,charges,payment-methods',
+            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods',
             'company_id' => 'nullable|integer',
         ]);
 
+        // Log::info("[SETTINGS] Saving active tab", ['tab' => $request->tab, 'company_id' => $request->company_id]);
+
         session(['settings_active_tab' => $request->tab]);
+
+        // Log::info("[SETTINGS] Active tab saved", ['active tab' => session('settings_active_tab')]);
         
         if ($request->has('company_id')) {
-            session(['settings_company_id' => $request->company_id]);
+            session(['company_id' => $request->company_id]);
         }
 
         return response()->json(['success' => true]);

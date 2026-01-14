@@ -46,7 +46,7 @@ class SettingController extends Controller
 
         $invoiceExpiryDefault = $settings->firstWhere('key', 'invoice_expiry_days')->value ?? 30;
         $isAdmin = auth()->user()->role_id == Role::ADMIN && auth()->user()->hasRole('admin');
-        $activeTab = session('settings_active_tab', 'invoice');
+        $activeTab = session('settings_active_tab', 'payment');
 
         $invoiceWhatsappSetting = UserSetting::getValue(auth()->id(), 'invoice_whatsapp_notification', false);
 

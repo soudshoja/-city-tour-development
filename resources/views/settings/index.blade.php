@@ -90,9 +90,9 @@
             <!-- Content Area -->
             <div class="flex-1 p-6">
 
-                <div x-show="activeTab === 'invoice'" x-cloak>
+                <!-- <div x-show="activeTab === 'invoice'" x-cloak>
                     @include('settings.partial.invoice')
-                </div>
+                </div> -->
                 <div x-show="activeTab === 'payment'" x-cloak>
                     @include('settings.partial.payment')
                 </div>

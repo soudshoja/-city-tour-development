@@ -91,15 +91,62 @@
         {{ session('error') }}
     </div>
     @endif
-    @if (in_array($invoice->status, ['paid', 'paid by refund', 'refunded']))
-        <div class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 my-2 text-white rounded-lg">
-            <p class="text-3xl">PAID</p>
-            @if ($invoice->status === 'paid')
-                <p class="text-sm">This invoice has been fully paid</p>
-            @elseif ($invoice->status === 'paid by refund')
-                <p class="text-sm">This invoice has been settled through an adjustment from a refund invoice</p>
-            @elseif ($invoice->status === 'refunded')
-                <p class="text-sm">This invoice has already been refunded to the client</p>
+    @if (in_array($invoice->status, ['paid', 'paid by refund', 'refunded', 'partial refund']))
+        @php
+            $bannerConfig = match($invoice->status) {
+                'paid' => [
+                    'gradient' => 'from-[#1b3f20] to-[#1d832a]',
+                    'title' => 'PAID',
+                    'message' => 'This invoice has been fully paid',
+                ],
+                'paid by refund' => [
+                    'gradient' => 'from-[#1b3f20] to-[#1d832a]',
+                    'title' => 'PAID BY REFUND',
+                    'message' => 'This invoice has been settled through an adjustment from a refund invoice',
+                ],
+                'refunded' => [
+                    'gradient' => 'from-[#1b3f20] to-[#1d832a]',
+                    'title' => 'FULLY REFUNDED',
+                    'message' => 'All items in this invoice have been refunded to the client',
+                ],
+                'partial refund' => [
+                    'gradient' => 'from-[#0369a1] to-[#0ea5e9]',
+                    'title' => 'PARTIAL REFUND',
+                    'message' => 'Some items in this invoice have been refunded. Remaining items are still valid.',
+                ],
+                default => [
+                    'gradient' => 'from-gray-600 to-gray-700',
+                    'title' => strtoupper($invoice->status),
+                    'message' => '',
+                ],
+            };
+        @endphp
+
+        <div class="max-w-4xl mx-auto bg-gradient-to-r {{ $bannerConfig['gradient'] }} p-6 my-2 text-white rounded-lg">
+            <p class="text-3xl font-bold">{{ $bannerConfig['title'] }}</p>
+            <p class="text-sm mt-1">{{ $bannerConfig['message'] }}</p>
+            
+            @if ($invoice->status === 'partial refund')
+                @php
+                    $refunds = \App\Models\Refund::where('invoice_id', $invoice->id)->get();
+                    $refundedTasksCount = \App\Models\RefundDetail::whereHas('refund', fn($q) => $q->where('invoice_id', $invoice->id))->count();
+                @endphp
+                @if ($refunds->count() > 0)
+                    <div class="mt-3 pt-3 border-t border-white/30 text-sm">
+                        <p>{{ $refundedTasksCount }} item(s) refunded • Ref: {{ $refunds->pluck('refund_number')->join(', ') }}</p>
+                    </div>
+                @endif
+            @endif
+            
+            @if ($invoice->status === 'refunded')
+                @php
+                    $refunds = \App\Models\Refund::where('invoice_id', $invoice->id)->get();
+                @endphp
+                @if ($refunds->count() > 0)
+                    <div class="mt-3 pt-3 border-t border-white/30 text-sm">
+                        <p>Refund Reference: {{ $refunds->pluck('refund_number')->join(', ') }}</p>
+                    </div>
+                @endif
             @endif
         </div>
     @elseif ($invoice->status === 'partial')

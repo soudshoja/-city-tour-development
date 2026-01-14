@@ -514,6 +514,29 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Receipt Settings -->
+                                @if($payment->status != 'completed')
+                                <div class="pt-3 border-t border-purple-100 dark:border-gray-700">
+                                    <form action="{{ route('payment.receipt.update', $payment->id) }}" method="POST">
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="flex flex-col gap-3">
+                                            <div>
+                                                <p class="font-semibold text-gray-900 dark:text-gray-100">Receipt Settings</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">Configure receipt delivery</p>
+                                            </div>
+                                            <label class="flex items-center">
+                                                <input type="checkbox" name="send_payment_receipt" value="1" {{ $payment->send_payment_receipt ? 'checked' : '' }} class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Send payment receipt</span>
+                                            </label>
+                                            <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
+                                                Update Settings
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                @endif
                                 <!-- Send Reminder -->
                                 @if($payment->status != 'completed')
                                 <div class="pt-3 border-t border-purple-100 dark:border-gray-700">
@@ -769,6 +792,7 @@
                                     </form>
                                 </div>
                                 @endif
+
                             </div>
                         </div>
                     </div>

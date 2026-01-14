@@ -34,6 +34,7 @@ class Payment extends Model
         'expiry_date',
         'status',
         'terms_conditions',
+        'send_payment_receipt',
         'account_number',
         'bank_name',
         'swift_no',
@@ -55,6 +56,7 @@ class Payment extends Model
         'tax' => 'decimal:3',
         'completed' => 'boolean',
         'is_disabled' => 'boolean',
+        'send_payment_receipt' => 'boolean',
     ];
 
     public function client()

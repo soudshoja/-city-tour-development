@@ -100,10 +100,12 @@
             selectedMethods: {},
             enabledGroups: {},
             choiceIds: {},
-            companyId: {{ $companyId ?? 1 }},
+            companyId: "{{ $companyId ?? 1 }}",
 
             init() {
-                this.loadPaymentMethods();
+               window.addEventListener('payment-methods-tab-loaded', () => {
+                   this.loadPaymentMethods();
+               });
             },
 
             async loadPaymentMethods() {

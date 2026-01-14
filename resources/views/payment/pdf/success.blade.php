@@ -127,16 +127,10 @@
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;width:40%;">Client Name</td>
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->client->full_name ?? 'N/A' }}</td>
                                 </tr>
-                                @if($payment->paymentMethod)
+                                @if($payment->paymentMethod->paymentMethodGroup)
                                 <tr style="background-color:#f9fafb;">
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Payment Method</td>
-                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
-                                </tr>
-                                @endif
-                                @if($payment->payment_gateway)
-                                <tr style="background-color:#ffffff;">
-                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Payment Gateway</td>
-                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->payment_gateway ?? '-' }}</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->paymentMethod->paymentMethodGroup->name ?? '-' }}</td>
                                 </tr>
                                 @endif
                                 @if(!empty($payment->payment_reference))

@@ -47,7 +47,6 @@
                         </button>
                     </div>
 
-                    <!-- Hidden form to submit date filters -->
                     <form id="date-filter-form" action="{{ route('payment.link.index') }}" method="GET" class="hidden">
                         <input type="hidden" name="q" value="{{ request('q') }}" />
                         <input type="hidden" name="filter[date_from]" id="date_from" value="{{ data_get($filters, 'date_from') }}">
@@ -130,9 +129,6 @@
                         </form>
                     </div>
                 </div>
-                @if ($payments->isEmpty())
-                <p class="text-gray-500">No payment links found.</p>
-                @else
                 <div class="overflow-x-auto relative z-0">
                     <table class="min-w-full border border-gray-200">
                         <thead class="bg-gray-100 sticky top-0 z-10">
@@ -153,6 +149,13 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @if($payments->isEmpty())
+                            <tr>
+                                <td class="p-4 text-center text-gray-500" colspan="13">
+                                    No payment links found.
+                                </td>
+                            </tr>
+                            @else
                             @foreach ($payments as $payment)
                             @php
                             $paymentUrl = route('payment.show', $payment->id);
@@ -324,7 +327,7 @@
                                                     </div>
                                                     @endif
                                                 </form>
-                                                @if ($payment->status === 'pending')
+                                                @if ($payment->status !== 'completed')
                                                 <div class="border-t border-gray-200 my-1"></div>
                                                 <button @click="editPaymentLink = true; open = false" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -359,6 +362,25 @@
                                                             &times;
                                                         </button>
                                                     </div>
+                                                    @if($payment->status === 'initiate')
+                                                    <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
+                                                        <div class="flex items-start gap-3">
+                                                            <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                                            </svg>
+                                                            <div class="flex-1">
+                                                                <p class="font-semibold text-yellow-900 mb-1">Payment Status: Initiate</p>
+                                                                <p class="text-sm text-yellow-700 leading-relaxed mb-2">
+                                                                    The following fields cannot be edited for initiate payments:
+                                                                </p>
+                                                                <ul class="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                                                                    <li>Client Info</li>
+                                                                    <li>Payment Amount</li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    @endif
                                                     <form action="{{ route('payment.link.update', $payment->id) }}" method="POST">
                                                         @csrf
                                                         @method('PUT')
@@ -385,9 +407,23 @@
                                                         @endunlessrole
 
                                                         @php
-                                                        $selectedClient = \App\Models\Client::find($payment->client_id);
-                                                        $clientPlaceholder = $selectedClient ? $selectedClient->full_name : 'Select a Client';
+
+                                                        $client = $payment->client;
+                                                        $namePlaceholder = $client ? $client->full_name : 'Select a Client';
+                                                        $dialPlaceholder = $client ? $client->country_code : 'Select Dial Code';
+                                                        $phonePlaceholder = $client ? $client->phone : 'Enter Phone Number';
+
                                                         @endphp
+
+                                                        @if($payment->status === 'initiate')
+                                                        <div class="mb-4">
+                                                            <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                                                            <div class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md">
+                                                                {{ $client ? $client->full_name . ' - ' . $client->phone : 'N/A' }}
+                                                            </div>
+                                                            <input type="hidden" name="client_id" value="{{ $client ? $client->id : '' }}">
+                                                        </div>
+                                                        @else
                                                         <div class="mb-4">
                                                             <x-searchable-dropdown name="client_id"
                                                                 :items="$clients->map(
@@ -395,16 +431,13 @@
                                                                             'id' => $c->id,
                                                                             'name' => $c->name . ' - ' . $c->phone
                                                                         ],
-                                                                    )" :placeholder="$clientPlaceholder"
-                                                                :selectedName="$selectedClient ? $selectedClient->full_name : null" label="Client" />
-                                                            <input type="hidden" name="client_id_fallback" value="{{ $selectedClient ? $selectedClient->id : '' }}">
+                                                                    )" :placeholder="$namePlaceholder"
+                                                                :selectedName="$client ? $client->full_name : null" label="Client" />
+                                                            <input type="hidden" name="client_id_fallback" value="{{ $client ? $client->id : '' }}">
                                                         </div>
 
                                                         <label for="phone_{{ $payment->client_id }}" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                                                        @php
-                                                        $client = \App\Models\Client::find($payment->client_id);
-                                                        $placeholder = $client ? $client->country_code : 'Select Dial Code';
-                                                        @endphp
+
                                                         <div class="flex gap-4 mb-4">
                                                             <div class="w-2/5">
                                                                 <x-searchable-dropdown name="dial_code"
@@ -413,7 +446,7 @@
                                                                                 'id' => $country->dialing_code,
                                                                                 'name' => $country->dialing_code . ' ' . $country->name,
                                                                             ],
-                                                                        )" :placeholder="$placeholder"
+                                                                        )" :placeholder="$dialPlaceholder"
                                                                     :selectedName="$client ? $client->country_code : null" :showAllOnOpen="true" />
                                                                 <input type="hidden" name="dial_code_fallback" value="{{ $client ? $client->country_code : '' }}">
                                                             </div>
@@ -423,40 +456,68 @@
                                                                     placeholder="Phone Number" class="form-input w-full border rounded px-3 py-2" required />
                                                             </div>
                                                         </div>
-                                                        @if ($payment->availablePaymentMethodGroups && $payment->availablePaymentMethodGroups->isNotEmpty())
-                                                            @php
-                                                            $prefill = session('prefill_data');
-                                                            $selectedGateway = $prefill['payment_gateway'] ?? old('payment_gateway');
-                                                            @endphp
-                                                           <div class="mb-4">
-                                                                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                                                                <div class="flex flex-wrap gap-8">
-                                                                    @php
-                                                                        // Get existing payment method GROUP IDs from pivot table
-                                                                        $existingGroupIds = $payment->availablePaymentMethodGroups 
-                                                                            ? $payment->availablePaymentMethodGroups->pluck('id')->toArray() 
-                                                                            : [];
-                                                                    @endphp
-                                                                    @foreach ($paymentMethodChose as $chose)
-                                                                    <div class="flex items-center gap-4">
-                                                                        <div class="flex">
-                                                                            <input 
-                                                                                type="checkbox" 
-                                                                                name="payment_method_groups[]" 
-                                                                                value="{{ $chose->paymentMethodGroup->id }}" 
-                                                                                id="edit_payment_method_group_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}"
-                                                                                {{ in_array($chose->paymentMethodGroup->id, old('payment_method_groups', $existingGroupIds)) ? 'checked' : '' }}
-                                                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                            <label for="edit_payment_method_group_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}" class="ml-2 text-sm text-gray-700">
-                                                                                {{ $chose->paymentMethodGroup->name }}
-                                                                            </label>
-                                                                        </div>
-                                                                    </div>
-                                                                    @endforeach
+                                                        @endif
+
+                                                        @if($payment->paymentItems && $payment->paymentItems->isNotEmpty())
+                                                        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                            <div class="flex items-start gap-3">
+                                                                <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                <div class="flex-1">
+                                                                    <p class="font-semibold text-blue-900 mb-1">Advance Payment Detected</p>
+                                                                    <p class="text-sm text-blue-700 leading-relaxed">
+                                                                        Amount modification is not available here. Please visit the
+                                                                        <span class="font-semibold underline">payment details page</span> to update the amount.
+                                                                    </p>
                                                                 </div>
                                                             </div>
+                                                        </div>
                                                         @else
-                                                            <div class="mb-4" x-data="{ 
+
+                                                        <div class="mb-4">
+                                                            <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
+                                                            <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
+                                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 {{ $payment->status === 'initiate' ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                                {{ $payment->status === 'initiate' ? 'disabled' : '' }}>
+                                                        </div>
+                                                        @endif
+
+
+                                                        @if ($payment->availablePaymentMethodGroups && $payment->availablePaymentMethodGroups->isNotEmpty())
+                                                        @php
+                                                        $prefill = session('prefill_data');
+                                                        $selectedGateway = $prefill['payment_gateway'] ?? old('payment_gateway');
+                                                        @endphp
+                                                        <div class="mb-4">
+                                                            <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                                                            <div class="flex flex-wrap gap-8">
+                                                                @php
+                                                                // Get existing payment method GROUP IDs from pivot table
+                                                                $existingGroupIds = $payment->availablePaymentMethodGroups
+                                                                ? $payment->availablePaymentMethodGroups->pluck('id')->toArray()
+                                                                : [];
+                                                                @endphp
+                                                                @foreach ($paymentMethodChose as $chose)
+                                                                <div class="flex items-center gap-4">
+                                                                    <div class="flex">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            name="payment_method_groups[]"
+                                                                            value="{{ $chose->paymentMethodGroup->id }}"
+                                                                            id="edit_payment_method_group_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}"
+                                                                            {{ in_array($chose->paymentMethodGroup->id, old('payment_method_groups', $existingGroupIds)) ? 'checked' : '' }}
+                                                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                                        <label for="edit_payment_method_group_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}" class="ml-2 text-sm text-gray-700">
+                                                                            {{ $chose->paymentMethodGroup->name }}
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                        @else
+                                                        <div class="mb-4" x-data="{ 
                                                                 selectedGateway: '{{ $payment->payment_gateway ?? '' }}', 
                                                                 selectedMethod: '{{ $payment->selected_method ?? '' }}',
                                                                 gatewaysWithMethods: @js($paymentGateways->filter(fn($g) => $g->methods->isNotEmpty())->pluck('name')->toArray()),
@@ -464,88 +525,64 @@
                                                                     return this.gatewaysWithMethods.includes(this.selectedGateway);
                                                                 }
                                                             }">
-                                                                <div :class="hasMethod() ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
-                                                                    <div>
-                                                                        <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
-                                                                        <select name="payment_gateway" id="payment_gateway"
-                                                                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                                                            x-model="selectedGateway">
-                                                                            <option value="" disabled>Select Payment Gateway</option>
-                                                                            @foreach ($paymentGateways as $gateway)
-                                                                            <option value="{{ $gateway->name }}"
-                                                                                @if ($payment->payment_gateway === $gateway->name) selected @endif>
-                                                                                {{ $gateway->name }}
+                                                            <div :class="hasMethod() ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+                                                                <div>
+                                                                    <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
+                                                                    <select name="payment_gateway" id="payment_gateway"
+                                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                                        x-model="selectedGateway">
+                                                                        <option value="" disabled>Select Payment Gateway</option>
+                                                                        @foreach ($paymentGateways as $gateway)
+                                                                        <option value="{{ $gateway->name }}"
+                                                                            @if ($payment->payment_gateway === $gateway->name) selected @endif>
+                                                                            {{ $gateway->name }}
+                                                                        </option>
+                                                                        @if($gateway->methods)
+                                                                        <template>
+                                                                            <div>
+                                                                                <label for="payment_method_{{ $gateway->id }}">
+                                                                                    {{ $gateway->name }} Methods
+                                                                                </label>
+                                                                                <select name="payment_method_{{ $gateway->id }}" id="payment_method_{{ $gateway->id }}"
+                                                                                    class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                                                    x-show="selectedGateway === '{{ $gateway->name }}'"
+                                                                                    x-model="selectedMethod">
+                                                                                    <option value="" disabled>Select Method</option>
+                                                                                    @foreach ($gateway->methods as $method)
+                                                                                    <option value="{{ $method->id }}"
+                                                                                        @if ($payment->payment_method_id === $method->id) selected @endif>
+                                                                                        {{ $method->english_name }}
+                                                                                    </option>
+                                                                                    @endforeach
+                                                                            </div>
+                                                                        </template>
+                                                                        @endif
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+
+                                                                @foreach($paymentGateways as $gateway)
+                                                                @if($gateway->methods)
+                                                                <template x-if="selectedGateway === '{{ $gateway->name }}'">
+                                                                    <div x-cloak>
+                                                                        <label for="payment_method_id" class="block text-sm font-medium text-gray-700">{{ $gateway->name }} Methods</label>
+                                                                        <select name="payment_method_id" id="payment_method"
+                                                                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                                            <option value="" disabled>Select Method</option>
+                                                                            @foreach ($gateway->methods as $method)
+                                                                            <option value="{{ $method->id }}"
+                                                                                @if ($payment->payment_method_id === $method->id) selected @endif>
+                                                                                {{ $method->english_name }}
                                                                             </option>
-                                                                            @if($gateway->methods)
-                                                                            <template>
-                                                                                <div>
-                                                                                    <label for="payment_method_{{ $gateway->id }}">
-                                                                                        {{ $gateway->name }} Methods
-                                                                                    </label>
-                                                                                    <select name="payment_method_{{ $gateway->id }}" id="payment_method_{{ $gateway->id }}"
-                                                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                                                                        x-show="selectedGateway === '{{ $gateway->name }}'"
-                                                                                        x-model="selectedMethod">
-                                                                                        <option value="" disabled>Select Method</option>
-                                                                                        @foreach ($gateway->methods as $method)
-                                                                                        <option value="{{ $method->id }}"
-                                                                                            @if ($payment->payment_method_id === $method->id) selected @endif>
-                                                                                            {{ $method->english_name }}
-                                                                                        </option>
-                                                                                        @endforeach
-                                                                                </div>
-                                                                            </template>
-                                                                            @endif
                                                                             @endforeach
                                                                         </select>
                                                                     </div>
-
-                                                                    @foreach($paymentGateways as $gateway)
-                                                                    @if($gateway->methods)
-                                                                    <template x-if="selectedGateway === '{{ $gateway->name }}'">
-                                                                        <div x-cloak>
-                                                                            <label for="payment_method_id" class="block text-sm font-medium text-gray-700">{{ $gateway->name }} Methods</label>
-                                                                            <select name="payment_method_id" id="payment_method"
-                                                                                class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                                                                <option value="" disabled>Select Method</option>
-                                                                                @foreach ($gateway->methods as $method)
-                                                                                <option value="{{ $method->id }}"
-                                                                                    @if ($payment->payment_method_id === $method->id) selected @endif>
-                                                                                    {{ $method->english_name }}
-                                                                                </option>
-                                                                                @endforeach
-                                                                            </select>
-                                                                        </div>
-                                                                    </template>
-                                                                    @endif
-                                                                    @endforeach
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                        
-                                                        @if($payment->paymentItems && $payment->paymentItems->isNotEmpty())
-                                                        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                                            <div class="flex items-start gap-3">
-                                                                <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                                </svg>
-                                                                <div class="flex-1">
-                                                                    <p class="font-semibold text-blue-900 mb-1">Advance Payment Detected</p>
-                                                                    <p class="text-sm text-blue-700 leading-relaxed">
-                                                                        Amount modification is not available here. Please visit the 
-                                                                        <span class="font-semibold underline">payment details page</span> to update the amount.
-                                                                    </p>
-                                                                </div>
+                                                                </template>
+                                                                @endif
+                                                                @endforeach
                                                             </div>
                                                         </div>
-                                                        @else
-                                                        <div class="mb-4">
-                                                            <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
-                                                            <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
-                                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
                                                         @endif
-
                                                         <!-- Language -->
                                                         <div class="mb-4">
                                                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
@@ -586,39 +623,9 @@
                                 </td>
                             </tr>
                             @endforeach
+                            @endif
                         </tbody>
                     </table>
-                    <!-- Pagination Links -->
-                    <div>
-                        @endif
-                    </div>
-                    <script>
-                        function copyToClipboard(text) {
-                            navigator.clipboard.writeText(text).then(function() {
-                                const toast = document.createElement('div');
-                                toast.textContent = 'Link copied to clipboard!';
-                                toast.className =
-                                    'alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg';
-                                toast.innerHTML = `
-                    <span class="mr-4">${toast.textContent}</span>
-                    <button type="button" class="text-white font-bold" aria-label="Close" onclick="this.parentElement.remove()">
-                        &times;
-                    </button>
-                `;
-                                document.body.appendChild(toast);
-
-                                setTimeout(() => {
-                                    toast.style.opacity = '0';
-                                    setTimeout(() => {
-                                        toast.remove();
-                                    }, 300);
-                                }, 2500);
-                            }).catch(function(err) {
-                                console.error('Copy failed:', err);
-                                alert('Could not copy. Please try again.');
-                            });
-                        }
-                    </script>
                 </div>
 
                 <x-pagination :data="$payments" />
@@ -660,5 +667,32 @@
                         });
                     }
                 });
+
+                function copyToClipboard(text) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        const toast = document.createElement('div');
+                        toast.textContent = 'Link copied to clipboard!';
+                        toast.className =
+                            'alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg';
+                        toast.innerHTML = `
+                            <span class="mr-4">${toast.textContent}</span>
+                            <button type="button" class="text-white font-bold" aria-label="Close" onclick="this.parentElement.remove()">
+                                &times;
+                            </button>
+                        `;
+
+                        document.body.appendChild(toast);
+
+                        setTimeout(() => {
+                            toast.style.opacity = '0';
+                            setTimeout(() => {
+                                toast.remove();
+                            }, 300);
+                        }, 2500);
+                    }).catch(function(err) {
+                        console.error('Copy failed:', err);
+                        alert('Could not copy. Please try again.');
+                    });
+                }
             </script>
 </x-app-layout>

@@ -131,6 +131,13 @@ trait NotificationTrait
 
         if (!empty($data['payment']) && $data['payment'] instanceof Payment) {
             $payment = $data['payment'];
+
+            if($payment->send_payment_receipt !== true){
+                Log::info('[NotificationTrait] PDF sending skipped as per user setting', [
+                    'payment_id' => $payment->id,
+                ]);
+                return;
+            }
             
             $service = new PaymentReceiptService();
             $result = $service->generateAndSendPdf($payment);

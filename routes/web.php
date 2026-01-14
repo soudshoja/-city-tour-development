@@ -50,6 +50,7 @@ use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\SystemSettingController;
+use App\Http\Controllers\UserSettingController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -646,6 +647,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/save-tab', [SettingController::class, 'saveTab'])->name('save-tab');
         Route::get('/charges', [SettingController::class, 'getCharges'])->name('charges');
         Route::get('/payment-methods', [SettingController::class, 'getPaymentMethods'])->name('payment-methods');
+    });
+
+    Route::group([
+        'prefix' => 'user-settings',
+        'as' => 'user-settings.',
+    ], function () {
+        Route::post('update', [UserSettingController::class, 'update'])->name('update');
+        Route::post('get', [UserSettingController::class, 'getSetting'])->name('get');
     });
 
     //Payment Method

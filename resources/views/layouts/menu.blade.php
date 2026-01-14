@@ -320,7 +320,6 @@
             </svg>
         </a>
         <menu>
-            @if(Auth()->user()->role_id == 1 || Auth()->user()->role_id == 2)
             <menuitem>
             <a href="{{ route('settings.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a>
@@ -335,7 +334,6 @@
             </menu>
             @endcan
             </menuitem>
-            @endif
             @can('viewAny', App\Models\Supplier::class)
             <menuitem>
             <a href="{{ route('suppliers.index') }}"

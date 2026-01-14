@@ -11,7 +11,7 @@
                 @php
                     $invoiceIds = $tasks->pluck('originalTask.invoiceDetail.invoice.id')->filter()->unique()->values();
                     $invoiceStatus = optional($tasks->first()->originalTask->invoiceDetail->invoice)->status;
-                    $isPaidInvoice = strtolower($invoiceStatus) === 'paid';
+                    $isPaidInvoice = in_array(strtolower($invoiceStatus), ['paid', 'partial refund']);
                     $firstInvoice = $tasks->first()->originalTask->invoiceDetail->invoice ?? null;
                     $firstTask = $tasks->first();
                 @endphp
@@ -207,7 +207,7 @@
                     </div>
                     <hr class="my-6">
 
-                    @if ($task->originalTask?->invoiceDetail?->invoice?->status === 'paid')
+                    @if (in_array(strtolower($task->originalTask?->invoiceDetail?->invoice?->status), ['paid', 'partial refund']))
                         @include('refunds.partial.paid-invoice-section', [
                             'task' => $task,
                             'invoiceDetail' => $task->originalTask->invoiceDetail,

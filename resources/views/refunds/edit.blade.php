@@ -12,7 +12,7 @@
             $isReadOnly = strtolower($refund->status) === 'completed';
             $firstTask = $refund->refundDetails->first()?->task;
             $firstInvoice = $firstTask?->originalTask?->invoiceDetail?->invoice;
-            $isPaidInvoice = in_array($firstInvoice?->status, ['paid', 'paid by refund', 'refunded']);
+            $isPaidInvoice = in_array($firstInvoice?->status, ['paid', 'refunded', 'partial refund']);
             $isEditing = isset($refund) && $refund;
         @endphp
 
@@ -60,7 +60,7 @@
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring focus:ring-indigo-100">
                 </div>
 
-                @if ($firstInvoice?->status === 'paid')
+                @if (in_array(strtolower($firstInvoice?->status), ['paid', 'partial refund']))
                     <div class="mt-6 p-6 border rounded-lg bg-gray-50">
                         <h3 class="text-xl font-bold mb-4">Refund Method</h3>
                         <label class="block text-gray-700 font-semibold mb-2">Refund Method</label>
@@ -120,7 +120,7 @@
                     <h3 class="text-xl font-bold mb-4">Refund Task #{{ $task->reference }}</h3>
                     <input type="hidden" name="tasks[{{ $loop->index }}][task_id]" value="{{ $task->id }}">
 
-                    @if(in_array($invoiceStatus, ['paid', 'refunded']))
+                    @if(in_array($invoiceStatus, ['paid', 'refunded', 'partial refund']))
                         @include('refunds.partial.paid-invoice-section', [
                             'task' => $task,
                             'invoiceDetail' => $invoiceDetail,

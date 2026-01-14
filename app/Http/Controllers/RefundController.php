@@ -126,7 +126,7 @@ class RefundController extends Controller
             }
 
             $invoicePaymentStatus = strtolower($task->originalTask->invoiceDetail->invoice->status);
-            if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial'])) {
+            if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
                 Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
                 return redirect()->back()->withErrors([
                     'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
@@ -243,7 +243,7 @@ class RefundController extends Controller
                 ]);
             }
 
-            if ($paymentStatus === 'paid') {
+            if (in_array($paymentStatus, ['paid', 'partial refund'])) {
                 $this->handlePaidRefund($refund);
             } elseif ($paymentStatus === 'unpaid') {
                 $invoice = $refund->originalInvoice;
@@ -438,17 +438,41 @@ class RefundController extends Controller
             'company_id' => $task->company_id,
             'branch_id' => $task->agent->branch_id,
             'client_id' => $task->client->id,
+            'refund_id' => $refund->id,
             'type' => 'Refund',
             'description' => 'Refund for ' . $refund->refund_number,
             'amount' => $refundAmount,
-            // 'topup_by' => Auth::user()->company ? 'Company' : (Auth::user()->branch ? 'Branch' : 'Company'),
             'topup_by' => Auth::user()->company ? 'Company' : (Auth::user()->branch ? 'Branch' : 'Agent'),
         ]);
 
         $invoice = $refund->originalInvoice;
         if ($invoice) {
-            $invoice->update(['status' => InvoiceStatus::REFUNDED->value]);
+            $allInvoiceTaskIds = $invoice->invoiceDetails()->pluck('task_id')->toArray();
+
+            $refundedOriginalTaskIds = RefundDetail::whereHas('refund', function ($q) use ($invoice) {
+                $q->where('invoice_id', $invoice->id);
+            })
+                ->get()
+                ->map(fn($detail) => $detail->task?->originalTask?->id ?? $detail->task_id)
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            $allTasksRefunded = count(array_intersect($allInvoiceTaskIds, $refundedOriginalTaskIds)) >= count($allInvoiceTaskIds);
+
+            if ($allTasksRefunded) {
+                $invoice->update(['status' => InvoiceStatus::REFUNDED->value]);
+                Log::info("Invoice {$invoice->invoice_number} marked as REFUNDED (all tasks refunded)");
+            } else {
+                $invoice->update(['status' => InvoiceStatus::PARTIAL_REFUND->value]);
+                $refundedCount = count($refundedOriginalTaskIds);
+                $totalTasks = count($allInvoiceTaskIds);
+                Log::info("Invoice {$invoice->invoice_number} marked as PARTIAL_REFUND ({$refundedCount}/{$totalTasks} tasks refunded)");
+            }
         }
+
+        $refund->update(['status' => 'completed']);
+        Log::info("Refund {$refund->refund_number} marked as completed (paid invoice auto-credited)");
     }
 
     public function handleUnpaidInvoice(Refund $refund, Request $request, ?float $overrideAmount = null)
@@ -720,7 +744,7 @@ class RefundController extends Controller
         }
 
         $firstTask = $refund->refundDetails->first()->task;
-        $invoicePaid = strtolower($firstTask->originalTask->invoiceDetail->invoice->status ?? '') === 'paid';
+        $invoicePaid = in_array($firstTask->originalTask->invoiceDetail->invoice->status ?? '', ['paid', 'partial refund']);
         $invoiceDetail = $firstTask->originalTask->invoiceDetail;
 
         $paymentGateways = Charge::where('company_id', $firstTask->agent->branch->company_id)
@@ -1006,11 +1030,13 @@ class RefundController extends Controller
 
                 $credit = Credit::create([
                     'company_id'  => $taskRec->company_id,
+                    'branch_id'   => $taskRec->agent->branch_id,
                     'client_id'   => $taskRec->client_id,
-                    'task_id'     => $taskRec->id,
+                    'refund_id'   => $refund->id,
                     'type'        => 'Refund',
                     'description' => $refund->refund_number . ': Refund for ' . $supplierRefundLiability->name,
                     'amount'      => $detail->new_task_profit,
+                    'topup_by'    => Auth::user()->company ? 'Company' : (Auth::user()->branch ? 'Branch' : 'Agent'),
                 ]);
                 Log::info('Credit created', ['credit_id' => $credit->id]);
             }
@@ -1356,11 +1382,13 @@ class RefundController extends Controller
 
             if ($isTrueUnpaid) {
                 $unrefundedTasks = $refund->originalInvoice ? $refund->originalInvoice->invoiceDetails()
-                        ->whereNotIn('task_id',
-                            $refund->refundDetails
-                                ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
-                                ->filter()
-                                ->toArray())->get() : collect();
+                    ->whereNotIn(
+                        'task_id',
+                        $refund->refundDetails
+                            ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
+                            ->filter()
+                            ->toArray()
+                    )->get() : collect();
 
                 foreach ($unrefundedTasks as $detail) {
                     $task = $detail->task;

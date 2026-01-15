@@ -88,31 +88,60 @@ const PaymentSelection = (function() {
         `;
 
         payments.forEach((payment, index) => {
-            const paymentId = payment.payment.id;
-            const voucherNumber = payment.payment.voucher_number;
-            const paymentDate = payment.payment.payment_date || 'N/A';
+            const creditId = payment.credit_id;
+            const sourceType = payment.source_type;
+            const referenceNumber = payment.reference_number;
+            const paymentDate = payment.date || 'N/A';
             const availableBalance = parseFloat(payment.available_balance);
-
+        
+            const badgeHtml = sourceType === 'refund'
+                ? `
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Refund
+                    </span>
+                `
+                : `
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                        </svg>
+                        Topup
+                    </span>
+                `;
+        
             html += `
-                <div class="payment-item flex items-center gap-2 p-2 bg-white border rounded hover:bg-gray-50">
-                    <input type="checkbox" 
-                        class="payment-select-checkbox"
-                        data-payment-id="${paymentId}"
-                        data-available="${availableBalance}"
-                        data-voucher="${voucherNumber}"
-                        data-row-id="${rowId}"
-                        onchange="PaymentSelection.handleCheckboxChange(this, '${rowId}', ${requiredAmount})">
-                    <div class="flex-1 text-sm">
-                        <span class="font-medium">${voucherNumber}</span>
-                        <span class="text-gray-500 text-xs ml-1">(${paymentDate})</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <span class="text-xs text-green-600">${availableBalance.toFixed(3)}</span>
-                        <input type="number" 
-                            class="payment-amount-field w-20 px-1 py-0.5 border rounded text-xs text-right"
-                            data-payment-id="${paymentId}"
+                <div class="payment-item flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100">
+                    <label class="flex items-center flex-1 cursor-pointer gap-3">
+                        <input type="checkbox"
+                            class="payment-select-checkbox"
+                            data-credit-id="${creditId}"
+                            data-available="${availableBalance}"
+                            data-voucher="${referenceNumber}"
+                            data-source-type="${sourceType}"
                             data-row-id="${rowId}"
-                            placeholder="0.000"
+                            onchange="PaymentSelection.handleCheckboxChange(this, '${rowId}', ${requiredAmount})">
+        
+                        <div class="flex flex-col">
+                            <span class="font-medium text-gray-800">${referenceNumber}</span>
+        
+                            <div class="flex items-center gap-2 mt-1">
+                                ${badgeHtml}
+                                <span class="text-xs text-gray-500">${paymentDate}</span>
+                            </div>
+                        </div>
+                    </label>
+        
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-green-600">${availableBalance.toFixed(3)} KWD</span>
+        
+                        <input type="number"
+                            class="payment-amount-field w-24 px-2 py-1 border rounded text-sm text-right"
+                            data-credit-id="${creditId}"
+                            data-row-id="${rowId}"
+                            placeholder="Amount"
                             step="0.001"
                             min="0"
                             max="${availableBalance}"
@@ -125,18 +154,29 @@ const PaymentSelection = (function() {
 
         html += `
                 </div>
-                <div class="payment-selection-summary mt-2 pt-2 border-t text-xs">
-                    <div class="flex justify-between">
-                        <span>Selected:</span>
-                        <span class="selected-total font-medium" data-row-id="${rowId}">0.000 KWD</span>
+                    <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-green-100 rounded"></span>
+                            <span>Credit Topup</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-orange-100 rounded"></span>
+                            <span>From Refund</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span>Required:</span>
-                        <span class="required-total">${requiredAmount.toFixed(3)} KWD</span>
+
+                    <div class="payment-selection-summary mt-2 pt-2 border-t text-xs">
+                        <div class="flex justify-between">
+                            <span>Selected:</span>
+                            <span class="selected-total font-medium" data-row-id="${rowId}">0.000 KWD</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Required:</span>
+                            <span class="required-total">${requiredAmount.toFixed(3)} KWD</span>
+                        </div>
+                        <div class="status-message mt-1 text-xs" data-row-id="${rowId}"></div>
                     </div>
-                    <div class="status-message mt-1 text-xs" data-row-id="${rowId}"></div>
                 </div>
-            </div>
         `;
 
         container.innerHTML = html;
@@ -145,9 +185,9 @@ const PaymentSelection = (function() {
     }
 
     function handleCheckboxChange(checkbox, rowId, requiredAmount) {
-        const paymentId = checkbox.dataset.paymentId;
+        const creditId = checkbox.dataset.creditId;
         const amountField = document.querySelector(
-            `.payment-amount-field[data-payment-id="${paymentId}"][data-row-id="${rowId}"]`
+            `.payment-amount-field[data-credit-id="${creditId}"][data-row-id="${rowId}"]`
         );
 
         if (checkbox.checked) {
@@ -160,12 +200,12 @@ const PaymentSelection = (function() {
             amountField.value = autoAmount.toFixed(3);
             
             if (!selectedPayments[rowId]) selectedPayments[rowId] = {};
-            selectedPayments[rowId][paymentId] = autoAmount;
+            selectedPayments[rowId][creditId] = autoAmount;
         } else {
             amountField.disabled = true;
             amountField.value = '';
             if (selectedPayments[rowId]) {
-                delete selectedPayments[rowId][paymentId];
+                delete selectedPayments[rowId][creditId];
             }
         }
 
@@ -173,7 +213,7 @@ const PaymentSelection = (function() {
     }
 
     function handleAmountChange(input, rowId, requiredAmount) {
-        const paymentId = input.dataset.paymentId;
+        const creditId = input.dataset.creditId;
         const maxAmount = parseFloat(input.max);
         let value = parseFloat(input.value) || 0;
 
@@ -187,7 +227,7 @@ const PaymentSelection = (function() {
         }
 
         if (!selectedPayments[rowId]) selectedPayments[rowId] = {};
-        selectedPayments[rowId][paymentId] = value;
+        selectedPayments[rowId][creditId] = value;
 
         updateSummary(rowId, requiredAmount);
     }
@@ -231,8 +271,8 @@ const PaymentSelection = (function() {
         
         return Object.entries(selectedPayments[rowId])
             .filter(([_, amount]) => amount > 0)
-            .map(([paymentId, amount]) => ({
-                payment_id: parseInt(paymentId),
+            .map(([creditId, amount]) => ({
+                credit_id: parseInt(creditId),
                 amount: amount
             }));
     }

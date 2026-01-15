@@ -642,28 +642,49 @@
                                                         <h3 class="font-medium text-gray-700 mb-2">Select Payment(s) to Apply:</h3>
                                                         <div id="availablePaymentsList" class="space-y-2 max-h-60 overflow-y-auto border rounded p-2">
                                                             @forelse($availablePayments as $index => $paymentData)
-                                                                <div class="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100">
+                                                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100">
                                                                     <label class="flex items-center flex-1 cursor-pointer">
                                                                         <input type="checkbox" 
                                                                             class="payment-checkbox mr-3" 
-                                                                            data-payment-id="{{ $paymentData['payment']->id }}"
+                                                                            data-credit-id="{{ $paymentData['credit_id'] }}"
                                                                             data-available-balance="{{ $paymentData['available_balance'] }}"
-                                                                            data-voucher="{{ $paymentData['payment']->voucher_number }}"
+                                                                            data-voucher="{{ $paymentData['reference_number'] }}"
+                                                                            data-source-type="{{ $paymentData['source_type'] }}"
+                                                                            data-refund-id="{{ $paymentData['refund_id'] ?? '' }}"
+                                                                            data-is-standalone="{{ ($paymentData['is_standalone'] ?? false) ? 'true' : 'false' }}"
                                                                             onchange="updatePaymentSelection()">
-                                                                        <div>
-                                                                            <span class="font-medium">{{ $paymentData['payment']->voucher_number }}</span>
-                                                                            <span class="text-sm text-gray-500 ml-2">
-                                                                                ({{ $paymentData['payment']->payment_date?->format('d M Y') ?? 'N/A' }})
-                                                                            </span>
+                                                                        <div class="flex flex-col">
+                                                                            <span class="font-medium text-gray-800">{{ $paymentData['reference_number'] }}</span>
+
+                                                                            <div class="flex items-center gap-2 mt-1">
+                                                                                @if($paymentData['source_type'] === 'refund')
+                                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                                                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                                                                        </svg>
+                                                                                        Refund
+                                                                                    </span>
+                                                                                @else
+                                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                                                                        </svg>
+                                                                                        Topup
+                                                                                    </span>
+                                                                                @endif
+                                                                                <span class="text-xs text-gray-500">{{ $paymentData['date']->format('d M Y') }}</span>
+                                                                            </div>
                                                                         </div>
                                                                     </label>
                                                                     <div class="flex items-center gap-2">
-                                                                        <span class="text-sm text-green-600">Available: {{ number_format($paymentData['available_balance'], 3) }} KWD</span>
+                                                                        <span class="text-sm text-green-600">{{ number_format($paymentData['available_balance'], 3) }} KWD</span>
                                                                         <input type="number" 
                                                                             class="payment-amount-input w-24 px-2 py-1 border rounded text-sm"
-                                                                            data-payment-id="{{ $paymentData['payment']->id }}"
+                                                                            data-credit-id="{{ $paymentData['credit_id'] }}"
                                                                             data-max="{{ $paymentData['available_balance'] }}"
                                                                             data-user-edited="false"
+                                                                            data-source-type="{{ $paymentData['source_type'] }}"
+                                                                            data-refund-id="{{ $paymentData['refund_id'] ?? '' }}"
                                                                             placeholder="Amount"
                                                                             step="0.001"
                                                                             min="0"
@@ -673,9 +694,22 @@
                                                                     </div>
                                                                 </div>
                                                             @empty
-                                                                <p class="text-gray-500 text-center py-4">No available payments found for this client.</p>
+                                                                <p class="text-gray-500 text-center py-4">No available payments or refunds found for this client.</p>
                                                             @endforelse
                                                         </div>
+
+                                                        @if(count($availablePayments) > 0)
+                                                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                                                <div class="flex items-center gap-1">
+                                                                    <span class="w-3 h-3 bg-green-100 rounded"></span>
+                                                                    <span>Credit Topup</span>
+                                                                </div>
+                                                                <div class="flex items-center gap-1">
+                                                                    <span class="w-3 h-3 bg-orange-100 rounded"></span>
+                                                                    <span>From Refund</span>
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                     
                                                     <!-- Split Payment Gateway Selection (hidden by default) -->
@@ -2408,11 +2442,17 @@
         function updateRowSplit() { //split payment
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
+
+            const baseAmount = Math.floor((totalAmount / splitInto) * 100) / 100;
+            const totalBase = baseAmount * splitInto;
+            const remainder = Math.round((totalAmount - totalBase) * 100) / 100;
+
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
 
             for (let i = 1; i <= splitInto; i++) {
+                const rowAmount = (i === splitInto) ? (baseAmount + remainder).toFixed(3) : baseAmount.toFixed(3);
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                         <td class="border-b px-2 py-2 whitespace-nowrap">${i}</td>
@@ -2465,7 +2505,7 @@
                         </td>
                         <td class="border-b px-2 py-2">
                             <div class="min-w-[80px]">
-                                <input type="number" id="amount_${i}" name="amount_${i}" class="w-full border-gray-300 rounded-md no-spin text-sm" value="${perRowAmount}"
+                                <input type="number" id="amount_${i}" name="amount_${i}" class="w-full border-gray-300 rounded-md no-spin text-sm" value="${rowAmount}"
                                     onblur="checkInputAmount('split', ${i})" oninput="checkInputAmount('split', ${i})" />
                             </div>
                         </td>
@@ -3871,7 +3911,7 @@
                 const rows = document.querySelectorAll('#split-rows tr');
                 rows.forEach((row, index) => {
                     const i = index + 1;
-                    const clientSelectElement = row.querySelector(`#customer_name_${i}`);
+                    const clientSelectElement = document.getElementById(`customer_name_${i}`);
 
                     if (!clientSelectElement) {
                         console.error(`Client select element not found for row ${i}`);
@@ -3880,19 +3920,19 @@
 
                     const clientId = clientSelectElement.value;
                     // Get client name from the display text instead of select options
-                    const selectedTextElement = row.querySelector(`#selected_text_${i}`);
-                    const clientName = selectedTextElement ? selectedTextElement.textContent : '';
+                    const selectedTextElement = document.getElementById(`selected_text_${i}`);
+                    const clientName = selectedTextElement ? selectedTextElement.textContent.trim() : '';
 
-                    const dateInput = row.querySelector(`input[type="date"]`);
+                    const dateInput = document.getElementById(`date_${i}`);
                     const date = dateInput ? dateInput.value : null;
 
-                    const amountInput = row.querySelector(`input[type="number"]`);
+                    const amountInput = document.getElementById(`amount_${i}`);
                     const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
 
-                    const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
+                    const gatewaySelect = document.getElementById(`payment_gateway_${i}`);
                     const gateway = gatewaySelect ? gatewaySelect.value : null;
 
-                    const methodSelect = row.querySelector(`#payment_method_${i}`);
+                    const methodSelect = document.getElementById(`payment_method_${i}`);
                     const method = methodSelect ? methodSelect.value : null;
 
                     // Get selected payments if gateway is Credit
@@ -4421,15 +4461,13 @@
             let errorMessage = '';
 
             if (mode === 'split') {
-                const rows = document.querySelectorAll('#split-rows tr');
+                const amountInputs = document.querySelectorAll('#split-rows input[id^="amount_"]');
 
-                rows.forEach((row, index) => {
-                    const amountInput = row.querySelector(`input[type="number"]`);
-                    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
-                    totalEnteredAmount += amount;
+                amountInputs.forEach(input => {
+                    totalEnteredAmount += parseFloat(input.value || 0);
                 });
 
-                if (totalEnteredAmount !== totalInvoiceAmount) {
+                if (Number(totalEnteredAmount.toFixed(2)) !== Number(totalInvoiceAmount.toFixed(2))) {
                     isValid = false;
                     errorMessage = `Total split payment amounts (${totalEnteredAmount.toFixed(2)} KWD) must equal the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Please adjust the amounts to match exactly.`;
                 }
@@ -4891,14 +4929,14 @@
             // First pass: collect checked payments in FIFO order (list is already sorted by date)
             const checkedPayments = [];
             checkboxes.forEach(checkbox => {
-                const paymentId = checkbox.dataset.paymentId;
-                const amountInput = document.querySelector(`.payment-amount-input[data-payment-id="${paymentId}"]`);
+                const creditId = checkbox.dataset.creditId;
+                const amountInput = document.querySelector(`.payment-amount-input[data-credit-id="${creditId}"]`);
                 const maxAmount = parseFloat(checkbox.dataset.availableBalance);
                 
                 if (checkbox.checked) {
                     amountInput.disabled = false;
                     checkedPayments.push({
-                        paymentId: paymentId,
+                        creditId: creditId,
                         amountInput: amountInput,
                         maxAmount: maxAmount,
                         hasUserValue: amountInput.dataset.userEdited === 'true'
@@ -5022,20 +5060,20 @@
             const paymentAllocations = [];
             
             checkboxes.forEach(checkbox => {
-                const paymentId = checkbox.dataset.paymentId;
-                const amountInput = document.querySelector(`.payment-amount-input[data-payment-id="${paymentId}"]`);
+                const creditId = checkbox.dataset.creditId;
+                const amountInput = document.querySelector(`.payment-amount-input[data-credit-id="${creditId}"]`);
                 const amount = parseFloat(amountInput.value) || 0;
                 
                 if (amount > 0) {
                     paymentAllocations.push({
-                        payment_id: parseInt(paymentId),
+                        credit_id: parseInt(creditId),
                         amount: amount
                     });
                 }
             });
             
             if (paymentAllocations.length === 0) {
-                alert('Please select at least one payment and enter an amount.');
+                alert('Please select at least one payment/refund and enter an amount.');
                 return;
             }
             

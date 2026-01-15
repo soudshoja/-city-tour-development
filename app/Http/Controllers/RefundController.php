@@ -712,23 +712,18 @@ class RefundController extends Controller
 
     public function show($companyId, $refundNumber)
     {
-        $refund = Refund::with([
-            'company',
-            'refundDetails.task.originalTask.invoiceDetail.invoice',
-            'refundDetails.client',
-            'refundDetails.invoice'
-        ])
+        $refund = Refund::where('refund_number', $refundNumber)
             ->where('company_id', $companyId)
-            ->where('refund_number', $refundNumber)
+            ->with([
+                'refundDetails.task',
+                'originalInvoice.client',
+                'company',
+                'agent',
+                'branch',
+            ])
             ->firstOrFail();
 
-        $refundDetails = $refund->refundDetails;
-        $company = $refund->company;
-
-        $groupedByClient = $refundDetails->groupBy('client_id');
-        $groupedByInvoice = $refundDetails->groupBy('invoice_id');
-
-        return view('refunds.show', compact('refund', 'refundDetails', 'company', 'groupedByClient', 'groupedByInvoice'));
+        return view('refunds.show', compact('refund'));
     }
 
     public function edit(Refund $refund)

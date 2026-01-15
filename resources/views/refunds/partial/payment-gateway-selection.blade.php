@@ -93,7 +93,7 @@
     function updateServiceCharge(amount) {
         const serviceChargeInput = document.getElementById('service_charge');
         if (serviceChargeInput) {
-            serviceChargeInput.value = parseFloat(amount).toFixed(2);
+            serviceChargeInput.value = parseFloat(amount).toFixed(3);
         }
     }
 
@@ -129,7 +129,7 @@
 
                 // Show gateway fee if available
                 if (gateway.gateway_fee && gateway.gateway_fee > 0) {
-                    gatewayFeeAmount.textContent = `Gateway fee: ${parseFloat(gateway.gateway_fee).toFixed(2)}`;
+                    gatewayFeeAmount.textContent = `Gateway fee: ${parseFloat(gateway.gateway_fee).toFixed(3)}`;
                     gatewayFeeDisplay.style.display = 'block';
                 }
 
@@ -155,7 +155,7 @@
                         }
                         
                         if (method.gateway_fee && method.gateway_fee > 0) {
-                            option.textContent += ` (Fee: ${parseFloat(method.gateway_fee).toFixed(2)})`;
+                            option.textContent += ` (Fee: ${parseFloat(method.gateway_fee).toFixed(3)})`;
                         }
                         paymentMethodSelect.appendChild(option);
                     });
@@ -185,11 +185,11 @@
         if (selectedMethodId) {
             const method = paymentMethods.find(m => m.id == selectedMethodId);
             feeValue = method && method.gateway_fee ? parseFloat(method.gateway_fee) : 0;
-            gatewayFeeAmount.textContent = feeValue > 0 ? `Payment method fee: ${feeValue.toFixed(2)}` : `No additional fee`;
+            gatewayFeeAmount.textContent = feeValue > 0 ? `Payment method fee: ${feeValue.toFixed(3)}` : `No additional fee`;
         } else {
             const gateway = paymentGateways.find(g => g.name === selectedGateway);
             feeValue = gateway && gateway.gateway_fee ? parseFloat(gateway.gateway_fee) : 0;
-            gatewayFeeAmount.textContent = feeValue > 0 ? `Gateway fee: ${feeValue.toFixed(2)}` : `No additional fee`;
+            gatewayFeeAmount.textContent = feeValue > 0 ? `Gateway fee: ${feeValue.toFixed(3)}` : `No additional fee`;
         }
 
         gatewayFeeDisplay.style.display = feeValue > 0 ? 'block' : 'none';

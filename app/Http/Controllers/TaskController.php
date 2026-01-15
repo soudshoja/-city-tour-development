@@ -562,96 +562,6 @@ class TaskController extends Controller
         return response()->json(['success' => true, 'message' => 'Column preferences saved.']);
     }
 
-    public function bulkUpdate(Request $request)
-    {
-        $taskIds = json_decode($request->input('task_ids'), true);
-        $clientId = $request->input('bulk_client_id');
-        $agentId = $request->input('bulk_agent_id');
-        $paymentMethodId = $request->input('bulk_payment_method_id');
-
-        if (!$taskIds || !is_array($taskIds)) {
-            return response()->json(['success' => false, 'message' => 'No tasks selected.']);
-        }
-
-        DB::transaction(function () use ($taskIds, $clientId, $agentId, $paymentMethodId) {
-            $client = $clientId ? Client::find($clientId) : null;
-            foreach ($taskIds as $id) {
-                $task = Task::find($id);
-                if ($task) {
-                    if ($clientId) {
-                        $task->client_id = $clientId;
-                        $task->client_name = $client->full_name;
-                    }
-                    if ($agentId) $task->agent_id = $agentId;
-                    if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-                    if ($task->is_complete && $task->agent && $task->client) {
-                        $shouldEnable = false;
-                        if ($task->status === 'void') {
-                            $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
-                                ->whereHas('transaction', function ($q) {
-                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
-                                })
-                                ->exists();
-                        } else {
-                            $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
-                        }
-
-                        if ($hasJournal) {
-                            $shouldEnable = true;
-                        } else {
-                            try {
-                                $this->processTaskFinancial($task);
-                                $shouldEnable = true;
-                            } catch (\Exception $e) {
-                                $shouldEnable = false;
-                                Log::error('Failed to process task financial: ' . $e->getMessage());
-                            }
-                        }
-                        $task->enabled = $shouldEnable;
-                    }
-                    $task->save();
-                }
-
-                $linkedTasks = Task::where('original_task_id', $task->id)->get();
-                foreach ($linkedTasks as $linkTask) {
-                    if ($client) {
-                        $linkTask->client_id = $client->id;
-                        $linkTask->client_name = $client->full_name;
-                    }
-                    if ($agentId) $linkTask->agent_id = $agentId;
-                    if ($linkTask->is_complete && $linkTask->agent_id && $linkTask->client_id) {
-                        $shouldEnable = false;
-                        if ($linkTask->status === 'void') {
-                            $hasJournal = JournalEntry::where('task_id', $linkTask->original_task_id)
-                                ->whereHas('transaction', function ($q) {
-                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
-                                })
-                                ->exists();
-                        } else {
-                            $hasJournal = JournalEntry::where('task_id', $linkTask->id)->exists();
-                        }
-
-                        if ($hasJournal) {
-                            $shouldEnable = true;
-                        } else {
-                            try {
-                                $this->processTaskFinancial($linkTask);
-                                $shouldEnable = true;
-                            } catch (\Throwable $e) {
-                                $shouldEnable = false;
-                                Log::error('Failed to process linked task financial', ['task_id' => $linkTask->id, 'err' => $e->getMessage()]);
-                            }
-                        }
-                        $linkTask->enabled = $shouldEnable;
-                    }
-                    $linkTask->save();
-                }
-            }
-        });
-
-        return response()->json(['success' => true]);
-    }
-
     public function store(Request $request): JsonResponse
     {
         Log::info('Store task request', ['request' => $request->all()]);
@@ -2490,7 +2400,7 @@ class TaskController extends Controller
             if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Task must be linked to an original task before enabling.'
+                    'message' => 'Task must be linked to an original task before enabling'
                 ], 400);
             }
 
@@ -2504,21 +2414,21 @@ class TaskController extends Controller
             if (!$task->agent_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Task must have an agent assigned to be enabled.'
+                    'message' => 'Task must have an agent assigned to be enabled'
                 ], 400);
             }
 
             if ($task->client == null) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Task must have a client assigned to be enabled.'
+                    'message' => 'Task must have a client assigned to be enabled'
                 ], 400);
             }
 
             if ($task->supplier_pay_date == null) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Task must have an issued date before it can be enabled.'
+                    'message' => 'Task must have an issued date before it can be enabled'
                 ], 400);
             }
 
@@ -5655,5 +5565,184 @@ class TaskController extends Controller
 
             return back()->with('error', 'Failed to switch invoice: ' . $e->getMessage());
         }
+    }
+
+    public function detail()
+{
+    $user = Auth::user();
+    
+    if ($user->role_id == Role::ADMIN) {
+        $companyId = 1;
+    } elseif ($user->role_id == Role::COMPANY) {
+        $companyId = $user->company->id;
+    } elseif ($user->role_id == Role::AGENT) {
+        $companyId = $user->agent->branch->company->id;
+    } elseif ($user->role_id == Role::ACCOUNTANT) {
+        $companyId = $user->accountant->branch->company->id;
+    }
+
+    if (!$companyId) {
+        return redirect()->back()->with('error', 'Company not found for the user.');
+    }
+   
+    $liabilities = Account::where('name', 'Liabilities')
+        ->where('company_id', $companyId)
+        ->first();
+
+    if (!$liabilities) {
+        Log::error('Liabilities account not found for company ID: ' . $companyId);
+        return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
+    }
+    
+    $creditorsAccount = Account::where('name', 'Creditors')
+        ->where('company_id', $companyId)
+        ->where('root_id', $liabilities->id)
+        ->first();
+
+    if (!$creditorsAccount) {
+        Log::error('Creditors account not found for company ID: ' . $companyId);
+        return redirect()->back()->with('error', 'Creditors account not found. Please contact the administrator.');
+    }
+
+    $listOfCreditors = $creditorsAccount->children()->get()
+        ->mapToGroups(function ($account) {
+            $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
+            return [
+                $group => [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'parent_id' => $account->parent_id,
+                    'company_id' => $account->company_id,
+                    'code' => $account->code,
+                ],
+            ];
+        })
+        ->toArray();
+    
+    $paymentMethod = Account::where('parent_id', 39)->get();
+
+    $agents = Agent::all();
+    $clients = Client::all();
+    
+    $taskIds = request()->get('tasks');
+    
+    if (!$taskIds) {
+        return redirect()->route('tasks.index')->with('error', 'No tasks selected');
+    }
+    
+    // Convert to array if comma-separated string
+    if (is_string($taskIds)) {
+        $taskIds = explode(',', $taskIds);
+    }
+    
+    // Load tasks
+    $tasks = Task::with([
+        'supplier',
+        'client',
+        'agent',
+        'flightDetail',
+        'hotelDetails.hotel',
+        'visaDetails',
+        'insuranceDetails'
+    ])->whereIn('id', $taskIds)->get();
+    
+    if ($tasks->isEmpty()) {
+        return redirect()->route('tasks.index')->with('error', 'No tasks found');
+    }
+
+    $paymentMethods = Account::where('account_type', 'payment_method')->get();
+
+    return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'paymentMethods', 'paymentMethod'));
+}
+
+    public function bulkUpdate(Request $request)
+    {
+        /* $taskIds = json_decode($request->input('task_ids'), true); */        
+        $taskIds = $request->input('task_ids', []);
+        $clientId = $request->input('bulk_client_id');
+        $agentId = $request->input('bulk_agent_id');
+        $paymentMethodId = $request->input('bulk_payment_method_id');
+
+        if (!$taskIds || !is_array($taskIds)) {
+            return response()->json(['success' => false, 'message' => 'No tasks selected.']);
+        }
+
+        DB::transaction(function () use ($taskIds, $clientId, $agentId, $paymentMethodId) {
+            $client = $clientId ? Client::find($clientId) : null;
+            foreach ($taskIds as $id) {
+                $task = Task::find($id);
+                if ($task) {
+                    if ($clientId) {
+                        $task->client_id = $clientId;
+                        $task->client_name = $client->full_name;
+                    }
+                    if ($agentId) $task->agent_id = $agentId;
+                    if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
+                    if ($task->is_complete && $task->agent && $task->client) {
+                        $shouldEnable = false;
+                        if ($task->status === 'void') {
+                            $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
+                                ->whereHas('transaction', function ($q) {
+                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                                })
+                                ->exists();
+                        } else {
+                            $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
+                        }
+
+                        if ($hasJournal) {
+                            $shouldEnable = true;
+                        } else {
+                            try {
+                                $this->processTaskFinancial($task);
+                                $shouldEnable = true;
+                            } catch (\Exception $e) {
+                                $shouldEnable = false;
+                                Log::error('Failed to process task financial: ' . $e->getMessage());
+                            }
+                        }
+                        $task->enabled = $shouldEnable;
+                    }
+                    $task->save();
+                }
+
+                $linkedTasks = Task::where('original_task_id', $task->id)->get();
+                foreach ($linkedTasks as $linkTask) {
+                    if ($client) {
+                        $linkTask->client_id = $client->id;
+                        $linkTask->client_name = $client->full_name;
+                    }
+                    if ($agentId) $linkTask->agent_id = $agentId;
+                    if ($linkTask->is_complete && $linkTask->agent_id && $linkTask->client_id) {
+                        $shouldEnable = false;
+                        if ($linkTask->status === 'void') {
+                            $hasJournal = JournalEntry::where('task_id', $linkTask->original_task_id)
+                                ->whereHas('transaction', function ($q) {
+                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                                })
+                                ->exists();
+                        } else {
+                            $hasJournal = JournalEntry::where('task_id', $linkTask->id)->exists();
+                        }
+
+                        if ($hasJournal) {
+                            $shouldEnable = true;
+                        } else {
+                            try {
+                                $this->processTaskFinancial($linkTask);
+                                $shouldEnable = true;
+                            } catch (\Throwable $e) {
+                                $shouldEnable = false;
+                                Log::error('Failed to process linked task financial', ['task_id' => $linkTask->id, 'err' => $e->getMessage()]);
+                            }
+                        }
+                        $linkTask->enabled = $shouldEnable;
+                    }
+                    $linkTask->save();
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', 'Tasks updated successfully');
     }
 }

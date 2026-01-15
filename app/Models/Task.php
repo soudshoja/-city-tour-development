@@ -249,4 +249,9 @@ class Task extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(Account::class, 'payment_method_account_id');
+    }
 }

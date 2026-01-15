@@ -5568,92 +5568,98 @@ class TaskController extends Controller
     }
 
     public function detail()
-{
-    $user = Auth::user();
-    
-    if ($user->role_id == Role::ADMIN) {
-        $companyId = 1;
-    } elseif ($user->role_id == Role::COMPANY) {
-        $companyId = $user->company->id;
-    } elseif ($user->role_id == Role::AGENT) {
-        $companyId = $user->agent->branch->company->id;
-    } elseif ($user->role_id == Role::ACCOUNTANT) {
-        $companyId = $user->accountant->branch->company->id;
-    }
+    {
+        $user = Auth::user();
+        
+        if ($user->role_id == Role::ADMIN) {
+            $companyId = 1;
+            $agents = Agent::all();
+            $clients = Client::all();
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+            $branch = Branch::where('company_id', $companyId)->pluck('id')->toArray();
+            $agents = Agent::whereIn('branch_id', $branch)->get();
+            $clients = Client::where('company_id', $companyId)->get();
+        } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company->id;
+            $agent = Agent::where('user_id', $user->id)->first(); 
+            $agents = collect([$agent]); 
+            $clients = Client::where('agent_id', $agent->id)->get();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company->id;
+            $branch = Branch::where('id', $user->accountant->branch->id)->pluck('id')->toArray();
+            $agents = Agent::whereIn('branch_id', $branch)->get();
+            $clients = Client::where('company_id', $companyId)->get();
+        }
 
-    if (!$companyId) {
-        return redirect()->back()->with('error', 'Company not found for the user.');
-    }
-   
-    $liabilities = Account::where('name', 'Liabilities')
-        ->where('company_id', $companyId)
-        ->first();
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Company not found for the user.');
+        }
+    
+        $liabilities = Account::where('name', 'Liabilities')
+            ->where('company_id', $companyId)
+            ->first();
 
-    if (!$liabilities) {
-        Log::error('Liabilities account not found for company ID: ' . $companyId);
-        return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
-    }
-    
-    $creditorsAccount = Account::where('name', 'Creditors')
-        ->where('company_id', $companyId)
-        ->where('root_id', $liabilities->id)
-        ->first();
+        if (!$liabilities) {
+            Log::error('Liabilities account not found for company ID: ' . $companyId);
+            return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
+        }
+        
+        $creditorsAccount = Account::where('name', 'Creditors')
+            ->where('company_id', $companyId)
+            ->where('root_id', $liabilities->id)
+            ->first();
 
-    if (!$creditorsAccount) {
-        Log::error('Creditors account not found for company ID: ' . $companyId);
-        return redirect()->back()->with('error', 'Creditors account not found. Please contact the administrator.');
-    }
+        if (!$creditorsAccount) {
+            Log::error('Creditors account not found for company ID: ' . $companyId);
+            return redirect()->back()->with('error', 'Creditors account not found. Please contact the administrator.');
+        }
 
-    $listOfCreditors = $creditorsAccount->children()->get()
-        ->mapToGroups(function ($account) {
-            $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
-            return [
-                $group => [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'parent_id' => $account->parent_id,
-                    'company_id' => $account->company_id,
-                    'code' => $account->code,
-                ],
-            ];
-        })
-        ->toArray();
-    
-    $paymentMethod = Account::where('parent_id', 39)->get();
+        $listOfCreditors = $creditorsAccount->children()->get()
+            ->mapToGroups(function ($account) {
+                $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
+                return [
+                    $group => [
+                        'id' => $account->id,
+                        'name' => $account->name,
+                        'parent_id' => $account->parent_id,
+                        'company_id' => $account->company_id,
+                        'code' => $account->code,
+                    ],
+                ];
+            })
+            ->toArray();
+        
+        $paymentMethod = Account::where('parent_id', 39)->get();
+        
+        $taskIds = request()->get('tasks');
+        
+        if (!$taskIds) {
+            return redirect()->route('tasks.index')->with('error', 'No tasks selected');
+        }
+        
+        if (is_string($taskIds)) {
+            $taskIds = explode(',', $taskIds);
+        }
+        
+        $tasks = Task::with([
+            'supplier',
+            'client',
+            'agent',
+            'flightDetail',
+            'hotelDetails.hotel',
+            'visaDetails',
+            'insuranceDetails'
+        ])->whereIn('id', $taskIds)->get();
+        
+        if ($tasks->isEmpty()) {
+            return redirect()->route('tasks.index')->with('error', 'No tasks found');
+        }
 
-    $agents = Agent::all();
-    $clients = Client::all();
-    
-    $taskIds = request()->get('tasks');
-    
-    if (!$taskIds) {
-        return redirect()->route('tasks.index')->with('error', 'No tasks selected');
-    }
-    
-    // Convert to array if comma-separated string
-    if (is_string($taskIds)) {
-        $taskIds = explode(',', $taskIds);
-    }
-    
-    // Load tasks
-    $tasks = Task::with([
-        'supplier',
-        'client',
-        'agent',
-        'flightDetail',
-        'hotelDetails.hotel',
-        'visaDetails',
-        'insuranceDetails'
-    ])->whereIn('id', $taskIds)->get();
-    
-    if ($tasks->isEmpty()) {
-        return redirect()->route('tasks.index')->with('error', 'No tasks found');
-    }
+        $paymentMethods = Account::where('account_type', 'payment_method')->get();
 
-    $paymentMethods = Account::where('account_type', 'payment_method')->get();
-
-    return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'paymentMethods', 'paymentMethod'));
-}
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'paymentMethods', 'paymentMethod'));
+    }
 
     public function bulkUpdate(Request $request)
     {

@@ -120,6 +120,30 @@
             content: 'This field is required to enable task';
             color: red;
         }
+
+        /* Mobile sidebar toggle */
+        @media (max-width: 1023px) {
+            .mobile-sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 40;
+            }
+            
+            .mobile-sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 50;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+            
+            .mobile-sidebar.open {
+                transform: translateX(0);
+            }
+        }
     </style>
     
     <div class="min-h-screen flex flex-col" 
@@ -130,6 +154,7 @@
             singleEditMode: false,
             showMenu: false,
             showManualForm: false,
+            showSidebar: false,
             modalTaskId: null,
             modalClientName: '',
             modalPassengerName: '',
@@ -182,12 +207,30 @@
                 return `{{ route('invoices.create') }}?task_ids=` + this.selectedForInvoice.join(',');
             },
         }">
-        <h1 class="text-4xl font-bold mb-2">
+        
+        <!-- Mobile Header -->
+        <div class="lg:hidden flex items-center justify-between mb-4">
+            <h1 class="text-2xl sm:text-3xl font-bold">
+                Task Details
+            </h1>
+            <button 
+                @click="showSidebar = true"
+                class="p-2 bg-white rounded-lg shadow border border-gray-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span class="text-sm font-medium text-gray-700">Tasks</span>
+                <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">{{ $tasks->count() }}</span>
+            </button>
+        </div>
+
+        <!-- Desktop Header -->
+        <h1 class="hidden lg:block text-4xl font-bold mb-2">
             Task Details
         </h1>
 
         <div class="flex-1 pb-16">
-            <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base">
+            <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-sm sm:text-base">
                 <li>
                     <a href="{{ route('tasks.index') }}" class="text-primary text-md hover:underline">Tasks List</a>
                 </li>
@@ -196,9 +239,150 @@
                 </li>
             </ul>
 
-            <div class="flex gap-4 items-stretch">
-                <!-- Sidebar -->
-                <div class="w-80 flex-shrink-0 flex">
+            <!-- Mobile Sidebar Overlay -->
+            <div 
+                x-show="showSidebar" 
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="showSidebar = false"
+                class="lg:hidden fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm z-40"
+                x-cloak>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-4 items-stretch">
+                <!-- Mobile Sidebar Drawer (only visible on mobile) -->
+                <div 
+                    x-show="showSidebar"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="-translate-x-full"
+                    x-transition:enter-end="translate-x-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="translate-x-0"
+                    x-transition:leave-end="-translate-x-full"
+                    class="lg:hidden fixed inset-y-0 left-0 z-50 w-80 flex-shrink-0 flex"
+                    x-cloak>
+                    <div class="bg-white shadow-sm border border-gray-200 flex flex-col w-full h-screen">
+                        
+                        <!-- Mobile Close Button -->
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                            <span class="text-sm font-semibold text-gray-700">Select Task</span>
+                            <button @click="showSidebar = false" class="p-2 hover:bg-gray-100 rounded-lg">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="px-4 py-3 flex-shrink-0">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Selected {{ Str::plural('Task', $tasks->count())}} </h3>
+                                    <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{{ $tasks->count() }}</span>
+                                </div>
+
+                                @if ($tasks->count() > 1)
+                                <button 
+                                    @click="bulkEditMode = true; showSidebar = false" 
+                                    class="group relative p-2 hover:bg-gray-200 rounded-lg transition z-10">
+                                    <svg class="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2 2m-2-2v6"/>
+                                    </svg>
+                                </button>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto min-h-0 hover-scrollbar">
+                            @foreach($tasks as $task)
+                            <div
+                                @click="selectedTaskId = {{ $task->id }}; bulkEditMode = false; showSidebar = false"
+                                :class="selectedTaskId === {{ $task->id }} && !bulkEditMode ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-gray-50 border-l-4 border-transparent'"
+                                class="cursor-pointer transition-all border-b border-gray-200">
+                                <div class="px-4 py-3">
+
+                                    @php
+                                        $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
+                                    @endphp
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex items-start gap-2 flex-1">
+                                            
+                                            <div class="pt-0.5" @click.stop>
+                                                <input
+                                                    type="checkbox"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    :checked="selectedForInvoice.includes({{ $task->id }})"
+                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
+                                                    {{ $canInvoice ? '' : 'disabled' }}
+                                                >
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
+                                                <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
+                                            </div>
+
+                                            @php
+                                                $missing = [];
+                                                if (!$task->client_id) $missing[] = 'Client';
+                                                if (!$task->agent_id) $missing[] = 'Agent';
+                                                if (!$task->company_id) $missing[] = 'Company';
+                                                if (!$task->supplier_id) $missing[] = 'Supplier';
+                                                if (!$task->type) $missing[] = 'Type';
+                                                if (!$task->status) $missing[] = 'Status';
+                                                if (!$task->reference) $missing[] = 'Reference';
+                                                if (!$task->total) $missing[] = 'Total';
+
+                                                $missingCount = count($missing);
+
+                                                if ($missingCount === 0) {
+                                                    $dotColor = 'bg-green-500';
+                                                    $glowColor = 'bg-green-400/40';
+                                                    $tooltipText = 'Ready for invoice';
+                                                } elseif ($missingCount === 1) {
+                                                    $dotColor = 'bg-yellow-500';
+                                                    $glowColor = 'bg-yellow-400/40';
+                                                    $tooltipText = 'Missing: ' . $missing[0];
+                                                } else {
+                                                    $dotColor = 'bg-red-500';
+                                                    $glowColor = 'bg-red-400/40';
+                                                    $tooltipText = 'Missing: ' . implode(' | ', $missing);
+                                                }
+                                            @endphp
+                                            <div class="relative flex items-center justify-center group flex-shrink-0">
+                                                <span class="relative flex h-2.5 w-2.5">
+                                                    <span class="absolute inline-flex h-full w-full rounded-full {{ $glowColor }} animate-ping"></span>
+                                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 {{ $dotColor }}"></span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-2 pl-6">
+                                        <p class="text-sm font-semibold text-gray-700">
+                                            {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
+                                        </p>
+                                    </div>
+
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        <div class="px-4 py-4 bg-white flex-shrink-0 border-t border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <p class="text-xs text-gray-500 uppercase font-semibold">Total Amount</p>
+                                <p class="text-lg font-bold text-blue-600">KWD {{ number_format($tasks->sum('total'), 3) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Sidebar (original, only visible on lg+) -->
+                <div class="hidden lg:flex w-80 flex-shrink-0">
                     <div class="bg-white shadow-sm border border-gray-200 sticky top-4 flex flex-col w-full rounded-lg" style="max-height: calc(100vh - 2rem);">
                         <div class="px-4 py-3 flex-shrink-0">
                             <div class="flex items-center justify-between">
@@ -209,7 +393,7 @@
 
                                 @if ($tasks->count() > 1)
                                 <button 
-                                    @click="bulkEditMode = true" 
+                                    @click="bulkEditMode = true; showSidebar = false" 
                                     class="group relative p-2 hover:bg-gray-200 rounded-lg transition z-10">
                                     <svg class="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -230,7 +414,7 @@
                         <div class="flex-1 overflow-y-auto min-h-0 hover-scrollbar">
                             @foreach($tasks as $task)
                             <div
-                                @click="selectedTaskId = {{ $task->id }}; bulkEditMode = false"
+                                @click="selectedTaskId = {{ $task->id }}; bulkEditMode = false; showSidebar = false"
                                 :class="selectedTaskId === {{ $task->id }} && !bulkEditMode ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-gray-50 border-l-4 border-transparent'"
                                 class="cursor-pointer transition-all border-b border-gray-200">
                                 <div class="px-4 py-3">
@@ -318,43 +502,43 @@
                 </div>
 
                 <!-- Main Content Area -->
-                <div class="flex-1 flex flex-col">
+                <div class="flex-1 flex flex-col min-w-0">
 
                     <div class="flex-1">
                         @foreach($tasks as $task)
                         <div x-cloak x-show="selectedTaskId === {{ $task->id }}" class="flex flex-col gap-4 h-full">
 
                             <!-- Task Header with Edit Icon -->
-                            <div class="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-sm p-6 flex-shrink-0">
+                            <div class="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-sm p-4 sm:p-6 flex-shrink-0">
                                 <div class="flex items-start justify-between">
-                                    <div class="flex-1">
+                                    <div class="flex-1 min-w-0">
                                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Reference</p>
-                                        <p class="text-xl font-semibold text-white">{{ $task->reference }}</p>
-                                        <p class="text-sm text-gray-400 mt-1">{{ $task->ticket_number }}</p>
+                                        <p class="text-lg sm:text-xl font-semibold text-white truncate">{{ $task->reference }}</p>
+                                        <p class="text-sm text-gray-400 mt-1 truncate">{{ $task->ticket_number }}</p>
                                     </div>
 
                                     <!-- Edit Task Icon Button -->
                                     <button 
                                         @click="singleEditMode = true" 
-                                        class="group relative p-2 hover:bg-slate-600 rounded-lg transition">
+                                        class="group relative p-2 hover:bg-slate-600 rounded-lg transition flex-shrink-0 ml-2">
                                         <svg class="w-5 h-5 text-gray-300 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
-                                        <span class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
+                                        <span class="hidden sm:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
                                             Edit Task
                                         </span>
                                     </button>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-5 gap-4 flex-1">
+                            <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1">
                                 <!-- Task Information -->
-                                <div class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                                    <div class="px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
+                                <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                                    <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
                                         <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Task Information</h2>
                                     </div>
-                                    <div class="p-6 flex flex-col flex-1">
-                                        <div class="grid grid-cols-2 gap-x-8 gap-y-5">
+                                    <div class="p-4 sm:p-6 flex flex-col flex-1">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-4 sm:gap-y-5">
                                             <div>
                                                 <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Client</p>
                                                 @if($task->client)
@@ -444,7 +628,7 @@
                                         </div>
 
                                         <!-- Pricing -->
-                                        <div class="mt-auto pt-8">
+                                        <div class="mt-auto pt-6 sm:pt-8">
                                             <div class="space-y-3">
                                                 <div class="flex justify-between items-center">
                                                     <p class="text-sm text-gray-600">Base Price:</p>
@@ -466,21 +650,83 @@
                                 </div>
 
                                 <!-- Type-Specific Details -->
-                                <div class="col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                                    <div class="px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
+                                <div class="lg:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                                    <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
                                         <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
                                             {{ ucfirst($task->type) }} Details
                                         </h2>
                                     </div>
                                     <div class="flex-1 overflow-auto">
                                         @if($task->type === 'flight')
-                                        <div class="p-6">
+                                        <div class="p-4 sm:p-6">
                                             @php
                                             $hasDuration = $task->flightDetail->whereNotNull('duration_time')->isNotEmpty();
                                             $hasBaggage = $task->flightDetail->whereNotNull('baggage_allowed')->isNotEmpty();
                                             @endphp
 
-                                            <div class="overflow-x-auto">
+                                            <!-- Mobile Flight Cards -->
+                                            <div class="block sm:hidden space-y-4">
+                                                @forelse($task->flightDetail as $flight)
+                                                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                    <div class="flex items-center justify-between mb-3">
+                                                        <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
+                                                            Flight {{ $loop->iteration }}
+                                                        </span>
+                                                        @if($flight->class_type)
+                                                        <span class="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                                                            {{ ucfirst($flight->class_type) }}
+                                                        </span>
+                                                        @endif
+                                                    </div>
+                                                    
+                                                    <div class="flex items-center gap-3 mb-3">
+                                                        <div class="flex-1">
+                                                            <p class="text-xs text-gray-500 uppercase">From</p>
+                                                            <p class="text-sm font-medium text-gray-900">{{ $flight->airport_from ?? 'N/A' }}</p>
+                                                            <p class="text-xs text-gray-500">
+                                                                {{ $flight->departure_time ? \Carbon\Carbon::parse($flight->departure_time)->format('d M, H:i') : '-' }}
+                                                            </p>
+                                                        </div>
+                                                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                                        </svg>
+                                                        <div class="flex-1 text-right">
+                                                            <p class="text-xs text-gray-500 uppercase">To</p>
+                                                            <p class="text-sm font-medium text-gray-900">{{ $flight->airport_to ?? 'N/A' }}</p>
+                                                            <p class="text-xs text-gray-500">
+                                                                {{ $flight->arrival_time ? \Carbon\Carbon::parse($flight->arrival_time)->format('d M, H:i') : '-' }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="flex flex-wrap gap-3 text-xs text-gray-600 pt-2 border-t border-gray-200">
+                                                        <div>
+                                                            <span class="text-gray-400">Airline:</span>
+                                                            <span class="font-medium">{{ $flight->airline ?? 'N/A' }} {{ $flight->flight_number ?? '' }}</span>
+                                                        </div>
+                                                        @if($hasDuration && $flight->duration_time)
+                                                        <div>
+                                                            <span class="text-gray-400">Duration:</span>
+                                                            <span class="font-medium">{{ $flight->duration_time }}</span>
+                                                        </div>
+                                                        @endif
+                                                        @if($hasBaggage && $flight->baggage_allowed)
+                                                        <div>
+                                                            <span class="text-gray-400">Baggage:</span>
+                                                            <span class="font-medium">{{ $flight->baggage_allowed }}</span>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @empty
+                                                <div class="text-center py-8 text-gray-500 italic">
+                                                    No flight details available
+                                                </div>
+                                                @endforelse
+                                            </div>
+
+                                            <!-- Desktop Flight Table -->
+                                            <div class="hidden sm:block overflow-x-auto">
                                                 <table class="min-w-full divide-y divide-gray-200">
                                                     <thead class="bg-gray-50">
                                                         <tr>
@@ -553,8 +799,8 @@
                                             </div>
                                         </div>
                                         @elseif($task->type === 'hotel')
-                                        <div class="p-6">
-                                            <div class="grid grid-cols-2 gap-6">
+                                        <div class="p-4 sm:p-6">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <div>
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
                                                     <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? 'N/A') }}</p>
@@ -574,8 +820,8 @@
                                             </div>
                                         </div>
                                         @elseif($task->type === 'visa')
-                                        <div class="p-6">
-                                            <div class="grid grid-cols-2 gap-6">
+                                        <div class="p-4 sm:p-6">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <div>
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Visa Type</p>
                                                     <p class="text-sm text-gray-900">{{ $task->visaDetails->visa_type ?? 'N/A' }}</p>
@@ -583,8 +829,8 @@
                                             </div>
                                         </div>
                                         @elseif($task->type === 'insurance')
-                                        <div class="p-6">
-                                            <div class="grid grid-cols-2 gap-6">
+                                        <div class="p-4 sm:p-6">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <div>
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Insurance Plan</p>
                                                     <p class="text-sm text-gray-900">{{ $task->insuranceDetails->plan_name ?? 'N/A' }}</p>
@@ -609,7 +855,7 @@
                                             @if($task->cancellation_policy)
                                             <div>
                                                 <button @click="showCancellation = !showCancellation" 
-                                                        class="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
+                                                        class="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
                                                     <div class="flex items-center gap-2">
                                                         <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -621,7 +867,7 @@
                                                     </svg>
                                                 </button>
                                                 <div x-cloak x-show="showCancellation" 
-                                                    class="px-6 pb-4 mt-3">
+                                                    class="px-4 sm:px-6 pb-4 mt-3">
                                                     <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                                                         <p class="text-sm text-gray-700 whitespace-pre-line">{{ $task->cancellation_policy }}</p>
                                                     </div>
@@ -633,7 +879,7 @@
                                             @if($task->additional_info || $task->venue)
                                             <div>
                                                 <button @click="showAdditional = !showAdditional" 
-                                                        class="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
+                                                        class="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
                                                     <div class="flex items-center gap-2">
                                                         <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -645,7 +891,7 @@
                                                     </svg>
                                                 </button>
                                                 <div x-cloak x-show="showAdditional" 
-                                                    class="px-6 pb-4 mt-3">
+                                                    class="px-4 sm:px-6 pb-4 mt-3">
                                                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
                                                         @if($task->additional_info)
                                                         <div>
@@ -677,7 +923,7 @@
                             <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
                                 @click="singleEditMode = false"></div>
 
-                            <div class="flex min-h-screen items-center justify-center p-4">
+                            <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
                                 @php
                                     $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
                                         ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
@@ -686,17 +932,17 @@
                                 
                                 <div x-show="singleEditMode"
                                     x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
-                                    class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden"
+                                    class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden"
                                     @click.stop>
 
-                                    <form action="{{ route('tasks.update', $task->id) }}" method="POST" class="flex flex-col" style="max-height: 85vh;">
+                                    <form action="{{ route('tasks.update', $task->id) }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
                                         @csrf
                                         @method('PUT')
                                         
                                         <!-- Header -->
-                                        <div class="px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
-                                            <div>
-                                                <h2 class="text-xl font-bold text-gray-800">Edit Task Details</h2>
+                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
+                                            <div class="flex-1 min-w-0 pr-2">
+                                                <h2 class="text-lg sm:text-xl font-bold text-gray-800">Edit Task Details</h2>
                                                 <p class="text-gray-600 italic text-xs mt-1">
                                                     @if($isInvoicedAndPaid)
                                                         This task is invoiced and paid - editing is disabled
@@ -705,15 +951,15 @@
                                                     @endif
                                                 </p>
                                             </div>
-                                            <button type="button" @click="singleEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2">
+                                            <button type="button" @click="singleEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
                                                 &times;
                                             </button>
                                         </div>
 
                                         <!-- Form Content - Scrollable -->
-                                        <div class="p-6 overflow-y-auto flex-1">
+                                        <div class="p-4 sm:p-6 overflow-y-auto flex-1">
                                             <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
-                                                <div class="flex flex-col gap-6">
+                                                <div class="flex flex-col gap-4 sm:gap-6">
                                                     <!-- Reference & Status -->
                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                         <div class="flex-1">
@@ -793,33 +1039,33 @@
                                                             const supplier = this.parseNum(this.rawSupplierSurcharge);
                                                             this.total = +(base + supplier).toFixed(3);
                                                         }
-                                                    }" x-init="calculate()" x-effect="calculate()" class="flex flex-wrap gap-4">
-                                                        <div class="flex-1 min-w-[150px]">
+                                                    }" x-init="calculate()" x-effect="calculate()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                                                        <div class="col-span-1">
                                                             <label class="block text-sm font-medium text-gray-700">Price</label>
-                                                            <input type="text" name="price" x-model="rawPrice" class="border border-gray-300 p-2 rounded-md w-full">
+                                                            <input type="text" name="price" x-model="rawPrice" class="border border-gray-300 p-2 rounded-md w-full text-sm">
                                                         </div>
-                                                        <div class="flex-1 min-w-[150px]">
+                                                        <div class="col-span-1">
                                                             <label class="block text-sm font-medium text-gray-700">Tax</label>
-                                                            <input type="text" name="tax" x-model="rawTax" class="border border-gray-300 p-2 rounded-md w-full">
+                                                            <input type="text" name="tax" x-model="rawTax" class="border border-gray-300 p-2 rounded-md w-full text-sm">
                                                         </div>
-                                                        <div class="flex-1 min-w-[150px]">
+                                                        <div class="col-span-1">
                                                             <label class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                            <input type="text" name="surcharge" x-model="rawSurcharge" class="border border-gray-300 p-2 rounded-md w-full">
+                                                            <input type="text" name="surcharge" x-model="rawSurcharge" class="border border-gray-300 p-2 rounded-md w-full text-sm">
                                                         </div>
-                                                        <div class="flex-1 min-w-[150px]">
-                                                            <label class="block text-sm font-medium text-gray-700">Supplier Surcharge</label>
-                                                            <input type="text" :value="parseNum(rawSupplierSurcharge).toFixed(3)" readonly class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full">
+                                                        <div class="col-span-1">
+                                                            <label class="block text-xs sm:text-sm font-medium text-gray-700 truncate">Supplier Surcharge</label>
+                                                            <input type="text" :value="parseNum(rawSupplierSurcharge).toFixed(3)" readonly class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full text-sm">
                                                         </div>
-                                                        <div class="flex-1 min-w-[150px]">
+                                                        <div class="col-span-2 sm:col-span-1">
                                                             <label class="block text-sm font-medium text-gray-700">Total</label>
-                                                            <input type="text" name="total" :value="total.toFixed(3)" readonly class="border border-gray-300 p-2 rounded-md w-full">
+                                                            <input type="text" name="total" :value="total.toFixed(3)" readonly class="border border-gray-300 p-2 rounded-md w-full text-sm font-semibold">
                                                         </div>
                                                     </div>
 
                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                         <div class="flex-1">
                                                             <label class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                            <select name="payment_method_account_id" class="border border-gray-300 p-2 rounded-md w-full">
+                                                            <select name="payment_method_account_id" class="border border-gray-300 p-2 rounded-md w-full text-sm">
                                                                 <option value="">Select Payment Method</option>
                                                                 @foreach($listOfCreditors as $groupName => $accounts)
                                                                 <optgroup label="{{ $groupName }}">
@@ -840,22 +1086,22 @@
 
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700">Additional Info</label>
-                                                        <textarea rows="3" readonly class="border border-gray-300 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}</textarea>
+                                                        <textarea rows="3" readonly class="border border-gray-300 p-3 rounded-md bg-gray-200 w-full resize-none text-sm">{{ $task->additional_info }} - {{ $task->venue }}</textarea>
                                                     </div>
                                                 </div>
                                             </fieldset>
                                         </div>
 
                                         <!-- Footer -->
-                                        <div class="px-6 py-4 bg-slate-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-                                            <button type="button" @click="singleEditMode = false" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+                                            <button type="button" @click="singleEditMode = false" class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                                                 Cancel
                                             </button>
                                             <button type="submit" 
                                                 :disabled="readOnly" 
                                                 :class="readOnly ? 'cursor-not-allowed opacity-60' : ''"
                                                 :title="readOnly ? 'This task is invoiced and paid - editing is not allowed' : ''"
-                                                class="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
+                                                class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
                                                 Update Task
                                             </button>
                                         </div>
@@ -867,10 +1113,10 @@
                     </div>
 
                     <!-- Proceed to Invoice Section -->
-                    <div class="mt-6 bg-gradient-to-r from-blue-50 to-sky-50 rounded-lg border border-blue-200 p-6 flex-shrink-0">
-                        <div class="flex items-center justify-between">
+                    <div class="mt-6 bg-gradient-to-r from-blue-50 to-sky-50 rounded-lg border border-blue-200 p-4 sm:p-6 flex-shrink-0">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-blue-800">Ready to Invoice?</h3>
+                                <h3 class="text-base sm:text-lg font-semibold text-blue-800">Ready to Invoice?</h3>
 
                                 <p class="text-sm text-blue-600 mt-1">
                                     Create invoice for
@@ -882,7 +1128,7 @@
                             </div>
 
                             <a :href="getInvoiceUrl()"
-                            class="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                            class="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
                             :class="selectedForInvoice.length === 0 ? 'opacity-50 pointer-events-none' : ''">
                                 <span>Create Invoice</span>
                                 <span class="bg-white text-blue-700 text-xs font-bold px-2 py-1 rounded-full" x-text="selectedForInvoice.length"></span>
@@ -900,27 +1146,27 @@
 
             <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity" @click="bulkEditMode = false"></div>
 
-            <div class="flex min-h-screen items-center justify-center p-4">
+            <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
                 <div x-show="bulkEditMode"
-                    class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden"
+                    class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden"
                     @click.stop>
 
-                    <form action="{{ route('tasks.bulk-update') }}" method="POST" class="flex flex-col" style="max-height: 85vh;">
+                    <form action="{{ route('tasks.bulk-update') }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
                         @csrf
                         
                         <!-- Header -->
-                        <div class="px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
-                            <div>
-                                <h2 class="text-xl font-bold text-gray-800">Bulk Edit All Tasks</h2>
+                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
+                            <div class="flex-1 min-w-0 pr-2">
+                                <h2 class="text-lg sm:text-xl font-bold text-gray-800">Bulk Edit All Tasks</h2>
                                 <p class="text-gray-600 italic text-xs mt-1">Changes will apply to all {{ $tasks->count() }} selected tasks</p>
                             </div>
-                            <button type="button" @click="bulkEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2">
+                            <button type="button" @click="bulkEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
                                 &times;
                             </button>
                         </div>
 
                         <!-- Form Content - Scrollable -->
-                        <div class="p-6 overflow-y-auto flex-1">
+                        <div class="p-4 sm:p-6 overflow-y-auto flex-1">
                             @foreach($tasks as $task)
                             <input type="hidden" name="task_ids[]" value="{{ $task->id }}">
                             @endforeach
@@ -953,11 +1199,11 @@
                         </div>
 
                         <!-- Footer -->
-                        <div class="px-6 py-4 bg-slate-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-                            <button type="button" @click="bulkEditMode = false" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+                            <button type="button" @click="bulkEditMode = false" class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                                 Cancel
                             </button>
-                            <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
+                            <button type="submit" class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
                                 Update All Tasks
                             </button>
                         </div>
@@ -968,11 +1214,11 @@
 
         <!-- Client Registration Modal -->
         <div x-show="showUploadForm" x-transition x-cloak
-            class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
-            <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
+            class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center p-2">
+            <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm shadow-xl">
                 <div class="flex items-start justify-between mb-6">
                     <div>
-                        <h2 class="text-xl font-bold text-gray-800">Upload Passport</h2>
+                        <h2 class="text-lg sm:text-xl font-bold text-gray-800">Upload Passport</h2>
                         <p class="text-gray-500 italic text-xs mt-1">Please choose
                             appropriate file to proceed</p>
                     </div>
@@ -1014,20 +1260,20 @@
         <div x-cloak x-show="showManualForm" 
             x-cloak
             class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 h-[90vh] sm:overflow-visible overflow-y-auto transition-all duration-300">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-4 sm:p-6 max-h-[95vh] overflow-y-auto transition-all duration-300">
                 <!-- Header with title and close button -->
                 <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800">Client Registration</h2>
                     <button @click="showManualForm = false"
                         class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
                 </div>
 
                 <!-- Subtitle -->
-                <p class="text-gray-600 italic text-xs mb-6">Please fill in the required client information to register</p>
+                <p class="text-gray-600 italic text-xs mb-4 sm:mb-6">Please fill in the required client information to register</p>
 
                 <!-- Form -->
                 <form action="{{ route('clients.store') }}" method="POST"
-                    id="client-formTask" class="space-y-4">
+                    id="client-formTask" class="space-y-3 sm:space-y-4">
                     @csrf
                     <input type="hidden" name="task_id" :value="modalTaskId">
                     <input type="hidden" name="agent_id" :value="modalAgentId">
@@ -1049,11 +1295,11 @@
                         <input type="file" name="file" id="file-task-passport"
                             class="hidden"
                             accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
-                        <p id="task-passport-file-name">
+                        <p id="task-passport-file-name" class="text-sm text-center">
                             You can drag and drop a file here
                         </p>
                         <label for="file-task-passport"
-                            class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
+                            class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500 text-sm">
                             Upload File
                         </label>
                     </div>
@@ -1096,15 +1342,15 @@
                     </div>
 
                     <!-- Email + DOB -->
-                    <div class="flex gap-4 mb-3">
-                        <div class="w-1/2">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3">
+                        <div class="flex-1">
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                             <input type="email" name="email" id="emailTask"
                                 placeholder="Client's email"
                                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
-                        <div class="w-1/2">
+                        <div class="flex-1">
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-1">Date
                                 of Birth</label>
@@ -1117,8 +1363,8 @@
                     <div class="mb-3">
                         <label
                             class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <div class="flex gap-2">
-                            <div class="relative w-40">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <div class="relative w-full sm:w-40">
                                 <x-searchable-dropdown name="dial_code" :items="\App\Models\Country::all()->map(
                                     fn($country) => [
                                         'id' => $country->dialing_code,
@@ -1136,15 +1382,15 @@
                     </div>
 
                     <!-- Passport + Civil -->
-                    <div class="flex gap-4 mb-3">
-                        <div class="w-1/2">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3">
+                        <div class="flex-1">
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-1">Passport
                                 Number</label>
                             <input type="text" name="passport_no" id="passport_noTask"
                                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
-                        <div class="w-1/2">
+                        <div class="flex-1">
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-1">Civil
                                 Number</label>
@@ -1172,11 +1418,11 @@
                     <!-- Buttons -->
                     <div class="flex justify-between gap-3 pt-4 mt-4">
                         <button type="button" @click="closeAll()"
-                            class="w-[45%] sm:w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
+                            class="flex-1 sm:w-32 sm:flex-none bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
                             Cancel
                         </button>
                         <button type="submit"
-                            class="w-[45%] sm:w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
+                            class="flex-1 sm:w-32 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
                             Register Client
                         </button>
                     </div>

@@ -109,7 +109,7 @@
                                     </td>
                                     <td class="p-3 text-sm">
                                         <div class="flex items-center space-x-2">
-                                            <!-- <a data-tooltip-left="View Refund"
+                                            <a data-tooltip-left="View Refund"
                                                 href="{{ route('refunds.show', [$refund->company_id, $refund->refund_number]) }}"
                                                 target="_blank"
                                                 class="text-sm font-medium text-blue-600 hover:underline">
@@ -119,7 +119,7 @@
                                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
                                                     <circle cx="12" cy="12" r="3" />
                                                 </svg>
-                                            </a> -->
+                                            </a>
                                             <a data-tooltip-left="Edit Refund"
                                                 href="{{ route('refunds.edit', [$refund->id]) }}"
                                                 class="text-sm font-medium text-blue-600 hover:underline">

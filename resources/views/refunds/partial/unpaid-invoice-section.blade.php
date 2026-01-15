@@ -6,7 +6,7 @@
             <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-8 space-y-6 xl:space-y-0 xl:space-x-6">
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Task Selling Price</label>
-                    <input readonly type="number" step="0.01"
+                    <input readonly type="number" step="0.001"
                         name="tasks[{{ $loopIndex }}][original_invoice_price]"
                         value="{{ number_format($invoiceDetail->task_price, 3, '.', '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
@@ -19,7 +19,7 @@
 
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Task Cost Price</label>
-                    <input readonly type="number" step="0.01"
+                    <input readonly type="number" step="0.001"
                         name="tasks[{{ $loopIndex }}][original_task_cost]"
                         value="{{ number_format($invoiceDetail->supplier_price, 3, '.', '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
@@ -104,7 +104,7 @@
             <hr class="my-6">
 
             <div class="font-bold text-gray-700 mb-2">Total Profit (Invoice Price)</div>
-            <input type="number" step="0.01" name="tasks[{{ $loopIndex }}][total_refund_to_client]" id="invoicePriceInput_{{ $loopIndex }}"
+            <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][total_refund_to_client]" id="invoicePriceInput_{{ $loopIndex }}"
                 value="{{ old('invoice_price', $isEditing && $refundDetail ? number_format($refundDetail->total_refund_to_client, 3, '.', '')
                         : number_format($invoiceDetail->markup_price + $calculatedRefundCharge, 3, '.', '')) }}"
                 class="w-full px-4 py-3 border border-indigo-300 rounded-lg bg-white text-right font-bold text-lg">
@@ -131,9 +131,9 @@
             const totalProfit = parseFloat(invoicePriceInput.value) || 0;
             const newAgentMarkup = totalProfit - (originalTaskProfit + supplierCharge);
 
-            supplierChargeDisplay.textContent = supplierCharge.toFixed(2);
-            newAgentMarkupDisplay.textContent = newAgentMarkup.toFixed(2);
-            newAgentMarkupInput.value = newAgentMarkup.toFixed(2);
+            supplierChargeDisplay.textContent = supplierCharge.toFixed(3);
+            newAgentMarkupDisplay.textContent = newAgentMarkup.toFixed(3);
+            newAgentMarkupInput.value = newAgentMarkup.toFixed(3);
 
             newAgentMarkupDisplay.className = newAgentMarkup >= 0
                 ? "text-2xl text-green-600 font-bold mb-6"

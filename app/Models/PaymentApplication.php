@@ -34,6 +34,14 @@ class PaymentApplication extends Model
     }
 
     /**
+     * Get the source credit record
+     */
+    public function credit()
+    {
+        return $this->belongsTo(Credit::class);
+    }
+
+    /**
      * Get the invoice that received the payment
      */
     public function invoice()
@@ -87,7 +95,7 @@ class PaymentApplication extends Model
     public static function getApplicationsForInvoice($invoiceId)
     {
         return self::where('invoice_id', $invoiceId)
-            ->with(['payment', 'appliedBy'])
+            ->with(['payment', 'credit.refund', 'appliedBy'])
             ->orderBy('applied_at', 'desc')
             ->get();
     }
@@ -101,5 +109,53 @@ class PaymentApplication extends Model
             ->with(['invoice', 'invoicePartial', 'appliedBy'])
             ->orderBy('applied_at', 'desc')
             ->get();
+    }
+
+    /**
+     * Check if this application is from a refund credit (not topup)
+     */
+    public function isFromRefund(): bool
+    {
+        return $this->payment_id === null && $this->credit?->refund_id !== null;
+    }
+
+    /**
+     * Check if this application is from a topup credit
+     */
+    public function isFromTopup(): bool
+    {
+        return $this->payment_id !== null;
+    }
+
+    /**
+     * Get the source reference number (voucher number or refund number)
+     */
+    public function getSourceReferenceAttribute(): ?string
+    {
+        if ($this->isFromTopup()) {
+            return $this->payment?->voucher_number;
+        }
+
+        if ($this->isFromRefund()) {
+            return $this->credit?->refund?->refund_number ?? ('RF-' . $this->credit?->refund_id);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the source type label
+     */
+    public function getSourceTypeAttribute(): string
+    {
+        if ($this->isFromTopup()) {
+            return 'Topup';
+        }
+
+        if ($this->isFromRefund()) {
+            return 'Refund';
+        }
+
+        return 'Unknown';
     }
 }

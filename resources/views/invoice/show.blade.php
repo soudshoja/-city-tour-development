@@ -626,7 +626,7 @@
         </p>
     </div>
     @endif
-    @if (in_array($invoice->status, ['paid', 'partial', 'paid by refund', 'refunded']))
+    @if ($invoice->status !== 'unpaid')
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
         <div class="invoice">
             <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
@@ -647,8 +647,11 @@
                     @foreach ($paidPartials as $partial)
                     @php
                         // Check if this credit payment has PaymentApplication records (new audit trail system)
-                        $paymentApps = $partial->paymentApplications()->with('payment')->get();
+                        $paymentApps = $partial->paymentApplications()->with(['payment', 'credit.refund'])->get();
                         $hasPaymentApplications = $paymentApps->isNotEmpty();
+
+                        $topupApps = $paymentApps->filter(fn($app) => $app->payment_id !== null);
+                        $refundApps = $paymentApps->filter(fn($app) => $app->payment_id === null && $app->credit?->refund_id !== null);
                         
                         // Old way: get credit utilization amount
                         $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
@@ -656,13 +659,23 @@
                     <tr class="text-sm text-gray-700">
                         <td class="px-4 py-2 border">
                             @if($hasPaymentApplications)
-                                {{-- New system: show linked payment voucher numbers --}}
-                                @foreach($paymentApps as $app)
+                                @foreach($topupApps as $app)
                                     @if($app->payment)
                                         <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $app->payment->voucher_number]) }}"
                                             class="text-blue-500 underline" target="_blank">{{ $app->payment->voucher_number }}</a>
-                                        @if(!$loop->last)<br>@endif
+                                        @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
                                     @endif
+                                @endforeach
+                                @foreach($refundApps as $app)
+                                    @if($app->credit?->refund)
+                                        <a href="{{ route('refunds.show', ['companyId' => $companyId, 'refundNumber' => $app->credit->refund->refund_number]) }}"
+                                            class="text-blue-500 underline" target="_blank">
+                                            {{ $app->credit->refund->refund_number }}
+                                        </a>
+                                    @else
+                                        <span class="text-gray-700">Refund Credit</span>
+                                    @endif
+                                    @if(!$loop->last)<br>@endif
                                 @endforeach
                             @elseif(optional($partial->payment)->voucher_number)
                                 <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
@@ -674,27 +687,29 @@
                                 <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">Credit</a>
                             @endif
                         </td>
-                        @if ($hasPaymentApplications)
-                            {{-- New system: show specific payment vouchers used --}}
-                            <td class="px-4 py-2 border">
-                                @foreach($paymentApps as $app)
+                        <td class="px-4 py-2 border">
+                            @if ($hasPaymentApplications)
+                                @foreach($topupApps as $app)
                                     @if($app->payment)
                                         {{ $app->payment->voucher_number }} ({{ number_format($app->amount, 3) }})
-                                        @if(!$loop->last)<br>@endif
+                                        @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
                                     @endif
                                 @endforeach
-                            </td>
-                        @elseif ($paymentReferenceCredit)
-                            <td class="px-4 py-2 border">Client Credit by {{ $partial->client->full_name }}
+                                @foreach($refundApps as $app)
+                                    {{ $app->credit?->refund?->refund_number ?? 'RF-' . $app->credit?->refund_id }} ({{ number_format($app->amount, 3) }})
+                                    @if(!$loop->last)<br>@endif
+                                @endforeach
+                            @elseif ($paymentReferenceCredit)
+                                Client Credit by {{ $partial->client->full_name }}
                                 ({{ $paymentReferenceCredit }})
-                            </td>
-                        @elseif ($partial->payment_gateway === 'Tabby')
-                            <td class="px-4 py-2 border italic">Paid via receipt voucher</td>
-                        @elseif ($partial->payment?->payment_gateway === 'MyFatoorah')
-                            <td class="px-4 py-2 border">{{ $partial->payment->myfatoorahPayment->invoice_ref ?? $partial->payment->myfatoorahPayment->payload['Data']['InvoiceReference'] ?? 'N/A' }}</td>
-                        @else
-                            <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
-                        @endif
+                            @elseif ($partial->payment_gateway === 'Tabby')
+                                <span class="italic">Paid via receipt voucher</span>
+                            @elseif ($partial->payment?->payment_gateway === 'MyFatoorah')
+                                {{ $partial->payment->myfatoorahPayment->invoice_ref ?? $partial->payment->myfatoorahPayment->payload['Data']['InvoiceReference'] ?? 'N/A' }}
+                            @else
+                                {{ $partial->payment->payment_reference ?? 'N/A' }}
+                            @endif
+                        </td>
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
@@ -727,12 +742,8 @@
                     your address.</p>
             </div>
         </div>
-
-
-
     </div>
     @endif
-
 
     <script>
         let invoice = @json($invoice);

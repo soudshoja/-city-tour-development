@@ -2946,27 +2946,36 @@
             }
         }
 
+        window.invoicePartials = @json($invoice->invoicePartials ?? []);
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
+
             const invoiceChargeElement = document.getElementById('invoice_charge');
             const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
 
             let serviceCharge = 0;
-            const selectedGateway = document.getElementById('payment_gateway_option')?.value;
-            let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
 
-            if (selectedGateway) {
-                const selectedCharge = charges.find(charge => charge.name === selectedGateway);
-                
-                if (selectedCharge) {
-                    const gatewayKey = gwKey(selectedGateway);
-                    const gatewayMethods = methodsByGateway[gatewayKey] || [];
-                    
-                    if (gatewayMethods.length > 0 && selectedPaymentMethod) {
-                        const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
-                        serviceCharge = method ? (method.fee || 0) : 0;
-                    } else {
-                        serviceCharge = selectedCharge.fee || 0;
+            if (window.invoicePartials && Array.isArray(window.invoicePartials) && window.invoicePartials.length > 0) {
+                serviceCharge = window.invoicePartials.reduce((sum, partial) => {
+                    return sum + (parseFloat(partial.service_charge) || 0);
+                }, 0);
+            } else {
+                const selectedGateway = document.getElementById('payment_gateway_option')?.value;
+                const selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
+
+                if (selectedGateway) {
+                    const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+
+                    if (selectedCharge) {
+                        const gatewayKey = gwKey(selectedGateway);
+                        const gatewayMethods = methodsByGateway[gatewayKey] || [];
+
+                        if (gatewayMethods.length > 0 && selectedPaymentMethod) {
+                            const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
+                            serviceCharge = method ? (parseFloat(method.fee) || 0) : 0;
+                        } else {
+                            serviceCharge = parseFloat(selectedCharge.fee) || 0;
+                        }
                     }
                 }
             }
@@ -2974,10 +2983,8 @@
             const finalAmount = subtotal + serviceCharge;
             const finalTotal = finalAmount + invoiceCharge;
 
-            // Update all display elements
             document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
 
-            // Update service charge display
             const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
             const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
             if (serviceChargeDisplayElement) {
@@ -2987,7 +2994,6 @@
                 serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
             }
 
-            // Update final amount display (subtotal + service charge)
             const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
             const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
             if (finalAmountDisplayElement) {
@@ -3011,6 +3017,7 @@
             const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
             const netT = document.getElementById('netT');
             if (netT) netT.textContent = netTotals.toFixed(2);
+
             const netTotal = document.getElementById('netTotal');
             if (netTotal) netTotal.value = netTotals.toFixed(2);
         }

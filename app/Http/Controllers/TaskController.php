@@ -39,6 +39,7 @@ use App\Models\HotelBooking;
 use App\Models\TBO;
 use App\Models\Wallet;
 use App\Models\SupplierSurchargeReference;
+use App\Models\MapHotel;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -5656,9 +5657,18 @@ class TaskController extends Controller
             return redirect()->route('tasks.index')->with('error', 'No tasks found');
         }
 
-        $paymentMethods = Account::where('account_type', 'payment_method')->get();
+        $mapHotels = [];
+        foreach ($tasks as $task) {
+            if ($task->supplier_id == 2 && $task->venue) {
+                $mapHotel = MapHotel::with('city.country')->where('name', $task->venue)->first();
+                if ($mapHotel) {
+                    $mapHotels[$task->id] = $mapHotel;
+                }
+            }
+        }
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'paymentMethods', 'paymentMethod'));
+
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'paymentMethod', 'mapHotels'));
     }
 
     public function bulkUpdate(Request $request)

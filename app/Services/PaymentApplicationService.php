@@ -529,15 +529,29 @@ class PaymentApplicationService
                 'description' => "Payment for $invoice->invoice_number via {$voucherNumber}",
             ]);
 
+            Log::info('[PAYMENT APPLICATION] Created Credit record', [
+                'credit_id' => $credit->id,
+                'amount' => -$applyFromThis,
+                'payment_id' => $credit->payment_id,
+                'refund_id' => $credit->refund_id,
+            ]);
+
             $paymentApplication = PaymentApplication::create([
-                'payment_id' => $paymentId, // can be null for refund
+                'payment_id' => $paymentId,
                 'credit_id' => $sourceCredit?->id,
                 'invoice_id' => $invoice->id,
                 'invoice_partial_id' => $invoicePartial->id,
                 'amount' => $applyFromThis,
                 'applied_by' => Auth::id(),
                 'applied_at' => now(),
-                'notes' => "Applied from {$voucherNumber}",
+                'notes' => "Applied from {$voucherNumber} ({$invoice->payment_type} payment)",
+            ]);
+
+            Log::info('[PAYMENT APPLICATION] Created PaymentApplication record', [
+                'payment_application_id' => $paymentApplication->id,
+                'payment_id' => $sourceCredit->payment_id,
+                'invoice_partial_id' => $invoicePartial->id,
+                'amount' => $applyFromThis,
             ]);
 
             $appliedPayments[] = [

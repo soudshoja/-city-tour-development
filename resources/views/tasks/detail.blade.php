@@ -253,7 +253,7 @@
                 x-cloak>
             </div>
 
-            <div class="flex flex-col lg:flex-row gap-4 items-stretch">
+            <div class="flex flex-col lg:flex-row gap-4 items-stretch">                
                 <!-- Mobile Sidebar Drawer (only visible on mobile) -->
                 <div 
                     x-show="showSidebar"
@@ -506,7 +506,7 @@
 
                     <div class="flex-1">
                         @foreach($tasks as $task)
-                        <div x-cloak x-show="selectedTaskId === {{ $task->id }}" class="flex flex-col gap-4 h-full">
+                        <div x-cloak x-show="selectedTaskId === {{ $task->id }}" class="flex flex-col gap-4">
 
                             <!-- Task Header with Edit Icon -->
                             <div class="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-sm p-4 sm:p-6 flex-shrink-0">
@@ -531,9 +531,9 @@
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1">
-                                <!-- Task Information -->
-                                <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                            <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">                                
+                                <!-- Task Information - 2 columns on lg -->
+                                <div class="xl:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
                                     <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
                                         <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Task Information</h2>
                                     </div>
@@ -649,8 +649,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Type-Specific Details -->
-                                <div class="lg:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                                <!-- Type-Specific Details - 3 columns on lg -->
+                                <div class="xl:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
                                     <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
                                         <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
                                             {{ ucfirst($task->type) }} Details
@@ -800,15 +800,44 @@
                                         </div>
                                         @elseif($task->type === 'hotel')
                                         <div class="p-4 sm:p-6">
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                                                <div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                                <div class="sm:col-span-3">
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
-                                                    <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? 'N/A') }}</p>
+                                                    @if($task->supplier_id == 2 && isset($mapHotels[$task->id]))
+                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->name ?? 'N/A' }}</p>
+                                                    @else
+                                                        <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? 'N/A') }}</p>
+                                                    @endif
+                                                </div>
+
+                                                @if($task->supplier_id == 2 && isset($mapHotels[$task->id]))
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
+                                                    <p class="text-sm font-medium text-gray-900">{{ ucfirst($mapHotels[$task->id]->address ?? 'N/A') }}</p>
                                                 </div>
                                                 <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Duration</p>
-                                                    <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zipcode</p>
+                                                    <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->zipCode ?? 'N/A' }}</p>
                                                 </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Location</p>
+                                                    <p class="text-sm text-gray-900">{{ ucwords(strtolower($mapHotels[$task->id]->city->name)) ?? 'N/A' }}, {{ $mapHotels[$task->id]->city->country->name ?? 'N/A' }}</p>
+                                                </div>
+
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
+                                                    <p class="text-sm font-medium text-gray-900">+{{ $mapHotels[$task->id]->telephone ?? 'N/A' }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Fax</p>
+                                                    <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->fax ?? 'N/A' }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                                                    <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->email ?? 'N/A' }}</p>
+                                                </div>
+                                                @endif
+
                                                 <div>
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check In</p>
                                                     <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('D, d M Y') }}</p>
@@ -816,6 +845,10 @@
                                                 <div>
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check Out</p>
                                                     <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_out)->format('D, d M Y') }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Duration</p>
+                                                    <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
                                                 </div>
                                             </div>
                                         </div>

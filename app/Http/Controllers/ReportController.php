@@ -24,11 +24,13 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Refund;
+use App\Models\Client;
 use App\Http\Controllers\CoaController;
 use Exception;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
+
 {
     public function index(Request $request)
     {
@@ -82,129 +84,122 @@ class ReportController extends Controller
         return view('reports.agent', compact('agents', 'agentLedgers'));
     }
 
-    // Fetch client report data
+    /**
+     * Enhanced Client Report Method - Task-wise View
+     * 
+     * Replace the existing clientReport method in ReportController.php with this version
+     * This provides task-wise breakdown showing invoice and refund status per task
+     */
     public function clientReport(Request $request)
     {
         $request->validate([
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
-            'date_preset' => 'nullable|string',
+            'client_ids' => 'nullable|array',
+            'client_ids.*' => 'nullable|integer',
         ]);
 
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
-        $datePreset = $request->input('date_preset');
+        $clientIds = $request->input('client_ids', []);
 
-        if ($datePreset && !$dateFrom && !$dateTo) {
-            $now = Carbon::now();
-            switch ($datePreset) {
-                case 'this_week':
-                    $dateFrom = $now->startOfWeek()->toDateString();
-                    $dateTo = $now->endOfWeek()->toDateString();
-                    break;
-                case 'this_month':
-                    $dateFrom = $now->startOfMonth()->toDateString();
-                    $dateTo = $now->endOfMonth()->toDateString();
-                    break;
-                case 'this_year':
-                    $dateFrom = $now->startOfYear()->toDateString();
-                    $dateTo = $now->endOfYear()->toDateString();
-                    break;
-                case 'january':
-                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'february':
-                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'march':
-                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'april':
-                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'may':
-                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'june':
-                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'july':
-                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'august':
-                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'september':
-                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'october':
-                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'november':
-                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'december':
-                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
-                    break;
+        $clientsQuery = Client::with([
+            'tasks' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('supplier_pay_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('supplier_pay_date', '<=', $dateTo))
+                    ->with([
+                        'supplier',
+                        'invoiceDetail.invoice.agent.branch',
+                        'refundDetail.refund',
+                    ])
+                    ->orderBy('supplier_pay_date', 'desc');
+            },
+            'invoices' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
+                    ->with(['invoicePartials', 'paymentApplications']);
             }
+        ]);
+
+        if (!empty($clientIds)) {
+            $clientsQuery->whereIn('id', $clientIds);
         }
 
-        // Get all clients
-        $clients = \App\Models\Client::with(['invoices.invoicePartials', 'invoices.paymentApplications', 'invoices', 'invoices.paymentApplications', 'invoices.invoicePartials.paymentApplications'])
-            ->get();
+        $clients = $clientsQuery->get();
 
         $clientData = [];
-        foreach ($clients as $client) {
-            // Invoices (main)
-            $invoices = $client->invoices()->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
-                ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
-                ->get();
+        $totalOwed = 0;
+        $totalPaid = 0;
+        $totalBalance = 0;
 
-            $totalOwed = 0;
-            $totalPaid = 0;
+        foreach ($clients as $client) {
+            $invoices = $client->invoices;
+            $clientTotalOwed = 0;
+            $clientTotalPaid = 0;
+            $paidInvoicesCount = 0;
 
             foreach ($invoices as $invoice) {
-                $totalOwed += $invoice->amount;
-                $totalPaid += $invoice->total_paid_via_applications;
+                $clientTotalOwed += $invoice->amount;
+                $paidAmount = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
+                $clientTotalPaid += $paidAmount;
 
-                // Invoice partials for this invoice
-                foreach ($invoice->invoicePartials as $partial) {
-                    // Only count partials for this client
-                    if ($partial->client_id == $client->id) {
-                        $totalOwed += $partial->amount;
-                        $totalPaid += $partial->paymentApplications->sum('amount');
+                if (in_array($invoice->status, ['paid', 'refunded']) || $paidAmount >= $invoice->amount) {
+                    $paidInvoicesCount++;
+                }
+            }
+
+            $tasks = $client->tasks;
+            $totalTasks = $tasks->count();
+
+            $invoicedTasksCount = $tasks->filter(fn($t) => $t->invoiceDetail !== null)->count();
+            $refundedTasksCount = $tasks->filter(fn($t) => $t->refundDetail !== null)->count();
+            $uninvoicedTasksCount = $tasks->filter(function ($task) {
+                return $task->invoiceDetail === null;
+            })->count();
+
+            $refundCredit = 0;
+            $refundOwed = 0;
+
+            foreach ($tasks as $task) {
+                if ($task->refundDetail && $task->refundDetail->refund) {
+                    $refund = $task->refundDetail->refund;
+                    $refundAmount = $task->refundDetail->total_refund_to_client ?? 0;
+
+                    if ($refund->refund_invoice_id === null) {
+                        $refundCredit += $refundAmount;
+                    } else {
+                        $refundOwed += $refundAmount;
                     }
                 }
             }
 
-            // Payments made by this client (not via invoice application)
-            $payments = $client->hasMany(\App\Models\Payment::class, 'client_id')
-                ->when($dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $dateFrom))
-                ->when($dateTo, fn($q) => $q->whereDate('payment_date', '<=', $dateTo))
-                ->get();
-            $totalPaid += $payments->sum('amount');
+            $clientCredit = $client->total_credit ?? 0;
+
+            $balance = $clientTotalOwed - $clientTotalPaid;
 
             $clientData[] = [
                 'client' => $client,
-                'total_owed' => $totalOwed,
-                'total_paid' => $totalPaid,
-                'balance' => $totalOwed - $totalPaid,
+                'total_owed' => $clientTotalOwed,
+                'total_paid' => $clientTotalPaid,
+                'balance' => $balance,
+                'total_tasks' => $totalTasks,
+                'tasks' => $tasks, //->take(20)
+                'invoices_count' => $invoices->count(),
+                'paid_invoices_count' => $paidInvoicesCount,
+                'invoiced_tasks_count' => $invoicedTasksCount,
+                'uninvoiced_tasks_count' => $uninvoicedTasksCount,
+                'refunded_tasks_count' => $refundedTasksCount,
+                'refund_credit' => $refundCredit,
+                'refund_owed' => $refundOwed,
+                'client_credit' => $clientCredit,
             ];
+
+            $totalOwed += $clientTotalOwed;
+            $totalPaid += $clientTotalPaid;
+            $totalBalance += $balance;
         }
 
-        // Sort by balance descending
+        // Sort by balance descending (clients who owe the most first)
         usort($clientData, fn($a, $b) => $b['balance'] <=> $a['balance']);
 
         // Pagination for view
@@ -220,138 +215,157 @@ class ReportController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        $clientsList = Client::orderBy('name')
+            ->get(['id', 'name', 'first_name', 'middle_name', 'last_name'])
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->full_name ?: $c->name
+            ]);
+
         return view('reports.client', [
             'clients' => $clientsPaginated,
             'allClients' => $clientData,
+            'clientsList' => $clientsList,
+            'totals' => [
+                'totalOwed' => $totalOwed,
+                'totalPaid' => $totalPaid,
+                'totalBalance' => $totalBalance,
+            ],
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
-            'datePreset' => $datePreset,
         ]);
     }
 
     public function clientReportPdf(Request $request)
     {
+        // Increase limits for large reports
+        ini_set('max_execution_time', 300);
+
         $request->validate([
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
-            'date_preset' => 'nullable|string',
+            'client_ids' => 'nullable|array',
+            'client_ids.*' => 'nullable|integer',
         ]);
 
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
-        $datePreset = $request->input('date_preset');
+        $clientIds = $request->input('client_ids', []);
 
-        if ($datePreset && !$dateFrom && !$dateTo) {
-            $now = Carbon::now();
-            switch ($datePreset) {
-                case 'this_week':
-                    $dateFrom = $now->startOfWeek()->toDateString();
-                    $dateTo = $now->endOfWeek()->toDateString();
-                    break;
-                case 'this_month':
-                    $dateFrom = $now->startOfMonth()->toDateString();
-                    $dateTo = $now->endOfMonth()->toDateString();
-                    break;
-                case 'this_year':
-                    $dateFrom = $now->startOfYear()->toDateString();
-                    $dateTo = $now->endOfYear()->toDateString();
-                    break;
-                case 'january':
-                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'february':
-                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'march':
-                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'april':
-                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'may':
-                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'june':
-                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'july':
-                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'august':
-                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'september':
-                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'october':
-                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'november':
-                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
-                    break;
-                case 'december':
-                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
-                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
-                    break;
+        $clientsQuery = Client::with([
+            'tasks' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('supplier_pay_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('supplier_pay_date', '<=', $dateTo))
+                    ->with([
+                        'supplier',
+                        'invoiceDetail.invoice.agent.branch',
+                        'refundDetail.refund',
+                    ])
+                    ->orderBy('supplier_pay_date', 'desc');
+            },
+            'invoices' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
+                    ->with(['invoicePartials', 'paymentApplications']);
             }
+        ]);
+
+        if (!empty($clientIds)) {
+            $clientsQuery->whereIn('id', $clientIds);
         }
 
-        $clients = \App\Models\Client::with(['invoices.invoicePartials', 'invoices.paymentApplications', 'invoices', 'invoices.paymentApplications', 'invoices.invoicePartials.paymentApplications'])
-            ->get();
+        $clientsQuery->where(function ($q) {
+            $q->has('tasks')->orHas('invoices');
+        });
+
+        $clients = $clientsQuery->get();
 
         $clientData = [];
-        foreach ($clients as $client) {
-            $invoices = $client->invoices()->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
-                ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
-                ->get();
+        $totalOwed = 0;
+        $totalPaid = 0;
+        $totalBalance = 0;
 
-            $totalOwed = 0;
-            $totalPaid = 0;
+        foreach ($clients as $client) {
+            $invoices = $client->invoices;
+            $clientTotalOwed = 0;
+            $clientTotalPaid = 0;
+            $paidInvoicesCount = 0;
 
             foreach ($invoices as $invoice) {
-                $totalOwed += $invoice->amount;
-                $totalPaid += $invoice->total_paid_via_applications;
+                $clientTotalOwed += $invoice->amount;
+                $paidAmount = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
+                $clientTotalPaid += $paidAmount;
 
-                foreach ($invoice->invoicePartials as $partial) {
-                    if ($partial->client_id == $client->id) {
-                        $totalOwed += $partial->amount;
-                        $totalPaid += $partial->paymentApplications->sum('amount');
+                if ($invoice->status === 'paid' || $paidAmount >= $invoice->amount) {
+                    $paidInvoicesCount++;
+                }
+            }
+
+            $tasks = $client->tasks;
+            $totalTasks = $tasks->count();
+
+            $invoicedTasksCount = $tasks->filter(fn($t) => $t->invoiceDetail !== null)->count();
+            $refundedTasksCount = $tasks->filter(fn($t) => $t->refundDetail !== null)->count();
+            $uninvoicedTasksCount = $tasks->filter(fn($t) => $t->invoiceDetail === null)->count();
+
+            $refundCredit = 0;
+            $refundOwed = 0;
+
+            foreach ($tasks as $task) {
+                if ($task->refundDetail && $task->refundDetail->refund) {
+                    $refund = $task->refundDetail->refund;
+                    $refundAmount = $task->refundDetail->total_refund_to_client ?? 0;
+
+                    if ($refund->refund_invoice_id === null) {
+                        $refundCredit += $refundAmount;
+                    } else {
+                        $refundOwed += $refundAmount;
                     }
                 }
             }
 
-            $payments = $client->hasMany(\App\Models\Payment::class, 'client_id')
-                ->when($dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $dateFrom))
-                ->when($dateTo, fn($q) => $q->whereDate('payment_date', '<=', $dateTo))
-                ->get();
-            $totalPaid += $payments->sum('amount');
+            $clientCredit = $client->total_credit ?? 0;
+            $balance = $clientTotalOwed - $clientTotalPaid;
+
+            // Skip clients with no tasks if date filter is applied
+            if (($dateFrom || $dateTo) && $totalTasks === 0) continue;
+            // Skip clients with no activity
+            if ($totalTasks === 0 && $invoices->count() === 0) continue;
 
             $clientData[] = [
                 'client' => $client,
-                'total_owed' => $totalOwed,
-                'total_paid' => $totalPaid,
-                'balance' => $totalOwed - $totalPaid,
+                'total_owed' => $clientTotalOwed,
+                'total_paid' => $clientTotalPaid,
+                'balance' => $balance,
+                'total_tasks' => $totalTasks,
+                'tasks' => $tasks,
+                'invoices_count' => $invoices->count(),
+                'paid_invoices_count' => $paidInvoicesCount,
+                'invoiced_tasks_count' => $invoicedTasksCount,
+                'uninvoiced_tasks_count' => $uninvoicedTasksCount,
+                'refunded_tasks_count' => $refundedTasksCount,
+                'refund_credit' => $refundCredit,
+                'refund_owed' => $refundOwed,
+                'client_credit' => $clientCredit,
             ];
+
+            $totalOwed += $clientTotalOwed;
+            $totalPaid += $clientTotalPaid;
+            $totalBalance += $balance;
         }
 
         usort($clientData, fn($a, $b) => $b['balance'] <=> $a['balance']);
 
         $pdf = Pdf::loadView('reports.pdf.client', [
             'allClients' => $clientData,
+            'totals' => [
+                'totalOwed' => $totalOwed,
+                'totalPaid' => $totalPaid,
+                'totalBalance' => $totalBalance,
+            ],
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
-            'datePreset' => $datePreset,
+            'generatedAt' => now()->format('d M Y, H:i'),
         ])->setPaper('a4', 'landscape');
 
         $filename = 'client-report-' . now()->format('Y-m-d') . '.pdf';

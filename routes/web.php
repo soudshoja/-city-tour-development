@@ -362,8 +362,8 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/agent', [ReportController::class, 'agentReport'])->name('agent');
-        Route::get('/client', [ReportController::class, 'clientReport'])->name('client');
-        Route::get('/client/pdf', [ReportController::class, 'clientReportPdf'])->name('client.pdf');
+        Route::match(['get', 'post'], '/client', [ReportController::class, 'clientReport'])->name('client');
+        Route::match(['get', 'post'], '/client/pdf', [ReportController::class, 'clientReportPdf'])->name('client.pdf');
         Route::get('/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');
         Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
         Route::get('/summary', [ReportController::class, 'summary'])->name('summary');
@@ -386,8 +386,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
         Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
         Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
-        Route::get('/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
-        Route::get('/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
+        Route::match(['get', 'post'], '/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
+        Route::match(['get', 'post'], '/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
     });
 
     // INVOICE

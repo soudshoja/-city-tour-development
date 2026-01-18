@@ -9,4 +9,5 @@ enum InvoiceStatus: string
     case PARTIAL = 'partial';
     case PAID_BY_REFUND = 'paid by refund';
     case REFUNDED = 'refunded';
+    case PARTIAL_REFUND = 'partial refund';
 }

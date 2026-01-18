@@ -4812,13 +4812,13 @@ class InvoiceController extends Controller
             'success' => true,
             'payments' => array_map(function ($item) {
                 return [
-                    'payment' => [
-                        'id' => $item['payment']->id,
-                        'voucher_number' => $item['payment']->voucher_number,
-                        'payment_date' => $item['payment']->payment_date?->format('d M Y'),
-                        'original_amount' => $item['payment']->amount,
-                    ],
+                    'credit_id' => $item['credit_id'],
+                    'source_type' => $item['source_type'],
+                    'reference_number' => $item['reference_number'],
                     'available_balance' => $item['available_balance'],
+                    'date' => $item['date']?->format('d M Y'),
+                    'payment_id' => $item['payment']->id ?? null,
+                    'refund_id' => $item['refund_id'] ?? null,
                 ];
             }, $availablePayments),
             'total_available' => array_sum(array_column($availablePayments, 'available_balance')),
@@ -4849,7 +4849,7 @@ class InvoiceController extends Controller
         $request->validate([
             'invoice_id' => 'required|integer|exists:invoices,id',
             'payment_allocations' => 'required|array|min:1',
-            'payment_allocations.*.payment_id' => 'required|integer|exists:payments,id',
+            'payment_allocations.*.credit_id' => 'required|integer|exists:credits,id',
             'payment_allocations.*.amount' => 'required|numeric|min:0.001',
             'payment_mode' => 'required|in:full,partial,split',
             'other_gateway' => 'nullable|string',
@@ -4897,7 +4897,7 @@ class InvoiceController extends Controller
         $request->validate([
             'required_amount' => 'required|numeric|min:0.001',
             'payment_allocations' => 'required|array|min:1',
-            'payment_allocations.*.payment_id' => 'required|integer|exists:payments,id',
+            'payment_allocations.*.credit_id' => 'required|integer|exists:credits,id',
             'payment_allocations.*.amount' => 'required|numeric|min:0.001',
         ]);
 

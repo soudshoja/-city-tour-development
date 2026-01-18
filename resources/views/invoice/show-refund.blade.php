@@ -69,7 +69,9 @@
                 <h1 class="text-2xl font-bold text-gray-800">REFUND INVOICE</h1>
                 <p class="text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-gray-600">Date: {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d M Y') }}</p>
-                @php $refund = $invoice->refund->first(); @endphp
+                @php
+                    $refund = \App\Models\Refund::where('refund_invoice_id', $invoice->id)->first();
+                @endphp
                 <p class="text-gray-600">Generated from Refund: {{ $refund->refund_number }}</p>
             </div>
             <div>

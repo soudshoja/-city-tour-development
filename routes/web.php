@@ -360,13 +360,14 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'reports',
         'as' => 'reports.',
     ], function () {
-        Route::get('/reports', [ReportController::class, 'index'])->name('index');
-        Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('agent');
-        Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('client');
-        Route::get('/reports/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');
-        Route::get('/reports/performance', [ReportController::class, 'performance'])->name('performance');
-        Route::get('/reports/summary', [ReportController::class, 'summary'])->name('summary');
-        Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/agent', [ReportController::class, 'agentReport'])->name('agent');
+        Route::get('/client', [ReportController::class, 'clientReport'])->name('client');
+        Route::get('/client/pdf', [ReportController::class, 'clientReportPdf'])->name('client.pdf');
+        Route::get('/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');
+        Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
+        Route::get('/summary', [ReportController::class, 'summary'])->name('summary');
+        Route::get('/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
         Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report');
         Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report');
         Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier');

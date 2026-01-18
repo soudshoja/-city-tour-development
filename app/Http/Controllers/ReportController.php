@@ -83,41 +83,280 @@ class ReportController extends Controller
     }
 
     // Fetch client report data
-    public function clientReport()
+    public function clientReport(Request $request)
     {
-        return view('reports.maintenance'); // Show the maintenance page
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'date_preset' => 'nullable|string',
+        ]);
 
-        $clients = DB::table('transactions')
-            ->join('clients', 'clients.id', '=', 'transactions.client_id')
-            ->select(
-                'clients.name as client_name',
-                DB::raw('COUNT(transactions.id) as total_transactions'),
-                DB::raw('SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END) as total_debit'),
-                DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit'),
-                DB::raw('SUM(CASE WHEN transactions.status = "completed" THEN transactions.amount ELSE 0 END) as total_completed'),
-                DB::raw('SUM(CASE WHEN transactions.status = "pending" THEN transactions.amount ELSE 0 END) as total_pending')
-            )
-            ->groupBy('clients.name')
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $datePreset = $request->input('date_preset');
+
+        if ($datePreset && !$dateFrom && !$dateTo) {
+            $now = Carbon::now();
+            switch ($datePreset) {
+                case 'this_week':
+                    $dateFrom = $now->startOfWeek()->toDateString();
+                    $dateTo = $now->endOfWeek()->toDateString();
+                    break;
+                case 'this_month':
+                    $dateFrom = $now->startOfMonth()->toDateString();
+                    $dateTo = $now->endOfMonth()->toDateString();
+                    break;
+                case 'this_year':
+                    $dateFrom = $now->startOfYear()->toDateString();
+                    $dateTo = $now->endOfYear()->toDateString();
+                    break;
+                case 'january':
+                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'february':
+                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'march':
+                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'april':
+                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'may':
+                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'june':
+                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'july':
+                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'august':
+                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'september':
+                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'october':
+                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'november':
+                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'december':
+                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
+                    break;
+            }
+        }
+
+        // Get all clients
+        $clients = \App\Models\Client::with(['invoices.invoicePartials', 'invoices.paymentApplications', 'invoices', 'invoices.paymentApplications', 'invoices.invoicePartials.paymentApplications'])
             ->get();
 
-        $clientLedgers = DB::table('journal_entries')
-            ->join('transactions', 'journal_entries.transaction_id', '=', 'transactions.id')
-            ->join('clients', 'clients.id', '=', 'transactions.client_id')
-            ->select(
-                'clients.name as client_name',
-                'journal_entries.transaction_date',
-                'journal_entries.description',
-                'journal_entries.debit',
-                'journal_entries.credit',
-                'journal_entries.balance'
-            )
-            ->orderBy('client_name')
-            ->orderBy('journal_entries.transaction_date')
-            ->get();
+        $clientData = [];
+        foreach ($clients as $client) {
+            // Invoices (main)
+            $invoices = $client->invoices()->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
+                ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
+                ->get();
 
-        return view('reports.client', compact('clients', 'clientLedgers'));
+            $totalOwed = 0;
+            $totalPaid = 0;
+
+            foreach ($invoices as $invoice) {
+                $totalOwed += $invoice->amount;
+                $totalPaid += $invoice->total_paid_via_applications;
+
+                // Invoice partials for this invoice
+                foreach ($invoice->invoicePartials as $partial) {
+                    // Only count partials for this client
+                    if ($partial->client_id == $client->id) {
+                        $totalOwed += $partial->amount;
+                        $totalPaid += $partial->paymentApplications->sum('amount');
+                    }
+                }
+            }
+
+            // Payments made by this client (not via invoice application)
+            $payments = $client->hasMany(\App\Models\Payment::class, 'client_id')
+                ->when($dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $dateFrom))
+                ->when($dateTo, fn($q) => $q->whereDate('payment_date', '<=', $dateTo))
+                ->get();
+            $totalPaid += $payments->sum('amount');
+
+            $clientData[] = [
+                'client' => $client,
+                'total_owed' => $totalOwed,
+                'total_paid' => $totalPaid,
+                'balance' => $totalOwed - $totalPaid,
+            ];
+        }
+
+        // Sort by balance descending
+        usort($clientData, fn($a, $b) => $b['balance'] <=> $a['balance']);
+
+        // Pagination for view
+        $perPage = 20;
+        $currentPage = $request->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $paginatedData = array_slice($clientData, $offset, $perPage);
+        $clientsPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paginatedData,
+            count($clientData),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('reports.client', [
+            'clients' => $clientsPaginated,
+            'allClients' => $clientData,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'datePreset' => $datePreset,
+        ]);
     }
 
+    public function clientReportPdf(Request $request)
+    {
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'date_preset' => 'nullable|string',
+        ]);
+
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $datePreset = $request->input('date_preset');
+
+        if ($datePreset && !$dateFrom && !$dateTo) {
+            $now = Carbon::now();
+            switch ($datePreset) {
+                case 'this_week':
+                    $dateFrom = $now->startOfWeek()->toDateString();
+                    $dateTo = $now->endOfWeek()->toDateString();
+                    break;
+                case 'this_month':
+                    $dateFrom = $now->startOfMonth()->toDateString();
+                    $dateTo = $now->endOfMonth()->toDateString();
+                    break;
+                case 'this_year':
+                    $dateFrom = $now->startOfYear()->toDateString();
+                    $dateTo = $now->endOfYear()->toDateString();
+                    break;
+                case 'january':
+                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'february':
+                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'march':
+                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'april':
+                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'may':
+                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'june':
+                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'july':
+                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'august':
+                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'september':
+                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'october':
+                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'november':
+                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
+                    break;
+                case 'december':
+                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
+                    break;
+            }
+        }
+
+        $clients = \App\Models\Client::with(['invoices.invoicePartials', 'invoices.paymentApplications', 'invoices', 'invoices.paymentApplications', 'invoices.invoicePartials.paymentApplications'])
+            ->get();
+
+        $clientData = [];
+        foreach ($clients as $client) {
+            $invoices = $client->invoices()->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
+                ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
+                ->get();
+
+            $totalOwed = 0;
+            $totalPaid = 0;
+
+            foreach ($invoices as $invoice) {
+                $totalOwed += $invoice->amount;
+                $totalPaid += $invoice->total_paid_via_applications;
+
+                foreach ($invoice->invoicePartials as $partial) {
+                    if ($partial->client_id == $client->id) {
+                        $totalOwed += $partial->amount;
+                        $totalPaid += $partial->paymentApplications->sum('amount');
+                    }
+                }
+            }
+
+            $payments = $client->hasMany(\App\Models\Payment::class, 'client_id')
+                ->when($dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $dateFrom))
+                ->when($dateTo, fn($q) => $q->whereDate('payment_date', '<=', $dateTo))
+                ->get();
+            $totalPaid += $payments->sum('amount');
+
+            $clientData[] = [
+                'client' => $client,
+                'total_owed' => $totalOwed,
+                'total_paid' => $totalPaid,
+                'balance' => $totalOwed - $totalPaid,
+            ];
+        }
+
+        usort($clientData, fn($a, $b) => $b['balance'] <=> $a['balance']);
+
+        $pdf = Pdf::loadView('reports.pdf.client', [
+            'allClients' => $clientData,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'datePreset' => $datePreset,
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'client-report-' . now()->format('Y-m-d') . '.pdf';
+        return $pdf->download($filename);
+    }
 
     public function performance()
     {

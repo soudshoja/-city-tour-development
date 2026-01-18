@@ -5252,6 +5252,11 @@ class TaskController extends Controller
             'Smile Holidays',
             'Heysam Group',
             'World Of Luxury',
+            'Sky Rooms',
+            'Travel Collection',
+            'Jnan Tours',
+            'DARINA HOLIDAYS',
+            'Supreme Services',
         ];
 
         $supplierName = $supplierCompany->supplier->name;
@@ -5387,6 +5392,11 @@ class TaskController extends Controller
             'Smile Holidays' => 'SMIL',
             'Heysam Group' => 'HEYG',
             'World Of Luxury' => 'WLUX',
+            'Sky Rooms' => 'SKYR',
+            'Travel Collection' => 'TRAC',
+            'Jnan Tours' => 'JNAN',
+            'DARINA HOLIDAYS' => 'DARIN',
+            'Supreme Services' => 'SUPR',
         ];
 
         if (File::isDirectory($filePath)) {

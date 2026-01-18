@@ -23,11 +23,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\FileProcessingLogger;
 use App\Services\TaskRuleConfiguration;
+use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Http\JsonResponse;
+use Throwable;
 
-class ProcessAirFiles extends Command
+class ProcessAirFiles extends Command implements Isolatable
 {
     protected $signature = 'app:process-files 
                             {--batch : Use batch processing (upload all files first, then process together)[default]}
@@ -52,155 +55,216 @@ class ProcessAirFiles extends Command
 
     public function handle()
     {
-        // Test export functionality if requested
         if ($this->option('test-export')) {
             $this->testExportFunctionality();
             return 0;
         }
 
-        $this->companies = Company::all();
-        $useBatch = $this->option('batch') || (!$this->option('single') && !$this->option('batch'));
-        $batchSize = max(1, (int) $this->option('batch-size'));
+        $lockName = 'process_air_files_lock';
+        $lockTtl = 600; // 10 minutes
+        $lock = null;
+        $dbLockAcquired = false;
+        $cacheLockSupported = true;
 
-        $processingMode = $useBatch ? 'batch' : 'single';
-        $this->info("Starting AIR file processing from root/air-files directory using {$processingMode} processing...");
-        
-        if ($useBatch) {
-            $this->info("Batch size: {$batchSize} files per batch");
+        try {
+            $lock = Cache::lock($lockName, $lockTtl);
+            if (!$lock->get()) {
+                $this->info('Another ProcessAirFiles instance is already running (cache lock). Exiting.');
+                $this->logger->info('ProcessAirFiles: cache lock present, exiting early.');
+                return 0;
+            }
+        } catch (Throwable $e) {
+            
+            $cacheLockSupported = false;
+            $this->logger->warning('Cache lock not available, falling back to DB GET_LOCK: ' . $e->getMessage());
+
+            try {
+                
+                $res = DB::selectOne("SELECT GET_LOCK(?, 0) AS acquired", [$lockName]);
+                $acquired = $res->acquired ?? 0;
+
+                if (!$acquired) {
+                    $this->info('Another ProcessAirFiles instance is already running (db lock). Exiting.');
+                    $this->logger->info('ProcessAirFiles: db lock present, exiting early.');
+                    return 0;
+                }
+
+                $dbLockAcquired = true;
+            } catch (Throwable $e2) {
+                $this->logger->error('Failed to obtain DB lock fallback: ' . $e2->getMessage());
+                // As a last resort, continue without locking but log prominently.
+                $this->logger->warning('Proceeding without acquiring a lock — this may cause overlapping runs.');
+            }
         }
-        
-        $this->logger->info('AIR File Processing: Service started.', [
-            'mode' => $processingMode,
-            'batch_size' => $useBatch ? $batchSize : null
-        ]);
 
-        $this->logger->info('AIR File Processing Service Started', [
-            'mode' => $processingMode,
-            'batch_size' => $useBatch ? $batchSize : null,
-            'companies_count' => $this->companies->count()
-        ]);
+        try {
 
-        foreach ($this->companies as $company) {
-            $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
-            $suppliers = $company->suppliers()
-                ->wherePivot('is_active', true)
-                ->get();
+            $this->companies = Company::all();
+            $useBatch = $this->option('batch') || (!$this->option('single') && !$this->option('batch'));
+            $batchSize = max(1, (int) $this->option('batch-size'));
 
-            if ($suppliers->isEmpty()) {
-                $this->info("No active suppliers found for company: {$companyName}");
-                $this->logger->info("AIR File Processing: No active suppliers found for company {$companyName}.");
-                $this->logger->info("No active suppliers found", ['company' => $companyName]);
-                continue;
+            $processingMode = $useBatch ? 'batch' : 'single';
+            $this->info("Starting AIR file processing from root/air-files directory using {$processingMode} processing...");
+
+            if ($useBatch) {
+                $this->info("Batch size: {$batchSize} files per batch");
             }
 
-            foreach ($suppliers as $supplier) {
-                $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
-                $supplierId = $supplier->id;
+            $this->logger->info('AIR File Processing: Service started.', [
+                'mode' => $processingMode,
+                'batch_size' => $useBatch ? $batchSize : null
+            ]);
 
-                if (!$supplierName) {
-                    $this->error("Supplier name is empty for company: {$companyName}");
-                    $this->logger->error("AIR File Processing: Supplier name is empty for company {$companyName}.");
-                    $this->logger->error("Supplier name is empty", ['company' => $companyName]);
+            $this->logger->info('AIR File Processing Service Started', [
+                'mode' => $processingMode,
+                'batch_size' => $useBatch ? $batchSize : null,
+                'companies_count' => $this->companies->count()
+            ]);
+
+            foreach ($this->companies as $company) {
+                $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
+                $suppliers = $company->suppliers()
+                    ->wherePivot('is_active', true)
+                    ->get();
+
+                if ($suppliers->isEmpty()) {
+                    $this->info("No active suppliers found for company: {$companyName}");
+                    $this->logger->info("AIR File Processing: No active suppliers found for company {$companyName}.");
+                    $this->logger->info("No active suppliers found", ['company' => $companyName]);
                     continue;
                 }
 
-                $filePath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+                foreach ($suppliers as $supplier) {
+                    $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
+                    $supplierId = $supplier->id;
 
-                if (!File::isDirectory($filePath)) {
-                    $this->error("Source directory not found: {$filePath}");
-                    $this->logger->error("Source directory not found", ['path' => $filePath, 'company' => $companyName, 'supplier' => $supplierName]);
-                    File::makeDirectory($filePath, 0755, true, true);
-                    $this->info("Created source directory: {$filePath}, please ensure files are pushed here.");
-                    $this->logger->info("Created source directory", ['path' => $filePath, 'company' => $companyName, 'supplier' => $supplierName]);
-                    continue;
-                }
+                    if (!$supplierName) {
+                        $this->error("Supplier name is empty for company: {$companyName}");
+                        $this->logger->error("AIR File Processing: Supplier name is empty for company {$companyName}.");
+                        $this->logger->error("Supplier name is empty", ['company' => $companyName]);
+                        continue;
+                    }
 
-                // ✅ Skip files too new or too small (avoid processing during upload)
-                $filesToProcess = array_filter(File::files($filePath), function ($file) {
-                    // $minSize = 500; // bytes
-                    // $minAge = 60;   // seconds
+                    $filePath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
 
-                    // $fileAge = time() - $file->getMTime();
-                    // $fileSize = $file->getSize();
+                    if (!File::isDirectory($filePath)) {
+                        $this->error("Source directory not found: {$filePath}");
+                        $this->logger->error("Source directory not found", ['path' => $filePath, 'company' => $companyName, 'supplier' => $supplierName]);
+                        File::makeDirectory($filePath, 0755, true, true);
+                        $this->info("Created source directory: {$filePath}, please ensure files are pushed here.");
+                        $this->logger->info("Created source directory", ['path' => $filePath, 'company' => $companyName, 'supplier' => $supplierName]);
+                        continue;
+                    }
 
-                    // if ($fileAge < $minAge) {
-                    //     $this->logger->info("Skipping file too new: {$file->getFilename()} ({$fileAge}s old)");
-                    //     return false;
-                    // }
+                    // ✅ Skip files too new or too small (avoid processing during upload)
+                    $filesToProcess = array_filter(File::files($filePath), function ($file) {
+                        // $minSize = 500; // bytes
+                        // $minAge = 60;   // seconds
 
-                    // if ($fileSize < $minSize) {
-                    //     $this->logger->info("Skipping file too small: {$file->getFilename()} ({$fileSize} bytes)");
-                    //     return false;
-                    // }
+                        // $fileAge = time() - $file->getMTime();
+                        // $fileSize = $file->getSize();
 
-                    return true;
-                });
+                        // if ($fileAge < $minAge) {
+                        //     $this->logger->info("Skipping file too new: {$file->getFilename()} ({$fileAge}s old)");
+                        //     return false;
+                        // }
 
-                // $filesToProcess = File::files($filePath);
+                        // if ($fileSize < $minSize) {
+                        //     $this->logger->info("Skipping file too small: {$file->getFilename()} ({$fileSize} bytes)");
+                        //     return false;
+                        // }
 
-                if (empty($filesToProcess)) {
-                    $this->info("No new files found in {$companyName}/{$supplierName} air-files directory to process.");
-                    $this->logger->info("No files found to process", ['company' => $companyName, 'supplier' => $supplierName]);
-                    continue;
-                }
+                        return true;
+                    });
 
-                $this->info(count($filesToProcess) . " file(s) found in {$companyName}/{$supplierName} air-files.");
-                $this->logger->info("Files found for processing", [
-                    'company' => $companyName,
-                    'supplier' => $supplierName,
-                    'file_count' => count($filesToProcess),
-                    'processing_mode' => $useBatch ? 'batch' : 'single'
-                ]);
-                
-                // Choose processing method based on command options
-                if ($useBatch) {
-                    // Process files in batches
-                    $chunks = array_chunk($filesToProcess, $batchSize);
-                    $this->logger->info("Starting batch processing", [
+                    // $filesToProcess = File::files($filePath);
+
+                    if (empty($filesToProcess)) {
+                        $this->info("No new files found in {$companyName}/{$supplierName} air-files directory to process.");
+                        $this->logger->info("No files found to process", ['company' => $companyName, 'supplier' => $supplierName]);
+                        continue;
+                    }
+
+                    $this->info(count($filesToProcess) . " file(s) found in {$companyName}/{$supplierName} air-files.");
+                    $this->logger->info("Files found for processing", [
                         'company' => $companyName,
                         'supplier' => $supplierName,
-                        'total_files' => count($filesToProcess),
-                        'batch_count' => count($chunks),
-                        'batch_size' => $batchSize
+                        'file_count' => count($filesToProcess),
+                        'processing_mode' => $useBatch ? 'batch' : 'single'
                     ]);
-                    
-                    foreach ($chunks as $chunkIndex => $fileChunk) {
-                        $this->info("Processing batch " . ($chunkIndex + 1) . "/" . count($chunks) . " (" . count($fileChunk) . " files) for {$companyName}/{$supplierName}");
-                        $this->logger->info("Processing batch", [
+
+                    // Choose processing method based on command options
+                    if ($useBatch) {
+                        // Process files in batches
+                        $chunks = array_chunk($filesToProcess, $batchSize);
+                        $this->logger->info("Starting batch processing", [
                             'company' => $companyName,
                             'supplier' => $supplierName,
-                            'batch_number' => $chunkIndex + 1,
-                            'total_batches' => count($chunks),
-                            'files_in_batch' => count($fileChunk)
+                            'total_files' => count($filesToProcess),
+                            'batch_count' => count($chunks),
+                            'batch_size' => $batchSize
                         ]);
-                        $this->processBatchFiles($company->id, $companyName, $supplierName, $supplierId, $fileChunk);
-                    }
-                } else {
-                    // Process files one by one (legacy mode)
-                    $this->logger->info("Starting single file processing", [
-                        'company' => $companyName,
-                        'supplier' => $supplierName,
-                        'file_count' => count($filesToProcess)
-                    ]);
 
-                    foreach ($filesToProcess as $file) {
-                        // dump('Processing file: ' . $file->getFilename());
-                        $this->processSingleFile($company->id, $companyName, $supplierName, $supplierId, $file);
+                        foreach ($chunks as $chunkIndex => $fileChunk) {
+                            $this->info("Processing batch " . ($chunkIndex + 1) . "/" . count($chunks) . " (" . count($fileChunk) . " files) for {$companyName}/{$supplierName}");
+                            $this->logger->info("Processing batch", [
+                                'company' => $companyName,
+                                'supplier' => $supplierName,
+                                'batch_number' => $chunkIndex + 1,
+                                'total_batches' => count($chunks),
+                                'files_in_batch' => count($fileChunk)
+                            ]);
+                            $this->processBatchFiles($company->id, $companyName, $supplierName, $supplierId, $fileChunk);
+                        }
+                    } else {
+                        // Process files one by one (legacy mode)
+                        $this->logger->info("Starting single file processing", [
+                            'company' => $companyName,
+                            'supplier' => $supplierName,
+                            'file_count' => count($filesToProcess)
+                        ]);
+
+                        foreach ($filesToProcess as $file) {
+                            // dump('Processing file: ' . $file->getFilename());
+                            $this->processSingleFile($company->id, $companyName, $supplierName, $supplierId, $file);
+                        }
                     }
-                    
+
+                    $this->info('AIR file processing for supplier ' . $supplierName . ' in company ' . $companyName . ' finished.');
+                    $this->logger->info("Supplier processing completed", [
+                        'company' => $companyName,
+                        'supplier' => $supplierName
+                    ]);
+                }
+            }
+            $this->logger->info('AIR File Processing: Service finished.');
+            $this->logger->info("AIR File Processing Service Completed", [
+                'companies_processed' => $this->companies->count()
+            ]);
+        } finally {
+            try {
+                if ($cacheLockSupported && isset($lock) && $lock) {
+                    try {
+                        $lock->release();
+                        $this->logger->info('ProcessAirFiles: cache lock released.');
+                    } catch (Throwable $e) {
+                        $this->logger->warning('Failed to release cache lock: ' . $e->getMessage());
+                    }
                 }
 
-                $this->info('AIR file processing for supplier ' . $supplierName . ' in company ' . $companyName . ' finished.');
-                $this->logger->info("Supplier processing completed", [
-                    'company' => $companyName,
-                    'supplier' => $supplierName
-                ]);
+                if (isset($dbLockAcquired) && $dbLockAcquired) {
+                    try {
+                        DB::select("SELECT RELEASE_LOCK(?)", [$lockName]);
+                        $this->logger->info('ProcessAirFiles: db lock released.');
+                    } catch (Throwable $e) {
+                        $this->logger->warning('Failed to release DB lock: ' . $e->getMessage());
+                    }
+                }
+            } catch (Throwable $e) {
+                $this->logger->warning('Failed during lock release checks: ' . $e->getMessage());
             }
         }
-        $this->logger->info('AIR File Processing: Service finished.');
-        $this->logger->info("AIR File Processing Service Completed", [
-            'companies_processed' => $this->companies->count()
-        ]);
+
         return 0;
     }
 
@@ -223,7 +287,7 @@ class ProcessAirFiles extends Command
         // Determine processing method based on supplier and file types
         $supplier = Supplier::find($supplierId);
         $useAirFileParser = $this->shouldUseAirFileParser($supplier, $files);
-        
+
         $processingMethod = $useAirFileParser ? 'AirFileParser' : 'AI-based processing';
         $this->info("Using {$processingMethod} for batch processing");
         $this->logger->info("Batch processing method selected", [
@@ -255,9 +319,9 @@ class ProcessAirFiles extends Command
         foreach ($files as $file) {
             $fileRealPath = $file->getRealPath();
             $fileName = $file->getFilename();
-            
+
             $this->info("Processing file with AirFileParser: {$fileName}");
-            
+
             try {
                 // Parse the file using AirFileParser
                 $parser = new AirFileParser($fileRealPath);
@@ -269,7 +333,7 @@ class ProcessAirFiles extends Command
                 foreach ($tasksData as $passengerIndex => $taskData) {
                     $passengerNum = $passengerIndex + 1;
                     $this->info("Processing passenger {$passengerNum}/{" . count($tasksData) . "}: {$taskData['client_name']}");
-                    
+
                     // Normalize the data
                     $normalizedTask = TaskSchema::normalize($taskData);
                     if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
@@ -284,7 +348,7 @@ class ProcessAirFiles extends Command
                     // Process and save the task using the same logic as single file processing
                     try {
                         $taskResult = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $passengerIndex);
-                        
+
                         if ($taskResult['success']) {
                             $savedTasks[] = [
                                 'file_name' => $fileName,
@@ -320,18 +384,17 @@ class ProcessAirFiles extends Command
                         ]);
                     }
                 }
-                
+
                 $processedFiles[] = $fileName;
-                
+
                 $this->info("✓ Successfully parsed: {$fileName} ({" . count($tasksData) . "} passenger(s))");
-                
             } catch (\Exception $e) {
                 $this->error("✗ Failed to parse {$fileName}: " . $e->getMessage());
                 $this->logger->error("AirFileParser failed for {$fileName}", [
                     'error' => $e->getMessage(),
                     'file_path' => $fileRealPath
                 ]);
-                
+
                 $errorFiles[] = [
                     'file_name' => $fileName,
                     'file_path' => $fileRealPath,
@@ -345,19 +408,18 @@ class ProcessAirFiles extends Command
             $totalRecords = count($allParsedData);
             $this->info("Exporting {$totalRecords} parsed records to single Excel file...");
             $this->info("Task save summary: {" . count($savedTasks) . "} saved, {" . count($failedTasks) . "} failed");
-            
+
             try {
                 $batchExcelPath = $this->exportBatchDataToSingleExcel($allParsedData, $processedFiles, $companyName, $supplierName);
-                
+
                 if ($batchExcelPath) {
                     $this->info("✓ Batch data exported to: {$batchExcelPath}");
-                    
+
                     // Also export task save results summary
                     $this->exportTaskSaveResults($savedTasks, $failedTasks, $companyName, $supplierName);
                 } else {
                     $this->error("✗ Failed to export batch data to Excel");
                 }
-                
             } catch (\Exception $e) {
                 $this->error("✗ Failed to export batch data: " . $e->getMessage());
                 $this->logger->error("Batch export failed", [
@@ -376,24 +438,32 @@ class ProcessAirFiles extends Command
         foreach ($files as $file) {
             $fileName = $file->getFilename();
             $fileRealPath = $file->getRealPath();
-            
+
             if (in_array($fileName, $processedFiles)) {
                 // Check if all tasks for this file were saved successfully
                 $fileTaskResults = array_filter($savedTasks, fn($task) => $task['file_name'] === $fileName);
                 $fileTaskFailures = array_filter($failedTasks, fn($task) => $task['file_name'] === $fileName);
-                
+
                 if (count($fileTaskFailures) === 0) {
                     // All tasks saved successfully - move to processed directory
                     $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-                    $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, 
-                        "Successfully parsed and saved " . count($fileTaskResults) . " tasks");
+                    $this->moveFileWithLogging(
+                        $fileRealPath,
+                        $successPath,
+                        $fileName,
+                        "Successfully parsed and saved " . count($fileTaskResults) . " tasks"
+                    );
                 } else {
                     // Some tasks failed - move to error directory but log partial success
                     $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
                     $successCount = count($fileTaskResults);
                     $failureCount = count($fileTaskFailures);
-                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 
-                        "Partial success: {$successCount} tasks saved, {$failureCount} tasks failed");
+                    $this->moveFileWithLogging(
+                        $fileRealPath,
+                        $errorPath,
+                        $fileName,
+                        "Partial success: {$successCount} tasks saved, {$failureCount} tasks failed"
+                    );
                 }
             } else {
                 // Move to error directory
@@ -411,11 +481,11 @@ class ProcessAirFiles extends Command
         $totalTasksSaved = count($savedTasks);
         $totalTasksFailed = count($failedTasks);
         $totalTasks = $totalTasksSaved + $totalTasksFailed;
-        
+
         $this->info("Batch processing completed:");
         $this->info("  Files: {$successCount}/{$totalCount} files parsed successfully, {$errorCount} files failed");
         $this->info("  Tasks: {$totalTasksSaved}/{$totalTasks} tasks saved successfully, {$totalTasksFailed} tasks failed");
-        
+
         $this->logger->info("Batch processing summary", [
             'company' => $companyName,
             'supplier' => $supplierName,
@@ -464,7 +534,7 @@ class ProcessAirFiles extends Command
             try {
                 $result = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
                 $processingResults[] = $result;
-                
+
                 if (!$result['success']) {
                     $allSuccess = false;
                 }
@@ -483,12 +553,12 @@ class ProcessAirFiles extends Command
         // Log processing summary
         $successCount = count(array_filter($processingResults, fn($r) => $r['success']));
         $totalCount = count($processingResults);
-        
+
         $this->info("File {$fileName}: {$successCount}/{$totalCount} items processed successfully");
         $this->logger->info("AIR File Processing: File {$fileName} summary - {$successCount}/{$totalCount} items successful", [
             'results' => $processingResults
         ]);
-        
+
         $this->logger->info("File processing summary", [
             'file_name' => $fileName,
             'total_items' => $totalCount,
@@ -524,7 +594,7 @@ class ProcessAirFiles extends Command
         // Determine processing method based on supplier and file type
         $supplier = Supplier::find($supplierId);
         $useAirFileParser = $this->shouldUseAirFileParser($supplier, [$file]);
-        
+
         $processingMethod = $useAirFileParser ? 'AirFileParser' : 'AI-based processing';
         $this->info("Using {$processingMethod} for file: {$fileName}");
         $this->logger->info("Single file processing method selected", [
@@ -552,7 +622,7 @@ class ProcessAirFiles extends Command
 
         try {
             $parser = new AirFileParser($fileRealPath);
-            
+
             $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
 
             $this->info("Found " . count($tasksData) . " passenger(s) in file: {$fileName}");
@@ -564,7 +634,7 @@ class ProcessAirFiles extends Command
             foreach ($tasksData as $index => $taskData) {
                 $passengerIndex = $index + 1;
                 $this->info("Processing passenger {$passengerIndex}/{" . count($tasksData) . "}: {$taskData['client_name']}");
-                
+
                 $normalizedTask = TaskSchema::normalize($taskData);
 
                 if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
@@ -576,7 +646,7 @@ class ProcessAirFiles extends Command
                     $passengerFileName = "passenger_{$passengerIndex}_{$fileName}";
                     $this->exportParsedDataToCsv($taskData, $passengerFileName, $companyName, $supplierName);
                     $this->exportParsedDataToExcel($taskData, $passengerFileName, $companyName, $supplierName);
-                    
+
                     // Also export normalized data if different
                     if ($normalizedTask !== $taskData) {
                         $normalizedFileName = 'normalized_' . $passengerFileName;
@@ -588,7 +658,7 @@ class ProcessAirFiles extends Command
                 // Process and save the task
                 try {
                     $taskResult = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
-                    
+
                     if ($taskResult['success']) {
                         $savedTasks[] = $taskResult;
                         $this->info("✓ Saved task for passenger {$passengerIndex}: {$taskData['client_name']}");
@@ -615,23 +685,36 @@ class ProcessAirFiles extends Command
             // Move file based on results
             $successCount = count($savedTasks);
             $totalCount = count($tasksData);
-            
+
             if (count($failedTasks) === 0) {
                 // All tasks saved successfully
                 $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-                $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, 
-                    "Successfully processed all {$totalCount} passengers");
+                $this->moveFileWithLogging(
+                    $fileRealPath,
+                    $successPath,
+                    $fileName,
+                    "Successfully processed all {$totalCount} passengers"
+                );
             } else {
                 // Some tasks failed
                 $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
                 $failureCount = count($failedTasks);
-                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 
-                    "Partial success: {$successCount}/{$totalCount} passengers processed successfully");
+                $this->moveFileWithLogging(
+                    $fileRealPath,
+                    $errorPath,
+                    $fileName,
+                    "Partial success: {$successCount}/{$totalCount} passengers processed successfully"
+                );
             }
-
         } catch (Exception $e) {
-            $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 
-                'AirFileParser processing error', $e->getMessage());
+            $this->handleFileError(
+                $companyName,
+                $supplierName,
+                $fileRealPath,
+                $fileName,
+                'AirFileParser processing error',
+                $e->getMessage()
+            );
         }
     }
 
@@ -672,7 +755,7 @@ class ProcessAirFiles extends Command
                 try {
                     $result = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
                     $processingResults[] = $result;
-                    
+
                     if (!$result['success']) {
                         $allSuccess = false;
                     }
@@ -696,7 +779,7 @@ class ProcessAirFiles extends Command
             // Log processing summary
             $successCount = count(array_filter($processingResults, fn($r) => $r['success']));
             $totalCount = count($processingResults);
-            
+
             $this->info("File {$fileName}: {$successCount}/{$totalCount} items processed successfully");
             $this->logger->info("AIR File Processing: File {$fileName} summary - {$successCount}/{$totalCount} items successful", [
                 'results' => $processingResults
@@ -710,7 +793,6 @@ class ProcessAirFiles extends Command
                 $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
                 $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, "Processing failed: {$successCount}/{$totalCount} items successful");
             }
-
         } catch (Exception $e) {
             $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'Error during processing', $e->getMessage());
         }
@@ -739,7 +821,7 @@ class ProcessAirFiles extends Command
                 'agent_email' => $agentEmail,
                 'amadeus_id_agent' => $agentAmadeusId
             ]);
-            
+
             $this->logger->info("Processing task data item", [
                 'file_name' => $fileName,
                 'item_index' => $index,
@@ -749,13 +831,13 @@ class ProcessAirFiles extends Command
                 'task_status' => $taskData['status'] ?? 'unknown'
             ]);
 
-            if ( $taskData['type'] == 'hotel' && isset($taskData['cancellation_deadline']) && !empty($taskData['cancellation_deadline'])) {
+            if ($taskData['type'] == 'hotel' && isset($taskData['cancellation_deadline']) && !empty($taskData['cancellation_deadline'])) {
                 $this->logger->info("Cancellation deadline found for item {$index} in file {$fileName}: " . $taskData['cancellation_deadline']);
 
                 $cancelDeadline  = Carbon::parse($taskData['cancellation_deadline']);
                 $createdAt = Carbon::parse($taskData['created_at'] ?? now());
 
-                if($createdAt->greaterThanOrEqualTo($cancelDeadline)) {
+                if ($createdAt->greaterThanOrEqualTo($cancelDeadline)) {
                     $this->logger->info("Cancellation deadline has passed for item {$index} in file {$fileName}. Task will be marked as issued");
                     $taskData['status'] = 'issued';
                 } else {
@@ -764,7 +846,7 @@ class ProcessAirFiles extends Command
                 }
             } else {
                 $this->logger->info("No cancellation deadline found for item {$index} in file {$fileName}. Task status will not be modified");
-            } 
+            }
 
             if (in_array($taskData['status'], ['reissued', 'refund', 'void'])) {
                 $this->logger->info("Task status is {$taskData['status']}. Checking original task for reference: {$taskData['reference']}");
@@ -793,7 +875,7 @@ class ProcessAirFiles extends Command
                                 unset($attributes['id'], $attributes['task_id']);
                                 return $attributes;
                             })->toArray();
-            
+
                             $taskData['task_flight_details'] = $flightDetailsArray;
                             $this->logger->info("Using flight details from original task ID {$originalTask->id}");
                         } else {
@@ -846,7 +928,7 @@ class ProcessAirFiles extends Command
             } else {
                 $this->logger->info("Task is {$taskData['status']}. No original task processing needed for item {$index} in file {$fileName}.");
 
-                if($agentAmadeusId !== null || $agentName !== null || $agentEmail !== null){
+                if ($agentAmadeusId !== null || $agentName !== null || $agentEmail !== null) {
                     $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
                 }
 
@@ -901,7 +983,7 @@ class ProcessAirFiles extends Command
                 'reason' => 'Task saved successfully',
                 'task_id' => $response['task']->id ?? null
             ];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error("Exception during task processing for file {$fileName}, item {$index}: " . $e->getMessage());
             return [
                 'success' => false,
@@ -921,31 +1003,31 @@ class ProcessAirFiles extends Command
     /**
      * Find agent by Amadeus ID, name, or email.
      */
-    protected function findAgent($amadeusId, $name, $email, $companyId) : ?Agent
+    protected function findAgent($amadeusId, $name, $email, $companyId): ?Agent
     {
         $agentQuery = Agent::query();
         $branchesId = Branch::where('company_id', $companyId)->pluck('id');
 
         // Then add the OR conditions for agent identification within a grouped where clause
-        $agentQuery->where(function($query) use ($amadeusId, $name, $email) {
+        $agentQuery->where(function ($query) use ($amadeusId, $name, $email) {
             $hasConditions = false;
-            
+
             if ($amadeusId) {
                 $query->where('amadeus_id', 'like', $amadeusId);
                 $hasConditions = true;
             }
-            
+
             if ($name) {
                 $words = array_filter(explode(' ', trim($name)));
                 if (count($words) > 1) {
                     if ($hasConditions) {
-                        $query->orWhere(function($subQuery) use ($words) {
+                        $query->orWhere(function ($subQuery) use ($words) {
                             foreach ($words as $word) {
                                 $subQuery->where('name', 'like', '%' . $word . '%');
                             }
                         });
                     } else {
-                        $query->where(function($subQuery) use ($words) {
+                        $query->where(function ($subQuery) use ($words) {
                             foreach ($words as $word) {
                                 $subQuery->where('name', 'like', '%' . $word . '%');
                             }
@@ -961,7 +1043,7 @@ class ProcessAirFiles extends Command
                     }
                 }
             }
-            
+
             if ($email) {
                 if ($hasConditions) {
                     $query->orWhere('email', 'like', $email);
@@ -1000,7 +1082,7 @@ class ProcessAirFiles extends Command
         $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, $reason);
     }
 
-    protected function saveTask($companyId, $data, $supplierId) : array
+    protected function saveTask($companyId, $data, $supplierId): array
     {
 
         try {
@@ -1011,7 +1093,7 @@ class ProcessAirFiles extends Command
             $request = new Request($data);
             $response = $taskController->store($request);
 
-            if(!$response instanceof JsonResponse) {
+            if (!$response instanceof JsonResponse) {
                 $this->logger->error("Unexpected response type from TaskController::store", [
                     'expected' => JsonResponse::class,
                     'actual' => get_class($response)
@@ -1065,7 +1147,7 @@ class ProcessAirFiles extends Command
                 'trace' => $e->getTraceAsString(),
                 'exception_class' => get_class($e)
             ]);
-            
+
             return [
                 'status' => 'error',
                 'message' => 'Failed to save task',
@@ -1135,7 +1217,7 @@ class ProcessAirFiles extends Command
 
             // Write to CSV
             $handle = fopen($csvFilePath, 'w');
-            
+
             if ($handle === false) {
                 throw new \Exception("Could not create CSV file: {$csvFilePath}");
             }
@@ -1162,7 +1244,6 @@ class ProcessAirFiles extends Command
             ]);
 
             return $csvFilePath;
-
         } catch (\Exception $e) {
             $this->error("Failed to export parsed data to CSV: " . $e->getMessage());
             $this->logger->error("Failed to export parsed data to CSV", [
@@ -1228,7 +1309,6 @@ class ProcessAirFiles extends Command
             ]);
 
             return $excelFilePath;
-
         } catch (\Exception $e) {
             $this->error("Failed to export parsed data to Excel: " . $e->getMessage());
             $this->logger->error("Failed to export parsed data to Excel", [
@@ -1252,7 +1332,7 @@ class ProcessAirFiles extends Command
         }
 
         $flattened = [];
-        
+
         // Handle array of data items vs single data item
         $dataItems = [];
         if (isset($data[0]) && is_array($data[0])) {
@@ -1265,14 +1345,14 @@ class ProcessAirFiles extends Command
 
         foreach ($dataItems as $index => $item) {
             $flatItem = [];
-            
+
             // Add file name and item index
             $flatItem['source_file'] = $fileName;
             $flatItem['item_index'] = $index;
-            
+
             // Flatten the main data
             $this->flattenArray($item, $flatItem, '');
-            
+
             $flattened[] = $flatItem;
         }
 
@@ -1286,7 +1366,7 @@ class ProcessAirFiles extends Command
     {
         foreach ($array as $key => $value) {
             $newKey = $prefix ? $prefix . '_' . $key : $key;
-            
+
             if (is_array($value)) {
                 // Check if it's an empty array
                 if (empty($value)) {
@@ -1341,7 +1421,7 @@ class ProcessAirFiles extends Command
     protected function testExportFunctionality()
     {
         $this->info("Testing export functionality with sample data...");
-        
+
         // Create sample parsed data structure similar to what AirFileParser would produce
         $sampleData = [
             'id' => '12345',
@@ -1418,18 +1498,18 @@ class ProcessAirFiles extends Command
 
             // Flatten all data and include file names
             $allFlattenedData = [];
-            
+
             foreach ($allParsedData as $index => $data) {
                 // Extract file name from the data itself (embedded during processing)
                 $fileName = $data['_source_file_name'] ?? $fileNames[$index] ?? "unknown_file_{$index}";
-                
+
                 // Remove the temporary field before flattening
                 if (isset($data['_source_file_name'])) {
                     unset($data['_source_file_name']);
                 }
-                
+
                 $flattenedData = $this->flattenDataStructure($data, $fileName);
-                
+
                 // Since flattenDataStructure returns an array of items, merge them all
                 foreach ($flattenedData as $item) {
                     $allFlattenedData[] = $item;
@@ -1466,7 +1546,7 @@ class ProcessAirFiles extends Command
             $this->info("Exported batch data to Excel: {$excelFilePath}");
             $this->info("Total records exported: " . count($allFlattenedData));
             $this->info("Files included: " . implode(', ', $fileNames));
-            
+
             $this->logger->info("Exported batch data to Excel", [
                 'excel_path' => $excelFilePath,
                 'total_records' => count($allFlattenedData),
@@ -1476,7 +1556,6 @@ class ProcessAirFiles extends Command
             ]);
 
             return $excelFilePath;
-
         } catch (\Exception $e) {
             $this->error("Failed to export batch data to Excel: " . $e->getMessage());
             $this->logger->error("Failed to export batch data to Excel", [
@@ -1507,7 +1586,7 @@ class ProcessAirFiles extends Command
 
             // Prepare data for export
             $summaryData = [];
-            
+
             // Add saved tasks
             foreach ($savedTasks as $task) {
                 $summaryData[] = [
@@ -1520,7 +1599,7 @@ class ProcessAirFiles extends Command
                     'error' => ''
                 ];
             }
-            
+
             // Add failed tasks
             foreach ($failedTasks as $task) {
                 $summaryData[] = [
@@ -1560,7 +1639,7 @@ class ProcessAirFiles extends Command
 
                 $summaryPath = $exportDir . '/' . $summaryFileName;
                 $this->info("✓ Task save summary exported to: {$summaryPath}");
-                
+
                 $this->logger->info("Exported task save summary", [
                     'summary_path' => $summaryPath,
                     'total_saved' => count($savedTasks),
@@ -1571,7 +1650,6 @@ class ProcessAirFiles extends Command
 
                 return $summaryPath;
             }
-
         } catch (\Exception $e) {
             $this->error("Failed to export task save summary: " . $e->getMessage());
             $this->logger->error("Failed to export task save summary", [
@@ -1592,11 +1670,11 @@ class ProcessAirFiles extends Command
         // Use AirFileParser if:
         // 1. Supplier is Amadeus (name matches exactly)
         // 2. At least one file has .air extension
-        
+
         if (!$supplier || strcasecmp($supplier->name, 'Amadeus') !== 0) {
             return false;
         }
-        
+
         // Check if any file has .air extension
         foreach ($files as $file) {
             $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
@@ -1604,7 +1682,7 @@ class ProcessAirFiles extends Command
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -1614,7 +1692,7 @@ class ProcessAirFiles extends Command
     protected function processBatchFilesWithAI($companyId, $companyName, $supplierName, $supplierId, array $files)
     {
         $this->info("Using AI-based processing for batch of " . count($files) . " files");
-        
+
         // Process each file individually using AI extraction
         foreach ($files as $file) {
             try {
@@ -1627,10 +1705,16 @@ class ProcessAirFiles extends Command
                     'supplier' => $supplierName,
                     'error' => $e->getMessage()
                 ]);
-                
+
                 // Move failed file to error directory
-                $this->handleFileError($companyName, $supplierName, $file->getRealPath(), $file->getFilename(), 
-                    'AI processing error in batch', $e->getMessage());
+                $this->handleFileError(
+                    $companyName,
+                    $supplierName,
+                    $file->getRealPath(),
+                    $file->getFilename(),
+                    'AI processing error in batch',
+                    $e->getMessage()
+                );
             }
         }
     }

@@ -274,9 +274,6 @@
                         <td style="text-align: right;">
                             <span class="stat-box stat-owed">Owed: <strong>{{ number_format($item['total_owed'], 3) }}</strong></span>
                             <span class="stat-box stat-paid">Paid: <strong>{{ number_format($item['total_paid'], 3) }}</strong></span>
-                            <span class="stat-box {{ $item['balance'] > 0 ? 'balance-owing' : ($item['balance'] < 0 ? 'balance-overpaid' : 'balance-settled') }}">
-                                Balance: {{ number_format($item['balance'], 3) }}
-                            </span>
                             <span class="stat-box {{ $finalBalance > 0 ? 'balance-owing' : ($finalBalance < 0 ? 'balance-overpaid' : 'balance-settled') }}">
                                 Balance: <strong>{{ number_format($finalBalance, 3) }}</strong> KWD
                             </span>

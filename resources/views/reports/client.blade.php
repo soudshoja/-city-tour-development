@@ -69,7 +69,7 @@
         </div>
 
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6">
-            <form method="POST" action="{{ route('reports.client') }}" class="space-y-4" id="filterForm">
+            <form method="POST" action="{{ route('reports.client') }}" id="filterForm">
                 @csrf
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="flex-1 min-w-[200px]">

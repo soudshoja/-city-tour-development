@@ -57,4 +57,9 @@ class ReportPolicy
     {
         return $user->can('view task report');
     }
+
+    public function viewClientReport(User $user)
+    {
+        return $user->can('view client report');
+    }
 }

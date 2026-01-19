@@ -1,414 +1,251 @@
 <x-app-layout>
     <div class="container mx-auto p-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6">Tasks Report</h1>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">Tasks Report</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    @if($dateFrom && $dateTo)
+                        Date Range: <span class="font-semibold">{{ \Carbon\Carbon::parse($dateFrom)->format('d-m-Y') }} – {{ \Carbon\Carbon::parse($dateTo)->format('d-m-Y') }}</span>
+                    @else
+                        <span class="font-semibold">All Time</span>
+                    @endif
+                </p>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-5 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-blue-100 text-sm font-medium uppercase tracking-wide">Total Tasks</p>
-                        <p class="text-3xl font-bold mt-2">{{ number_format($totalTasks) }}</p>
+                        <p class="text-blue-100 text-xs font-medium uppercase tracking-wide">Total Tasks</p>
+                        <p class="text-3xl font-bold mt-1">{{ number_format($totalTasks) }}</p>
                     </div>
-                    <div class="bg-blue-400 bg-opacity-30 rounded-full p-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    <div class="bg-white/30 rounded-full p-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                         </svg>
                     </div>
                 </div>
             </div>
-
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-300 rounded-xl shadow-lg p-5 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-green-100 text-sm font-medium uppercase tracking-wide">Total Debit</p>
-                        <p class="text-3xl font-bold mt-2">{{ number_format($totalDebit, 3) }} <span class="text-lg">KWD</span></p>
+                        <p class="text-emerald-100 text-xs font-medium uppercase tracking-wide">Total Debit</p>
+                        <p class="text-3xl font-bold mt-1">{{ number_format($totalDebit, 3) }} <span class="text-base font-semibold">KWD</span></p>
                     </div>
-                    <div class="bg-green-400 bg-opacity-30 rounded-full p-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <div class="bg-white/30 rounded-full p-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                     </div>
                 </div>
             </div>
-
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="bg-gradient-to-br from-rose-500 to-rose-300 rounded-xl shadow-lg p-5 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-purple-100 text-sm font-medium uppercase tracking-wide">Total Credit</p>
-                        <p class="text-3xl font-bold mt-2">{{ number_format($totalCredit, 3) }} <span class="text-lg">KWD</span></p>
+                        <p class="text-rose-100 text-xs font-medium uppercase tracking-wide">Total Credit</p>
+                        <p class="text-3xl font-bold mt-1">{{ number_format($totalCredit, 3) }} <span class="text-base font-semibold">KWD</span></p>
                     </div>
-                    <div class="bg-purple-400 bg-opacity-30 rounded-full p-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <div class="bg-white/30 rounded-full p-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                         </svg>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-md p-4 mb-4">
-            <form method="GET" action="{{ route('reports.tasks') }}" class="space-y-4" id="filterForm">
-                <!-- Date Preset Filter -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Quick Date Filter</label>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6">
+            <form method="POST" action="{{ route('reports.tasks') }}" id="filterForm">
+                @csrf
+                <div class="mb-3">
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Quick Date Filter</label>
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" onclick="setDatePreset('this_week')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'this_week' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            This Week
-                        </button>
-                        <button type="button" onclick="setDatePreset('this_month')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'this_month' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            This Month
-                        </button>
-                        <button type="button" onclick="setDatePreset('this_year')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'this_year' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            This Year
-                        </button>
-                        <button type="button" onclick="setDatePreset('january')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'january' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            January
-                        </button>
-                        <button type="button" onclick="setDatePreset('february')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'february' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            February
-                        </button>
-                        <button type="button" onclick="setDatePreset('march')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'march' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            March
-                        </button>
-                        <button type="button" onclick="setDatePreset('april')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'april' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            April
-                        </button>
-                        <button type="button" onclick="setDatePreset('may')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'may' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            May
-                        </button>
-                        <button type="button" onclick="setDatePreset('june')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'june' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            June
-                        </button>
-                        <button type="button" onclick="setDatePreset('july')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'july' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            July
-                        </button>
-                        <button type="button" onclick="setDatePreset('august')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'august' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            August
-                        </button>
-                        <button type="button" onclick="setDatePreset('september')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'september' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            September
-                        </button>
-                        <button type="button" onclick="setDatePreset('october')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'october' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            October
-                        </button>
-                        <button type="button" onclick="setDatePreset('november')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'november' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            November
-                        </button>
-                        <button type="button" onclick="setDatePreset('december')"
-                            class="preset-btn px-3 py-2 text-sm rounded-md {{ $datePreset === 'december' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                            December
-                        </button>
+                        @foreach(['this_week' => 'This Week', 'this_month' => 'This Month', 'this_year' => 'This Year', 'january' => 'January', 'february' => 'February', 'march' => 'March', 'april' => 'April', 'may' => 'May', 'june' => 'June', 'july' => 'July', 'august' => 'August', 'september' => 'September', 'october' => 'October', 'november' => 'November', 'december' => 'December'] as $preset => $label)
+                            <button type="button" onclick="setDatePreset('{{ $preset }}')"
+                                class="preset-btn px-3 py-1.5 text-xs rounded-md transition {{ $datePreset === $preset ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                                {{ $label }}
+                            </button>
+                        @endforeach
                     </div>
                     <input type="hidden" name="date_preset" id="date_preset" value="{{ $datePreset ?? '' }}">
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
-                        <input type="date" name="date_from" id="date_from" value="{{ $dateFrom ?? '' }}"
-                            class="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                            onchange="clearPreset()">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date Range</label>
+                        <input type="text" id="date-range" 
+                            class="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 cursor-pointer" 
+                            placeholder="Select date range" autocomplete="off" readonly />
+                        <input type="hidden" name="date_from" id="date_from" value="{{ $dateFrom ?? '' }}">
+                        <input type="hidden" name="date_to" id="date_to" value="{{ $dateTo ?? '' }}">
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
-                        <input type="date" name="date_to" id="date_to" value="{{ $dateTo ?? '' }}"
-                            class="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                            onchange="clearPreset()">
-                    </div>
-                </div>
+                    <x-multi-picker 
+                        label="Suppliers"
+                        name="supplier_ids"
+                        :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->toArray()"
+                        :preselected="collect(request('supplier_ids', []))->map(fn($v) => (int)$v)->all()"
+                        allLabel="All Suppliers"
+                        placeholder="Search suppliers..."
+                        class="flex-1 min-w-[180px]"
+                    />
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="relative">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Suppliers</label>
-                        <div class="relative">
-                            <input type="text" id="supplierSearch" placeholder="Search suppliers..."
-                                class="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
-                                onclick="toggleDropdown('supplierDropdown')" readonly>
-                            <div id="supplierDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                <div class="p-2 border-b">
-                                    <input type="text" id="supplierSearchInput" placeholder="Type to search..."
-                                        class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                                        onkeyup="filterOptions('supplierSearchInput', 'supplierOptions')">
-                                </div>
-                                <div id="supplierOptions" class="p-2">
-                                    @foreach($suppliers as $supplier)
-                                    <label class="flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer rounded">
-                                        <input type="checkbox" name="supplier_ids[]" value="{{ $supplier->id }}"
-                                            {{ in_array($supplier->id, $supplierIds) ? 'checked' : '' }}
-                                            class="mr-2 rounded text-indigo-600 focus:ring-indigo-500"
-                                            onchange="updateDisplay('supplierSearch', 'supplier_ids[]', 'suppliers')">
-                                        <span class="text-sm">{{ $supplier->name }}</span>
-                                    </label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ count($supplierIds) > 0 ? count($supplierIds) . ' selected' : 'Click to select' }}</p>
-                    </div>
+                    <x-multi-picker 
+                        label="Statuses"
+                        name="statuses"
+                        :items="collect($availableStatuses)->map(fn($s) => ['id' => $s, 'name' => $s === 'payment_voucher' ? 'Payment Voucher' : ucfirst($s)])->toArray()"
+                        :preselected="$statuses"
+                        allLabel="All Statuses"
+                        placeholder="Search statuses..."
+                        class="flex-1 min-w-[180px]"
+                    />
 
-                    <div class="relative">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Statuses</label>
-                        <div class="relative">
-                            <input type="text" id="statusSearch" placeholder="Select statuses..."
-                                class="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
-                                onclick="toggleDropdown('statusDropdown')" readonly>
-                            <div id="statusDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                <div class="p-2">
-                                    @foreach($availableStatuses as $status)
-                                    <label class="flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer rounded">
-                                        <input type="checkbox"
-                                            name="statuses[]"
-                                            value="{{ $status }}"
-                                            {{ in_array($status, $statuses) ? 'checked' : '' }}
-                                            class="mr-2 rounded text-indigo-600 focus:ring-indigo-500 status-checkbox"
-                                            data-status="{{ $status }}"
-                                            onchange="handleStatusChange(this)">
-                                        <span class="text-sm capitalize">{{ $status === 'payment_voucher' ? 'Payment Voucher' : ucfirst($status) }}</span>
-                                    </label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ count($statuses) > 0 ? count($statuses) . ' selected' : 'Click to select' }}</p>
-                    </div>
+                    <x-multi-picker 
+                        label="Issued By"
+                        name="issued_by"
+                        :items="collect($availableIssuedBy)->map(fn($i) => ['id' => $i, 'name' => $i])->toArray()"
+                        :preselected="$issuedBy"
+                        allLabel="All Issuers"
+                        placeholder="Search issuers..."
+                        class="flex-1 min-w-[180px]"
+                    />
 
-                    <div class="relative">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Issued By</label>
-                        <div class="relative">
-                            <input type="text" id="issuedBySearch" placeholder="Select issued by..."
-                                class="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
-                                onclick="toggleDropdown('issuedByDropdown')" readonly>
-                            <div id="issuedByDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                <div class="p-2">
-                                    @foreach($availableIssuedBy as $issuer)
-                                    <label class="flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer rounded">
-                                        <input type="checkbox" name="issued_by[]" value="{{ $issuer }}"
-                                            {{ in_array($issuer, $issuedBy) ? 'checked' : '' }}
-                                            class="mr-2 rounded text-indigo-600 focus:ring-indigo-500"
-                                            onchange="updateDisplay('issuedBySearch', 'issued_by[]', 'issued_by')">
-                                        <span class="text-sm">{{ $issuer }}</span>
-                                    </label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ count($issuedBy) > 0 ? count($issuedBy) . ' selected' : 'Click to select' }}</p>
+                    <div class="flex gap-2">
+                        <button type="submit" class="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            Filter
+                        </button>
+                        <a href="{{ route('reports.tasks') }}" class="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Reset
+                        </a>
+                        <button type="submit" formaction="{{ route('reports.tasks.pdf') }}" formtarget="_blank" 
+                            class="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            PDF
+                        </button>
                     </div>
-                </div>
-
-                <div class="flex gap-2">
-                    <button type="submit"
-                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        Apply Filters
-                    </button>
-                    <a href="{{ route('reports.tasks') }}"
-                        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500">
-                        Clear Filters
-                    </a>
-                    <button type="submit" formaction="{{ route('reports.tasks.pdf') }}" formtarget="_blank"
-                        class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Generate PDF
-                    </button>
                 </div>
             </form>
         </div>
 
-        <div class="p-4 overflow-x-auto bg-white rounded-lg shadow-md grid gap-4">
-            <table class="min-w-full bg-white border border-gray-200">
-                <thead>
-                    <tr>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Task Reference</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Original Reference</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Passenger Name</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier Pay Date</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Status</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-right border-b border-gray-200">Debit</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-right border-b border-gray-200">Credit</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($tasks as $item)
-                    <tr class="hover:bg-gray-50 {{ isset($item->type) && $item->type === 'transaction' ? 'bg-purple-50' : '' }}">
-                        <td class="py-2 px-4 border-b">{{ $item->reference }}</td>
-                        <td class="py-2 px-4 border-b">{{ $item->original_reference ?? 'N/A' }}</td>
-                        <td class="py-2 px-4 border-b">{{ $item->passenger_name ?? 'N/A' }}</td>
-                        <td class="py-2 px-4 border-b">{{ $item->supplier_name ?? 'N/A' }}</td>
-                        <td class="py-2 px-4 border-b">{{ $item->date ? \Carbon\Carbon::parse($item->date)->format('Y-m-d') : 'N/A' }}</td>
-                        <td class="py-2 px-4 border-b">
-                            <span class="px-2 py-1 text-xs rounded-full 
-                                @if($item->status === 'completed') bg-green-100 text-green-800
-                                @elseif($item->status === 'pending') bg-yellow-100 text-yellow-800
-                                @elseif($item->status === 'cancelled' || $item->status === 'void') bg-red-100 text-red-800
-                                @elseif($item->status === 'payment_voucher') bg-purple-100 text-purple-800
-                                @else bg-blue-100 text-blue-800
-                                @endif">
-                                {{ $item->status === 'payment_voucher' ? 'Payment' : ucfirst($item->status) }}
-                            </span>
-                        </td>
-                        <td class="py-2 px-4 border-b text-right">
-                            @if($item->debit > 0)
-                            {{ number_format($item->debit, 3) }}
-                            @else
-                            -
-                            @endif
-                        </td>
-                        <td class="py-2 px-4 border-b text-right">
-                            @if($item->credit > 0)
-                            {{ number_format($item->credit, 3) }}
-                            @else
-                            -
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8" class="py-4 px-4 text-center text-gray-500">
-                            No records found matching the selected filters.
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            <x-pagination :data="$tasks" />
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Reference</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Original Reference</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Passenger Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Supplier</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Debit</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($tasks as $item)
+                        <tr class="bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors {{ $item->type === 'transaction' ? 'bg-purple-50 dark:bg-purple-900/20' : '' }}">
+                            <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ $item->reference }}</td>
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->original_reference ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->passenger_name ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->supplier_name ?? '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
+                                {{ $item->date ? \Carbon\Carbon::parse($item->date)->format('d-m-Y') : '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                @php
+                                    $statusColors = [
+                                        'issued' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+                                        'reissued' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                                        'void' => 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                                        'refund' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+                                        'confirmed' => 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+                                        'void' => 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                                        'payment_voucher' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+                                    ];
+                                    $statusColor = $statusColors[$item->status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+                                @endphp
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
+                                    {{ $item->status === 'payment_voucher' ? 'Payment' : ucfirst($item->status) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right font-semibold {{ $item->debit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}">
+                                {{ $item->debit > 0 ? number_format($item->debit, 3) : '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-semibold {{ $item->credit > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400' }}">
+                                {{ $item->credit > 0 ? number_format($item->credit, 3) : '—' }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="8" class="px-4 py-8 text-center">
+                                <div class="flex flex-col items-center justify-center text-gray-500">
+                                    <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    <p class="text-lg font-medium">No tasks found</p>
+                                    <p class="text-sm">Try adjusting your filters</p>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                <x-pagination :data="$tasks" />
+            </div>
         </div>
+    </div>
 
-        <script>
-            function setDatePreset(preset) {
-                document.getElementById('date_from').value = '';
-                document.getElementById('date_to').value = '';
-                document.getElementById('date_preset').value = preset;
-                document.getElementById('filterForm').submit();
-            }
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 
-            function clearPreset() {
-                document.getElementById('date_preset').value = '';
-            }
+    <script>
+        function setDatePreset(preset) {
+            document.getElementById('date_from').value = '';
+            document.getElementById('date_to').value = '';
+            document.getElementById('date_preset').value = preset;
+            document.getElementById('filterForm').submit();
+        }
 
-            function toggleDropdown(dropdownId) {
-                const dropdown = document.getElementById(dropdownId);
-                const allDropdowns = document.querySelectorAll('[id$="Dropdown"]');
+        function clearPreset() {
+            document.getElementById('date_preset').value = '';
+        }
 
-                allDropdowns.forEach(d => {
-                    if (d.id !== dropdownId) {
-                        d.classList.add('hidden');
+        document.addEventListener('DOMContentLoaded', function() {
+            const fromDate = document.getElementById('date_from').value;
+            const toDate = document.getElementById('date_to').value;
+            
+            flatpickr("#date-range", {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                defaultDate: (fromDate && toDate) ? [fromDate, toDate] : null,
+                showMonths: 1,
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length === 2) {
+                        document.getElementById('date_from').value = instance.formatDate(selectedDates[0], "Y-m-d");
+                        document.getElementById('date_to').value = instance.formatDate(selectedDates[1], "Y-m-d");
+                        clearPreset();
                     }
-                });
-
-                dropdown.classList.toggle('hidden');
-            }
-
-            function updateDisplay(inputId, checkboxName, type) {
-                const checkboxes = document.querySelectorAll(`input[name="${checkboxName}"]:checked`);
-                const input = document.getElementById(inputId);
-                const count = checkboxes.length;
-
-                if (count > 0) {
-                    input.value = `${count} selected`;
-                } else {
-                    if (type === 'suppliers') {
-                        input.value = 'Search suppliers...';
-                    } else if (type === 'statuses') {
-                        input.value = 'Select statuses...';
-                    } else if (type === 'issued_by') {
-                        input.value = 'Select issued by...';
+                },
+                onReady: function(selectedDates, dateStr, instance) {
+                    if (fromDate && toDate) {
+                        instance.element.value = fromDate + ' to ' + toDate;
                     }
-                }
-            }
-
-            function filterOptions(searchInputId, optionsId) {
-                const searchValue = document.getElementById(searchInputId).value.toLowerCase();
-                const options = document.getElementById(optionsId);
-                const labels = options.getElementsByTagName('label');
-
-                for (let i = 0; i < labels.length; i++) {
-                    const text = labels[i].textContent.toLowerCase();
-                    if (text.includes(searchValue)) {
-                        labels[i].style.display = '';
-                    } else {
-                        labels[i].style.display = 'none';
-                    }
-                }
-            }
-
-            document.addEventListener('click', function(event) {
-                const dropdowns = document.querySelectorAll('[id$="Dropdown"]');
-                const isClickInside = event.target.closest('.relative');
-
-                if (!isClickInside) {
-                    dropdowns.forEach(dropdown => {
-                        dropdown.classList.add('hidden');
-                    });
                 }
             });
-
-            document.addEventListener('DOMContentLoaded', function() {
-                updateDisplay('supplierSearch', 'supplier_ids[]', 'suppliers');
-                updateDisplay('statusSearch', 'statuses[]', 'statuses');
-                updateDisplay('issuedBySearch', 'issued_by[]', 'issued_by');
-            });
-
-            function handleStatusChange(checkbox) {
-                const paymentVoucherCheckbox = document.querySelector('.status-checkbox[data-status="payment_voucher"]');
-                const voidCheckbox = document.querySelector('.status-checkbox[data-status="void"]');
-                const confirmedCheckbox = document.querySelector('.status-checkbox[data-status="confirmed"]');
-
-                if (paymentVoucherCheckbox && paymentVoucherCheckbox.checked) {
-                    // Payment Voucher is selected, disable void and confirmed
-                    if (voidCheckbox) {
-                        voidCheckbox.disabled = true;
-                        voidCheckbox.checked = false;
-                        voidCheckbox.closest('label').classList.add('opacity-50', 'cursor-not-allowed');
-                    }
-                    if (confirmedCheckbox) {
-                        confirmedCheckbox.disabled = true;
-                        confirmedCheckbox.checked = false;
-                        confirmedCheckbox.closest('label').classList.add('opacity-50', 'cursor-not-allowed');
-                    }
-                } else {
-                    // Payment Voucher is not selected, enable void and confirmed
-                    if (voidCheckbox) {
-                        voidCheckbox.disabled = false;
-                        voidCheckbox.closest('label').classList.remove('opacity-50', 'cursor-not-allowed');
-                    }
-                    if (confirmedCheckbox) {
-                        confirmedCheckbox.disabled = false;
-                        confirmedCheckbox.closest('label').classList.remove('opacity-50', 'cursor-not-allowed');
-                    }
-                }
-
-                updateDisplay('statusSearch', 'statuses[]', 'statuses');
-            }
-
-            // Initialize on page load
-            document.addEventListener('DOMContentLoaded', function() {
-                updateDisplay('supplierSearch', 'supplier_ids[]', 'suppliers');
-                updateDisplay('statusSearch', 'statuses[]', 'statuses');
-                updateDisplay('issuedBySearch', 'issued_by[]', 'issued_by');
-
-                // Check payment voucher status and disable/enable accordingly
-                const paymentVoucherCheckbox = document.querySelector('.status-checkbox[data-status="payment_voucher"]');
-                if (paymentVoucherCheckbox) {
-                    handleStatusChange(paymentVoucherCheckbox);
-                }
-            });
-        </script>
+        });
+    </script>
 </x-app-layout>

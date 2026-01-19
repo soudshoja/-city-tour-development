@@ -92,12 +92,12 @@
         .stat-tasks { background-color: #dbeafe; color: #1e40af; }
         .stat-invoices { background-color: #e0e7ff; color: #3730a3; }
         .stat-owed { background-color: #fee2e2; color: #991b1b; }
-        .stat-paid { background-color: #d1fae5; color: #065f46; }
+        .stat-paid { background-color: #dbeafe; color: #1e40af; }
         .stat-due-to-client { background-color: #d1fae5; color: #065f46; }
         .stat-due-from-client { background-color: #fee2e2; color: #991b1b; }
         .stat-credit { background-color: #dbeafe; color: #1e40af; }
 
-        .balance-owing { background-color: #fef3c7; color: #92400e; }
+        .balance-owing { background-color: #fee2e2; color: #991b1b; }
         .balance-overpaid { background-color: #d1fae5; color: #065f46; }
         .balance-settled { background-color: #f3f4f6; color: #374151; }
 
@@ -138,6 +138,13 @@
             margin-top: 2px;
         }
 
+        .text-debit { color: #dc2626; }
+        .text-credit { color: #059669; }
+        .text-balance-positive { color: #dc2626; }
+        .text-balance-negative { color: #059669; }
+        .text-balance-zero { color: #6b7280; }
+        .text-muted { color: #9ca3af; }
+
         .badge {
             display: inline-block;
             padding: 3px 8px;
@@ -159,7 +166,6 @@
         .badge-completed { background-color: #ede9fe; color: #5b21b6; }
         .badge-not-invoiced { background-color: #f3f4f6; color: #6b7280; }
 
-        /* No Tasks */
         .no-tasks {
             padding: 20px;
             text-align: center;
@@ -167,7 +173,6 @@
             font-style: italic;
         }
 
-        /* Footer */
         .footer {
             margin-top: 30px;
             padding-top: 15px;
@@ -180,8 +185,14 @@
             margin-bottom: 3px;
         }
 
-        .page-break {
-            page-break-after: always;
+        .totals-row {
+            background-color: #f3f4f6 !important;
+            font-weight: bold;
+        }
+        .totals-row td {
+            border-top: 2px solid #d1d5db;
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
     </style>
 </head>
@@ -200,6 +211,50 @@
     </div>
 
     @foreach($allClients as $index => $item)
+        @php
+            $runningBalance = 0;
+            $taskRows = [];
+            $sortedTasks = $item['tasks']->sortBy('supplier_pay_date');
+
+            foreach ($sortedTasks as $task) {
+                $debit = 0;
+                $credit = 0;
+
+                if (strtolower($task->status) === 'refund' || $task->refundDetail) {
+                    if ($task->refundDetail) {
+                        $credit = $task->refundDetail->total_refund_to_client ?? $task->total ?? 0;
+                    } else {
+                        $credit = $task->total ?? 0;
+                    }
+                } else {
+                    $invoicePaid = false;
+                    if ($task->invoiceDetail && $task->invoiceDetail->invoice) {
+                        $invoiceStatus = strtolower($task->invoiceDetail->invoice->status ?? '');
+                        if (in_array($invoiceStatus, ['paid', 'paid by refund', 'refunded'])) {
+                            $invoicePaid = true;
+                        }
+                    }
+
+                    if (!$invoicePaid) {
+                        $debit = $task->invoiceDetail->task_price ?? $task->total ?? 0;
+                    }
+                }
+                
+                $runningBalance = $runningBalance + $debit - $credit;
+                
+                $taskRows[] = [
+                    'task' => $task,
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'running_balance' => $runningBalance,
+                ];
+            }
+            
+            $totalDebit = collect($taskRows)->sum('debit');
+            $totalCredit = collect($taskRows)->sum('credit');
+            $finalBalance = $runningBalance;
+        @endphp
+
         <div class="client-section">
             <div class="client-header">
                 <table>
@@ -221,6 +276,9 @@
                             <span class="stat-box stat-paid">Paid: <strong>{{ number_format($item['total_paid'], 3) }}</strong></span>
                             <span class="stat-box {{ $item['balance'] > 0 ? 'balance-owing' : ($item['balance'] < 0 ? 'balance-overpaid' : 'balance-settled') }}">
                                 Balance: {{ number_format($item['balance'], 3) }}
+                            </span>
+                            <span class="stat-box {{ $finalBalance > 0 ? 'balance-owing' : ($finalBalance < 0 ? 'balance-overpaid' : 'balance-settled') }}">
+                                Balance: <strong>{{ number_format($finalBalance, 3) }}</strong> KWD
                             </span>
                         </td>
                     </tr>
@@ -245,22 +303,25 @@
                 </table>
             </div>
 
-            @if($item['tasks']->isNotEmpty())
+            @if(count($taskRows) > 0)
                 <table class="tasks">
                     <thead>
                         <tr>
-                            <th style="width: 20%;">Reference</th>
-                            <th style="width: 15%;">Supplier</th>
-                            <th style="width: 10%;" class="text-center">Type</th>
-                            <th style="width: 12%;" class="text-center">Date</th>
-                            <th style="width: 10%;" class="text-center">Status</th>
-                            <th style="width: 13%;" class="text-right">Total</th>
-                            <th style="width: 20%;" class="text-center">Billing</th>
+                            <th style="width: 15%;">Reference</th>
+                            <th style="width: 12%;">Supplier</th>
+                            <th style="width: 8%;" class="text-center">Type</th>
+                            <th style="width: 10%;" class="text-center">Date</th>
+                            <th style="width: 8%;" class="text-center">Status</th>
+                            <th style="width: 17%;" class="text-center">Billing</th>
+                            <th style="width: 10%;" class="text-right">Debit</th>
+                            <th style="width: 10%;" class="text-right">Credit</th>
+                            <th style="width: 10%;" class="text-right">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($item['tasks'] as $task)
+                        @foreach($taskRows as $row)
                         @php
+                            $task = $row['task'];
                             $taskStatus = strtolower($task->status ?? '');
                             $statusBadges = [
                                 'issued' => 'badge-issued',
@@ -287,15 +348,6 @@
                             </td>
                             <td class="text-center">
                                 <span class="badge {{ $statusBadge }}">{{ ucfirst($task->status ?? '—') }}</span>
-                            </td>
-                            <td class="text-right">
-                                <strong>
-                                    @if($task->refundDetail)
-                                        {{ number_format($task->refundDetail->total_refund_to_client ?? 0, 3) }}
-                                    @else
-                                        {{ number_format($task->invoiceDetail->task_price ?? $task->total ?? 0, 3) }}
-                                    @endif
-                                </strong>
                             </td>
                             <td class="text-center">
                                 @if($task->refundDetail && $task->refundDetail->refund)
@@ -329,8 +381,26 @@
                                     <span class="badge badge-not-invoiced">Not Invoiced</span>
                                 @endif
                             </td>
+                            <td class="text-right {{ $row['debit'] > 0 ? 'text-debit' : 'text-muted' }}">
+                                <strong>{{ $row['debit'] > 0 ? number_format($row['debit'], 3) : '—' }}</strong>
+                            </td>
+                            <td class="text-right {{ $row['credit'] > 0 ? 'text-credit' : 'text-muted' }}">
+                                <strong>{{ $row['credit'] > 0 ? number_format($row['credit'], 3) : '—' }}</strong>
+                            </td>
+                            <td class="text-right {{ $row['running_balance'] > 0 ? 'text-balance-positive' : ($row['running_balance'] < 0 ? 'text-balance-negative' : 'text-balance-zero') }}">
+                                <strong>{{ number_format($row['running_balance'], 3) }}</strong>
+                            </td>
                         </tr>
                         @endforeach
+
+                        <tr class="totals-row">
+                            <td colspan="6" class="text-right"><strong>TOTALS:</strong></td>
+                            <td class="text-right text-debit"><strong>{{ number_format($totalDebit, 3) }}</strong></td>
+                            <td class="text-right text-credit"><strong>{{ number_format($totalCredit, 3) }}</strong></td>
+                            <td class="text-right {{ $finalBalance > 0 ? 'text-balance-positive' : ($finalBalance < 0 ? 'text-balance-negative' : 'text-balance-zero') }}">
+                                <strong>{{ number_format($finalBalance, 3) }}</strong>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             @else

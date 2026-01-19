@@ -67,25 +67,32 @@
         <div class="flex justify-between items-center mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">REFUND INVOICE</h1>
-                <p class="text-gray-600">{{ $invoice->invoice_number }}</p>
-                <p class="text-gray-600">Date: {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d M Y') }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
+                <p class="text-sm text-gray-600">Date: {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d M Y') }}</p>
                 @php
                     $refund = \App\Models\Refund::where('refund_invoice_id', $invoice->id)->first();
                 @endphp
-                <p class="text-gray-600">Generated from Refund: {{ $refund->refund_number }}</p>
+                <!-- <p class="text-gray-600">Generated from Refund: {{ $refund->refund_number }}</p> -->
             </div>
             <div>
                 <img class="w-auto h-[85px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
-                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
             </div>
         </div>
 
         <div class="flex justify-between items-center mb-8">
             <div>
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
-                <p>{{ $invoice->client->full_name }}</p>
-                <p>{{ $invoice->client->email }}</p>
-                <p>{{ $invoice->client->phone }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->client->full_name }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $invoice->client->email }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->client->email }}
+                    </a>
+                </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ ($invoice->client->country_code ?? '+965') }} {{ $invoice->client->phone ?? 'N/A' }}" class="hover:underline hover:text-blue-600">
+                        {{ ($invoice->client->country_code ?? '+965') }} {{ $invoice->client->phone ?? 'N/A' }}
+                    </a>
+                </p>
             </div>
             <div class="text-right">
                 <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
@@ -180,7 +187,6 @@
                                 <p><strong>Client:</strong> {{ $task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}</p>
                                 <p><strong>Passenger:</strong> {{ $task->passenger_name ?? 'N/A' }}</p>
                                 <p><strong>GDS Ref:</strong> {{ $task->gds_reference ?? 'N/A' }}</p>
-                                <p><strong>Class:</strong> {{ ucfirst($task->flightDetails->class_type ?? 'N/A') }}</p>
                             </div>
                             <div>
                                 <p><strong>Route:</strong>
@@ -276,7 +282,6 @@
                                         ({{ $task->flightDetails->airport_from ?? '' }}) →
                                         {{ $task->flightDetails->countryTo->name ?? '' }}
                                         ({{ $task->flightDetails->airport_to ?? '' }})
-                                        <br>Class: {{ ucfirst($task->flightDetails->class_type ?? 'N/A') }}
 
                                     @elseif ($task->type === 'hotel')
                                         Hotel: {{ $task->hotelDetails->hotel->name ?? 'N/A' }} <br>
@@ -310,7 +315,7 @@
             </div>
         @endif
 
-                @if ($refund->originalInvoice?->invoicePartials->isNotEmpty())
+        {{-- @if ($refund->originalInvoice?->invoicePartials->isNotEmpty())
         <div class="mb-8">
             <h2 class="text-xl font-semibold text-gray-800 mb-2">Payments History from Original Invoice</h2>
             <table>
@@ -324,9 +329,9 @@
                 </thead>
                 <tbody>
                     @foreach ($refund->originalInvoice->invoicePartials as $partial)
-                        <tr>
+                        <tr class="text-sm">
                             <td>
-                                {{ !empty($partial->payment?->payment_date) ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M Y') : '—' }}
+                                {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                             </td>
                             <td>{{ $partial->payment_gateway }}</td>
                             <td>{{ ucfirst($partial->status) }}</td>
@@ -336,10 +341,24 @@
                 </tbody>
             </table>
         </div>
-        @endif
+        @endif --}}
 
+        @php
+            $originalInvoice = $refund->originalInvoice;
+            $totalPaidOnOriginal = $originalInvoice ? $originalInvoice->invoicePartials->where('status', 'paid')->sum('amount') : 0;
+
+            $unrefundedTotal = $unrefundedTasks->sum('task_price');
+
+            // Payment balance = what they paid - what they're keeping
+            // Positive = overpayment (credit to client)
+            // Negative = underpayment (client owes more)
+            $paymentBalance = $totalPaidOnOriginal - $unrefundedTotal;
+
+            // Show when subtotal differs from refund charges (meaning adjustment was applied)
+            $adjustmentApplied = abs($invoice->sub_amount - $refund->total_nett_refund) > 0.001;
+        @endphp
         <div class="flex flex-col md:flex-row justify-between items-end gap-6 border-t pt-6 mt-8 mb-10">
-            <div class="flex justify-end md:justify-start w-full md:w-auto">
+            <div class="flex gap-2 justify-end md:justify-start w-full md:w-auto">
                 @if ($invoice->status !== 'paid')
                     <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
                         @csrf
@@ -390,13 +409,32 @@
                     </div>
                 @endif
                 <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>Refund Charges:</span>
+                    <span>{{ number_format($refund->total_nett_refund ?? 0, 3) }}</span>
+                </div>
+                @if ($adjustmentApplied && $unrefundedTasks->isNotEmpty())
+                    @if ($paymentBalance > 0)
+                        {{-- Overpayment: client has credit, reduce amount owed --}}
+                        <div class="flex justify-between py-2 border-b border-gray-200 text-green-600">
+                            <span>Overpayment Credit:</span>
+                            <span>-{{ number_format($paymentBalance, 3) }}</span>
+                        </div>
+                    @elseif ($paymentBalance < 0)
+                        {{-- Underpayment: client owes more for unrefunded items --}}
+                        <div class="flex justify-between py-2 border-b border-gray-200 text-red-600">
+                            <span>Outstanding Balance:</span>
+                            <span>+{{ number_format(abs($paymentBalance), 3) }}</span>
+                        </div>
+                    @endif
+                @endif
+                <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
                     <span>{{ number_format($invoice->sub_amount, 3) }}</span>
                 </div>
-                <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Tax ({{ $invoice->tax_rate }}%):</span>
+                <!-- <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>Tax ({{ $invoice->tax }}%):</span>
                     <span>{{ number_format($invoice->tax, 3) }}</span>
-                </div>
+                </div> -->
 
                 @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
                     @php

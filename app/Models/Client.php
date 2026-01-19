@@ -57,6 +57,11 @@ class Client extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function credits()
+    {
+        return $this->hasMany(Credit::class);
+    }
+
     public function subClients()
     {
         return $this->hasMany(ClientGroup::class, 'parent_client_id');

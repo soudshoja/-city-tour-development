@@ -24,11 +24,13 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Refund;
+use App\Models\Client;
 use App\Http\Controllers\CoaController;
 use Exception;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
+
 {
     public function index(Request $request)
     {
@@ -82,42 +84,338 @@ class ReportController extends Controller
         return view('reports.agent', compact('agents', 'agentLedgers'));
     }
 
-    // Fetch client report data
-    public function clientReport()
+    /**
+     * Enhanced Client Report Method - Task-wise View
+     * 
+     * Replace the existing clientReport method in ReportController.php with this version
+     * This provides task-wise breakdown showing invoice and refund status per task
+     */
+    public function clientReport(Request $request)
     {
-        return view('reports.maintenance'); // Show the maintenance page
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'client_ids' => 'nullable|array',
+            'client_ids.*' => 'nullable|integer',
+        ]);
 
-        $clients = DB::table('transactions')
-            ->join('clients', 'clients.id', '=', 'transactions.client_id')
-            ->select(
-                'clients.name as client_name',
-                DB::raw('COUNT(transactions.id) as total_transactions'),
-                DB::raw('SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END) as total_debit'),
-                DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit'),
-                DB::raw('SUM(CASE WHEN transactions.status = "completed" THEN transactions.amount ELSE 0 END) as total_completed'),
-                DB::raw('SUM(CASE WHEN transactions.status = "pending" THEN transactions.amount ELSE 0 END) as total_pending')
-            )
-            ->groupBy('clients.name')
-            ->get();
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $clientIds = $request->input('client_ids', []);
 
-        $clientLedgers = DB::table('journal_entries')
-            ->join('transactions', 'journal_entries.transaction_id', '=', 'transactions.id')
-            ->join('clients', 'clients.id', '=', 'transactions.client_id')
-            ->select(
-                'clients.name as client_name',
-                'journal_entries.transaction_date',
-                'journal_entries.description',
-                'journal_entries.debit',
-                'journal_entries.credit',
-                'journal_entries.balance'
-            )
-            ->orderBy('client_name')
-            ->orderBy('journal_entries.transaction_date')
-            ->get();
+        $clientsQuery = Client::with([
+            'tasks' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('supplier_pay_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('supplier_pay_date', '<=', $dateTo))
+                    ->with([
+                        'supplier',
+                        'invoiceDetail.invoice.agent.branch',
+                        'refundDetail.refund',
+                    ])
+                    ->orderBy('supplier_pay_date', 'desc');
+            },
+            'invoices' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
+                    ->with(['invoicePartials', 'paymentApplications']);
+            }
+        ]);
 
-        return view('reports.client', compact('clients', 'clientLedgers'));
+        if (!empty($clientIds)) {
+            $clientsQuery->whereIn('id', $clientIds);
+        }
+
+        $clients = $clientsQuery->get();
+
+        $clientData = [];
+        $totalOwed = 0;
+        $totalPaid = 0;
+        $totalBalance = 0;
+
+        foreach ($clients as $client) {
+            $invoices = $client->invoices;
+            $clientTotalOwed = 0;
+            $clientTotalPaid = 0;
+            $paidInvoicesCount = 0;
+
+            foreach ($invoices as $invoice) {
+                $clientTotalOwed += $invoice->amount;
+                $paidAmount = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
+                $clientTotalPaid += $paidAmount;
+
+                if (in_array($invoice->status, ['paid', 'refunded']) || $paidAmount >= $invoice->amount) {
+                    $paidInvoicesCount++;
+                }
+            }
+
+            $tasks = $client->tasks;
+            $totalTasks = $tasks->count();
+
+            $invoicedTasksCount = $tasks->filter(fn($t) => $t->invoiceDetail !== null)->count();
+            $refundedTasksCount = $tasks->filter(fn($t) => $t->refundDetail !== null)->count();
+            $uninvoicedTasksCount = $tasks->filter(function ($task) {
+                return $task->invoiceDetail === null;
+            })->count();
+
+            $refundCredit = 0;
+            $refundOwed = 0;
+
+            foreach ($tasks as $task) {
+                if ($task->refundDetail && $task->refundDetail->refund) {
+                    $refund = $task->refundDetail->refund;
+                    $refundAmount = $task->refundDetail->total_refund_to_client ?? 0;
+
+                    if ($refund->refund_invoice_id === null) {
+                        $refundCredit += $refundAmount;
+                    } else {
+                        $refundOwed += $refundAmount;
+                    }
+                }
+            }
+
+            $clientCredit = $client->total_credit ?? 0;
+
+            $runningBalance = 0;
+            $taskRows = [];
+
+            $sortedTasks = $tasks->sortBy('supplier_pay_date');
+
+            foreach ($sortedTasks as $task) {
+                $debit = 0;
+                $credit = 0;
+
+                if (strtolower($task->status) === 'refund' || $task->refundDetail) {
+                    // Refund = Credit (we owe client money back)
+                    if ($task->refundDetail) {
+                        $credit = $task->refundDetail->total_refund_to_client ?? $task->total ?? 0;
+                    } else {
+                        $credit = $task->total ?? 0;
+                    }
+                } else {
+                    // Check if invoice is paid
+                    $invoicePaid = false;
+                    if ($task->invoiceDetail && $task->invoiceDetail->invoice) {
+                        $invoiceStatus = strtolower($task->invoiceDetail->invoice->status ?? '');
+                        // If invoice is paid, paid by refund, or refunded - it's settled
+                        if (in_array($invoiceStatus, ['paid', 'paid by refund', 'refunded'])) {
+                            $invoicePaid = true;
+                        }
+                    }
+
+                    // Only show as DEBIT if invoice is NOT paid
+                    if (!$invoicePaid) {
+                        $debit = $task->invoiceDetail->task_price ?? $task->total ?? 0;
+                    }
+                    // If paid, both debit and credit stay 0 (settled)
+                }
+
+                $runningBalance = $runningBalance + $debit - $credit;
+
+                $taskRows[] = [
+                    'task' => $task,
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'running_balance' => $runningBalance,
+                ];
+            }
+
+            $balance = $clientTotalOwed - $clientTotalPaid;
+
+            $clientData[] = [
+                'client' => $client,
+                'total_owed' => $clientTotalOwed,
+                'total_paid' => $clientTotalPaid,
+                'balance' => $balance,
+                'total_tasks' => $totalTasks,
+                'tasks' => $tasks, //->take(20)
+                'task_rows' => $taskRows,
+                'invoices_count' => $invoices->count(),
+                'paid_invoices_count' => $paidInvoicesCount,
+                'invoiced_tasks_count' => $invoicedTasksCount,
+                'uninvoiced_tasks_count' => $uninvoicedTasksCount,
+                'refunded_tasks_count' => $refundedTasksCount,
+                'refund_credit' => $refundCredit,
+                'refund_owed' => $refundOwed,
+                'client_credit' => $clientCredit,
+            ];
+
+            $totalOwed += $clientTotalOwed;
+            $totalPaid += $clientTotalPaid;
+            $totalBalance += $balance;
+        }
+
+        // Sort by balance descending (clients who owe the most first)
+        usort($clientData, fn($a, $b) => $b['balance'] <=> $a['balance']);
+
+        // Pagination for view
+        $perPage = 20;
+        $currentPage = $request->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $paginatedData = array_slice($clientData, $offset, $perPage);
+        $clientsPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paginatedData,
+            count($clientData),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $clientsList = Client::orderBy('name')
+            ->get(['id', 'name', 'first_name', 'middle_name', 'last_name'])
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->full_name ?: $c->name
+            ]);
+
+        return view('reports.client', [
+            'clients' => $clientsPaginated,
+            'allClients' => $clientData,
+            'clientsList' => $clientsList,
+            'totals' => [
+                'totalOwed' => $totalOwed,
+                'totalPaid' => $totalPaid,
+                'totalBalance' => $totalBalance,
+            ],
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ]);
     }
 
+    public function clientReportPdf(Request $request)
+    {
+        // Increase limits for large reports
+        ini_set('max_execution_time', 300);
+
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'client_ids' => 'nullable|array',
+            'client_ids.*' => 'nullable|integer',
+        ]);
+
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $clientIds = $request->input('client_ids', []);
+
+        $clientsQuery = Client::with([
+            'tasks' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('supplier_pay_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('supplier_pay_date', '<=', $dateTo))
+                    ->with([
+                        'supplier',
+                        'invoiceDetail.invoice.agent.branch',
+                        'refundDetail.refund',
+                    ])
+                    ->orderBy('supplier_pay_date', 'desc');
+            },
+            'invoices' => function ($query) use ($dateFrom, $dateTo) {
+                $query->when($dateFrom, fn($q) => $q->whereDate('invoice_date', '>=', $dateFrom))
+                    ->when($dateTo, fn($q) => $q->whereDate('invoice_date', '<=', $dateTo))
+                    ->with(['invoicePartials', 'paymentApplications']);
+            }
+        ]);
+
+        if (!empty($clientIds)) {
+            $clientsQuery->whereIn('id', $clientIds);
+        }
+
+        $clientsQuery->where(function ($q) {
+            $q->has('tasks')->orHas('invoices');
+        });
+
+        $clients = $clientsQuery->get();
+
+        $clientData = [];
+        $totalOwed = 0;
+        $totalPaid = 0;
+        $totalBalance = 0;
+
+        foreach ($clients as $client) {
+            $invoices = $client->invoices;
+            $clientTotalOwed = 0;
+            $clientTotalPaid = 0;
+            $paidInvoicesCount = 0;
+
+            foreach ($invoices as $invoice) {
+                $clientTotalOwed += $invoice->amount;
+                $paidAmount = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
+                $clientTotalPaid += $paidAmount;
+
+                if ($invoice->status === 'paid' || $paidAmount >= $invoice->amount) {
+                    $paidInvoicesCount++;
+                }
+            }
+
+            $tasks = $client->tasks;
+            $totalTasks = $tasks->count();
+
+            $invoicedTasksCount = $tasks->filter(fn($t) => $t->invoiceDetail !== null)->count();
+            $refundedTasksCount = $tasks->filter(fn($t) => $t->refundDetail !== null)->count();
+            $uninvoicedTasksCount = $tasks->filter(fn($t) => $t->invoiceDetail === null)->count();
+
+            $refundCredit = 0;
+            $refundOwed = 0;
+
+            foreach ($tasks as $task) {
+                if ($task->refundDetail && $task->refundDetail->refund) {
+                    $refund = $task->refundDetail->refund;
+                    $refundAmount = $task->refundDetail->total_refund_to_client ?? 0;
+
+                    if ($refund->refund_invoice_id === null) {
+                        $refundCredit += $refundAmount;
+                    } else {
+                        $refundOwed += $refundAmount;
+                    }
+                }
+            }
+
+            $clientCredit = $client->total_credit ?? 0;
+            $balance = $clientTotalOwed - $clientTotalPaid;
+
+            // Skip clients with no tasks if date filter is applied
+            if (($dateFrom || $dateTo) && $totalTasks === 0) continue;
+            // Skip clients with no activity
+            if ($totalTasks === 0 && $invoices->count() === 0) continue;
+
+            $clientData[] = [
+                'client' => $client,
+                'total_owed' => $clientTotalOwed,
+                'total_paid' => $clientTotalPaid,
+                'balance' => $balance,
+                'total_tasks' => $totalTasks,
+                'tasks' => $tasks,
+                'invoices_count' => $invoices->count(),
+                'paid_invoices_count' => $paidInvoicesCount,
+                'invoiced_tasks_count' => $invoicedTasksCount,
+                'uninvoiced_tasks_count' => $uninvoicedTasksCount,
+                'refunded_tasks_count' => $refundedTasksCount,
+                'refund_credit' => $refundCredit,
+                'refund_owed' => $refundOwed,
+                'client_credit' => $clientCredit,
+            ];
+
+            $totalOwed += $clientTotalOwed;
+            $totalPaid += $clientTotalPaid;
+            $totalBalance += $balance;
+        }
+
+        usort($clientData, fn($a, $b) => $b['balance'] <=> $a['balance']);
+
+        $pdf = Pdf::loadView('reports.pdf.client', [
+            'allClients' => $clientData,
+            'totals' => [
+                'totalOwed' => $totalOwed,
+                'totalPaid' => $totalPaid,
+                'totalBalance' => $totalBalance,
+            ],
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'generatedAt' => now()->format('d M Y, H:i'),
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'client-report-' . now()->format('Y-m-d') . '.pdf';
+        return $pdf->download($filename);
+    }
 
     public function performance()
     {

@@ -171,7 +171,10 @@
                                 <td class="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                                     {{ number_format($item['total_paid'], 3) }}
                                 </td>
-                                <td class="px-4 py-3 text-right font-semibold {{ $item['balance'] > 0 ? 'text-amber-600 dark:text-amber-400' : ($item['balance'] < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400') }}">
+                                <!-- <td class="px-4 py-3 text-right font-semibold {{ $item['balance'] > 0 ? 'text-amber-600 dark:text-amber-400' : ($item['balance'] < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400') }}">
+                                    {{ number_format($item['balance'], 3) }}
+                                </td> -->
+                                <td class="px-4 py-3 text-right font-semibold {{ $item['balance'] > 0 ? 'text-rose-600 dark:text-rose-400' : ($item['balance'] < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400') }}">
                                     {{ number_format($item['balance'], 3) }}
                                 </td>
                                 <td class="px-4 py-3 text-center">
@@ -240,18 +243,22 @@
                                             <div class="overflow-x-auto">
                                                 <table class="min-w-full text-xs table-fixed">
                                                     <thead class="bg-gray-100 dark:bg-gray-800">
-                                                        <tr class="px-3 py-2 font-medium text-gray-600 dark:text-gray-400 text-center">
+                                                        <tr class="px-3 py-2 font-medium text-gray-600 dark:text-gray-400 text-center uppercase">
                                                             <th class="text-left">Reference</th>
                                                             <th>Supplier</th>
                                                             <th>Type</th>
                                                             <th>Date</th>
                                                             <th>Status</th>
-                                                            <th>Total</th>
+                                                            <!-- <th>Total</th> -->
+                                                            <th>Debit</th>
+                                                            <th>Credit</th>
+                                                            <th>Balance</th>
                                                             <th>Billing</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                                        @foreach($item['tasks'] as $task)
+                                                        @foreach($item['task_rows'] as $row)
+                                                        @php $task = $row['task']; @endphp
                                                         <tr class="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-center">
                                                             <td class="px-3 py-2.5 text-left">
                                                                 <span class="font-medium text-gray-900 dark:text-gray-100">{{ $task->reference }}</span>
@@ -285,12 +292,21 @@
                                                                     {{ ucfirst($task->status ?? '—') }}
                                                                 </span>
                                                             </td>
-                                                            <td class="px-3 py-2.5 font-medium text-gray-900 dark:text-gray-100">
+                                                            <!-- <td class="px-3 py-2.5 font-medium text-gray-900 dark:text-gray-100">
                                                                 @if($task->refundDetail)
                                                                     {{ number_format($task->refundDetail->total_refund_to_client ?? 0, 3) }}
                                                                 @else
                                                                     {{ number_format($task->invoiceDetail->task_price ?? $task->total ?? 0, 3) }}
                                                                 @endif
+                                                            </td> -->
+                                                            <td class="px-3 py-2.5 font-semibold {{ $row['debit'] > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400' }}">
+                                                                {{ $row['debit'] > 0 ? number_format($row['debit'], 3) : '—' }}
+                                                            </td>
+                                                            <td class="px-3 py-2.5 font-semibold {{ $row['credit'] > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}">
+                                                                {{ $row['credit'] > 0 ? number_format($row['credit'], 3) : '—' }}
+                                                            </td>
+                                                            <td class="px-3 py-2.5 font-semibold {{ $row['running_balance'] > 0 ? 'text-rose-600 dark:text-rose-400' : ($row['running_balance'] < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400') }}">
+                                                                {{ number_format($row['running_balance'], 3) }}
                                                             </td>
                                                             <td class="px-3 py-2.5">
                                                                 @if($task->refundDetail && $task->refundDetail->refund)

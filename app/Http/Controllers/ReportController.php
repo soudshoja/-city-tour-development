@@ -175,6 +175,50 @@ class ReportController extends Controller
 
             $clientCredit = $client->total_credit ?? 0;
 
+            $runningBalance = 0;
+            $taskRows = [];
+
+            $sortedTasks = $tasks->sortBy('supplier_pay_date');
+
+            foreach ($sortedTasks as $task) {
+                $debit = 0;
+                $credit = 0;
+
+                if (strtolower($task->status) === 'refund' || $task->refundDetail) {
+                    // Refund = Credit (we owe client money back)
+                    if ($task->refundDetail) {
+                        $credit = $task->refundDetail->total_refund_to_client ?? $task->total ?? 0;
+                    } else {
+                        $credit = $task->total ?? 0;
+                    }
+                } else {
+                    // Check if invoice is paid
+                    $invoicePaid = false;
+                    if ($task->invoiceDetail && $task->invoiceDetail->invoice) {
+                        $invoiceStatus = strtolower($task->invoiceDetail->invoice->status ?? '');
+                        // If invoice is paid, paid by refund, or refunded - it's settled
+                        if (in_array($invoiceStatus, ['paid', 'paid by refund', 'refunded'])) {
+                            $invoicePaid = true;
+                        }
+                    }
+
+                    // Only show as DEBIT if invoice is NOT paid
+                    if (!$invoicePaid) {
+                        $debit = $task->invoiceDetail->task_price ?? $task->total ?? 0;
+                    }
+                    // If paid, both debit and credit stay 0 (settled)
+                }
+
+                $runningBalance = $runningBalance + $debit - $credit;
+
+                $taskRows[] = [
+                    'task' => $task,
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'running_balance' => $runningBalance,
+                ];
+            }
+
             $balance = $clientTotalOwed - $clientTotalPaid;
 
             $clientData[] = [
@@ -184,6 +228,7 @@ class ReportController extends Controller
                 'balance' => $balance,
                 'total_tasks' => $totalTasks,
                 'tasks' => $tasks, //->take(20)
+                'task_rows' => $taskRows,
                 'invoices_count' => $invoices->count(),
                 'paid_invoices_count' => $paidInvoicesCount,
                 'invoiced_tasks_count' => $invoicedTasksCount,

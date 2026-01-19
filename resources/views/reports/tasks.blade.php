@@ -149,10 +149,13 @@
                             <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Debit</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Credit</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Balance</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @php $runningBalance = 0; @endphp
                         @forelse($tasks as $item)
+                        @php $runningBalance = $runningBalance + $item->debit - $item->credit; @endphp
                         <tr class="bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors {{ $item->type === 'transaction' ? 'bg-purple-50 dark:bg-purple-900/20' : '' }}">
                             <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ $item->reference }}</td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->original_reference ?? '—' }}</td>
@@ -178,16 +181,19 @@
                                     {{ $item->status === 'payment_voucher' ? 'Payment' : ucfirst($item->status) }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold {{ $item->debit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}">
+                            <td class="px-4 py-3 text-right font-semibold {{ $item->debit > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400' }}">
                                 {{ $item->debit > 0 ? number_format($item->debit, 3) : '—' }}
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold {{ $item->credit > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400' }}">
+                            <td class="px-4 py-3 text-right font-semibold {{ $item->credit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}">
                                 {{ $item->credit > 0 ? number_format($item->credit, 3) : '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-semibold {{ $runningBalance > 0 ? 'text-rose-600 dark:text-rose-400' : ($runningBalance < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400') }}">
+                                {{ number_format($runningBalance, 3) }}
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-8 text-center">
+                            <td colspan="9" class="px-4 py-8 text-center">
                                 <div class="flex flex-col items-center justify-center text-gray-500">
                                     <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />

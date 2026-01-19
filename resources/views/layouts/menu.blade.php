@@ -298,6 +298,12 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Task Report</a>
             </menuitem>
             @endcan
+            @can('viewClientReport', 'App\Models\Report')
+            <menuitem>
+            <a href="{{ route('reports.client') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client Report</a>
+            </menuitem>
+            @endcan
         </menu>
         </menuitem>
 

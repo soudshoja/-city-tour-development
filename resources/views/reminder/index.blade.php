@@ -57,11 +57,14 @@
         <div class="flex justify-between items-center my-4">
             <div class="flex items-center gap-5">
                 <h2 class="text-3xl font-bold">Reminder</h2>
-                <div class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
+                <div data-tooltip="Number of reminders"
+                    class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
                     <span class="text-xl font-bold text-white">{{ $allReminders->count() }}</span>
                 </div>
             </div>
         </div>
+
+        <x-admin-card title="reminders" :companyId="request('company_id')" />
 
         <div class="panel bg-white rounded-lg shadow p-4">
             <!-- Tabs Navigation -->

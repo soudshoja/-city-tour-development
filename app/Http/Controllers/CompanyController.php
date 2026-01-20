@@ -26,9 +26,6 @@ use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
-
-
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CompanyController extends Controller
@@ -50,7 +47,7 @@ class CompanyController extends Controller
             });
         }
 
-        $companies = $query->paginate(20);
+        $companies = $query->paginate(20)->withQueryString();
 
         return view('companies.list', compact('companies'));
     }

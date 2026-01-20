@@ -45,7 +45,7 @@ class BranchController extends Controller
                 });
             }
 
-            $branches = $branchesQuery->paginate(15);
+            $branches = $branchesQuery->paginate(20)->withQueryString();
 
             return view('branches.list', compact('branches'));
         }

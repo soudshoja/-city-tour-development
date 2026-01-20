@@ -1,16 +1,16 @@
 <x-app-layout>
     <div class="container mx-auto px-4">
-        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-            <li>
-                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1">
-                <a href="{{ route('payment.link.index') }}" class="hover:text-blue-500 hover:underline">Payment Links</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1">
-                <span class="text-gray-500">Create New</span>
-            </li>
-        </ul>
+        <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
+            <a href="{{ route('payment.link.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Payment Links</a>
+            <span class="text-gray-400">&gt;</span>
+            <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">New Payment Link</span>
+        </nav>
+
+        <x-admin-card 
+            title="payments" 
+            :companyId="$companyId"
+            :route="route('payment.link.create')" 
+        />
 
         <!-- Main Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="{

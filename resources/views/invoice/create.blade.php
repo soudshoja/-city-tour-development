@@ -1638,7 +1638,7 @@
             buttonLoading.style.display = "inline";
 
             let errorMessages = [];
-            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+            const companyId = "{{ $companyId ?? '' }}";
 
             // Validate all inputs and add specific messages
             if (!currency) errorMessages.push("Currency is missing.");

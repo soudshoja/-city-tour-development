@@ -9,6 +9,8 @@ use App\Models\Agent;
 use App\Models\Client;
 use App\Http\Controllers\ResayilController;
 use Illuminate\Support\Facades\Log;
+use App\Models\Role;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -16,8 +18,51 @@ class ReminderController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->get('search');
+        $user = Auth::user();
+        $isAdmin = $user->role_id == Role::ADMIN;
 
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
+
+        if ($isAdmin) {
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('reminder.index', array_merge(
+                    ['company_id' => session('company_id')],
+                    $request->only(['search', 'sort', 'direction'])
+                ));
+            }
+            if ($request->has('company_id')) {
+                session(['company_id' => $request->input('company_id')]);
+            }
+        } else {
+            if ($request->has('company_id')) {
+                return redirect()->route('reminder.index', $request->only(['search', 'sort', 'direction']));
+            }
+        }
+
+        $companyId = getCompanyId($user);
+        $agentIds = collect();
+
+        if ($isAdmin) {
+            if ($companyId) {
+                $agentIds = Agent::whereHas('branch', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })->pluck('id');
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $agentIds = Agent::whereHas('branch', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            })->pluck('id');
+        } elseif ($user->role_id == Role::BRANCH) {
+            $agentIds = Agent::where('branch_id', $user->branch->id)->pluck('id');
+        } elseif ($user->role_id == Role::AGENT) {
+            $agentIds = collect([$user->agent->id]);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $agentIds = Agent::where('branch_id', $user->accountant->branch_id)->pluck('id');
+        }
+
+        $search = $request->get('search');
         $sortField = $request->get('sort', 'due_date');
         $sortDirection = $request->get('direction', 'asc');
 
@@ -25,7 +70,6 @@ class ReminderController extends Controller
         if (!in_array($sortField, $allowedSorts)) {
             $sortField = 'due_date';
         }
-
         $sortDirection = $sortDirection === 'desc' ? 'desc' : 'asc';
 
         $query = Invoice::where('invoices.status', 'unpaid')
@@ -37,14 +81,18 @@ class ReminderController extends Controller
                 }
             ]);
 
+        if (!$isAdmin || $companyId) {
+            $query->whereIn('invoices.agent_id', $agentIds);
+        }
+
         // Handle sorting by relationship fields
         if ($sortField === 'client_name') {
             $query->join('clients', 'invoices.client_id', '=', 'clients.id')
                 ->orderBy('clients.name', $sortDirection)
                 ->select('invoices.*');
         } elseif ($sortField === 'agent_name') {
-            $query->join('users', 'invoices.agent_id', '=', 'users.id')
-                ->orderBy('users.name', $sortDirection)
+            $query->join('agents', 'invoices.agent_id', '=', 'agents.id')
+                ->orderBy('agents.name', $sortDirection)
                 ->select('invoices.*');
         } else {
             $query->orderBy('invoices.' . $sortField, $sortDirection);
@@ -67,19 +115,27 @@ class ReminderController extends Controller
         $invoices = $query->paginate(20)->withQueryString();
 
         // Payment Reminders (grouped by group_id)
-        $paymentReminders = Reminder::where('target_type', 'payment')
+        $paymentRemindersQuery = Reminder::where('target_type', 'payment')
             ->with(['payment', 'client', 'agent'])
             ->orderBy('group_id')
-            ->orderBy('scheduled_at')
-            ->get()
-            ->groupBy('group_id');
+            ->orderBy('scheduled_at');
+
+        if (!$isAdmin || $companyId) {
+            $paymentRemindersQuery->whereIn('agent_id', $agentIds);
+        }
+
+        $paymentReminders = $paymentRemindersQuery->get()->groupBy('group_id');
 
         // All Reminders for History tab (grouped by group_id)
-        $allReminders = Reminder::with(['client', 'agent', 'invoice', 'payment'])
+        $allRemindersQuery = Reminder::with(['client', 'agent', 'invoice', 'payment'])
             ->orderBy('created_at', 'desc')
-            ->orderBy('scheduled_at', 'asc')
-            ->get()
-            ->groupBy('group_id');
+            ->orderBy('scheduled_at', 'asc');
+
+        if (!$isAdmin || $companyId) {
+            $allRemindersQuery->whereIn('agent_id', $agentIds);
+        }
+
+        $allReminders = $allRemindersQuery->get()->groupBy('group_id');
 
         return view('reminder.index', compact(
             'invoices',
@@ -87,7 +143,9 @@ class ReminderController extends Controller
             'sortDirection',
             'search',
             'paymentReminders',
-            'allReminders'
+            'allReminders',
+            'isAdmin',
+            'companyId'
         ));
     }
 
@@ -123,12 +181,12 @@ class ReminderController extends Controller
 
         // Agent phone: use phone_number column (already includes country code)
         $agentPhoneFull = $agent->phone_number ?? '';
-        
+
         // Parse agent phone to separate country code and number
         // Assuming format like "+60123456789" or "60123456789"
         $agentCountryCode = '';
         $agentPhone = $agentPhoneFull;
-        
+
         if (preg_match('/^(\+?\d{1,3})(\d{6,})$/', $agentPhoneFull, $matches)) {
             $agentCountryCode = $matches[1];
             $agentPhone = $matches[2];

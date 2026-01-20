@@ -16,6 +16,7 @@ use App\Models\Credit;
 use App\Models\Role;
 use App\Models\Client;
 use App\Models\Charge;
+use App\Models\Company;
 use App\Models\PaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,45 +36,73 @@ use Throwable;
 
 class RefundController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', Refund::class);
 
         $user = Auth::user();
-        if (Auth::user()->role->id == Role::COMPANY) {
-            $agents = $user->company->branches->pluck('agents')->flatten();
-            $refundClients = $agents->pluck('refundClients')->flatten();
-            $refunds = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
-                ->where('company_id', Auth::user()->company->id)
-                ->orderBy('id', 'desc')
-                ->get();
-        } elseif (Auth::user()->role->id == Role::BRANCH) {
-            $refundClients = $user->branch->agents->refundClients;
-            $refunds = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
-                ->where('branch_id', Auth::user()->branch->id)
-                ->orderBy('id', 'desc')
-                ->get();
-        } elseif (Auth::user()->role->id == Role::AGENT) {
-            $refundClients = $user->agent->refundClients;
-            $refunds = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
-                ->where('agent_id', $user->agent->id)
-                ->orderBy('id', 'desc')
-                ->get();
-        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
-            $refundClients = $user->accountant->branch->agents->pluck('refundClients')->flatten();
-            $refunds = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
-                ->whereIn('agent_id', $refundClients->pluck('id'))
-                ->orderBy('id', 'desc')
-                ->get();
+        $isAdmin = $user->role_id == Role::ADMIN;
+
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
+
+        if ($isAdmin) {
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('refunds.index', [
+                    'company_id' => session('company_id')
+                ]);
+            }
+            if ($request->has('company_id')) {
+                session(['company_id' => $request->input('company_id')]);
+            }
         } else {
-            $refundClients = $user->agent->refundClients;
-            $refunds = collect();
+            if ($request->has('company_id')) {
+                return redirect()->route('refunds.index');
+            }
         }
 
-        $totalRefunds = $refunds->count();
+        $companyId = getCompanyId($user);
+        $refundClients = collect();
+
+        $refundsQuery = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
+            ->orderBy('id', 'desc');
+
+        if ($isAdmin) {
+            if ($companyId) {
+                $company = Company::with('branches.agents.refundClients')->find($companyId);
+                $agents = $company->branches->pluck('agents')->flatten();
+                $refundClients = $agents->pluck('refundClients')->flatten();
+                $refundsQuery->where('company_id', $companyId);
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $agents = $user->company->branches->pluck('agents')->flatten();
+            $refundClients = $agents->pluck('refundClients')->flatten();
+            $refundsQuery->where('company_id', $companyId);
+        } elseif ($user->role_id == Role::BRANCH) {
+            $refundClients = $user->branch->agents->pluck('refundClients')->flatten();
+            $refundsQuery->where('branch_id', $user->branch->id);
+        } elseif ($user->role_id == Role::AGENT) {
+            $refundClients = $user->agent->refundClients;
+            $refundsQuery->where('agent_id', $user->agent->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $refundClients = $user->accountant->branch->agents->pluck('refundClients')->flatten();
+            $refundsQuery->where('branch_id', $user->accountant->branch_id);
+        }
+
+        $refunds = $refundsQuery->paginate(15)->withQueryString();
+
+        $totalRefunds = $refunds->total();
         $totalRefundClients = $refundClients->count();
 
-        return view('refunds.index', compact('refunds', 'totalRefunds', 'refundClients', 'totalRefundClients'));
+        return view('refunds.index', compact(
+            'refunds',
+            'totalRefunds',
+            'refundClients',
+            'totalRefundClients',
+            'isAdmin',
+            'companyId'
+        ));
     }
 
     public function generateRefundNumber($sequence)

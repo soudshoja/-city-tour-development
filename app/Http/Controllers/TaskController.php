@@ -5640,9 +5640,7 @@ class TaskController extends Controller
                 ];
             })
             ->toArray();
-        
-        $paymentMethod = Account::where('parent_id', 39)->get();
-        
+                
         $taskIds = request()->get('tasks');
         
         if (!$taskIds) {
@@ -5653,15 +5651,7 @@ class TaskController extends Controller
             $taskIds = explode(',', $taskIds);
         }
         
-        $tasks = Task::with([
-            'supplier',
-            'client',
-            'agent',
-            'flightDetail',
-            'hotelDetails.hotel',
-            'visaDetails',
-            'insuranceDetails'
-        ])->whereIn('id', $taskIds)->get();
+        $tasks = Task::whereIn('id', $taskIds)->get();
         
         if ($tasks->isEmpty()) {
             return redirect()->route('tasks.index')->with('error', 'No tasks found');
@@ -5669,7 +5659,7 @@ class TaskController extends Controller
 
         $mapHotels = [];
         foreach ($tasks as $task) {
-            if ($task->supplier_id == 2 && $task->venue) {
+            if ($task->type == 'hotel' && $task->venue) {
                 $mapHotel = MapHotel::with('city.country')->where('name', $task->venue)->first();
                 if ($mapHotel) {
                     $mapHotels[$task->id] = $mapHotel;
@@ -5677,8 +5667,7 @@ class TaskController extends Controller
             }
         }
 
-
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'paymentMethod', 'mapHotels'));
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'mapHotels'));
     }
 
     public function bulkUpdate(Request $request)

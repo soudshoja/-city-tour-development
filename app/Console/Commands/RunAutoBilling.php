@@ -38,7 +38,7 @@ class RunAutoBilling extends Command
         $now = Carbon::now('Asia/Kuala_Lumpur')->format('H:i');
 
         $this->info("🕒 Running AutoBilling at {$now}");
-        Log::info("=== [AutoBilling] Command started at {$now} ===");
+        // Log::info("=== [AutoBilling] Command started at {$now} ===");
 
         $rules = AutoBilling::where('is_active', true)
             ->whereRaw("DATE_FORMAT(invoice_time_system, '%H:%i') = ?", [$now])
@@ -46,7 +46,7 @@ class RunAutoBilling extends Command
 
         if ($rules->isEmpty()) {
             $this->warn('⚠️  No AutoBilling rules scheduled for this time.');
-            Log::info('No AutoBilling rules scheduled for this time.');
+            // Log::info('No AutoBilling rules scheduled for this time.');
             return Command::SUCCESS;
         }
 

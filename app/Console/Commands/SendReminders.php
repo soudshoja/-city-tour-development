@@ -57,7 +57,7 @@ class SendReminders extends Command
 
             if ($dueReminders->isEmpty()) {
                 $this->info('No due reminders to process at this time. Aborting');
-                Log::info('No pending reminders to process at this time');
+                // Log::info('No pending reminders to process at this time');
                 return 0;
             } else {
                 $this->info("Found {$dueReminders->count()} reminders due to process");

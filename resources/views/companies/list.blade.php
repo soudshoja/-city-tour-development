@@ -19,7 +19,7 @@
                         opacity=".5" />
                 </svg>
             </div>
-            <a href="{{ route('users.create') }}">
+            <a href="{{ route('users.create', ['openForm' => 'companyForm']) }}">
                 <div data-tooltip-left="Create new company"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">

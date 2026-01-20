@@ -1,4 +1,5 @@
 <x-app-layout>
+    <x-admin-card title="dashboard" :companyId="request('company_id')" />
     <style>
         #dashboard-revenue>div {
             padding: 1rem;

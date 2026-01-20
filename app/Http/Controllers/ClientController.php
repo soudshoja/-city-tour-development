@@ -66,25 +66,62 @@ class ClientController extends Controller
     {
         $user = Auth::user();
 
-        $clients = Client::with('agent.branch');
-        $fullClients = clone $clients;
-        $agentIds = [];
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
 
         if ($user->role_id == Role::ADMIN) {
-            $agentIds = Agent::all()->pluck('id')->toArray();
-            $branch = Branch::pluck('id')->toArray();
-            $agent = Agent::whereIn('branch_id', $branch)->first();
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('clients.index', [
+                    'company_id' => session('company_id')
+                ]);
+            }
+            if ($request->has('company_id')) {
+                session(['company_id' => $request->input('company_id')]);
+            }
+        } else {
+            if ($request->has('company_id')) {
+                return redirect()->route('clients.index');
+            }
+        }
+
+        $companyId = null;
+        $isAdmin = false;
+        $agent = null;
+        $agentIds = [];
+
+        $clients = Client::with('agent.branch');
+
+        if ($user->role_id == Role::ADMIN) {
+            $isAdmin = true;
+            $companyId = $request->input('company_id', session('company_id'));
+
+            if ($companyId) {
+                $branchIds = Branch::where('company_id', $companyId)->pluck('id')->toArray();
+                $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id')->toArray();
+                $agent = Agent::whereIn('branch_id', $branchIds)->first();
+            } else {
+                $agentIds = Agent::pluck('id')->toArray();
+                $agent = Agent::first();
+            }
         } elseif ($user->role_id == Role::COMPANY) {
-            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
-            $agent = Agent::whereIn('branch_id', $branch)->first();
-            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+            $companyId = $user->company->id;
+            $branchIds = Branch::where('company_id', $companyId)->pluck('id')->toArray();
+            $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id')->toArray();
+            $agent = Agent::whereIn('branch_id', $branchIds)->first();
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+            $agentIds = Agent::where('branch_id', $user->branch->id)->pluck('id')->toArray();
+            $agent = Agent::where('branch_id', $user->branch->id)->first();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
+            $companyId = $agent->branch->company_id ?? null;
             $agentIds = [$agent->id];
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $branch = Branch::where('id', $user->accountant->branch_id)->pluck('id')->toArray();
-            $agent = Agent::whereIn('branch_id', $branch)->first();
-            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+            $companyId = $user->accountant->branch->company_id;
+            $branchIds = [$user->accountant->branch_id];
+            $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id')->toArray();
+            $agent = Agent::whereIn('branch_id', $branchIds)->first();
         }
 
         $clients = $clients->where(function ($query) use ($agentIds) {
@@ -142,9 +179,7 @@ class ClientController extends Controller
             });
         }
 
-        $clientsCount = $clients->count();
-
-        $clients = $clients->orderByDesc('created_at')->paginate(20);
+        $clients = $clients->orderByDesc('created_at')->paginate(20)->withQueryString();
         $fullClients = $fullClients->orderByDesc('created_at')->get();
 
         if ($user->role_id == Role::AGENT) {
@@ -167,16 +202,16 @@ class ClientController extends Controller
             });
         }
 
-
         return view('clients.index', compact(
             'agent',
             'fullClients',
             'clients',
-            'clientsCount'
+            'isAdmin',
+            'companyId',
         ));
     }
 
-    public function storeProcess(Request $request) : ClientStoreResponse
+    public function storeProcess(Request $request): ClientStoreResponse
     {
         $request->validate([
             'first_name' => 'required|string|max:255',
@@ -210,7 +245,6 @@ class ClientController extends Controller
                 ->first();
 
             $duplicateType = 'civil_no';
-
         } else {
             $existingClient = Client::where('company_id', $request->company_id)
                 ->where('first_name', $request->first_name)
@@ -226,7 +260,7 @@ class ClientController extends Controller
         if ($existingClient) {
             $duplicateResponse = $this->handleDuplicateClient($existingClient, $request->agent_id, $duplicateType);
 
-            Log::info('Duplicate client detected: ', $duplicateResponse);            
+            Log::info('Duplicate client detected: ', $duplicateResponse);
 
             if ($duplicateResponse['status'] == 'success') { // means we succeed in handling duplicate client by showing assignment request form
 
@@ -292,7 +326,6 @@ class ClientController extends Controller
                 $client->toArray(),
                 $request->task_id
             );
-
         } catch (\Exception $e) {
             DB::rollBack();
             logger('Error in storeProcess(): ' . $e->getMessage());
@@ -351,7 +384,7 @@ class ClientController extends Controller
         return redirect()->back()->with($status, $message);
     }
 
-    public function storeApi(Request $request) : JsonResponse
+    public function storeApi(Request $request): JsonResponse
     {
         Log::info('API Client store request: ', $request->all());
 
@@ -363,18 +396,18 @@ class ClientController extends Controller
         $data = $response->data;
         $task_id = $response->task_id;
 
-        if($status == 'error') {
-            if($type == 'duplicate') {
+        if ($status == 'error') {
+            if ($type == 'duplicate') {
                 $data = $response->data;
 
                 $requestAgent = $data['current_agent'];
                 $client = $data['existing_client'];
                 $ownerAgent = $data['owner_agent'];
 
-                if($requestAgent->name == Agent::AI_AGENT){
-                   $client->agents()->attach($requestAgent->id);
+                if ($requestAgent->name == Agent::AI_AGENT) {
+                    $client->agents()->attach($requestAgent->id);
 
-                   Log::info("AI Agent assigned to client ID {$client->id}");
+                    Log::info("AI Agent assigned to client ID {$client->id}");
 
                     $this->sendAssignmentRequest(
                         $ownerAgent,
@@ -383,13 +416,12 @@ class ClientController extends Controller
                         'Client automatically assigned to AI Agent by system.'
                     );
 
-                   return response()->json([
+                    return response()->json([
                         'status' => 'success',
                         'type' => 'general',
                         'message' => 'Client assigned to AI Agent successfully.',
                         'data' => $client
                     ]);
-
                 } else {
 
                     $this->sendAssignmentRequest(
@@ -433,7 +465,7 @@ class ClientController extends Controller
     /**
      * Handle duplicate client detection and assignment request workflow
      */
-    private function handleDuplicateClient($existingClient, $requestAgentId, $duplicateType) : array
+    private function handleDuplicateClient($existingClient, $requestAgentId, $duplicateType): array
     {
         $currentAgent = Agent::find($requestAgentId);
         $ownerAgent = $existingClient->agent;
@@ -450,7 +482,6 @@ class ClientController extends Controller
                 'status' => 'error',
                 'message' => $message
             ];
-
         }
 
         // Check if the current agent is already assigned to this client
@@ -532,7 +563,6 @@ class ClientController extends Controller
                         $q->whereIn('agent_id', $agentIds);
                     });
             })->get();
-
         } elseif ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company->id;
             $agentsQuery->where('branch_id', function ($query) use ($companyId) {
@@ -554,7 +584,6 @@ class ClientController extends Controller
                         $q->whereIn('agent_id', $agentIds);
                     });
             })->get();
-
         } elseif ($user->role_id == Role::AGENT) {
             $companyId = Agent::where('user_id', $user->id)->first()->branch->company_id;
             $agentsQuery->where('branch_id', $user->agent->branch_id)
@@ -569,14 +598,14 @@ class ClientController extends Controller
                         $q->where('agent_id', $user->agent->id);
                     });
             })->get();
-            
+
             if ($payment) {
                 if ($payment->agent_id === $user->id) { //Assigned agent to the client
-                  $payments = Payment::where('client_id', $id)
+                    $payments = Payment::where('client_id', $id)
                         ->where('agent_id', $user->agent->id)
                         ->orderBy('created_at', 'desc')
                         ->get();
-                    
+
                     $balanceCredit = Credit::whereHas('payment', function ($q) use ($user) {
                         $q->where('agent_id', $user->agent->id ?? 0);
                     })
@@ -1301,9 +1330,9 @@ class ClientController extends Controller
             }
 
             $paymentGateway = Account::where('name', 'Payment Gateway')
-                        ->where('company_id', $agent->branch->company_id)
-                        ->where('parent_id', $clientAdvance->id)
-                        ->first();
+                ->where('company_id', $agent->branch->company_id)
+                ->where('parent_id', $clientAdvance->id)
+                ->first();
             if (!$paymentGateway) {
                 throw new Exception('Payment Gateway account not found');
             }

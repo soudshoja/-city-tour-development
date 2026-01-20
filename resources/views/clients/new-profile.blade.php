@@ -5,17 +5,11 @@
         }
     </style>
     <div>
-        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-            <li>
-                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1 ">
-                <a href="{{ route('clients.index') }}" class="customBlueColor hover:underline">Clients List</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1 ">
-                <span>{{ $client->full_name }} </span>
-            </li>
-        </ul>
+        <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
+            <a href="{{ route('clients.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Clients List</a>
+            <span class="text-gray-400">&gt;</span>
+            <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">{{ $client->full_name }}</span>
+        </nav>
 
         <div class="sm:flex gap-2">
             <div class="panel w-[100%] md:w-[75%]">

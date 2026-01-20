@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Branch;
 use App\Models\Account;
 use App\Models\Agent;
@@ -22,101 +23,164 @@ use Illuminate\Http\Request;
 
 class AdminUsersController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', User::class);
 
-        if(auth()->user()->role_id == Role::ADMIN) {
-            $users = User::with('roles')->get();
-        } else if(auth()->user()->role_id == Role::COMPANY) {
-            
-            $branches = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
-            $branchUsers = User::with('roles')
-                ->whereHas('branch', function($query) use ($branches) {
-                    $query->whereIn('id', $branches);
-                })
-                ->get();
+        $user = Auth::user();
 
-            $agents = Agent::whereIn('branch_id', $branches)->get();
-            $agentUsers = User::with('roles')
-                ->whereHas('agent', function($query) use ($agents) {
-                    $query->whereIn('id', $agents->pluck('id'));
-                })
-                ->get();
-            
-            $accountant = Accountant::whereIn('branch_id', $branches)->get();
-            $accountantUsers = User::with('roles')
-                                    ->whereHas('accountant', function($query) use ($accountant) {
-                                        $query->whereIn('id', $accountant->pluck('id'));
-                                    })->get();
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
 
-            $users = $branchUsers
-                    ->merge($agentUsers)
-                    ->merge($accountantUsers)
-                    ->unique('id');
-        } elseif (auth()->user()->role_id == Role::ACCOUNTANT) {
-            $branches = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
-            $branchUsers = User::with('roles')
-                ->whereHas('branch', function($query) use ($branches) {
-                    $query->whereIn('id', $branches);
-                })
-                ->get();
+        if ($user->role_id == Role::ADMIN) {
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('users.index', [
+                    'company_id' => session('company_id')
+                ]);
+            }
+            if ($request->has('company_id')) {
+                session(['company_id' => $request->input('company_id')]);
+            }
+        } else {
+            if ($request->has('company_id')) {
+                return redirect()->route('users.index');
+            }
+        }
 
-            $agents = Agent::whereIn('branch_id', $branches)->get();
-            $agentUsers = User::with('roles')
-                ->whereHas('agent', function($query) use ($agents) {
-                    $query->whereIn('id', $agents->pluck('id'));
-                })
-                ->get();
-            
-            $accountant = Accountant::whereIn('branch_id', $branches)->get();
-            $accountantUsers = User::with('roles')
-                                    ->whereHas('accountant', function($query) use ($accountant) {
-                                        $query->whereIn('id', $accountant->pluck('id'));
-                                    })->get();
+        $companyId = null;
+        $isAdmin = false;
 
-            $users = $branchUsers
-                    ->merge($agentUsers)
-                    ->merge($accountantUsers)
-                    ->unique('id');
+        if ($user->role_id == Role::ADMIN) {
+            $isAdmin = true;
+            $companyId = $request->input('company_id', session('company_id'));
+
+            if ($companyId) {
+                $branches = Branch::where('company_id', $companyId)->pluck('id');
+                $agents = Agent::whereIn('branch_id', $branches)->pluck('id');
+                $accountants = Accountant::whereIn('branch_id', $branches)->pluck('id');
+
+                $branchUserIds = User::whereHas('branch', function ($q) use ($branches) {
+                    $q->whereIn('id', $branches);
+                })->pluck('id');
+
+                $agentUserIds = User::whereHas('agent', function ($q) use ($agents) {
+                    $q->whereIn('id', $agents);
+                })->pluck('id');
+
+                $accountantUserIds = User::whereHas('accountant', function ($q) use ($accountants) {
+                    $q->whereIn('id', $accountants);
+                })->pluck('id');
+
+                $allUserIds = $branchUserIds->merge($agentUserIds)->merge($accountantUserIds)->unique();
+
+                $query = User::with('roles')->whereIn('id', $allUserIds);
+            } else {
+                $query = User::with('roles');
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+            $branches = Branch::where('company_id', $companyId)->pluck('id');
+            $agents = Agent::whereIn('branch_id', $branches)->pluck('id');
+            $accountants = Accountant::whereIn('branch_id', $branches)->pluck('id');
+
+            $branchUserIds = User::whereHas('branch', function ($q) use ($branches) {
+                $q->whereIn('id', $branches);
+            })->pluck('id');
+
+            $agentUserIds = User::whereHas('agent', function ($q) use ($agents) {
+                $q->whereIn('id', $agents);
+            })->pluck('id');
+
+            $accountantUserIds = User::whereHas('accountant', function ($q) use ($accountants) {
+                $q->whereIn('id', $accountants);
+            })->pluck('id');
+
+            $allUserIds = $branchUserIds->merge($agentUserIds)->merge($accountantUserIds)->unique();
+
+            $query = User::with('roles')->whereIn('id', $allUserIds);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company_id;
+            $branches = Branch::where('company_id', $companyId)->pluck('id');
+            $agents = Agent::whereIn('branch_id', $branches)->pluck('id');
+            $accountants = Accountant::whereIn('branch_id', $branches)->pluck('id');
+
+            $branchUserIds = User::whereHas('branch', function ($q) use ($branches) {
+                $q->whereIn('id', $branches);
+            })->pluck('id');
+
+            $agentUserIds = User::whereHas('agent', function ($q) use ($agents) {
+                $q->whereIn('id', $agents);
+            })->pluck('id');
+
+            $accountantUserIds = User::whereHas('accountant', function ($q) use ($accountants) {
+                $q->whereIn('id', $accountants);
+            })->pluck('id');
+
+            $allUserIds = $branchUserIds->merge($agentUserIds)->merge($accountantUserIds)->unique();
+
+            $query = User::with('roles')->whereIn('id', $allUserIds);
         } else {
             abort(403, 'Unauthorized action.');
         }
 
-        $usersCount = $users->count();
-        
-        return view('users.index', compact('users', 'usersCount'));
+        if ($search = $request->query('q')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
+
+        return view('users.index', compact(
+            'users',
+            'isAdmin',
+            'companyId'
+        ));
     }
 
     public function editRole($userId)
     {
-        if(auth()->user()->role_id != Role::COMPANY){
+        if (!in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY])) {
             abort(403, 'Unauthorized action.');
         }
+
         $user = User::find($userId);
-        
-        if($user->role_id == Role::ADMIN) {
+
+        if ($user->role_id == Role::ADMIN && Auth::user()->role_id != Role::ADMIN) {
             abort(403, 'Cannot change role of Admin users.');
         }
 
-        $roles = Role::where('company_id', auth()->user()->company->id)->get();
+        if (Auth::user()->role_id == Role::ADMIN) {
+            $companyId = request('company_id', session('company_id'));
+            if ($companyId) {
+                $roles = Role::where('company_id', $companyId)->get();
+            } else {
+                $roles = Role::all();
+            }
+        } else {
+            $roles = Role::where('company_id', Auth::user()->company->id)->get();
+        }
 
         $userRole = null;
         $phone = null;
+        $countryCode = null;
 
-        if($user->role_id == Role::COMPANY && $user->company) {
+        if ($user->role_id == Role::COMPANY && $user->company) {
             $userRole = 'company';
             $phone = $user->company->phone;
-        } elseif($user->role_id == Role::BRANCH && $user->branch) {
+        } elseif ($user->role_id == Role::BRANCH && $user->branch) {
             $userRole = 'branch';
             $phone = $user->branch->phone;
-        } elseif($user->role_id == Role::AGENT && $user->agent) {
+        } elseif ($user->role_id == Role::AGENT && $user->agent) {
             $userRole = 'agent';
             $phone = $user->agent->phone_number;
-        } elseif($user->role_id == Role::ACCOUNTANT && $user->company) {
+        } elseif ($user->role_id == Role::ACCOUNTANT && $user->accountant) {
             $userRole = 'accountant';
+            $countryCode = $user->accountant->country_code;
             $phone = $user->accountant->phone_number;
-        } elseif($user->role_id == Role::CLIENT && $user->client) {
+        } elseif ($user->role_id == Role::CLIENT && $user->client) {
             $userRole = 'client';
         }
 
@@ -124,7 +188,8 @@ class AdminUsersController extends Controller
             'user',
             'roles',
             'userRole',
-            'phone'
+            'phone',
+            'countryCode'
         ));
     }
 
@@ -159,21 +224,21 @@ class AdminUsersController extends Controller
 
     public function create()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         if ($user->role_id == Role::ADMIN) {
             $branches = Branch::all();
         } elseif ($user->role_id == Role::COMPANY) {
-            $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+            $branches = Branch::where('company_id', Auth::user()->company->id)->get();
         } else {
             $branches = collect();
         }
         $branches_id = $branches->pluck('id');
 
         $agents = Agent::whereIn('branch_id', $branches_id)->get();
-        
 
-        $agentTypes = AgentType::all(); 
-        $countries = Country::all(); 
+
+        $agentTypes = AgentType::all();
+        $countries = Country::all();
 
         return view('users.create', compact('agents', 'branches', 'agentTypes', 'countries'));
     }
@@ -201,7 +266,7 @@ class AdminUsersController extends Controller
 
         $response = json_decode($response->getContent(), true);
 
-        if ($response['status'] !== 'success') { 
+        if ($response['status'] !== 'success') {
             return redirect()->route('companies.index')->with('error', 'Error creating company.');
         }
 
@@ -218,7 +283,7 @@ class AdminUsersController extends Controller
             Log::error('Error seeding COA:', ['error' => $e->getMessage()]);
             return redirect()->route('companies.index')->with('error', 'Error creating COA accounts.');
         }
-        
+
         $branchName = $company->name . ' - Main Branch';
         $branchEmail = $company->email;
 
@@ -239,7 +304,6 @@ class AdminUsersController extends Controller
 
 
         return redirect()->route('companies.index')->with($branchResponse['status'], $branchResponse['message']);
-        
     }
 
     public function ShowCompanies(Request $request)
@@ -258,40 +322,51 @@ class AdminUsersController extends Controller
     {
         $request->validate([
             'name' => 'required|string',
-            'email' => 'required|email',
-            'phone' => 'required|string',
-            'source_role' => 'required|in:company,branch,agent,accountant',
-            'info-new-password' => 'nullable|string|min:6', // optional password field
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string',
+            'country_code' => 'nullable|string',
+            'info-new-password' => 'nullable|min:8|confirmed',
         ]);
 
-        $roleType = $request->input('source_role');
+        $user->name = $request->name;
+        $user->email = $request->email;
 
-        // Prepare fields to update
-        $fields = [
-            'name' => $request->name,
-            'email' => $request->email,
-            $roleType === 'agent' || $roleType === 'accountant' ? 'phone_number' : 'phone' => $request->phone,
-        ];
-
-        // Update related model (company, branch, or agent)
-        if ($roleType === 'company' && $user->company) {
-            $user->company->update($fields);
-        } elseif ($roleType === 'branch' && $user->branch) {
-            $user->branch->update($fields);
-        } elseif ($roleType === 'agent' && $user->agent) {
-            $user->agent->update($fields);
-        } elseif ($roleType === 'accountant' && $user->accountant) {
-            $user->accountant->update($fields);
+        if ($request->filled('info-new-password')) {
+            $user->password = Hash::make($request->input('info-new-password'));
         }
 
-        // Update password if provided
-        if (!empty($request->input('info-new-password'))) {
-            $user->password = Hash::make($request->input('info-new-password'));
-            $user->save();
+        $user->save();
+
+        $sourceRole = $request->input('source_role');
+
+        if ($sourceRole === 'agent' && $user->agent) {
+            $user->agent->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'country_code' => $request->country_code,
+                'phone_number' => $request->phone,
+            ]);
+        } elseif ($sourceRole === 'accountant' && $user->accountant) {
+            $user->accountant->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'country_code' => $request->country_code,
+                'phone_number' => $request->phone,
+            ]);
+        } elseif ($sourceRole === 'branch' && $user->branch) {
+            $user->branch->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+            ]);
+        } elseif ($sourceRole === 'company' && $user->company) {
+            $user->company->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+            ]);
         }
 
         return redirect()->back()->with('success', 'Information updated successfully.');
     }
-
-
 }

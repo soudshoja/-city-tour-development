@@ -805,59 +805,58 @@
                                             </div>
                                         </div>
                                         @elseif($task->type === 'hotel')
-                                        <div class="p-4 sm:p-6">
-                                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                                                <div class="sm:col-span-3">
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
-                                                    @if($task->supplier_id == 2 && isset($mapHotels[$task->id]))
-                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->name ?? 'N/A' }}</p>
-                                                    @else
-                                                        <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? 'N/A') }}</p>
+                                            <div class="p-4 sm:p-6">
+                                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                                    <div class="sm:col-span-3">
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
+                                                        @if(isset($mapHotels[$task->id]))
+                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->name ?? 'N/A' }}</p>
+                                                        @else
+                                                            <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? $task->venue ?? 'N/A') }}</p>
+                                                        @endif
+                                                    </div>
+
+                                                    @if(isset($mapHotels[$task->id]))
+                                                        <div>
+                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
+                                                            <p class="text-sm font-medium text-gray-900">{{ ucfirst($mapHotels[$task->id]->address ?? 'N/A') }}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zipcode</p>
+                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->zipCode ?? 'N/A' }}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Location</p>
+                                                            <p class="text-sm text-gray-900">{{ ucwords(strtolower($mapHotels[$task->id]->city->name ?? '')) }}, {{ $mapHotels[$task->id]->city->country->name ?? 'N/A' }}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
+                                                            <p class="text-sm font-medium text-gray-900">+{{ $mapHotels[$task->id]->telephone ?? 'N/A' }}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Fax</p>
+                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->fax ?? 'N/A' }}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->email ?? 'N/A' }}</p>
+                                                        </div>
                                                     @endif
-                                                </div>
 
-                                                @if($task->supplier_id == 2 && isset($mapHotels[$task->id]))
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                                                    <p class="text-sm font-medium text-gray-900">{{ ucfirst($mapHotels[$task->id]->address ?? 'N/A') }}</p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zipcode</p>
-                                                    <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->zipCode ?? 'N/A' }}</p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Location</p>
-                                                    <p class="text-sm text-gray-900">{{ ucwords(strtolower($mapHotels[$task->id]->city->name)) ?? 'N/A' }}, {{ $mapHotels[$task->id]->city->country->name ?? 'N/A' }}</p>
-                                                </div>
-
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
-                                                    <p class="text-sm font-medium text-gray-900">+{{ $mapHotels[$task->id]->telephone ?? 'N/A' }}</p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Fax</p>
-                                                    <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->fax ?? 'N/A' }}</p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
-                                                    <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->email ?? 'N/A' }}</p>
-                                                </div>
-                                                @endif
-
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check In</p>
-                                                    <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('D, d M Y') }}</p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check Out</p>
-                                                    <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_out)->format('D, d M Y') }}</p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Duration</p>
-                                                    <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check In</p>
+                                                        <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('D, d M Y') }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check Out</p>
+                                                        <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_out)->format('D, d M Y') }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Duration</p>
+                                                        <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
                                         @elseif($task->type === 'visa')
                                         <div class="p-4 sm:p-6">
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -908,7 +907,40 @@
                                                 <div x-cloak x-show="showCancellation" 
                                                     class="px-4 sm:px-6 pb-4 mt-3">
                                                     <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                                                        <p class="text-sm text-gray-700 whitespace-pre-line">{{ $task->cancellation_policy }}</p>
+                                                        @php
+                                                            $policy = $task->cancellation_policy;
+                                                            
+                                                            // Remove surrounding quotes if present
+                                                            $policy = trim($policy, '"');
+                                                            
+                                                            // Unescape the JSON string
+                                                            $policy = stripslashes($policy);
+                                                            
+                                                            // Decode the JSON
+                                                            $decoded = json_decode($policy, true);
+                                                        @endphp
+                                                        @if(is_array($decoded) && !empty($decoded))
+                                                            <div class="space-y-2">
+                                                                @foreach($decoded as $item)
+                                                                    <div class="flex justify-between items-center py-2 border-b border-red-100 last:border-0">
+                                                                        <span class="text-sm font-medium text-gray-700 capitalize">
+                                                                            {{ $item['type'] ?? 'Policy' }}
+                                                                        </span>
+                                                                        <span class="text-sm font-semibold text-red-600">
+                                                                            @if(isset($item['charge']))
+                                                                                {{ number_format($item['charge'], 3) }} KWD
+                                                                            @elseif(isset($item['percentage']))
+                                                                                {{ $item['percentage'] }}%
+                                                                            @else
+                                                                                -
+                                                                            @endif
+                                                                        </span>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+                                                        @else
+                                                            <p class="text-sm text-gray-700 whitespace-pre-line">{{ $task->cancellation_policy }}</p>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
@@ -1228,11 +1260,19 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                                    <x-searchable-dropdown
-                                        name="bulk_payment_method_id"
-                                        :items="$paymentMethod->map(fn($m) => ['id' => $m->id, 'name' => $m->name])"
-                                        placeholder="Select Payment Method" />
+                                    <label class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                    <select name="bulk_payment_method_id" class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                        <option value="">Select Payment Method</option>
+                                        @foreach($listOfCreditors as $groupName => $accounts)
+                                        <optgroup label="{{ $groupName }}">
+                                            @foreach($accounts as $method)
+                                            <option value="{{ $method['id'] }}" {{ $task->payment_method_account_id == $method['id'] ? 'selected' : '' }}>
+                                                {{ $method['name'] }}
+                                            </option>
+                                            @endforeach
+                                        </optgroup>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                         </div>

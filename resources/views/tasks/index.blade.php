@@ -1738,7 +1738,7 @@
                                         </div>
                                         <button type="button" 
                                             x-show="selectedTasks.length > 0" 
-                                            @click="window.open('{{ route('tasks.detail') }}?tasks=' + selectedTasks.join(',') + '&mode=' + (selectedTasks.length > 1 ? 'bulk' : 'single'), '_blank')"
+                                            @click="window.open('{{ route('tasks.detail') }}?tasks=' + selectedTasks.join(','), '_blank')"
                                             class="flex px-5 py-3 gap-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-sm items-center transition-colors duration-200">
                                             <span class="text-sm text-white" x-text="selectedTasks.length > 1 ? 'Bulk Edit' : 'Edit Task'"></span>
                                         </button>

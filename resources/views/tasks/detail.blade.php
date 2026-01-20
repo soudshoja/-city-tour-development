@@ -232,10 +232,16 @@
         <div class="flex-1 pb-16">
             <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-sm sm:text-base">
                 <li>
-                    <a href="{{ route('tasks.index') }}" class="text-primary text-md hover:underline">Tasks List</a>
+                    <a href="{{ route('tasks.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                        Tasks List
+                    </a>
                 </li>
-                <li class="before:content-['>'] before:mr-2 text-md text-gray-600">
-                    <span>Task Details</span>
+
+                <li class="flex items-center space-x-2 rtl:space-x-reverse">
+                    <span class="text-gray-400">&gt;</span>
+                    <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">
+                        Task Details
+                    </span>
                 </li>
             </ul>
 

@@ -3606,10 +3606,10 @@ table tbody tr {
     border-color: rgb(25 30 58 / var(--tw-border-opacity)) !important;
 }
 table.table-hover tbody tr:hover {
-    background-color: #e0e6ed33 !important;
+    background-color: #e0e1e4 !important;
 }
 :is(.dark table.table-hover tbody tr:hover) {
-    background-color: rgba(35, 62, 104, 0.705);
+    background-color: rgba(71, 85, 105, 0.5) !important;
 }
 table.table-striped tbody tr:nth-child(odd) {
     background-color: #e0e6ed33 !important;

@@ -36,23 +36,8 @@ class ReceiptVoucherController extends Controller
 {
     public function index(Request $request)
     {
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
         $user = Auth::user();
-
-        if ($user->role_id == Role::ADMIN) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('receipt-voucher.index', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('receipt-voucher.index');
-            }
-        }
+        $companyId = getCompanyId($user);
 
         $query = Transaction::with('invoiceReceipt')
             ->where('reference_number', 'like', 'RV-%')
@@ -68,21 +53,17 @@ class ReceiptVoucherController extends Controller
         }
 
         if ($user->role_id == Role::ADMIN) {
-            $companyId = $request->get('company_id') ?? session('company_id');
-
             if ($companyId) {
                 $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
                 $query->whereIn('branch_id', $branchesId);
             }
         } elseif ($user->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $user->id)->value('id');
             $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
             $query->whereIn('branch_id', $branchesId);
         } elseif ($user->role_id == Role::AGENT) {
             $branchId = $user->branch_id;
             $query->where('branch_id', $branchId)->whereNotNull('name');
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company->id;
             $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
             $query->whereIn('branch_id', $branchesId)->whereNotNull('name');
         } else {
@@ -92,65 +73,28 @@ class ReceiptVoucherController extends Controller
         $totalRecords = (clone $query)->count();
         $invoicereceiptvouchers = $query->paginate(10)->withQueryString();
 
-        return view('receipt-voucher.index', compact('invoicereceiptvouchers', 'totalRecords'));
+        return view('receipt-voucher.index', compact(
+            'invoicereceiptvouchers',
+            'totalRecords',
+        ));
     }
 
     public function create(Request $request)
     {
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         if ($user->role_id == Role::ADMIN) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('receipt-voucher.create', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('receipt-voucher.create');
-            }
-        }
-
-        if ($user->role_id == Role::ADMIN) {
-            $companyId = $request->get('company_id') ?? session('company_id');
-
             if ($companyId) {
                 $company = Company::with('branches.agents')->find($companyId);
                 $accounts = $company->branches->flatMap->accounts;
                 $branches = $company->branches;
-                $companies = Company::all();
+                $companies = $company;
             } else {
                 $accounts = Account::all();
                 $companies = Company::all();
                 $branches = Branch::all();
             }
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
 
             $clients = $companyId
                 ? \App\Models\Client::where('company_id', $companyId)->get()
@@ -160,76 +104,46 @@ class ReceiptVoucherController extends Controller
                 ? Refund::where('company_id', $companyId)->select('refund_number')->get()
                 : Refund::select('refund_number')->get();
         } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.agents')->find($user->company->id);
+            $company = Company::with('branches.agents')->find($companyId);
             $accounts = $company->branches->flatMap->accounts;
             $branches = $company->branches;
             $companies = $company;
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
             $clients = \App\Models\Client::all();
-
-            $refundNumbers = Refund::where('company_id', $user->company->id)
-                ->where('branch_id', $user->branch->id)
+            $refundNumbers = Refund::where('company_id', $companyId)
                 ->select('refund_number')
                 ->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $company = Company::with('branches.agents')->find($user->company->id);
+            $company = Company::with('branches.agents')->find($companyId);
             $accounts = $company->branches->flatMap->accounts;
             $branches = $company->branches;
             $companies = $company;
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
             $clients = \App\Models\Client::all();
-
-            $refundNumbers = Refund::where('company_id', $user->company->id)
+            $refundNumbers = Refund::where('company_id', $companyId)
                 ->where('branch_id', $user->accountant->branch->id)
                 ->select('refund_number')
                 ->get();
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
+
+        $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+        $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+
+        $accpayreceives = Account::doesntHave('children')
+            ->with('root')
+            ->whereHas('parent', fn($q) => $q->whereIn('root_id', $rootIds))
+            ->get();
+
+        $lastLevelAccounts = Account::doesntHave('children')
+            ->with('root')
+            ->whereHas('parent', fn($q) => $q->whereIn('root_id', $rootIds))
+            ->get();
+
+        $rootIds = Account::where('name', 'Liabilities')->pluck('id');
+        $suppliers = Account::doesntHave('children')
+            ->with('root')
+            ->whereIn('root_id', $rootIds)
+            ->get();
 
         $unpaidInvoices = Invoice::where('status', 'unpaid')->get();
         $oldItems = old('items') ?? [];
@@ -244,7 +158,7 @@ class ReceiptVoucherController extends Controller
             'refundNumbers',
             'clients',
             'unpaidInvoices',
-            'oldItems'
+            'oldItems',
         ));
     }
 
@@ -588,103 +502,45 @@ class ReceiptVoucherController extends Controller
 
     public function edit(Request $request, $id)
     {
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
         $user = Auth::user();
-
-        if ($user->role_id == Role::ADMIN) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('receipt-voucher.edit', [
-                    'id' => $id,
-                    'company_id' => session('company_id')
-                ]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('receipt-voucher.edit', $id);
-            }
-        }
 
         $receiptvoucher = Transaction::with('invoiceReceipt')->findOrFail($id);
         $JournalEntrys = JournalEntry::where('transaction_id', $receiptvoucher->id)->get();
 
-        if ($user->role_id == Role::ADMIN) {
-            $companyId = $request->get('company_id') ?? session('company_id');
+        $companyId = $receiptvoucher->company_id;
+        $company = Company::with('branches.account', 'branches.agents')->find($companyId);
+        if (!$company) {
+            return redirect()->route('receipt-voucher.index')->with('error', 'Company not found.');
+        }
 
-            if ($companyId) {
-                $company = Company::with('branches.account', 'branches.agents')->find($companyId);
-                $companies = $company;
-                $branches = $company->branches;
-                $accounts = $branches->pluck('account')->filter();
-            } else {
-                $company = Company::with('branches.account', 'branches.agents')->find($receiptvoucher->company_id);
-                $companies = $company;
-                $branches = $company ? $company->branches : collect();
-                $accounts = $branches->pluck('account')->filter();
-            }
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
-        } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.account', 'branches.agents')->find($receiptvoucher->entity_id);
-            $accounts = $company->branches->pluck('account')->filter();
-            $branches = $company->branches;
-            $companies = $company;
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
-        } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $company = Company::with('branches.account', 'branches.agents')->find($user->accountant->branch->company->id);
-            $accounts = $company->branches->pluck('account')->filter();
-            $branches = $company->branches;
-            $companies = $company;
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
-        } else {
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
+
+        $companies = $company;
+        $branches = $company->branches;
+        $accounts = $branches->pluck('account')->filter();
+
+        $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+        $rootIds = Account::whereIn('name', $rootNames)
+            ->where('company_id', $companyId)
+            ->pluck('id');
+
+        $accpayreceives = Account::doesntHave('children')
+            ->with('root')
+            ->where('company_id', $companyId)
+            ->whereHas('parent', fn($q) => $q->whereIn('root_id', $rootIds))
+            ->get();
+
+        $liabilitiesRootIds = Account::where('name', 'Liabilities')
+            ->where('company_id', $companyId)
+            ->pluck('id');
+
+        $suppliers = Account::doesntHave('children')
+            ->with('root')
+            ->where('company_id', $companyId)
+            ->whereIn('root_id', $liabilitiesRootIds)
+            ->get();
 
         return view('receipt-voucher.edit', compact(
             'companies',

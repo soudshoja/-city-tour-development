@@ -28,8 +28,6 @@
         </div>
     </div>
 
-    <x-admin-card title="receipt voucher" :companyId="request('company_id')" />
-
     <div class="panel rounded-lg">
         <x-search
             :action="route('receipt-voucher.index')"

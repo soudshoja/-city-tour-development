@@ -27,28 +27,6 @@ class BankPaymentController extends Controller
         Gate::authorize('viewAny', CoaCategory::class);
 
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('bank-payments.index', array_merge(
-                    ['company_id' => session('company_id')],
-                    $request->only('q')
-                ));
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('bank-payments.index', $request->only('q'));
-            }
-        }
-
         $companyId = getCompanyId($user);
 
         $bankPaymentsQuery = Transaction::with(['journalEntries' => function ($query) {
@@ -70,7 +48,7 @@ class BankPaymentController extends Controller
             });
         }
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $bankPaymentsQuery->where('company_id', $companyId);
             }
@@ -91,35 +69,12 @@ class BankPaymentController extends Controller
         return view('bank-payments.index', compact(
             'bankPayments',
             'totalRecords',
-            'isAdmin',
-            'companyId'
         ));
     }
 
     public function create(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('bank-payments.create', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('bank-payments.create');
-            }
-        }
-
         $companyId = getCompanyId($user);
 
         if (!$companyId) {
@@ -176,9 +131,7 @@ class BankPaymentController extends Controller
             ->where('label', 'like', '%bonus%')
             ->get();
 
-        $agents = Agent::whereHas('branch', function ($q) use ($companyId) {
-            $q->where('company_id', $companyId);
-        })->get();
+        $agents = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
 
         $assetsRoot = Account::where('name', 'Assets')
             ->where('company_id', $companyId)
@@ -217,8 +170,6 @@ class BankPaymentController extends Controller
             'bonusAccounts',
             'agents',
             'bankAccounts',
-            'isAdmin',
-            'companyId'
         ));
     }
 
@@ -468,37 +419,20 @@ class BankPaymentController extends Controller
         $payFromName = $bankEntry?->name ?? '';
 
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
         $companyId = $bankPayment->company_id;
+        $company = Company::with('branches.account', 'branches.agents')->find($companyId);
 
-        if ($isAdmin) {
-            $company = Company::with('branches.account', 'branches.agents')->find($companyId);
-            if (!$company) {
-                return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
-            }
-            $companies = $company;
-            $branches = $company->branches;
-            $accounts = $branches->pluck('account')->filter();
-        } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.account', 'branches.agents')->find($companyId);
-            if (!$company) {
-                return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
-            }
-            $accounts = $company->branches->pluck('account')->filter();
-            $branches = $company->branches;
-            $companies = $company;
-        } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $company = Company::with('branches.account', 'branches.agents')->find($companyId);
-            if (!$company) {
-                return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
-            }
-            $accounts = $company->branches->pluck('account')->filter();
-            $branches = $company->branches;
-            $companies = $company;
-        } else {
+        if (!$company) {
+            return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
+        }
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
+
+        $companies = $company;
+        $branches = $company->branches;
+        $accounts = $branches->pluck('account')->filter();
 
         $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
         $rootIds = Account::whereIn('name', $rootNames)
@@ -507,21 +441,18 @@ class BankPaymentController extends Controller
 
         $accpayreceives = Account::doesntHave('children')
             ->where('company_id', $companyId)
-            ->whereHas('parent', function ($query) use ($rootIds) {
-                $query->whereIn('root_id', $rootIds);
-            })
+            ->whereHas('parent', fn($q) => $q->whereIn('root_id', $rootIds))
             ->get();
 
         $suppliers = Account::doesntHave('children')
             ->with('root')
             ->where('company_id', $companyId)
-            ->whereHas('parent', function ($query) use ($rootIds) {
-                $query->whereIn('root_id', $rootIds);
-            })
+            ->whereHas('parent', fn($q) => $q->whereIn('root_id', $rootIds))
             ->get();
 
         $assetsRoot = Account::where('name', 'Assets')->where('company_id', $companyId)->first();
         $bankAccounts = collect();
+
         if ($assetsRoot) {
             $bankParent = Account::where('parent_id', $assetsRoot->id)
                 ->where('name', 'Bank Accounts')
@@ -552,8 +483,6 @@ class BankPaymentController extends Controller
             'bankAccounts',
             'payeeName',
             'payFromName',
-            'isAdmin',
-            'companyId'
         ));
     }
 
@@ -683,9 +612,6 @@ class BankPaymentController extends Controller
 
         $supplierName = (string) $request->get('supplier');
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        // Get company ID based on role
         $companyId = getCompanyId($user);
 
         if (!$companyId) {

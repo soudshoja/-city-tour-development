@@ -64,7 +64,7 @@ class TaskController extends Controller
 {
     use NotificationTrait, Converter, CurrencyExchangeTrait;
 
-    public function getTasks(Request $request) : JsonResponse
+    public function getTasks(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Task::class);
 
@@ -76,19 +76,18 @@ class TaskController extends Controller
 
         try {
             $taskQuery = Task::query();
-            
+
             if (!empty($filter) && is_array($filter)) {
                 $taskQuery->where(function ($query) use ($filter) {
-                    foreach($filter as $field => $value) {
+                    foreach ($filter as $field => $value) {
                         if (!empty($value)) {
                             $query->where($field, 'like', '%' . $value . '%');
                         }
                     }
                 });
             }
-            
-            $taskQuery->orderBy('supplier_pay_date', 'desc');
 
+            $taskQuery->orderBy('supplier_pay_date', 'desc');
         } catch (Exception $e) {
             Log::info('Error building task query', ['error' => $e->getMessage()]);
             return response()->json([
@@ -108,19 +107,15 @@ class TaskController extends Controller
                 'total' => $tasksTotal,
             ],
         ]);
-        
     }
 
     public function index(Request $request): View | RedirectResponse
     {
         Gate::authorize('viewAny', Task::class);
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
-        if ($user->role_id === Role::AGENT) {
-            $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'price', 'status', 'info'];
-        }
-
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
         $sortBy = $request->query('sortBy', 'created_at');
@@ -132,17 +127,30 @@ class TaskController extends Controller
 
         $query = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
         $suppliers = Supplier::with('companies');
-        $companyId = null;
 
         if ($user->role_id == Role::ADMIN) {
-            $companyId = 1;
-            $clients = Client::all();
-            $agents = Agent::all();
-            $fullClients = Client::all();
-            $suppliers = $suppliers->get();
+            $company = $companyId ? Company::find($companyId) : null;
+
+            if ($company) {
+                $branches = Branch::where('company_id', $companyId)->get();
+                $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
+                $agentsId = $agents->pluck('id');
+                $clients = Client::whereIn('agent_id', $agentsId)->get();
+                $fullClients = Client::where(function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId)
+                        ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
+                })->get();
+
+                $query->where('company_id', $companyId);
+                $suppliers = $suppliers->activeForCompany($companyId)->get();
+            } else {
+                $clients = Client::all();
+                $agents = Agent::all();
+                $fullClients = Client::all();
+                $suppliers = $suppliers->get();
+            }
         } elseif ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-            $branches = Branch::where('company_id', $user->company->id)->get();
+            $branches = Branch::where('company_id', $companyId)->get();
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
@@ -151,8 +159,8 @@ class TaskController extends Controller
                     ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
             })->get();
 
-            $query->where('company_id', $user->company->id);
-            $suppliers = $suppliers->activeForCompany($user->company->id)->get();
+            $query->where('company_id', $companyId);
+            $suppliers = $suppliers->activeForCompany($companyId)->get();
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
@@ -165,7 +173,6 @@ class TaskController extends Controller
             $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
             $suppliers = $suppliers->activeForCompany($user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company->id;
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
             $fullClients = Client::where(function ($q) use ($user) {
@@ -183,7 +190,6 @@ class TaskController extends Controller
 
             $suppliers = $suppliers->whereHas('companies', fn($q) => $q->where('supplier_companies.is_active', 1))->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company->id;
             $company = Company::findOrFail($companyId);
             $agents = collect();
             foreach ($company->branches as $branch) {
@@ -210,7 +216,6 @@ class TaskController extends Controller
 
         // filter out the confirmed tasks from the query
         $query->whereNotIn('id', $confirmedIssuedTask);
-
 
         if (!$companyId) {
             return redirect()->back()->with('error', 'Company not found for the user.');
@@ -252,6 +257,7 @@ class TaskController extends Controller
             ->toArray();
 
         $paymentMethod = Account::where('parent_id', 39)->get();
+
         if ($search = $request->query('q')) {
             $searchTerm = '%' . strtolower($search) . '%';
             $query->where(function ($q) use ($searchTerm) {
@@ -1018,7 +1024,7 @@ class TaskController extends Controller
                 ->where('status', 'confirmed')
                 ->where('passenger_name', $passengerName)
                 ->first();
-            
+
             if ($confirmedTask) {
                 $request->merge(['original_task_id' => $confirmedTask->id]);
                 Log::info('[TASK] Linked issued task to confirmed task', [
@@ -1177,7 +1183,6 @@ class TaskController extends Controller
                                 'error' => $e->getMessage(),
                             ]);
                         }
-
                     }
                 }
             }
@@ -1245,7 +1250,7 @@ class TaskController extends Controller
             }
 
             $supplierTBO = Supplier::where('name', 'LIKE', '%TBO%')->orWhere('name', 'TBO Holiday')->first();
-            
+
             if ($task->booking_reference && $supplierTBO && $task->supplier_id == $supplierTBO->id) {
 
                 $tboBooking = TBO::where('booking_reference_id', $task->booking_reference)
@@ -1254,17 +1259,17 @@ class TaskController extends Controller
 
                 if ($tboBooking && $tboBooking->hotel_booking_id) {
                     $hotelBooking = HotelBooking::find($tboBooking->hotel_booking_id);
-                    
+
                     if ($hotelBooking && $hotelBooking->payment_id) {
                         $payment = Payment::find($hotelBooking->payment_id);
-                        
+
                         if ($payment) {
                             $task->is_n8n_booking = true;
                             $task->enabled = true;
-                            
+
                             $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
                             Log::info('Auto-generated invoice for TBO hotel booking task: ' . $task->reference, $generateInvoiceResponse);
-                            
+
                             $task->save();
                         } else {
                             Log::warning("TBO task: No payment found for TBO booking {$tboBooking->id}");
@@ -3814,7 +3819,7 @@ class TaskController extends Controller
             if (is_array($roomDetails)) {
                 $roomDetails = implode(', ', array_filter($roomDetails));
             }
-            
+
             $hotelDetails = [
                 'hotel_id' => $hotel->id,
                 'check_in' => isset($data['check_in']) ? Carbon::parse($data['check_in']) : null,
@@ -5184,7 +5189,7 @@ class TaskController extends Controller
         ], 200);
     }
 
-    public function findAgent(Request $request) 
+    public function findAgent(Request $request)
     {
         $phoneNumber = $request->input('data.fromNumber');
 
@@ -5203,19 +5208,19 @@ class TaskController extends Controller
                 'message' => "Phone number is within the database. Agent detected: " . $agent->name,
             ], 200);
         }
-        
+
         Log::info("The phone number is not within the database. Supplier agent detected: " . $phoneNumber);
 
         return response()->json(array_merge(
             $request->all(),
-                [
-                    'status' => 'error',
-                    'message' => 'Phone number is not within the database. Supplier agent detected',
-                ]
+            [
+                'status' => 'error',
+                'message' => 'Phone number is not within the database. Supplier agent detected',
+            ]
         ), 200);
     }
 
-    public function automationSupplier(Request $request) 
+    public function automationSupplier(Request $request)
     {
         $request->validate([
             'phone_number' => 'required',
@@ -5241,8 +5246,8 @@ class TaskController extends Controller
             Log::info("No supplier company found within the system database with group ID: " . $groupId);
 
             return response()->json([
-                'status' => 'error', 
-                'message' => 'No supplier found with such group ID', 
+                'status' => 'error',
+                'message' => 'No supplier found with such group ID',
             ], 200);
         }
 
@@ -5274,7 +5279,7 @@ class TaskController extends Controller
                     'message' => 'Failed to store the file: ' . $storeFileData['message'],
                 ], 200);
             }
-        
+
             $fileResponseData = $storeTheFile->getData(true);
             $supplierFilePath = $fileResponseData['supplier_file_path'];
             $filePath = $fileResponseData['file_path'];
@@ -5293,7 +5298,7 @@ class TaskController extends Controller
             Log::info('Successfully created file upload record for : ' . $request->file_name);
 
             if ($isMergeableSupplier) {
-                $mergedFile = $this->mergingFiles($supplierCompany, $supplierFilePath, $filePath, $userId);   
+                $mergedFile = $this->mergingFiles($supplierCompany, $supplierFilePath, $filePath, $userId);
 
                 $mergedFileData = $mergedFile->getData(true);
 
@@ -5327,14 +5332,13 @@ class TaskController extends Controller
                     ], 200);
                 }
             }
-         
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'File stored successfully',
                 'group_id' => $request->group_id,
                 'file_name' => $request->file_name,
-            ], 200); 
-
+            ], 200);
         } catch (Exception $e) {
             Log::info('Failed to merge files: ' . $e->getMessage());
             return response()->json([
@@ -5347,14 +5351,14 @@ class TaskController extends Controller
     public function fileStorage(Request $request, $supplierCompany)
     {
         Log::info('Storing file for supplier company: ' . $supplierCompany->supplier->name);
-        
+
         try {
             $pdf = $request->file('file');
-            
+
             $companyName = strtolower(preg_replace('/[^A-Za-z0-9_\-]/', '_', $supplierCompany->company->name));
             $supplierName = strtolower(preg_replace('/[^A-Za-z0-9_\-]/', '_', $supplierCompany->supplier->name));
-            
-            $currentDate = now()->format('d-m-Y');                
+
+            $currentDate = now()->format('d-m-Y');
 
             $supplierFilePath = storage_path("app/{$companyName}/{$supplierName}");
             $filePath = $supplierFilePath . '/resayil/' . $currentDate;
@@ -5369,8 +5373,8 @@ class TaskController extends Controller
             Log::info("Uploading file " . $request->file_name . " to " . $filePath);
 
             return response()->json([
-                'status' => 'success', 
-                'message' => 'File '. $request->file_name . ' stored successfully into ' . $filePath,
+                'status' => 'success',
+                'message' => 'File ' . $request->file_name . ' stored successfully into ' . $filePath,
                 'supplier_id' => $supplierCompany->supplier_id,
                 'company_id' => $supplierCompany->company_id,
                 'file_name' => $request->file_name,
@@ -5386,7 +5390,7 @@ class TaskController extends Controller
         }
     }
 
-    public function mergingFiles($supplierCompany, $supplierFilePath, $filePath, $userId) 
+    public function mergingFiles($supplierCompany, $supplierFilePath, $filePath, $userId)
     {
         $supplierPrefixMap = [
             'Smile Holidays' => 'SMIL',
@@ -5411,7 +5415,7 @@ class TaskController extends Controller
                         ->where('company_id', $supplierCompany->company_id)
                         ->where('user_id', $userId)
                         ->where('status', 'pending')
-                        ->where('destination_path', $filePath) 
+                        ->where('destination_path', $filePath)
                         ->whereNull('merged_file_name')
                         ->get();
 
@@ -5423,17 +5427,17 @@ class TaskController extends Controller
 
                         $merger = new Merger(new Fpdi2Driver());
                         $successFiles = [];
-                        $successFileIds = [];  
+                        $successFileIds = [];
                         $failedFiles = [];
 
                         foreach ($fileRecords as $fileRecord) {
                             $fullPath = $fileRecord->destination_path . '/' . $fileRecord->file_name;
-                            
+
                             if (File::exists($fullPath)) {
                                 try {
                                     $merger->addFile($fullPath);
                                     $successFiles[] = $fileRecord->file_name;
-                                    $successFileIds[] = $fileRecord->id; 
+                                    $successFileIds[] = $fileRecord->id;
                                     Log::info('Added file to merger: ' . $fileRecord->file_name);
                                 } catch (\Throwable $e) {
                                     $failedFiles[] = $fileRecord->file_name;
@@ -5456,7 +5460,7 @@ class TaskController extends Controller
                         }
 
                         $prefix = $supplierPrefixMap[$supplierCompany->supplier->name];
-                        $fileIds = implode('_', $successFileIds); 
+                        $fileIds = implode('_', $successFileIds);
                         $mergedFileName = sprintf('%s_%s_%s.pdf', $prefix, $fileIds, now()->format('ymdHis'));
 
                         $mergedBytes = $merger->merge();
@@ -5466,7 +5470,7 @@ class TaskController extends Controller
                             File::makeDirectory($unprocessedPath, 0755, true);
                         }
                         $mergedFilePath = $unprocessedPath . '/' . $mergedFileName;
-                        File::put($mergedFilePath, $mergedBytes);                       
+                        File::put($mergedFilePath, $mergedBytes);
 
                         Log::info('Successfully merged ' . count($successFiles) . ' files into: ' . $mergedFileName);
 
@@ -5519,12 +5523,11 @@ class TaskController extends Controller
                 'message' => 'Directory does not exist: ' . $filePath,
             ], 200);
         }
-        
+
         return response()->json([
             'status' => 'success',
             'message' => 'Merge supplier file processed',
         ], 200);
-        
     }
 
     public function switchInvoiceTask(Request $request, Task $task): RedirectResponse

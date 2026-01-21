@@ -39,32 +39,30 @@ class CoaController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('viewAny', CoaCategory::class);
-        // Get the authenticated user
+
         $user = Auth::user();
 
-        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             return abort(403, 'Unauthorized action.');
         }
-        $company = Company::where('user_id', $user->id)->first();
 
-        // Ensure the company exists before proceeding
-        if (!$company) {
-            try {
-                $companyId = $user->accountant->branch->company->id;
-                $company = Company::find($companyId) ?? null;
-            } catch (Exception $e) {
-                Log::error('Error fetching company: ' . $e->getMessage());
-                return redirect()->route('dashboard')->with('error', 'Company not found.');
-            }
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->route('dashboard')->with('error', 'Please select a company first.');
         }
 
-        // Fetch all agents related to the company
+        $company = Company::find($companyId);
+
+        if (!$company) {
+            return redirect()->route('dashboard')->with('error', 'Company not found.');
+        }
+
         $agents = $company->agents()
             ->with('branch')
             ->get();
         $agentIds = $agents->pluck('id')->toArray();
 
-        // Fetch invoices and clients related to the agents
         $invoices = Invoice::with('agent.branch', 'client')
             ->whereIn('agent_id', $agentIds)
             ->get();
@@ -73,31 +71,31 @@ class CoaController extends Controller
             ->with('agent.branch')
             ->get();
 
-        // Fetch all suppliers
         $suppliers = Supplier::all();
 
-        $branches = Branch::where('company_id', $company->id)->get();
+        $branches = Branch::where('company_id', $companyId)->get();
 
-        // Get  data from the privates function
+        $assetsAccount = Account::where('name', 'Assets')
+            ->where('company_id', $companyId)
+            ->first();
+        $liabilitiesAccount = Account::where('name', 'Liabilities')
+            ->where('company_id', $companyId)
+            ->first();
+        $incomesAccount = Account::where('name', 'Income')
+            ->where('company_id', $companyId)
+            ->first();
+        $expensesAccount = Account::where('name', 'Expenses')
+            ->where('company_id', $companyId)
+            ->first();
+        $equitiesAccount = Account::where('name', 'Equity')
+            ->where('company_id', $companyId)
+            ->first();
 
-        $assetsAccount = Account::where('name', 'Assets')->first();
-        $liabilitiesAccount = Account::where('name', 'Liabilities')->first();
-        $incomesAccount = Account::where('name', 'Income')->first();
-        $expensesAccount = Account::where('name', 'Expenses')->first();
-        $equitiesAccount = Account::where('name', 'Equity')->first();
-
-        $assets = $this->childAccount($assetsAccount, 'normal');
-        $liabilities = $this->childAccount($liabilitiesAccount, 'reverse');
-
-        $incomes = $this->childAccount($incomesAccount, 'reverse');
-        $expenses = $this->childAccount($expensesAccount, 'normal');
-        $equities = $this->childAccount($equitiesAccount, 'reverse');
-
-        // $assets = $this->getAssets();
-        // $liabilities = $this->getLiabilities();
-        // $incomes = $this->getIncome();
-        // $expenses = $this->getExpenses();
-        // $equities = $this->getEquity();
+        $assets = $assetsAccount ? $this->childAccount($assetsAccount, 'normal') : null;
+        $liabilities = $liabilitiesAccount ? $this->childAccount($liabilitiesAccount, 'reverse') : null;
+        $incomes = $incomesAccount ? $this->childAccount($incomesAccount, 'reverse') : null;
+        $expenses = $expensesAccount ? $this->childAccount($expensesAccount, 'normal') : null;
+        $equities = $equitiesAccount ? $this->childAccount($equitiesAccount, 'reverse') : null;
 
         return view('coa.index', [
             'assets'      => $assets,

@@ -58,8 +58,6 @@
         }
     </style>
 
-    <x-admin-card title="payment voucher" :companyId="$companyId" />
-
     <div class="panel h-full overflow-hidden border-0 p-0">
         <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
             <div class="flex items-center justify-between text-white">

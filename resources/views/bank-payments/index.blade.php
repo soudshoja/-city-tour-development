@@ -31,8 +31,6 @@
         </div>
     </div>
 
-    <x-admin-card title="payment voucher" :companyId="request('company_id')" />
-
     <div class="panel rounded-lg">
         <x-search
             :action="route('bank-payments.index')"

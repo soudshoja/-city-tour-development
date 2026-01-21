@@ -21,44 +21,82 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
-
-    public function index()
+    public function index(Request $request)
     {
         $serializedData = [];
+        $user = Auth::user();
 
-        if (Auth::user()->role_id == Role::COMPANY) {
+        if ($user->role_id == Role::ADMIN) {
+            $companyId = getCompanyId($user);
+            $company = $companyId ? Company::find($companyId) : null;
+        } elseif ($user->role_id == Role::COMPANY) {
             $company = Company::where('user_id', Auth::id())->first();
-        } elseif (Auth::user()->role_id == Role::ACCOUNTANT) {
-            $company = Auth()->user()?->accountant?->branch?->company;
+            $companyId = $company?->id;
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $company = $user->accountant?->branch?->company;
+            $companyId = $company?->id;
         } else {
             $company = null;
+            $companyId = null;
         }
 
         $walletData = $this->getCompanyWallets($company);
         extract($walletData);
 
-        $jazeeraCredit = JournalEntry::where('name', 'Jazeera Airways Credit')->get();
+        $jazeeraCredit = JournalEntry::where('name', 'Jazeera Airways Credit')
+            ->when($company, fn($q) => $q->where('company_id', $companyId))
+            ->get();
 
-        if (Auth::user()->role_id == Role::ADMIN) {
-            $dashboardData = $this->adminDashboard();
+        if ($user->role_id == Role::ADMIN) {
+            if ($company) {
+                $branches = Branch::where('company_id', $companyId)->get();
+                $agents = Agent::whereIn('branch_id', $branches->pluck('id'))->get();
+                $agentIds = $agents->pluck('id');
+                $clients = Client::whereIn('agent_id', $agentIds)->get();
 
-            $serializedData = [
-                'companies' => $dashboardData['companies'],
-                'branches' => $dashboardData['branches'],
-                'agents' => $dashboardData['agents'],
-                'clients' => $dashboardData['clients'],
-                'pieChartTitle' => 'Companies Sales',
-                'pieChartNumbers' => $dashboardData['companiesSales'],
-                'pieChartLabels' => $dashboardData['companiesNames'],
-                'pieChartColors' => $this->generateColors($dashboardData['companies']->count()),
-                'wallets' => $wallets,
-                'iataWalletName' => $iataWalletName,
-                'iataBalance' => $iataBalance,
-                'iataErrorMessage' => $iataErrorMessage,
-                'jazeeraCredit' => $jazeeraCredit, 
-            ];
+                $branchesSales = $branches->map(function ($branch) {
+                    $branchAgentIds = Agent::where('branch_id', $branch->id)->pluck('id');
+                    return Invoice::whereIn('agent_id', $branchAgentIds)
+                        ->where('status', 'paid')
+                        ->sum('amount') ?? 0;
+                })->toArray();
 
-        } elseif (Auth::user()->role_id == Role::COMPANY) {
+                $serializedData = [
+                    'branches' => $branches,
+                    'agents' => $agents,
+                    'clients' => $clients,
+                    'pieChartTitle' => 'Branch Sales - ' . $company->name,
+                    'pieChartNumbers' => $branchesSales,
+                    'pieChartLabels' => $branches->pluck('name')->toArray(),
+                    'pieChartColors' => $this->generateColors($branches->count()),
+                    'wallets' => $wallets,
+                    'iataWalletName' => $iataWalletName,
+                    'iataBalance' => $iataBalance,
+                    'iataErrorMessage' => $iataErrorMessage,
+                    'jazeeraCredit' => $jazeeraCredit,
+                ];
+            } else {
+                $dashboardData = $this->adminDashboard();
+
+                $serializedData = [
+                    'companies' => $dashboardData['companies'],
+                    'branches' => $dashboardData['branches'],
+                    'agents' => $dashboardData['agents'],
+                    'clients' => $dashboardData['clients'],
+                    'pieChartTitle' => 'Companies Sales',
+                    'pieChartNumbers' => $dashboardData['companiesSales'],
+                    'pieChartLabels' => $dashboardData['companiesNames'],
+                    'pieChartColors' => $this->generateColors($dashboardData['companies']->count()),
+                    'wallets' => $wallets,
+                    'iataWalletName' => $iataWalletName,
+                    'iataBalance' => $iataBalance,
+                    'iataErrorMessage' => $iataErrorMessage,
+                    'jazeeraCredit' => $jazeeraCredit,
+                ];
+            }
+
+            return view('dashboard', $serializedData);
+        } elseif ($user->role_id == Role::COMPANY) {
             $dashboardData = $this->companyDashboard();
             $reportController = new ReportController();
 
@@ -87,16 +125,13 @@ class DashboardController extends Controller
                 'iataWalletName' => $iataWalletName,
                 'iataBalance' => $iataBalance,
                 'iataErrorMessage' => $iataErrorMessage,
-                'jazeeraCredit' => $jazeeraCredit, 
+                'jazeeraCredit' => $jazeeraCredit,
             ];
-
-        } elseif (Auth::user()->role_id == Role::AGENT) {
+        } elseif ($user->role_id == Role::AGENT) {
             return $this->agentDashboard();
-
-        } elseif (Auth::user()->role_id == Role::BRANCH) {
+        } elseif ($user->role_id == Role::BRANCH) {
             return $this->branchDashboard();
-
-        } elseif (Auth::user()->role_id == Role::ACCOUNTANT) {
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
             $dashboardData = $this->accountantDasboard();
 
             $serializedData = [
@@ -117,7 +152,7 @@ class DashboardController extends Controller
                 'iataWalletName'    => $iataWalletName,
                 'iataBalance'       => $iataBalance,
                 'iataErrorMessage'  => $iataErrorMessage,
-                'jazeeraCredit'     => $jazeeraCredit, 
+                'jazeeraCredit'     => $jazeeraCredit,
             ];
         }
 
@@ -149,12 +184,11 @@ class DashboardController extends Controller
             $wallets = collect($data['wallets'] ?? [])->where('status', 'OPEN')->values();
             $iataBalance = $wallets->sum('balance');
             $walletName = $wallets->pluck('name')->join(', ');
-
         } catch (\Throwable $e) {
             $error = $e->getMessage();
         }
 
-        Log::info('Returning data' , [
+        Log::info('Returning data', [
             'wallets' => $wallets,
             'iataBalance' => $iataBalance,
             'iataWalletName' => $walletName,
@@ -181,14 +215,14 @@ class DashboardController extends Controller
                 });
             })->sum('amount');
         });
-        
+
 
 
         $branches = Branch::all();
         $agents = Agent::all();
         $clients = Client::all();
 
-       return [
+        return [
             'companies' => $companies,
             'branches' => $branches,
             'agents' => $agents,
@@ -244,7 +278,6 @@ class DashboardController extends Controller
             'paidAmounts' => $paidAmounts,
             'unpaidAmounts' => $unpaidAmounts,
         ];
-
     }
 
     public function agentDashboard()
@@ -302,9 +335,9 @@ class DashboardController extends Controller
     //     $agents = Agent::with('branch.company')->get();
     //     $clients = Client::all();
     //     $companies = Company::all();
-        
+
     //     $clientsWithDetails = $clients->map(function ($client) {
-            
+
     //         $taskCount = Task::where('client_id', $client->id)->count();
 
     //         $totalInvoices = Invoice::where('client_id', $client->id)->count();
@@ -339,7 +372,7 @@ class DashboardController extends Controller
 
     //     });
 
-       
+
 
     //     // $dashboardData = [
     //     //     'totalTasks' => $taskCount,
@@ -357,8 +390,8 @@ class DashboardController extends Controller
     //     //     'agents' => $agentsWithDetails,
     //     //     'clients' => $clientsWithDetails,
     //     // ];
-       
-      
+
+
     //     $totalTasks = $taskCount;
     //     $pendingTasks = $pendingTask;
     //     $completedTasks = $completedTask;
@@ -409,7 +442,6 @@ class DashboardController extends Controller
         ];
 
         return array_slice($colors, 0, $count);
-
     }
 
     public function iataCompanyWallet(Request $request)
@@ -419,7 +451,7 @@ class DashboardController extends Controller
             'company_id' => 'required|exists:companies,id',
         ]);
         Log::info('Fetching IATA company wallet for company ID: ' . $request->company_id);
-        
+
         $company = Company::find($request->company_id);
 
         $response =  $this->getCompanyWallets($company);
@@ -434,5 +466,4 @@ class DashboardController extends Controller
             'error' => $iataErrorMessage,
         ]);
     }
-    
 };

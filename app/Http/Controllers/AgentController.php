@@ -39,51 +39,22 @@ class AgentController extends Controller
         Gate::authorize('viewAny', Agent::class);
 
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($user->role_id == Role::ADMIN) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('agents.index', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('agents.index');
-            }
-        }
-
-        $companyId = null;
-        $isAdmin = false;
         $agentsQuery = Agent::with(['branch.company', 'agentType'])->orderBy('created_at', 'desc');
 
         if ($user->role_id == Role::ADMIN) {
-            $isAdmin = true;
-            $companyId = $request->input('company_id', session('company_id'));
-
             if ($companyId) {
-                $agentsQuery->whereHas('branch', function ($query) use ($companyId) {
-                    $query->where('company_id', $companyId);
-                });
+                $agentsQuery->whereHas('branch', fn($q) => $q->where('company_id', $companyId));
             }
         } elseif ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
             $branchIds = Branch::where('company_id', $companyId)->pluck('id');
             $agentsQuery->whereIn('branch_id', $branchIds);
         } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company_id;
             $agentsQuery->where('branch_id', $user->branch->id);
         } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company_id;
             $agentsQuery->where('id', $user->agent->id);
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company_id;
             $agentsQuery->where('branch_id', $user->accountant->branch_id);
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
@@ -105,7 +76,7 @@ class AgentController extends Controller
 
         $agents = $agentsQuery->paginate(20)->withQueryString();
 
-        return view('agents.index', compact('agents', 'isAdmin', 'companyId'));
+        return view('agents.index', compact('agents'));
     }
 
     public function new()

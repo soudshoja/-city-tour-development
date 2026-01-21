@@ -21,39 +21,15 @@ class ReminderController extends Controller
         $user = Auth::user();
         $isAdmin = $user->role_id == Role::ADMIN;
 
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('reminder.index', array_merge(
-                    ['company_id' => session('company_id')],
-                    $request->only(['search', 'sort', 'direction'])
-                ));
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('reminder.index', $request->only(['search', 'sort', 'direction']));
-            }
-        }
-
         $companyId = getCompanyId($user);
         $agentIds = collect();
 
         if ($isAdmin) {
             if ($companyId) {
-                $agentIds = Agent::whereHas('branch', function ($q) use ($companyId) {
-                    $q->where('company_id', $companyId);
-                })->pluck('id');
+                $agentIds = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->pluck('id');
             }
         } elseif ($user->role_id == Role::COMPANY) {
-            $agentIds = Agent::whereHas('branch', function ($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })->pluck('id');
+            $agentIds = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->pluck('id');
         } elseif ($user->role_id == Role::BRANCH) {
             $agentIds = Agent::where('branch_id', $user->branch->id)->pluck('id');
         } elseif ($user->role_id == Role::AGENT) {
@@ -144,8 +120,6 @@ class ReminderController extends Controller
             'search',
             'paymentReminders',
             'allReminders',
-            'isAdmin',
-            'companyId'
         ));
     }
 

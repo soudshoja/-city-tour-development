@@ -54,27 +54,8 @@ class InvoiceController extends Controller
         $user = Auth::user();
         $isAdmin = $user->role_id == Role::ADMIN;
 
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('invoices.index', array_merge($request->all(), [
-                    'company_id' => session('company_id')
-                ]));
-            }
-
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('invoices.index', $request->except('company_id'));
-            }
-        }
-
         $companyId = getCompanyId($user);
+
         $companiesId = [];
         $agents = collect();
 
@@ -162,7 +143,7 @@ class InvoiceController extends Controller
         $totalNet = $filteredInvoices->flatMap->invoiceDetails->sum('supplier_price');
         $totalSales = $filteredInvoices->sum('amount');
 
-        $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
+        $invoices = $invoices->orderBy($sortBy, $sortOrder)
             ->paginate(20)
             ->withQueryString();
 
@@ -171,7 +152,7 @@ class InvoiceController extends Controller
             $invoice->client_pay = $invoice->amount + $invoice->service_charges;
         }
 
-        return view('invoice.index', compact('invoices', 'totalNet', 'totalSales', 'isAdmin', 'companyId'));
+        return view('invoice.index', compact('invoices', 'totalNet', 'totalSales', 'companyId'));
     }
 
     public function salelist()
@@ -1721,53 +1702,26 @@ class InvoiceController extends Controller
     public function link(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = false;
-        $companyId = null;
+        $isAdmin = $user->role_id == Role::ADMIN;
+
+        $companyId = getCompanyId($user);
 
         $agents = Agent::with('branch');
 
-        if ($user->role_id == Role::ADMIN) {
-            $isAdmin = true;
-
-            // Add validation for company_id
-            $request->validate([
-                'company_id' => 'nullable|exists:companies,id',
-            ]);
-
-            // Handle admin company selection persistence
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('invoices.link', array_merge($request->all(), [
-                    'company_id' => session('company_id')
-                ]));
-            }
-
-            // Store company_id in session if provided
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-
-            $companyId = $request->input('company_id', session('company_id'));
-
+        if ($isAdmin) {
             if ($companyId) {
                 $agents = $agents->whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
             } else {
-                // If no company selected, show all
                 $agents = $agents->get();
             }
-        } else if ($user->role_id == Role::COMPANY) {
-            $agents = $agents->whereHas('branch', function ($q) use ($user) {
-                $q->where('company_id', $user->company->id);
-            })->get();
-            $companyId = $user->company->id;
-        } else if ($user->role_id == Role::BRANCH) {
+        } elseif ($user->role_id == Role::COMPANY) {
+            $agents = $agents->whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
+        } elseif ($user->role_id == Role::BRANCH) {
             $agents = $agents->where('branch_id', $user->branch->id)->get();
-            $companyId = $user->branch->company_id;
-        } else if ($user->role_id == Role::AGENT) {
+        } elseif ($user->role_id == Role::AGENT) {
             $agents = $agents->where('id', $user->agent->id)->get();
-            $companyId = $user->agent->branch->company_id;
-        } else if ($user->role_id == Role::ACCOUNTANT) {
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
             $agents = $agents->where('branch_id', $user->accountant->branch_id)->get();
-            $companyId = $user->accountant->branch->company_id;
         } else {
             return abort(403, 'Unauthorized action.');
         }
@@ -1782,7 +1736,7 @@ class InvoiceController extends Controller
             'client'
         ])
             ->whereIn('agent_id', $agentIds)
-            ->whereHas('invoiceDetails.task.supplier'); // Only invoices with suppliers
+            ->whereHas('invoiceDetails.task.supplier');
 
         if ($request->has('search')) {
             $search = $request->input('search');
@@ -1803,10 +1757,7 @@ class InvoiceController extends Controller
 
         $invoices = $invoices->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
 
-        // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
-
-        // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
         $suppliers = Supplier::all();
         $types = Task::distinct()->pluck('type');

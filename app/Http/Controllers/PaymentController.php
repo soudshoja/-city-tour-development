@@ -2288,36 +2288,12 @@ class PaymentController extends Controller
     public function paymentLink(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('payment.link.index', array_merge(
-                    ['company_id' => session('company_id')],
-                    $request->only('q')
-                ));
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('payment.link.index', $request->only('q'));
-            }
-        }
-
         $companyId = getCompanyId($user);
         $agents = Agent::with('branch');
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
-                $agents = $agents->whereHas('branch', function ($q) use ($companyId) {
-                    $q->where('company_id', $companyId);
-                })->get();
+                $agents = $agents->whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
             } else {
                 $agents = $agents->get();
             }
@@ -2355,7 +2331,6 @@ class PaymentController extends Controller
             session()->forget('filter');
             return redirect()->route('payment.link.index', array_filter([
                 'q' => $request->query('q'),
-                'company_id' => $isAdmin ? $companyId : null,
             ]));
         }
 
@@ -2386,13 +2361,14 @@ class PaymentController extends Controller
         $incoming = collect($request->input('filter', []))
             ->filter(fn($v) => is_array($v) ? array_filter($v, fn($x) => $x !== '' && $x !== null) : $v !== '' && $v !== null)
             ->all();
+
         if ($request->has('filter')) {
             session(['filter' => array_replace(session('filter', []), $incoming)]);
             return redirect()->route('payment.link.index', array_filter([
                 'q' => $request->query('q'),
-                'company_id' => $isAdmin ? $companyId : null,
             ]));
         }
+
         $filters = session('filter', []);
 
         $payments->when(data_get($filters, 'client_id'), fn($q, $v) => $q->where('client_id', $v));
@@ -2404,7 +2380,7 @@ class PaymentController extends Controller
         $payments->when(data_get($filters, 'date_from'), fn($q, $v) => $q->whereDate('created_at', '>=', $v));
         $payments->when(data_get($filters, 'date_to'), fn($q, $v) => $q->whereDate('created_at', '<=', $v));
 
-        $payments = $payments->orderBy('id', 'desc')->paginate(15)->appends($request->only(['q', 'company_id']));
+        $payments = $payments->orderBy('id', 'desc')->paginate(15)->appends($request->only(['q']));
 
         $payments->getCollection()->transform(function ($payment) {
             if ($payment->payment_gateway === 'MyFatoorah') {
@@ -2439,46 +2415,22 @@ class PaymentController extends Controller
             'users',
             'status',
             'filters',
-            'paymentMethodChose',
-            'isAdmin',
-            'companyId'
+            'paymentMethodChose'
         ));
     }
 
     public function paymentCreateLink(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('payment.link.create', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('payment.link.create');
-            }
-        }
-
         $companyId = getCompanyId($user);
         $agents = collect();
         $agentsId = [];
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $agents = Agent::with('branch.company')
-                    ->whereHas('branch', function ($q) use ($companyId) {
-                        $q->where('company_id', $companyId);
-                    })->get();
+                    ->whereHas('branch', fn($q) => $q->where('company_id', $companyId))
+                    ->get();
             } else {
                 $agents = Agent::with('branch.company')->get();
             }
@@ -2497,7 +2449,7 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
 
-        if ($isAdmin && !$companyId) {
+        if ($user->role_id == Role::ADMIN && !$companyId) {
             $clients = Client::all();
         } else {
             $clients = Client::where(function ($query) use ($agentsId) {
@@ -2543,9 +2495,6 @@ class PaymentController extends Controller
 
         $sendPaymentReceipt = UserSetting::getValue(Auth::id(), 'payment_whatsapp_notification');
 
-        // Get all companies for admin dropdown
-        $companies = $isAdmin ? Company::all() : collect();
-
         return view('payment.link.create', compact(
             'payments',
             'clients',
@@ -2558,9 +2507,6 @@ class PaymentController extends Controller
             'can_import',
             'paymentMethodChose',
             'sendPaymentReceipt',
-            'companies',
-            'companyId',
-            'isAdmin'
         ));
     }
 

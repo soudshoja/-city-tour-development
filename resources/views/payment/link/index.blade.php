@@ -31,8 +31,6 @@
         </div>
     </div>
 
-    <x-admin-card title="payment links" :companyId="request('company_id')" />
-
     <div class="panel rounded-lg">
         <div x-data="{ openFilters: false }">
             <div class="flex items-center gap-3 md:flex-nowrap">
@@ -444,7 +442,7 @@
                                                                 :items="$clients->map(
                                                                         fn($c) => [
                                                                             'id' => $c->id,
-                                                                            'name' => $c->name . ' - ' . $c->phone
+                                                                            'name' => $c->full_name . ' - ' . $c->phone
                                                                         ],
                                                                     )" :placeholder="$namePlaceholder"
                                                                 :selectedName="$client ? $client->full_name : null" label="Client" />

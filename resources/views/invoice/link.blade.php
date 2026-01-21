@@ -31,8 +31,6 @@
         </div>
     </div>
 
-    <x-admin-card title="invoice links" :companyId="request('company_id')" />
-
     <div class="panel rounded-lg">
         <x-search :action="route('invoices.link')" searchParam='search' placeholder='Quick search for invoices link' />
 

@@ -41,26 +41,6 @@ class RefundController extends Controller
         Gate::authorize('viewAny', Refund::class);
 
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('refunds.index', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('refunds.index');
-            }
-        }
 
         $companyId = getCompanyId($user);
         $refundClients = collect();
@@ -68,7 +48,7 @@ class RefundController extends Controller
         $refundsQuery = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
             ->orderBy('id', 'desc');
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $company = Company::with('branches.agents.refundClients')->find($companyId);
                 $agents = $company->branches->pluck('agents')->flatten();
@@ -100,8 +80,6 @@ class RefundController extends Controller
             'totalRefunds',
             'refundClients',
             'totalRefundClients',
-            'isAdmin',
-            'companyId'
         ));
     }
 
@@ -369,7 +347,7 @@ class RefundController extends Controller
                 ->first();
 
             $commissionLiability = Account::firstOrCreate([
-                'name' => 'Commission (Agents)',
+                'name' => 'Commissions (Agents)',
                 'company_id' => $task->company_id,
                 'root_id' => $accrued->root_id,
             ], [
@@ -1353,7 +1331,7 @@ class RefundController extends Controller
 
                     $commissionLiability = Account::firstOrCreate(
                         [
-                            'name' => 'Commission (Agents)',
+                            'name' => 'Commissions (Agents)',
                             'company_id' => $companyId,
                             'root_id' => optional($indirectExpense)->root_id,
                         ],
@@ -1499,7 +1477,7 @@ class RefundController extends Controller
 
                         $commissionLiability = Account::firstOrCreate(
                             [
-                                'name' => 'Commission (Agents)',
+                                'name' => 'Commissions (Agents)',
                                 'company_id' => $companyId,
                                 'root_id' => optional($indirectExpense)->root_id,
                             ],
@@ -1742,7 +1720,7 @@ class RefundController extends Controller
 
                 $commissionLiability = Account::firstOrCreate(
                     [
-                        'name' => 'Commission (Agents)',
+                        'name' => 'Commissions (Agents)',
                         'company_id' => $companyId,
                         'root_id' => $indirectExpense->root_id,
                     ],

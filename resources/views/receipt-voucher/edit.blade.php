@@ -58,14 +58,15 @@
         }
     </style>
 
-    <!-- start main content section -->
+    <x-admin-card title="receipt voucher" :companyId="request('company_id')" />
+
     <div class="panel h-full overflow-hidden border-0 p-0">
         <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
             <div class="flex items-center justify-between text-white">
                 <p class="text-2xl">Receipt Voucher</p>
-                <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
+
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 ltr:lg:mr-6 rtl:lg:ml-6">
                 <div class="flex flex-wrap justify-between px-4">
@@ -80,23 +81,6 @@
                                     <p>{{ $companies->email }}</p>
                                     <p>{{ $companies->phone }}</p>
                                 </div>
-                            @else
-                                <div class="custom-select w-full border rounded-lg mt-4">
-                                    <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select
-                                        Company
-                                    </div>
-                                    <div
-                                        class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                        @foreach ($companies as $company)
-                                            <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                data-value="{{ $company->id }}">
-                                                {{ $company->name }}
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-                                </div>
-
                             @endif
                             <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
                         </div>
@@ -104,38 +88,27 @@
 
                     <div class="mb-6 w-full lg:w-1/2 lg:max-w-fit mt-5">
                         <div class="flex items-center gap-x-6">
-                            <label for="receiptvoucherref" class="mb-0 flex-1">Ref <span
-                                    class="text-red-500">*</span></label>
-                            <input required readonly id="receiptvoucherref"
-                                value="{{ old('receiptvoucherref', $receiptvoucher->reference_number) }}" type="text"
-                                name="receiptvoucherref"
-                                class="form-input w-2/3 bg-gray-100 text-gray-800 border-gray-300" />
+                            <label for="receiptvoucherref" class="mb-0 flex-1">Ref <span class="text-red-500">*</span></label>
+                            <input required readonly id="receiptvoucherref" value="{{ old('receiptvoucherref', $receiptvoucher->reference_number) }}" type="text"
+                                name="receiptvoucherref" class="form-input w-2/3 bg-gray-100 text-gray-800 border-gray-300" />
                         </div>
                         <div class="flex items-center gap-x-4 mt-4">
-                            <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
-                                Payment Type <span class="text-red-500">*</span>
-                            </label>
+                            <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment Type <span class="text-red-500">*</span></label>
                             <input value="{{ old('reference_type', $receiptvoucher->reference_type) }}" type="text"
-                                readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300"
-                                value="{{ $receiptvoucher->reference_type }}" />
+                                readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300" value="{{ $receiptvoucher->reference_type }}" />
                         </div>
 
                         @if ($receiptvoucher->reference_type === 'Refund')
                             <div class="flex items-center gap-x-4 mt-4">
-                                <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
-                                    Refund Number
-                                </label>
-                                <input type="text" readonly
-                                    class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300"
+                                <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Refund Number</label>
+                                <input type="text" readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300"
                                     value="{{ trim(\Illuminate\Support\Str::after($receiptvoucher->description, '|')) }}" />
                             </div>
                         @endif
 
                         <div class="flex items-center gap-x-6 mt-4">
-                            <label for="branch_id" class="mb-0 flex-1">Branch <span
-                                    class="text-red-500">*</span></label>
-                            <select readonly id="branch_id" name="branch_id"
-                                class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300">
+                            <label for="branch_id" class="mb-0 flex-1">Branch <span class="text-red-500">*</span></label>
+                            <select readonly id="branch_id" name="branch_id" class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300">
                                 @foreach ($branches as $branch)
                                     <option value="{{ $branch->id }}"
                                         {{ old('branch_id', $receiptvoucher->branch_id) == $branch->id ? 'selected' : '' }}>
@@ -146,13 +119,9 @@
                         </div>
 
                         <div class="mt-4 flex items-center gap-x-6">
-                            <label for="docdate" class="mb-0 flex-1">Doc Date <span
-                                    class="text-red-500">*</span></label>
-
-                            <input readonly id="docdate" type="date" name="docdate"
-                                class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300"
+                            <label for="docdate" class="mb-0 flex-1">Doc Date <span class="text-red-500">*</span></label>
+                            <input readonly id="docdate" type="date" name="docdate" class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300"
                                 value="{{ old('docdate', isset($receiptvoucher->date) ? \Carbon\Carbon::parse($receiptvoucher->date)->format('Y-m-d') : '') }}" />
-
                         </div>
                     </div>
                 </div>
@@ -164,11 +133,9 @@
                         <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
                             <div class="text-lg font-semibold">Receipt Voucher</div>
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="pay_to" class="mb-0 w-1/3 ">Pay To <span
-                                        class="text-red-500">*</span></label>
-                                <input readonly id="pay_to" type="text" name="pay_to" list="supplierList"
-                                    placeholder="Enter Payee Name" value="{{ old('pay_to', $receiptvoucher->name) }}"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" />
+                                <label for="pay_to" class="mb-0 w-1/3 ">Receive From<span class="text-red-500">*</span></label>
+                                <input readonly id="pay_to" type="text" name="pay_to" list="supplierList" placeholder="Enter Payee Name"
+                                    value="{{ old('pay_to', $receiptvoucher->name) }}" class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" />
                                 <datalist id="supplierList">
                                     @foreach ($suppliers as $supplier)
                                         <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
@@ -183,38 +150,27 @@
                             <div class="text-lg font-semibold">Remarks</div>
 
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
-                                    <span class="text-red-500">*</span></label>
+                                <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks<span class="text-red-500">*</span></label>
                                 <input readonly id="remarks_create" type="text" name="remarks_create"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
-                                    placeholder="Enter Remarks"
+                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" placeholder="Enter Remarks"
                                     value="{{ old('remarks_create', trim(\Illuminate\Support\Str::before($receiptvoucher->description, '|'))) }}" />
 
                             </div>
 
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal
-                                    Remarks</label>
-                                <input readonly id="internal_remarks" type="text" name="internal_remarks"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
-                                    placeholder="Enter Internal Remarks"
-                                    value="{{ old('internal_remarks', $receiptvoucher->remarks_internal) }}" />
+                                <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal Remarks</label>
+                                <input readonly id="internal_remarks" type="text" name="internal_remarks" class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
+                                    placeholder="Enter Internal Remarks" value="{{ old('internal_remarks', $receiptvoucher->remarks_internal) }}" />
                             </div>
 
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
-                                    FL</label>
-                                <input readonly id="remarks_fl" type="text" name="remarks_fl"
-                                    class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300"
-                                    placeholder="Enter Remarks FL"
-                                    value="{{ old('remarks_fl', $receiptvoucher->remarks_fl) }}" />
+                                <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks FL</label>
+                                <input readonly id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300"
+                                    placeholder="Enter Remarks FL" value="{{ old('remarks_fl', $receiptvoucher->remarks_fl) }}" />
                             </div>
                         </div>
-
-
                     </div>
                 </div>
-
 
                 <div class="overflow-x-auto">
                     <table class="table table-bordered bank-payment-table mt-10 w-full">
@@ -239,12 +195,10 @@
                         <tbody id="paymentTable">
                             @foreach ($JournalEntrys as $index => $entry)
                                 <tr>
-                                   <td>
-                                        {{ $entry->transaction->invoiceReceipts()->first()?->invoice_number ?? $entry->reference_number }}
-
-                                        <input type="hidden" readonly
-                                            name="items[{{ $index }}][invoice_number]"
-                                            value="{{ $entry->transaction->invoiceReceipts()->first()?->invoice_number ?? $entry->reference_number }}">
+                                    <td>
+                                        {{ $entry->transaction->invoiceReceipt?->invoice?->invoice_number ?? $entry->reference_number }}
+                                        <input type="hidden" readonly name="items[{{ $index }}][invoice_number]"
+                                            value="{{ $entry->transaction->invoiceReceipt?->invoice?->invoice_number ?? $entry->reference_number }}">
                                     </td>
                                     <td>
                                         {{ $entry->account ? '[' . $entry->account->root->name . '] [' . $entry->account->code . '] ' . $entry->account->name : 'N/A' }}
@@ -305,28 +259,27 @@
                     </table>
                 </div>
 
-
                 <div class="panel overflow-hidden mt-10">
                     <div class="relative">
                         <div class="grid grid-cols-2 gap-6 md:grid-cols-3">
                             <div class="mt-2">
                                 <div class="text-primary">Total Debit</div>
                                 <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_debit">0.00</span>
+                                    <span id="total_debit">0.000</span>
                                 </div>
                             </div>
 
                             <div class="mt-2">
                                 <div class="text-primary">Total Credit</div>
                                 <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_credit">0.00</span>
+                                    <span id="total_credit">0.000</span>
                                 </div>
                             </div>
 
                             <div class="mt-2">
                                 <div class="text-primary">Difference</div>
                                 <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_difference">0.00</span>
+                                    <span id="total_difference">0.000</span>
                                 </div>
                             </div>
 
@@ -348,11 +301,8 @@
                                 <circle cx="12" cy="16" r="1" fill="currentColor" />
                             </svg>
                         </div>
-
-
                     </div>
                 </div>
-
 
                 <div class="mt-6 flex justify-center w-full">
                     <a href="{{ route('receipt-voucher.index') }}"
@@ -360,8 +310,6 @@
                 </div>
             </div>
         </div>
-
-
     </div>
 
     <div id="journalEntriesModal"
@@ -379,8 +327,6 @@
             </div>
         </div>
     </div>
-
-
 
     <script>
         const suppliers = @json($suppliers);
@@ -420,9 +366,9 @@
 
                 const diff = totalDebit - totalCredit;
 
-                totalDebitEl.textContent = totalDebit.toFixed(2);
-                totalCreditEl.textContent = totalCredit.toFixed(2);
-                totalDifferenceEl.textContent = diff.toFixed(2);
+                totalDebitEl.textContent = totalDebit.toFixed(3);
+                totalCreditEl.textContent = totalCredit.toFixed(3);
+                totalDifferenceEl.textContent = diff.toFixed(3);
 
                 const correctIcon = document.getElementById('correct');
                 const falseIcon = document.getElementById('false');
@@ -492,8 +438,8 @@
                             <td class="border px-2 py-1">${entry.transaction_date}</td>
                             <td class="border px-2 py-1">${entry.name}</td>
                             <td class="border px-2 py-1">${entry.description}</td>
-                            <td class="border px-2 py-1 text-right">${parseFloat(entry.debit).toFixed(2)}</td>
-                            <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(2)}</td>
+                            <td class="border px-2 py-1 text-right">${parseFloat(entry.debit).toFixed(3)}</td>
+                            <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(3)}</td>
                         </tr>
                     `;
                             count++;
@@ -503,8 +449,8 @@
                         table += `
                         <tr class="font-semibold bg-gray-50">
                             <td class="border px-2 py-1 text-right" colspan="4">Total</td>
-                            <td class="border px-2 py-1 text-right">${totalDebit.toFixed(2)}</td>
-                            <td class="border px-2 py-1 text-right">${totalCredit.toFixed(2)}</td>
+                            <td class="border px-2 py-1 text-right">${totalDebit.toFixed(3)}</td>
+                            <td class="border px-2 py-1 text-right">${totalCredit.toFixed(3)}</td>
                         </tr>
                     </tbody>
                     </table>
@@ -560,6 +506,4 @@
                 });
         }
     </script>
-
-
 </x-app-layout>

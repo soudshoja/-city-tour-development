@@ -17,135 +17,209 @@ use App\Models\Agent;
 use App\Models\BonusAgent;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class BankPaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', CoaCategory::class);
 
-        $user = auth()->user();
+        $user = Auth::user();
+        $isAdmin = $user->role_id == Role::ADMIN;
 
-        if ($user->role_id == Role::ADMIN) {
-            $bankPayments = Transaction::all();
-            $totalRecords = Transaction::count();
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
+
+        if ($isAdmin) {
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('bank-payments.index', array_merge(
+                    ['company_id' => session('company_id')],
+                    $request->only('q')
+                ));
+            }
+            if ($request->has('company_id')) {
+                session(['company_id' => $request->input('company_id')]);
+            }
+        } else {
+            if ($request->has('company_id')) {
+                return redirect()->route('bank-payments.index', $request->only('q'));
+            }
+        }
+
+        $companyId = getCompanyId($user);
+
+        $bankPaymentsQuery = Transaction::with(['journalEntries' => function ($query) {
+            $query->where('type', 'payable');
+        }])
+            ->whereNotNull('name')
+            ->where('reference_number', 'like', 'PV-%')
+            ->latest();
+
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $bankPaymentsQuery->where(function ($query) use ($search) {
+                $query->where('reference_number', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%")
+                    ->orWhereHas('journalEntries', function ($q) use ($search) {
+                        $q->where('type', 'payable')
+                            ->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($isAdmin) {
+            if ($companyId) {
+                $bankPaymentsQuery->where('company_id', $companyId);
+            }
         } elseif ($user->role_id == Role::COMPANY) {
-
-            $companyId = Company::where('user_id', $user->id)->value('id'); // Get the company ID
-            $branch = Branch::where('company_id', $companyId)->get();
-
-            $branchesId = $branch->pluck('id')->toArray();
-
-            $bankPayments = Transaction::whereIn('branch_id', $branchesId)
-                ->whereNotNull('name')
-                ->where('reference_number', 'like', 'PV-%')
-                ->latest()
-                ->paginate(10);
-
-            $totalRecords = Transaction::whereIn('branch_id', $branchesId)
-                ->whereNotNull('name')
-                ->where('reference_number', 'like', 'PV-%')
-                ->count();
+            $branchIds = Branch::where('company_id', $companyId)->pluck('id')->toArray();
+            $bankPaymentsQuery->whereIn('branch_id', $branchIds);
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company->id;
-
-            $bankPayments = Transaction::where('company_id', $companyId)
-                ->whereNotNull('name')
-                ->where('reference_number', 'like', 'PV-%')
-                ->get();
-
-            $totalRecords = Transaction::where('company_id', $companyId)
-                ->whereNotNull('name')
-                ->where('reference_number', 'like', 'PV-%')
-                ->count();
-
+            $bankPaymentsQuery->where('company_id', $companyId);
         } elseif ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.index', compact('bankPayments', 'totalRecords'));
+        $totalRecords = (clone $bankPaymentsQuery)->count();
+        $bankPayments = $bankPaymentsQuery->paginate(10)->withQueryString();
+
+        return view('bank-payments.index', compact(
+            'bankPayments',
+            'totalRecords',
+            'isAdmin',
+            'companyId'
+        ));
     }
 
-
-    public function create()
+    public function create(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role_id == Role::ADMIN) {
-            $accounts = Account::all();
-            $companies = Company::all();
-            $branches = Branch::all();
+        $user = Auth::user();
+        $isAdmin = $user->role_id == Role::ADMIN;
 
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
 
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
-
-            $refundNumbers = Refund::select('refund_number')->get();
-        } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.agents')->find($user->company->id);
-            $accounts = $company->branches->flatMap->accounts;
-            $branches = $company->branches;
-            $companies = $company;
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $rootIds = Account::whereIn('name', ['Liabilities', 'Expenses'])->pluck('id');
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereIn('root_id', $rootIds)
-                ->get();
-
-            $refundNumbers = Refund::where('company_id', $user->company->id)
-                ->where('branch_id', $user->branch->id)
-                ->select('refund_number')
-                ->get();
-            
-            $bonusAccounts = Account::where('company_id', $user->company->id)
-                ->with('root')
-                ->where('label', 'like', '%bonus%')
-                ->get();
-            
-            $agents = Agent::where('branch_id', $user->branch->id)->get();        
+        if ($isAdmin) {
+            if (!$request->has('company_id') && session()->has('company_id')) {
+                return redirect()->route('bank-payments.create', [
+                    'company_id' => session('company_id')
+                ]);
+            }
+            if ($request->has('company_id')) {
+                session(['company_id' => $request->input('company_id')]);
+            }
         } else {
-            return redirect()->route('dashboard')->with('error', 'Page not found.');
+            if ($request->has('company_id')) {
+                return redirect()->route('bank-payments.create');
+            }
         }
 
-        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers', 'bonusAccounts', 'agents'));
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->route('bank-payments.index')->with('error', 'Please select a company first.');
+        }
+
+        $company = Company::with('branches')->find($companyId);
+
+        if (!$company) {
+            return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
+        }
+
+        $companies = $company;
+        $branches = $company->branches;
+
+        $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+        $rootIds = Account::whereIn('name', $rootNames)
+            ->where('company_id', $companyId)
+            ->pluck('id');
+
+        $accpayreceives = Account::doesntHave('children')
+            ->with('root')
+            ->where('company_id', $companyId)
+            ->whereHas('parent', function ($query) use ($rootIds) {
+                $query->whereIn('root_id', $rootIds);
+            })
+            ->get();
+
+        $lastLevelAccounts = Account::doesntHave('children')
+            ->with('root')
+            ->where('company_id', $companyId)
+            ->whereHas('parent', function ($query) use ($rootIds) {
+                $query->whereIn('root_id', $rootIds);
+            })
+            ->get();
+
+        $supplierRootIds = Account::whereIn('name', ['Liabilities', 'Expenses'])
+            ->where('company_id', $companyId)
+            ->pluck('id');
+        $suppliers = Account::doesntHave('children')
+            ->with('root')
+            ->where('company_id', $companyId)
+            ->whereIn('root_id', $supplierRootIds)
+            ->get();
+
+        $accounts = Account::where('company_id', $companyId)->get();
+
+        $refundNumbers = Refund::where('company_id', $companyId)
+            ->select('refund_number')
+            ->get();
+
+        $bonusAccounts = Account::where('company_id', $companyId)
+            ->with('root')
+            ->where('label', 'like', '%bonus%')
+            ->get();
+
+        $agents = Agent::whereHas('branch', function ($q) use ($companyId) {
+            $q->where('company_id', $companyId);
+        })->get();
+
+        $assetsRoot = Account::where('name', 'Assets')
+            ->where('company_id', $companyId)
+            ->first();
+
+        $bankAccounts = collect();
+        if ($assetsRoot) {
+            $bankParent = Account::where('parent_id', $assetsRoot->id)
+                ->where('name', 'Bank Accounts')
+                ->where('company_id', $companyId)
+                ->first();
+
+            if ($bankParent) {
+                // Get all child accounts under "Bank Accounts"
+                $bankAccounts = Account::where('parent_id', $bankParent->id)
+                    ->where('company_id', $companyId)
+                    ->get()
+                    ->map(function ($account) {
+                        // Calculate balance from journal entries (Assets: Debit - Credit)
+                        $debitSum = JournalEntry::where('account_id', $account->id)->sum('debit');
+                        $creditSum = JournalEntry::where('account_id', $account->id)->sum('credit');
+                        $account->current_balance = $debitSum - $creditSum;
+                        return $account;
+                    });
+            }
+        }
+
+        return view('bank-payments.create', compact(
+            'accounts',
+            'companies',
+            'branches',
+            'suppliers',
+            'accpayreceives',
+            'lastLevelAccounts',
+            'refundNumbers',
+            'bonusAccounts',
+            'agents',
+            'bankAccounts',
+            'isAdmin',
+            'companyId'
+        ));
     }
 
     /**
@@ -153,11 +227,11 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {
-        Log::info('Starting to create Payment Voucher',['response' => $request->all()]);
+        Log::info('Starting to create Payment Voucher', ['response' => $request->all()]);
 
         if ($request->bankpaymenttype === 'PaymentByDate') {
             $bankPaymentType = 'Payment';
-            $reconciledFlag = 2; //0 = no yet reconciled, 1 = the record that has been reconciled, 2 = reconciled record
+            $reconciledFlag = 2; // 0 = not yet reconciled, 1 = the record that has been reconciled, 2 = reconciled record
             $reconciledProcess = 'yes';
         } elseif ($request->bankpaymenttype === 'Payment') {
             $bankPaymentType = 'Payment';
@@ -167,8 +241,6 @@ class BankPaymentController extends Controller
             $bankPaymentType = 'Refund';
             $reconciledFlag = 0;
             $reconciledProcess = 'no';
-            $totalNettRefund = Refund::where('refund_number', $request->refund_number)
-                ->value('total_nett_refund');
         } else {
             $bankPaymentType = 'Invoice';
             $reconciledFlag = 0;
@@ -181,7 +253,7 @@ class BankPaymentController extends Controller
             'docdate' => 'required|date',
             'bankpaymentref' => 'required|string',
             'bankpaymenttype' => 'required|string',
-            'pay_to' => ['required', 'exists:accounts,name'],
+            'pay_from_account' => 'required|exists:accounts,id',
             'remarks_create' => 'required|string',
             'internal_remarks' => 'nullable|string',
             'remarks_fl' => 'nullable|string',
@@ -200,282 +272,290 @@ class BankPaymentController extends Controller
             'items.*.balance' => 'nullable|numeric',
         ], [
             'items.*.account_id.exists' => 'The selected account code does not exist.',
+            'pay_from_account.required' => 'Please select a bank account to pay from.',
         ]);
+
+        $payFromAccount = Account::find($request->pay_from_account);
+        if (!$payFromAccount) {
+            return redirect()->back()->with('error', 'Invalid bank account selected.');
+        }
+
+        $totalPaymentAmount = 0;
+        foreach ($request->items as $item) {
+            $credit = (float) ($item['credit'] ?? 0);
+            $totalPaymentAmount += $credit;
+        }
+
+        if ($totalPaymentAmount > 0) {
+            $bankDebitSum = JournalEntry::where('account_id', $payFromAccount->id)->sum('debit');
+            $bankCreditSum = JournalEntry::where('account_id', $payFromAccount->id)->sum('credit');
+            $currentBankBalance = $bankDebitSum - $bankCreditSum;
+
+            if ($currentBankBalance < $totalPaymentAmount) {
+                return redirect()->back()->with(
+                    'error',
+                    "Insufficient bank balance. Current balance: KWD " . number_format($currentBankBalance, 3) .
+                        ", Required: KWD " . number_format($totalPaymentAmount, 3)
+                );
+            }
+        }
 
         try {
             DB::beginTransaction();
 
             foreach ($request->items as $item) {
+                $creditAmount = (float) ($item['credit'] ?? 0);
+                $amount = $creditAmount;
 
-                $amount = 0;
-                if (!empty($item['debit'])) {
-                    $amount = (float) $item['debit'];
-                } elseif (!empty($item['credit'])) {
-                    $amount = (float) $item['credit'];
+                if ($amount <= 0) {
+                    Log::warning('Skipping item with zero amount', ['item' => $item]);
+                    continue;
                 }
 
-                $type = $item['type_selector'];
-                $accname = Account::find($item['account_id']);
-                $agent = isset($item['agent_id'])
-                    ? Agent::where('id', $item['agent_id'])->first()
-                    : null;
+                $type = $item['type_selector'] ?? 'account';
+                $targetAccount = Account::find($item['account_id']);
+                $agent = isset($item['agent_id']) ? Agent::find($item['agent_id']) : null;
 
-                if ($type == 'bonus') {
-                    if ($agent) {
-                        Log::info('Starting to create Bonus Payment record for Agent', [
-                            'agent_id' => $agent->id,
-                            'agent_name' => $agent->name,
-                            'amount' => $amount,
-                        ]);
+                if (!$targetAccount && $type !== 'refund') {
+                    Log::warning('Target account not found', ['item' => $item]);
+                    continue;
+                }
 
-                        $transaction = Transaction::create([
-                            'entity_id' => $request->company_id ?? auth()->user()->company->id,
-                            'entity_type' => 'company',
-                            'company_id' => $request->company_id ?? auth()->user()->company->id,
-                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                            'transaction_type' => !empty($item['debit']) ? 'debit' : 'credit',
-                            'amount' => $amount,
-                            'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                            'description' => 'Bonus Payment to Agent: '. $agent->name . '. Additional Remarks of ' . $request->remarks_create,
-                            'invoice_id' => null,
-                            'reference_number' => $request->bankpaymentref,
-                            'reference_type' => $bankPaymentType,
-                            'name' => $request->pay_to,
-                            'remarks_internal' => $request->internal_remarks,
-                            'remarks_fl' => $request->remarks_fl,
-                            'transaction_date' => now(),
-                        ]);
+                $accountName = $targetAccount ? $targetAccount->name : 'Unknown';
+                if ($type === 'bonus' && $agent) {
+                    $description = "Bonus Payment to Agent: {$agent->name}. {$request->remarks_create}";
+                } elseif ($type === 'bonus') {
+                    $description = "Bonus Payment for Account: {$accountName}. {$request->remarks_create}";
+                } elseif ($type === 'refund') {
+                    $description = "Refund Payment. {$request->remarks_create}";
+                } else {
+                    $description = "Payment Voucher for Account: {$accountName}. {$request->remarks_create}";
+                }
 
-                        if (!$transaction) {
-                            Log::warning('Failed to create transaction', ['item' => $item]);
-                            continue;
-                        }
-
-                        $journalEntryRec = JournalEntry::create([
-                            'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                            'account_id' => $item['account_id'],
-                            'company_id' => $request->company_id ?? auth()->user()->company->id,
-                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                            'transaction_id' => $transaction->id,
-                            'description' => $accname->name . ': ' . $agent->name . '. Additional Remarks of ' .$request->remarks_create,
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
-                            'voucher_number' => $request->bankpaymentref,
-                            'name' => $accname->name ?? '',
-                            'type' => 'payable',
-                            'currency' => $item['currency'] ?? 'KWD',
-                            'exchange_rate' => $item['exchange_rate'] ?? 1,
-                            'amount' => $amount,
-                            'cheque_no' => $item['cheque_no'] ?? '',
-                            'cheque_date' => !empty($item['cheque_date']) 
-                                ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') 
-                                : null,
-                            'bank_info' => $item['bank_name'] ?? '',
-                            'auth_no' => $item['auth_no'] ?? '',
-                            'reconciled' => $reconciledFlag ?? 0,
-                        ]);
-
-                        if (!$journalEntryRec) {
-                            Log::warning('Failed to create journal entry for account type', ['response' => $journalEntryRec]);
-                            continue;
-                        }
-
-                        if (!empty($transaction) && !empty($transaction->id)) {
-                            $bonus = BonusAgent::create([
-                                'transaction_id' => $transaction->id,
-                                'agent_id' => $agent->id ?? null,
-                                'amount' => $amount,
-                                'created_by' => auth()->user()->id,
-                            ]);
-
-                            Log::info('Successfully created Bonus record', ['response' => $bonus]);
-                        } else {
-                            Log::warning('Failed to create Bonus record');
-                            continue;
-                        }
-
-                    } else {
-                        Log::info('Starting to create Bonus Payment record');
-
-                        $transaction = Transaction::create([
-                            'entity_id' => $request->company_id ?? auth()->user()->company->id,
-                            'entity_type' => 'company',
-                            'company_id' => $request->company_id ?? auth()->user()->company->id,
-                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                            'transaction_type' => !empty($item['debit']) ? 'debit' : 'credit',
-                            'amount' => $amount,
-                            'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                            'description' => 'Bonus Payment for Account: '. $accname->name.'. Additional Remarks of ' . $request->remarks_create,
-                            'invoice_id' => null,
-                            'reference_number' => $request->bankpaymentref,
-                            'reference_type' => $bankPaymentType,
-                            'name' => $request->pay_to,
-                            'remarks_internal' => $request->internal_remarks,
-                            'remarks_fl' => $request->remarks_fl,
-                            'transaction_date' => now(),
-                        ]);
-
-                        if (!$transaction) {
-                            Log::warning('Failed to create bonus transaction', ['response' => $transaction]);
-                            continue;
-                        }
-
-                        $journalEntryRec = JournalEntry::create([
-                            'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                            'account_id' => $item['account_id'],
-                            'company_id' => $request->company_id ?? auth()->user()->company->id,
-                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                            'transaction_id' => $transaction->id,
-                            'description' =>  'Bonus Payment for Account: '. $accname->name . '. Additional Remarks of ' . $request->remarks_create,
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
-                            'voucher_number' => $request->bankpaymentref,
-                            'name' => $accname->name ?? '',
-                            'type' => 'payable',
-                            'currency' => $item['currency'] ?? 'KWD',
-                            'exchange_rate' => $item['exchange_rate'] ?? 1,
-                            'amount' => $amount,
-                            'cheque_no' => $item['cheque_no'] ?? '',
-                            'cheque_date' => !empty($item['cheque_date']) 
-                                ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') 
-                                : null,
-                            'bank_info' => $item['bank_name'] ?? '',
-                            'auth_no' => $item['auth_no'] ?? '',
-                            'reconciled' => $reconciledFlag ?? 0,
-                        ]);
-                    }
-
-                } elseif ($type == 'account') {
-                    Log::info('Starting to create Account Payment record');
-
-                    $transaction = Transaction::create([
-                    'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                $transaction = Transaction::create([
+                    'entity_id' => $request->company_id,
                     'entity_type' => 'company',
-                    'company_id' => $request->company_id ?? auth()->user()->company->id,
-                    'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                    'transaction_type' => !empty($item['debit']) ? 'debit' : 'credit',
+                    'company_id' => $request->company_id,
+                    'branch_id' => $request->branch_id,
+                    'transaction_type' => 'debit',
                     'amount' => $amount,
-                    'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                    'description' => 'Payment Voucher for Account: '. $accname->name . '. Additional Remarks of ' . $request->remarks_create,
+                    'date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                    'description' => $description,
                     'invoice_id' => null,
                     'reference_number' => $request->bankpaymentref,
                     'reference_type' => $bankPaymentType,
-                    'name' => $request->pay_to,
+                    'name' => $payFromAccount->name,
                     'remarks_internal' => $request->internal_remarks,
                     'remarks_fl' => $request->remarks_fl,
-                    'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                    ]);
+                    'transaction_date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                ]);
 
-                    if (!$transaction) {
-                        Log::warning('Failed to create transaction', ['item' => $item]);
-                        continue;
-                    }
+                if (!$transaction) {
+                    Log::warning('Failed to create transaction', ['item' => $item]);
+                    continue;
+                }
 
-                    $journalEntryRec = JournalEntry::create([
-                        'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                        'account_id' => $item['account_id'],
-                        'company_id' => $request->company_id ?? auth()->user()->company->id,
-                        'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                // Journal Entry 1: Target Account (Supplier/Liability) - DEBIT to reduce liability
+                if ($targetAccount) {
+                    $journalEntry1 = JournalEntry::create([
+                        'transaction_date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                        'account_id' => $targetAccount->id,
+                        'company_id' => $request->company_id,
+                        'branch_id' => $request->branch_id,
                         'transaction_id' => $transaction->id,
-                        'description' =>  'Payment Voucher for Account: '. $accname->name . '. Additional Remarks of ' . $request->remarks_create,
-                        'debit' => $item['debit'] ?? 0,
-                        'credit' => $item['credit'] ?? 0,
+                        'description' => $description,
+                        'debit' => $amount,
+                        'credit' => 0,
                         'balance' => $item['balance'] ?? 0,
                         'voucher_number' => $request->bankpaymentref,
-                        'name' => $accname->name ?? '',
+                        'name' => $targetAccount->name,
                         'type' => 'payable',
                         'currency' => $item['currency'] ?? 'KWD',
                         'exchange_rate' => $item['exchange_rate'] ?? 1,
                         'amount' => $amount,
                         'cheque_no' => $item['cheque_no'] ?? '',
-                        'cheque_date' => !empty($item['cheque_date']) 
-                            ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') 
-                            : null,
+                        'cheque_date' => !empty($item['cheque_date']) ? Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
                         'bank_info' => $item['bank_name'] ?? '',
                         'auth_no' => $item['auth_no'] ?? '',
-                        'reconciled' => $reconciledFlag ?? 0,
+                        'reconciled' => $reconciledFlag,
+                    ]);
+
+                    Log::info('Created Journal Entry 1 (Target Account - DEBIT)', [
+                        'account' => $targetAccount->name,
+                        'debit' => $amount,
+                        'credit' => 0,
                     ]);
                 }
-                
-                if (!empty($item['transaction_id'])) {
-                    $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
+
+                // Journal Entry 2: Bank Account - CREDIT to reduce cash
+                $journalEntry2 = JournalEntry::create([
+                    'transaction_date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                    'account_id' => $payFromAccount->id,
+                    'company_id' => $request->company_id,
+                    'branch_id' => $request->branch_id,
+                    'transaction_id' => $transaction->id,
+                    'description' => "Payment from {$payFromAccount->name}: {$description}",
+                    'debit' => 0,
+                    'credit' => $amount,
+                    'balance' => 0,
+                    'voucher_number' => $request->bankpaymentref,
+                    'name' => $payFromAccount->name,
+                    'type' => 'bank',
+                    'currency' => $item['currency'] ?? 'KWD',
+                    'exchange_rate' => $item['exchange_rate'] ?? 1,
+                    'amount' => $amount,
+                    'cheque_no' => $item['cheque_no'] ?? '',
+                    'cheque_date' => !empty($item['cheque_date']) ? Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
+                    'bank_info' => $item['bank_name'] ?? '',
+                    'auth_no' => $item['auth_no'] ?? '',
+                    'reconciled' => $reconciledFlag,
+                ]);
+
+                Log::info('Created Journal Entry 2 (Bank Account)', [
+                    'account' => $payFromAccount->name,
+                    'debit' => 0,
+                    'credit' => $amount,
+                ]);
+
+                if ($type === 'bonus' && $agent) {
+                    BonusAgent::create([
+                        'transaction_id' => $transaction->id,
+                        'agent_id' => $agent->id,
+                        'amount' => $amount,
+                        'created_by' => Auth::user()->id,
+                    ]);
+                    Log::info('Created BonusAgent record', ['agent' => $agent->name, 'amount' => $amount]);
+                }
+
+                if (!empty($item['transaction_id']) && $reconciledProcess === 'yes') {
+                    $ids = is_array($item['transaction_id'])
+                        ? $item['transaction_id']
+                        : array_filter(array_map('trim', explode(',', $item['transaction_id'])));
                     $selectedIds = array_unique(array_map('intval', $ids));
 
-                    if (!empty($selectedIds)) {
-                        JournalEntry::where('company_id', auth()->user()->company->id)
-                            ->where('branch_id', auth()->user()->branch->id)
+                    if (!empty($selectedIds) && isset($journalEntry1)) {
+                        JournalEntry::where('company_id', $request->company_id)
+                            ->where('branch_id', $request->branch_id)
                             ->whereIn('id', $selectedIds)
                             ->where('reconciled', '!=', 2)
                             ->update([
                                 'reconciled' => 1,
-                                'reconciled_ref_id' => $journalEntryRec->id,
+                                'reconciled_ref_id' => $journalEntry1->id,
                             ]);
+                        Log::info('Reconciled old journal entries', ['ids' => $selectedIds]);
                     }
                 }
             }
 
             DB::commit();
-            return redirect()->route('bank-payments.index')->with('success', 'Payment Voucher Successfully Recorded.');
+            return redirect()->route('bank-payments.index')->with('success', 'Payment Voucher Successfully Recorded with Double-Entry.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Payment Voucher Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
-
     }
-
 
     public function edit($id)
     {
-        // $user = auth()->user();
         $bankPayment = Transaction::findOrFail($id);
         $JournalEntrys = JournalEntry::where('transaction_id', $bankPayment->id)->get();
 
-        $user = auth()->user();
-        if ($user->role_id == Role::ADMIN) {
-            $companies = Company::with('branches.account', 'branches.agents')->get();
-            $branches = $companies->flatMap->branches;
+        $payeeEntry = $JournalEntrys->where('type', 'payable')->first();
+        $payeeName = $payeeEntry?->name ?? $bankPayment->name;
+
+        $bankEntry = $JournalEntrys->where('type', 'bank')->first();
+        $payFromName = $bankEntry?->name ?? '';
+
+        $user = Auth::user();
+        $isAdmin = $user->role_id == Role::ADMIN;
+
+        $companyId = $bankPayment->company_id;
+
+        if ($isAdmin) {
+            $company = Company::with('branches.account', 'branches.agents')->find($companyId);
+            if (!$company) {
+                return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
+            }
+            $companies = $company;
+            $branches = $company->branches;
             $accounts = $branches->pluck('account')->filter();
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $suppliers = Account::doesntHave('children')->get();
         } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.account', 'branches.agents')->find($bankPayment->entity_id);
-            $accounts = $company->branches->pluck('account')->filter(); // get accounts from each branch
+            $company = Company::with('branches.account', 'branches.agents')->find($companyId);
+            if (!$company) {
+                return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
+            }
+            $accounts = $company->branches->pluck('account')->filter();
             $branches = $company->branches;
             $companies = $company;
-
-            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-            $accpayreceives = Account::doesntHave('children')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
-
-            $suppliers = Account::doesntHave('children')
-                ->with('root')
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
-                ->get();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $company = Company::with('branches.account', 'branches.agents')->find($companyId);
+            if (!$company) {
+                return redirect()->route('bank-payments.index')->with('error', 'Company not found.');
+            }
+            $accounts = $company->branches->pluck('account')->filter();
+            $branches = $company->branches;
+            $companies = $company;
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.edit', compact('companies', 'bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
-    }
+        $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+        $rootIds = Account::whereIn('name', $rootNames)
+            ->where('company_id', $companyId)
+            ->pluck('id');
 
+        $accpayreceives = Account::doesntHave('children')
+            ->where('company_id', $companyId)
+            ->whereHas('parent', function ($query) use ($rootIds) {
+                $query->whereIn('root_id', $rootIds);
+            })
+            ->get();
+
+        $suppliers = Account::doesntHave('children')
+            ->with('root')
+            ->where('company_id', $companyId)
+            ->whereHas('parent', function ($query) use ($rootIds) {
+                $query->whereIn('root_id', $rootIds);
+            })
+            ->get();
+
+        $assetsRoot = Account::where('name', 'Assets')->where('company_id', $companyId)->first();
+        $bankAccounts = collect();
+        if ($assetsRoot) {
+            $bankParent = Account::where('parent_id', $assetsRoot->id)
+                ->where('name', 'Bank Accounts')
+                ->where('company_id', $companyId)
+                ->first();
+
+            if ($bankParent) {
+                $bankAccounts = Account::where('parent_id', $bankParent->id)
+                    ->where('company_id', $companyId)
+                    ->get()
+                    ->map(function ($account) {
+                        $debitSum = JournalEntry::where('account_id', $account->id)->sum('debit');
+                        $creditSum = JournalEntry::where('account_id', $account->id)->sum('credit');
+                        $account->current_balance = $debitSum - $creditSum;
+                        return $account;
+                    });
+            }
+        }
+
+        return view('bank-payments.edit', compact(
+            'companies',
+            'bankPayment',
+            'accounts',
+            'branches',
+            'suppliers',
+            'accpayreceives',
+            'JournalEntrys',
+            'bankAccounts',
+            'payeeName',
+            'payFromName',
+            'isAdmin',
+            'companyId'
+        ));
+    }
 
     public function update(Request $request, $id)
     {
@@ -506,7 +586,7 @@ class BankPaymentController extends Controller
                 'branch_id' => $request->branch_id,
                 'transaction_type' => 'debit',
                 'amount' => collect($request->items)->sum('amount'),
-                'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                'date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create,
                 'reference_type' => $request->bankpaymenttype,
                 'invoice_id' => null,
@@ -533,36 +613,63 @@ class BankPaymentController extends Controller
     /**
      * Store general ledger entries for a transaction.
      */
-    private function storeJournalEntryEntries($items, $request, $transactionId)
+    private function storeJournalEntryEntries($items, $request, $transactionId, $payFromAccount)
     {
         foreach ($items as $item) {
-
-            // Retrieve company_id from the related account
             $account = Account::find($item['account_id']);
-            $companyId = $account ? $account->company_id : null; // Ensure company_id exists
+            $companyId = $account ? $account->company_id : null;
+
+            $debitAmount = (float) ($item['debit'] ?? 0);
+            $creditAmount = (float) ($item['credit'] ?? 0);
 
             JournalEntry::create([
-                'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                'transaction_date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'account_id' => $item['account_id'],
                 'company_id' => $companyId,
                 'branch_id' => $request->branch_id ?? 0,
                 'transaction_id' => $transactionId,
                 'description' => $item['description'],
-                'debit' => $item['debit'],
-                'credit' => $item['credit'],
+                'debit' => $debitAmount,
+                'credit' => $creditAmount,
                 'balance' => $item['balance'] ?? 0,
                 'voucher_number' => $request->bankpaymentref,
-                'name' => $request->pay_to,
+                'name' => $account->name ?? '',
                 'type' => 'payable',
                 'currency' => $item['currency'],
                 'exchange_rate' => $item['exchange_rate'],
                 'amount' => $item['amount'],
                 'cheque_no' => $item['cheque_no'] ?? '',
-                'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
+                'cheque_date' => $item['cheque_date']
+                    ? Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s')
+                    : null,
                 'bank_info' => $item['bank_name'] ?? '',
                 'auth_no' => $item['auth_no'] ?? '',
                 'updated_at' => now(),
-                'type_reference_id' => $item['type_reference_id'],
+            ]);
+
+            JournalEntry::create([
+                'transaction_date' => Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                'account_id' => $payFromAccount->id,
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id ?? 0,
+                'transaction_id' => $transactionId,
+                'description' => "Bank: " . $item['description'],
+                'debit' => $creditAmount,
+                'credit' => $debitAmount,
+                'balance' => 0,
+                'voucher_number' => $request->bankpaymentref,
+                'name' => $payFromAccount->name,
+                'type' => 'bank',
+                'currency' => $item['currency'],
+                'exchange_rate' => $item['exchange_rate'],
+                'amount' => $item['amount'],
+                'cheque_no' => $item['cheque_no'] ?? '',
+                'cheque_date' => $item['cheque_date']
+                    ? Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s')
+                    : null,
+                'bank_info' => $item['bank_name'] ?? '',
+                'auth_no' => $item['auth_no'] ?? '',
+                'updated_at' => now(),
             ]);
         }
     }
@@ -575,13 +682,28 @@ class BankPaymentController extends Controller
         ]);
 
         $supplierName = (string) $request->get('supplier');
-        $user = auth()->user();
+        $user = Auth::user();
+        $isAdmin = $user->role_id == Role::ADMIN;
+
+        // Get company ID based on role
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return response()->json(['error' => 'Please select a company first.'], 400);
+        }
+
+        // Get branch IDs for the company
+        $branchIds = Branch::where('company_id', $companyId)->pluck('id')->toArray();
 
         $accountIds = [];
         $supplierNameTrimmed = trim($supplierName);
         if ($supplierNameTrimmed !== '') {
-            $acc = Account::where('name', $supplierNameTrimmed)->first()
-                ?? Account::where('name', 'LIKE', "%{$supplierNameTrimmed}%")->first();
+            $acc = Account::where('name', $supplierNameTrimmed)
+                ->where('company_id', $companyId)
+                ->first()
+                ?? Account::where('name', 'LIKE', "%{$supplierNameTrimmed}%")
+                ->where('company_id', $companyId)
+                ->first();
 
             if ($acc) {
                 $accountIds = [$acc->id];
@@ -598,8 +720,8 @@ class BankPaymentController extends Controller
                 'journal_entries.account_id',
                 DB::raw('SUM(COALESCE(journal_entries.credit, 0)) - SUM(COALESCE(journal_entries.debit, 0)) AS total')
             )
-            ->where('journal_entries.company_id', $user->company->id)
-            ->where('journal_entries.branch_id', $user->branch->id)
+            ->where('journal_entries.company_id', $companyId)
+            ->whereIn('journal_entries.branch_id', $branchIds)
             ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
             ->whereIn('root_a.name', ['Liabilities'])
             ->when(!empty($accountIds), fn($q) => $q->whereIn('journal_entries.account_id', $accountIds));
@@ -610,13 +732,17 @@ class BankPaymentController extends Controller
             ->filter(fn($e) => $e->total > 0)
             ->pluck('total', 'account_id');
 
-        $entriesQuery = \App\Models\JournalEntry::whereIn('account_id', $totalsByAccount->keys())
-            ->where('company_id', $user->company->id)
-            ->where('branch_id', $user->branch->id)
+        if ($totalsByAccount->isEmpty()) {
+            return response()->json([]);
+        }
+
+        $entriesQuery = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
+            ->where('company_id', $companyId)
+            ->whereIn('branch_id', $branchIds)
             ->whereBetween('transaction_date', [$request->from, $request->to])
             ->where('credit', '!=', 0)
-            ->where('reconciled', 0)              
-            ->whereNull('voucher_number')         
+            ->where('reconciled', 0)
+            ->whereNull('voucher_number')
             ->whereHas('account.root', fn($q) => $q->whereIn('name', ['Liabilities']))
             ->when(!empty($accountIds), fn($q) => $q->whereIn('account_id', $accountIds))
             ->with(['account', 'account.root', 'task'])
@@ -642,12 +768,12 @@ class BankPaymentController extends Controller
                 if ($entry->task->type === 'flight') {
                     $ticketNumber = $entry->task->ticket_number;
                     $description .= $ticketNumber ? ' - ' . $ticketNumber : '';
-                } elseif ($entry->task->hotel === 'hotel') { 
+                } elseif ($entry->task->hotel === 'hotel') {
                     $hotelName = $entry->task->hotelDetails->hotel->name ?? '';
                     $description .= $hotelName ? ' - ' . $hotelName : '';
                 }
             }
-            
+
             return [
                 'id'               => $entry->id,
                 'transaction_id'   => $entry->transaction_id,

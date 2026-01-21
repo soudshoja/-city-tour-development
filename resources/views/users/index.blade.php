@@ -31,8 +31,6 @@
         </div>
     </div>
 
-    <x-admin-card title="users" :companyId="request('company_id')" />
-
     <div class="panel rounded-lg">
         <x-search
             :action="route('users.index')"

@@ -20,35 +20,43 @@ use Illuminate\Support\Facades\Log;
 class BranchController extends Controller
 {
     use AuthorizesRequests;
-    // Display a listing of the branches
+
     public function index(Request $request)
     {
         Gate::authorize('viewAny', Branch::class);
 
         $user = Auth::user();
+        $isAdmin = $user->role_id == Role::ADMIN;
         $query = $request->get('q');
 
+        $companyId = getCompanyId($user);
+
         if ($user->role_id == Role::BRANCH) {
+            $branch = $user->branch;
             return view('branches.index', compact('branch'));
-        } else {
-            if ($user->role_id == Role::ADMIN) {
-                $branchesQuery = Branch::with('company');
-            } elseif ($user->role_id == Role::COMPANY) {
-                $branchesQuery = Branch::with('company')->where('company_id', $user->company->id);
-            }
-
-            if ($query) {
-                $branchesQuery->where(function ($q) use ($query) {
-                    $q->where('name', 'like', "%{$query}%")
-                        ->orWhere('email', 'like', "%{$query}%")
-                        ->orWhere('phone', 'like', "%{$query}%");
-                });
-            }
-
-            $branches = $branchesQuery->paginate(20)->withQueryString();
-
-            return view('branches.list', compact('branches'));
         }
+
+        $branchesQuery = Branch::with('company');
+
+        if ($isAdmin) {
+            if ($companyId) {
+                $branchesQuery->where('company_id', $companyId);
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $branchesQuery->where('company_id', $companyId);
+        }
+
+        if ($query) {
+            $branchesQuery->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%");
+            });
+        }
+
+        $branches = $branchesQuery->paginate(20)->withQueryString();
+
+        return view('branches.list', compact('branches'));
     }
 
     // Display the specified branch

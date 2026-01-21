@@ -33,8 +33,6 @@
         </div>
     </div>
 
-    <x-admin-card title="invoices" :companyId="request('company_id')" />
-
     <div class="panel rounded-lg">
         <x-search
             :action="route('invoices.index')"

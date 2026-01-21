@@ -64,8 +64,6 @@
             </div>
         </div>
 
-        <x-admin-card title="reminders" :companyId="request('company_id')" />
-
         <div class="panel bg-white rounded-lg shadow p-4">
             <!-- Tabs Navigation -->
             <div class="flex gap-1 mb-0 bg-slate-100 px-2 pt-2 rounded-t-lg">

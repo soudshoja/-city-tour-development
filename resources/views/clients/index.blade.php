@@ -24,8 +24,6 @@
         </div>
     </div>
 
-    <x-admin-card title="clients" :companyId="request('company_id')" />
-
     <div>
         <div class="panel rounded-lg">
             <x-search action="{{ route('clients.index') }}" searchParam='search' placeholder="Quick search for clients" />

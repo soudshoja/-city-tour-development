@@ -208,6 +208,13 @@
                 </div>
             </div>
 
+            @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
+            <x-sidebar-company 
+                :companies="$sidebarCompanies ?? collect()" 
+                :currentCompanyId="$currentCompanyId ?? 1" 
+            />
+            @endif
+
         </div>
 
         <div class="flex flex-col justify-between items-center space-y-4">

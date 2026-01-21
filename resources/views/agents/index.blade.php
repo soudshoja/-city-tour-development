@@ -25,8 +25,6 @@
         </div>
     </div>
 
-    <x-admin-card title="agents" :companyId="request('company_id')" />
-
     <div>
         <div class="panel rounded-lg">
             <x-search

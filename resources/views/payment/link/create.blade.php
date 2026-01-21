@@ -6,12 +6,6 @@
             <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">New Payment Link</span>
         </nav>
 
-        <x-admin-card 
-            title="payments" 
-            :companyId="$companyId"
-            :route="route('payment.link.create')" 
-        />
-
         <!-- Main Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="{
             advancedMode: false,
@@ -103,7 +97,7 @@
                             <!-- Add New Client -->
                             <div @click="addClientModal = true"
                                 class="p-2 text-center bg-white rounded-full shadow-xl ring-1 ring-black/5 group hover:bg-black cursor-pointer transition duration-150 ease-in-out"
-                                data-tooltip-left="Add New Client">
+                                data-tooltip-left="Add new client">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-white">
                                     <path d="M16 21V19C16 17.3431 14.6569 16 13 16H7C5.34315 16 4 17.3431 4 19V21" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                     <circle cx="10" cy="10" r="4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -115,7 +109,7 @@
                             <!-- Import Payment -->
                             <div @click="importFatoorahModal = true"
                                 class="p-2 text-center bg-white rounded-full shadow-xl ring-1 ring-black/5 group hover:bg-black cursor-pointer transition duration-150 ease-in-out"
-                                data-tooltip-left="Import Payment">
+                                data-tooltip-left="Import payment">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-white">
                                     <path d="M12 5V19M5 12H19" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>

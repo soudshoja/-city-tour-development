@@ -65,37 +65,14 @@ class ClientController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($user->role_id == Role::ADMIN) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('clients.index', [
-                    'company_id' => session('company_id')
-                ]);
-            }
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('clients.index');
-            }
-        }
-
-        $companyId = null;
-        $isAdmin = false;
         $agent = null;
         $agentIds = [];
 
         $clients = Client::with('agent.branch');
 
         if ($user->role_id == Role::ADMIN) {
-            $isAdmin = true;
-            $companyId = $request->input('company_id', session('company_id'));
-
             if ($companyId) {
                 $branchIds = Branch::where('company_id', $companyId)->pluck('id')->toArray();
                 $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id')->toArray();
@@ -105,20 +82,16 @@ class ClientController extends Controller
                 $agent = Agent::first();
             }
         } elseif ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
             $branchIds = Branch::where('company_id', $companyId)->pluck('id')->toArray();
             $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branchIds)->first();
         } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company_id;
             $agentIds = Agent::where('branch_id', $user->branch->id)->pluck('id')->toArray();
             $agent = Agent::where('branch_id', $user->branch->id)->first();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
-            $companyId = $agent->branch->company_id ?? null;
             $agentIds = [$agent->id];
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company_id;
             $branchIds = [$user->accountant->branch_id];
             $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branchIds)->first();
@@ -206,8 +179,6 @@ class ClientController extends Controller
             'agent',
             'fullClients',
             'clients',
-            'isAdmin',
-            'companyId',
         ));
     }
 
@@ -369,7 +340,7 @@ class ClientController extends Controller
         $message = $response->message;
 
         if ($status == 'error') {
-            if ($type == 'duplicate' && auth()->user()->role_id == Role::AGENT) {
+            if ($type == 'duplicate' && Auth::user()->role_id == Role::AGENT) {
                 $data = $response->data;
                 return $this->showAssignmentRequestForm(
                     $data['existing_client'],

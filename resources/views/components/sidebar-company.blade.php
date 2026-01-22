@@ -104,9 +104,8 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        // Small delay to ensure session is saved, then clean reload
                         setTimeout(() => {
-                            window.location.reload();
+                            window.location.href = '{{ route("dashboard") }}';
                         }, 100);
                     } else {
                         alert(data.message || 'Failed to switch company');

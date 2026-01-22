@@ -189,7 +189,7 @@
                             <td class="p-3 text-center text-sm">
                                 <div class="flex items-center justify-center gap-2">
                                     <a data-tooltip="View Invoice" target="_blank"
-                                        href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                        href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                         class="viewInvoice {{ $invoice->payment_type ? 'text-blue-500 hover:underline' : 'text-gray-400 cursor-not-allowed' }}"
                                         @unless($invoice->payment_type) onclick="return false;" @endunless>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20"
@@ -204,7 +204,7 @@
                                     @can('accountantEdit', $invoice)
                                     @if($invoice->status !== 'unpaid')
                                     <a data-tooltip="Edit Invoice"
-                                        href="{{ route('invoice.accountant.edit', ['companyId' => auth()->user()->accountant->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                        href="{{ route('invoice.accountant.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                         class="text-sm font-medium text-blue-600 hover:underline">
 
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-green-500 dark:stroke-green-700">
@@ -227,7 +227,7 @@
                                     </a>
                                     @elseif (in_array($invoice->status, ['unpaid', 'partial'], true))
                                     <a data-tooltip="Edit Invoice"
-                                        href="{{ route('invoice.edit', ['companyId' => $invoice->agent?->branch?->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                        href="{{ route('invoice.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                         class="text-sm font-medium text-blue-600 hover:underline">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                             <path fill="none" stroke="#00ab55" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -346,7 +346,7 @@
                                     @endif
                                     @if(auth()->check())
                                     <button type="button" data-tooltip="Send Email" data-invoice-number="{{ $invoice->invoice_number }}"
-                                        data-company-id="{{ $invoice->agent->branch->company_id }}" data-agent-email="{{ $invoice->agent->email ?? '' }}"
+                                        data-company-id="{{ $companyId }}" data-agent-email="{{ $invoice->agent->email ?? '' }}"
                                         data-client-email="{{ $invoice->client->email ?? '' }}" onclick="openQuickEmailModal(this)" class="text-indigo-500 hover:text-indigo-700">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                             <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -373,7 +373,7 @@
 
                             <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                 @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]))
-                                    <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                    <a href="{{ route('invoice.details', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                         class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> {{ $invoice->invoice_number }}
                                     </a>
                                 @else

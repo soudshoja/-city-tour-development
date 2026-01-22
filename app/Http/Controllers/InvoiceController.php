@@ -52,14 +52,12 @@ class InvoiceController extends Controller
         Gate::authorize('viewAny', Invoice::class);
 
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
         $companyId = getCompanyId($user);
 
         $companiesId = [];
         $agents = collect();
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $companiesId[] = $companyId;
                 $agents = Agent::whereHas('branch', fn($query) => $query->where('company_id', $companyId))
@@ -186,26 +184,10 @@ class InvoiceController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
+        $companyId = getCompanyId($user);
 
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
-
-        if ($isAdmin) {
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('invoices.create', array_merge($request->all(), [
-                    'company_id' => session('company_id')
-                ]));
-            }
-
-            if ($request->has('company_id')) {
-                session(['company_id' => $request->input('company_id')]);
-            }
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('invoices.create', $request->except('company_id'));
-            }
+        if ($user->role_id == Role::ADMIN && !$companyId) {
+            return redirect()->back()->with('error', 'Please select a company from the sidebar first.');
         }
 
         $taskIds = $request->query('task_ids', '');
@@ -232,7 +214,9 @@ class InvoiceController extends Controller
             throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
         }
 
-        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')->where('enabled', true);
+        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
+            ->where('enabled', true);
+
         $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
 
         $blockedSuppliers = ['jazeera airways'];
@@ -247,7 +231,10 @@ class InvoiceController extends Controller
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
-                return Redirect::route('invoice.edit', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
+                return Redirect::route('invoice.edit', [
+                    'companyId' => $task->company_id,
+                    'invoiceNumber' => $task->invoiceDetail->invoice->invoice_number
+                ]);
             }
         }
 
@@ -258,11 +245,17 @@ class InvoiceController extends Controller
             return $task;
         });
 
-        $companyId = getCompanyId($user);
-
         if ($selectedTasks->count() > 0) {
             $firstTask = $selectedTasks->first();
-            $companyId = $firstTask->agent->branch->company_id ?? $companyId;
+            $taskCompanyId = $firstTask->agent->branch->company_id ?? null;
+
+            if (!$user->role_id == Role::ADMIN && $taskCompanyId && $taskCompanyId != $companyId) {
+                return redirect()->back()->with('error', 'Unauthorized access to this task.');
+            }
+
+            if ($user->role_id == Role::ADMIN && $taskCompanyId) {
+                $companyId = $taskCompanyId;
+            }
         }
 
         $selectedCompany = $companyId ? Company::find($companyId) : null;
@@ -271,16 +264,25 @@ class InvoiceController extends Controller
         $clients = collect();
         $agentsId = [];
 
-        if ($isAdmin) {
-            $agents = Agent::with('branch.company')->get();
-            $clients = Client::all();
-            $branches = Branch::all();
-            $companies = Company::all();
-            $agentsId = $agents->pluck('id')->toArray();
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $company = Company::with('branches.agents')->find($companyId);
+                $agents = $company->branches->flatMap->agents;
+                $branches = $company->branches;
+                $agentsId = $agents->pluck('id')->toArray();
 
-            $suppliers = Supplier::with(['companies' => function ($query) {
-                $query->where('is_active', true);
-            }])->get();
+                $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+                    $query->where('company_id', $companyId)->where('is_active', true);
+                })->with('companies')->get();
+            } else {
+                $agents = Agent::with('branch.company')->get();
+                $branches = Branch::all();
+                $agentsId = $agents->pluck('id')->toArray();
+
+                $suppliers = Supplier::with(['companies' => function ($query) {
+                    $query->where('is_active', true);
+                }])->get();
+            }
         } elseif ($user->role_id == Role::COMPANY) {
             $company = Company::with('branches.agents')->find($companyId);
             $agents = $company->branches->flatMap->agents;
@@ -323,7 +325,14 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN && $companyId) {
+            $clients = Client::where(function ($query) use ($agentsId) {
+                $query->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', function ($q) use ($agentsId) {
+                        $q->whereIn('agent_id', $agentsId);
+                    });
+            })->get();
+        } elseif ($user->role_id == Role::ADMIN) {
             $clients = Client::all();
         } else {
             $clients = Client::where(function ($query) use ($agentsId) {
@@ -339,11 +348,6 @@ class InvoiceController extends Controller
             $agentIds = $selectedTasks->pluck('agent_id')->unique();
             $selectedAgent = Agent::find($agentIds->first());
             $selectedClient = $clientIds->count() >= 1 ? Client::find($clientIds->first()) : null;
-
-            if (!$companyId && $selectedAgent) {
-                $companyId = $selectedAgent->branch->company_id;
-                $selectedCompany = $selectedAgent->branch->company;
-            }
         } else {
             $selectedAgent = null;
             $selectedClient = null;
@@ -367,15 +371,23 @@ class InvoiceController extends Controller
 
         $todayDate = Carbon::now()->format('Y-m-d');
         $appUrl = config('app.url');
-        $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
 
-        $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
+        $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')
+            ->where('company_id', $companyId)
+            ->first();
+
+        $invoiceExpireDefault = $invoiceExpireDefault
+            ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days'))
+            : date('Y-m-d', strtotime('+5 days'));
 
         if (!$companyId) {
             return redirect()->back()->with('error', 'Unable to determine company for invoice creation.');
         }
 
-        $invoiceSequence = InvoiceSequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
+        $invoiceSequence = InvoiceSequence::firstOrCreate(
+            ['company_id' => $companyId],
+            ['current_sequence' => 1]
+        );
         $currentSequence = $invoiceSequence->current_sequence;
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
@@ -405,11 +417,7 @@ class InvoiceController extends Controller
     public function edit(int $companyId, string $invoiceNumber)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
-        if (!$isAdmin) {
-            $companyId = getCompanyId($user);
-        }
+        $companyId = getCompanyId($user);
 
         if ($user->role_id == Role::ACCOUNTANT) {
             return $this->accountantEdit($companyId, $invoiceNumber);
@@ -1702,13 +1710,11 @@ class InvoiceController extends Controller
     public function link(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
         $companyId = getCompanyId($user);
 
         $agents = Agent::with('branch');
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $agents = $agents->whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
             } else {

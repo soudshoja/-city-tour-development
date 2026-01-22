@@ -778,7 +778,7 @@
                                         @else
                                             @if ($creditUsed && $creditUsed->amount < 0)
                                                 <!-- Credit already used - no locking needed, just display -->
-                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}">
+                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])}}">
                                                     <button type="button"
                                                         class="rounded-full flex flex-col items-center justify-center w-full
                                                             px-4 py-2 border border-gray-300 
@@ -1194,7 +1194,7 @@
 
                                                     @foreach($paymentGateways as $gateway)
                                                         @php
-                                                            $companyMethods = $gateway->methods->where('company_id', $invoice->agent->branch->company_id);
+                                                            $companyMethods = $gateway->methods->where('company_id', $companyId);
                                                         @endphp
                                                         @if($companyMethods->isNotEmpty())
                                                         <template x-if="selectedGateway.toLowerCase() === '{{ strtolower($gateway->name) }}'">

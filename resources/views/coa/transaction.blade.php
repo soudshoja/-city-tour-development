@@ -30,7 +30,8 @@
 
                     <div x-cloak x-show="showFilter" x-transition
                         class="absolute right-0 mt-2 w-72 bg-white shadow-md p-4 rounded-lg border border-gray-300 z-50">
-                        <form method="GET" action="{{ route('coa.transaction') }}" class="flex flex-col space-y-4">
+                        <form method="POST" action="{{ route('coa.transaction') }}" class="flex flex-col space-y-4">
+                            @csrf
                             @if(auth()->user()->role_id == \App\Models\Role::ADMIN && request('company_id'))
                                 <input type="hidden" name="company_id" value="{{ request('company_id') }}">
                             @endif
@@ -122,7 +123,6 @@
 
         <!-- Transaction List -->
         <div class="bg-white rounded-lg shadow-sm dark:bg-gray-800">
-            <x-admin-card title="transactions" :companyId="request('company_id')" />
             @if ($transactions->isEmpty())
             <div class="text-center text-gray-600 py-20">
                 <h3 class="text-lg font-semibold">No transactions found</h3>

@@ -64,7 +64,8 @@
                     Hide
                 </button>
             </div>
-            <form id="invoice-filter-form" method="GET" action="{{ route('reports.daily-sales') }}">
+            <form id="invoice-filter-form" method="POST" action="{{ route('reports.daily-sales') }}">
+                @csrf
                 <div x-data="agentPicker({
                         items: @js($allAgents->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])),
                         preselected: @js(collect(request('agent_ids',[]))->map(fn($v)=>(int)$v)->all())

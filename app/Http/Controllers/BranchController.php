@@ -26,7 +26,6 @@ class BranchController extends Controller
         Gate::authorize('viewAny', Branch::class);
 
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
         $query = $request->get('q');
 
         $companyId = getCompanyId($user);
@@ -38,7 +37,7 @@ class BranchController extends Controller
 
         $branchesQuery = Branch::with('company');
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $branchesQuery->where('company_id', $companyId);
             }

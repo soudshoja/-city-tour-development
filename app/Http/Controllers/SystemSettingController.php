@@ -6,13 +6,13 @@ use App\Enums\PaymentMailTypeEnum;
 use App\Mail\PaymentMail;
 use App\Models\Payment;
 use App\Models\PaymentFile;
-use App\Policies\SystemSettingPolicy;
+use App\Models\Role;
 use App\Services\PaymentReceiptService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class SystemSettingController extends Controller
 {
@@ -20,13 +20,22 @@ class SystemSettingController extends Controller
     {
         Gate::authorize('manage-system-settings');
 
-        $payments = Payment::with(['client', 'agent'])
-            ->where('status', 'completed')
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        return view('admin.system-settings.index', compact('payments'));
+        $paymentsQuery = Payment::with(['client', 'agent.branch.company'])
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc');
+
+        if ($companyId) {
+            $paymentsQuery->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            });
+        }
+
+        $payments = $paymentsQuery->limit(50)->get();
+
+        return view('admin.system-settings.index', compact('payments', 'companyId'));
     }
 
     public function sendTestEmail(Request $request)
@@ -39,12 +48,23 @@ class SystemSettingController extends Controller
             'email_type' => 'required|in:payment_success,payment_failure',
         ]);
 
-        $payment = Payment::findOrFail($request->payment_id);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $paymentQuery = Payment::where('id', $request->payment_id);
+
+        if ($companyId) {
+            $paymentQuery->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            });
+        }
+
+        $payment = $paymentQuery->firstOrFail();
         $emailType = PaymentMailTypeEnum::from($request->email_type);
 
         try {
             Mail::to($request->email)->send(new PaymentMail($payment->id, $emailType));
-            
+
             return back()->with('success', "Test email sent successfully to {$request->email}");
         } catch (\Exception $e) {
             return back()->with('error', "Failed to send email: {$e->getMessage()}");
@@ -55,8 +75,19 @@ class SystemSettingController extends Controller
     {
         Gate::authorize('manage-email-tester');
 
-        $payment = Payment::findOrFail($request->payment_id);
-        
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $paymentQuery = Payment::where('id', $request->payment_id);
+
+        if ($companyId) {
+            $paymentQuery->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            });
+        }
+
+        $payment = $paymentQuery->firstOrFail();
+
         return view('payment.pdf.success', [
             'payment' => $payment,
         ]);
@@ -72,7 +103,18 @@ class SystemSettingController extends Controller
             'country_code' => 'required|string',
         ]);
 
-        $payment = Payment::findOrFail($request->payment_id);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $paymentQuery = Payment::where('id', $request->payment_id);
+
+        if ($companyId) {
+            $paymentQuery->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            });
+        }
+
+        $payment = $paymentQuery->firstOrFail();
 
         $service = new PaymentReceiptService();
         $result = $service->generateAndSendPdf(
@@ -92,11 +134,22 @@ class SystemSettingController extends Controller
     {
         Gate::authorize('manage-email-tester');
 
-        $payment = Payment::with(['client', 'agent.branch.company', 'paymentItems', 'paymentMethod'])
-            ->findOrFail($request->payment_id);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $paymentQuery = Payment::with(['client', 'agent.branch.company', 'paymentItems', 'paymentMethod'])
+            ->where('id', $request->payment_id);
+
+        if ($companyId) {
+            $paymentQuery->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            });
+        }
+
+        $payment = $paymentQuery->firstOrFail();
 
         $pdf = Pdf::loadView('payment.pdf.success', ['payment' => $payment, 'isPdf' => true]);
-        
+
         return $pdf->download("payment_receipt_{$payment->voucher_number}.pdf");
     }
 
@@ -119,7 +172,18 @@ class SystemSettingController extends Controller
             'payment_id' => 'required|exists:payments,id',
         ]);
 
-        $payment = Payment::findOrFail($request->payment_id);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $paymentQuery = Payment::where('id', $request->payment_id);
+
+        if ($companyId) {
+            $paymentQuery->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            });
+        }
+
+        $payment = $paymentQuery->firstOrFail();
 
         $paymentFile = PaymentFile::where('payment_id', $payment->id)
             ->where('expiry_date', '>', now())
@@ -156,8 +220,8 @@ class SystemSettingController extends Controller
             'file_id' => $paymentFile->file_id,
             'status' => $fileData['status'] ?? 'unknown',
             'is_active' => $isActive,
-            'message' => $isActive 
-                ? '✓ File is active in Resayil. Will reuse existing file on send.' 
+            'message' => $isActive
+                ? '✓ File is active in Resayil. Will reuse existing file on send.'
                 : '⚠ File is not active. Will upload new file on send.',
             'expiry_date' => $paymentFile->expiry_date->format('Y-m-d H:i:s'),
             'created_at' => $paymentFile->created_at->format('Y-m-d H:i:s'),

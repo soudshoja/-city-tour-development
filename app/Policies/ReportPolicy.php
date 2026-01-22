@@ -50,16 +50,22 @@ class ReportPolicy
 
     public function viewDailySales(User $user)
     {
+        if($user->hasRole('admin')) return true;
+
         return $user->can('view daily sales');
     }
 
     public function viewTaskReport(User $user)
     {
+        if($user->hasRole('admin')) return true;
+
         return $user->can('view task report');
     }
 
     public function viewClientReport(User $user)
     {
+        if($user->hasRole('admin')) return true;
+
         return $user->can('view client report');
     }
 }

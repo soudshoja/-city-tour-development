@@ -594,23 +594,22 @@ class CoaController extends Controller
     public function transaction(Request $request)
     {
         $user = Auth::user();
-        if ($user->role_id == Role::ADMIN) {
-            $request->validate(['company_id' => 'nullable|exists:companies,id']);
-            $company = $request->company_id ? Company::findOrFail($request->company_id) : Company::first();
-        } else {
-            $company = Company::where('user_id', $user->id)->first();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            if ($user->role_id == Role::ADMIN) {
+                return redirect()->back()->with('error', 'Please select a company first.');
+            }
+            return redirect()->route('dashboard')->with('error', 'Company not found.');
+        }
+
+        $company = Company::find($companyId);
+
+        if (!$company) {
+            return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
 
         $companies = Company::all();
-        if (!$company) {
-            try {
-                $companyId = $user->accountant->branch->company->id;
-                $company = $companyId ? Company::find($companyId) : null;
-            } catch (Exception $e) {
-                Log::error('Error fetching company: ' . $e->getMessage());
-                return redirect()->route('dashboard')->with('error', 'Company not found.');
-            }
-        }
 
         $referenceTypes = (array) $request->input('reference_type', []);
         $entityTypes = (array) $request->input('entity_type', []);
@@ -620,12 +619,12 @@ class CoaController extends Controller
         $toDate = $request->input('to_date');
 
         $agents = Agent::query()
-            ->whereHas('branch', fn($q) => $q->where('company_id', $company->id))
+            ->whereHas('branch', fn($q) => $q->where('company_id', $companyId))
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $accounts = Account::query()
-            ->where('company_id', $company->id)
+            ->where('company_id', $companyId)
             ->whereNotIn('level', [1, 2])
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -643,7 +642,7 @@ class CoaController extends Controller
 
         $query = Transaction::query()
             ->with(['journalEntries' => $withJournal])
-            ->where('company_id', $company->id)
+            ->where('company_id', $companyId)
             ->when($referenceTypes, fn($q) => $q->whereIn('reference_type', $referenceTypes))
             ->when($entityTypes, fn($q) => $q->whereIn('entity_type', $entityTypes))
             ->when($agentIds, function ($q) use ($agentIds) {
@@ -657,7 +656,7 @@ class CoaController extends Controller
                 $fromDate && $toDate,
                 fn($q) => $q->whereBetween('transaction_date', [Carbon::parse($fromDate)->startOfDay(), Carbon::parse($toDate)->endOfDay()]),
                 function ($q) use ($fromDate, $toDate) {
-                    $q->when($fromDate, fn($qq) =>  $qq->whereDate('transaction_date', '>=', Carbon::parse($fromDate)->startOfDay()))
+                    $q->when($fromDate, fn($qq) => $qq->whereDate('transaction_date', '>=', Carbon::parse($fromDate)->startOfDay()))
                         ->when($toDate, fn($qq) => $qq->whereDate('transaction_date', '<=', Carbon::parse($toDate)->endOfDay()));
                 }
             );

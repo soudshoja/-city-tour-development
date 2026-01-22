@@ -63,18 +63,18 @@ class Charge extends Model
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id');
-    } 
+    }
 
     public function branch()
     {
         return $this->belongsTo(Branch::class, 'branch_id');
-    } 
+    }
 
     public function accFee()
     {
         return $this->belongsTo(Account::class, 'acc_fee_id');
     }
-    
+
     public function accBank()
     {
         return $this->belongsTo(Account::class, 'acc_bank_id');
@@ -156,16 +156,13 @@ class Charge extends Model
 
         $user = Auth::user();
 
-        if(!$user){
+        if (!$user) {
             return null;
         }
 
-        return match ($user->role_id) {
-            Role::AGENT => $user->agent?->branch?->company_id ?? $user->company_id ?? $user->company?->id,
-            Role::BRANCH => $user->branch?->company_id ?? $user->company_id ?? $user->company?->id,
-            Role::COMPANY => $user->company?->id ?? $user->company_id,
-            default => $user->company?->id ?? $user->agent?->branch?->company_id ?? $user->branch?->company_id,
-        };
+        static::$resolvedCompanyId = getCompanyId($user);
+
+        return static::$resolvedCompanyId;
     }
 
     protected static function booted(): void

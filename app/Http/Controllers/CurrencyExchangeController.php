@@ -24,19 +24,22 @@ class CurrencyExchangeController extends Controller
 
     public function index()
     {
-        $currencyExchanges = CurrencyExchange::orderBy('company_id', 'asc')->get();
-        $companies = Company::select('id', 'name')->get();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if (auth()->user()->hasRole('company')) {
-            if (auth()->user()->company == null) {
+        $currencyExchangesQuery = CurrencyExchange::with('company')
+            ->orderBy('company_id', 'asc');
 
-                logger()->error('User company not found', ['user_id' => auth()->id()]);
-                return redirect()->back()->with('error', 'Something went wrong');
-            }
+        if ($companyId) {
+            $currencyExchangesQuery->where('company_id', $companyId);
+        }
 
-            $companies = array_filter($companies->toArray(), function ($company) {
-                return $company['id'] == auth()->user()->company->id;
-            });
+        $currencyExchanges = $currencyExchangesQuery->get();
+
+        $companyName = null;
+        if ($companyId) {
+            $company = Company::find($companyId);
+            $companyName = $company?->name;
         }
 
         $currenciesAvailable = cache()->remember('exchangeRates', 3600, function () {
@@ -77,7 +80,6 @@ class CurrencyExchangeController extends Controller
             return redirect()->back()->with('error', 'Failed to fetch currency exchange rates');
         }
 
-        $user = Auth::user();
         if ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         }
@@ -85,16 +87,25 @@ class CurrencyExchangeController extends Controller
         return view('currency-exchange.index', compact(
             'currencyExchanges',
             'currenciesAvailable',
-            'companies'
+            'companyName',
         ));
     }
 
-    public function storeProcess(Request $request) : JsonResponse
+    public function storeProcess(Request $request): JsonResponse
     {
         Log::info('Starting to create new currency rate');
 
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No company selected.'
+            ], 400);
+        }
+
         $request->validate([
-            'company_id' => 'required',
             'base_currency' => 'required',
             'exchange_currency' => 'required',
             'exchange_rate' => 'required_if:is_manual,1',
@@ -102,7 +113,7 @@ class CurrencyExchangeController extends Controller
         ]);
 
         $currencyExchange = CurrencyExchange::where([
-            'company_id' => $request->company_id,
+            'company_id' => $companyId,
             'base_currency' => $request->base_currency,
             'exchange_currency' => $request->exchange_currency
         ])->first();
@@ -141,16 +152,24 @@ class CurrencyExchangeController extends Controller
         }
 
         try {
-            CurrencyExchange::create($request->all());
+            CurrencyExchange::create([
+                'company_id' => $companyId,
+                'base_currency' => $request->base_currency,
+                'exchange_currency' => $request->exchange_currency,
+                'exchange_rate' => $request->exchange_rate,
+                'is_manual' => $request->is_manual,
+            ]);
+
             Log::info('Successfully created the currency rate', [
-                'Data' => $request->all()
+                'company_id' => $companyId,
+                'data' => $request->all()
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
             ]);
-            }
+        }
 
         return response()->json([
             'status' => 'success',
@@ -158,42 +177,52 @@ class CurrencyExchangeController extends Controller
         ]);
     }
 
-    public function addNewCurrency(Request $request) : JsonResponse
-    {   
+    public function addNewCurrency(Request $request): JsonResponse
+    {
         Log::info('Adding new currency rate: ', [
             'Data' => $request->all()
         ]);
 
+        $user = Auth::user();
+        $companyId = $request->company_id ?? getCompanyId($user);
+
+        if (!$companyId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No company selected.'
+            ], 400);
+        }
+
         $request->validate([
-            'company_id' => 'required|integer',
             'base_currency' => 'required|string',
             'exchange_currency' => 'required|string',
             'is_manual' => 'required|boolean'
         ]);
 
         $existingRate = CurrencyExchange::where([
-             'company_id'        => $request->company_id,
-            'base_currency'     => $request->base_currency,
+            'company_id' => $companyId,
+            'base_currency' => $request->base_currency,
             'exchange_currency' => $request->exchange_currency
         ])->first();
 
-        if($existingRate) {
+        if ($existingRate) {
             return response()->json([
                 'status' => 'exists',
-                'message'=> 'Currency exchange rate already exist',
+                'message' => 'Currency exchange rate already exist',
                 'data' => $existingRate
             ]);
-        }    
-        
+        }
+
+        $request->merge(['company_id' => $companyId]);
+
         return $this->storeProcess($request);
-    
     }
 
-    public function store(Request $request) : RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-       $response = $this->storeProcess($request)->getData(true);
-    
-       return redirect()->back()->with($response['status'], $response['message']);
+        $response = $this->storeProcess($request)->getData(true);
+
+        return redirect()->back()->with($response['status'], $response['message']);
     }
 
     public function updateAuto(Request $request)
@@ -202,7 +231,14 @@ class CurrencyExchangeController extends Controller
             'id.*' => 'required',
         ]);
 
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
         $currencyExchange = CurrencyExchange::find($request->id);
+
+        if ($companyId && $currencyExchange->company_id != $companyId) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
         $systemExchangeRate = SystemExchangeRate::where([
             'base_currency' => $currencyExchange->base_currency,
@@ -210,7 +246,6 @@ class CurrencyExchangeController extends Controller
         ])->first();
 
         if (!$systemExchangeRate) {
-
             $systemExchangeRateController = new SystemExchangeRateController();
             $response = $systemExchangeRateController->updateBaseRate($currencyExchange->base_currency);
 
@@ -237,10 +272,17 @@ class CurrencyExchangeController extends Controller
 
     public function updateManual(Request $request)
     {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
         $data = $request->all();
 
         foreach ($data as $rateData) {
             $exchange = CurrencyExchange::findOrFail($rateData['id']);
+
+            if ($companyId && $exchange->company_id != $companyId) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
             $oldRate = $exchange->exchange_rate;
             $exchange->exchange_rate = $rateData['exchange_rate'];
             $exchange->is_manual = true;
@@ -263,12 +305,19 @@ class CurrencyExchangeController extends Controller
 
     public function updateMethod($id)
     {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
         try {
             $currencyExchange = CurrencyExchange::find($id);
+
+            if ($companyId && $currencyExchange->company_id != $companyId) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
             $currencyExchange->is_manual = !$currencyExchange->is_manual;
             $currencyExchange->save();
         } catch (Exception $e) {
-
             logger()->error('Failed to update currency exchange rate method', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Something Went Wrong'], 500);
         }
@@ -286,9 +335,17 @@ class CurrencyExchangeController extends Controller
 
     public function allHistories()
     {
-        $currencyExchanges = \App\Models\CurrencyExchange::with(['company', 'histories.user'])
-            ->orderBy('base_currency')
-            ->get();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $query = CurrencyExchange::with(['company', 'histories.user'])
+            ->orderBy('base_currency');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $currencyExchanges = $query->get();
 
         return view('currency-exchange.all-histories', compact('currencyExchanges'));
     }
@@ -296,21 +353,9 @@ class CurrencyExchangeController extends Controller
     public function convertFromSidebar(Request $request): JsonResponse
     {
         Log::info('Starting to convert an exchange currency with ' . json_encode($request->all()));
+
         $user = Auth::user();
-        if ($user->role_id == Role::ADMIN) {
-            $companyId = 1;
-        } elseif ($user->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $user->id)->value('id');
-        } elseif ($user->role_id == Role::AGENT) {
-            $companyId = auth()->user()->agent->branch->company_id;
-        } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = auth()->user()->accountant->branch->company->id;
-        } else {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'User is not authorized to access this feature. Contact Administrator for further information',
-            ], 404);
-        }
+        $companyId = getCompanyId($user);
 
         if (!$companyId) {
             Log::warning('User is not found linked to any company', ['company_id' => $companyId, 'user_id' => $user->id]);
@@ -321,15 +366,14 @@ class CurrencyExchangeController extends Controller
         }
 
         $data = $request->validate([
-            'company_id'    => ['nullable', 'integer'],
             'from_currency' => ['required', 'string'],
-            'to_currency'   => ['required', 'string'],
-            'amount'        => ['required', 'numeric'],
+            'to_currency' => ['required', 'string'],
+            'amount' => ['required', 'numeric'],
         ]);
 
         $fromCurrency = strtoupper($data['from_currency']);
-        $toCurrency   = strtoupper($data['to_currency']);
-        $amount       = (float) $data['amount'];
+        $toCurrency = strtoupper($data['to_currency']);
+        $amount = (float) $data['amount'];
 
         try {
             $response = $this->convert($companyId, $fromCurrency, $toCurrency, $amount);
@@ -346,20 +390,18 @@ class CurrencyExchangeController extends Controller
                 Log::info('User is a Company. Attempting to add new currency rate');
 
                 $createRate = new Request([
-                    'company_id'        => $companyId,
-                    'base_currency'     => $fromCurrency,
+                    'company_id' => $companyId,
+                    'base_currency' => $fromCurrency,
                     'exchange_currency' => $toCurrency,
-                    'is_manual'         => '0',
+                    'is_manual' => '0',
                 ]);
 
                 $response = $this->addNewCurrency($createRate)->getData(true);
-                Log::info('New exchange rate created', [
-                    'Data' => $response
-                ]);
+                Log::info('New exchange rate created', ['Data' => $response]);
 
                 if (in_array($response['status'] ?? '', ['success', 'exists'], true)) {
                     return response()->json([
-                        'status'  => 'success',
+                        'status' => 'success',
                         'created' => true,
                         'message' => ($response['status'] === 'exists')
                             ? 'Rate already existed and was reused.'
@@ -368,8 +410,8 @@ class CurrencyExchangeController extends Controller
                 }
 
                 return response()->json([
-                    'status'  => 'error',
-                    'message' => $create['message'] ?? 'Failed to create exchange rate.',
+                    'status' => 'error',
+                    'message' => $response['message'] ?? 'Failed to create exchange rate.',
                 ], 422);
             } else {
                 Log::warning('User is not a Company. Revoke the access to create new rate');
@@ -385,20 +427,19 @@ class CurrencyExchangeController extends Controller
         if ($inverse === null) {
             Log::warning('Inverse rate missing', ['pair' => "{$toCurrency}→{$fromCurrency}"]);
             return response()->json([
-                'status'           => 'success',
-                'exchange_rate'    => (float) $response['exchange_rate'],
+                'status' => 'success',
+                'exchange_rate' => (float) $response['exchange_rate'],
                 'converted_amount' => (float) $response['converted_amount'],
-                'inverse_rate'     => 'N/A',
-                'message'          => "No inverse rate found for {$toCurrency} → {$fromCurrency}.",
+                'inverse_rate' => 'N/A',
+                'message' => "No inverse rate found for {$toCurrency} → {$fromCurrency}.",
             ]);
         }
 
         return response()->json([
-            'status'           => 'success',
-            'exchange_rate'    => (float) $response['exchange_rate'],
+            'status' => 'success',
+            'exchange_rate' => (float) $response['exchange_rate'],
             'converted_amount' => (float) $response['converted_amount'],
-            'inverse_rate'     => (float) $inverse,
+            'inverse_rate' => (float) $inverse,
         ]);
     }
-
 }

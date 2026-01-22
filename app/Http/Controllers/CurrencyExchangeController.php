@@ -17,6 +17,8 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use App\Models\Currency;
+use RuntimeException;
+use Throwable;
 
 class CurrencyExchangeController extends Controller
 {
@@ -398,6 +400,77 @@ class CurrencyExchangeController extends Controller
             'exchange_rate'    => (float) $response['exchange_rate'],
             'converted_amount' => (float) $response['converted_amount'],
             'inverse_rate'     => (float) $inverse,
+        ]);
+    }
+
+    public function getLatestRate(Request $request): JsonResponse
+    {
+        Log::info('[CURRENCY EXCHANGE] Fetching latest exchange rate', [
+            'request' => $request->all()
+        ]);
+
+        $data = $request->validate([
+            'company_id'    => ['required', 'integer'],
+            'from_currency' => ['required', 'string'],
+            'to_currency'   => ['required', 'string'],
+        ]);
+
+        $fromCurrency = strtoupper($data['from_currency']);
+        $toCurrency   = strtoupper($data['to_currency']);
+        $companyId    = $data['company_id'];
+
+        $exchangeRate = $this->getExchangeRate($companyId, $fromCurrency, $toCurrency);
+
+        if ($exchangeRate === null) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "No exchange rate found for {$fromCurrency} → {$toCurrency}.",
+            ], 404);
+        }
+
+        return response()->json([
+            'status'        => 'success',
+            'exchange_rate' => (float) $exchangeRate,
+        ]);
+    }
+
+    public function convertCurrency(Request $request): JsonResponse
+    {
+        Log::info('Starting to convert an exchange currency with ' . json_encode($request->all()));
+
+        $data = $request->validate([
+            'company_id'    => ['required', 'integer'],
+            'from_currency' => ['required', 'string'],
+            'to_currency'   => ['required', 'string'],
+            'amount'        => ['required', 'numeric'],
+        ]);
+
+        $fromCurrency = strtoupper($data['from_currency']);
+        $toCurrency   = strtoupper($data['to_currency']);
+        $amount       = (float) $data['amount'];
+        $companyId    = $data['company_id'];
+
+        try {
+            $response = $this->convert($companyId, $fromCurrency, $toCurrency, $amount);
+
+            Log::info('Conversion result', ['Data' => $response]);
+
+            if (!isset($response['exchange_rate'], $response['converted_amount'])) {
+                throw new RuntimeException("Exchange rate missing for {$fromCurrency}→{$toCurrency}");
+            }
+        } catch (Throwable $e) {
+            Log::warning('Exchange rate missing', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => "No such rate is found in the database. Contact the Administrator to create the rate",
+            ], 404);
+        }
+
+        return response()->json([
+            'status'           => 'success',
+            'exchange_rate'    => (float) $response['exchange_rate'],
+            'converted_amount' => (float) $response['converted_amount'],
         ]);
     }
 

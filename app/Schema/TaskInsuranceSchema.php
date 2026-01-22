@@ -8,7 +8,7 @@ class TaskInsuranceSchema
     {
         return [
             'date' => [
-                'type' => 'year',
+                'type' => 'string',
                 'description' => 'Coverage ONLY (YYYY). Being label as السنة',
                 'default' => null,
             ],

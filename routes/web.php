@@ -103,6 +103,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/edit/{userId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
         Route::put('/{user}/update-info', [AdminUsersController::class, 'updateInfo'])->name('users.updateInfo');
+        Route::post('/set-company', [AdminUsersController::class, 'setCompany'])->name('users.set-company');
     });
 
     Route::group([
@@ -203,7 +204,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
     ], function () {
-        Route::get('/{suppliersId}/export-excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');        
+        Route::get('/{suppliersId}/export-excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');
         Route::get('/{suppliersId}/export-pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
         Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');
@@ -246,13 +247,19 @@ Route::middleware(['auth'])->group(function () {
     });
 
     //ROLE
-    Route::get('/role', [RoleController::class, 'index'])->name('role.index');
-    Route::get('/role/permission', [RoleController::class, 'getAllPermission'])->name('role.all-permission');
-    Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
-    Route::post('/role', [RoleController::class, 'store'])->name('role.store');
-    Route::get('/role/{roleId}', [RoleController::class, 'edit'])->name('role.edit');
-    Route::put('/role', [RoleController::class, 'update'])->name('role.update');
-    Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
+    Route::group([
+        'prefix' => 'role',
+        'as' => 'role.',
+    ], function () {
+        Route::get('/', [RoleController::class, 'index'])->name('index');
+        Route::get('/permission', [RoleController::class, 'getAllPermission'])->name('all-permission');
+        Route::get('/create', [RoleController::class, 'create'])->name('create');
+        Route::post('/', [RoleController::class, 'store'])->name('store');
+        Route::get('/{roleId}', [RoleController::class, 'edit'])->name('edit');
+        Route::put('/', [RoleController::class, 'update'])->name('update');
+        Route::delete('/{roleId}', [RoleController::class, 'destroy'])->name('destroy');
+        Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('permission');
+    });
 
     // COA
     Route::group([
@@ -263,7 +270,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/create', [CoaController::class, 'createAccounts'])->name('create');
         Route::delete('/api/{id}', [CoaController::class, 'dstry'])->name('destroy');
         Route::post('/updateCode/{id}', [CoaController::class, 'updateCode'])->name('updateCode');
-        Route::get('/transactions', [CoaController::class, 'transaction'])->name('transaction');
+        Route::match(['get', 'post'], '/transactions', [CoaController::class, 'transaction'])->name('transaction');
         Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('addCategory');
         Route::get('/export', [CoaController::class, 'exportAccounts'])->name('export');
         Route::post('/import', [CoaController::class, 'importAccounts'])->name('import');
@@ -292,15 +299,16 @@ Route::middleware(['auth'])->group(function () {
 
     //BRANCHES
     Route::group([
+        'prefix' => 'branches',
         'as' => 'branches.',
     ], function () {
-
-        Route::get('/branches', [BranchController::class, 'index'])->name('index');
-        Route::post('/branches', [BranchController::class, 'store'])->name('store');
-        Route::get('/branches/create', [BranchController::class, 'create'])->name('create');
+        Route::get('/', [BranchController::class, 'index'])->name('index');
+        Route::post('/', [BranchController::class, 'store'])->name('store');
+        Route::get('/create', [BranchController::class, 'create'])->name('create');
+        Route::get('/{id}/edit', [BranchController::class, 'edit'])->name('edit');
+        Route::get('/{id}', [BranchController::class, 'show'])->name('show');
+        Route::put('/{id}', [BranchController::class, 'update'])->name('update');
     });
-
-    Route::get('/branches/{id}', [BranchController::class, 'show']);
 
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
@@ -383,7 +391,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
         Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
-        Route::get('/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
+        Route::match(['get', 'post'], '/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
         Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
         Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
         Route::match(['get', 'post'], '/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
@@ -424,7 +432,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
         Route::post('/{companyId}/{invoiceNumber}/send-email', [InvoiceController::class, 'sendInvoiceEmail'])->name('send-email');
-        
+
         // Payment Application Routes (Credit payment with payment selection)
         Route::post('/available-payments', [InvoiceController::class, 'getAvailablePayments'])->name('available-payments');
         Route::post('/apply-payments', [InvoiceController::class, 'applyPaymentsToInvoice'])->name('apply-payments');
@@ -453,8 +461,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details')->withoutMiddleware(['auth']);
-
-     
     });
 
 
@@ -572,6 +578,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('update-auto', [CurrencyExchangeController::class, 'updateAuto'])->name('update.auto');
         Route::put('update-method/{id}', [CurrencyExchangeController::class, 'updateMethod'])->name('update.method');
         Route::post('convert', [CurrencyExchangeController::class, 'convertFromSidebar'])->name('convert');
+        Route::get('histories', [CurrencyExchangeController::class, 'allHistories'])->name('histories.all');
     });
 
     Route::get('update-rate', [SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
@@ -670,7 +677,6 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');
         Route::post('/set-group', [PaymentMethodController::class, 'setGroup'])->name('set-group');
         Route::post('/toggle-enable/{id}', [PaymentMethodController::class, 'toggleEnable'])->name('toggle-enable');
-
     });
 
     Route::group([
@@ -735,15 +741,19 @@ Route::get('/receipt-voucher/fetch-journals-view', [ReceiptVoucherController::cl
 Route::post('/receipt-voucher/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('receipt-voucher.decline-reconcile');
 Route::post('/receipt-voucher/import', [ReceiptVoucherController::class, 'import'])->name('import');
 
-
-Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');
-Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->name('bank-payments.store');
-Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
-Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])->name('bank-payments.update');
-Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
-Route::get('/bank-payments/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('bank-payments.fetchPaymentsByDate');
-Route::get('/bank-payments/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('bank-payments.fetch-journals');
-Route::post('/bank-payments/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('bank-payments.decline-reconcile');
+Route::group([
+    'prefix' => 'bank-payments',
+    'as' => 'bank-payments.',
+], function () {
+    Route::get('/create', [BankPaymentController::class, 'create'])->name('create');
+    Route::post('/store', [BankPaymentController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [BankPaymentController::class, 'edit'])->name('edit');
+    Route::put('/edit/{id}', [BankPaymentController::class, 'update'])->name('update');
+    Route::get('/', [BankPaymentController::class, 'index'])->name('index');
+    Route::get('/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('fetchPaymentsByDate');
+    Route::get('/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
+    Route::post('/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('decline-reconcile');
+});
 
 
 // EXPORT
@@ -788,20 +798,17 @@ Route::group([
     Route::post('/share-partial-link', [ResayilController::class, 'shareInvoicePartialLink'])->name('share-partial-link');
 });
 
-Route::get('/exchange-rate/histories', [\App\Http\Controllers\CurrencyExchangeController::class, 'allHistories'])
-    ->name('exchange.histories.all');
-
 Route::group([
     'prefix' => 'iata',
     'as' => 'iata.',
-], function(){
+], function () {
     Route::post('/company-wallet', [DashboardController::class, 'iataCompanyWallet'])->name('company-wallet');
 });
 
 Route::group([
     'prefix' => 'supplier-procedures',
     'as' => 'supplier-procedures.',
-], function(){
+], function () {
     Route::post('/{supplierId}', [SupplierProcedureController::class, 'store'])->name('store');
     Route::patch('/{procedureId}/activate', [SupplierProcedureController::class, 'activate'])->name('activate');
     Route::get('/{procedureId}', [SupplierProcedureController::class, 'show'])->name('show');
@@ -811,7 +818,7 @@ Route::group([
 Route::group([
     'prefix' => 'terms',
     'as' => 'terms.',
-], function() {
+], function () {
     // Terms Templates
     Route::prefix('templates')->name('templates.')->group(function () {
         Route::get('/', [TermController::class, 'index'])->name('index');

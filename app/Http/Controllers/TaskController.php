@@ -241,6 +241,7 @@ class TaskController extends Controller
         }
 
         $listOfCreditors = $creditorsAccount->children()->get()
+            ->where('company_id', $companyId)
             ->mapToGroups(function ($account) {
                 $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
 
@@ -256,7 +257,9 @@ class TaskController extends Controller
             })
             ->toArray();
 
-        $paymentMethod = Account::where('parent_id', 39)->get();
+        $paymentMethod = Account::where('parent_id', 39)
+            ->where('company_id', $companyId)
+            ->get();
 
         if ($search = $request->query('q')) {
             $searchTerm = '%' . strtolower($search) . '%';

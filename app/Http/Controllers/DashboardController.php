@@ -25,26 +25,14 @@ class DashboardController extends Controller
     {
         $serializedData = [];
         $user = Auth::user();
-
-        if ($user->role_id == Role::ADMIN) {
-            $companyId = getCompanyId($user);
-            $company = $companyId ? Company::find($companyId) : null;
-        } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::where('user_id', Auth::id())->first();
-            $companyId = $company?->id;
-        } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $company = $user->accountant?->branch?->company;
-            $companyId = $company?->id;
-        } else {
-            $company = null;
-            $companyId = null;
-        }
+        $companyId = getCompanyId($user);
+        $company = $companyId ? Company::find($companyId) : null;
 
         $walletData = $this->getCompanyWallets($company);
         extract($walletData);
 
         $jazeeraCredit = JournalEntry::where('name', 'Jazeera Airways Credit')
-            ->when($company, fn($q) => $q->where('company_id', $companyId))
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->get();
 
         if ($user->role_id == Role::ADMIN) {

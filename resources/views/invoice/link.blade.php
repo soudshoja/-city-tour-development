@@ -74,8 +74,8 @@
                                 @if ($invoice->status === 'paid by refund')
                                     <span class="text-gray-500 italic dark:text-gray-400">Settled by refund</span>
                                 @elseif ($invoice->payment_type)
-                                    <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
-                                        {{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}
+                                    <a href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
+                                        {{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])}}
                                     </a>
                                 @else
                                     <span class="text-gray-500 italic dark:text-gray-400">Invoice link available after setting payment type</span>
@@ -156,7 +156,7 @@
                                         </button>
                                     </form>
                                 @else
-                                    <a href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                    <a href="{{ route('invoice.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                     target="_blank">
                                         <button type="button" class="badge badge-outline-warning">
                                             Set payment type first

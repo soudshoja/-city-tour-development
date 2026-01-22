@@ -1778,7 +1778,6 @@ class InvoiceController extends Controller
             'clients',
             'tasks',
             'countries',
-            'isAdmin',
             'companyId'
         ));
     }

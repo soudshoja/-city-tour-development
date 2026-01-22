@@ -36,7 +36,7 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-   public function edit(Request $request)
+    public function edit(Request $request)
     {
         $user = $request->user();
         $month = $request->input('month') ? Carbon::parse($request->input('month'))->startOfMonth() : now()->startOfMonth();
@@ -133,13 +133,13 @@ class ProfileController extends Controller
      * Update the user's profile information.
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
-    {   
+    {
         $user = $request->user();
         $originalData = $user->toArray();
-        
+
         // Update user basic information
         $user->fill($request->validated());
-    
+
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
@@ -152,11 +152,11 @@ class ProfileController extends Controller
                 'image',
                 'dimensions:max_width=700,max_height=400'
             ],
-            'facebook' => ['nullable','url','max:255'],
-            'instagram' => ['nullable','url','max:255'],
-            'snapchat' => ['nullable','url','max:255'],
-            'tiktok' => ['nullable','url','max:255'],
-            'whatsapp' => ['nullable','url','max:255'],
+            'facebook' => ['nullable', 'url', 'max:255'],
+            'instagram' => ['nullable', 'url', 'max:255'],
+            'snapchat' => ['nullable', 'url', 'max:255'],
+            'tiktok' => ['nullable', 'url', 'max:255'],
+            'whatsapp' => ['nullable', 'url', 'max:255'],
         ]);
 
         $company = $user->company; // related company
@@ -203,7 +203,7 @@ class ProfileController extends Controller
         }
 
         // Update related profile information based on user role
-        if ($user->role_id){
+        if ($user->role_id) {
             try {
                 switch ($user->role_id) {
                     case Role::COMPANY:
@@ -226,11 +226,11 @@ class ProfileController extends Controller
                     'error' => $e->getMessage(),
                     'role_id' => $user->role->id
                 ]);
-                
+
                 return redirect()->back()->with('error', 'Failed to update profile information.');
             }
         }
-    
+
         return redirect()->back()->with('success', 'Profile Successfully Updated.');
     }
 
@@ -242,7 +242,14 @@ class ProfileController extends Controller
             'iata_client_secret' => ['nullable', 'string'],
         ]);
 
-        $company = Company::where('user_id', auth()->id())->firstOrFail();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return back()->with('error', 'No company selected. Please select a company first.');
+        }
+
+        $company = Company::find($companyId);
 
         $company->update([
             'iata_code' => $request->iata_code,
@@ -259,22 +266,22 @@ class ProfileController extends Controller
     private function updateCompanyProfile(User $user, ProfileUpdateRequest $request): void
     {
         $company = Company::where('user_id', $user->id)->first();
-        
+
         if ($company) {
             $updateData = [];
-            
+
             if ($request->has('name') && $request->input('name') !== $company->name) {
                 $updateData['name'] = $request->input('name');
             }
-            
+
             if ($request->has('email') && $request->input('email') !== $company->email) {
                 $updateData['email'] = $request->input('email');
             }
-            
+
             if ($request->has('phone') && $request->input('phone') !== $company->phone) {
                 $updateData['phone'] = $request->input('phone');
             }
-            
+
             if ($request->has('address') && $request->input('address') !== $company->address) {
                 $updateData['address'] = $request->input('address');
             }
@@ -294,7 +301,7 @@ class ProfileController extends Controller
             if ($request->filled('whatsapp')) {
                 $updateData['whatsapp'] = $request->input('whatsapp');
             }
-            
+
             if (!empty($updateData)) {
                 $company->update($updateData);
                 Log::info('Company profile updated', ['company_id' => $company->id, 'updates' => $updateData]);
@@ -308,26 +315,26 @@ class ProfileController extends Controller
     private function updateBranchProfile(User $user, ProfileUpdateRequest $request): void
     {
         $branch = Branch::where('user_id', $user->id)->first();
-        
+
         if ($branch) {
             $updateData = [];
-            
+
             if ($request->has('name') && $request->input('name') !== $branch->name) {
                 $updateData['name'] = $request->input('name');
             }
-            
+
             if ($request->has('email') && $request->input('email') !== $branch->email) {
                 $updateData['email'] = $request->input('email');
             }
-            
+
             if ($request->has('phone') && $request->input('phone') !== $branch->phone) {
                 $updateData['phone'] = $request->input('phone');
             }
-            
+
             if ($request->has('address') && $request->input('address') !== $branch->address) {
                 $updateData['address'] = $request->input('address');
             }
-            
+
             if (!empty($updateData)) {
                 $branch->update($updateData);
                 Log::info('Branch profile updated', ['branch_id' => $branch->id, 'updates' => $updateData]);
@@ -341,29 +348,29 @@ class ProfileController extends Controller
     private function updateAgentProfile(User $user, ProfileUpdateRequest $request): void
     {
         $agent = Agent::where('user_id', $user->id)->first();
-        
+
         if ($agent) {
             $updateData = [];
-            
+
             if ($request->has('name') && $request->input('name') !== $agent->name) {
                 $updateData['name'] = $request->input('name');
             }
-            
+
             if ($request->has('email') && $request->input('email') !== $agent->email) {
                 $updateData['email'] = $request->input('email');
             }
-            
+
             if ($request->has('phone') && $request->input('phone') !== $agent->phone_number) {
                 $updateData['phone_number'] = $request->input('phone');
             }
-            
+
             if (!empty($updateData)) {
                 $agent->update($updateData);
                 Log::info('Agent profile updated', ['agent_id' => $agent->id, 'updates' => $updateData]);
             }
         }
     }
-    
+
 
     /**
      * Delete the user's account.
@@ -512,16 +519,16 @@ class ProfileController extends Controller
     private function getCommissionAccountId(Agent $agent)
     {
         static $commissionAccountId = null;
-        
+
         $companyId = $agent->branch->company_id;
-        
+
         if ($commissionAccountId === null) {
             $account = Account::where('name', 'Commissions (Agents)')
                 ->where('company_id', $companyId)
                 ->first();
             $commissionAccountId = $account ? $account->id : 43; // fallback to 43 if not found
         }
-        
+
         return $commissionAccountId;
     }
 
@@ -549,28 +556,28 @@ class ProfileController extends Controller
     {
         // For salary-only agents (type 1), show all invoices in date range
         // For other agents, only show invoices with commission journal entries
-        $query = Invoice::with(['invoiceDetails.task', 'invoiceDetails.JournalEntrys' => function($q) use ($commissionAccountId) {
-                $q->where('account_id', $commissionAccountId);
-            }])
+        $query = Invoice::with(['invoiceDetails.task', 'invoiceDetails.JournalEntrys' => function ($q) use ($commissionAccountId) {
+            $q->where('account_id', $commissionAccountId);
+        }])
             ->where('agent_id', $agent->id)
             ->whereBetween('invoice_date', [$start, $end]);
-            
+
         // Only filter by commission journal entries for non-salary agents
         if ($agent->type_id != 1) {
-            $query->whereHas('invoiceDetails.JournalEntrys', function($q) use ($commissionAccountId, $start, $end) {
+            $query->whereHas('invoiceDetails.JournalEntrys', function ($q) use ($commissionAccountId, $start, $end) {
                 $q->where('account_id', $commissionAccountId)
-                  ->whereBetween('transaction_date', [$start, $end]);
+                    ->whereBetween('transaction_date', [$start, $end]);
             });
         }
-        
+
         $query->orderBy('invoice_date', 'asc');
 
         // Calculate totals from ALL invoices in the month BEFORE pagination
         $allInvoices = $query->get();
-        $totalProfit = $allInvoices->sum(function($invoice) {
+        $totalProfit = $allInvoices->sum(function ($invoice) {
             return $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
         });
-        
+
         // Calculate total commission from all journal entries in the month
         $totalCommission = 0;
         if (in_array($agent->type_id, [2, 3, 4])) {
@@ -589,7 +596,7 @@ class ProfileController extends Controller
         $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent, $commissionAccountId) {
             // Calculate total profit for this invoice: markup_price + invoice_charge
             $totalProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-            
+
             // Calculate net commission from journal entries linked to invoice details (credits - debits)
             $totalCommission = 0;
             if (in_array($agent->type_id, [2, 3, 4])) {
@@ -610,7 +617,7 @@ class ProfileController extends Controller
                 'task_count' => $invoice->invoiceDetails->count(),
                 'total_profit' => $totalProfit,
                 'total_commission' => $totalCommission,
-                'tasks' => $invoice->invoiceDetails->map(function($detail) {
+                'tasks' => $invoice->invoiceDetails->map(function ($detail) {
                     return [
                         'task_reference' => $detail->task->reference ?? 'N/A',
                         'passenger_name' => $detail->task->passenger_name ?? 'N/A',
@@ -622,7 +629,7 @@ class ProfileController extends Controller
         });
 
         $paginated->setCollection($mapped);
-        
+
         return [
             'commissions' => $paginated,
             'totalProfit' => $totalProfit,
@@ -649,31 +656,31 @@ class ProfileController extends Controller
         $allEntries = $query->get();
         $totalProfit = 0;
         $totalCommission = 0;
-        
+
         foreach ($allEntries as $entry) {
             $invoice = $entry->invoice;
             $invoiceDetail = $entry->invoiceDetail;
-            
+
             // Calculate profit: markup + proportional invoice charge
             $markupProfit = $invoiceDetail?->markup_price ?? 0;
-            
+
             // Add proportional invoice charge
             $totalTaskPrice = $invoice->invoiceDetails->sum('task_price');
             $taskPrice = $invoiceDetail?->task_price ?? 0;
-            
+
             if ($totalTaskPrice > 0 && $invoice->invoice_charge > 0) {
                 $proportionalCharge = ($taskPrice / $totalTaskPrice) * $invoice->invoice_charge;
                 $markupProfit += $proportionalCharge;
             }
-            
+
             $totalProfit += $markupProfit;
-            
+
             // Calculate commission for applicable agent types
             if (in_array($agent->type_id, [2, 3, 4])) {
                 $commissionEntries = $invoiceDetail?->JournalEntrys()
                     ->where('account_id', $commissionAccountId)
                     ->get();
-                
+
                 if ($commissionEntries) {
                     $netCommission = $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
                     $totalCommission += $netCommission;
@@ -686,7 +693,7 @@ class ProfileController extends Controller
         $mapped = $paginated->getCollection()->map(function ($entry) use ($agent, $commissionAccountId) {
             $invoice = $entry->invoice;
             $task = $entry->invoiceDetail?->task;
-            
+
             if (!$task) {
                 // Fallback: get first task from invoice
                 $task = $invoice->invoiceDetails->first()?->task;
@@ -696,17 +703,17 @@ class ProfileController extends Controller
             $commissionEntries = JournalEntry::where('invoice_detail_id', $entry->invoice_detail_id)
                 ->where('account_id', $commissionAccountId)
                 ->get();
-            
+
             $netCommission = $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-            
+
             // Get profit for this specific task: markup_price + proportional invoice_charge
             $taskProfit = $entry->invoiceDetail?->markup_price ?? 0;
-            
+
             // Add proportional invoice charge based on task price vs total invoice amount
             $invoice = $entry->invoice;
             $totalTaskPrice = $invoice->invoiceDetails->sum('task_price');
             $taskPrice = $entry->invoiceDetail?->task_price ?? 0;
-            
+
             if ($totalTaskPrice > 0 && $invoice->invoice_charge > 0) {
                 $proportionalCharge = ($taskPrice / $totalTaskPrice) * $invoice->invoice_charge;
                 $taskProfit += $proportionalCharge;
@@ -737,7 +744,7 @@ class ProfileController extends Controller
         });
 
         $paginated->setCollection($mapped);
-        
+
         return [
             'commissions' => $paginated,
             'totalProfit' => $totalProfit,
@@ -753,8 +760,8 @@ class ProfileController extends Controller
         if ($invoice->is_client_credit == 1) {
             return 'Client Credit';
         }
-        
-        return match($invoice->payment_type) {
+
+        return match ($invoice->payment_type) {
             'full' => 'Full Payment',
             'partial' => 'Partial Payment',
             'split' => 'Split Payment',

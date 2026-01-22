@@ -65,18 +65,14 @@ class PaymentMethod extends Model
         }
 
         $user = Auth::user();
-        
-        // Return null if no authenticated user (like in tests)
+
         if (!$user) {
             return null;
         }
 
-        return match ($user->role_id) {
-            Role::AGENT => $user->agent?->branch?->company_id ?? $user->company_id ?? $user->company?->id,
-            Role::BRANCH => $user->branch?->company_id ?? $user->company_id ?? $user->company?->id,
-            Role::COMPANY => $user->company?->id ?? $user->company_id,
-            default => $user->company?->id ?? $user->agent?->branch?->company_id ?? $user->branch?->company_id,
-        };
+        static::$resolvedCompanyId = getCompanyId($user);
+
+        return static::$resolvedCompanyId;
     }
 
     protected static function booted(): void

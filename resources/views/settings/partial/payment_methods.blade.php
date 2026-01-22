@@ -19,8 +19,6 @@
         <!-- Payment Method Groups -->
         <form method="POST" action="{{ route('payment-method.set-group') }}" x-ref="paymentMethodForm">
             @csrf
-            <input type="hidden" name="company_id" :value="companyId">
-
             <div class="space-y-6">
                 <template x-for="group in groups" :key="group.id">
                     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -100,7 +98,7 @@
             selectedMethods: {},
             enabledGroups: {},
             choiceIds: {},
-            companyId: "{{ $companyId ?? 1 }}",
+            companyId: "{{ $companyId }}",
 
             init() {
                window.addEventListener('payment-methods-tab-loaded', () => {
@@ -111,15 +109,15 @@
             async loadPaymentMethods() {
                 if (this.groups.length > 0) return;
 
-                const params = new URLSearchParams();
-                @if(request('company_id'))
-                params.append('company_id', '{{ request("company_id") }}');
-                @endif
-
                 this.loading = true;
+
+                let url = '{{ route("settings.payment-methods") }}';
+                if (this.companyId) {
+                    url += '?company_id=' + this.companyId;
+                }
                 
                 try {
-                    const response = await fetch('{{ route("settings.payment-methods") }}' + '?' + params.toString(), {
+                    const response = await fetch(url, {
                         headers: {
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'

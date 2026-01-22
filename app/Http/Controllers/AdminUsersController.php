@@ -173,22 +173,21 @@ class AdminUsersController extends Controller
     public function create()
     {
         $user = Auth::user();
-        if ($user->role_id == Role::ADMIN) {
-            $branches = Branch::all();
-        } elseif ($user->role_id == Role::COMPANY) {
-            $branches = Branch::where('company_id', Auth::user()->company->id)->get();
+        $companyId = getCompanyId($user);
+
+        if ($companyId) {
+            $branches = Branch::where('company_id', $companyId)->get();
         } else {
             $branches = collect();
         }
+
         $branches_id = $branches->pluck('id');
-
         $agents = Agent::whereIn('branch_id', $branches_id)->get();
-
 
         $agentTypes = AgentType::all();
         $countries = Country::all();
 
-        return view('users.create', compact('agents', 'branches', 'agentTypes', 'countries'));
+        return view('users.create', compact('agents', 'branches', 'agentTypes', 'countries', 'companyId'));
     }
 
     public function store(Request $request)

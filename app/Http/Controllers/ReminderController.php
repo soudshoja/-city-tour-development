@@ -19,12 +19,10 @@ class ReminderController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role_id == Role::ADMIN;
-
         $companyId = getCompanyId($user);
         $agentIds = collect();
 
-        if ($isAdmin) {
+        if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $agentIds = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->pluck('id');
             }
@@ -57,7 +55,7 @@ class ReminderController extends Controller
                 }
             ]);
 
-        if (!$isAdmin || $companyId) {
+        if (!$user->role_id == Role::ADMIN || $companyId) {
             $query->whereIn('invoices.agent_id', $agentIds);
         }
 
@@ -96,7 +94,7 @@ class ReminderController extends Controller
             ->orderBy('group_id')
             ->orderBy('scheduled_at');
 
-        if (!$isAdmin || $companyId) {
+        if (!$user->role_id == Role::ADMIN || $companyId) {
             $paymentRemindersQuery->whereIn('agent_id', $agentIds);
         }
 
@@ -107,7 +105,7 @@ class ReminderController extends Controller
             ->orderBy('created_at', 'desc')
             ->orderBy('scheduled_at', 'asc');
 
-        if (!$isAdmin || $companyId) {
+        if (!$user->role_id == Role::ADMIN || $companyId) {
             $allRemindersQuery->whereIn('agent_id', $agentIds);
         }
 

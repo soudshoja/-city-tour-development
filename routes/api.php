@@ -14,6 +14,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
+use App\http\Controllers\APIController;
 use App\Services\MagicHolidayService;
 
 Route::post('/login2', [MobileController::class, 'login2']);
@@ -153,5 +154,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/{id}/partials', [PaymentController::class, 'getPartials']);
     Route::get('/payments/{id}/transactions', [PaymentController::class, 'getTransactions']);
 });
+
+Route::post('/get-task-structure', [APIController::class, 'getTaskStructure']);
+Route::post('/get-client', [APIController::class, 'getClient']);
+Route::post('/get-agent', [APIController::class, 'getAgent']);
+Route::post('/get-company', [APIController::class, 'getCompany']);
+Route::post('/get-supplier', [APIController::class, 'getSupplier']);
+Route::post('/get-country', [APIController::class, 'getCountry']);
+Route::post('/get-hotel', [APIController::class, 'getHotel']);
+
 
 require __DIR__ . '/auth.php';

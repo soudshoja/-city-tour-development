@@ -198,6 +198,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/store-manual', [TaskController::class, 'storeManualHotel'])->name('store.manual');
         Route::put('/update-financial/{task}', [TaskController::class, 'updateAdminFinancial'])->name('update.financial');
         Route::post('/{task}/switch-invoice', [TaskController::class, 'switchInvoiceTask'])->name('switchInvoice');
+        Route::put('/update-multi', [TaskController::class, 'updateMulti'])->name('updateMulti');
+
     });
 
     // SUPPLIERS

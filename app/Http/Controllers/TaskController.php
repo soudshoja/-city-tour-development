@@ -2622,277 +2622,67 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
-        $task = Task::findOrFail($id);
-        $rules = [
-            'reference' => 'nullable|string',
-            'status' => 'required',
-            'price' => 'nullable|numeric',
-            'tax' => 'nullable|numeric',
-            'surcharge' => 'nullable|numeric',
-            'total' => 'required|numeric',
-            'payment_method_account_id' => 'nullable|string',
-            'agent_id' => 'nullable',
-            'client_id' => 'nullable|exists:clients,id',
-            'supplier_id' => 'required',
-            'original_task_id' => 'nullable|exists:tasks,id',
-            'supplier_pay_date' => $task->supplier_pay_date ? 'sometimes|date' : 'required|date', // we show 'issued date' in the form label
-        ];
-        $messages = [
-            'supplier_id.required' => 'Please select a supplier',
-            'status.required' => 'Please select a status',
-            'total.required' => 'Please enter the total amount',
-            'supplier_pay_date.required' => 'Issued date is required',
-        ];
-        $request->validate($rules, $messages);
+{
+    $task = Task::findOrFail($id);
+    
+    $request->validate($this->getValidationRules($task), $this->getValidationMessages());
 
-        DB::beginTransaction();
+    DB::beginTransaction();
 
-        try {
-            $oldPaymentMethod = $task->payment_method_account_id;
-            $oldStatus = $task->status;
-            $oldSupplierPayDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
+    try {
+        // 1. Capture state before changes
+        $oldValues = $this->captureOldValues($task);
 
-            Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
-            Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
+        // 2. Apply basic field updates
+        $this->applyBasicUpdates($task, $request);
 
-            $prevClientName = $task->client_name;
-            $prevAgentId = $task->agent_id;
-            $processedThisRequest = false;
+        // 3. Detect what changed
+        $changes = $this->detectChanges($task, $oldValues);
 
-            $data = $request->only([
-                'reference',
-                'status',
-                'price',
-                'tax',
-                'surcharge',
-                'total',
-                'agent_id',
-                'supplier_id',
-                'original_task_id',
-                'payment_method_account_id',
-            ]);
-
-            if ($request->filled('client_id')) {
-                $client = Client::findOrFail($request->client_id);
-                $data['client_id'] = $client->id;
-                $data['client_name'] = $client->full_name;
-            }
-
-            if ($request->filled('agent_id')) {
-                $agent = Agent::findOrFail($request->agent_id);
-                $data['agent_id'] = $agent->id;
-                $data['agent_name'] = $agent->name;
-            }
-            if ($request->has('supplier_pay_date')) {
-                $data['supplier_pay_date'] = $request->input('supplier_pay_date');
-            }
-
-            $task->update($data);
-            Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
-
-            $matchedRule = AutoBilling::where('company_id', $task->company_id)
-                ->where('is_active', true)
-                ->where(function ($q) use ($task) {
-                    $q->where('created_by', $task->created_by)
-                        ->orWhere('issued_by', $task->issued_by)
-                        ->orWhere('agent_id', $task->agent_id);
-                })
-                ->get()
-                ->first(
-                    fn($r) => (!$r->created_by || $r->created_by === $task->created_by) &&
-                        (!$r->issued_by || $r->issued_by === $task->issued_by) &&
-                        (!$r->agent_id || $r->agent_id === $task->agent_id)
-                );
-
-            if ($matchedRule) {
-                $task->update([
-                    'client_id' => $matchedRule->client_id,
-                    'client_name' => optional($matchedRule->client)->full_name,
-                ]);
-                Log::info("[Task Update] Auto-linked task {$task->id} with AutoBilling rule #{$matchedRule->id} (Client ID {$matchedRule->client_id})");
-            } else {
-                Log::info("[Task Update] No AutoBilling rule matched for task {$task->id} (created_by: {$task->created_by}, issued_by: {$task->issued_by}, agent_id: {$task->agent_id})");
-            }
-
-            $newSupplierPayDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
-            if ($oldSupplierPayDate !== $newSupplierPayDate) {
-                $journalEntries = JournalEntry::with('transaction')
-                    ->where('task_id', $task->id)
-                    ->whereHas('transaction', function ($q) use ($task) {
-                        $q->where('description', 'like', '%' . $task->reference . '%');
-                    })
-                    ->get();
-
-                foreach ($journalEntries as $je) {
-                    $je->transaction_date = $newSupplierPayDate;
-                    $je->save();
-
-                    if ($je->transaction) {
-                        $je->transaction->transaction_date = $newSupplierPayDate;
-                        $je->transaction->save();
-                    }
-                }
-            }
-
-            if ($request->filled('payment_method_account_id') && $request->payment_method_account_id != $oldPaymentMethod) {
-                $response = $this->updateJournalPaymentMethod($task, $request->payment_method_account_id);
-
-                if (!$response instanceof JsonResponse) {
-                    Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
-                        'task_id' => $task->id,
-                        'expected_type' => JsonResponse::class,
-                        'actual_type' => is_object($response) ? get_class($response) : gettype($response)
-                    ]);
-
-                    throw new Exception('Failed to update payment method journal entries.');
-                }
-
-                if ($response->getData(true)['status'] !== 'success') {
-                    Log::error('Failed to update payment method journal entries', [
-                        'task_id' => $task->id,
-                        'error_message' => $response->getData()->message
-                    ]);
-                    throw new Exception('Failed to update payment method journal entries: ' . $response->getData()->message);
-                }
-            }
-
-            if ($oldStatus !== $task->status) {
-                if ($task->status === 'confirmed') {
-                    Log::info('Confirmed status: reverting and skipping COA creation: ' . $task->reference);
-                    $this->revertFinancialsForTask($task);
-                    $processedThisRequest = true;
-                } else {
-                    if (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'], true)) {
-                        if ($oldStatus === 'void') {
-                            $this->revertFinancialsForVoid($task);
-                        } else {
-                            $this->revertFinancialsForTask($task);
-                        }
-                        $this->processTaskFinancial($task);
-                        $processedThisRequest = true;
-                    }
-                }
-            }
-
-            $clientChanged = $task->wasChanged('client_id');
-            $agentWasAssigned = !$prevAgentId && $task->agent_id;
-            $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId !== $task->agent_id;
-
-            if ($task->status === 'void') {
-                $wasEnabled = JournalEntry::where('task_id', $task->original_task_id)
-                    ->whereHas('transaction', function ($q) {
-                        $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
-                    })
-                    ->exists();
-            } else {
-                $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
-            }
-
-            // Update enabled status: task must be complete AND have an agent assigned
-            $shouldBeEnabled = $task->is_complete && $task->agent_id && $task->client;
-            if ($shouldBeEnabled) {
-                if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
-                    DB::rollBack();
-                    return back()->withErrors(['original_task_id' => 'Task must be linked to an original task'])->withInput();
-                }
-            }
-
-            if (!$processedThisRequest && $shouldBeEnabled && !$wasEnabled) {
-                $task->enabled = true;
-                $task->save();
-                // Process financials if not already processed
-
-                if ($task->status === 'void') {
-                    $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
-                        ->whereHas('transaction', function ($q) {
-                            $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
-                        })
-                        ->exists();
-                } else {
-                    $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
-                }
-                if (!$hasJournal) {
-                    Log::info('Processing financial transactions for newly enabled task: ' . $task->reference);
-                    $this->processTaskFinancial($task);
-                }
-            } elseif (!$shouldBeEnabled && $wasEnabled) {
-                $task->enabled = false;
-                $task->save();
-            } else {
-                $task->enabled = $shouldBeEnabled;
-                $task->save();
-            }
-
-            // If agent was assigned or changed, update branch_id in existing journal entries
-            if (($agentWasAssigned || $agentWasChanged) && $task->agent_id) {
-                Log::info('Agent assignment/change detected for task: ' . $task->reference .
-                    ' (prev: ' . ($prevAgentId ?? 'none') . ', new: ' . $task->agent_id . ')');
-                $this->updateJournalEntriesBranch($task);
-            }
-
-            $journalEntries = JournalEntry::with('transaction')
-                ->where('task_id', $id)
-                ->whereHas('transaction', function ($q) use ($task) {
-                    $q->where('description', 'like', '%' . $task->reference . '%');
-                })
-                ->get();
-
-            $transaction = null;
-
-            if ($journalEntries->isNotEmpty()) {
-                foreach ($journalEntries as $entry) {
-                    if ($entry->transaction) {
-                        $transaction = $entry->transaction;
-                        $transaction->amount = $task->total;
-                        $transaction->save();
-                    }
-
-                    if ($entry->debit > 0) {
-                        $entry->debit = $task->total;
-                        $entry->balance = $task->total;
-                    } else {
-                        $entry->credit = $task->total;
-                        $entry->balance = $task->total;
-                    }
-                    if (isset($entry->amount)) {
-                        $entry->amount = $task->total;
-                    }
-                    $entry->save();
-                }
-            }
-
-            if (isset($client) && $transaction) {
-                $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
-                    if ($journalEntry->name === $prevClientName) {
-                        $journalEntry->name = $client->full_name;
-                        $journalEntry->save();
-                    }
-                });
-            }
-
-            if (strtolower($task->status) === 'issued' && ($agentWasChanged || $clientChanged)) {
-                $children = Task::where('original_task_id', $task->id)->get();
-
-                foreach ($children as $child) {
-                    if ($agentWasChanged)  $child->agent_id  = $task->agent_id;
-                    if ($clientChanged) $child->client_id = $task->client_id;
-                    $child->save();
-
-                    if ($agentWasChanged) {
-                        $this->updateJournalEntriesBranch($child);
-                    }
-                }
-            }
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Task updated successfully.');
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Task update failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
+        // 4. Run only relevant handlers
+        $this->handleAutoBilling($task, $changes);
+        
+        if ($changes['supplier_pay_date']) {
+            $this->handleSupplierPayDateChange($task);
         }
+
+        if ($changes['payment_method_account_id']) {
+            $this->handlePaymentMethodChange($task, $oldValues['payment_method_account_id']);
+        }
+
+        if ($changes['status']) {
+            $this->handleStatusChange($task, $oldValues['status']);
+        }
+
+        if ($changes['agent_id']) {
+            $this->handleAgentChange($task);
+        }
+
+        if ($changes['client_id']) {
+            $this->handleClientChange($task, $oldValues['client_name']);
+        }
+
+        if ($changes['total'] || $changes['price'] || $changes['tax'] || $changes['surcharge']) {
+            $this->handleAmountChange($task);
+        }
+
+        // 5. Cascade to children if needed (only for issued tasks)
+        if ($task->status === 'issued' && ($changes['agent_id'] || $changes['client_id'])) {
+            $this->cascadeToChildTasks($task, $changes);
+        }
+
+        // 6. Update enabled status
+        $this->updateEnabledStatus($task, $changes);
+
+        DB::commit();
+        return redirect()->back()->with('success', 'Task updated successfully.');
+
+    } catch (Exception $e) {
+        DB::rollBack();
+        Log::error('Task update failed: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
     }
+}
 
     public function updateAdminFinancial(Request $request, Task $task)
     {
@@ -5760,4 +5550,385 @@ class TaskController extends Controller
 
         return redirect()->back()->with('success', 'Tasks updated successfully');
     }
+    
+   public function updateMulti(Request $request)
+{
+    $draftsRaw = $request->input('drafts');
+    $drafts = is_string($draftsRaw) ? json_decode($draftsRaw, true) : $draftsRaw;
+
+    if (!$drafts || !is_array($drafts)) {
+        return back()->with('error', 'No changes received.');
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $taskIds = array_keys($drafts);
+        $updatedCount = 0;
+
+        // Pre-load tasks to check existence
+        $existingIds = Task::whereIn('id', $taskIds)->pluck('id')->toArray();
+
+        foreach ($drafts as $taskId => $payload) {
+            if (!in_array((int) $taskId, $existingIds)) {
+                continue;
+            }
+
+            // Build request with defaults from existing task
+            $task = Task::find($taskId);
+            
+            $fakeRequest = new Request($payload);
+            $fakeRequest->merge([
+                'status' => $payload['status'] ?? $task->status,
+                'supplier_id' => $payload['supplier_id'] ?? $task->supplier_id,
+                'total' => $payload['total'] ?? $task->total,
+                'supplier_pay_date' => $payload['supplier_pay_date'] ?? $task->supplier_pay_date,
+            ]);
+
+            // Use refactored update() - it only runs what's needed
+            $this->update($fakeRequest, $taskId);
+            $updatedCount++;
+        }
+
+        DB::commit();
+
+        return back()->with('success', "Updated {$updatedCount} tasks successfully");
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        Log::error('Multi update failed: ' . $e->getMessage());
+        return back()->with('error', 'Multi update failed: ' . $e->getMessage());
+    }
+}
+
+    private function getChangedFields(Task $task, array $incoming): array
+    {
+        $changed = [];
+
+        foreach ($incoming as $key => $newValue) {
+            if ($newValue === null) continue;
+
+            $oldValue = $task->{$key} ?? null;
+
+            // normalize numeric compare
+            if (in_array($key, ['price', 'tax', 'surcharge', 'total'], true)) {
+                $oldValue = $oldValue !== null ? number_format((float)$oldValue, 3, '.', '') : null;
+                $newValue = number_format((float)$newValue, 3, '.', '');
+            }
+
+            // normalize date compare
+            if ($key === 'supplier_pay_date') {
+                $oldValue = $oldValue ? \Carbon\Carbon::parse($oldValue)->format('Y-m-d') : null;
+                $newValue = $newValue ? \Carbon\Carbon::parse($newValue)->format('Y-m-d') : null;
+            }
+
+            // normalize empty string compare
+            if ($newValue === '') $newValue = null;
+
+            if ((string)$oldValue !== (string)$newValue) {
+                $changed[] = $key;
+            }
+        }
+
+        return $changed;
+    }
+
+    private function requiresFullFinancial(array $changedFields): bool
+    {
+        // These fields trigger heavy operations in update()
+        $heavyTriggers = [
+            'status',                      // → revert + reprocess financials
+            'payment_method_account_id',   // → journal account swap
+            'agent_id',                    // → branch updates + child cascade
+            'client_id',                   // → journal name updates
+            'supplier_pay_date',           // → journal date updates
+            'supplier_id',                 // → may affect financial processing
+        ];
+
+        return count(array_intersect($changedFields, $heavyTriggers)) > 0;
+    }
+
+    private function captureOldValues(Task $task): array
+{
+    return [
+        'status' => $task->status,
+        'agent_id' => $task->agent_id,
+        'client_id' => $task->client_id,
+        'client_name' => $task->client_name,
+        'payment_method_account_id' => $task->payment_method_account_id,
+        'supplier_pay_date' => $task->supplier_pay_date,
+        'price' => $task->price,
+        'tax' => $task->tax,
+        'surcharge' => $task->surcharge,
+        'total' => $task->total,
+    ];
+}
+
+private function applyBasicUpdates(Task $task, Request $request): void
+{
+    $data = $request->only([
+        'reference', 'status', 'price', 'tax', 'surcharge', 'total',
+        'agent_id', 'supplier_id', 'original_task_id', 'payment_method_account_id',
+    ]);
+
+    if ($request->filled('client_id')) {
+        $client = Client::find($request->client_id);
+        if ($client) {
+            $data['client_id'] = $client->id;
+            $data['client_name'] = $client->full_name;
+        }
+    }
+
+    if ($request->filled('agent_id')) {
+        $agent = Agent::find($request->agent_id);
+        if ($agent) {
+            $data['agent_id'] = $agent->id;
+            $data['agent_name'] = $agent->name;
+        }
+    }
+
+    if ($request->has('supplier_pay_date')) {
+        $data['supplier_pay_date'] = $request->input('supplier_pay_date');
+    }
+
+    $task->update($data);
+}
+
+private function detectChanges(Task $task, array $oldValues): array
+{
+    $changes = [];
+
+    foreach ($oldValues as $key => $oldValue) {
+        $newValue = $task->{$key};
+
+        // Normalize numeric
+        if (in_array($key, ['price', 'tax', 'surcharge', 'total'])) {
+            $oldValue = number_format((float)($oldValue ?? 0), 3, '.', '');
+            $newValue = number_format((float)($newValue ?? 0), 3, '.', '');
+        }
+
+        // Normalize date
+        if ($key === 'supplier_pay_date') {
+            $oldValue = $oldValue ? Carbon::parse($oldValue)->format('Y-m-d') : null;
+            $newValue = $newValue ? Carbon::parse($newValue)->format('Y-m-d') : null;
+        }
+
+        $changes[$key] = (string)$oldValue !== (string)$newValue;
+    }
+
+    return $changes;
+}
+
+// ============================================
+// SPECIFIC HANDLERS
+// ============================================
+
+private function handleAutoBilling(Task $task, array $changes): void
+{
+    // Only check if agent changed or no client assigned
+    if (!$changes['agent_id'] && $task->client_id) {
+        return;
+    }
+
+    $matchedRule = AutoBilling::where('company_id', $task->company_id)
+        ->where('is_active', true)
+        ->where(function ($q) use ($task) {
+            $q->where('created_by', $task->created_by)
+                ->orWhere('issued_by', $task->issued_by)
+                ->orWhere('agent_id', $task->agent_id);
+        })
+        ->get()
+        ->first(fn($r) =>
+            (!$r->created_by || $r->created_by === $task->created_by) &&
+            (!$r->issued_by || $r->issued_by === $task->issued_by) &&
+            (!$r->agent_id || $r->agent_id === $task->agent_id)
+        );
+
+    if ($matchedRule) {
+        $task->update([
+            'client_id' => $matchedRule->client_id,
+            'client_name' => optional($matchedRule->client)->full_name,
+        ]);
+        Log::info("[AutoBilling] Linked task {$task->id} → Client {$matchedRule->client_id}");
+    }
+}
+
+private function handleSupplierPayDateChange(Task $task): void
+{
+    $newDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
+    if (!$newDate) return;
+
+    $journalEntries = JournalEntry::with('transaction')
+        ->where('task_id', $task->id)
+        ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
+        ->get();
+
+    foreach ($journalEntries as $je) {
+        $je->transaction_date = $newDate;
+        $je->save();
+
+        if ($je->transaction) {
+            $je->transaction->transaction_date = $newDate;
+            $je->transaction->save();
+        }
+    }
+}
+
+private function handlePaymentMethodChange(Task $task, $oldPaymentMethod): void
+{
+    if ($task->payment_method_account_id == $oldPaymentMethod) return;
+
+    $response = $this->updateJournalPaymentMethod($task, $task->payment_method_account_id);
+
+    if (!$response instanceof JsonResponse) {
+        throw new Exception('Failed to update payment method journal entries.');
+    }
+
+    if ($response->getData(true)['status'] !== 'success') {
+        throw new Exception('Failed to update payment method: ' . $response->getData()->message);
+    }
+}
+
+private function handleStatusChange(Task $task, $oldStatus): void
+{
+    if ($oldStatus === $task->status) return;
+
+    if ($task->status === 'confirmed') {
+        Log::info('Status → confirmed: reverting financials', ['task' => $task->reference]);
+        $this->revertFinancialsForTask($task);
+    } elseif (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'])) {
+        if ($oldStatus === 'void') {
+            $this->revertFinancialsForVoid($task);
+        } else {
+            $this->revertFinancialsForTask($task);
+        }
+        $this->processTaskFinancial($task);
+    }
+}
+
+private function handleAgentChange(Task $task): void
+{
+    if (!$task->agent_id) return;
+
+    Log::info('Agent changed', ['task' => $task->reference, 'agent_id' => $task->agent_id]);
+    $this->updateJournalEntriesBranch($task);
+}
+
+private function handleClientChange(Task $task, $prevClientName): void
+{
+    $journalEntries = JournalEntry::with('transaction')
+        ->where('task_id', $task->id)
+        ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
+        ->get();
+
+    foreach ($journalEntries as $entry) {
+        if ($entry->name === $prevClientName && $task->client) {
+            $entry->name = $task->client->full_name;
+            $entry->save();
+        }
+    }
+}
+
+private function handleAmountChange(Task $task): void
+{
+    $journalEntries = JournalEntry::with('transaction')
+        ->where('task_id', $task->id)
+        ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
+        ->get();
+
+    foreach ($journalEntries as $entry) {
+        if ($entry->transaction) {
+            $entry->transaction->amount = $task->total;
+            $entry->transaction->save();
+        }
+
+        if ($entry->debit > 0) {
+            $entry->debit = $task->total;
+        } else {
+            $entry->credit = $task->total;
+        }
+        $entry->balance = $task->total;
+
+        if (isset($entry->amount)) {
+            $entry->amount = $task->total;
+        }
+        $entry->save();
+    }
+}
+
+private function cascadeToChildTasks(Task $task, array $changes): void
+{
+    $children = Task::where('original_task_id', $task->id)->get();
+
+    foreach ($children as $child) {
+        if ($changes['agent_id']) {
+            $child->agent_id = $task->agent_id;
+        }
+        if ($changes['client_id']) {
+            $child->client_id = $task->client_id;
+            $child->client_name = $task->client_name;
+        }
+        $child->save();
+
+        if ($changes['agent_id']) {
+            $this->updateJournalEntriesBranch($child);
+        }
+    }
+}
+
+private function updateEnabledStatus(Task $task, array $changes): void
+{
+    $shouldBeEnabled = $task->is_complete && $task->agent_id && $task->client_id;
+
+    if ($shouldBeEnabled && !in_array($task->status, ['issued', 'confirmed']) && !$task->original_task_id) {
+        throw new Exception('Task must be linked to an original task');
+    }
+
+    // Check if financials need processing
+    $statusChanged = $changes['status'] ?? false;
+    
+    if ($shouldBeEnabled && !$statusChanged) {
+        $hasJournal = $task->status === 'void'
+            ? JournalEntry::where('task_id', $task->original_task_id)
+                ->whereHas('transaction', fn($q) => $q->whereRaw('LOWER(description) LIKE ?', ['%void%']))
+                ->exists()
+            : JournalEntry::where('task_id', $task->id)->exists();
+
+        if (!$hasJournal) {
+            Log::info('Processing financials for newly enabled task', ['task' => $task->reference]);
+            $this->processTaskFinancial($task);
+        }
+    }
+
+    $task->enabled = $shouldBeEnabled;
+    $task->save();
+}
+
+private function getValidationRules(Task $task): array
+{
+    return [
+        'reference' => 'nullable|string',
+        'status' => 'required',
+        'price' => 'nullable|numeric',
+        'tax' => 'nullable|numeric',
+        'surcharge' => 'nullable|numeric',
+        'total' => 'required|numeric',
+        'payment_method_account_id' => 'nullable|string',
+        'agent_id' => 'nullable',
+        'client_id' => 'nullable|exists:clients,id',
+        'supplier_id' => 'required',
+        'original_task_id' => 'nullable|exists:tasks,id',
+        'supplier_pay_date' => $task->supplier_pay_date ? 'sometimes|date' : 'required|date',
+    ];
+}
+
+private function getValidationMessages(): array
+{
+    return [
+        'supplier_id.required' => 'Please select a supplier',
+        'status.required' => 'Please select a status',
+        'total.required' => 'Please enter the total amount',
+        'supplier_pay_date.required' => 'Issued date is required',
+    ];
+}
 }

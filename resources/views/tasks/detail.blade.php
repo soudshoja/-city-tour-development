@@ -22,7 +22,7 @@
             margin-bottom: 8px;
             z-index: 50;
             white-space: nowrap;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .switch {
@@ -60,15 +60,16 @@
             transition: .4s;
         }
 
-        input:checked + .slider {
-            background-color: #FCD34D; /* Yellow color */
+        input:checked+.slider {
+            background-color: #FCD34D;
+            /* Yellow color */
         }
 
-        input:focus + .slider {
+        input:focus+.slider {
             box-shadow: 0 0 1px #FCD34D;
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(16px);
         }
 
@@ -129,7 +130,7 @@
                 background-color: rgba(0, 0, 0, 0.5);
                 z-index: 40;
             }
-            
+
             .mobile-sidebar {
                 position: fixed;
                 left: 0;
@@ -139,44 +140,144 @@
                 transform: translateX(-100%);
                 transition: transform 0.3s ease-in-out;
             }
-            
+
             .mobile-sidebar.open {
                 transform: translateX(0);
             }
         }
     </style>
-    
-    <div class="min-h-screen flex flex-col" 
+
+    <div class="min-h-screen flex flex-col" :class="isUpdating ? 'blur-sm pointer-events-none select-none' : ''"
         x-data="{
             selectedTaskId: {{ $tasks->first()->id }},
             tasks: {{ $tasks->toJson() }},
+
             bulkEditMode: false,
             singleEditMode: false,
             showMenu: false,
             showManualForm: false,
             showSidebar: false,
+
             modalTaskId: null,
             modalClientName: '',
             modalPassengerName: '',
             modalAgentName: '',
             modalAgentId: '',
             modalBranchName: '',
+
+            // =========================
+            // Multi Draft Preview System
+            // =========================
+            previewOpen: false,
+
+            drafts: {},
+
+            editDraft: {
+                task_id: null,
+                original: {},
+                changes: {}
+            },
+
+            startSingleEdit(task) {
+                if (!task || !task.id) return;
+
+                this.previewOpen = true;
+                this.singleEditMode = true;
+
+                if (!this.drafts[task.id]) {
+                    this.drafts[task.id] = {
+                        task_id: task.id,
+                        original: JSON.parse(JSON.stringify(task)),
+                        changes: JSON.parse(JSON.stringify(task)),
+                    };
+                }
+
+                this.editDraft = this.drafts[task.id];
+            },
+
+            hasChangesFor(taskId) {
+                if (!this.drafts[taskId]) return false;
+                return JSON.stringify(this.drafts[taskId].original) !== JSON.stringify(this.drafts[taskId].changes);
+            },
+
+            hasAnyChanges() {
+                return Object.keys(this.drafts).some(id => this.hasChangesFor(id));
+            },
+
+            clearDraft(taskId) {
+                if (this.drafts[taskId]) delete this.drafts[taskId];
+
+                if (this.editDraft.task_id === taskId) {
+                    this.editDraft = { task_id: null, original: {}, changes: {} };
+                }
+
+                if (Object.keys(this.drafts).length === 0) {
+                    this.previewOpen = false;
+                }
+            },
+
+            closePreview() {
+                this.previewOpen = false;
+                this.singleEditMode = false;
+                this.editDraft = { task_id: null, original: {}, changes: {} };
+            },
+
+            clearAllDrafts() {
+                this.drafts = {};
+                this.previewOpen = false;
+                this.singleEditMode = false;
+                this.editDraft = { task_id: null, original: {}, changes: {} };
+            },
+
+            getTotalFromDraft(draft) {
+                if (!draft || !draft.changes) return '0.000';
+                const p = parseFloat(draft.changes.price || 0) || 0;
+                const t = parseFloat(draft.changes.tax || 0) || 0;
+                const s = parseFloat(draft.changes.surcharge || 0) || 0;
+                const ss = parseFloat(draft.changes.supplier_surcharge || 0) || 0;
+                return (p + t + s + ss).toFixed(3);
+            },
+
+            getPayload() {
+                const payload = {};
+
+                Object.keys(this.drafts).forEach(taskId => {
+                    const d = this.drafts[taskId];
+                    if (!d) return;
+
+                    const changed = {};
+                    Object.keys(d.changes || {}).forEach(k => {
+                        const oldVal = String(d.original?.[k] ?? '');
+                        const newVal = String(d.changes?.[k] ?? '');
+                        if (oldVal !== newVal) changed[k] = d.changes[k];
+                    });
+
+                    if (Object.keys(changed).length > 0) {
+                        changed.total = this.getTotalFromDraft(d);
+                        payload[taskId] = changed;
+                    }
+                });
+
+                return payload;
+            },
+
             init() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const mode = urlParams.get('mode');
-                
+
                 if (mode === 'bulk' && {{ $tasks->count() }} > 1) {
                     this.bulkEditMode = true;
                 } else if (mode === 'single') {
                     this.singleEditMode = true;
                 }
-                
+
                 if (mode) {
                     urlParams.delete('mode');
                     const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
                     history.replaceState({}, '', newUrl);
                 }
             },
+
             openManualForm(taskId, clientName, passengerName, agentName, agentId, branchName) {
                 this.modalTaskId = taskId;
                 this.modalClientName = clientName;
@@ -186,13 +287,16 @@
                 this.modalBranchName = branchName;
                 this.showManualForm = true;
             },
+
             closeAll() {
                 this.showManualForm = false;
                 window.dispatchEvent(new CustomEvent('reset-dropdowns'));
             },
+
             getSelectedTask() {
                 return this.tasks.find(t => t.id === this.selectedTaskId);
             },
+
             selectedForInvoice: [],
             toggleInvoiceSelection(taskId, canSelect) {
                 if (!canSelect) return;
@@ -203,17 +307,24 @@
                     this.selectedForInvoice.push(taskId);
                 }
             },
+
             getInvoiceUrl() {
                 return `{{ route('invoices.create') }}?task_ids=` + this.selectedForInvoice.join(',');
             },
+
+            isUpdating: false,
+            isSubmittingUpdates: false,
+
         }">
-        
+
+
+
         <!-- Mobile Header -->
         <div class="lg:hidden flex items-center justify-between mb-4">
             <h1 class="text-2xl sm:text-3xl font-bold">
                 Task Details
             </h1>
-            <button 
+            <button
                 @click="showSidebar = true"
                 class="p-2 bg-white rounded-lg shadow border border-gray-200 flex items-center gap-2">
                 <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,8 +357,8 @@
             </ul>
 
             <!-- Mobile Sidebar Overlay -->
-            <div 
-                x-show="showSidebar" 
+            <div
+                x-show="showSidebar"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
@@ -259,9 +370,9 @@
                 x-cloak>
             </div>
 
-            <div class="flex flex-col lg:flex-row gap-4 items-stretch">                
+            <div class="flex flex-col lg:flex-row gap-4 items-stretch">
                 <!-- Mobile Sidebar Drawer (only visible on mobile) -->
-                <div 
+                <div
                     x-show="showSidebar"
                     x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="-translate-x-full"
@@ -272,7 +383,7 @@
                     class="lg:hidden fixed inset-y-0 left-0 z-50 w-80 flex-shrink-0 flex"
                     x-cloak>
                     <div class="bg-white shadow-sm border border-gray-200 flex flex-col w-full h-screen">
-                        
+
                         <!-- Mobile Close Button -->
                         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
                             <span class="text-sm font-semibold text-gray-700">Select Task</span>
@@ -291,12 +402,12 @@
                                 </div>
 
                                 @if ($tasks->count() > 1)
-                                <button 
-                                    @click="bulkEditMode = true; showSidebar = false" 
+                                <button
+                                    @click="bulkEditMode = true; showSidebar = false"
                                     class="group relative p-2 hover:bg-gray-200 rounded-lg transition z-10">
                                     <svg class="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2 2m-2-2v6"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2 2m-2-2v6" />
                                     </svg>
                                 </button>
                                 @endif
@@ -312,19 +423,18 @@
                                 <div class="px-4 py-3">
 
                                     @php
-                                        $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
+                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
                                     @endphp
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1">
-                                            
+
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
                                                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
                                                     @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
-                                                    {{ $canInvoice ? '' : 'disabled' }}
-                                                >
+                                                    {{ $canInvoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
@@ -332,31 +442,31 @@
                                             </div>
 
                                             @php
-                                                $missing = [];
-                                                if (!$task->client_id) $missing[] = 'Client';
-                                                if (!$task->agent_id) $missing[] = 'Agent';
-                                                if (!$task->company_id) $missing[] = 'Company';
-                                                if (!$task->supplier_id) $missing[] = 'Supplier';
-                                                if (!$task->type) $missing[] = 'Type';
-                                                if (!$task->status) $missing[] = 'Status';
-                                                if (!$task->reference) $missing[] = 'Reference';
-                                                if (!$task->total) $missing[] = 'Total';
+                                            $missing = [];
+                                            if (!$task->client_id) $missing[] = 'Client';
+                                            if (!$task->agent_id) $missing[] = 'Agent';
+                                            if (!$task->company_id) $missing[] = 'Company';
+                                            if (!$task->supplier_id) $missing[] = 'Supplier';
+                                            if (!$task->type) $missing[] = 'Type';
+                                            if (!$task->status) $missing[] = 'Status';
+                                            if (!$task->reference) $missing[] = 'Reference';
+                                            if (!$task->total) $missing[] = 'Total';
 
-                                                $missingCount = count($missing);
+                                            $missingCount = count($missing);
 
-                                                if ($missingCount === 0) {
-                                                    $dotColor = 'bg-green-500';
-                                                    $glowColor = 'bg-green-400/40';
-                                                    $tooltipText = 'Ready for invoice';
-                                                } elseif ($missingCount === 1) {
-                                                    $dotColor = 'bg-yellow-500';
-                                                    $glowColor = 'bg-yellow-400/40';
-                                                    $tooltipText = 'Missing: ' . $missing[0];
-                                                } else {
-                                                    $dotColor = 'bg-red-500';
-                                                    $glowColor = 'bg-red-400/40';
-                                                    $tooltipText = 'Missing: ' . implode(' | ', $missing);
-                                                }
+                                            if ($missingCount === 0) {
+                                            $dotColor = 'bg-green-500';
+                                            $glowColor = 'bg-green-400/40';
+                                            $tooltipText = 'Ready for invoice';
+                                            } elseif ($missingCount === 1) {
+                                            $dotColor = 'bg-yellow-500';
+                                            $glowColor = 'bg-yellow-400/40';
+                                            $tooltipText = 'Missing: ' . $missing[0];
+                                            } else {
+                                            $dotColor = 'bg-red-500';
+                                            $glowColor = 'bg-red-400/40';
+                                            $tooltipText = 'Missing: ' . implode(' | ', $missing);
+                                            }
                                             @endphp
                                             <div class="relative flex items-center justify-center group flex-shrink-0">
                                                 <span class="relative flex h-2.5 w-2.5">
@@ -366,7 +476,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="mt-2 pl-6">
                                         <p class="text-sm font-semibold text-gray-700">
                                             {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
@@ -398,18 +508,18 @@
                                 </div>
 
                                 @if ($tasks->count() > 1)
-                                <button 
-                                    @click="bulkEditMode = true; showSidebar = false" 
+                                <button
+                                    @click="bulkEditMode = true; showSidebar = false"
                                     class="group relative p-2 hover:bg-gray-200 rounded-lg transition z-10">
                                     <svg class="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2 2m-2-2v6"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2 2m-2-2v6" />
                                     </svg>
-                                    
+
                                     <span class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-[100] shadow-lg">
                                         Bulk Edit
                                         <svg class="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 text-gray-900" viewBox="0 0 8 8">
-                                            <path class="fill-current" d="M0,0 L4,4 L8,0 Z"/>
+                                            <path class="fill-current" d="M0,0 L4,4 L8,0 Z" />
                                         </svg>
                                     </span>
                                 </button>
@@ -426,19 +536,18 @@
                                 <div class="px-4 py-3">
 
                                     @php
-                                        $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
+                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
                                     @endphp
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1">
-                                            
+
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
                                                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
                                                     @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
-                                                    {{ $canInvoice ? '' : 'disabled' }}
-                                                >
+                                                    {{ $canInvoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
@@ -446,33 +555,33 @@
                                             </div>
 
                                             @php
-                                                $missing = [];
+                                            $missing = [];
 
-                                                // Always check these (your invoice requirements)
-                                                if (!$task->client_id) $missing[] = 'Client';
-                                                if (!$task->agent_id) $missing[] = 'Agent';
-                                                if (!$task->company_id) $missing[] = 'Company';
-                                                if (!$task->supplier_id) $missing[] = 'Supplier';
-                                                if (!$task->type) $missing[] = 'Type';
-                                                if (!$task->status) $missing[] = 'Status';
-                                                if (!$task->reference) $missing[] = 'Reference';
-                                                if (!$task->total) $missing[] = 'Total';
+                                            // Always check these (your invoice requirements)
+                                            if (!$task->client_id) $missing[] = 'Client';
+                                            if (!$task->agent_id) $missing[] = 'Agent';
+                                            if (!$task->company_id) $missing[] = 'Company';
+                                            if (!$task->supplier_id) $missing[] = 'Supplier';
+                                            if (!$task->type) $missing[] = 'Type';
+                                            if (!$task->status) $missing[] = 'Status';
+                                            if (!$task->reference) $missing[] = 'Reference';
+                                            if (!$task->total) $missing[] = 'Total';
 
-                                                $missingCount = count($missing);
+                                            $missingCount = count($missing);
 
-                                                if ($missingCount === 0) {
-                                                    $dotColor = 'bg-green-500';
-                                                    $glowColor = 'bg-green-400/40';
-                                                    $tooltipText = 'Ready for invoice';
-                                                } elseif ($missingCount === 1) {
-                                                    $dotColor = 'bg-yellow-500';
-                                                    $glowColor = 'bg-yellow-400/40';
-                                                    $tooltipText = 'Missing: ' . $missing[0];
-                                                } else {
-                                                    $dotColor = 'bg-red-500';
-                                                    $glowColor = 'bg-red-400/40';
-                                                    $tooltipText = 'Missing: ' . implode(' | ', $missing);
-                                                }
+                                            if ($missingCount === 0) {
+                                            $dotColor = 'bg-green-500';
+                                            $glowColor = 'bg-green-400/40';
+                                            $tooltipText = 'Ready for invoice';
+                                            } elseif ($missingCount === 1) {
+                                            $dotColor = 'bg-yellow-500';
+                                            $glowColor = 'bg-yellow-400/40';
+                                            $tooltipText = 'Missing: ' . $missing[0];
+                                            } else {
+                                            $dotColor = 'bg-red-500';
+                                            $glowColor = 'bg-red-400/40';
+                                            $tooltipText = 'Missing: ' . implode(' | ', $missing);
+                                            }
                                             @endphp
                                             <div class="relative flex items-center justify-center group flex-shrink-0">
                                                 <span class="relative flex h-2.5 w-2.5">
@@ -486,7 +595,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="mt-2 pl-6">
                                         <p class="text-sm font-semibold text-gray-700">
                                             {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
@@ -508,228 +617,243 @@
                 </div>
 
                 <!-- Main Content Area -->
-                <div class="flex-1 flex flex-col min-w-0">
+                <div class="flex-1 flex gap-4 min-w-0 items-start">
 
-                    <div class="flex-1">
-                        @foreach($tasks as $task)
-                        <div x-cloak x-show="selectedTaskId === {{ $task->id }}" class="flex flex-col gap-4">
+                    <!-- LEFT COLUMN (Tasks + Invoice Box) -->
+                    <div class="flex-1 min-w-0 flex flex-col gap-4">
 
-                            <!-- Task Header with Edit Icon -->
-                            <div class="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-sm p-4 sm:p-6 flex-shrink-0">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Reference</p>
-                                        <p class="text-lg sm:text-xl font-semibold text-white truncate">{{ $task->reference }}</p>
-                                        <p class="text-sm text-gray-400 mt-1 truncate">{{ $task->ticket_number }}</p>
+                        <!-- Tasks -->
+                        <div class="flex flex-col min-w-0">
+                            @foreach($tasks as $task)
+                            <div x-cloak x-show="selectedTaskId === {{ $task->id }}" class="flex flex-col gap-4">
+
+                                <!-- Task Header with Edit Icon -->
+                                <div class="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-sm p-4 sm:p-6 flex-shrink-0">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Reference</p>
+                                            <p class="text-lg sm:text-xl font-semibold text-white truncate">{{ $task->reference }}</p>
+                                            <p class="text-sm text-gray-400 mt-1 truncate">{{ $task->ticket_number }}</p>
+                                        </div>
+
+                                        <button
+                                            @click="startSingleEdit({
+                                                id: {{ $task->id }},
+                                                reference: @js($task->reference),
+                                                status: @js($task->status),
+                                                client_id: @js($task->client_id),
+                                                agent_id: @js($task->agent_id),
+                                                supplier_id: @js($task->supplier_id),
+                                                payment_method_account_id: @js($task->payment_method_account_id),
+                                                supplier_pay_date: @js($task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : ''),
+                                                price: @js(number_format($task->price ?? 0, 3, '.', '')),
+                                                tax: @js(number_format($task->tax ?? 0, 3, '.', '')),
+                                                surcharge: @js(number_format($task->surcharge ?? 0, 3, '.', '')),
+                                                supplier_surcharge: @js(number_format($task->supplier_surcharge ?? 0, 3, '.', '')),
+                                            })"
+
+                                            class="group relative p-2 hover:bg-slate-600 rounded-lg transition flex-shrink-0 ml-2">
+                                            <svg class="w-5 h-5 text-gray-300 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </button>
                                     </div>
-
-                                    <!-- Edit Task Icon Button -->
-                                    <button 
-                                        @click="singleEditMode = true" 
-                                        class="group relative p-2 hover:bg-slate-600 rounded-lg transition flex-shrink-0 ml-2">
-                                        <svg class="w-5 h-5 text-gray-300 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                        </svg>
-                                        <span class="hidden sm:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
-                                            Edit Task
-                                        </span>
-                                    </button>
                                 </div>
-                            </div>
 
-                            <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">                                
-                                <!-- Task Information - 2 columns on lg -->
-                                <div class="xl:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                                    <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
-                                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Task Information</h2>
-                                    </div>
-                                    <div class="p-4 sm:p-6 flex flex-col flex-1">
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-4 sm:gap-y-5">
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Client</p>
-                                                @if($task->client)
+                                <!-- Content Grid -->
+                                <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+                                    <!-- Task Information - 2 columns on lg -->
+                                    <div class="xl:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
+                                            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Task Information</h2>
+                                        </div>
+                                        <div class="p-4 sm:p-6 flex flex-col flex-1">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-4 sm:gap-y-5">
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Client</p>
+                                                    @if($task->client)
                                                     <p class="text-sm text-gray-900">{{ $task->client->full_name }}</p>
-                                                @else
-                                                    <button 
+                                                    @else
+                                                    <button
                                                         type="button"
                                                         @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
                                                         class="no-client text-sm font-medium capitalize">
                                                         {{ ucwords(strtolower($task->client_name)) ?: 'Not Set - Click to Register' }}
                                                     </button>
-                                                @endif
-                                            </div>
+                                                    @endif
+                                                </div>
 
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Client Phone Number</p>
-                                                @if($task->client)
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Client Phone Number</p>
+                                                    @if($task->client)
                                                     @php
-                                                        $countryCode = $task->client->country_code ?? '';
-                                                        $phone = $task->client->phone ?? '';
-                                                        
-                                                        $countryCode = ltrim($countryCode, '+');
-                                                        
-                                                        $phone = ltrim($phone, '+');
-                                                        if ($countryCode && str_starts_with($phone, $countryCode)) {
-                                                            $phone = substr($phone, strlen($countryCode));
-                                                        }
-                                                        
-                                                        $formattedPhone = $countryCode && $phone ? "+{$countryCode} {$phone}" : ($phone ?: 'N/A');
+                                                    $countryCode = $task->client->country_code ?? '';
+                                                    $phone = $task->client->phone ?? '';
+
+                                                    $countryCode = ltrim($countryCode, '+');
+
+                                                    $phone = ltrim($phone, '+');
+                                                    if ($countryCode && str_starts_with($phone, $countryCode)) {
+                                                    $phone = substr($phone, strlen($countryCode));
+                                                    }
+
+                                                    $formattedPhone = $countryCode && $phone ? "+{$countryCode} {$phone}" : ($phone ?: 'N/A');
                                                     @endphp
                                                     <p class="text-sm text-gray-900">{{ $formattedPhone }}</p>
-                                                @else
+                                                    @else
                                                     <p class="text-sm text-gray-500 italic">Not Available</p>
-                                                @endif
-                                            </div>
+                                                    @endif
+                                                </div>
 
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Agent</p>
-                                                @if ($task->agent) 
-                                                <p class="text-sm text-gray-900 capitalize">{{ $task->agent->name }}</p>
-                                                @else
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Agent</p>
+                                                    @if ($task->agent)
+                                                    <p class="text-sm text-gray-900 capitalize">{{ $task->agent->name }}</p>
+                                                    @else
                                                     <p class="text-sm text-gray-500 italic">Agent Not Set</p>
-                                                @endif
-                                            </div>
+                                                    @endif
+                                                </div>
 
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Branch</p>
-                                                @if ($task->agent?->branch?->name)
-                                                <p class="text-sm text-gray-900 capitalize">{{ $task->agent->branch->name }}</p>
-                                                @else                                                                                                
-                                                <p class="text-sm text-gray-500 italic">Not Available</p>
-                                                @endif
-                                            </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Branch</p>
+                                                    @if ($task->agent?->branch?->name)
+                                                    <p class="text-sm text-gray-900 capitalize">{{ $task->agent->branch->name }}</p>
+                                                    @else
+                                                    <p class="text-sm text-gray-500 italic">Not Available</p>
+                                                    @endif
+                                                </div>
 
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Supplier</p>
-                                                <p class="text-sm text-gray-900 capitalize">{{ $task->supplier->name ?? '' }}</p>
-                                            </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Supplier</p>
+                                                    <p class="text-sm text-gray-900 capitalize">{{ $task->supplier->name ?? '' }}</p>
+                                                </div>
 
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                                                <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                                                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
                                                     @if($task->status === 'issued') bg-green-100 text-green-700
                                                     @elseif($task->status === 'confirmed') bg-blue-100 text-blue-700
                                                     @else bg-gray-100 text-gray-700
                                                     @endif">
-                                                    {{ ucfirst($task->status) }}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Issued At</p>
-                                                <p class="text-sm text-gray-900">{{ $task->supplier_pay_date ?? '' }}</p>
-                                            </div>
-
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Created At</p>
-                                                <p class="text-sm text-gray-900">{{ $task->created_at ?? '' }}</p>
-                                            </div>
-
-                                            @if ($task->payment_method_account_id && $task->paymentMethod)
-                                            <div>
-                                                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Payment Method</p>
-                                                <p class="text-sm text-gray-900">{{ $task->paymentMethod->name }}</p>
-                                            </div>
-                                            @endif
-                                        </div>
-
-                                        <!-- Pricing -->
-                                        <div class="mt-auto pt-6 sm:pt-8">
-                                            <div class="space-y-3">
-                                                <div class="flex justify-between items-center">
-                                                    <p class="text-sm text-gray-600">Base Price:</p>
-                                                    <p class="text-sm text-gray-900">{{ $task->currency ?? 'KWD' }} {{ number_format($task->price, 3) }}</p>
+                                                        {{ ucfirst($task->status) }}
+                                                    </span>
                                                 </div>
-                                                <div class="flex justify-between items-center pl-4">
-                                                    <p class="text-sm text-gray-500">Tax:</p>
-                                                    <p class="text-sm text-gray-700">{{ $task->currency ?? 'KWD' }} {{ number_format($task->tax, 3) }}</p>
+
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Issued At</p>
+                                                    <p class="text-sm text-gray-900">{{ $task->supplier_pay_date ?? '' }}</p>
                                                 </div>
+
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Created At</p>
+                                                    <p class="text-sm text-gray-900">{{ $task->created_at ?? '' }}</p>
+                                                </div>
+
+                                                @if ($task->payment_method_account_id && $task->paymentMethod)
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Payment Method</p>
+                                                    <p class="text-sm text-gray-900">{{ $task->paymentMethod->name }}</p>
+                                                </div>
+                                                @endif
                                             </div>
-                                            <div class="mt-4 pt-4 border-t border-gray-200">
-                                                <div class="flex justify-between items-center">
-                                                    <p class="text-sm font-semibold text-gray-700">Total:</p>
-                                                    <p class="text-sm font-semibold text-gray-900">{{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}</p>
+
+                                            <!-- Pricing -->
+                                            <div class="mt-auto pt-6 sm:pt-8">
+                                                <div class="space-y-3">
+                                                    <div class="flex justify-between items-center">
+                                                        <p class="text-sm text-gray-600">Base Price:</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->currency ?? 'KWD' }} {{ number_format($task->price, 3) }}</p>
+                                                    </div>
+                                                    <div class="flex justify-between items-center pl-4">
+                                                        <p class="text-sm text-gray-500">Tax:</p>
+                                                        <p class="text-sm text-gray-700">{{ $task->currency ?? 'KWD' }} {{ number_format($task->tax, 3) }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-4 pt-4 border-t border-gray-200">
+                                                    <div class="flex justify-between items-center">
+                                                        <p class="text-sm font-semibold text-gray-700">Total:</p>
+                                                        <p class="text-sm font-semibold text-gray-900">{{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- Type-Specific Details - 3 columns on lg -->
-                                <div class="xl:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                                    <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
-                                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                                            {{ ucfirst($task->type) }} Details
-                                        </h2>
-                                    </div>
-                                    <div class="flex-1 overflow-auto">
-                                        @if($task->type === 'flight')
-                                        <div class="p-4 sm:p-6">
-                                            @php
-                                            $hasDuration = $task->flightDetail->whereNotNull('duration_time')->isNotEmpty();
-                                            $hasBaggage = $task->flightDetail->whereNotNull('baggage_allowed')->isNotEmpty();
-                                            @endphp
+                                    <!-- Type-Specific Details - 3 columns on lg -->
+                                    <div class="xl:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
+                                            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                                                {{ ucfirst($task->type) }} Details
+                                            </h2>
+                                        </div>
+                                        <div class="flex-1 overflow-auto">
+                                            @if($task->type === 'flight')
+                                            <div class="p-4 sm:p-6">
+                                                @php
+                                                $hasDuration = $task->flightDetail->whereNotNull('duration_time')->isNotEmpty();
+                                                $hasBaggage = $task->flightDetail->whereNotNull('baggage_allowed')->isNotEmpty();
+                                                @endphp
 
-                                            <!-- Mobile Flight Cards -->
-                                            <div class="block sm:hidden space-y-4">
-                                                @forelse($task->flightDetail as $flight)
-                                                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                                    <div class="flex items-center justify-between mb-3">
-                                                        <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
-                                                            Flight {{ $loop->iteration }}
-                                                        </span>
-                                                        @if($flight->class_type)
-                                                        <span class="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                                                            {{ ucfirst($flight->class_type) }}
-                                                        </span>
-                                                        @endif
+                                                <!-- Mobile Flight Cards -->
+                                                <div class="block sm:hidden space-y-4">
+                                                    @forelse($task->flightDetail as $flight)
+                                                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                        <div class="flex items-center justify-between mb-3">
+                                                            <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
+                                                                Flight {{ $loop->iteration }}
+                                                            </span>
+                                                            @if($flight->class_type)
+                                                            <span class="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                                                                {{ ucfirst($flight->class_type) }}
+                                                            </span>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3 mb-3">
+                                                            <div class="flex-1">
+                                                                <p class="text-xs text-gray-500 uppercase">From</p>
+                                                                <p class="text-sm font-medium text-gray-900">{{ $flight->airport_from ?? 'N/A' }}</p>
+                                                                <p class="text-xs text-gray-500">
+                                                                    {{ $flight->departure_time ? \Carbon\Carbon::parse($flight->departure_time)->format('d M, H:i') : '-' }}
+                                                                </p>
+                                                            </div>
+                                                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                                            </svg>
+                                                            <div class="flex-1 text-right">
+                                                                <p class="text-xs text-gray-500 uppercase">To</p>
+                                                                <p class="text-sm font-medium text-gray-900">{{ $flight->airport_to ?? 'N/A' }}</p>
+                                                                <p class="text-xs text-gray-500">
+                                                                    {{ $flight->arrival_time ? \Carbon\Carbon::parse($flight->arrival_time)->format('d M, H:i') : '-' }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="flex flex-wrap gap-3 text-xs text-gray-600 pt-2 border-t border-gray-200">
+                                                            <div>
+                                                                <span class="text-gray-400">Airline:</span>
+                                                                <span class="font-medium">{{ $flight->airline ?? 'N/A' }} {{ $flight->flight_number ?? '' }}</span>
+                                                            </div>
+                                                            @if($hasDuration && $flight->duration_time)
+                                                            <div>
+                                                                <span class="text-gray-400">Duration:</span>
+                                                                <span class="font-medium">{{ $flight->duration_time }}</span>
+                                                            </div>
+                                                            @endif
+                                                            @if($hasBaggage && $flight->baggage_allowed)
+                                                            <div>
+                                                                <span class="text-gray-400">Baggage:</span>
+                                                                <span class="font-medium">{{ $flight->baggage_allowed }}</span>
+                                                            </div>
+                                                            @endif
+                                                        </div>
                                                     </div>
-                                                    
-                                                    <div class="flex items-center gap-3 mb-3">
-                                                        <div class="flex-1">
-                                                            <p class="text-xs text-gray-500 uppercase">From</p>
-                                                            <p class="text-sm font-medium text-gray-900">{{ $flight->airport_from ?? 'N/A' }}</p>
-                                                            <p class="text-xs text-gray-500">
-                                                                {{ $flight->departure_time ? \Carbon\Carbon::parse($flight->departure_time)->format('d M, H:i') : '-' }}
-                                                            </p>
-                                                        </div>
-                                                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                                        </svg>
-                                                        <div class="flex-1 text-right">
-                                                            <p class="text-xs text-gray-500 uppercase">To</p>
-                                                            <p class="text-sm font-medium text-gray-900">{{ $flight->airport_to ?? 'N/A' }}</p>
-                                                            <p class="text-xs text-gray-500">
-                                                                {{ $flight->arrival_time ? \Carbon\Carbon::parse($flight->arrival_time)->format('d M, H:i') : '-' }}
-                                                            </p>
-                                                        </div>
+                                                    @empty
+                                                    <div class="text-center py-8 text-gray-500 italic">
+                                                        No flight details available
                                                     </div>
-                                                    
-                                                    <div class="flex flex-wrap gap-3 text-xs text-gray-600 pt-2 border-t border-gray-200">
-                                                        <div>
-                                                            <span class="text-gray-400">Airline:</span>
-                                                            <span class="font-medium">{{ $flight->airline ?? 'N/A' }} {{ $flight->flight_number ?? '' }}</span>
-                                                        </div>
-                                                        @if($hasDuration && $flight->duration_time)
-                                                        <div>
-                                                            <span class="text-gray-400">Duration:</span>
-                                                            <span class="font-medium">{{ $flight->duration_time }}</span>
-                                                        </div>
-                                                        @endif
-                                                        @if($hasBaggage && $flight->baggage_allowed)
-                                                        <div>
-                                                            <span class="text-gray-400">Baggage:</span>
-                                                            <span class="font-medium">{{ $flight->baggage_allowed }}</span>
-                                                        </div>
-                                                        @endif
-                                                    </div>
+                                                    @endforelse
                                                 </div>
-                                                @empty
-                                                <div class="text-center py-8 text-gray-500 italic">
-                                                    No flight details available
-                                                </div>
-                                                @endforelse
-                                            </div>
 
                                             <!-- Desktop Flight Table -->
                                             <div class="hidden sm:block overflow-x-auto">
@@ -884,15 +1008,15 @@
                                         </div>
                                         @endif
 
-                                        <!-- Collapsible Section -->
-                                        <div class="" x-data="{ 
+                                            <!-- Collapsible Section -->
+                                            <div class="" x-data="{ 
                                             showCancellation: false, 
                                             showAdditional: false 
                                         }">
-                                            <!-- Cancellation Policy -->
-                                            @if($task->cancellation_policy)
-                                            <div>
-                                                <button @click="showCancellation = !showCancellation" 
+                                                <!-- Cancellation Policy -->
+                                                @if($task->cancellation_policy)
+                                                <div>
+                                                    <button @click="showCancellation = !showCancellation"
                                                         class="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
                                                     <div class="flex items-center gap-2">
                                                         <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -946,267 +1070,405 @@
                                             </div>
                                             @endif
 
-                                            <!-- Additional Information -->
-                                            @if($task->additional_info || $task->venue)
-                                            <div>
-                                                <button @click="showAdditional = !showAdditional" 
+                                                <!-- Additional Information -->
+                                                @if($task->additional_info || $task->venue)
+                                                <div>
+                                                    <button @click="showAdditional = !showAdditional"
                                                         class="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
-                                                    <div class="flex items-center gap-2">
-                                                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        <div class="flex items-center gap-2">
+                                                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span class="text-sm font-semibold text-gray-700">Additional Information</span>
+                                                        </div>
+                                                        <svg class="w-5 h-5 text-gray-400 transition-transform" :class="showAdditional ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                         </svg>
-                                                        <span class="text-sm font-semibold text-gray-700">Additional Information</span>
-                                                    </div>
-                                                    <svg class="w-5 h-5 text-gray-400 transition-transform" :class="showAdditional ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </button>
-                                                <div x-cloak x-show="showAdditional" 
-                                                    class="px-4 sm:px-6 pb-4 mt-3">
-                                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                                                        @if($task->additional_info)
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-500 uppercase mb-1">Notes</p>
-                                                            <p class="text-sm text-gray-700 whitespace-pre-line">{{ $task->additional_info }}</p>
-                                                        </div>
-                                                        @endif
-                                                        @if($task->venue)
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-500 uppercase mb-1">Venue</p>
-                                                            <p class="text-sm text-gray-700">{{ $task->venue }}</p>
-                                                        </div>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Single Task Edit Modal -->
-                        <div x-cloak x-show="singleEditMode && selectedTaskId === {{ $task->id }}"
-                            class="fixed inset-0 z-50 overflow-y-auto"
-                            style="display: none;">
-
-                            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
-                                @click="singleEditMode = false"></div>
-
-                            <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
-                                @php
-                                    $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
-                                        ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
-                                        ->exists();
-                                @endphp
-                                
-                                <div x-show="singleEditMode"
-                                    x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
-                                    class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden"
-                                    @click.stop>
-
-                                    <form action="{{ route('tasks.update', $task->id) }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
-                                        @csrf
-                                        @method('PUT')
-                                        
-                                        <!-- Header -->
-                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
-                                            <div class="flex-1 min-w-0 pr-2">
-                                                <h2 class="text-lg sm:text-xl font-bold text-gray-800">Edit Task Details</h2>
-                                                <p class="text-gray-600 italic text-xs mt-1">
-                                                    @if($isInvoicedAndPaid)
-                                                        This task is invoiced and paid - editing is disabled
-                                                    @else
-                                                        Please update the task details to ensure accurate information
-                                                    @endif
-                                                </p>
-                                            </div>
-                                            <button type="button" @click="singleEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
-                                                &times;
-                                            </button>
-                                        </div>
-
-                                        <!-- Form Content - Scrollable -->
-                                        <div class="p-4 sm:p-6 overflow-y-auto flex-1">
-                                            <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
-                                                <div class="flex flex-col gap-4 sm:gap-6">
-                                                    <!-- Reference & Status -->
-                                                    <div class="flex flex-col sm:flex-row gap-4">
-                                                        <div class="flex-1">
-                                                            <label for="reference" class="block text-sm font-medium text-gray-700">Reference</label>
-                                                            <input type="text" class="border border-gray-300 p-2 rounded-md w-full text-base" name="reference" value="{{ $task->reference }}">
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-                                                            @if ($task->status === 'refund')
-                                                            <select name="status" class="border border-gray-300 p-2 rounded-md w-full text-base" disabled>
-                                                                <option value="refund" selected>Refund</option>
-                                                            </select>
-                                                            <input type="hidden" name="status" value="refund">
-                                                            @else
-                                                            <select name="status" id="status_{{ $task->id }}" class="border border-gray-300 p-2 rounded-md w-full text-base">
-                                                                <option value="">Set Status</option>
-                                                                <option value="confirmed" {{ $task->status === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
-                                                                <option value="issued" {{ $task->status === 'issued' ? 'selected' : '' }}>Issued</option>
-                                                                <option value="reissued" {{ $task->status === 'reissued' ? 'selected' : '' }}>Reissued</option>
-                                                                <option value="refund" {{ $task->status === 'refund' ? 'selected' : '' }}>Refund</option>
-                                                                <option value="void" {{ $task->status === 'void' ? 'selected' : '' }}>Void</option>
-                                                                <option value="emd" {{ $task->status === 'emd' ? 'selected' : '' }}>Emd</option>
-                                                            </select>
+                                                    </button>
+                                                    <div x-cloak x-show="showAdditional"
+                                                        class="px-4 sm:px-6 pb-4 mt-3">
+                                                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                                                            @if($task->additional_info)
+                                                            <div>
+                                                                <p class="text-xs font-medium text-gray-500 uppercase mb-1">Notes</p>
+                                                                <p class="text-sm text-gray-700 whitespace-pre-line">{{ $task->additional_info }}</p>
+                                                            </div>
+                                                            @endif
+                                                            @if($task->venue)
+                                                            <div>
+                                                                <p class="text-xs font-medium text-gray-500 uppercase mb-1">Venue</p>
+                                                                <p class="text-sm text-gray-700">{{ $task->venue }}</p>
+                                                            </div>
                                                             @endif
                                                         </div>
                                                     </div>
-
-                                                    <!-- Supplier & Type -->
-                                                    <div class="flex flex-col sm:flex-row gap-4">
-                                                        <div class="flex-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Supplier</label>
-                                                            <input type="text" class="border border-gray-300 p-2 rounded-md w-full bg-gray-200" value="{{ $task->supplier->name ?? '' }}" readonly>
-                                                            <input type="hidden" name="supplier_id" value="{{ $task->supplier->id ?? '' }}">
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Task Type</label>
-                                                            <input type="text" class="border border-gray-300 p-2 rounded-md w-full bg-gray-200" value="{{ ucfirst($task->type) }}" readonly>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Client & Agent -->
-                                                    <div class="flex flex-col sm:flex-row gap-4">
-                                                        <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input'}}">
-                                                            <label class="block text-sm font-medium text-gray-700">Client</label>
-                                                            <x-searchable-dropdown
-                                                                name="client_id"
-                                                                :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
-                                                                :selectedId="$task->client_id"
-                                                                :selectedName="$task->client ? $task->client->name . ' - ' . $task->client->phone : null"
-                                                                placeholder="Select Client" />
-                                                        </div>
-                                                        <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input'}}">
-                                                            <label class="block text-sm font-medium text-gray-700">Agent</label>
-                                                            <x-searchable-dropdown
-                                                                name="agent_id"
-                                                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                                                :selectedId="$task->agent_id"
-                                                                :selectedName="$task->agent->name ?? null"
-                                                                placeholder="Select Agent" />
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Pricing -->
-                                                    <div x-data="{
-                                                        rawPrice: '{{ $task->price ?? 0 }}',
-                                                        rawTax: '{{ $task->tax ?? 0 }}',
-                                                        rawSurcharge: '{{ $task->surcharge ?? 0 }}',
-                                                        rawSupplierSurcharge: '{{ $task->supplier_surcharge ?? 0 }}',
-                                                        total: 0,
-                                                        parseNum(v) {
-                                                            if (!v) return 0;
-                                                            const num = parseFloat(String(v).replace(/,/g,'').trim());
-                                                            return isNaN(num) ? 0 : num;
-                                                        },
-                                                        calculate() {
-                                                            const base = this.parseNum(this.rawPrice) + this.parseNum(this.rawTax) + this.parseNum(this.rawSurcharge);
-                                                            const supplier = this.parseNum(this.rawSupplierSurcharge);
-                                                            this.total = +(base + supplier).toFixed(3);
-                                                        }
-                                                    }" x-init="calculate()" x-effect="calculate()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                                                        <div class="col-span-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Price</label>
-                                                            <input type="text" name="price" x-model="rawPrice" class="border border-gray-300 p-2 rounded-md w-full text-sm">
-                                                        </div>
-                                                        <div class="col-span-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Tax</label>
-                                                            <input type="text" name="tax" x-model="rawTax" class="border border-gray-300 p-2 rounded-md w-full text-sm">
-                                                        </div>
-                                                        <div class="col-span-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                            <input type="text" name="surcharge" x-model="rawSurcharge" class="border border-gray-300 p-2 rounded-md w-full text-sm">
-                                                        </div>
-                                                        <div class="col-span-1">
-                                                            <label class="block text-xs sm:text-sm font-medium text-gray-700 truncate">Supplier Surcharge</label>
-                                                            <input type="text" :value="parseNum(rawSupplierSurcharge).toFixed(3)" readonly class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full text-sm">
-                                                        </div>
-                                                        <div class="col-span-2 sm:col-span-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Total</label>
-                                                            <input type="text" name="total" :value="total.toFixed(3)" readonly class="border border-gray-300 p-2 rounded-md w-full text-sm font-semibold">
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="flex flex-col sm:flex-row gap-4">
-                                                        <div class="flex-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                            <select name="payment_method_account_id" class="border border-gray-300 p-2 rounded-md w-full text-sm">
-                                                                <option value="">Select Payment Method</option>
-                                                                @foreach($listOfCreditors as $groupName => $accounts)
-                                                                <optgroup label="{{ $groupName }}">
-                                                                    @foreach($accounts as $method)
-                                                                    <option value="{{ $method['id'] }}" {{ $task->payment_method_account_id == $method['id'] ? 'selected' : '' }}>
-                                                                        {{ $method['name'] }}
-                                                                    </option>
-                                                                    @endforeach
-                                                                </optgroup>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <label class="block text-sm font-medium text-gray-700">Issued Date</label>
-                                                            <input type="date" name="supplier_pay_date" class="border border-gray-300 p-2 rounded-md w-full" value="{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '' }}">
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <label class="block text-sm font-medium text-gray-700">Additional Info</label>
-                                                        <textarea rows="3" readonly class="border border-gray-300 p-3 rounded-md bg-gray-200 w-full resize-none text-sm">{{ $task->additional_info }} - {{ $task->venue }}</textarea>
-                                                    </div>
                                                 </div>
-                                            </fieldset>
+                                                @endif
+                                            </div>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        <!-- Footer -->
-                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
-                                            <button type="button" @click="singleEditMode = false" class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                                                Cancel
-                                            </button>
-                                            <button type="submit" 
-                                                :disabled="readOnly" 
-                                                :class="readOnly ? 'cursor-not-allowed opacity-60' : ''"
-                                                :title="readOnly ? 'This task is invoiced and paid - editing is not allowed' : ''"
-                                                class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
-                                                Update Task
-                                            </button>
-                                        </div>
-                                    </form>
+                            </div>
+
+                            <!-- Single Task Edit Modal -->
+                            <div x-cloak x-show="singleEditMode && editDraft.task_id === {{ $task->id }}"
+                                class="fixed inset-0 z-50 overflow-y-auto"
+                                style="display: none;"
+                                @dropdown-select.window="
+                                    if (editDraft.task_id === {{ $task->id }}) {
+                                        if ($event.detail.name === 'client_id') editDraft.changes.client_id = $event.detail.value;
+                                        if ($event.detail.name === 'agent_id') editDraft.changes.agent_id = $event.detail.value;
+                                    }
+                                ">
+
+                                <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
+                                    @click="singleEditMode = false"></div>
+
+                                <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
+                                    @php
+                                    $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                    ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                    ->exists();
+                                    @endphp
+
+                                    <div x-show="singleEditMode"
+                                        x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
+                                        class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden"
+                                        @click.stop>
+
+                                        <form action="{{ route('tasks.update', $task->id) }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
+                                            @csrf
+                                            @method('PUT')
+
+                                            <!-- Header -->
+                                            <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
+                                                <div class="flex-1 min-w-0 pr-2">
+                                                    <h2 class="text-lg sm:text-xl font-bold text-gray-800">Edit Task Details</h2>
+                                                    <p class="text-gray-600 italic text-xs mt-1">
+                                                        @if($isInvoicedAndPaid)
+                                                        This task is invoiced and paid - editing is disabled
+                                                        @else
+                                                        Please update the task details to ensure accurate information
+                                                        @endif
+                                                    </p>
+                                                </div>
+                                                <button type="button" @click="singleEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
+                                                    &times;
+                                                </button>
+                                            </div>
+
+                                            <!-- Form Content - Scrollable -->
+                                            <div class="p-4 sm:p-6 overflow-y-auto flex-1">
+                                                <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
+                                                    <div class="flex flex-col gap-4 sm:gap-6">
+                                                        <!-- Reference & Status -->
+                                                        <div class="flex flex-col sm:flex-row gap-4">
+                                                            <div class="flex-1">
+                                                                <label for="reference" class="block text-sm font-medium text-gray-700">Reference</label>
+                                                                <input type="text"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-base"
+                                                                    name="reference"
+                                                                    x-model="editDraft.changes.reference">
+                                                            </div>
+
+                                                            <div class="flex-1">
+                                                                <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+
+                                                                @if ($task->status === 'refund')
+                                                                <select name="status"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-base"
+                                                                    disabled>
+                                                                    <option value="refund" selected>Refund</option>
+                                                                </select>
+
+                                                                <input type="hidden" name="status" value="refund">
+                                                                @else
+                                                                <select name="status"
+                                                                    id="status_{{ $task->id }}"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-base"
+                                                                    x-model="editDraft.changes.status">
+                                                                    <option value="">Set Status</option>
+                                                                    <option value="confirmed">Confirmed</option>
+                                                                    <option value="issued">Issued</option>
+                                                                    <option value="reissued">Reissued</option>
+                                                                    <option value="refund">Refund</option>
+                                                                    <option value="void">Void</option>
+                                                                    <option value="emd">Emd</option>
+                                                                </select>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Supplier & Type -->
+                                                        <div class="flex flex-col sm:flex-row gap-4">
+                                                            <div class="flex-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Supplier</label>
+                                                                <input type="text"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full bg-gray-200"
+                                                                    value="{{ $task->supplier->name ?? '' }}"
+                                                                    readonly>
+                                                                <input type="hidden" name="supplier_id" value="{{ $task->supplier->id ?? '' }}">
+                                                            </div>
+
+                                                            <div class="flex-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Task Type</label>
+                                                                <input type="text"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full bg-gray-200"
+                                                                    value="{{ ucfirst($task->type) }}"
+                                                                    readonly>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Client & Agent -->
+                                                        <div class="flex flex-col sm:flex-row gap-4">
+                                                            <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input'}}">
+                                                                <label class="block text-sm font-medium text-gray-700">Client</label>
+                                                                <x-searchable-dropdown
+                                                                    name="client_id"
+                                                                    :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
+                                                                    :selectedId="$task->client_id"
+                                                                    :selectedName="$task->client ? $task->client->name . ' - ' . $task->client->phone : null"
+                                                                    placeholder="Select Client" />
+                                                            </div>
+
+                                                            <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input'}}">
+                                                                <label class="block text-sm font-medium text-gray-700">Agent</label>
+                                                                <x-searchable-dropdown
+                                                                    name="agent_id"
+                                                                    :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                                                    :selectedId="$task->agent_id"
+                                                                    :selectedName="$task->agent->name ?? null"
+                                                                    placeholder="Select Agent" />
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Pricing -->
+                                                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                                                            <div class="col-span-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                <input type="text"
+                                                                    name="price"
+                                                                    x-model="editDraft.changes.price"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                            </div>
+
+                                                            <div class="col-span-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                <input type="text"
+                                                                    name="tax"
+                                                                    x-model="editDraft.changes.tax"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                            </div>
+
+                                                            <div class="col-span-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                <input type="text"
+                                                                    name="surcharge"
+                                                                    x-model="editDraft.changes.surcharge"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                            </div>
+
+                                                            <div class="col-span-1">
+                                                                <label class="block text-xs sm:text-sm font-medium text-gray-700 truncate">Supplier Surcharge</label>
+                                                                <input type="text"
+                                                                    name="supplier_surcharge"
+                                                                    x-model="editDraft.changes.supplier_surcharge"
+                                                                    readonly
+                                                                    class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full text-sm">
+                                                            </div>
+
+                                                            <div class="col-span-2 sm:col-span-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                <input type="text"
+                                                                    name="total"
+                                                                    readonly
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm font-semibold"
+                                                                    :value="(
+                                                                    (parseFloat(editDraft.changes.price || 0) || 0) +
+                                                                    (parseFloat(editDraft.changes.tax || 0) || 0) +
+                                                                    (parseFloat(editDraft.changes.surcharge || 0) || 0) +
+                                                                    (parseFloat(editDraft.changes.supplier_surcharge || 0) || 0)
+                                                                ).toFixed(3)">
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="flex flex-col sm:flex-row gap-4">
+                                                            <div class="flex-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                <select name="payment_method_account_id"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm"
+                                                                    x-model="editDraft.changes.payment_method_account_id">
+                                                                    <option value="">Select Payment Method</option>
+                                                                    @foreach($listOfCreditors as $groupName => $accounts)
+                                                                    <optgroup label="{{ $groupName }}">
+                                                                        @foreach($accounts as $method)
+                                                                        <option value="{{ $method['id'] }}">
+                                                                            {{ $method['name'] }}
+                                                                        </option>
+                                                                        @endforeach
+                                                                    </optgroup>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="flex-1">
+                                                                <label class="block text-sm font-medium text-gray-700">Issued Date</label>
+                                                                <input type="date"
+                                                                    name="supplier_pay_date"
+                                                                    class="border border-gray-300 p-2 rounded-md w-full"
+                                                                    x-model="editDraft.changes.supplier_pay_date">
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="block text-sm font-medium text-gray-700">Additional Info</label>
+                                                            <textarea rows="3"
+                                                                readonly
+                                                                class="border border-gray-300 p-3 rounded-md bg-gray-200 w-full resize-none text-sm">{{ $task->additional_info }} - {{ $task->venue }}</textarea>
+                                                        </div>
+                                                    </div>
+                                                </fieldset>
+                                            </div>
+
+                                            <!-- Footer -->
+                                            <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+                                                <button type="button"
+                                                    @click="closePreview()"
+                                                    class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                                    Cancel
+                                                </button>
+
+                                                <button type="submit"
+                                                    :disabled="readOnly"
+                                                    :class="readOnly ? 'cursor-not-allowed opacity-60' : ''"
+                                                    :title="readOnly ? 'This task is invoiced and paid - editing is not allowed' : ''"
+                                                    class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
+                                                    Update Task
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
+                            @endforeach
                         </div>
-                        @endforeach
+
+                        <!-- Proceed to Invoice Section (NOW INSIDE LEFT COLUMN) -->
+                        <div class="mt-2 bg-gradient-to-r from-blue-50 to-sky-50 rounded-lg border border-blue-200 p-4 sm:p-6 flex-shrink-0">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div>
+                                    <h3 class="text-base sm:text-lg font-semibold text-blue-800">Ready to Invoice?</h3>
+
+                                    <p class="text-sm text-blue-600 mt-1">
+                                        Create invoice for
+                                        <span class="font-semibold" x-text="selectedForInvoice.length"></span>
+                                        out of
+                                        <span class="font-semibold">{{ $tasks->count() }}</span>
+                                        tasks
+                                    </p>
+                                </div>
+
+                                <a :href="getInvoiceUrl()"
+                                    class="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                    :class="selectedForInvoice.length === 0 ? 'opacity-50 pointer-events-none' : ''">
+                                    <span>Create Invoice</span>
+                                    <span class="bg-white text-blue-700 text-xs font-bold px-2 py-1 rounded-full" x-text="selectedForInvoice.length"></span>
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Proceed to Invoice Section -->
-                    <div class="mt-6 bg-gradient-to-r from-blue-50 to-sky-50 rounded-lg border border-blue-200 p-4 sm:p-6 flex-shrink-0">
-                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div>
-                                <h3 class="text-base sm:text-lg font-semibold text-blue-800">Ready to Invoice?</h3>
+                    <!-- RIGHT COLUMN (Preview Pane) -->
+                    <div x-cloak x-show="previewOpen" class="hidden xl:flex xl:w-[420px] flex-shrink-0">
+                        <div class="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden sticky top-4 self-start"
+                            style="max-height: calc(100vh - 2rem);">
 
-                                <p class="text-sm text-blue-600 mt-1">
-                                    Create invoice for
-                                    <span class="font-semibold" x-text="selectedForInvoice.length"></span>
-                                    out of
-                                    <span class="font-semibold">{{ $tasks->count() }}</span>
-                                    tasks
-                                </p>
+                            <div class="px-4 py-4 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                                    Preview Changes
+                                </h3>
+
+                                <button type="button" @click="closePreview()" class="text-gray-400 hover:text-red-500 text-xl">
+                                    &times;
+                                </button>
                             </div>
 
-                            <a :href="getInvoiceUrl()"
-                            class="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                            :class="selectedForInvoice.length === 0 ? 'opacity-50 pointer-events-none' : ''">
-                                <span>Create Invoice</span>
-                                <span class="bg-white text-blue-700 text-xs font-bold px-2 py-1 rounded-full" x-text="selectedForInvoice.length"></span>
-                            </a>
+                            <div class="p-4 space-y-4 overflow-y-auto hover-scrollbar" style="max-height: calc(100vh - 220px);">
+
+                                <template x-if="!hasAnyChanges()">
+                                    <p class="text-sm text-gray-500 italic">No changes yet</p>
+                                </template>
+
+                                <template x-for="draft in Object.values(drafts)" :key="draft.task_id">
+                                    <template x-if="JSON.stringify(draft.original) !== JSON.stringify(draft.changes)">
+                                        <div class="border rounded-lg overflow-hidden">
+
+                                            <div class="px-3 py-2 bg-gray-50 flex items-center justify-between">
+                                                <div class="text-xs font-semibold text-gray-700">
+                                                    Task #<span x-text="draft.task_id"></span>
+                                                </div>
+
+                                                <button type="button"
+                                                    class="text-xs text-red-500 hover:text-red-700 font-semibold"
+                                                    @click="clearDraft(draft.task_id)">
+                                                    Remove
+                                                </button>
+                                            </div>
+
+                                            <div class="p-3 space-y-2">
+                                                <template x-for="field in Object.keys(draft.changes)" :key="field">
+                                                    <template x-if="String(draft.changes[field] ?? '') !== String(draft.original[field] ?? '')">
+                                                        <div class="flex items-center justify-between text-xs border-b pb-2">
+                                                            <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
+                                                            <div class="text-right">
+                                                                <div class="text-gray-400 line-through" x-text="draft.original[field] ?? '-'"></div>
+                                                                <div class="text-gray-900 font-semibold" x-text="draft.changes[field] ?? '-'"></div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </template>
+
+                                                <div class="flex items-center justify-between text-xs pt-2">
+                                                    <div class="text-gray-500 font-semibold">Total</div>
+                                                    <div class="text-gray-900 font-bold" x-text="getTotalFromDraft(draft)"></div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </template>
+                                </template>
+
+                            </div>
+
+                            <div class="p-4 border-t bg-slate-50 space-y-2">
+                                <form action="{{ route('tasks.updateMulti') }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+
+                                    <input type="hidden" name="drafts" :value="JSON.stringify(getPayload())">
+
+                                    <button type="submit" @click="isUpdating = true"
+                                        :disabled="!hasAnyChanges()"
+                                        class="w-full px-4 py-2 text-white bg-blue-600 rounded-lg">
+                                        Confirm All & Update
+                                    </button>
+                                </form>
+
+
+                                <button type="button"
+                                    @click="clearAllDrafts()"
+                                    class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                    Clear All
+                                </button>
+                            </div>
+
                         </div>
                     </div>
+
+
                 </div>
+
             </div>
         </div>
 
@@ -1224,7 +1486,7 @@
 
                     <form action="{{ route('tasks.bulk-update') }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
                         @csrf
-                        
+
                         <!-- Header -->
                         <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
                             <div class="flex-1 min-w-0 pr-2">
@@ -1336,7 +1598,7 @@
                 </div>
             </div>
         </div>
-        <div x-cloak x-show="showManualForm" 
+        <div x-cloak x-show="showManualForm"
             x-cloak
             class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
             <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-4 sm:p-6 max-h-[95vh] overflow-y-auto transition-all duration-300">
@@ -1509,6 +1771,14 @@
             </div>
         </div>
     </div>
+    <div x-cloak x-show="isUpdating"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-xl px-6 py-5 w-[320px] text-center">
+            <div class="mx-auto mb-3 h-10 w-10 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin"></div>
+            <p class="text-sm font-semibold text-gray-800">Updating tasks...</p>
+            <p class="text-xs text-gray-500 mt-1">Please wait a moment</p>
+        </div>
+    </div>
 
     <script>
         const clientForm = document.getElementById("client-formTask");
@@ -1640,6 +1910,7 @@
                     processBtn.classList.remove('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
                 });
         }
+
         function disableButton(button) {
             console.log('Disabling button:', button);
             if (!button.classList.contains('cursor-not-allowed') && !button.classList.contains('opacity-50')) {
@@ -1657,5 +1928,36 @@
                 'text-sm', 'transition', 'duration-150');
             button.disabled = false;
         }
+
+        function taskEditManager() {
+            return {
+                previewOpen: false,
+                editDraft: {
+                    task_id: null,
+                    original: {},
+                    changes: {}
+                },
+
+                startSingleEdit(task) {
+                    this.previewOpen = true;
+                    this.editDraft.task_id = task.id;
+
+                    this.editDraft.original = JSON.parse(JSON.stringify(task));
+                    this.editDraft.changes = JSON.parse(JSON.stringify(task));
+                },
+
+                hasChanges() {
+                    return JSON.stringify(this.editDraft.original) !== JSON.stringify(this.editDraft.changes);
+                },
+
+                closePreview() {
+                    this.previewOpen = false;
+                    this.editDraft.task_id = null;
+                    this.editDraft.original = {};
+                    this.editDraft.changes = {};
+                },
+            }
+        }
     </script>
+
 </x-app-layout>

@@ -1,15 +1,12 @@
 <x-app-layout>
-    <!-- page title -->
     <div id="coa-container" data-branches='@json($branches)' data-agents='@json($agents)'
         data-clients='@json($clients)' class="flex justify-between items-center gap-5 my-3 ">
 
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Chart Of Account</h2>
         </div>
-        <!-- add new task & refresh page -->
         <div class="flex items-center gap-5">
-            <!-- Reload Button -->
-            <div data-tooltip="Reload"
+            <div data-tooltip-left="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path fill="currentColor"
@@ -20,7 +17,6 @@
                 </svg>
             </div>
 
-            <!-- Transaction Records Button -->
             <form action="{{ route('coa.transaction') }}" method="GET">
                 <button type="submit"
                     class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition">
@@ -52,7 +48,6 @@
                         </label>
                     </div>
 
-                    <!-- Export Form -->
                     <form id="exportForm" action="{{ route('coa.export') }}" method="GET" class="mb-4">
                         <button type="submit"
                             class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold">
@@ -60,17 +55,13 @@
                         </button>
                     </form>
 
-                    <!-- Import Form -->
                     <form id="importForm" action="{{ route('coa.import') }}" method="POST"
                         enctype="multipart/form-data" class="hidden">
                         @csrf
                         <input type="file" name="file" required
-                            class="block mb-3 w-full text-sm text-gray-600
-                   file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
-                   file:text-sm file:font-semibold
-                   file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                        <button type="submit"
-                            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold">
+                            class="block mb-3 w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold
+                            file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                        <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold">
                             Upload File
                         </button>
                     </form>
@@ -85,7 +76,6 @@
         @endif
 
     </div>
-    <!-- ./page title -->
 
    <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
         <div class="flex items-start">
@@ -106,10 +96,6 @@
         </div>
     </div>
 
-
-    <!-- page content -->
-
-    <!-- add accounts top bar -->
     <div id="contentBox" class="AddNewSamePage">
         <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 my-8">
             @php
@@ -130,9 +116,7 @@
             @endforeach
         </div>
     </div>
-    <!-- ./add accounts top bar -->
 
-    <!-- accounts view -->
     <div class="rounded-lg w-full">
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.assets')</div>
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.liabilities')</div>
@@ -141,9 +125,6 @@
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.equity')</div>
 
     </div>
-    <!-- ./accounts view -->
-
-    <!-- ./page content -->
 
     <script>
         // Safely parse JSON attributes with fallback and error logging

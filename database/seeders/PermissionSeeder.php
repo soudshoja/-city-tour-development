@@ -89,5 +89,9 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view task report', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'setting company invoice', 'group' => 'setting']);
         Permission::firstOrCreate(['name' => 'view client report', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'create auto billing', 'group' => 'auto billing']);
+        Permission::firstOrCreate(['name' => 'view auto billing', 'group' => 'auto billing']);
+        Permission::firstOrCreate(['name' => 'update auto billing', 'group' => 'auto billing']);
+        Permission::firstOrCreate(['name' => 'delete auto billing', 'group' => 'auto billing']);
     }
 }

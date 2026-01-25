@@ -24,7 +24,7 @@ class ChargeController extends Controller
 
         $companyId = null;
 
-        if(Auth::user()->role->id == Role::ADMIN){
+        if (Auth::user()->role->id == Role::ADMIN) {
             $companyId = $request->company_id ?? 1;
             $totalCharges = Charge::where('company_id', $companyId)->count();
             $charges = Charge::where('company_id', $companyId)->get();
@@ -46,7 +46,7 @@ class ChargeController extends Controller
             // $charges = collect();
         }
 
-        if($companyId === null){
+        if ($companyId === null) {
             Log::warning('Company ID is null for user trying to access charges', [
                 'user_id' => Auth::user()->id,
                 'role_id' => Auth::user()->role->id,
@@ -124,7 +124,7 @@ class ChargeController extends Controller
         // if ($coaPaymentGateway->isEmpty() || $coaPaymentGatewayBankAcc->isEmpty() || $coaBankAccount->isEmpty()) {
         //     return redirect()->route('charges.index')->with('error', 'Some required COA records are missing.');
         // }
-        
+
         return view('charges.create', compact('coaPaymentGateway', 'coaPaymentGatewayBankAcc', 'coaBankAccount'));
     }
 
@@ -134,16 +134,29 @@ class ChargeController extends Controller
     {
         Gate::authorize('create', Charge::class);
 
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'No company selected.');
+        }
+
         $systemGateways = ['Tap', 'MyFatoorah', 'UPayment', 'Hesabe'];
         if (in_array($request->name, $systemGateways)) {
             Gate::authorize('createSystemGateway', Charge::class);
         }
 
         // Fetch COA for Payment Gateway Fee (Expenses)   
-        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first();
+        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$coaPaymentGateway) {
+            return redirect()->back()->with('error', 'Payment Gateway Charges account not found. Please set up Chart of Accounts first.');
+        }
 
         $childCoaPaymentGateway = Account::where('parent_id', $coaPaymentGateway->id)
-            ->where('name',  $request->name)
+            ->where('name', $request->name)
             ->first();
 
         if ($childCoaPaymentGateway) {
@@ -151,12 +164,19 @@ class ChargeController extends Controller
         }
 
         // Fetch COA for Payment Gateway (Assets)
-        $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first();
+        $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$coaPaymentGatewayBankAcc) {
+            return redirect()->back()->with('error', 'Payment Gateway account not found. Please set up Chart of Accounts first.');
+        }
 
         // Fetch COA for Bank Account
         $coaBankAccount = Account::whereHas('parent', function ($query) {
             $query->where('name', 'Bank Accounts');
         })
+            ->where('company_id', $companyId)
             ->first();
 
         $request->validate([
@@ -172,15 +192,28 @@ class ChargeController extends Controller
             'can_charge_invoice' => 'nullable|boolean',
             'is_active' => 'nullable|boolean',
             'can_generate_link' => 'nullable|boolean',
-            // 'auth_type' => 'required|in:basic,oauth',
-            // 'base_url' => 'nullable|url',
             'api_key' => 'required|string',
         ]);
 
         // Fetch COA for Payment Gateway
-        $coaRootIdAssets = Account::where('name', 'Assets')->first();
-        $coaRootIdExpenses = Account::where('name', 'Expenses')->first();
+        $coaRootIdAssets = Account::where('name', 'Assets')
+            ->where('company_id', $companyId)
+            ->first();
+        $coaRootIdExpenses = Account::where('name', 'Expenses')
+            ->where('company_id', $companyId)
+            ->first();
 
+        if (!$coaRootIdAssets || !$coaRootIdExpenses) {
+            return redirect()->back()->with('error', 'Root accounts not found. Please set up Chart of Accounts first.');
+        }
+
+        $branchId = null;
+        if ($user->role_id == Role::ADMIN) {
+            $branch = \App\Models\Branch::where('company_id', $companyId)->first();
+            $branchId = $branch?->id;
+        } else {
+            $branchId = $user->branch_id ?? $user->branch?->id;
+        }
 
         try {
             DB::beginTransaction();
@@ -189,8 +222,8 @@ class ChargeController extends Controller
             $newAccountBankFee = Account::create([
                 'name' => $request->name,
                 'parent_id' => $coaPaymentGatewayBankAcc->id,
-                'company_id' => Auth::user()->company->id,
-                'branch_id' => Auth::user()->branch_id,
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
                 'root_id' => $coaRootIdAssets->id,
                 'code' => '1213',
                 'account_type' => 'asset',
@@ -201,7 +234,7 @@ class ChargeController extends Controller
                 'actual_balance' => 0.00,
                 'budget_balance' => 0.00,
                 'variance' => 0.00,
-                'currency' => 'KWD', // Define currency
+                'currency' => 'KWD',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -210,8 +243,8 @@ class ChargeController extends Controller
                 $newPaymentGatewayExpenses = Account::create([
                     'name' => $request->name,
                     'parent_id' => $coaPaymentGateway->id,
-                    'company_id' => Auth::user()->company->id,
-                    'branch_id' => Auth::user()->branch_id,
+                    'company_id' => $companyId,
+                    'branch_id' => $branchId,
                     'root_id' => $coaRootIdExpenses->id,
                     'code' => '5111',
                     'account_type' => 'expense',
@@ -222,7 +255,7 @@ class ChargeController extends Controller
                     'actual_balance' => 0.00,
                     'budget_balance' => 0.00,
                     'variance' => 0.00,
-                    'currency' => 'KWD', // Define currency
+                    'currency' => 'KWD',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -230,7 +263,6 @@ class ChargeController extends Controller
             } else {
                 $PaymentGatewayExpenses = $childCoaPaymentGateway->id;
             }
-
 
             $charge = Charge::create([
                 'name' => $request->get('name'),
@@ -241,8 +273,8 @@ class ChargeController extends Controller
                 'acc_fee_id' => $PaymentGatewayExpenses,
                 'acc_bank_id' => $request->get('acc_bank_id'),
                 'acc_fee_bank_id' => $newAccountBankFee->id,
-                'company_id' => Auth::user()->company->id,
-                'branch_id' => Auth::user()->branch->id,
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
                 'charge_type' => $request->get('charge_type'),
                 'paid_by' => $request->get('paid_by'),
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
@@ -253,10 +285,9 @@ class ChargeController extends Controller
                 'api_key' => $request->get('api_key'),
                 'is_system_default' => false,
                 'can_be_deleted' => true,
-                'enabled_by' => Auth::user()->role->id == Role::ADMIN ? 'admin' : 'company',
+                'enabled_by' => $user->role_id == Role::ADMIN ? 'admin' : 'company',
             ]);
 
-            // Commit the transaction
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
@@ -265,16 +296,16 @@ class ChargeController extends Controller
 
         try {
             SyncGatewayMethods::dispatchSync(
-                companyId: Auth::user()->company->id,
+                companyId: $companyId,
                 gatewayName: $request->get('name')
             );
         } catch (\Throwable $e) {
             Log::warning('Gateway sync failed (non-blocking)', [
-                'company_id' => Auth::user()->company->id,
+                'company_id' => $companyId,
                 'gateway' => $request->get('name'),
                 'error' => $e->getMessage(),
             ]);
-        }        
+        }
 
         return redirect()->back()->with('success', 'Charge created successfully!');
     }
@@ -304,7 +335,7 @@ class ChargeController extends Controller
             ->where('company_id', Auth::user()->company->id)
             ->whereDoesntHave('children')
             ->get();
-        
+
         return view('charges.edit', compact(
             'charge',
             'accFee',
@@ -319,9 +350,9 @@ class ChargeController extends Controller
     public function update(Request $request, $id)
     {
         $charge = Charge::findOrFail($id);
-     
+
         Gate::authorize('update', $charge);
-        
+
         if (Gate::allows('updateAll', $charge)) {
             $request->validate([
                 'name' => 'required|string|max:255',
@@ -452,7 +483,7 @@ class ChargeController extends Controller
                 'can_generate_link' => 'nullable|boolean',
             ]);
 
-            try{
+            try {
                 $charge->update([
                     'api_key' => $request->get('api_key'),
                     'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
@@ -472,7 +503,7 @@ class ChargeController extends Controller
                 'is_active' => 'nullable|boolean',
             ]);
 
-            try{
+            try {
                 $charge->update([
                     'is_active' => $request->has('is_active') ? 1 : 0,
                 ]);

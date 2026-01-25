@@ -12,6 +12,7 @@ use App\Models\UserSetting;
 use Database\Seeders\SettingSeeder;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -19,40 +20,17 @@ class SettingController extends Controller
 {
     public function index(Request $request)
     {
-        $request->validate([
-            'company_id' => 'nullable|exists:companies,id',
-        ]);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if(auth()->user()->role_id == Role::ADMIN){
-            if (!$request->has('company_id') && session()->has('company_id')) {
-                return redirect()->route('settings.index', [
-                    'company_id' => session('company_id')
-                ]);
-            } 
-        } else {
-            if ($request->has('company_id')) {
-                return redirect()->route('settings.index');
-            }
-        }
-
-        $companyId = getCompanyId(auth()->user());
-
-        Setting::all()->each(function ($setting) {
-            $setting->value = $setting->value;
-        });
-
-        $settings = Setting::where('company_id', $companyId)
-            ->get();
+        $settings = Setting::where('company_id', $companyId)->get();
 
         $invoiceExpiryDefault = $settings->firstWhere('key', 'invoice_expiry_days')->value ?? 30;
-        $isAdmin = auth()->user()->role_id == Role::ADMIN && auth()->user()->hasRole('admin');
         $activeTab = session('settings_active_tab', 'payment');
-
-        $invoiceWhatsappSetting = UserSetting::getValue(auth()->id(), 'invoice_whatsapp_notification', false);
+        $invoiceWhatsappSetting = UserSetting::getValue(Auth::user()->id, 'invoice_whatsapp_notification', false);
 
         return view('settings.index', compact(
             'invoiceExpiryDefault',
-            'isAdmin',
             'companyId',
             'activeTab',
             'invoiceWhatsappSetting'
@@ -63,26 +41,18 @@ class SettingController extends Controller
     {
         $request->validate([
             'tab' => 'required|in:invoice,payment,terms,charges,payment-methods',
-            'company_id' => 'nullable|integer',
         ]);
 
-        // Log::info("[SETTINGS] Saving active tab", ['tab' => $request->tab, 'company_id' => $request->company_id]);
-
         session(['settings_active_tab' => $request->tab]);
-
-        // Log::info("[SETTINGS] Active tab saved", ['active tab' => session('settings_active_tab')]);
-        
-        if ($request->has('company_id')) {
-            session(['company_id' => $request->company_id]);
-        }
 
         return response()->json(['success' => true]);
     }
 
     public function updateInvoiceExpiry(Request $request)
     {
+        $user = Auth::user();
 
-        if(!(Auth()->user()->role_id = Role::ADMIN || Auth()->user()->role_id = Role::SUPER_ADMIN)) {
+        if (!($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY)) {
             return response()->json([
                 'success' => false,
                 'message' => 'You do not have permission to update settings.',
@@ -93,15 +63,27 @@ class SettingController extends Controller
             'invoice_expiry_default' => 'required|integer|min:1|max:365',
         ]);
 
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No company selected.',
+            ], 400);
+        }
+
         $expiryDays = (int) $request->input('invoice_expiry_default');
         $setting = Setting::updateOrCreate(
-            ['key' => 'invoice_expiry_days'],
+            [
+                'key' => 'invoice_expiry_days',
+                'company_id' => $companyId,
+            ],
             [
                 'value' => $expiryDays,
             ]
         );
 
-        if(!$setting) {
+        if (!$setting) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update invoice expiry days.',
@@ -118,20 +100,14 @@ class SettingController extends Controller
     {
         Gate::authorize('viewAny', Charge::class);
 
-        Log::info('[SETTINGS] Fetching charges', ['request' => $request->all()]);
-
-        $request->validate([
-            'company_id' => 'nullable|integer|exists:companies,id',
-        ]);
-
-        $user = auth()->user();
-        $companyId = $this->resolveCompanyId($request, $user);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         if ($companyId === null) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to determine company.',
-            ], 403);
+                'message' => 'No company selected.',
+            ], 400);
         }
 
         try {
@@ -155,23 +131,16 @@ class SettingController extends Controller
         }
     }
 
-    /**
-     * Get payment method groups via AJAX
-     */
     public function getPaymentMethods(Request $request)
     {
-        $request->validate([
-            'company_id' => 'nullable|integer|exists:companies,id',
-        ]);
-
-        $user = auth()->user();
-        $companyId = $this->resolveCompanyId($request, $user);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         if ($companyId === null) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to determine company.',
-            ], 403);
+                'message' => 'No company selected.',
+            ], 400);
         }
 
         try {
@@ -208,22 +177,5 @@ class SettingController extends Controller
                 'message' => 'Failed to fetch payment methods.',
             ], 500);
         }
-    }
-
-    private function resolveCompanyId(Request $request, $user): ?int
-    {
-        if ($user->role_id == Role::ADMIN) {
-            return $request->input('company_id', 1);
-        } elseif ($user->role_id == Role::COMPANY) {
-            return $user->company->id ?? null;
-        } elseif ($user->role_id == Role::BRANCH) {
-            return $user->branch->company_id ?? null;
-        } elseif ($user->role_id == Role::AGENT) {
-            return $user->agent->branch->company_id ?? null;
-        } elseif ($user->role_id == Role::ACCOUNTANT) {
-            return $user->accountant->branch->company_id ?? null;
-        }
-
-        return null;
     }
 }

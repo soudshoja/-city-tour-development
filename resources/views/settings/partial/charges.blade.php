@@ -372,6 +372,7 @@
             showCreateModal: false,
             showEditCredsModal: false,
             showEditMethodModal: false,
+            companyId: "{{ $companyId }}",
             editingCharge: {
                 api_key: '',
                 secret_key: '',
@@ -396,15 +397,15 @@
             async loadCharges() {
                 if (this.charges.length > 0) return;
 
-                const params = new URLSearchParams();
-                @if(request('company_id'))
-                params.append('company_id', '{{ request("company_id") }}');
-                @endif
-
                 this.chargeLoading = true;
 
+                let url = '{{ route("settings.charges") }}';
+                if (this.companyId) {
+                    url += '?company_id=' + this.companyId;
+                }
+
                 try {
-                    const response = await fetch('{{ route("settings.charges") }}' + '?' + params.toString(), {
+                    const response = await fetch(url, {
                         headers: {
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'

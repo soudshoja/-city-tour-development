@@ -14,25 +14,14 @@
         }
     </style>
     <div>
-        <!-- Breadcrumbs -->
-        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-            <li>
-                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline"> Dashboard</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1 ">
-                <a href="{{ route('agents.index') }}" class="customBlueColor hover:underline">Agents List</a>
+        <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
+            <a href="{{ route('agents.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Agents List</a>
+            <span class="text-gray-400">&gt;</span>
+            <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">{{ $agent->name }}'s Details</span>
+        </nav>
 
-            </li>
-            <li class="before:content-['/'] before:mr-1 ">
-                <span>Agent Details </span>
-            </li>
-        </ul>
-        <!-- ./Breadcrumbs -->
-
-        <!-- Agent Section -->
         @if($bonuses->isNotEmpty())
            <div class="mt-5 flex flex-col md:flex-row gap-5">
-                <!-- Agent Details Section -->
                 <div class="w-1/3">
                     <div class="h-[300px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 
                                 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 flex flex-col justify-between">
@@ -46,7 +35,7 @@
                                         <p class="text-md text-gray-500 dark:text-gray-400">{{ $agent->branch->company->name }}</p>
                                     </div>
                                 </div>
-                                <button onclick="EditAgentDetails()" data-tooltip="Edit Agent Details" data-tooltip-placement="top"
+                                <button onclick="EditAgentDetails()" data-tooltip-left="Edit details"
                                         class="transition hover:text-gray-700 dark:hover:text-gray-300">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                                         stroke="currentColor" class="w-5 h-5 text-gray-500">
@@ -92,14 +81,10 @@
                     </div>
                 </div>
 
-                <!-- Bonus Section -->
                 <div class="w-2/3">
                     <div class="h-[300px] panel p-6 flex flex-col text-left rounded-lg shadow-lg bg-white dark:bg-gray-900">
-                        
                         <div class="flex justify-between items-center mb-4">
-                            <h5 class="text-lg font-semibold dark:text-white-light">
-                                Bonus Records
-                            </h5>
+                            <h5 class="text-lg font-semibold dark:text-white-light">Bonus Records</h5>
 
                             <form method="GET" action="{{ route('agents.show', $agent->id) }}"
                                 class="flex items-center gap-3 bg-white/60 dark:bg-gray-800/40 backdrop-blur-md px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
@@ -176,7 +161,6 @@
 
             </div>
         @else
-        <!-- Agent Details Section -->
             <div class="w-full">
                 <div class="h-[310px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 
                             rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 flex flex-col justify-between">
@@ -190,7 +174,7 @@
                                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ $agent->branch->company->name }}</p>
                                 </div>
                             </div>
-                            <button onclick="EditAgentDetails()" data-tooltip="Edit Agent Details" data-tooltip-placement="top"
+                            <button onclick="EditAgentDetails()" data-tooltip-left="Edit details"
                                     class="transition hover:text-gray-700 dark:hover:text-gray-300">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                                     stroke="currentColor" class="w-6 h-6 text-gray-500">
@@ -236,14 +220,11 @@
                 </div>
             </div>
         @endif
-        <!-- End of Agent Section -->
 
-        <!-- edit Agent details modal -->
         <div id="editAgentModal" onclick="closemodalContentAgentIfClickedOutside(event)"
             class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
             <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
 
-                <!-- Close Button (Top Right) -->
                 <button onclick="closeAgentModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
                         stroke="currentColor" class="w-5 h-5">
@@ -251,16 +232,12 @@
                     </svg>
                 </button>
 
-                <!-- Modal Title -->
-                <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Edit Agent Details
-                </h2>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Edit Agent Details</h2>
 
-                <!-- Modal Form -->
                 <form id="agentForm" method="POST" action="{{ route('agents.update', $agent->id) }}" class="space-y-4">
                     @csrf
                     @method('PUT')
 
-                    <!-- Name Field -->
                     <div class="space-y-1">
                         <label for="name" class="block text-sm font-semibold text-gray-700">Name</label>
                         <input id="name" name="name" type="text" value="{{ $agent->name }}" required
@@ -268,19 +245,15 @@
                             placeholder="agent Name" />
                     </div>
 
-                    <!-- Email Field -->
                     <div class="space-y-1">
                         <label for="email" class="block text-sm font-semibold text-gray-700">Email</label>
                         <input id="email" name="email" type="email" value="{{ $agent->email }}" required
-                            class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            placeholder="agent Email" />
+                            class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="agent Email" />
                     </div>
 
-                    <!-- Phone Number -->
                     <div class="mb-6">
                         <label for="phone_number" class="block text-gray-700 font-semibold mb-2">Phone Number</label>
-                        <input type="text" name="phone_number" id="phone_number" value="{{ $agent->phone_number }}"
-                            required
+                        <input type="text" name="phone_number" id="phone_number" value="{{ $agent->phone_number }}" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
 
@@ -310,31 +283,25 @@
 
                     @if(in_array('Amadeus', $supplierCompany))
                     <label for="amadeus_id" class="block text-gray-700 font-semibold mb-2">Amadeus ID</label>
-                    <input
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
+                    <input class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
                         type="text" name="amadeus_id" id="amadeus_id" placeholder="Amadeus ID" value="{{ $agent->amadeus_id }}">
                     @endif
 
                     @if(in_array('TBO Holiday', $supplierCompany))
                     <label for="tbo_reference" class="block text-gray-700 font-semibold mb-2">TBO Reference</label>
-                    <input
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
+                    <input class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
                         type="text" name="tbo_reference" id="tbo_reference" placeholder="TBO Reference" value="{{ $agent->tbo_reference }}">
                     @endif
 
-                    <!-- Submit Button -->
                     <div class="flex space-x-2">
-                        <button type="submit"
-                            class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
+                        <button type="submit" class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
                             Update Agent
                         </button>
                     </div>
                 </form>
             </div>
         </div>
-        <!-- ./edit agent details modal -->
 
-        <!-- Client Section -->
         <div class="mt-5 panel">
             <div class="mb-5 flex justify-between items-center">
                 <h5 class="text-lg font-semibold dark:text-white-light">
@@ -348,20 +315,19 @@
                 <div class="max-h-72 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
                     <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
                         <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
-                            <tr>
-                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client Name</th>
-                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Email</th>
-                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Phone</th>
-                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Address</th>
-                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Paid</th>
-                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Pending</th>
-                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Actions</th>
+                            <tr class="py-3 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">
+                                <th class="px-6">Client Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Address</th>
+                                <th>Paid</th>
+                                <th>Pending</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($clients as $client)
                             <tr class="transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
-                                
                                 <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
                                     {{ $client->full_name }}
                                 </td>
@@ -397,17 +363,13 @@
 
             </div>
         </div>
-        <!-- End of Client Section -->
 
-        <!-- Invoice Section -->
         <div class="mt-5 panel">
             <div class="mb-5 flex items-center justify-between">
-                <!-- Left: Title -->
                 <h5 class="text-lg font-semibold dark:text-white-light">
                     <span class="customBlueColor">Invoices</span> List
                 </h5>
 
-                <!-- Right: Filter -->
                 <form method="GET"
                     class="ml-auto flex items-center gap-3 bg-white/60 dark:bg-gray-800/40 backdrop-blur-md px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
 
@@ -554,34 +516,25 @@
             </div>
         </div>
 
-        <!-- Task Section -->
         <div class="mt-5 panel">
              <div class="mb-5 flex justify-between items-center">
-                <!-- Left side -->
                 <h5 class="text-lg font-semibold dark:text-white-light">
                     <span class="customBlueColor">Tasks</span> List
                 </h5>
 
-                <!-- Right side badges -->
                 <div class="flex gap-2 items-center">
-                    <!-- Invoiced -->
-                    <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full
-                                bg-green-100 text-green-700 ring-1 ring-green-400 cursor-default">
+                    <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700 ring-1 ring-green-400 cursor-default">
                         {{ $taskInvoiced }} Invoiced
-                        <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 
-                                    invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 
-                                    shadow-lg w-48 z-10">
+                        <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100
+                            transition-all duration-200 shadow-lg w-48 z-10">
                             Task that invoiced
                         </div>
                     </div>
 
-                    <!-- Not Invoiced -->
-                    <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full
-                                bg-red-100 text-red-700 ring-1 ring-red-400 cursor-default">
+                    <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-700 ring-1 ring-red-400 cursor-default">
                         {{ $taskNotInvoiced }} Not Invoiced
-                        <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 
-                                    invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 
-                                    shadow-lg w-60 z-10">
+                        <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100
+                            transition-all duration-200 shadow-lg w-60 z-10">
                             Task that not invoiced yet
                         </div>
                     </div>
@@ -599,10 +552,8 @@
                         <table class="min-w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
                             <thead class= "sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                 <tr>
-                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Name
-                                    </th>
-                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Date
-                                    </th>
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Name</th>
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Date</th>
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Status</th>
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client</th>
                                 </tr>
@@ -625,9 +576,7 @@
                     @endif
                 </div>
             </div>
-            <!-- ./tasks Section -->
         </div>
-        <!-- End of Task Section -->
 
     </div>
 

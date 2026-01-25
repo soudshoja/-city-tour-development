@@ -26,20 +26,29 @@ use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
-
-
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CompanyController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Company $company)
+    public function index(Request $request)
     {
-        Gate::authorize('view', $company);
+        Gate::authorize('viewAny', Company::class);
 
-        $companies = Company::all();
+        $query = Company::query();
+
+        if ($search = $request->query('q')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $companies = $query->paginate(20)->withQueryString();
+
         return view('companies.list', compact('companies'));
     }
 
@@ -185,26 +194,24 @@ class CompanyController extends Controller
 
     public function show($id)
     {
-        // Fetch the specific company with its agents, tasks, clients, invoices, and items    
         $companies = Company::all();
         $company = Company::with([
+            'nationality',
+            'agents.agentType',
             'agents.tasks.client',
             'agents.invoices',
             'agents.tasks'
         ])->findOrFail($id);
 
-
-        // Return the view, passing the specific company to it
         return view('companies.show', compact('company', 'companies'));
     }
 
     public function edit($id)
     {
-        $company = Company::findOrFail($id);
-        $companies = Company::all();
+        $company = Company::with('nationality')->findOrFail($id);
+        $countries = Country::orderBy('name')->get();
 
-
-        return view('companies.companiesEdit', compact('company', 'companies'));
+        return view('companies.companiesEdit', compact('company', 'countries'));
     }
 
     public function store(Request $request)
@@ -250,7 +257,6 @@ class CompanyController extends Controller
                 'message' => 'Company created successfully.',
                 'data' => $company,
             ], 201);
-
         } catch (Exception $e) {
             Log::error('Error creating company:', ['error' => $e->getMessage()]);
 
@@ -267,20 +273,21 @@ class CompanyController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255',
-            'nationality' => 'required|string|max:255',
+            'country_id' => 'required|exists:countries,id',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
         ]);
 
-        // Find the company and update its data
         $company = Company::findOrFail($id);
         $company->update([
             'name' => $request->name,
             'code' => $request->code,
-            'nationality' => $request->nationality,
+            'country_id' => $request->country_id,
             'phone' => $request->phone,
             'address' => $request->address,
         ]);
 
-        return redirect()->route('companies.index')->with('success', 'Company updated successfully');
+        return redirect()->route('companies.list')->with('success', 'Company updated successfully');
     }
 
 
@@ -367,7 +374,7 @@ class CompanyController extends Controller
         }
 
         $userCreationResponseData = json_decode($userCreationResponse->getContent());
-        
+
         $userBranchId = $userCreationResponseData->data->id;
         $user = User::find($userBranchId);
 
@@ -380,7 +387,7 @@ class CompanyController extends Controller
 
         $branchCreationResponse = $branchController->store($request);
 
-        if($branchCreationResponse->getStatusCode() !== 201) {
+        if ($branchCreationResponse->getStatusCode() !== 201) {
             $user->delete();
             return back()->withErrors(['error' => 'Failed to create branch.']);
         }
@@ -404,27 +411,27 @@ class CompanyController extends Controller
         ]);
 
         $role = Role::where('name', 'accountant')
-                ->where('company_id', $companyId)
-                ->first();
+            ->where('company_id', $companyId)
+            ->first();
 
-            if (!$role) {
+        if (!$role) {
 
-                $role = Role::create([
-                    'name' => 'accountant',
-                    'description' => 'Accountant role for company ' . $company->name,
-                    'company_id' => $companyId,
-                ]);
-            }
+            $role = Role::create([
+                'name' => 'accountant',
+                'description' => 'Accountant role for company ' . $company->name,
+                'company_id' => $companyId,
+            ]);
+        }
 
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
-            'password' => $validatedData['password'], 
+            'password' => $validatedData['password'],
             'role_id' => Role::ACCOUNTANT,
             'remember_token' => Str::random(10),
             'first_login' => 1,
         ])->assignRole($role);
-        
+
         $accountant = $user->accountant()->create([
             'name'         => $validatedData['name'],
             'email'        => $validatedData['email'],

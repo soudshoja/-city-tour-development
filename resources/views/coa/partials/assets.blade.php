@@ -1,42 +1,46 @@
-<div class="AssetsToggleButton main-container cursor-pointer flex items-center justify-between w-full p-4 rounded-lg BoxShadow coa-partials"
-    x-data="{ showAddCategoryForm: false }">
-    <div class="flex items-center space-x-3">
-        <!-- Icon -->
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path opacity="0.5"
-                d="M2.5 6.5C2.5 4.29086 4.29086 2.5 6.5 2.5C8.70914 2.5 10.5 4.29086 10.5 6.5V9.16667C10.5 9.47666 10.5 9.63165 10.4659 9.75882C10.3735 10.1039 10.1039 10.3735 9.75882 10.4659C9.63165 10.5 9.47666 10.5 9.16667 10.5H6.5C4.29086 10.5 2.5 8.70914 2.5 6.5Z"
-                stroke="currentColor" stroke-width="1.5" />
-            <path opacity="0.5"
-                d="M13.5 14.8333C13.5 14.5233 13.5 14.3683 13.5341 14.2412C13.6265 13.8961 13.8961 13.6265 14.2412 13.5341C14.3683 13.5 14.5233 13.5 14.8333 13.5H17.5C19.7091 13.5 21.5 15.2909 21.5 17.5C21.5 19.7091 19.7091 21.5 17.5 21.5C15.2909 21.5 13.5 19.7091 13.5 17.5V14.8333Z"
-                stroke="currentColor" stroke-width="1.5" />
-            <path
-                d="M2.5 17.5C2.5 15.2909 4.29086 13.5 6.5 13.5H8.9C9.46005 13.5 9.74008 13.5 9.95399 13.609C10.1422 13.7049 10.2951 13.8578 10.391 14.046C10.5 14.2599 10.5 14.5399 10.5 15.1V17.5C10.5 19.7091 8.70914 21.5 6.5 21.5C4.29086 21.5 2.5 19.7091 2.5 17.5Z"
-                stroke="#00ab55" stroke-width="1.5" />
-            <path
-                d="M13.5 6.5C13.5 4.29086 15.2909 2.5 17.5 2.5C19.7091 2.5 21.5 4.29086 21.5 6.5C21.5 8.70914 19.7091 10.5 17.5 10.5H14.6429C14.5102 10.5 14.4438 10.5 14.388 10.4937C13.9244 10.4415 13.5585 10.0756 13.5063 9.61196C13.5 9.55616 13.5 9.48982 13.5 9.35714V6.5Z"
-                stroke="#00ab55" stroke-width="1.5" />
-        </svg>
+<div class="AssetsToggleButton group main-container cursor-pointer rounded-lg BoxShadow coa-partials overflow-hidden relative
+    hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300">
 
-        <h3 class="text-lg font-semibold text-[#00ab55]">Assets</h3>
-    </div>
+    <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-r opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-green-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
 
-    <span class="ml-40 px-5 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full">Code</span>
-    <span class="text-lg font-semibold text-[#00ab55] mr-20">Actual Balance</span>
-
-    <div>
-        <button class="hover:text-gray-700">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
-                    stroke-linejoin="round" />
-                <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"
-                    stroke-linejoin="round" />
+    <div class="grid grid-cols-12 gap-2 items-center py-4 px-4 relative z-10">
+        <div class="col-span-5 flex items-center gap-3">
+            <svg class="w-6 h-6 text-[#00ab55] group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24" fill="none">
+                <path opacity="0.5"
+                    d="M2.5 6.5C2.5 4.29086 4.29086 2.5 6.5 2.5C8.70914 2.5 10.5 4.29086 10.5 6.5V9.16667C10.5 9.47666 10.5 9.63165 10.4659 9.75882C10.3735 10.1039 10.1039 10.3735 9.75882 10.4659C9.63165 10.5 9.47666 10.5 9.16667 10.5H6.5C4.29086 10.5 2.5 8.70914 2.5 6.5Z"
+                    stroke="currentColor" stroke-width="1.5" />
+                <path opacity="0.5"
+                    d="M13.5 14.8333C13.5 14.5233 13.5 14.3683 13.5341 14.2412C13.6265 13.8961 13.8961 13.6265 14.2412 13.5341C14.3683 13.5 14.5233 13.5 14.8333 13.5H17.5C19.7091 13.5 21.5 15.2909 21.5 17.5C21.5 19.7091 19.7091 21.5 17.5 21.5C15.2909 21.5 13.5 19.7091 13.5 17.5V14.8333Z"
+                    stroke="currentColor" stroke-width="1.5" />
+                <path
+                    d="M2.5 17.5C2.5 15.2909 4.29086 13.5 6.5 13.5H8.9C9.46005 13.5 9.74008 13.5 9.95399 13.609C10.1422 13.7049 10.2951 13.8578 10.391 14.046C10.5 14.2599 10.5 14.5399 10.5 15.1V17.5C10.5 19.7091 8.70914 21.5 6.5 21.5C4.29086 21.5 2.5 19.7091 2.5 17.5Z"
+                    stroke="#00ab55" stroke-width="1.5" />
+                <path
+                    d="M13.5 6.5C13.5 4.29086 15.2909 2.5 17.5 2.5C19.7091 2.5 21.5 4.29086 21.5 6.5C21.5 8.70914 19.7091 10.5 17.5 10.5H14.6429C14.5102 10.5 14.4438 10.5 14.388 10.4937C13.9244 10.4415 13.5585 10.0756 13.5063 9.61196C13.5 9.55616 13.5 9.48982 13.5 9.35714V6.5Z"
+                    stroke="#00ab55" stroke-width="1.5" />
             </svg>
-        </button>
+            <h3 class="text-lg font-semibold text-[#00ab55] group-hover:text-green-700 transition-colors duration-300">Assets</h3>
+        </div>
+
+        <div class="col-span-2 flex justify-center">
+            <span class="px-4 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full group-hover:bg-green-200 transition-colors duration-300">Code</span>
+        </div>
+
+        <div class="col-span-3 flex justify-end">
+            <span class="text-lg font-semibold text-[#00ab55] group-hover:text-green-700 transition-colors duration-300">Actual Balance</span>
+        </div>
+
+        <div class="col-span-2 flex justify-end">
+            <svg class="w-6 h-6 text-gray-400 group-hover:text-green-500 transition-colors duration-300" viewBox="0 0 24 24" fill="none">
+                <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
     </div>
 </div>
 
-<!-- Asset child accounts -->
-<div id="AssetsDetails" class="rounded-lg shadow-sm">
+<div id="AssetsDetails" class="rounded-lg shadow-sm bg-white dark:bg-gray-800 mt-1" style="display: none;">
     <ul class="w-full">
         @foreach ($assets->childAccounts as $asset)
             @include('coa.partials.child-account', ['account' => $asset, 'color' => 'green'])
@@ -44,16 +48,12 @@
     </ul>
 </div>
 
-<!-- JavaScript -->
 <script>
     const contentAssetsDiv = document.getElementById('AssetsDetails');
     const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
 
-    contentAssetsDiv.style.display = 'none';
-
     function toggleAssetsVisibility() {
-        contentAssetsDiv.style.display = (contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style
-            .display === '') ? 'block' : 'none';
+        contentAssetsDiv.style.display = (contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '') ? 'block' : 'none';
     }
 
     AssetsToggleButton.forEach(button => {
@@ -109,13 +109,3 @@
         }
     });
 </script>
-
-<style>
-    .ts-control {
-        border: 1px solid;
-        font-size: 0.875rem;
-        line-height: 1.25rem;
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
-    }
-</style>

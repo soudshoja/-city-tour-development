@@ -30,6 +30,7 @@ class TaskRuleConfigurationTest extends TestCase
         $user = User::factory()->create();
         $country = Country::factory()->create();
         $this->company = Company::factory()->create(['user_id' => $user->id, 'country_id' => $country->id]);
+        session(['company_id' => $this->company->id]);
         $this->supplier = Supplier::factory()->create(['country_id' => $country->id]);
     }
 

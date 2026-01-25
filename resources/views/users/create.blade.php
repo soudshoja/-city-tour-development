@@ -317,7 +317,6 @@
                                 </div>
                             </div>
                             <!-- Branch Form -->
-                            @if(auth()->user()->company !== null)
                             <div id="branchForm" class="form hidden flex w-full h-auto">
                                 <div class="w-full h-auto">
                                     <div class="flex items-center mb-5">
@@ -331,8 +330,7 @@
                                     <form action="{{ route('companies.createBranch') }}" method="POST"
                                         class="w-full">
                                         @csrf
-                                        <input type="hidden" name="company_id"
-                                            value="{{ auth()->user()->company->id }}">
+                                        <input type="hidden" name="company_id" value="{{ $companyId }}">
 
                                         <div class="mb-4 flex items-center relative">
                                             <input type="text" name="name" id="create_branch_name"
@@ -409,7 +407,6 @@
                                     </form>
                                 </div>
                             </div>
-                            @endif
 
                             <style>
                                 .tooltip-container {

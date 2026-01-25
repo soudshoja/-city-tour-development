@@ -58,12 +58,10 @@
         }
     </style>
 
-    <!-- start main content section -->
     <div class="panel h-full overflow-hidden border-0 p-0">
         <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
             <div class="flex items-center justify-between text-white">
                 <p class="text-2xl">Payment Voucher</p>
-                <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
         <div class="flex flex-col gap-2.5 xl:flex-row">
@@ -80,23 +78,6 @@
                                     <p>{{ $companies->email }}</p>
                                     <p>{{ $companies->phone }}</p>
                                 </div>
-                            @else
-                                <div class="custom-select w-full border rounded-lg mt-4">
-                                    <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select
-                                        Company
-                                    </div>
-                                    <div
-                                        class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                        @foreach ($companies as $company)
-                                            <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                data-value="{{ $company->id }}">
-                                                {{ $company->name }}
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-                                </div>
-
                             @endif
                             <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
                         </div>
@@ -104,8 +85,7 @@
 
                     <div class="mb-6 w-full lg:w-1/2 lg:max-w-fit mt-5">
                         <div class="flex items-center gap-x-6">
-                            <label for="bankpaymentref" class="mb-0 flex-1">Ref <span
-                                    class="text-red-500">*</span></label>
+                            <label for="bankpaymentref" class="mb-0 flex-1">Ref <span class="text-red-500">*</span></label>
                             <input required readonly id="bankpaymentref"
                                 value="{{ old('bankpaymentref', $bankPayment->reference_number) }}" type="text"
                                 name="bankpaymentref"
@@ -151,7 +131,7 @@
 
                             <input readonly id="docdate" type="date" name="docdate"
                                 class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300"
-                                value="{{ old('docdate', isset($bankPayment->date) ? \Carbon\Carbon::parse($bankPayment->date)->format('Y-m-d') : '') }}" />
+                                value="{{ old('docdate', isset($bankPayment->transaction_date) ? \Carbon\Carbon::parse($bankPayment->transaction_date)->format('Y-m-d') : '') }}" />
 
                         </div>
                     </div>
@@ -160,22 +140,16 @@
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
 
                 <div class="mt-8 px-4">
-                    <div class="flex flex-col justify-between lg:flex-row gap-x-4">
-                        <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
+                    <div class="flex flex-col justify-between lg:flex-row gap-x-24">
+                        <div class="mb-6 w-full lg:w-1/2">
                             <div class="text-lg font-semibold">Payment Voucher</div>
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="pay_to" class="mb-0 w-1/3 ">Pay To <span
-                                        class="text-red-500">*</span></label>
-                                <input readonly id="pay_to" type="text" name="pay_to" list="supplierList"
-                                    placeholder="Enter Payee Name" value="{{ old('pay_to', $bankPayment->name) }}"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" />
-                                <datalist id="supplierList">
-                                    @foreach ($suppliers as $supplier)
-                                        <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
-                                            {{ $supplier->name }}
-                                        </option>
-                                    @endforeach
-                                </datalist>
+                                <label for="pay_from_account" class="mb-0 shrink-0">
+                                    Pay From <span class="text-red-500">*</span>
+                                </label>
+                                <input readonly id="pay_from" type="text" name="pay_from"
+                                    value="{{ $payFromName }}"
+                                    class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300" />
                             </div>
                         </div>
 
@@ -183,56 +157,47 @@
                             <div class="text-lg font-semibold">Remarks</div>
 
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
-                                    <span class="text-red-500">*</span></label>
-                                <input readonly id="remarks_create" type="text" name="remarks_create"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
-                                    placeholder="Enter Remarks"
+                                <label for="remarks_create_label" class="mb-0 shrink-0">Remarks <span class="text-red-500">*</span></label>
+                                <input readonly id="remarks_create" type="text" name="remarks_create" class="form-input flex-1" placeholder="Enter Remarks"
                                     value="{{ old('remarks_create', trim(\Illuminate\Support\Str::before($bankPayment->description, '|'))) }}" />
-
                             </div>
 
-                            <div class="mt-4 flex items-center gap-x-4">
-                                <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal
-                                    Remarks</label>
+                            <!-- <div class="mt-4 flex items-center gap-x-4">
+                                <label for="internal_remarks" class="mb-0 shrink-0">Internal Remarks</label>
                                 <input readonly id="internal_remarks" type="text" name="internal_remarks"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
+                                    class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300"
                                     placeholder="Enter Internal Remarks"
                                     value="{{ old('internal_remarks', $bankPayment->remarks_internal) }}" />
                             </div>
 
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
-                                    FL</label>
+                                <label for="remarks_fl" class="mb-0 shrink-0">Remarks FL</label>
                                 <input readonly id="remarks_fl" type="text" name="remarks_fl"
                                     class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300"
                                     placeholder="Enter Remarks FL"
                                     value="{{ old('remarks_fl', $bankPayment->remarks_fl) }}" />
-                            </div>
+                            </div> -->
                         </div>
-
-
                     </div>
                 </div>
-
 
                 <div class="overflow-x-auto">
                     <table class="table table-bordered bank-payment-table mt-10 w-full">
                         <thead class="table-light">
                             <tr>
-                                <th>A/C</th>
-                                <th>Remarks</th>
+                                <th>Account</th>
+                                <!-- <th>Remarks</th> -->
                                 <th>Currency</th>
                                 <th>Exchange Rate</th>
                                 <th>Amount</th>
                                 <th>Debit</th>
                                 <th>Credit</th>
-                                <th>Cheque No</th>
+                                <!-- <th>Cheque No</th>
                                 <th>Cheque Date</th>
                                 <th>Bank Name</th>
                                 <th>Auth No</th>
                                 <th>Branch</th>
-                                <th>Balance</th>
+                                <th>Balance</th> -->
                             </tr>
                         </thead>
                         <tbody id="paymentTable">
@@ -240,23 +205,20 @@
                                 <tr>
                                     <td>
                                         {{ $transaction->account ? '[' . $transaction->account->root->name . '] [' . $transaction->account->code . '] ' . $transaction->account->name : 'N/A' }}
-                                        <input readonly type="hidden" name="items[{{ $index }}][account_id]"
-                                            value="{{ old("items.$index.account_id", $transaction->account_id) }}" />
+                                        <input readonly type="hidden" name="items[{{ $index }}][account_id]" value="{{ old("items.$index.account_id", $transaction->account_id) }}" />
                                         @if ($transaction->reconciled == 2)
-                                            <button type="button" class="btn btn-lightblue btn-sm p-10"
-                                                onclick="fetchJournalEntries({{ $transaction->id }})">
+                                            <button type="button" class="btn btn-lightblue btn-sm p-10" onclick="fetchJournalEntries({{ $transaction->id }})">
                                                 View Reconciled Item
                                             </button>
 
-                                            <button type="button" class="mt-1 btn btn-warning text-black btn-sm p-10"
-                                                onclick="declineReconcileJournalEntries({{ $transaction->id }})">
+                                            <button type="button" class="mt-1 btn btn-warning text-black btn-sm p-10" onclick="declineReconcileJournalEntries({{ $transaction->id }})">
                                                 Decline & Remove Reconcile
                                             </button>
                                         @endif
                                     </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][description]"
+                                    <!-- <td><input readonly type="text" name="items[{{ $index }}][description]"
                                             value="{{ old("items.$index.description", $transaction->description) }}" />
-                                    </td>
+                                    </td> -->
                                     <td><input readonly type="text" name="items[{{ $index }}][currency]"
                                             value="{{ old("items.$index.currency", $transaction->currency) }}" />
                                     </td>
@@ -273,7 +235,7 @@
                                     <td><input readonly type="text" name="items[{{ $index }}][credit]"
                                             value="{{ old("items.$index.credit", $transaction->credit) }}" />
                                     </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][cheque_no]"
+                                    <!-- <td><input readonly type="text" name="items[{{ $index }}][cheque_no]"
                                             value="{{ old("items.$index.cheque_no", $transaction->cheque_no) }}" />
                                     </td>
                                     <td><input readonly type="text" name="items[{{ $index }}][cheque_date]"
@@ -290,13 +252,12 @@
                                     </td>
                                     <td><input readonly type="text" name="items[{{ $index }}][balance]"
                                             value="{{ old("items.$index.balance", $transaction->balance) }}" />
-                                    </td>
+                                    </td> -->
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-
 
                 <div class="panel overflow-hidden mt-10">
                     <div class="relative">
@@ -304,24 +265,23 @@
                             <div class="mt-2">
                                 <div class="text-primary">Total Debit</div>
                                 <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_debit">0.00</span>
+                                    <span id="total_debit">0.000</span>
                                 </div>
                             </div>
 
                             <div class="mt-2">
                                 <div class="text-primary">Total Credit</div>
                                 <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_credit">0.00</span>
+                                    <span id="total_credit">0.000</span>
                                 </div>
                             </div>
 
                             <div class="mt-2">
                                 <div class="text-primary">Difference</div>
                                 <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_difference">0.00</span>
+                                    <span id="total_difference">0.000</span>
                                 </div>
                             </div>
-
                         </div>
                         <div class="absolute -bottom-12 right-12 h-36 w-36">
                             <svg id="correct" width="36" height="36" viewBox="0 0 24 24" fill="none"
@@ -340,11 +300,8 @@
                                 <circle cx="12" cy="16" r="1" fill="currentColor" />
                             </svg>
                         </div>
-
-
                     </div>
                 </div>
-
 
                 <div class="mt-6 flex justify-center w-full">
                     <a href="{{ route('bank-payments.index') }}"
@@ -352,8 +309,6 @@
                 </div>
             </div>
         </div>
-
-
     </div>
 
     <div id="journalEntriesModal"
@@ -412,9 +367,9 @@
 
                 const diff = totalDebit - totalCredit;
 
-                totalDebitEl.textContent = totalDebit.toFixed(2);
-                totalCreditEl.textContent = totalCredit.toFixed(2);
-                totalDifferenceEl.textContent = diff.toFixed(2);
+                totalDebitEl.textContent = totalDebit.toFixed(3);
+                totalCreditEl.textContent = totalCredit.toFixed(3);
+                totalDifferenceEl.textContent = diff.toFixed(3);
 
                 const correctIcon = document.getElementById('correct');
                 const falseIcon = document.getElementById('false');
@@ -484,8 +439,8 @@
                             <td class="border px-2 py-1">${entry.transaction_date}</td>
                             <td class="border px-2 py-1">${entry.name}</td>
                             <td class="border px-2 py-1">${entry.description}</td>
-                            <td class="border px-2 py-1 text-right">${parseFloat(entry.debit).toFixed(2)}</td>
-                            <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(2)}</td>
+                            <td class="border px-2 py-1 text-right">${parseFloat(entry.debit).toFixed(3)}</td>
+                            <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(3)}</td>
                         </tr>
                     `;
                             count++;
@@ -495,8 +450,8 @@
                         table += `
                         <tr class="font-semibold bg-gray-50">
                             <td class="border px-2 py-1 text-right" colspan="4">Total</td>
-                            <td class="border px-2 py-1 text-right">${totalDebit.toFixed(2)}</td>
-                            <td class="border px-2 py-1 text-right">${totalCredit.toFixed(2)}</td>
+                            <td class="border px-2 py-1 text-right">${totalDebit.toFixed(3)}</td>
+                            <td class="border px-2 py-1 text-right">${totalCredit.toFixed(3)}</td>
                         </tr>
                     </tbody>
                     </table>

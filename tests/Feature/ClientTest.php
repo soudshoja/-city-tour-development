@@ -57,7 +57,8 @@ class ClientTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id  // Company owned by company user
         ]);
-        
+        session(['company_id' => $this->company->id]);
+
         // Create account after company exists
         DB::table('accounts')->insert([
             'id' => 1,
@@ -117,7 +118,7 @@ class ClientTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertViewIs('clients.index');
-        $response->assertViewHas(['agent', 'clients', 'clientsCount', 'fullClients']);
+        $response->assertViewHas(['agent', 'clients', 'fullClients']);
     }
 
     public function test_company_user_can_access_client_index()
@@ -126,7 +127,7 @@ class ClientTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertViewIs('clients.index');
-        $response->assertViewHas(['agent', 'clients', 'clientsCount', 'fullClients']);
+        $response->assertViewHas(['agent', 'clients', 'fullClients']);
     }
 
     public function test_agent_can_access_client_index()
@@ -135,7 +136,7 @@ class ClientTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertViewIs('clients.index');
-        $response->assertViewHas(['agent', 'clients', 'clientsCount']);
+        $response->assertViewHas(['agent', 'clients', 'fullClients']);
     }
 
     public function test_unauthenticated_user_redirected_to_login()
@@ -154,7 +155,7 @@ class ClientTest extends TestCase
             'name' => 'Another Agent User',
             'email' => 'another.agent@test.com'
         ]);
-        
+
         $anotherAgent = Agent::factory()->create([
             'branch_id' => $this->branch->id,
             'name' => 'Another Agent',
@@ -162,7 +163,7 @@ class ClientTest extends TestCase
             'account_id' => 1,
             'type_id' => 1
         ]);
-        
+
         Client::factory()->count(2)->create([
             'agent_id' => $anotherAgent->id
         ]);
@@ -183,35 +184,35 @@ class ClientTest extends TestCase
             'name' => 'Another Company User',
             'email' => 'another.company@test.com'
         ]);
-        
+
         $anotherCompany = Company::factory()->create([
             'user_id' => $anotherCompanyUser->id
         ]);
-        
+
         $anotherBranchUser = User::factory()->create([
             'role_id' => Role::BRANCH,
             'name' => 'Another Branch User',
             'email' => 'another.branch@test.com'
         ]);
-        
+
         $anotherBranch = Branch::factory()->create([
             'company_id' => $anotherCompany->id,
             'user_id' => $anotherBranchUser->id
         ]);
-        
+
         $anotherAgentUser = User::factory()->create([
             'role_id' => Role::AGENT,
             'name' => 'Another Agent User',
             'email' => 'another.agent2@test.com'
         ]);
-        
+
         $anotherAgent = Agent::factory()->create([
             'branch_id' => $anotherBranch->id,
             'user_id' => $anotherAgentUser->id,
             'account_id' => 1,
             'type_id' => 1
         ]);
-        
+
         Client::factory()->count(2)->create([
             'agent_id' => $anotherAgent->id
         ]);
@@ -254,7 +255,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->post(route('clients.store'), $clientData);
+            ->post(route('clients.store'), $clientData);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
@@ -279,7 +280,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->post(route('clients.store'), $invalidData);
+            ->post(route('clients.store'), $invalidData);
 
         $response->assertSessionHasErrors(['first_name', 'email', 'dial_code', 'phone', 'agent_id']);
     }
@@ -292,7 +293,7 @@ class ClientTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)
-                         ->get(route('clients.show', $client->id));
+            ->get(route('clients.show', $client->id));
 
         $response->assertStatus(200);
         $response->assertViewIs('clients.new-profile');
@@ -332,7 +333,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->put(route('clients.update', $client->id), $updateData);
+            ->put(route('clients.update', $client->id), $updateData);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
@@ -351,7 +352,7 @@ class ClientTest extends TestCase
     //         'name' => 'New Agent User',
     //         'email' => 'new.agent@test.com'
     //     ]);
-        
+
     //     $newAgent = Agent::factory()->create([
     //         'branch_id' => $this->branch->id,
     //         'name' => 'New Agent',
@@ -386,7 +387,7 @@ class ClientTest extends TestCase
         // Test first page
         $response = $this->actingAs($this->adminUser)->get(route('clients.index'));
         $clients = $response->viewData('clients');
-        
+
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
         $this->assertEquals(1, $clients->currentPage());
         $this->assertEquals(20, $clients->perPage());
@@ -397,7 +398,7 @@ class ClientTest extends TestCase
         // Test second page
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['page' => 2]));
         $clients = $response->viewData('clients');
-        
+
         $this->assertEquals(2, $clients->currentPage());
         $this->assertCount(8, $clients->items()); // Should show remaining 8 items on second page
     }
@@ -410,7 +411,7 @@ class ClientTest extends TestCase
             'first_name' => 'John Doe',
             'phone' => '12345678'
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Jane Smith',
@@ -419,11 +420,11 @@ class ClientTest extends TestCase
 
         // Test search functionality
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['search' => 'John']));
-        
+
         $response->assertStatus(200);
         $clients = $response->viewData('clients');
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
-        
+
         // Check if search results contain the searched term
         $found = false;
         foreach ($clients->items() as $client) {
@@ -444,16 +445,16 @@ class ClientTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['search' => 'Test', 'page' => 1]));
-        
+
         $response->assertStatus(200);
         $clients = $response->viewData('clients');
-        
+
         // Check that pagination URLs preserve search parameters
         if ($clients->hasMorePages()) {
             $nextPageUrl = $clients->nextPageUrl();
             $this->assertStringContainsString('search=Test', $nextPageUrl);
         }
-        
+
         if (!$clients->onFirstPage()) {
             $prevPageUrl = $clients->previousPageUrl();
             $this->assertStringContainsString('search=Test', $prevPageUrl);
@@ -463,11 +464,11 @@ class ClientTest extends TestCase
     public function test_empty_search_returns_all_clients_with_pagination()
     {
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['search' => '']));
-        
+
         $response->assertStatus(200);
         $clients = $response->viewData('clients');
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
-        
+
         // Should return all clients when search is empty
         $this->assertEquals(3, $clients->total()); // 3 clients from setUp
     }
@@ -480,7 +481,7 @@ class ClientTest extends TestCase
             'name' => 'Another Agent User',
             'email' => 'another.agent@test.com'
         ]);
-        
+
         $anotherAgent = Agent::factory()->create([
             'branch_id' => $this->branch->id,
             'name' => 'Another Agent',
@@ -488,7 +489,7 @@ class ClientTest extends TestCase
             'account_id' => 1,
             'type_id' => 1
         ]);
-        
+
         // Create 25 clients for the original agent and 25 for the new agent
         Client::factory()->count(25)->create(['agent_id' => $this->agent->id]);
         Client::factory()->count(25)->create(['agent_id' => $anotherAgent->id]);
@@ -496,9 +497,9 @@ class ClientTest extends TestCase
         // Test that agent only sees their own clients in pagination
         $response = $this->actingAs($this->agentUser)->get(route('clients.index'));
         $clients = $response->viewData('clients');
-        
+
         $this->assertEquals(28, $clients->total()); // 25 + 3 from setUp = 28 clients for this agent
-        
+
         // Verify all clients on current page belong to the agent
         foreach ($clients->items() as $client) {
             $this->assertEquals($this->agent->id, $client->agent_id);
@@ -507,7 +508,7 @@ class ClientTest extends TestCase
         // Test admin sees all clients
         $response = $this->actingAs($this->adminUser)->get(route('clients.index'));
         $clients = $response->viewData('clients');
-        
+
         $this->assertEquals(53, $clients->total()); // 28 + 25 = 53 total clients
     }
 
@@ -518,12 +519,12 @@ class ClientTest extends TestCase
             'agent_id' => $this->agent->id,
             'first_name' => 'John Doe'
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Jane Smith'
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Bob Wilson'
@@ -531,18 +532,18 @@ class ClientTest extends TestCase
 
         // Search for specific client
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['search' => 'John']));
-        
+
         $response->assertStatus(200);
         $clients = $response->viewData('clients');
         $fullClients = $response->viewData('fullClients');
-        
+
         // Verify that clients (paginated) is filtered by search
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
-        
+
         // Verify that fullClients contains all clients regardless of search
         $this->assertIsIterable($fullClients);
         $this->assertGreaterThanOrEqual(6, $fullClients->count()); // 3 from setUp + 3 created = 6 clients
-        
+
         // Check that fullClients contains all client names
         $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertContains('John Doe', $fullClientNames);
@@ -558,7 +559,7 @@ class ClientTest extends TestCase
             'name' => 'Another Agent User',
             'email' => 'another.agent@test.com'
         ]);
-        
+
         $anotherAgent = Agent::factory()->create([
             'branch_id' => $this->branch->id,
             'name' => 'Another Agent',
@@ -566,12 +567,12 @@ class ClientTest extends TestCase
             'account_id' => 1,
             'type_id' => 1
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Agent1 Client Search'
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $anotherAgent->id,
             'first_name' => 'Agent2 Client Search'
@@ -579,18 +580,18 @@ class ClientTest extends TestCase
 
         // Test agent user with search
         $response = $this->actingAs($this->agentUser)->get(route('clients.index', ['search' => 'Search']));
-        
+
         $response->assertStatus(200);
         $fullClients = $response->viewData('fullClients');
-        
+
         // Agent should only see their own clients in fullClients, but all of them regardless of search
         $this->assertEquals(4, $fullClients->count()); // 3 from setUp + 1 created for this agent
-        
+
         // All clients in fullClients should belong to the agent
         foreach ($fullClients as $client) {
             $this->assertEquals($this->agent->id, $client->agent_id);
         }
-        
+
         // Verify fullClients contains both searched and non-searched clients for the agent
         $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertContains('Agent1 Client Search', $fullClientNames);
@@ -604,7 +605,7 @@ class ClientTest extends TestCase
             'name' => 'Another Agent User',
             'email' => 'another.agent@test.com'
         ]);
-        
+
         $anotherAgent = Agent::factory()->create([
             'branch_id' => $this->branch->id,
             'name' => 'Another Agent',
@@ -612,12 +613,12 @@ class ClientTest extends TestCase
             'account_id' => 1,
             'type_id' => 1
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Agent1 Searchable Client'
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $anotherAgent->id,
             'first_name' => 'Agent2 Different Client'
@@ -625,22 +626,22 @@ class ClientTest extends TestCase
 
         // Admin searches for specific term
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['search' => 'Searchable']));
-        
+
         $response->assertStatus(200);
         $clients = $response->viewData('clients');
         $fullClients = $response->viewData('fullClients');
-        
+
         // Verify paginated clients are filtered
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
-        
+
         // Verify fullClients contains all clients regardless of search
         $this->assertGreaterThanOrEqual(5, $fullClients->count()); // 3 from setUp + 2 created
-        
+
         // Check that fullClients contains clients from both agents
         $agentIds = $fullClients->pluck('agent_id')->unique()->toArray();
         $this->assertContains($this->agent->id, $agentIds);
         $this->assertContains($anotherAgent->id, $agentIds);
-        
+
         // Check that fullClients contains both searchable and non-searchable clients
         $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertContains('Agent1 Searchable Client', $fullClientNames);
@@ -655,35 +656,35 @@ class ClientTest extends TestCase
             'name' => 'Another Company User',
             'email' => 'another.company@test.com'
         ]);
-        
+
         $anotherCompany = Company::factory()->create([
             'user_id' => $anotherCompanyUser->id
         ]);
-        
+
         $anotherBranchUser = User::factory()->create([
             'role_id' => Role::BRANCH,
             'name' => 'Another Branch User',
             'email' => 'another.branch@test.com'
         ]);
-        
+
         $anotherBranch = Branch::factory()->create([
             'company_id' => $anotherCompany->id,
             'user_id' => $anotherBranchUser->id
         ]);
-        
+
         $anotherAgentUser = User::factory()->create([
             'role_id' => Role::AGENT,
             'name' => 'Another Agent User',
             'email' => 'another.agent2@test.com'
         ]);
-        
+
         $anotherAgent = Agent::factory()->create([
             'branch_id' => $anotherBranch->id,
             'user_id' => $anotherAgentUser->id,
             'account_id' => 1,
             'type_id' => 1
         ]);
-        
+
         Client::factory()->create([
             'agent_id' => $anotherAgent->id,
             'first_name' => 'Other Company Client'
@@ -691,18 +692,18 @@ class ClientTest extends TestCase
 
         // Company user searches for term
         $response = $this->actingAs($this->companyUser)->get(route('clients.index', ['search' => 'Company']));
-        
+
         $response->assertStatus(200);
         $fullClients = $response->viewData('fullClients');
-        
+
         // Company user should only see clients from their company in fullClients
         $this->assertEquals(3, $fullClients->count()); // Only the 3 clients from setUp (their company)
-        
+
         // All clients in fullClients should belong to the company's agents
         foreach ($fullClients as $client) {
             $this->assertEquals($this->company->id, $client->agent->branch->company_id);
         }
-        
+
         // Should not contain clients from other companies
         $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertNotContains('Other Company Client', $fullClientNames);
@@ -716,15 +717,15 @@ class ClientTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)->get(route('clients.index'));
-        
+
         $response->assertStatus(200);
         $clients = $response->viewData('clients');
         $fullClients = $response->viewData('fullClients');
-        
+
         // Verify clients is paginated
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
         $this->assertEquals(20, $clients->perPage());
-        
+
         // Verify fullClients is a collection (not paginated)
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $fullClients);
         $this->assertGreaterThan(20, $fullClients->count()); // Should contain all clients, not just first page
@@ -738,7 +739,7 @@ class ClientTest extends TestCase
             'agent_id' => $this->agent->id,
             'first_name' => 'Parent Client'
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Child Client'
@@ -750,7 +751,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->postJson(route('clients.group.add'), $groupData);
+            ->postJson(route('clients.group.add'), $groupData);
 
         $response->assertStatus(201);
         $response->assertJson([
@@ -776,7 +777,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->postJson(route('clients.group.add'), $groupData);
+            ->postJson(route('clients.group.add'), $groupData);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['child_client_id']);
@@ -794,7 +795,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->postJson(route('clients.group.add'), $groupData);
+            ->postJson(route('clients.group.add'), $groupData);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['child_client_id']);
@@ -805,7 +806,7 @@ class ClientTest extends TestCase
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
@@ -823,7 +824,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->postJson(route('clients.group.add'), $groupData);
+            ->postJson(route('clients.group.add'), $groupData);
 
         $response->assertStatus(409);
         $response->assertJson([
@@ -836,7 +837,7 @@ class ClientTest extends TestCase
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
@@ -859,7 +860,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->postJson(route('clients.group.remove'), $removeData);
+            ->postJson(route('clients.group.remove'), $removeData);
 
         $response->assertStatus(200);
         $response->assertJson([
@@ -878,7 +879,7 @@ class ClientTest extends TestCase
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
@@ -890,7 +891,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->postJson(route('clients.group.remove'), $removeData);
+            ->postJson(route('clients.group.remove'), $removeData);
 
         $response->assertStatus(404);
         $response->assertJson([
@@ -904,12 +905,12 @@ class ClientTest extends TestCase
             'agent_id' => $this->agent->id,
             'first_name' => 'Parent Client'
         ]);
-        
+
         $childClient1 = Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Child Client 1'
         ]);
-        
+
         $childClient2 = Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Child Client 2'
@@ -921,7 +922,7 @@ class ClientTest extends TestCase
             'child_client_id' => $childClient1->id,
             'relation' => 'Son'
         ]);
-        
+
         \App\Models\ClientGroup::create([
             'parent_client_id' => $parentClient->id,
             'child_client_id' => $childClient2->id,
@@ -929,11 +930,11 @@ class ClientTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)
-                         ->getJson(route('clients.sub', $parentClient->id));
+            ->getJson(route('clients.sub', $parentClient->id));
 
         $response->assertStatus(200);
         $responseData = $response->json();
-        
+
         $this->assertCount(2, $responseData);
         $this->assertEquals('Child Client 1', $responseData[0]['client']['first_name']);
         $this->assertEquals('Son', $responseData[0]['relation']);
@@ -947,7 +948,7 @@ class ClientTest extends TestCase
             'agent_id' => $this->agent->id,
             'first_name' => 'Parent Client'
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
             'first_name' => 'Child Client'
@@ -961,11 +962,11 @@ class ClientTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)
-                         ->getJson(route('clients.parent', $childClient->id));
+            ->getJson(route('clients.parent', $childClient->id));
 
         $response->assertStatus(200);
         $responseData = $response->json();
-        
+
         $this->assertCount(1, $responseData);
         $this->assertEquals('Parent Client', $responseData[0]['client']['first_name']);
         $this->assertEquals('Father', $responseData[0]['relation']);
@@ -976,7 +977,7 @@ class ClientTest extends TestCase
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
@@ -994,7 +995,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->putJson(route('clients.group.update', $parentClient->id), $updateData);
+            ->putJson(route('clients.group.update', $parentClient->id), $updateData);
 
         $response->assertStatus(200);
         $response->assertJson([
@@ -1015,7 +1016,7 @@ class ClientTest extends TestCase
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
-        
+
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id
         ]);
@@ -1027,7 +1028,7 @@ class ClientTest extends TestCase
         ];
 
         $response = $this->actingAs($this->adminUser)
-                         ->putJson(route('clients.group.update', $parentClient->id), $updateData);
+            ->putJson(route('clients.group.update', $parentClient->id), $updateData);
 
         $response->assertStatus(404);
         $response->assertJson([
@@ -1045,11 +1046,11 @@ class ClientTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)
-                         ->getJson(route('clients.details', $client->id));
+            ->getJson(route('clients.details', $client->id));
 
         $response->assertStatus(200);
         $responseData = $response->json();
-        
+
         $this->assertEquals($client->id, $responseData['id']);
         $this->assertEquals('Test Client Details', $responseData['first_name']);
         $this->assertEquals('details@test.com', $responseData['email']);
@@ -1058,7 +1059,7 @@ class ClientTest extends TestCase
     public function test_get_nonexistent_client_details()
     {
         $response = $this->actingAs($this->adminUser)
-                         ->getJson(route('clients.details', 999999));
+            ->getJson(route('clients.details', 999999));
 
         $response->assertStatus(404);
         $response->assertJson([

@@ -25,16 +25,15 @@ class PaymentMethodController extends Controller
 
         $user = Auth::user();
 
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $companyId = $request->company_id ?? 1;
-        } else if ($user->role_id == Role::COMPANY){
+        } else if ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
-
-        } else if ($user->role_id == Role::BRANCH){
+        } else if ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company_id;
-        } else if ($user->role_id == Role::AGENT){
+        } else if ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company_id;
-        } else if ($user->role_id == Role::ACCOUNTANT){
+        } else if ($user->role_id == Role::ACCOUNTANT) {
             $companyId = $user->accountant->branch->company_id;
         } else {
             abort(403, 'Unauthorized action.');
@@ -138,13 +137,14 @@ class PaymentMethodController extends Controller
     {
         Gate::authorize('managePaymentMethodGroup', PaymentMethod::class);
 
-        $request->validate([
-            'company_id' => 'required|integer|exists:companies,id',
-        ]);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        $companyId = $request->company_id;
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'No company selected.');
+        }
+
         $saved = 0;
-        $errors = [];
 
         DB::beginTransaction();
         try {

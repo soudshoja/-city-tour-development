@@ -577,15 +577,13 @@
         </div>
     </div>
 
-    <div class="tableCon">
-        <div class="content-70">
-            <div class="panel oxShadow rounded-lg">
+            <div class="panel rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
                     <x-search
                         :action="route('tasks.index')"
                         searchParam="q"
                         placeholder="Quick search for tasks" />
-                    <!-- Place this beside the Filters button -->
+
                     <label class="flex items-center gap-2 cursor-pointer select-none">
                         <input type="checkbox" id="showVoidCheckbox"
                             class="sr-only peer"
@@ -664,12 +662,10 @@
                                     <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                     <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
                                 </div>
-                                @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                     <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
                                 </div>
-                                @endif
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                     <label for="col-price" class="text-sm text-gray-700">Price</label>
@@ -771,8 +767,7 @@
                     </div>
                 </div>
 
-                <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
-                    <div class="dataTable-top"></div>
+                <div class="dataTable-wrapper">
                     <div class="w-full flex m-2 ">
                         @php
                         $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
@@ -805,8 +800,8 @@
                         </form>
                     </div>
                     <div x-data="{ shown: 15 }">
-                        <div class="dataTable-container h-max">
-                            <div class="table-container">
+                        <div class="dataTable-wrapper">
+                            <div class="dataTable-container h-max">
                                 <div x-data="{
                                     showUploadForm: false,
                                     showManualForm: false,
@@ -975,7 +970,7 @@
                                         this.updateFloatingActions();
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-                                    <table id="myTable" class="whitespace-nowrap dataTable-table">
+                                    <table class="table-hover whitespace-nowrap dataTable-table">
                                         <thead>
                                             <tr>
                                                 <th data-column="actions">
@@ -990,11 +985,9 @@
                                                 <th data-column="passenger-name">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
                                                 </th>
-                                                @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
                                                 <th data-column="agent-name">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
                                                 </th>
-                                                @endif
                                                 @can('viewPrice', 'App\Models\Task')
                                                 <th data-column="price">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
@@ -1602,11 +1595,9 @@
                                                         @endif
                                                     </div>
                                                 </td>
-                                                @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
                                                 <td data-column="agent-name" class="p-3 text-sm text-center font-semibold text-gray-500">
                                                     {{ $task->agent->name ?? 'Not Set' }}
                                                 </td>
-                                                @endif
                                                 @can('viewPrice', 'App\Models\Task')
                                                 <td data-column="price" class="p-3 text-sm text-center font-semibold DarkBTextcolor dark:text-gray-300">
                                                     {{ $task->total ?? '-' }}
@@ -2088,12 +2079,6 @@
                     </div>
                 </div>
             </div>
-            <div class="content-30 hidden" id="showRightDiv">
-                <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div>
-            </div>
-        </div>
-    </div>
-    <!-- Task View Modal -->
     <div x-data="{ 
         showTaskModal: false, 
         showTaxPopup: false,

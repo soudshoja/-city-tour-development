@@ -3,7 +3,7 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
     </div>
 
-    <div x-show="loaded">
+    <div x-show="loaded" x-cloak>
         <div class="mb-6">
             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Payment Settings</h2>
             <p class="text-sm text-gray-500 mt-1">Configure default payment settings</p>
@@ -32,7 +32,6 @@
             init() {
                 window.addEventListener('payment-tab-loaded', () => {
                     this.getSettings();
-                    this.loaded = true;
                 });
             },
 
@@ -54,6 +53,9 @@
                     this.paymentWhatsappSetting = data.settings['payment_whatsapp_notification'] || false;
                 } catch (error) {
                     console.error('Error fetching settings:', error);
+                } finally {
+                    // Set loaded to true AFTER settings are fetched
+                    this.loaded = true;
                 }
             },
 
@@ -70,19 +72,16 @@
                             key: key,
                             value: value
                         }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        // console.log('Setting updated successfully:', data);
-                        const customSuccessAlert = document.getElementById('custom-success-ajax-alert');
-                        if (customSuccessAlert) {
-                            customSuccessAlert.classList.remove('hidden');
-                            const successMsg = customSuccessAlert.querySelector('p');
-                            if (successMsg) successMsg.innerHTML = 'WhatsApp notification setting updated successfully';
-                        }
-                        setTimeout(() => customSuccessAlert.classList.add('hidden'), 3000);
                     });
 
+                    const data = await response.json();
+                    const customSuccessAlert = document.getElementById('custom-success-ajax-alert');
+                    if (customSuccessAlert) {
+                        customSuccessAlert.classList.remove('hidden');
+                        const successMsg = customSuccessAlert.querySelector('p');
+                        if (successMsg) successMsg.innerHTML = 'WhatsApp notification setting updated successfully';
+                        setTimeout(() => customSuccessAlert.classList.add('hidden'), 3000);
+                    }
                 } catch (error) {
                     console.error('Error updating setting:', error);
                 }

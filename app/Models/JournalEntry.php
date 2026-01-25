@@ -63,7 +63,7 @@ class JournalEntry extends Model
     //         // Log::info('Creating Journal Entry for Account ID: ' . $journalEntry->account_id);
     //         // Log::info('Account Details: ', $account->toArray());
     //         // Log::infO('Account Children'. json_encode($account->children()->get()));
-            
+
     //         if ($account && $account->children()->exists()) {
 
     //             Log::error('Attempt to create journal entry for an account with child accounts.', [
@@ -79,17 +79,22 @@ class JournalEntry extends Model
     // Define the relationship to the Invoice model
     public function account()
     {
-        return $this->belongsTo(Account::class,'account_id');
+        return $this->belongsTo(Account::class, 'account_id');
     }
-    
+
+    public function referenceAccount()
+    {
+        return $this->belongsTo(Account::class, 'type_reference_id');
+    }
+
     public function invoice()
     {
-        return $this->belongsTo(Invoice::class,'invoice_id');
+        return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
     public function invoiceDetail()
     {
-        return $this->belongsTo(InvoiceDetail::class,'invoice_detail_id');
+        return $this->belongsTo(InvoiceDetail::class, 'invoice_detail_id');
     }
 
     public function task()
@@ -99,19 +104,19 @@ class JournalEntry extends Model
 
     public function transaction()
     {
-        return $this->belongsTo(Transaction::class,'transaction_id');
+        return $this->belongsTo(Transaction::class, 'transaction_id');
     }
 
     public function branch()
     {
         return $this->belongsTo(Branch::class, 'branch_id');
-    } 
+    }
 
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id');
-    } 
-  
+    }
+
     public function agent()
     {
         return $this->hasOneThrough(
@@ -122,7 +127,5 @@ class JournalEntry extends Model
             'task_id',
             'agent_id'
         );
-
     }
-
 }

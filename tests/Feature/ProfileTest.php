@@ -32,6 +32,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the admin role first
         $adminRole = Role::create([
@@ -66,6 +67,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the admin role first
         $adminRole = Role::create([
@@ -111,6 +113,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the admin role first
         $adminRole = Role::create([
@@ -152,6 +155,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the admin role first
         $adminRole = Role::create([
@@ -193,6 +197,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the admin role first
         $adminRole = Role::create([
@@ -236,6 +241,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the company role
         $companyRole = Role::create([
@@ -301,6 +307,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         $companyRole = Role::create([
             'name' => 'company',
@@ -392,6 +399,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         $companyRole = Role::create([
             'name' => 'company',
@@ -486,6 +494,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create a company role
         $companyRole = Role::create([
@@ -532,6 +541,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the company role
         $companyRole = Role::create([
@@ -593,6 +603,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the company role
         $companyRole = Role::create([
@@ -659,6 +670,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the admin role first
         $adminRole = Role::create([
@@ -707,6 +719,7 @@ class ProfileTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create the company role
         $companyRole = Role::create([

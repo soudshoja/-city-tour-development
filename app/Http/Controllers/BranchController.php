@@ -20,45 +20,50 @@ use Illuminate\Support\Facades\Log;
 class BranchController extends Controller
 {
     use AuthorizesRequests;
-    // Display a listing of the branches
-    public function index()
+
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', Branch::class);
 
         $user = Auth::user();
+        $query = $request->get('q');
+
+        $companyId = getCompanyId($user);
 
         if ($user->role_id == Role::BRANCH) {
-
+            $branch = $user->branch;
             return view('branches.index', compact('branch'));
-        } else {
-            if ($user->role_id == Role::ADMIN) {
-                $branches = Branch::all();
-            } elseif ($user->role_id == Role::COMPANY) {
-                // Get agents belonging to the company
-                $branches = Branch::where('company_id', $user->company->id)->get();
-            }
-
-            $branchesCount = $branches->count();
-
-            return view('branches.list', compact('branches', 'branchesCount'));
         }
-    }
 
+        $branchesQuery = Branch::with('company');
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $branchesQuery->where('company_id', $companyId);
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $branchesQuery->where('company_id', $companyId);
+        }
+
+        if ($query) {
+            $branchesQuery->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%");
+            });
+        }
+
+        $branches = $branchesQuery->paginate(20)->withQueryString();
+
+        return view('branches.list', compact('branches'));
+    }
 
     // Display the specified branch
     public function show($id)
     {
-        $branch = Branch::findOrFail($id);
-        if (!$branch) {
-            return response()->json(['error' => 'branch not found'], 404);
-        }
+        $branch = Branch::with(['company', 'agents.agentType'])->findOrFail($id);
 
-        return response()->json([
-            'id' => $branch->id,
-            'name' => $branch->name,
-            'email' => $branch->email,
-            'phone' => $branch->phone,
-        ]);
+        return view('branches.show', compact('branch'));
     }
 
     // Show the form to create a new branch
@@ -80,7 +85,7 @@ class BranchController extends Controller
             'user_id' => 'required|integer|exists:users,id',
             'company_id' => 'required|integer|exists:companies,id',
         ]);
-        
+
         DB::beginTransaction();
 
         try {
@@ -147,10 +152,8 @@ class BranchController extends Controller
                 'message' => 'Branch created successfully',
                 'data' => $branch,
             ], 201);
-
-
         } catch (Exception $e) {
-            DB::rollBack(); 
+            DB::rollBack();
             logger('Branch creation failed with error: ' . $e->getMessage());
 
             return response()->json([
@@ -159,5 +162,37 @@ class BranchController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function edit($id)
+    {
+        $branch = Branch::with('company')->findOrFail($id);
+        $companies = Company::orderBy('name')->get();
+
+        return view('branches.edit', compact('branch', 'companies'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'company_id' => 'required|exists:companies,id',
+            'gds_office_id' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        $branch = Branch::findOrFail($id);
+        $branch->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'company_id' => $request->company_id,
+            'gds_office_id' => $request->gds_office_id,
+            'address' => $request->address,
+        ]);
+
+        return redirect()->route('branches.index')->with('success', 'Branch updated successfully');
     }
 }

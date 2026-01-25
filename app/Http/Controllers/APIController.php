@@ -139,24 +139,33 @@ class APIController extends Controller
     public function getClient(Request $request)
     {
         $request->validate([
-            'client_name' => 'required|string',
+            'client_name' => 'nullable|string',
         ]);
 
-        $searchName = $request->client_name;
+        $query = Client::query();
 
-        $clients = Client::where(function ($query) use ($searchName) {
-            $query->where('name', 'LIKE', "%{$searchName}%")
-                ->orWhere('first_name', 'LIKE', "%{$searchName}%")
-                ->orWhere('middle_name', 'LIKE', "%{$searchName}%")
-                ->orWhere('last_name', 'LIKE', "%{$searchName}%")
-                ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$searchName}%"])
-                ->orWhereRaw("CONCAT(first_name, ' ', middle_name, ' ', last_name) LIKE ?", ["%{$searchName}%"]);
-        })->get();
+        // If search term provided, filter by name
+        if ($request->filled('client_name')) {
+            $searchName = $request->client_name;
+            
+            $query->where(function ($q) use ($searchName) {
+                $q->where('name', 'LIKE', "%{$searchName}%")
+                    ->orWhere('first_name', 'LIKE', "%{$searchName}%")
+                    ->orWhere('middle_name', 'LIKE', "%{$searchName}%")
+                    ->orWhere('last_name', 'LIKE', "%{$searchName}%")
+                    ->orWhereRaw("CONCAT_WS(' ', first_name, last_name) LIKE ?", ["%{$searchName}%"])
+                    ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$searchName}%"]);
+            });
+        }
+
+        $clients = $query->get();
 
         if ($clients->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => "No client found with name '{$request->client_name}'",
+                'message' => $request->filled('client_name') 
+                    ? "No client found with name '{$request->client_name}'"
+                    : "No clients found",
             ], 422);
         }
 
@@ -168,10 +177,20 @@ class APIController extends Controller
     public function getAgent(Request $request)
     {
         $request->validate([
-            'agent_name' => 'required|string',
+            'agent_name' => 'nullable|string',
         ]);
 
-        $agents = Agent::where('name', 'LIKE', "%{$request->agent_name}%")->get();
+        $query = Agent::query();
+
+        if ($request->filled('agent_name')) {
+            $searchName = $request->agent_name;
+
+            $query->where(function ($q) use ($searchName) {
+                $q->where('name', 'LIKE', "%{$searchName}%");
+            });
+        }
+
+        $agents = $query->get();
 
         if ($agents->isEmpty()) {
             return response()->json([
@@ -188,10 +207,20 @@ class APIController extends Controller
     public function getCompany(Request $request)
     {
         $request->validate([
-            'company_name' => 'required|string',
+            'company_name' => 'nullable|string',
         ]);
 
-        $companies = Company::where('name', 'LIKE', "%{$request->company_name}%")->get();
+        $query = Company::query();
+
+        if ($request->filled('company_name')) {
+            $searchName = $request->company_name;
+            
+            $query->where(function ($q) use ($searchName) {
+                $q->where('name', 'LIKE', "%{$searchName}%")->get();
+            });
+        }
+
+        $companies = $query->get();
 
         if ($companies->isEmpty()) {
             return response()->json([
@@ -208,10 +237,20 @@ class APIController extends Controller
     public function getSupplier(Request $request)
     {
         $request->validate([
-            'supplier_name' => 'required|string',
+            'supplier_name' => 'nullable|string',
         ]);
 
-        $suppliers = Supplier::where('name', 'LIKE', "%{$request->supplier_name}%")->get();
+        $query = Supplier::query();
+
+        if ($request->filled('supplier_name')) {
+            $searchName = $request->supplier_name;
+            
+            $query->where(function ($q) use ($searchName) {
+                $q->where('name', 'LIKE', "%{$searchName}%")->get();
+            });
+        }
+
+        $suppliers = $query->get();
 
         if ($suppliers->isEmpty()) {
             return response()->json([
@@ -228,7 +267,7 @@ class APIController extends Controller
     public function getCountry(Request $request)
     {
         $request->validate([
-            'country_name' => 'required|string',
+            'country_name' => 'nullable|string',
         ]);
 
         $countries = Country::where('name', 'LIKE', "%{$request->country_name}%")->get();
@@ -248,7 +287,7 @@ class APIController extends Controller
     public function getHotel(Request $request)
     {
         $request->validate([
-            'hotel_name' => 'required|string',
+            'hotel_name' => 'nullable|string',
         ]);
 
         $hotels = Hotel::where('name', 'LIKE', "%{$request->hotel_name}%")->get();
@@ -264,5 +303,4 @@ class APIController extends Controller
             'hotels' => $hotels,
         ]);
     }
-
 }

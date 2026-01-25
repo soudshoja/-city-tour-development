@@ -58,6 +58,7 @@ use iio\libmergepdf\Driver\Fpdi2Driver;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 use SebastianBergmann\Type\TrueType;
 
 class TaskController extends Controller

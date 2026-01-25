@@ -103,6 +103,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create agent role
         $agentRole = Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id ]);
@@ -151,6 +152,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create company role
         $companyRole = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -302,6 +304,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create admin role and user
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -335,6 +338,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create admin role and user
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -376,6 +380,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create admin role and user
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -411,6 +416,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create admin role and user
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -447,6 +453,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create admin role and user
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -473,6 +480,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create agent role and user
         $agentRole = Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
@@ -517,6 +525,7 @@ class NotificationTest extends TestCase
             'status' => 1,
             'user_id' => $this->companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create company role and user
         $companyRole = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);

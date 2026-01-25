@@ -44,6 +44,7 @@ class AgentTest extends TestCase
         $this->company = Company::factory()->create([
             'user_id' => $companyUser->id
         ]);
+        session(['company_id' => $this->company->id]);
 
         // Create user for branch
         $branchUser = User::factory()->create([

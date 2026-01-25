@@ -783,6 +783,17 @@ Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, '
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
+Route::get('/docs/developer', function () {
+    return view('docs.developer-documentation');
+})->name('docs.developer-documentation');
+Route::get('/docs/postman/download', function () {
+    $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
+    if (!file_exists($filePath)) {
+        abort(404, 'Postman collection file not found');
+    }
+    return response()->download($filePath, 'Task_Webhook_API.postman_collection.json');
+})->name('docs.postman.download');
+
 
 
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');

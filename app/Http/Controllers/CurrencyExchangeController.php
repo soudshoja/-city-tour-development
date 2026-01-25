@@ -17,6 +17,8 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use App\Models\Currency;
+use RuntimeException;
+use Throwable;
 
 class CurrencyExchangeController extends Controller
 {

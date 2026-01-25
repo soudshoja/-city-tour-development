@@ -125,6 +125,7 @@ class TaskTest extends TestCase
             'user_id' => $this->companyUser->id,
             'country_id' => $this->country->id,
         ]);
+        session(['company_id' => $this->company->id]);
 
         $this->companyUser->assignRole('company');
 

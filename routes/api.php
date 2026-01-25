@@ -11,10 +11,13 @@ use App\Http\Controllers\IncomingMediaController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CurrencyExchangeController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
+use App\http\Controllers\APIController;
 use App\Services\MagicHolidayService;
+use App\Http\Webhooks\TaskWebhook;
 
 Route::post('/login2', [MobileController::class, 'login2']);
 Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -147,11 +150,28 @@ Route::group([
 
 Route::post('/find-agent', [TaskController::class, 'findAgent']);
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
+Route::post('/task/webhook', [TaskWebhook::class, 'webhook'])->name('task.webhook');
 
 // Payment API routes for lazy-loaded content
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/{id}/partials', [PaymentController::class, 'getPartials']);
     Route::get('/payments/{id}/transactions', [PaymentController::class, 'getTransactions']);
+});
+
+Route::post('/get-client', [APIController::class, 'getClient']);
+Route::post('/get-task-structure', [APIController::class, 'getTaskStructure']);
+Route::post('/get-agent', [APIController::class, 'getAgent']);
+Route::post('/get-company', [APIController::class, 'getCompany']);
+Route::post('/get-supplier', [APIController::class, 'getSupplier']);
+Route::post('/get-country', [APIController::class, 'getCountry']);
+Route::post('/get-hotel', [APIController::class, 'getHotel']);
+
+Route::group([
+    'prefix' => 'currency-exchange',
+    'as' => 'currency-exchange.',
+], function(){
+    Route::get('/latest', [CurrencyExchangeController::class, 'getLatestRates'])->name('latest');
+    Route::post('/convert', [CurrencyExchangeController::class, 'convertCurrency'])->name('convert');
 });
 
 require __DIR__ . '/auth.php';

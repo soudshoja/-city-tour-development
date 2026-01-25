@@ -2,87 +2,141 @@
     <div class="container mx-auto p-4">
 
         <div id="payables" class="tab-content">
-            <div class="text-center font-bold text-2xl mb-4">
+            <div class="text-center font-bold text-2xl mb-6">
                 <h1>Payable Details</h1>
             </div>
 
-            <!-- Search and Payables Table -->
-            <div class="grid grid-cols-12 gap-4">
-                <!-- Search Payables Section -->
-                <div class="col-span-12 sm:col-span-6 bg-gray-100 p-4 rounded-md shadow-md">
-                    <h2 class="text-lg font-semibold mb-2">LIST OF PAYABLES RECORD</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        List of Payables Record
+                    </h2>
 
-                    <!-- Collapsible Filters -->
-                    <div class="max-h-[500px] overflow-y-auto border border-gray-300 rounded-md p-2">
+                    <div class="max-h-[600px] overflow-y-auto overflow-x-auto border border-gray-200 dark:border-gray-600 rounded-lg">
                         @if ($JournalEntrysPayable->isNotEmpty())
                             @foreach ($JournalEntrysPayable as $type => $ledgers)
-                                <h2 class="text-lg font-bold mt-4 text-red-600">{{ ucfirst($type) }}</h2>
-                                <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
-                                    <thead>
-                                        <tr class="border-b bg-gray-200">
-                                            <th width="45%" class="text-left py-2 px-2">Description</th>
-                                            <th width="13%" class="text-left py-2 px-2">Debit</th>
-                                            <th width="13%" class="text-right py-2 px-2">Credit</th>
-                                            <th width="13%" class="text-right py-2 px-2">Balance</th>
-                                            <th width="26%" class="text-right py-2 px-2">Supplier</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($ledgers as $ledger)
-                                            <tr class="border-b hover:bg-gray-100">
-                                                <td class="py-2 px-2">
-                                                    <small>{{ $ledger->transaction_date }}</small>
-                                                    <p>{{ $ledger->description }}</p>
-                                                    <p>Ref:
-                                                        {{ !empty($ledger->type_reference_id) ? $ledger->type_reference_id : $ledger->invoice->invoice_number ?? '' }}
-                                                        @if ($ledger->invoice && $ledger->invoice->invoice_number)
-                                                            <a target="_blank"
-                                                                href="{{ route('invoice.show', ['companyId' => $ledger->company_id, 'invoiceNumber' => $ledger->invoice->invoice_number]) }}"
-                                                                class="text-blue-500 ml-0">
-                                                                🔍
-                                                            </a>
+                                <div class="sticky top-0 bg-red-50 dark:bg-red-900/30 px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+                                    <h3 class="text-md font-bold text-red-600 dark:text-red-400">{{ ucfirst($type) }}</h3>
+                                </div>
+
+                                <div class="hidden sm:block">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-gray-50 dark:bg-gray-700 sticky top-10">
+                                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                                <th width="40%" class="text-left py-3 px-3 font-medium text-gray-600 dark:text-gray-300">Description</th>
+                                                <th width="12%" class="text-right py-3 px-3 font-medium text-gray-600 dark:text-gray-300">Debit</th>
+                                                <th width="12%" class="text-right py-3 px-3 font-medium text-gray-600 dark:text-gray-300">Credit</th>
+                                                <th width="12%" class="text-right py-3 px-3 font-medium text-gray-600 dark:text-gray-300">Balance</th>
+                                                <th width="24%" class="text-right py-3 px-3 font-medium text-gray-600 dark:text-gray-300">Supplier</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                            @foreach ($ledgers as $ledger)
+                                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                                    <td class="py-3 px-3">
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $ledger->transaction_date }}</p>
+                                                        <p class="text-sm text-gray-800 dark:text-gray-200 mt-1">{{ $ledger->description }}</p>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                            Ref: 
+                                                            @if (!empty($ledger->type_reference_id))
+                                                                <span class="text-blue-600 dark:text-blue-400">{{ $ledger->referenceAccount->name ?? 'N/A' }}</span>
+                                                            @elseif ($ledger->invoice && $ledger->invoice->invoice_number)
+                                                                <span class="text-blue-600 dark:text-blue-400">{{ $ledger->invoice->invoice_number }}</span>
+                                                                <a target="_blank"
+                                                                    href="{{ route('invoice.show', ['companyId' => $ledger->company_id, 'invoiceNumber' => $ledger->invoice->invoice_number]) }}"
+                                                                    class="text-blue-500 hover:text-blue-700 ml-1">🔍</a>
+                                                            @else
+                                                                <span class="text-gray-400">N/A</span>
+                                                            @endif
+                                                        </p>
+                                                    </td>
+                                                    <td class="py-3 px-3 text-right text-red-600 dark:text-red-400 font-medium">
+                                                        {{ number_format($ledger->debit, 2) }}
+                                                    </td>
+                                                    <td class="py-3 px-3 text-right text-green-600 dark:text-green-400 font-medium">
+                                                        {{ number_format($ledger->credit, 2) }}
+                                                    </td>
+                                                    <td class="py-3 px-3 text-right font-bold text-gray-800 dark:text-gray-200">
+                                                        @if ($ledger->balance > 0)
+                                                            -{{ number_format($ledger->balance, 2) }}
+                                                        @elseif ($ledger->balance < 0)
+                                                            {{ number_format(abs($ledger->balance), 2) }}
+                                                        @else
+                                                            {{ number_format($ledger->balance, 2) }}
+                                                        @endif
+                                                    </td>
+                                                    <td class="py-3 px-3 text-right text-gray-600 dark:text-gray-400">
+                                                        {{ $ledger->name ?? 'N/A' }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="sm:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                                    @foreach ($ledgers as $ledger)
+                                        <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $ledger->transaction_date }}</p>
+                                            <p class="text-sm text-gray-800 dark:text-gray-200 mt-1">{{ $ledger->description }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Ref: 
+                                                @if (!empty($ledger->type_reference_id))
+                                                    <span class="text-blue-600">{{ $ledger->referenceAccount->name ?? 'N/A' }}</span>
+                                                @elseif ($ledger->invoice && $ledger->invoice->invoice_number)
+                                                    <span class="text-blue-600">{{ $ledger->invoice->invoice_number }}</span>
+                                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => $ledger->company_id, 'invoiceNumber' => $ledger->invoice->invoice_number]) }}" class="text-blue-500 ml-1">🔍</a>
+                                                @else
+                                                    <span class="text-gray-400">N/A</span>
+                                                @endif
+                                            </p>
+                                            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                <div class="flex gap-4 text-sm">
+                                                    <span class="text-red-600 font-medium">D: {{ number_format($ledger->debit, 2) }}</span>
+                                                    <span class="text-green-600 font-medium">C: {{ number_format($ledger->credit, 2) }}</span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <p class="font-bold text-gray-800 dark:text-gray-200">
+                                                        @if ($ledger->balance > 0)
+                                                            -{{ number_format($ledger->balance, 2) }}
+                                                        @elseif ($ledger->balance < 0)
+                                                            {{ number_format(abs($ledger->balance), 2) }}
+                                                        @else
+                                                            {{ number_format($ledger->balance, 2) }}
                                                         @endif
                                                     </p>
-                                                </td>
-                                                <td class="py-2 px-2 text-red-600">
-                                                    {{ number_format($ledger->debit, 2) }}
-                                                </td>
-                                                <td class="py-2 px-2 text-right text-green-600">
-                                                    {{ number_format($ledger->credit, 2) }}</td>
-                                                <td class="py-2 px-2 text-right font-bold">
-                                                    @if ($ledger->balance > 0)
-                                                        -{{ number_format($ledger->balance, 2) }}
-                                                    @elseif ($ledger->balance < 0)
-                                                        {{ number_format(abs($ledger->balance), 2) }}
-                                                    @else
-                                                        {{ number_format($ledger->balance, 2) }}
-                                                    @endif
-                                                </td>
-                                                <td class="py-2 px-2 text-right">{{ $ledger->name ?? 'N/A' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
+                                                    <p class="text-xs text-gray-500">{{ $ledger->name ?? 'N/A' }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
                             @endforeach
                         @else
-                            <p class="text-red-500">No transactions found.</p>
+                            <div class="p-8 text-center">
+                                <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2">No transactions found.</p>
+                            </div>
                         @endif
                     </div>
-
-
                 </div>
 
-                <!-- Payable Details Section -->
-                <div class="col-span-12 sm:col-span-6 bg-gray-100 p-4 rounded-md shadow-md">
-                    <h2 class="text-lg font-semibold mb-2">ADD PAYABLE RECORD</h2>
-
-                    @if (session('success'))
-                        <div class="mb-4 p-3 text-green-800 bg-green-200 rounded">{{ session('success') }}</div>
-                    @endif
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 h-fit">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Payable Record
+                    </h2>
 
                     @if ($errors->any())
-                        <div class="mb-4 p-3 text-red-800 bg-red-200 rounded">
-                            <ul>
+                        <div class="mb-4 p-4 text-red-800 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-lg">
+                            <ul class="list-disc list-inside space-y-1">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
                                 @endforeach
@@ -90,215 +144,103 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('payable-details.payable-store') }}" method="POST">
+                    <form action="{{ route('payable-details.payable-store') }}" method="POST" class="space-y-6">
                         @csrf
+                        <input type="hidden" name="company_id" value="{{ $companyId }}">
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Company Name -->
+                        <div>
+                            <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                Branch Name <span class="text-red-500">*</span>
+                            </label>
+                            <x-searchable-dropdown
+                                name="branch_id"
+                                :items="$branches->map(fn($b) => [
+                                    'id' => $b->id,
+                                    'name' => $b->name . ($b->address ? ' (' . $b->address . ')' : '')
+                                ])->values()"
+                                :selectedId="null"
+                                placeholder="Select Branch" />
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                Supplier Account <span class="text-red-500">*</span>
+                            </label>
+                            <x-searchable-dropdown
+                                name="account_id"
+                                :items="$accounts->map(fn($a) => ['id' => $a->id, 'name' => $a->name . ' (Level ' . $a->level . ')'])->values()"
+                                :selectedId="null"
+                                placeholder="Search Account" />
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                Bank Account <span class="text-red-500">*</span>
+                            </label>
+                            <x-searchable-dropdown
+                                name="bank_account"
+                                :items="$bankAccounts->map(fn($b) => ['id' => $b->id, 'name' => $b->name])->values()"
+                                :selectedId="null"
+                                placeholder="Select Bank Account" />
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                Transaction Date <span class="text-red-500">*</span>
+                            </label>
+                            <input type="datetime-local" name="transaction_date"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
+                                required>
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                Description <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" name="description" placeholder="Enter payment description"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
+                                required>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block font-medium text-sm">Company Name</label>
-                                @if (auth()->user()->role_id == 1)
-                                    <select id="company_id_payable" name="company_id" class="w-full p-2 border rounded">
-                                        <option selected value="">Select Company</option>
-                                        @foreach ($companies as $company)
-                                            <option value="{{ $company->id }}">{{ $company->name }}</option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    <input type="hidden" id="company_id_payable" name="company_id"
-                                        value="{{ auth()->user()->company->id ?? auth()->user()->accountant->branch->company->id }}">
-                                    <input type="text" class="w-full p-2 border rounded bg-gray-100"
-                                        value="{{ auth()->user()->company->name ?? auth()->user()->accountant->branch->company->id }}" readonly>
-                                @endif
+                                <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                    Amount (KWD) <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">KWD</span>
+                                    <input type="number" step="0.001" value="0.000" name="amount"
+                                        class="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-12 pr-3 py-2.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
+                                        required>
+                                </div>
                             </div>
 
-
-                            <!-- Branch Name -->
                             <div>
-                                <label class="block font-medium text-sm">Branch Name</label>
-                                <select id="branch_id_payable" name="branch_id" class="w-full p-2 border rounded">
-                                    <option value="">Select Branch</option>
-                                </select>
-                            </div>
-
-                            <!-- Account Name -->
-                            <div>
-                                <label class="block font-medium text-sm">Supplier Account Name</label>
-                                <select id="account_id_payable" name="account_id" class="w-full p-2 border rounded">
-                                    <option value="">Select Account</option>
-                                </select>
-                            </div>
-
-
-                            {{-- <!-- Supplier Name -->
-                            <div>
-                                <label class="block font-medium text-sm">Supplier Name</label>
-                                <select id="supplier_id_payable" name="name" class="w-full p-2 border rounded">
-                                    <option value="">Select Supplier</option>
-                                </select>
-                            </div> --}}
-
-                            <!-- Bank Account -->
-                            <div>
-                                <label class="block font-medium text-sm">Company's Bank Account</label>
-                                <select required id="bank_account_id_payable" name="bank_account"
-                                    class="w-full p-2 border rounded">
-                                    <option value="">Select Bank Account</option>
-                                </select>
-                            </div>
-
-                            <!-- Transaction Date -->
-                            <div>
-                                <label class="block font-medium text-sm">Transaction Date</label>
-                                <input type="datetime-local" name="transaction_date" class="w-full p-2 border rounded"
-                                    required>
-                            </div>
-
-                            <!-- Description -->
-                            <div class="col-span-2">
-                                <label class="block font-medium text-sm">Description</label>
-                                <input type="text" name="description" class="w-full p-2 border rounded" required>
-                            </div>
-
-                            <!-- Debit/ Credit -->
-                            <div>
-                                <label class="block font-medium text-sm">Amount</label>
-                                <input required type="number" step="0.01" value="0.00" name="amount"
-                                    class="w-full p-2 border rounded">
-                            </div>
-
-                            <!-- Type -->
-                            <div>
-                                <label class="block font-medium text-sm">Type</label>
-                                <select name="type" class="w-full p-2 border rounded">
-                                    <option value="payable">Payable</option>
-                                    <option value="expenses">Expenses</option>
-                                </select>
+                                <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                                    Type <span class="text-red-500">*</span>
+                                </label>
+                                <x-searchable-dropdown
+                                    name="type"
+                                    :items="collect([
+                                        ['id' => 'payable', 'name' => 'Payable'],
+                                        ['id' => 'expenses', 'name' => 'Expenses']
+                                    ])"
+                                    selectedId="payable"
+                                    selectedName="Payable"
+                                    placeholder="Select Type" />
                             </div>
                         </div>
 
-                        <button type="submit"
-                            class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded">
-                            Submit
+                        <button type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Submit Payable Record
                         </button>
                     </form>
-
                 </div>
             </div>
         </div>
     </div>
-
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            function setupAccountDropdownPayable(companySelectId, accountSelectId, branchSelectId,
-                bankAccountSelectId, userRole, userCompanyId) {
-                const companySelect = document.getElementById(companySelectId);
-                const accountSelect = document.getElementById(accountSelectId);
-                const branchSelect = document.getElementById(branchSelectId);
-                const bankAccountSelect = document.getElementById(bankAccountSelectId);
-
-                // If user is NOT an admin, set company and disable dropdown
-                if (userRole !== '1') {
-                    companySelect.value = userCompanyId;
-                    companySelect.disabled = true;
-                    fetchData(userCompanyId);
-                }
-
-                companySelect.addEventListener("change", function() {
-                    if (userRole === '1') {
-                        fetchData(this.value);
-                    }
-                });
-
-                function fetchData(companyId) {
-                    if (!companyId) return;
-
-                    accountSelect.innerHTML = '<option value="">Loading...</option>';
-                    branchSelect.innerHTML = '<option value="">Loading...</option>';
-                    bankAccountSelect.innerHTML = '<option value="">Loading...</option>';
-
-                    // Fetch accounts
-                    fetch(`{{ route('get.accounts.by.company.payable') }}?company_id=${companyId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            accountSelect.innerHTML = '<option value="">Select Account</option>';
-                            if (data.accounts && Array.isArray(data.accounts)) {
-                                data.accounts.forEach(account => {
-                                    const option = document.createElement("option");
-                                    option.value = account.id;
-                                    option.textContent = `${account.name} (Level ${account.level})`;
-                                    accountSelect.appendChild(option);
-                                });
-                            } else {
-                                accountSelect.innerHTML = '<option value="">No accounts found</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Fetch Error (Accounts):", error);
-                            accountSelect.innerHTML = '<option value="">Error loading accounts</option>';
-                        });
-
-                    // Fetch branches
-                    fetch(`{{ route('get.branches.by.company') }}?company_id=${companyId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            branchSelect.innerHTML = '<option value="">Select Branch</option>';
-                            if (data.branches && Array.isArray(data.branches)) {
-                                data.branches.forEach(branch => {
-                                    const option = document.createElement("option");
-                                    option.value = branch.id;
-                                    option.textContent = branch.address ?
-                                        `${branch.name} (${branch.address})` : branch.name;
-                                    branchSelect.appendChild(option);
-                                });
-                            } else {
-                                branchSelect.innerHTML = '<option value="">No branches found</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Fetch Error (Branches):", error);
-                            branchSelect.innerHTML = '<option value="">Error loading branches</option>';
-                        });
-
-                    // Fetch bank accounts
-                    fetch(`{{ route('get.bank.accounts.by.company') }}?company_id=${companyId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            bankAccountSelect.innerHTML = '<option value="">Select Bank Account</option>';
-                            if (data.bankaccounts && Array.isArray(data.bankaccounts)) {
-                                data.bankaccounts.forEach(bankAccount => {
-                                    const option = document.createElement("option");
-                                    option.value = bankAccount.id;
-                                    option.textContent = `${bankAccount.name}`;
-                                    bankAccountSelect.appendChild(option);
-                                });
-                            } else {
-                                bankAccountSelect.innerHTML =
-                                    '<option value="">No bank accounts found</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Fetch Error (Bank Accounts):", error);
-                            bankAccountSelect.innerHTML =
-                                '<option value="">Error loading bank accounts</option>';
-                        });
-                }
-            }
-
-            // Pass Laravel variables into JavaScript
-            const userRole = `{{ auth()->user()->role_id }}`; // Get user role
-            const userCompanyId = `{{ auth()->user()->company->id ?? auth()->user()->accountant->branch->company->id }}`; // Get user's company ID
-
-            // Initialize dropdowns
-            setupAccountDropdownPayable(
-                "company_id_payable",
-                "account_id_payable",
-                "branch_id_payable",
-                "bank_account_id_payable",
-                userRole,
-                userCompanyId
-            );
-        });
-    </script>
 </x-app-layout>

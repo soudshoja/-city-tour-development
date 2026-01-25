@@ -1,12 +1,9 @@
 <x-app-layout>
-    <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-        <li>
-            <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-        </li>
-        <li class="before:content-['/'] before:mr-1">
-            <span>System Settings</span>
-        </li>
-    </ul>
+    <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
+        <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Dashboard</a>
+        <span class="text-gray-400">&gt;</span>
+        <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">System Settings</span>
+    </nav>
 
     <div class="grid bg-white dark:bg-gray-800 rounded-xl shadow-sm gap-2">
         <div id="system-settings-index" x-data="{ 

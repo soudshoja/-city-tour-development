@@ -178,9 +178,9 @@
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
                             <div
-                                class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                class="select-options hidden absolute left-0 top-full w-full rounded-md grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
                                     data-value="{{ $branch->id }}">
                                     {{ $branch->name }}
                                 </div>
@@ -778,7 +778,7 @@
                                         @else
                                             @if ($creditUsed && $creditUsed->amount < 0)
                                                 <!-- Credit already used - no locking needed, just display -->
-                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}">
+                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])}}">
                                                     <button type="button"
                                                         class="rounded-full flex flex-col items-center justify-center w-full
                                                             px-4 py-2 border border-gray-300 
@@ -1194,7 +1194,7 @@
 
                                                     @foreach($paymentGateways as $gateway)
                                                         @php
-                                                            $companyMethods = $gateway->methods->where('company_id', $invoice->agent->branch->company_id);
+                                                            $companyMethods = $gateway->methods->where('company_id', $companyId);
                                                         @endphp
                                                         @if($companyMethods->isNotEmpty())
                                                         <template x-if="selectedGateway.toLowerCase() === '{{ strtolower($gateway->name) }}'">
@@ -1868,7 +1868,9 @@
         const partialCredit = Number(@json(\App\Models\Credit::getTotalCreditsByClient($invoice->client_id)) || 0);
         let creditRemaining = partialCredit;
         const creditUsed = {};
-        // console.log(items);
+        const invoiceAmount = parseFloat("{{ $invoice->amount }}") || 0;
+        let currentPaymentMode = 'full';
+        const paymentMethods = Array.isArray(@json($paymentMethods)) ? @json($paymentMethods) : [];
 
         // Simple Invoice Charge Function
         function updateInvoiceChargeFromInput() {
@@ -2427,7 +2429,6 @@
             return (s || '').toString().trim().toLowerCase().replace(/[\s_-]+/g, '');
         }
 
-        const paymentMethods = @json($paymentMethods);
         const methodsByGateway = paymentMethods.reduce((acc, method) => {
             const key = gwKey(method.type ?? method.gateway ?? method.provider ?? '');
             if (!key) return acc;
@@ -4904,9 +4905,6 @@
         }
 
         // Payment Application Functions for Credit Payment
-        const invoiceAmount = "{{ $invoice->amount }}";
-        let currentPaymentMode = 'full';
-        
         function updatePaymentMode() {
             const modeRadio = document.querySelector('input[name="credit_payment_mode"]:checked');
             currentPaymentMode = modeRadio ? modeRadio.value : 'full';

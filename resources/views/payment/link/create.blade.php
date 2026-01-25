@@ -1,16 +1,10 @@
 <x-app-layout>
     <div class="container mx-auto px-4">
-        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-            <li>
-                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1">
-                <a href="{{ route('payment.link.index') }}" class="hover:text-blue-500 hover:underline">Payment Links</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1">
-                <span class="text-gray-500">Create New</span>
-            </li>
-        </ul>
+        <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
+            <a href="{{ route('payment.link.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Payment Links</a>
+            <span class="text-gray-400">&gt;</span>
+            <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">New Payment Link</span>
+        </nav>
 
         <!-- Main Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="{
@@ -103,7 +97,7 @@
                             <!-- Add New Client -->
                             <div @click="addClientModal = true"
                                 class="p-2 text-center bg-white rounded-full shadow-xl ring-1 ring-black/5 group hover:bg-black cursor-pointer transition duration-150 ease-in-out"
-                                data-tooltip-left="Add New Client">
+                                data-tooltip-left="Add new client">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-white">
                                     <path d="M16 21V19C16 17.3431 14.6569 16 13 16H7C5.34315 16 4 17.3431 4 19V21" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                     <circle cx="10" cy="10" r="4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -115,7 +109,7 @@
                             <!-- Import Payment -->
                             <div @click="importFatoorahModal = true"
                                 class="p-2 text-center bg-white rounded-full shadow-xl ring-1 ring-black/5 group hover:bg-black cursor-pointer transition duration-150 ease-in-out"
-                                data-tooltip-left="Import Payment">
+                                data-tooltip-left="Import payment">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-white">
                                     <path d="M12 5V19M5 12H19" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>

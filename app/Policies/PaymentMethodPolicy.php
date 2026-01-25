@@ -13,6 +13,8 @@ class PaymentMethodPolicy
 
     public function managePaymentMethodGroup(User $user): bool
     {
+        if($user->hasRole('admin')) return true;
+
         return $user->can('manage payment method groups');
 
         return false;

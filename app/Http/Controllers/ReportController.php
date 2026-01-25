@@ -30,30 +30,45 @@ use Exception;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
-
 {
     public function index(Request $request)
     {
-        $agents = DB::table('transactions')
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $agentsQuery = DB::table('transactions')
             ->join('companies', 'transactions.company_id', '=', 'companies.id')
             ->join('agents', 'companies.id', '=', 'agents.company_id')
-            ->select('agents.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date')
-            ->get()
-            ->groupBy('name');
+            ->select('agents.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date');
 
-        $clients = DB::table('transactions')
+        if ($companyId) {
+            $agentsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $agents = $agentsQuery->get()->groupBy('name');
+
+        $clientsQuery = DB::table('transactions')
             ->join('companies', 'transactions.company_id', '=', 'companies.id')
             ->join('clients', 'clients.id', '=', 'transactions.client_id')
-            ->select('clients.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date')
-            ->get()
-            ->groupBy('name');
+            ->select('clients.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date');
+
+        if ($companyId) {
+            $clientsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $clients = $clientsQuery->get()->groupBy('name');
+
         return view('reports.index', compact('agents', 'clients'));
     }
+
     public function agentReport()
     {
         return view('reports.maintenance'); // Show the maintenance page
 
-        $agents = DB::table('transactions')
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $agentsQuery = DB::table('transactions')
             ->join('companies', 'transactions.company_id', '=', 'companies.id')
             ->join('agents', 'companies.id', '=', 'agents.company_id')
             ->select(
@@ -61,11 +76,15 @@ class ReportController extends Controller
                 DB::raw('COUNT(transactions.id) as total_transactions'),
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END) as total_debit'),
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit')
-            )
-            ->groupBy('agents.name')
-            ->get();
+            );
 
-        $agentLedgers = DB::table('journal_entries')
+        if ($companyId) {
+            $agentsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $agents = $agentsQuery->groupBy('agents.name')->get();
+
+        $agentLedgersQuery = DB::table('journal_entries')
             ->join('transactions', 'journal_entries.transaction_id', '=', 'transactions.id')
             ->join('clients', 'clients.id', '=', 'transactions.client_id')
             ->join('agents', 'agents.id', '=', 'clients.agent_id')
@@ -76,7 +95,13 @@ class ReportController extends Controller
                 'journal_entries.debit',
                 'journal_entries.credit',
                 'journal_entries.balance'
-            )
+            );
+
+        if ($companyId) {
+            $agentLedgersQuery->where('journal_entries.company_id', $companyId);
+        }
+
+        $agentLedgers = $agentLedgersQuery
             ->orderBy('agent_name')
             ->orderBy('journal_entries.transaction_date')
             ->get();
@@ -102,6 +127,8 @@ class ReportController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $clientIds = $request->input('client_ids', []);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         $clientsQuery = Client::with([
             'tasks' => function ($query) use ($dateFrom, $dateTo) {
@@ -120,6 +147,10 @@ class ReportController extends Controller
                     ->with(['invoicePartials', 'paymentApplications']);
             }
         ]);
+
+        if ($companyId) {
+            $clientsQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+        }
 
         if (!empty($clientIds)) {
             $clientsQuery->whereIn('id', $clientIds);
@@ -260,7 +291,12 @@ class ReportController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $clientsList = Client::orderBy('name')
+        $clientsListQuery = Client::orderBy('name');
+        if ($companyId) {
+            $clientsListQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+        }
+
+        $clientsList = $clientsListQuery
             ->get(['id', 'name', 'first_name', 'middle_name', 'last_name'])
             ->map(fn($c) => [
                 'id' => $c->id,
@@ -296,6 +332,8 @@ class ReportController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $clientIds = $request->input('client_ids', []);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         $clientsQuery = Client::with([
             'tasks' => function ($query) use ($dateFrom, $dateTo) {
@@ -314,6 +352,10 @@ class ReportController extends Controller
                     ->with(['invoicePartials', 'paymentApplications']);
             }
         ]);
+
+        if ($companyId) {
+            $clientsQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+        }
 
         if (!empty($clientIds)) {
             $clientsQuery->whereIn('id', $clientIds);
@@ -421,8 +463,10 @@ class ReportController extends Controller
     {
         return view('reports.maintenance'); // Show the maintenance page
 
-        // Agent Performance Data
-        $agents = DB::table('agents')
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $agentsQuery = DB::table('agents')
             ->join('clients', 'agents.id', '=', 'clients.agent_id')
             ->join('transactions', 'clients.id', '=', 'transactions.client_id')
             ->select(
@@ -432,7 +476,13 @@ class ReportController extends Controller
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END) as total_debit'),
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit'),
                 DB::raw('(SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) - SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END)) as balance')
-            )
+            );
+
+        if ($companyId) {
+            $agentsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $agents = $agentsQuery
             ->groupBy('agents.id', 'agents.name')
             ->get()
             ->map(function ($agent) {
@@ -441,8 +491,7 @@ class ReportController extends Controller
                 return $agent;
             });
 
-        // Client Performance Data
-        $clients = DB::table('clients')
+        $clienclientsQueryts = DB::table('clients')
             ->join('transactions', 'clients.id', '=', 'transactions.client_id')
             ->select(
                 'clients.id',
@@ -451,31 +500,35 @@ class ReportController extends Controller
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END) as total_debit'),
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit'),
                 DB::raw('(SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) - SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END)) as balance')
-            )
+            );
+
+        if ($companyId) {
+            $clientsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $clients = $clientsQuery
             ->groupBy('clients.id', 'clients.name')
             ->get()
             ->map(function ($client) {
-                // Determine if the client is a good payer based on balance and transaction history
                 $client->is_good_payer = $client->total_debit < $client->total_credit && $client->balance >= 0;
-                $client->client_rating = $client->is_good_payer ? 5 : 3; // Example rating
+                $client->client_rating = $client->is_good_payer ? 5 : 3;
                 return $client;
             });
 
-        // Return to view
         return view('reports.performance', [
             'agents' => $agents,
             'clients' => $clients
         ]);
     }
 
-
     public function summary()
     {
-
         return view('reports.maintenance'); // Show the maintenance page
 
-        // Fetch and process agent metrics
-        $agents = DB::table('agents')
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $agentsQuery = DB::table('agents')
             ->join('clients', 'clients.agent_id', '=', 'agents.id')
             ->join('transactions', 'clients.id', '=', 'transactions.client_id')
             ->select(
@@ -486,7 +539,13 @@ class ReportController extends Controller
                 DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit'),
                 DB::raw('(SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) - SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END)) as net_balance'),
                 DB::raw('SUM(transactions.amount) / COUNT(transactions.id) as avg_transaction_value')
-            )
+            );
+
+        if ($companyId) {
+            $agentsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $agents = $agentsQuery
             ->groupBy('agents.id', 'agents.name')
             ->get()
             ->map(function ($agent) {
@@ -495,7 +554,7 @@ class ReportController extends Controller
             });
 
         // Fetch and process client metrics
-        $clients = DB::table('clients')
+        $clientsQuery = DB::table('clients')
             ->join('transactions', 'clients.id', '=', 'transactions.client_id')
             ->select(
                 'clients.id',
@@ -506,7 +565,13 @@ class ReportController extends Controller
                 DB::raw('(SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) - SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END)) as outstanding_balance'),
                 DB::raw('SUM(transactions.amount) / COUNT(transactions.id) as avg_transaction_value'),
                 DB::raw('MAX(transactions.transaction_date) as last_transaction_date')
-            )
+            );
+
+        if ($companyId) {
+            $clientsQuery->where('transactions.company_id', $companyId);
+        }
+
+        $clients = $clientsQuery
             ->groupBy('clients.id', 'clients.name')
             ->get()
             ->map(function ($client) {
@@ -522,42 +587,69 @@ class ReportController extends Controller
 
     public function profitLoss(Request $request)
     {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
         $month = $request->input('month', now()->format('Y-m'));
         $year = $request->input('year', now()->format('Y'));
         $from = \Carbon\Carbon::parse($month)->startOfMonth();
         $to = \Carbon\Carbon::parse($month)->endOfMonth();
 
-        $level3Accounts = Account::where('report_type', Account::REPORT_TYPES['PROFIT_LOSS'])
+        $allAccounts = Account::where('company_id', $companyId)->get();
+        $accountsById = $allAccounts->keyBy('id');
+
+        $childrenMap = [];
+        foreach ($allAccounts as $account) {
+            if ($account->parent_id) {
+                if (!isset($childrenMap[$account->parent_id])) {
+                    $childrenMap[$account->parent_id] = collect();
+                }
+                $childrenMap[$account->parent_id]->push($account);
+            }
+        }
+
+        $level3Accounts = $allAccounts
+            ->where('report_type', Account::REPORT_TYPES['PROFIT_LOSS'])
             ->where('level', 3)
-            ->get()
             ->sortBy('code');
 
-        $allAccounts = Account::all();
+        $descendantsCache = [];
+        foreach ($level3Accounts as $parent) {
+            $descendantsCache[$parent->id] = $this->getAllDescendants($parent->id, $childrenMap);
+        }
 
-        $journalEntries = JournalEntry::whereBetween('created_at', [$from, $to])->get();
+        $journalEntries = JournalEntry::where('company_id', $companyId)
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+
+        $entriesByAccount = $journalEntries->groupBy('account_id');
 
         $grouped = [];
 
         foreach ($level3Accounts as $parent) {
-            $descendants = $this->getAllDescendants($parent->id, $allAccounts);
+            $descendants = $descendantsCache[$parent->id];
             $totalAmount = 0;
             $childRows = [];
 
             foreach ($descendants as $child) {
-                $childAmount = $journalEntries
-                    ->where('account_id', $child->id)
-                    ->sum(fn($j) => $j->credit - $j->debit);
+                $childEntries = $entriesByAccount->get($child->id, collect());
+                $childAmount = $childEntries->sum(fn($j) => $j->credit - $j->debit);
                 $totalAmount += $childAmount;
 
-                $childRows[] = [
-                    'account' => $child,
-                    'amount' => $childAmount,
-                ];
+                if ($childAmount != 0) {
+                    $childRows[] = [
+                        'account' => $child,
+                        'amount' => $childAmount,
+                    ];
+                }
             }
 
-            $parentAmount = $journalEntries
-                ->where('account_id', $parent->id)
-                ->sum(fn($j) => $j->credit - $j->debit);
+            $parentEntries = $entriesByAccount->get($parent->id, collect());
+            $parentAmount = $parentEntries->sum(fn($j) => $j->credit - $j->debit);
             $totalAmount += $parentAmount;
 
             $grouped[$parent->id] = [
@@ -570,39 +662,66 @@ class ReportController extends Controller
         $incomeAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '4'));
         $expenseAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '5'));
 
-        $totalIncome = $incomeAccounts->sum('amount');
-        $totalExpense = $expenseAccounts->sum(fn($a) => abs($a['amount']));
-        $net = $totalIncome - $totalExpense;
+        $relevantAccountIds = collect();
+        foreach ($level3Accounts as $parent) {
+            $relevantAccountIds->push($parent->id);
+            foreach ($descendantsCache[$parent->id] as $desc) {
+                $relevantAccountIds->push($desc->id);
+            }
+        }
+        $relevantAccountIds = $relevantAccountIds->unique()->values();
+
+        $yearStart = \Carbon\Carbon::createFromDate($year, 1, 1)->startOfYear();
+        $yearEnd = \Carbon\Carbon::createFromDate($year, 12, 31)->endOfYear();
+
+        $yearlyEntries = JournalEntry::where('company_id', $companyId)
+            ->whereIn('account_id', $relevantAccountIds)
+            ->whereBetween('created_at', [$yearStart, $yearEnd])
+            ->get();
+
+        $entriesByMonthAndAccount = [];
+        foreach ($yearlyEntries as $entry) {
+            $monthKey = $entry->created_at->format('n');
+            $accountId = $entry->account_id;
+
+            if (!isset($entriesByMonthAndAccount[$monthKey])) {
+                $entriesByMonthAndAccount[$monthKey] = [];
+            }
+            if (!isset($entriesByMonthAndAccount[$monthKey][$accountId])) {
+                $entriesByMonthAndAccount[$monthKey][$accountId] = collect();
+            }
+            $entriesByMonthAndAccount[$monthKey][$accountId]->push($entry);
+        }
 
         $monthlyLabels = [];
         $monthlyProfits = [];
         $monthlyProfitsColors = [];
 
         foreach (range(1, 12) as $m) {
-            $start = \Carbon\Carbon::createFromDate($year, $m, 1)->startOfMonth();
-            $end = \Carbon\Carbon::createFromDate($year, $m, 1)->endOfMonth();
-            $entries = JournalEntry::whereBetween('created_at', [$start, $end])->get();
+            $monthEntries = $entriesByMonthAndAccount[$m] ?? [];
 
             $income = 0;
             $expense = 0;
 
             foreach ($level3Accounts as $parent) {
-                $descendants = $this->getAllDescendants($parent->id, $allAccounts);
+                $descendants = $descendantsCache[$parent->id];
                 $total = 0;
 
                 foreach ($descendants as $child) {
-                    $amount = $entries->where('account_id', $child->id)->sum(fn($j) => $j->credit - $j->debit);
+                    $childEntries = $monthEntries[$child->id] ?? collect();
+                    $amount = $childEntries->sum(fn($j) => $j->credit - $j->debit);
                     $total += $amount;
                 }
 
-                $amount = $entries->where('account_id', $parent->id)->sum(fn($j) => $j->credit - $j->debit);
+                $parentEntries = $monthEntries[$parent->id] ?? collect();
+                $amount = $parentEntries->sum(fn($j) => $j->credit - $j->debit);
                 $total += $amount;
 
                 if (str_starts_with($parent->code, '4')) $income += $total;
                 if (str_starts_with($parent->code, '5')) $expense += abs($total);
             }
 
-            $monthlyLabels[] = $start->format('M');
+            $monthlyLabels[] = \Carbon\Carbon::createFromDate($year, $m, 1)->format('M');
             $profit = $income - $expense;
             $monthlyProfits[] = round($profit, 2);
             $monthlyProfitsColors[] = $profit >= 0 ? '#16a34a' : '#dc2626';
@@ -619,14 +738,14 @@ class ReportController extends Controller
         ));
     }
 
-    private function getAllDescendants($parentId, $allAccounts)
+    private function getAllDescendants($parentId, $childrenMap)
     {
-        $children = $allAccounts->where('parent_id', $parentId);
         $descendants = collect();
+        $children = $childrenMap[$parentId] ?? collect();
 
         foreach ($children as $child) {
             $descendants->push($child);
-            $descendants = $descendants->merge($this->getAllDescendants($child->id, $allAccounts));
+            $descendants = $descendants->merge($this->getAllDescendants($child->id, $childrenMap));
         }
 
         return $descendants;
@@ -634,24 +753,34 @@ class ReportController extends Controller
 
     public function accsummary()
     {
-
         return view('reports.maintenance'); // Show the maintenance page
 
-        // Fetch summary of accounts based on company_id
-        $accounts = DB::table('accounts')
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $accountsQuery = DB::table('accounts')
             ->join('companies', 'companies.id', '=', 'accounts.company_id')
             ->join('users', 'users.id', '=', 'companies.user_id')
-            ->select('accounts.name', 'balance', 'accounts.company_id')
-            ->get();
+            ->select('accounts.name', 'balance', 'accounts.company_id');
 
-        // Fetch clients and suppliers
-        $clients = DB::table('clients')
+        if ($companyId) {
+            $accountsQuery->where('accounts.company_id', $companyId);
+        }
+
+        $accounts = $accountsQuery->get();
+
+        $clientsQuery = DB::table('clients')
             ->join('agents', 'agents.id', '=', 'clients.agent_id')
             ->join('companies', 'companies.id', '=', 'agents.company_id')
-            ->select('clients.id', 'clients.name', 'clients.agent_id')
-            ->get();
+            ->select('clients.id', 'clients.name', 'clients.agent_id');
 
-        $suppliers = DB::table('suppliers') // Assuming there's a suppliers table
+        if ($companyId) {
+            $clientsQuery->where('companies.id', $companyId);
+        }
+
+        $clients = $clientsQuery->get();
+
+        $suppliers = DB::table('suppliers')
             ->select('id', 'name')
             ->get();
 
@@ -661,6 +790,7 @@ class ReportController extends Controller
     public function unpaidaccountsPayableReceivableReport(Request $request)
     {
         $user = Auth::user();
+
         if ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         }
@@ -671,7 +801,12 @@ class ReportController extends Controller
         $supplierId = $request->input('supplier_id');
         $accountId = $request->input('account_id');
 
-        $companyId = auth()->user()->company->id;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
 
         $accountPayable = Account::where('name', 'Accounts Payable')
             ->where('company_id', $companyId)
@@ -701,10 +836,12 @@ class ReportController extends Controller
         }
 
         $payableQuery = JournalEntry::whereIn('account_id', $payableAccounts->pluck('id'))
+            ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
 
         $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccounts->pluck('id'))
+            ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
 
@@ -767,14 +904,14 @@ class ReportController extends Controller
 
         $branches = Branch::where('company_id', $companyId)->get();
 
-        if (Auth::user()->role->id == Role::ADMIN) {
+        if ($user->role_id == Role::ADMIN) {
             $suppliers = Supplier::with('companies')->get();
-        } elseif (Auth::user()->role->id == Role::COMPANY) {
-            $suppliers = SupplierCompany::where('company_id', $user->company->id)
+        } elseif ($user->role_id == Role::COMPANY) {
+            $suppliers = SupplierCompany::where('company_id', $companyId)
                 ->with('supplier')
                 ->get();
-        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
-            $suppliers = SupplierCompany::where('company_id', $user->accountant->branch->company->id)
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $suppliers = SupplierCompany::where('company_id', $companyId)
                 ->with('supplier')
                 ->get();
         } else {
@@ -802,6 +939,7 @@ class ReportController extends Controller
     public function paidaccountsPayableReceivableReport(Request $request)
     {
         $user = Auth::user();
+
         if ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         }
@@ -812,7 +950,12 @@ class ReportController extends Controller
         $supplierId = $request->input('supplier_id');
         $accountId = $request->input('account_id');
 
-        $companyId = auth()->user()->company->id;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
 
         $accountPayable = Account::where('name', 'Accounts Payable')
             ->where('company_id', $companyId)
@@ -842,10 +985,12 @@ class ReportController extends Controller
         }
 
         $payableQuery = JournalEntry::whereIn('account_id', $payableAccounts->pluck('id'))
+            ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
 
         $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccounts->pluck('id'))
+            ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
 
@@ -908,14 +1053,14 @@ class ReportController extends Controller
 
         $branches = Branch::where('company_id', $companyId)->get();
 
-        if (Auth::user()->role->id == Role::ADMIN) {
+        if ($user->role_id == Role::ADMIN) {
             $suppliers = Supplier::with('companies')->get();
-        } elseif (Auth::user()->role->id == Role::COMPANY) {
-            $suppliers = SupplierCompany::where('company_id', $user->company->id)
+        } elseif ($user->role_id == Role::COMPANY) {
+            $suppliers = SupplierCompany::where('company_id', $companyId)
                 ->with('supplier')
                 ->get();
-        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
-            $suppliers = SupplierCompany::where('company_id', $user->accountant->branch->company->id)
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $suppliers = SupplierCompany::where('company_id', $companyId)
                 ->with('supplier')
                 ->get();
         } else {
@@ -942,11 +1087,9 @@ class ReportController extends Controller
 
     public function accountsReconciliationReport(Request $request)
     {
-        // Default dates
         $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
         $to = $request->input('to', Carbon::now()->endOfMonth()->toDateString());
 
-        // Add validation for the new reconciled filter option
         $request->merge(['from' => $from, 'to' => $to])->validate([
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
@@ -954,18 +1097,30 @@ class ReportController extends Controller
         ]);
 
         $supplierName = $request->input('supplier');
-        $reconciledFilter = $request->input('reconciled', 'both'); // default 'both'
-        $user = auth()->user();
+        $reconciledFilter = $request->input('reconciled', 'both');
+        $user = Auth::user();
+
         if ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         }
 
-        $accountPayable = Account::where('name', 'Accounts Payable')->first();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+        $branchId = null;
+        if ($user->role_id == Role::COMPANY) {
+            $branchId = $user->branch->id ?? null;
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $branchId = $user->accountant->branch->id ?? null;
+        }
+
+        $accountPayable = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $companyId)
+            ->first();
+
         if (!$accountPayable) {
             return back()->with('error', 'Accounts Payable account not found.');
         }
 
-        // Query totals grouped by account_id
         $totalsByAccountQuery = DB::table('journal_entries')
             ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
             ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
@@ -973,22 +1128,23 @@ class ReportController extends Controller
                 'journal_entries.account_id',
                 DB::raw('SUM(COALESCE(journal_entries.credit, 0)) - SUM(COALESCE(journal_entries.debit, 0)) AS total')
             )
-            ->where('journal_entries.company_id', $user->company->id ?? $user->accountant->branch->company->id)
-            ->where('journal_entries.branch_id', $user->branch->id ?? $user->accountant->branch->id)
+            ->where('journal_entries.company_id', $companyId)
             ->whereBetween('journal_entries.transaction_date', [$from, $to])
             ->whereIn('root_a.name', ['Liabilities']);
+
+        if ($branchId) {
+            $totalsByAccountQuery->where('journal_entries.branch_id', $branchId);
+        }
 
         if ($supplierName) {
             $totalsByAccountQuery->where('journal_entries.name', 'LIKE', "%{$supplierName}%");
         }
 
-        // Apply reconcile filter to totals query
         if ($reconciledFilter === 'yes') {
             $totalsByAccountQuery->where('journal_entries.reconciled', 1);
         } elseif ($reconciledFilter === 'no') {
             $totalsByAccountQuery->where('journal_entries.reconciled', 0);
         }
-        // 'both' means no filter on reconciled
 
         $totalsByAccount = $totalsByAccountQuery
             ->groupBy('journal_entries.account_id')
@@ -996,10 +1152,8 @@ class ReportController extends Controller
             ->get()
             ->pluck('total', 'account_id');
 
-        // Fetch journal entries filtered by reconcile status
         $entriesQuery = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
-            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
-            ->where('branch_id', $user->branch->id ?? $user->accountant->branch->id)
+            ->where('company_id', $companyId)
             ->whereBetween('transaction_date', [$from, $to])
             ->where('credit', '!=', 0)
             ->whereNull('voucher_number')
@@ -1007,11 +1161,14 @@ class ReportController extends Controller
                 $q->where('name', 'Liabilities');
             });
 
+        if ($branchId) {
+            $entriesQuery->where('branch_id', $branchId);
+        }
+
         if ($supplierName) {
             $entriesQuery->where('name', 'LIKE', "%{$supplierName}%");
         }
 
-        // Apply reconcile filter to journal entries
         if ($reconciledFilter === 'yes') {
             $entriesQuery->where('reconciled', 1);
         } elseif ($reconciledFilter === 'no') {
@@ -1023,7 +1180,6 @@ class ReportController extends Controller
             ->orderBy('transaction_date')
             ->get();
 
-        // Supplier options for datalist
         $suppliers = Supplier::query()
             ->when($supplierName, fn($q) => $q->where('name', 'LIKE', "%{$supplierName}%"))
             ->orderBy('name')
@@ -1037,19 +1193,19 @@ class ReportController extends Controller
             'to' => $to,
             'supplier' => $supplierName,
             'suppliers' => $suppliers,
-            'reconciled' => $reconciledFilter, // pass to view for form select default
+            'reconciled' => $reconciledFilter,
         ]);
     }
 
     public function getAccounts(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if ($user->company == null) {
-            return redirect()->back()->with('error', 'Unauthorized action.');
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
         }
-
-        $companyId = $user->company->id; // Adjust this to get the current company ID
 
         $accountPayable = Account::where('name', 'Accounts Payable')
             ->where('company_id', $companyId)
@@ -1162,14 +1318,20 @@ class ReportController extends Controller
 
     public function getPayableSupplier()
     {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        $companyId = auth()->user()->company->id ?? auth()->user()->accountant->branch->company->id; // Adjust this to get the current company ID
-        $accountPayable = Account::where('name', 'Accounts Payable')->first();
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $accountPayable = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $companyId)
+            ->first();
 
         if (!$accountPayable) {
             return redirect()->back()->with('error', 'Accounts Payable account not found.');
         }
-
 
         $coaController = new CoaController();
         $debitCreditType = 'reverse';
@@ -1194,9 +1356,21 @@ class ReportController extends Controller
 
     public function getProfitAgent()
     {
-        $branchesId = auth()->user()->company->branches->pluck('id')->toArray();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        $agents = Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')->whereIn('branch_id', $branchesId)->get();
+        if (!$companyId) {
+            return [
+                'agents' => collect(),
+                'sumProfitAgent' => 0,
+            ];
+        }
+
+        $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
+
+        $agents = Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')
+            ->whereIn('branch_id', $branchesId)
+            ->get();
 
         $sumProfitAgent = 0;
         foreach ($agents as $agent) {
@@ -1218,9 +1392,9 @@ class ReportController extends Controller
                 }
             }
 
-
             $sumProfitAgent += $agent->profit;
         }
+
         return [
             'agents' => $agents,
             'sumProfitAgent' => $sumProfitAgent,
@@ -1239,7 +1413,13 @@ class ReportController extends Controller
 
     public function getReceivable()
     {
-        $companyId = auth()->user()->company->id;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
         $receivableAccount = Account::where('name', 'Accounts Receivable')
             ->where('company_id', $companyId)
             ->first();
@@ -1262,8 +1442,6 @@ class ReportController extends Controller
     {
         $childAccountsReceivable = $this->getReceivable();
 
-        // return response()->json($childAccountsReceivable);
-
         return view('reports.total-receivable', [
             'childAccountsReceivable' => $childAccountsReceivable,
         ]);
@@ -1271,13 +1449,19 @@ class ReportController extends Controller
 
     public function getTotalBank()
     {
-        $companyId = auth()->user()->company->id;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
         $bankAccount = Account::where('name', 'Bank Accounts')
             ->where('company_id', $companyId)
             ->first();
 
         if (!$bankAccount) {
-            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+            return redirect()->back()->with('error', 'Bank Accounts account not found.');
         }
 
         $coaController = new CoaController();
@@ -1303,13 +1487,19 @@ class ReportController extends Controller
 
     public function getGatewayReceivable()
     {
-        $companyId = auth()->user()->company->id;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
         $gatewayAccount = Account::where('name', 'Payment Gateway')
             ->where('company_id', $companyId)
             ->first();
 
         if (!$gatewayAccount) {
-            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+            return redirect()->back()->with('error', 'Payment Gateway account not found.');
         }
 
         $coaController = new CoaController();
@@ -1332,6 +1522,7 @@ class ReportController extends Controller
             'childAccountsBank' => $childAccountsBank,
         ]);
     }
+
     public function show($account_name)
     {
         // Fetch journal entries where the account name matches the account_name
@@ -1359,7 +1550,9 @@ class ReportController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Date range defaults
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
         $from = $request->input('from') ?? Carbon::now()->startOfMonth()->toDateString();
         $to = $request->input('to') ?? Carbon::now()->endOfMonth()->toDateString();
 
@@ -1379,9 +1572,8 @@ class ReportController extends Controller
             $query->where('reference_type', $request->reference_type);
         }
 
-        // Company restriction for COMPANY users
-        if ($user->role_id === Role::COMPANY) {
-            $query->where('company_id', $user->company->id);
+        if ($companyId) {
+            $query->where('company_id', $companyId);
         }
 
         $query->orderByDesc('transactions.created_at')
@@ -1390,11 +1582,15 @@ class ReportController extends Controller
 
         $transactions = $query->paginate(25)->appends($request->query());
 
-        // Get distinct payment gateways (first word in description)
-        $gateways = Transaction::selectRaw("DISTINCT SUBSTRING_INDEX(description, ' ', 1) AS gateway")
+        $gatewaysQuery = Transaction::selectRaw("DISTINCT SUBSTRING_INDEX(description, ' ', 1) AS gateway")
             ->where('description', 'like', '%Settles to Bank (After 24h)%')
-            ->orderBy('gateway')
-            ->pluck('gateway');
+            ->orderBy('gateway');
+
+        if ($companyId) {
+            $gatewaysQuery->where('company_id', $companyId);
+        }
+
+        $gateways = $gatewaysQuery->pluck('gateway');
 
         return view('reports.settlements', compact('transactions', 'gateways'));
     }
@@ -1402,15 +1598,22 @@ class ReportController extends Controller
     public function journalEntriesByDate(Request $request)
     {
         $date = $request->input('date');
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         if (!$date) {
             return response()->json(['entries' => []]);
         }
 
-        $entries = JournalEntry::whereDate('transaction_date', $date)
+        $query = JournalEntry::whereDate('transaction_date', $date)
             ->with('account')
-            ->orderBy('id', 'desc')
-            ->get()
+            ->orderBy('id', 'desc');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $entries = $query->get()
             ->map(function ($entry) {
                 return [
                     'id' => $entry->id,
@@ -1434,54 +1637,60 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $groupBySupplier = $request->input('group_by_supplier', false);
 
-        if ($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             return abort(403, 'Unauthorized action.');
         }
 
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
         $liabilitiesAccount = Account::where('name', 'Liabilities')
-            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
+            ->where('company_id', $companyId)
             ->first();
 
         if (!$liabilitiesAccount) {
-            Log::info('Liabilities account not found for company ID: ' . $user->company->name ?? $user->accountant->branch->company->name);
+            Log::info('Liabilities account not found for company ID: ' . $companyId);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
 
         $payableAccounts = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
+            ->where('company_id', $companyId)
             ->where('parent_id', $liabilitiesAccount->id)
             ->first();
 
         if (!$payableAccounts) {
-            Log::info('Accounts Payable account not found under Liabilities for company ID: ' . $user->company->id);
+            Log::info('Accounts Payable account not found under Liabilities for company ID: ' . $companyId);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
 
         $creditorsAccount = Account::where('name', 'Creditors')
-            ->where('company_id', $user->company->id  ?? $user->accountant->branch->company->id)
+            ->where('company_id', $companyId)
             ->where('parent_id', $payableAccounts->id)
             ->where('root_id', $liabilitiesAccount->id)
             ->first();
 
         if (!$creditorsAccount) {
-            Log::info('Creditors account not found under Accounts Payable for company ID: ' . $user->company->id);
+            Log::info('Creditors account not found under Accounts Payable for company ID: ' . $companyId);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
 
         $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
-            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
+            ->where('company_id', $companyId)
             ->get();
 
         $accountForReport = null;
 
-        if ($childOfCreditors->isNotEmpty()) {
-            $accountForReport = $childOfCreditors->first();
-        } else {
-            Log::info('null do');
-        }
-
         if ($accountId) {
             $accountForReport = Account::find($accountId);
+        } elseif ($childOfCreditors->isNotEmpty()) {
+            $accountForReport = $childOfCreditors->first();
+        } else {
+            $accountForReport = $creditorsAccount;
+            $childOfCreditors = collect([$creditorsAccount]);
         }
 
         if (!$accountForReport) {
@@ -1489,9 +1698,8 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'No valid account found for the report.');
         }
 
-        // Build query with date filtering
         $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
-            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id);
+            ->where('company_id', $companyId);
 
         if ($startDate) {
             $journalQuery->whereDate('transaction_date', '>=', $startDate);
@@ -1575,7 +1783,7 @@ class ReportController extends Controller
         $creditorsSummary = [];
         foreach ($childOfCreditors as $creditor) {
             $creditorQuery = JournalEntry::where('account_id', $creditor->id)
-                ->where('company_id', $user->company->id);
+                ->where('company_id', $companyId);
 
             if ($startDate) {
                 $creditorQuery->whereDate('transaction_date', '>=', $startDate);
@@ -1588,7 +1796,8 @@ class ReportController extends Controller
             $creditorEntries = $creditorQuery->get();
             $creditorBalance = $creditorEntries->sum('credit') - $creditorEntries->sum('debit');
 
-            if ($creditorBalance > 0) {
+            // Include accounts with balance > 0 OR if it's the currently selected account
+            if ($creditorBalance > 0 || $creditor->id === $accountForReport->id) {
                 $creditorsSummary[] = [
                     'id' => $creditor->id,
                     'name' => $creditor->name,
@@ -1619,11 +1828,19 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role_id != Role::COMPANY) {
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
             return abort(403, 'Unauthorized action.');
         }
 
-        // Get the same data as the regular creditors method
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $company = Company::find($companyId);
+
         $accountId = $request->input('account_id');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
@@ -1644,7 +1861,7 @@ class ReportController extends Controller
 
         // Get account structure
         $liabilitiesAccount = Account::where('name', 'Liabilities')
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $companyId)
             ->first();
 
         if (!$liabilitiesAccount) {
@@ -1652,7 +1869,7 @@ class ReportController extends Controller
         }
 
         $payableAccounts = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $companyId)
             ->where('parent_id', $liabilitiesAccount->id)
             ->first();
 
@@ -1661,7 +1878,7 @@ class ReportController extends Controller
         }
 
         $creditorsAccount = Account::where('name', 'Creditors')
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $companyId)
             ->where('parent_id', $payableAccounts->id)
             ->where('root_id', $liabilitiesAccount->id)
             ->first();
@@ -1671,7 +1888,7 @@ class ReportController extends Controller
         }
 
         $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $companyId)
             ->get();
 
         $accountForReport = $childOfCreditors->first();
@@ -1682,7 +1899,7 @@ class ReportController extends Controller
 
         // Get journal entries
         $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
-            ->where('company_id', $user->company->id);
+            ->where('company_id', $companyId);
 
         if ($startDate) {
             $journalQuery->whereDate('transaction_date', '>=', $startDate);
@@ -1787,7 +2004,7 @@ class ReportController extends Controller
             'reportType' => $reportType,
             'startDate' => $startDate,
             'endDate' => $endDate,
-            'company' => $user->company,
+            'company' => $company,
             'generatedAt' => now()->format('M d, Y H:i:s')
         ];
 
@@ -1835,73 +2052,82 @@ class ReportController extends Controller
         return $pdf->download($filename);
     }
 
-    public function dailySalesPdf(Request $request)
-    {
-        $user = Auth::user();
-        if ($user->role->id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role->id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company_id;
-        }
+    // public function dailySalesPdf(Request $request)
+    // {
+    //     $user = Auth::user();
+    //     $companyId = getCompanyId($user);
 
-        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
-        $summary = $this->dailySalesSummary($companyId, $date);
-        $agents = $this->dailySalesAgents($companyId, $date);
-        $suppliers = $this->dailySalesSuppliers($date);
-        $refunds = $this->dailySalesRefunds($companyId, $date);
+    //     if (!$companyId) {
+    //         return redirect()->back()->with('error', 'Please select a company first.');
+    //     }
 
-        $pdf = Pdf::loadView('reports.pdf.daily-sales', [
-            'date' => $date,
-            'summary' => $summary,
-            'agents' => $agents,
-            'suppliers' => $suppliers,
-            'refunds' => $refunds,
-            'company' => $user->company,
-        ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'sans-serif']);
+    //     $company = Company::find($companyId);
 
-        $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
-        return $pdf->stream($filename);
-    }
+    //     $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+    //     $summary = $this->dailySalesSummary($companyId, $date);
+    //     $agents = $this->dailySalesAgents($companyId, $date);
+    //     $suppliers = $this->dailySalesSuppliers($date);
+    //     $refunds = $this->dailySalesRefunds($companyId, $date);
 
-    public function dailySalesPdfDownload(Request $request)
-    {
-        $user = Auth::user();
-        if (Auth::user()->role->id == Role::COMPANY) {
-            $companyId = Auth::user()->company->id;
-        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
-            $companyId = Auth::user()->accountant->branch->company_id;
-        }
+    //     $pdf = Pdf::loadView('reports.pdf.daily-sales', [
+    //         'date' => $date,
+    //         'summary' => $summary,
+    //         'agents' => $agents,
+    //         'suppliers' => $suppliers,
+    //         'refunds' => $refunds,
+    //         'company' => $company,
+    //     ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'sans-serif']);
 
-        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
-        $summary = $this->dailySalesSummary($companyId, $date);
-        $agents = $this->dailySalesAgents($companyId, $date);
-        $suppliers = $this->dailySalesSuppliers($date);
-        $refunds = $this->dailySalesRefunds($companyId, $date);
+    //     $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
+    //     return $pdf->stream($filename);
+    // }
 
-        $pdf = Pdf::loadView('reports.pdf.daily-sales', [
-            'date' => $date,
-            'summary' => $summary,
-            'agents' => $agents,
-            'suppliers' => $suppliers,
-            'refunds' => $refunds,
-            'company' => $user->company,
-        ])
-            ->setPaper('a4', 'portrait')
-            ->setOptions(['defaultFont' => 'sans-serif']);
+    // public function dailySalesPdfDownload(Request $request)
+    // {
+    //     $user = Auth::user();
+    //     $companyId = getCompanyId($user);
 
-        $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
-        return $pdf->download($filename);
-    }
+    //     if (!$companyId) {
+    //         return redirect()->back()->with('error', 'Please select a company first.');
+    //     }
+
+    //     $company = Company::find($companyId);
+
+    //     $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+    //     $summary = $this->dailySalesSummary($companyId, $date);
+    //     $agents = $this->dailySalesAgents($companyId, $date);
+    //     $suppliers = $this->dailySalesSuppliers($date);
+    //     $refunds = $this->dailySalesRefunds($companyId, $date);
+
+    //     $pdf = Pdf::loadView('reports.pdf.daily-sales', [
+    //         'date' => $date,
+    //         'summary' => $summary,
+    //         'agents' => $agents,
+    //         'suppliers' => $suppliers,
+    //         'refunds' => $refunds,
+    //         'company' => $company,
+    //     ])
+    //         ->setPaper('a4', 'portrait')
+    //         ->setOptions(['defaultFont' => 'sans-serif']);
+
+    //     $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
+    //     return $pdf->download($filename);
+    // }
 
     public function dailySalesReport(Request $request)
     {
-        $roleId = Auth::user()->role->id;
-        if ($roleId == Role::COMPANY) {
-            $companyId = Auth::user()->company->id;
-        } elseif ($roleId == Role::ACCOUNTANT) {
-            $companyId = Auth::user()->accountant->branch->company_id;
-        } else {
+        $user = Auth::user();
+        $roleId = $user->role_id;
+
+        if (!in_array($roleId, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             abort(403, 'Unauthorized action.');
+        }
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
         }
 
         $from = $request->filled('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfDay();
@@ -2120,13 +2346,17 @@ class ReportController extends Controller
     {
         Log::info('RangeSuppliers: start', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'company' => $companyId, 'agent' => $agentIds]);
 
-        $liabilities = Account::where('name', 'Liabilities')->first();
+        $liabilities = Account::where('name', 'Liabilities')
+            ->where('company_id', $companyId)
+            ->first();
+
         if (!$liabilities) {
             Log::warning('RangeSuppliers: Liabilities root not found');
             return [];
         }
 
         $accountPayable = Account::where('root_id', $liabilities->id)
+            ->where('company_id', $companyId)
             ->where(function ($q) {
                 $q->where('name', 'Accounts Payable')
                     ->orWhere('name', 'like', '%accounts payable%');
@@ -2143,6 +2373,7 @@ class ReportController extends Controller
         // Supplier TYPES (children of A/P that include supplier/suppliers in the name)
         $supplierTypes = Account::where('root_id', $liabilities->id)
             ->where('parent_id', $accountPayable->id)
+            ->where('company_id', $companyId)
             ->where(function ($q) {
                 $q->where('name', 'like', '%supplier%')
                     ->orWhere('name', 'like', '%suppliers%');
@@ -2167,6 +2398,7 @@ class ReportController extends Controller
 
             // Suppliers under this type (L4). If none, treat type as supplier.
             $suppliers = Account::where('parent_id', $typeNode->id)
+                ->where('company_id', $companyId)
                 ->orderBy('id')
                 ->get(['id', 'name', 'parent_id']);
 
@@ -2174,13 +2406,14 @@ class ReportController extends Controller
                 $suppliers = collect([$typeNode]);
             }
 
-            // Posting accounts (L5) per supplier; if none, supplier itself is posting.
             $leafIds = collect();
             $leafToSupplier = [];
             $supplierById = $suppliers->keyBy('id');
 
             foreach ($suppliers as $sup) {
-                $children = Account::where('parent_id', $sup->id)->get(['id', 'name', 'parent_id']);
+                $children = Account::where('parent_id', $sup->id)
+                    ->where('company_id', $companyId)
+                    ->get(['id', 'name', 'parent_id']);
                 $postings = $children->isNotEmpty() ? $children : collect([$sup]);
 
                 Log::info('RangeSuppliers: postings for supplier', [
@@ -2214,6 +2447,7 @@ class ReportController extends Controller
                 'task.agent.branch.company:id' // for scoping
             ])
                 ->whereIn('account_id', $leafIds)
+                ->where('company_id', $companyId)
                 ->whereBetween('transaction_date', [$from, $to])
                 ->whereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
 
@@ -2465,6 +2699,9 @@ class ReportController extends Controller
             'date_preset' => 'nullable|string',
         ]);
 
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
         $supplierIds = $request->input('supplier_ids', []);
         $statuses = $request->input('statuses', []);
         $issuedBy = $request->input('issued_by', []);
@@ -2561,6 +2798,10 @@ class ReportController extends Controller
                 $taskQuery = Task::with(['supplier', 'agent', 'client'])
                     ->whereIn('status', $mainStatuses);
 
+                if ($companyId) {
+                    $taskQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                }
+
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $taskQuery->whereIn('supplier_id', $supplierIds);
                 }
@@ -2582,6 +2823,10 @@ class ReportController extends Controller
                 if (!$voidSelected) {
                     $voidQuery = Task::where('status', 'void');
 
+                    if ($companyId) {
+                        $voidQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                    }
+
                     if (!empty($supplierIds) && is_array($supplierIds)) {
                         $voidQuery->whereIn('supplier_id', $supplierIds);
                     }
@@ -2602,6 +2847,10 @@ class ReportController extends Controller
                 if (!$confirmedSelected) {
                     $confirmedQuery = Task::where('status', 'confirmed');
 
+                    if ($companyId) {
+                        $confirmedQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                    }
+
                     if (!empty($supplierIds) && is_array($supplierIds)) {
                         $confirmedQuery->whereIn('supplier_id', $supplierIds);
                     }
@@ -2620,7 +2869,13 @@ class ReportController extends Controller
                 $allTasks = $taskQuery->get();
             }
 
-            $issuedReissuedReferences = Task::whereIn('status', ['issued', 'reissued'])
+            $issuedReissuedQuery = Task::whereIn('status', ['issued', 'reissued']);
+
+            if ($companyId) {
+                $issuedReissuedQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+            }
+
+            $issuedReissuedReferences = $issuedReissuedQuery
                 ->when(!empty($supplierIds), fn($q) => $q->whereIn('supplier_id', $supplierIds))
                 ->when(!empty($issuedBy), fn($q) => $q->whereIn('issued_by', $issuedBy))
                 ->pluck('reference')
@@ -2630,6 +2885,10 @@ class ReportController extends Controller
                 $voidOnlyQuery = Task::with(['supplier', 'agent', 'client'])
                     ->where('status', 'void')
                     ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if ($companyId) {
+                    $voidOnlyQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                }
 
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $voidOnlyQuery->whereIn('supplier_id', $supplierIds);
@@ -2655,6 +2914,10 @@ class ReportController extends Controller
                 $confirmedOnlyQuery = Task::with(['supplier', 'agent', 'client'])
                     ->where('status', 'confirmed')
                     ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if ($companyId) {
+                    $confirmedOnlyQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                }
 
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $confirmedOnlyQuery->whereIn('supplier_id', $supplierIds);
@@ -2711,6 +2974,10 @@ class ReportController extends Controller
         if ($includePaymentVouchers) {
             try {
                 $transactionQuery = Transaction::where('reference_number', 'LIKE', 'PV-%');
+
+                if ($companyId) {
+                    $transactionQuery->where('company_id', $companyId);
+                }
 
                 if ($dateFrom) {
                     $transactionQuery->whereDate('transaction_date', '>=', $dateFrom);
@@ -2769,23 +3036,28 @@ class ReportController extends Controller
 
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
 
-        // Get available statuses from tasks + add payment_voucher
-        $availableStatuses = Task::select('status')
+        $availableStatusesQuery = Task::select('status')
             ->whereNotNull('status')
             ->distinct()
-            ->orderBy('status')
-            ->pluck('status')
-            ->toArray();
+            ->orderBy('status');
 
-        // Add payment_voucher to available statuses
+        if ($companyId) {
+            $availableStatusesQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+        }
+
+        $availableStatuses = $availableStatusesQuery->pluck('status')->toArray();
         $availableStatuses[] = 'payment_voucher';
 
-        $availableIssuedBy = Task::select('issued_by')
+        $availableIssuedByQuery = Task::select('issued_by')
             ->whereNotNull('issued_by')
             ->distinct()
-            ->orderBy('issued_by')
-            ->pluck('issued_by')
-            ->toArray();
+            ->orderBy('issued_by');
+
+        if ($companyId) {
+            $availableIssuedByQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+        }
+
+        $availableIssuedBy = $availableIssuedByQuery->pluck('issued_by')->toArray();
 
         return view('reports.tasks', compact(
             'tasks',
@@ -2818,6 +3090,9 @@ class ReportController extends Controller
             'date_to' => 'nullable|date',
             'date_preset' => 'nullable|string',
         ]);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         $supplierIds = $request->input('supplier_ids', []);
         $statuses = $request->input('statuses', []);
@@ -2916,6 +3191,10 @@ class ReportController extends Controller
                 $taskQuery = Task::with(['supplier', 'agent', 'client'])
                     ->whereIn('status', $mainStatuses);
 
+                if ($companyId) {
+                    $taskQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                }
+
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $taskQuery->whereIn('supplier_id', $supplierIds);
                 }
@@ -2937,6 +3216,10 @@ class ReportController extends Controller
                 if (!$voidSelected) {
                     $voidQuery = Task::where('status', 'void');
 
+                    if ($companyId) {
+                        $voidQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                    }
+
                     if (!empty($supplierIds) && is_array($supplierIds)) {
                         $voidQuery->whereIn('supplier_id', $supplierIds);
                     }
@@ -2957,6 +3240,10 @@ class ReportController extends Controller
                 if (!$confirmedSelected) {
                     $confirmedQuery = Task::where('status', 'confirmed');
 
+                    if ($companyId) {
+                        $confirmedQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                    }
+
                     if (!empty($supplierIds) && is_array($supplierIds)) {
                         $confirmedQuery->whereIn('supplier_id', $supplierIds);
                     }
@@ -2975,7 +3262,13 @@ class ReportController extends Controller
                 $allTasks = $taskQuery->get();
             }
 
-            $issuedReissuedReferences = Task::whereIn('status', ['issued', 'reissued'])
+            $issuedReissuedQuery = Task::whereIn('status', ['issued', 'reissued']);
+
+            if ($companyId) {
+                $issuedReissuedQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+            }
+
+            $issuedReissuedReferences = $issuedReissuedQuery
                 ->when(!empty($supplierIds), fn($q) => $q->whereIn('supplier_id', $supplierIds))
                 ->when(!empty($issuedBy), fn($q) => $q->whereIn('issued_by', $issuedBy))
                 ->pluck('reference')
@@ -2985,6 +3278,10 @@ class ReportController extends Controller
                 $voidOnlyQuery = Task::with(['supplier', 'agent', 'client'])
                     ->where('status', 'void')
                     ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if ($companyId) {
+                    $voidOnlyQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                }
 
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $voidOnlyQuery->whereIn('supplier_id', $supplierIds);
@@ -3010,6 +3307,10 @@ class ReportController extends Controller
                 $confirmedOnlyQuery = Task::with(['supplier', 'agent', 'client'])
                     ->where('status', 'confirmed')
                     ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if ($companyId) {
+                    $confirmedOnlyQuery->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
+                }
 
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $confirmedOnlyQuery->whereIn('supplier_id', $supplierIds);
@@ -3063,6 +3364,10 @@ class ReportController extends Controller
         if ($includePaymentVouchers) {
             try {
                 $transactionQuery = Transaction::where('reference_number', 'LIKE', 'PV-%');
+
+                if ($companyId) {
+                    $transactionQuery->where('company_id', $companyId);
+                }
 
                 if ($dateFrom) {
                     $transactionQuery->whereDate('transaction_date', '>=', $dateFrom);

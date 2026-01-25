@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Http\Controllers;
 
 use App\AIService;
@@ -30,20 +29,22 @@ class RoleController extends Controller
         Gate::authorize('viewAny', Role::class);
 
         $user = Auth::user();
-        $companyId = 1;
+        $companyId = getCompanyId($user);
         $companies = collect();
 
-        if($user->role_id == Role::ADMIN){
-            $companyId = $request->get('company_id', 1);
+        if ($user->role_id == Role::ADMIN) {
             $companies = Company::all();
-        } else if($user->role_id == Role::COMPANY){
+
+            if (!$companyId) {
+                return redirect()->route('dashboard')->with('error', 'Please select a company first.');
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
-        }else {
+        } else {
             return abort(403, 'Unauthorized action.');
         }
 
         $roles = $this->getAllRole($companyId);
-        $user = Auth::user();
 
         return view('role.index', compact(
             'roles',
@@ -65,8 +66,9 @@ class RoleController extends Controller
         Gate::authorize('create', Role::class);
 
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if($user->role_id != Role::COMPANY ) {
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ADMIN])) {
             return redirect()->back()->with('error', 'Not Authorized');
         }
 
@@ -85,24 +87,22 @@ class RoleController extends Controller
             'permissionsId.required' => 'Please select at least one permission.'
         ]);
 
-
         $role = Role::create([
             'name' => $request->name,
             'guard_name' => 'web',
             'description' => $request->description,
-            'company_id' => $user->company->id
+            'company_id' => $companyId
         ]);
 
         if (Str::lower($role->name) === 'accountant') {
             $permissions = Permission::whereIn('id', $this->viewOnlyPermissionsIds())->get();
         } else {
-    
-        $permissions = Permission::whereIn('id', $request->permissionsId)->get();
+            $permissions = Permission::whereIn('id', $request->permissionsId)->get();
         }
 
         $role->syncPermissions($permissions);
 
-        return redirect()->route('role.index');
+        return redirect()->route('role.index')->with('success', 'Role created successfully');
     }
 
     public function edit($roleId)
@@ -115,15 +115,15 @@ class RoleController extends Controller
             $groupedPermissions = cache()->remember('permissions', 3600, function () {
                 return $this->getAllPermission();
             });
-        } else if ($user->role_id == Role::AGENT) {
+        } elseif ($user->role_id == Role::AGENT) {
             $groupedPermissions = cache()->remember('permissions_company', 3600, function () {
                 return $this->getAllPermissionForAgent();
             });
-        } else if ($user->role_id == Role::ACCOUNTANT) {
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
             $groupedPermissions = cache()->remember('permissions', 3600, function () {
                 return $this->getAllPermission();
             });
-        }else {
+        } else {
             return redirect()->back()->with('error', 'You do not have role, please contact your administrator');
         }
 
@@ -163,20 +163,49 @@ class RoleController extends Controller
         }
 
         if ($role->permissions->count() == 0) {
-            if (count($request->permissionsId) == 0) {
+            if (count($request->permissionsId ?? []) == 0) {
                 return redirect()->back()->with('error', 'Pick at least one permission');
             }
         }
 
         try {
-
-            $permissions = Permission::whereIn('id', $request->permissionsId)->get();
+            $permissions = Permission::whereIn('id', $request->permissionsId ?? [])->get();
             $role->syncPermissions($permissions);
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
 
         return redirect()->back()->with('success', 'Role updated successfully');
+    }
+
+    public function destroy($roleId)
+    {
+        Gate::authorize('delete', Role::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        }
+
+        $role = Role::where('id', $roleId)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$role) {
+            return redirect()->back()->with('error', 'Role not found');
+        }
+
+        $usersWithRole = \App\Models\User::where('role_id', $roleId)->count();
+        if ($usersWithRole > 0) {
+            return redirect()->back()->with('error', 'Cannot delete role. ' . $usersWithRole . ' user(s) are using this role.');
+        }
+
+        $role->permissions()->detach();
+        $role->delete();
+
+        return redirect()->route('role.index')->with('success', 'Role deleted successfully');
     }
 
     public function getAllPermission()
@@ -227,12 +256,12 @@ class RoleController extends Controller
         return json_decode($response['choices'][0]['message']['content'], true);
     }
 
-    public function getAllPermissionForAccountant() 
+    public function getAllPermissionForAccountant()
     {
         $permissions = Permission::getGroupedByGroup();
 
         foreach ($permissions as $permission => $items) {
-            $permissions[$permission] = collect($items)->fileter(function ($perm) {
+            $permissions[$permission] = collect($items)->filter(function ($perm) {
                 $n = Str::lower($perm['name'] ?? '');
                 return Str::startsWith($n, ['view', 'read', 'list', 'show', 'export']) || Str::contains($n, 'download');
             })->values()->all();
@@ -247,18 +276,18 @@ class RoleController extends Controller
     public function viewOnlyPermissionsIds()
     {
         return Permission::query()
-        ->where(function ($q) {
-            $q->where('name', 'like', 'view %')
-            ->orWhere('name', 'like', 'read %')
-            ->orWhere('name', 'like', 'list %')
-            ->orWhere('name', 'like', 'show %')
-            ->orWhere('name', 'like', 'export %')
-            ->orWhere('name', 'like', '% download%');
-        })
-        ->pluck('id')
-        ->all();
+            ->where(function ($q) {
+                $q->where('name', 'like', 'view %')
+                    ->orWhere('name', 'like', 'read %')
+                    ->orWhere('name', 'like', 'list %')
+                    ->orWhere('name', 'like', 'show %')
+                    ->orWhere('name', 'like', 'export %')
+                    ->orWhere('name', 'like', '% download%');
+            })
+            ->pluck('id')
+            ->all();
     }
-    
+
     public function getAllRole($companyId)
     {
         return Role::with('permissions')

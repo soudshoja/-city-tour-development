@@ -1,10 +1,8 @@
 <x-app-layout>
     <style>
-        /* Table Styling */
         .bank-payment-table {
             font-size: 12px;
             border: 1px solid #ddd;
-            /* Light grey border */
             width: 100%;
             text-align: center;
         }
@@ -14,50 +12,49 @@
             padding: 2px !important;
             vertical-align: middle;
             border: 1px solid #ddd !important;
-            /* Light grey border for all cells */
             min-width: 80px;
-            /* Ensuring a consistent column width */
             text-align: center;
-            /* Center content */
         }
 
-        /* Centering input fields */
         .bank-payment-table input,
         .bank-payment-table select {
             font-size: 12px;
             padding: 1px 5px;
             height: 28px;
             width: 100%;
-            /* Make inputs fill the cell */
             border: 1px solid #ccc;
-            /* Slightly darker grey for inputs */
             border-radius: 6px;
-            /* Rounded corners */
             text-align: left;
-            /* Center text inside input fields */
         }
 
-        /* Button Styling */
         .btn-sm {
             padding: 4px 8px;
             font-size: 12px;
         }
 
-        /* Add New Record Button */
         .add-record-container {
             margin-top: 15px;
-            /* Adds spacing after table */
             text-align: right;
-            /* Align button to right */
+        }
+
+        .bank-option-disabled {
+            color: #9ca3af;
+            background-color: #f3f4f6;
+        }
+        
+        .bank-balance-positive {
+            color: #059669;
+        }
+        
+        .bank-balance-zero {
+            color: #dc2626;
         }
     </style>
 
-    <!-- start main content section -->
     <div class="panel h-full overflow-hidden border-0 p-0">
         <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
             <div class="flex items-center justify-between text-white">
                 <p class="text-2xl">Payment Voucher</p>
-                <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
         <form method="POST" action="{{ route('bank-payments.store') }}">
@@ -76,58 +73,32 @@
                                         <p>{{ $companies->email }}</p>
                                         <p>{{ $companies->phone }}</p>
                                     </div>
-                                @else
-                                    <div class="custom-select w-full border rounded-lg mt-4">
-                                        <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select
-                                            Company
-                                        </div>
-                                        <div
-                                            class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                            @foreach ($companies as $company)
-                                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                    data-value="{{ $company->id }}">
-                                                    {{ $company->name }}
-                                                </div>
-                                            @endforeach
-                                        </div>
-
-                                    </div>
-
                                 @endif
                                 <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
                             </div>
                         </div>
                         <div class="w-full lg:w-1/2 lg:max-w-fit mt-5">
                             <div class="flex items-center gap-x-4">
-                                <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment
-                                    Ref <span class="text-red-500">*</span></label>
-                                <input type="text" readonly value="PV-{{ now()->timestamp }}"
-                                    class="form-input w-2/3 lg:w-[250px]  bg-gray-200" />
+                                <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment Ref <span class="text-red-500">*</span></label>
+                                <input type="text" readonly value="PV-{{ now()->timestamp }}" class="form-input w-2/3 lg:w-[250px]  bg-gray-200" />
                                 <input type="hidden" name="bankpaymentref" value="PV-{{ now()->timestamp }}" required>
 
                             </div>
                             <div class="flex items-center gap-x-4 mt-4">
-                                <label for="bankpaymenttype" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
-                                    Payment Type <span class="text-red-500">*</span>
-                                </label>
-                                <select required id="bankpaymenttype" name="bankpaymenttype"
-                                    class="form-select w-2/3 lg:w-[250px] bg-white text-gray-700 border-gray-300"
+                                <label for="bankpaymenttype" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment Type <span class="text-red-500">*</span></label>
+                                <select required id="bankpaymenttype" name="bankpaymenttype" class="form-select w-2/3 lg:w-[250px] bg-white text-gray-700 border-gray-300"
                                     onchange="toggleRefundDatalist()">
                                     <option value="">Choose One</option>
                                     <option value="Payment">Payment</option>
                                     <option value="PaymentByDate">Payment by Date</option>
                                     <option value="Refund">Refund</option>
                                 </select>
-
                             </div>
                             <div id="lastSearchInfo" class="text-muted ml-30" style="display: none;"></div>
                             <div id="refundNumberField" class="flex items-center gap-x-4 mt-4 hidden">
-                                <label for="refund_number" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
-                                    Refund Number <span class="text-red-500">*</span>
-                                </label>
+                                <label for="refund_number" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Refund Number <span class="text-red-500">*</span></label>
                                 <input required list="refundList" name="refund_number" id="refund_number"
-                                    class="form-input w-2/3 lg:w-[250px] bg-white text-gray-700 border border-gray-300"
-                                    placeholder="Search refund number..." />
+                                    class="form-input w-2/3 lg:w-[250px] bg-white text-gray-700 border border-gray-300" placeholder="Search refund number..." />
                                 <datalist id="refundList">
                                     @foreach ($refundNumbers as $refund)
                                         <option value="{{ $refund->refund_number }}"></option>
@@ -135,22 +106,17 @@
                                 </datalist>
                             </div>
                             <div class="flex items-center gap-x-4 mt-4">
-                                <label for="branch_id" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Branch <span
-                                        class="text-red-500">*</span></label>
+                                <label for="branch_id" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Branch <span class="text-red-500">*</span></label>
                                 <select required id="branch_id" name="branch_id" class="form-input w-2/3 lg:w-[250px]">
                                     <option value="">Select Branch</option>
                                     @foreach ($branches as $branch)
-                                        <option value="{{ $branch->id }}" data-name="{{ $branch->name }}">
-                                            {{ $branch->name }}
-                                        </option>
+                                        <option value="{{ $branch->id }}" data-name="{{ $branch->name }}">{{ $branch->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="docdate" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Doc Date <span
-                                        class="text-red-500">*</span></label>
-                                <input required id="docdate" type="date" name="docdate"
-                                    class="form-input w-2/3 lg:w-[250px]" />
+                                <label for="docdate" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Doc Date <span class="text-red-500">*</span></label>
+                                <input required id="docdate" type="date" name="docdate" class="form-input w-2/3 lg:w-[250px]" />
                             </div>
                             <input type="hidden" id="total_payment" name="total_payment" value="" readonly>
                         </div>
@@ -159,49 +125,45 @@
                     <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
 
                     <div class="mt-8 px-4">
-                        <div class="flex flex-col justify-between lg:flex-row gap-x-4">
-                            <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
+                        <div class="flex flex-col justify-between lg:flex-row gap-x-24">
+                            <div class="mb-6 w-full lg:w-1/2">
                                 <div class="text-lg font-semibold">Payment Voucher</div>
                                 <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="pay_to_payee" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Pay To <span
-                                            class="text-red-500">*</span></label>
-                                    <input required id="pay_to" type="text" name="pay_to"
-                                        class="form-input flex-1" list="supplierList"
-                                        placeholder="Search payee name..." />
-                                    <datalist id="supplierList">
-                                        @foreach ($suppliers as $supplier)
-                                            <option value="{{ $supplier->name }}">
-                                                [{{ $supplier->root->name ?? 'N/A' }}] [{{ $supplier->code }}]
-                                                {{ $supplier->name }} </option>
+                                    <label for="pay_from_account" class="mb-0 shrink-0">
+                                        Pay From <span class="text-red-500">*</span>
+                                    </label>
+                                    <select required id="pay_from_account" name="pay_from_account" class="form-select flex-1" onchange="updateSelectedBankBalance()">
+                                        <option value="">Select Bank/Cash Account</option>
+                                        @foreach ($bankAccounts as $bank)
+                                            <option value="{{ $bank->id }}" data-balance="{{ $bank->current_balance }}"
+                                                {{ $bank->current_balance <= 0 ? 'disabled' : '' }}
+                                                class="{{ $bank->current_balance <= 0 ? 'bank-option-disabled' : '' }}"
+                                            >
+                                                {{ $bank->name }} - KWD {{ number_format($bank->current_balance, 3) }}
+                                                {{ $bank->current_balance <= 0 ? '(Insufficient)' : '' }}
+                                            </option>
                                         @endforeach
-                                    </datalist>
+                                    </select>
                                 </div>
                             </div>
                             <div class="w-full lg:w-1/2">
                                 <div class="text-lg font-semibold">Remarks</div>
 
                                 <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
-                                        <span class="text-red-500">*</span></label>
-                                    <input required id="remarks_create" type="text" name="remarks_create"
-                                        class="form-input flex-1" placeholder="Enter Remarks" />
+                                    <label for="remarks_create_label" class="mb-0 shrink-0">Remarks <span class="text-red-500">*</span></label>
+                                    <input required id="remarks_create" type="text" name="remarks_create" class="form-input flex-1" placeholder="Enter Remarks" />
+                                </div>
+
+                                <!-- <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="internal_remarks" class="mb-0 shrink-0">Internal Remarks</label>
+                                    <input id="internal_remarks" type="text" name="internal_remarks" class="form-input flex-1" placeholder="Enter Internal Remarks" />
                                 </div>
 
                                 <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal
-                                        Remarks</label>
-                                    <input id="internal_remarks" type="text" name="internal_remarks"
-                                        class="form-input flex-1" placeholder="Enter Internal Remarks" />
-                                </div>
-
-                                <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
-                                        FL</label>
-                                    <input id="remarks_fl" type="text" name="remarks_fl"
-                                        class="form-input flex-1" placeholder="Enter Remarks FL" />
-                                </div>
+                                    <label for="remarks_fl" class="mb-0 shrink-0">Remarks FL</label>
+                                    <input id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1" placeholder="Enter Remarks FL" />
+                                </div> -->
                             </div>
-
                         </div>
                     </div>
 
@@ -212,128 +174,108 @@
                                     <th colspan="2">Type</th>
                                     <th>Currency</th>
                                     <th>Exchange Rate</th>
-                                    <th>Debit</th>
+                                    <!-- <th>Debit</th> -->
                                     <th>Credit</th>
-                                    <th>Cheque No</th>
+                                    <!-- <th>Cheque No</th>
                                     <th>Cheque Date</th>
                                     <th>Bank Name</th>
                                     <th>Auth No</th>
                                     <th>Branch</th>
-                                    <th>Balance</th>
+                                    <th>Balance</th> -->
                                     <th></th>
                                 </tr>
                             </thead>
-                            <tbody id="paymentTable">
-                            </tbody>
+                            <tbody id="paymentTable"></tbody>
                         </table>
-                        <!-- Add New Record Button (below table with spacing) -->
                         <div class="add-record-container mb-10 ml-4">
                             <button type="button" class="btn btn-primary" id="addItem">+ Add New Record</button>
                         </div>
-
                     </div>
 
                     <div class="panel overflow-hidden">
                         <div class="relative">
-                            <div class="grid grid-cols-2 gap-6 md:grid-cols-3">
+                            <div class="grid grid-cols-2 gap-6 md:grid-cols-4">
                                 <div class="mt-2">
                                     <div class="text-primary">Total Debit</div>
                                     <div class="mt-2 text-2xl font-semibold">
-                                        <span id="total_debit">0.00</span>
+                                        <span id="total_debit">0.000</span>
                                     </div>
                                 </div>
 
                                 <div class="mt-2">
                                     <div class="text-primary">Total Credit</div>
                                     <div class="mt-2 text-2xl font-semibold">
-                                        <span id="total_credit">0.00</span>
+                                        <span id="total_credit">0.000</span>
                                     </div>
                                 </div>
 
                                 <div class="mt-2">
-                                    <div class="text-primary">Difference</div>
+                                    <div class="text-primary">Net Payment</div>
                                     <div class="mt-2 text-2xl font-semibold">
-                                        <span id="total_difference">0.00</span>
+                                        <span id="total_difference">0.000</span>
                                     </div>
                                 </div>
 
+                                <div class="mt-2">
+                                    <div class="text-primary">Bank After Payment</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="bank_after_payment" class="text-green-600">0.000</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="absolute -bottom-12 right-12 h-36 w-36"> <!-- Increased parent div size -->
-                                <svg id="correct" width="36" height="36" viewBox="0 0 24 24"
-                                    fill="none" xmlns="http://www.w3.org/2000/svg"
-                                    class="h-full w-full text-success opacity-20">
-                                    <circle opacity="0.5" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="1.5" />
-                                    <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
+                            <div class="absolute -bottom-12 right-12 h-36 w-36">
+                                <svg id="correct" width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-success opacity-20">
+                                    <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
-
-                                <svg id="false" width="36" height="36" viewBox="0 0 24 24"
-                                    fill="none" xmlns="http://www.w3.org/2000/svg"
-                                    class="h-full w-full text-danger opacity-20">
-                                    <circle opacity="0.5" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="1.5" />
-                                    <path d="M12 7V13" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" />
+                                <svg id="false" width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-danger opacity-20" style="display:none;">
+                                    <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M12 7V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                                     <circle cx="12" cy="16" r="1" fill="currentColor" />
                                 </svg>
                             </div>
-
-
                         </div>
                     </div>
 
-
                     <div class="mt-6 flex justify-between px-4">
-                        <!-- Left side: Cancel button -->
-                        <a href="{{ route('bank-payments.index') }}"
-                            class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
+                        <a href="{{ route('bank-payments.index') }}" class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
                             Cancel
                         </a>
 
-                        <!-- Right side: Save and Reset -->
                         <div class="flex gap-4 ml-5">
                             <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
-                            <button id="save-paymentvoucher-btn" type="submit"
-                                class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
+                            <button id="save-paymentvoucher-btn" type="submit" class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
                                 <span id="iconSavePaymentVoucher" class="mr-2 inline-block">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
                                     </svg>
                                 </span>
                                 <span id="textSavePaymentVoucher">Save</span>
                             </button>
-
                         </div>
                     </div>
                 </div>
             </div>
         </form>
-        <!-- end main content section -->
     </div>
 
-    <div id="paymentByDateModal"
-        class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+    <div id="paymentByDateModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-3xl shadow-xl">
             <h2 class="text-lg font-bold mb-4">Select Payments by Date</h2>
 
             <div class="flex flex-col sm:flex-row sm:gap-4 gap-2 mb-4">
                 <div class="w-full sm:w-1/3">
                     <label class="block text-sm font-medium">Date From:</label>
-                    <input type="date" id="dateFrom"
-                        class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
+                    <input type="date" id="dateFrom" class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
                 </div>
                 <div class="w-full sm:w-1/3">
                     <label class="block text-sm font-medium">Date To:</label>
-                    <input type="date" id="dateTo"
-                        class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
+                    <input type="date" id="dateTo" class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
                 </div>
                 <div class="w-full sm:w-1/3">
                     <label class="block text-sm font-medium">Supplier:</label>
-                    <input required id="supplierName" type="text" name="supplierName"
-                        class="border border-gray-300 rounded w-full px-2 py-1 h-10" list="supplierList"
+                    <input required id="supplierName" type="text" name="supplierName" class="border border-gray-300 rounded w-full px-2 py-1 h-10" list="supplierList"
                         placeholder="Search supplier name..." />
                     <datalist id="supplierList">
                         @foreach ($suppliers as $supplier)
@@ -346,11 +288,10 @@
             </div>
 
             <div class="mb-4">
-                <button onclick="loadJournalEntries()"
-                    class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Search</button>
+                <button onclick="loadJournalEntries()" class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Search</button>
             </div>
             <div id="totalOutstandingBalance" class="text-right text-sm font-medium text-blue-700 mt-2 hidden">
-                Total Outstanding Balance: KWD <span id="outstandingAmount">0.00</span>
+                Total Outstanding Balance: KWD <span id="outstandingAmount">0.000</span>
             </div>
             <div id="recordsContainer" class="text-sm overflow-x-auto">
                 <p class="text-gray-500">Select a date range and click Search to load entries.</p>
@@ -358,8 +299,7 @@
 
             <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2">
                 <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded w-full sm:w-auto">Close</button>
-                <button onclick="submitSelectedPayments()"
-                    class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Add Selected</button>
+                <button onclick="submitSelectedPayments()" class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Add Selected</button>
             </div>
         </div>
     </div>
@@ -369,17 +309,36 @@
         const lastLevelAccounts = @json($lastLevelAccounts);
         const bonusAccounts = @json($bonusAccounts);
         const agents = @json($agents);
-        console.log("Loaded agents:", agents); // check browser console, should print array
+        const bankAccounts = @json($bankAccounts);
 
         let items = [];
+        let selectedBankBalance = 0;
+
+        // Update selected bank balance display
+        function updateSelectedBankBalance() {
+            const select = document.getElementById('pay_from_account');
+            const selectedOption = select.options[select.selectedIndex];
+            const balanceSpan = document.getElementById('selectedBankBalance');
+            
+            if (selectedOption && selectedOption.value) {
+                const balance = parseFloat(selectedOption.dataset.balance) || 0;
+                selectedBankBalance = balance;
+                balanceSpan.textContent = 'KWD ' + balance.toFixed(3);
+                balanceSpan.className = balance > 0 ? 'font-semibold bank-balance-positive' : 'font-semibold bank-balance-zero';
+            } else {
+                selectedBankBalance = 0;
+            }
+            
+            updateTotals();
+        }
 
         document.addEventListener("DOMContentLoaded", function() {
             const paymentTable = document.getElementById("paymentTable");
             const totalDebitEl = document.getElementById("total_debit");
             const totalCreditEl = document.getElementById("total_credit");
             const totalDifferenceEl = document.getElementById("total_difference");
+            const bankAfterPaymentEl = document.getElementById("bank_after_payment");
             const addItemButton = document.getElementById("addItem");
-            const totalPaymentInput = document.getElementById('total_payment');
 
             function addItem() {
                 let id = crypto.randomUUID();
@@ -400,7 +359,7 @@
                     balance: 0,
                     type_reference_id: "",
                     type_selector: "none",
-                    bonus_ac_code: "", 
+                    bonus_ac_code: "",
                     agent_id: "",
                 };
 
@@ -409,24 +368,18 @@
             }
 
             window.removeItem = function(index) {
-                // Get the payment type from the dropdown
                 const type = document.getElementById('bankpaymenttype').value;
 
                 // If the payment type is 'PaymentByDate', reset the table and arrays when one item is removed
                 if (type === 'PaymentByDate') {
-                    // Reset the selectedJournalIds array
                     selectedJournalIds = [];
-
                     items = [];
 
-                    // Re-render the table with no records
                     renderTable();
-
-                    alert("All records have been reset and do re-select the record if you want to continue.");
+                    alert("All records have been reset. Please re-select records if you want to continue.");
                 } else {
                     // For other payment types, continue normal removal
                     if (items.length > 1) {
-                        // Remove the item at the given index
                         items.splice(index, 1);
                         renderTable();
                     } else {
@@ -437,29 +390,39 @@
 
             window.updateField = function(index, field, value) {
                 if (["debit", "credit", "exchange_rate", "balance"].includes(field)) {
-                    items[index][field] = parseFloat(value).toFixed(2) || "0.00";
-                    items[index][field] = parseFloat(items[index][field]); // Convert back to number
+                    items[index][field] = parseFloat(value) || 0;
                 } else {
                     items[index][field] = value;
                 }
                 updateTotals();
             };
 
-            function updateTotals() {
+            window.updateTotals = function() {
                 let totalDebit = items.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0);
                 let totalCredit = items.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0);
-                let totalDifference = totalDebit - totalCredit;
+                let netPayment = totalCredit;
+                let bankAfter = selectedBankBalance - netPayment;
 
-                totalDebitEl.textContent = totalDebit.toFixed(2);
-                totalCreditEl.textContent = totalCredit.toFixed(2);
-                totalDifferenceEl.textContent = totalDifference.toFixed(2);
+                totalDebitEl.textContent = totalDebit.toFixed(3);
+                totalCreditEl.textContent = totalCredit.toFixed(3);
+                totalDifferenceEl.textContent = netPayment.toFixed(3);
+                bankAfterPaymentEl.textContent = bankAfter.toFixed(3);
+
+                // Color coding for bank after payment
+                if (bankAfter < 0) {
+                    bankAfterPaymentEl.className = 'text-red-600';
+                    document.getElementById('false').style.display = 'block';
+                    document.getElementById('correct').style.display = 'none';
+                } else {
+                    bankAfterPaymentEl.className = 'text-green-600';
+                    document.getElementById('false').style.display = 'none';
+                    document.getElementById('correct').style.display = 'block';
+                }
 
                 const totalPaymentInput = document.getElementById('total_payment');
                 if (totalPaymentInput) {
-                    totalPaymentInput.value = totalDifference.toFixed(2);
+                    totalPaymentInput.value = netPayment.toFixed(3);
                 }
-
-                updateDifference(totalDifference);
             }
 
             function selectedAccName(input, index) {
@@ -478,11 +441,13 @@
 
                 if (acc) {
                     items[index].ac_code = acc.id;
+                    items[index].account_id = acc.id;
                     document.getElementById(`selectedAccName_${index}`).innerText =
                         `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
                     document.getElementById(`account_id_${index}`).value = acc.id;
                 } else {
                     items[index].ac_code = null;
+                    items[index].account_id = null;
                     document.getElementById(`selectedAccName_${index}`).innerText = '';
                     document.getElementById(`account_id_${index}`).value = '';
                 }
@@ -492,13 +457,7 @@
             window.selectedAccName = selectedAccName;
 
             function handleAgentChange(select, index) {
-                const selectedId = select.value;
-                const selectedText = select.options[select.selectedIndex].text.trim();
-
-                items[index].agent_id = selectedId;
-
-                console.log("Selected Agent ID:", selectedId);
-                console.log("Selected Agent Name:", selectedText);
+                items[index].agent_id = select.value;
             }
             window.handleAgentChange = handleAgentChange;
 
@@ -518,9 +477,7 @@
 
                 const selectedCode = match[1];
                 const selectedName = match[2];
-                const bonusAcc = bonusAccounts.find(
-                    bAcc => bAcc.code === selectedCode && bAcc.name === selectedName
-                );
+                const bonusAcc = bonusAccounts.find(bAcc => bAcc.code === selectedCode && bAcc.name === selectedName);
 
                 if (bonusAcc) {
                     items[index].bonus_ac_code = bonusAcc.id;
@@ -529,7 +486,6 @@
 
                     const label = bonusAcc.label?.toLowerCase() || '';
                     const accName = bonusAcc.name?.toLowerCase() || '';
-
                     items[index].showAgent = label === 'bonus' && accName.includes('agent');
 
                     document.getElementById(`selectedBonusAccName_${index}`).innerText =
@@ -543,31 +499,9 @@
                     document.getElementById(`account_id_${index}`).value = '';
                 }
 
-                console.log("Full bonusAcc object:", bonusAcc);
-                console.log("Label:", bonusAcc?.label || "(none)");
-                console.log("Show agent field:", items[index].showAgent);
-
                 renderTable();
             }
             window.selectedBonusName = selectedBonusName;
-
-            function updateDifference(value) {
-                let differenceElement = document.getElementById("total_difference");
-                let correctIcon = document.getElementById("correct");
-                let falseIcon = document.getElementById("false");
-
-                // Update the displayed total difference
-                differenceElement.textContent = value.toFixed(2);
-
-                // Show/hide icons based on the value
-                if (value < 0) {
-                    falseIcon.style.display = "block";
-                    correctIcon.style.display = "none";
-                } else {
-                    falseIcon.style.display = "none";
-                    correctIcon.style.display = "block";
-                }
-            }
 
             window.toggleTypeInput = function(select, index) {
                 items[index].type_selector = select.value;
@@ -585,8 +519,7 @@
 
                     const selectedAcc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
                     const selectedAccDisplay = selectedAcc ?
-                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` :
-                        '';
+                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` : '';
 
                     const isBonusAccountsArray = Array.isArray(bonusAccounts) && bonusAccounts.length > 0;
                     const bonusOptions = isBonusAccountsArray ? bonusAccounts.map(bAcc =>
@@ -595,137 +528,104 @@
 
                     const selectedBonusAcc = bonusAccounts ? bonusAccounts.find(bAcc => bAcc.id == item.bonus_ac_code) : null;
                     const selectedBonusAccDisplay = selectedBonusAcc ?
-                        `[${selectedBonusAcc.root ? selectedBonusAcc.root.name : 'No Root'}] [${selectedBonusAcc.code}] ${selectedBonusAcc.name}` :
-                        '';
+                        `[${selectedBonusAcc.root ? selectedBonusAcc.root.name : 'No Root'}] [${selectedBonusAcc.code}] ${selectedBonusAcc.name}` : '';
 
                     row.innerHTML = `
-                    <td colspan="2" style="min-width:300px;">
+                    <td colspan="2">
                         <div style="display: flex; gap: 8px;">
-                            <!-- Type Selector -->
                             <select required class="form-control form-control-sm" 
-                                name="items[${index}][type_selector]" 
-                                onchange="toggleTypeInput(this, ${index})" 
-                                style="flex: 0 0 120px;">
+                                name="items[${index}][type_selector]" onchange="toggleTypeInput(this, ${index})" style="flex: 0 0 140px;">
                                 <option value="none" ${item.type_selector === 'none' ? 'selected' : ''}>Choose a Type</option>
                                 <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account</option>
-                                <option value="refund" ${item.type_selector === 'refund' ? 'selected' : ''}>Refund</option>
+                                <!-- <option value="refund" ${item.type_selector === 'refund' ? 'selected' : ''}>Refund</option> --!>
                                 <option value="bonus" ${item.type_selector === 'bonus' ? 'selected' : ''}>Bonus</option>
                             </select>
 
-                            <!-- Dynamic Input Next to Selector -->
                             <div id="typeInput_${index}" style="flex: 1 1 8%;">
                                 ${
                                     item.type_selector === 'none'
-                                    ? `
-                                        <input required type="text" class="form-control form-control-sm"
-                                            name="items[${index}][manual_entry]"
-                                            value="${item.manual_entry || ''}"
-                                            placeholder="Select a Type First..."
-                                            readonly>
-                                    `
+                                    ? `<input type="text" class="form-control form-control-sm" value="" placeholder="Select a Type First..." readonly>`
                                     : item.type_selector === 'account'
                                     ? `
-                                        <input required list="accountList_${index}" 
-                                            class="form-control form-control-sm" 
+                                        <input required list="accountList_${index}" class="form-control form-control-sm" 
                                             name="items[${index}][ac_code]" 
                                             value="${selectedAcc ? `[${selectedAcc.code}] ${selectedAcc.name}` : ''}" 
-                                            placeholder="Search..."
+                                            placeholder="Search account..."
                                             oninput="selectedAccName(this, ${index})">
-
-                                        <datalist id="accountList_${index}">
-                                            ${accountOptions}
-                                        </datalist>
-
-                                        <small id="selectedAccName_${index}" class="text-muted">
-                                            ${selectedAccDisplay}
-                                        </small>
-
-                                        
-                                        <input type="hidden" name="items[${index}][account_id]" 
-                                            id="account_id_${index}" 
-                                            value="${selectedAcc ? selectedAcc.id : ''}">
-                                        <input type="hidden" name="items[${index}][transaction_id]" 
-                                            value="${item.transaction_id}">
-                                        
+                                        <datalist id="accountList_${index}">${accountOptions}</datalist>
+                                        <small id="selectedAccName_${index}" class="text-muted">${selectedAccDisplay}</small>
+                                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">
                                     `
                                     : item.type_selector === 'bonus'
                                     ? `
-                                        <input required list="bonusAccountList_${index}" 
-                                            class="form-control form-control-sm" 
+                                        <input required list="bonusAccountList_${index}" class="form-control form-control-sm" 
                                             name="items[${index}][bonus_ac_code]" 
                                             value="${selectedBonusAcc ? `[${selectedBonusAcc.code}] ${selectedBonusAcc.name}` : ''}" 
                                             placeholder="Search Bonus Account..."
                                             oninput="selectedBonusName(this, ${index})">
-
-                                        <datalist id="bonusAccountList_${index}">
-                                            ${bonusOptions}
-                                        </datalist>
-
-                                        <small id="selectedBonusAccName_${index}" class="text-muted">
-                                            ${selectedBonusAccDisplay}
-                                        </small>
-
-                                        <input type="hidden" name="items[${index}][account_id]" 
-                                            id="account_id_${index}" 
-                                            value="${selectedBonusAcc ? selectedBonusAcc.id : ''}">
-
-                                        <input type="hidden" name="items[${index}][transaction_id]" 
-                                            value="${item.transaction_id || ''}">
-
-                                        ${
-                                            item.showAgent
-                                            ? `
-                                                <div style="margin-top:20px;">
-                                                    <label class="text-xs font-weight-bold mb-1 text-left">Agent</label>
-                                                    <select required class="form-control form-control-sm"
-                                                        name="items[${index}][agent_id]"
-                                                        onchange="handleAgentChange(this, ${index})">
-                                                        <option value="">Select an Agent </option>
-                                                        ${agents ? agents.map(agent => `
-                                                            <option value="${agent.id}" ${item.agent_id == agent.id ? 'selected' : ''}>
-                                                                ${agent.name}
-                                                            </option>
-                                                        `).join('') : ''}
-                                                    </select>
-                                                </div>
-                                            `
-                                            : ''
-                                        }
+                                        <datalist id="bonusAccountList_${index}">${bonusOptions}</datalist>
+                                        <small id="selectedBonusAccName_${index}" class="text-muted">${selectedBonusAccDisplay}</small>
+                                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedBonusAcc ? selectedBonusAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">
+                                        ${item.showAgent ? `
+                                            <div style="margin-top:10px;">
+                                                <label class="text-xs font-weight-bold mb-1">Agent</label>
+                                                <select required class="form-control form-control-sm" name="items[${index}][agent_id]" onchange="handleAgentChange(this, ${index})">
+                                                    <option value="">Select Agent</option>
+                                                    ${agents ? agents.map(agent => `<option value="${agent.id}" ${item.agent_id == agent.id ? 'selected' : ''}>${agent.name}</option>`).join('') : ''}
+                                                </select>
+                                            </div>
+                                        ` : ''}
                                     `
                                     : item.type_selector === 'refund'
-                                    ? `
-                                        <input required type="text" class="form-control form-control-sm"
-                                            name="items[${index}][refund_ref]"
-                                            value="${item.refund_ref || ''}"
-                                            placeholder="Enter Refund Reference">
-                                    `
+                                    ? `<input required type="text" class="form-control form-control-sm" name="items[${index}][refund_ref]" value="${item.refund_ref || ''}" placeholder="Enter Refund Reference">
+                                       <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="">
+                                       <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">`
                                     : ''
                                 }
                             </div>
                         </div>
                     </td>
                     <td style="vertical-align: top;">
-                        <select required class="form-control form-control-sm text-left" name="items[${index}][currency]" onchange="updateField(${index}, 'currency', this.value)">
+                        <select required class="form-control form-control-sm" name="items[${index}][currency]" onchange="updateField(${index}, 'currency', this.value)">
                             <option ${item.currency === "KWD" ? "selected" : ""}>KWD</option>
                             <option ${item.currency === "USD" ? "selected" : ""}>USD</option>
                             <option ${item.currency === "GBP" ? "selected" : ""}>GBP</option>
                         </select>
                     </td>
-                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)"></td>
-                    <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][cheque_no]" value="${item.cheque_no}" oninput="updateField(${index}, 'cheque_no', this.value)"></td>
-                    <td style="vertical-align: top;"><input type="date" class="form-control form-control-sm" name="items[${index}][cheque_date]" value="${item.cheque_date}" oninput="updateField(${index}, 'cheque_date', this.value)"></td>
-                    <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][bank_name]" value="${item.bank_name}" oninput="updateField(${index}, 'bank_name', this.value)"></td>
-                    <td style="vertical-align: top;"><input type="number" class="form-control form-control-sm" name="items[${index}][auth_no]" value="${item.auth_no}" oninput="updateField(${index}, 'auth_no', this.value)"></td>
-                    <td style="vertical-align: top;"><input list="branchList${index}" name="items[${index}][branch]" class="form-input w-full" onchange="updateField(${index}, 'branch', this.value)" value="${item.branch}" />
+                    <td style="vertical-align: top;">
+                        <input required type="number" step="0.001" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)">
+                    </td>
+                    <!-- <td style="vertical-align: top;">
+                        <input type="number" step="0.001" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)">
+                    </td> --!>
+                    <td style="vertical-align: top;">
+                        <input type="number" step="0.001" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)">
+                    </td>
+                    <!-- <td style="vertical-align: top;">
+                        <input type="text" class="form-control form-control-sm" name="items[${index}][cheque_no]" value="${item.cheque_no}" oninput="updateField(${index}, 'cheque_no', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="date" class="form-control form-control-sm" name="items[${index}][cheque_date]" value="${item.cheque_date}" oninput="updateField(${index}, 'cheque_date', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="text" class="form-control form-control-sm" name="items[${index}][bank_name]" value="${item.bank_name}" oninput="updateField(${index}, 'bank_name', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="number" class="form-control form-control-sm" name="items[${index}][auth_no]" value="${item.auth_no}" oninput="updateField(${index}, 'auth_no', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input list="branchList${index}" name="items[${index}][branch]" class="form-input w-full" onchange="updateField(${index}, 'branch', this.value)" value="${item.branch}" />
                         <datalist id="branchList${index}">
                             @foreach ($branches as $branch)
                                 <option value="{{ $branch->id }}">[{{ $branch->id }}] {{ $branch->name }}</option>
                             @endforeach
                         </datalist>
                     </td>
-                    <td style="vertical-align: top;"><input type="number" class="form-control form-control-sm" name="items[${index}][balance]" value="${item.balance}" oninput="updateField(${index}, 'balance', this.value)"></td>
+                    <td style="vertical-align: top;">
+                        <input type="number" class="form-control form-control-sm" name="items[${index}][balance]" value="${item.balance}" oninput="updateField(${index}, 'balance', this.value)">
+                    </td> --!>
                     <td style="vertical-align: top;"><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${index})">X</button></td>
                 `;
 
@@ -735,114 +635,80 @@
                 updateTotals();
             }
 
-            // Initial row
             addItemButton.addEventListener("click", addItem);
             addItem();
 
             window.renderTable = renderTable;
 
+            // Form submission handling
             const saveBtn = document.getElementById('save-paymentvoucher-btn');
-
             if (saveBtn) {
-                saveBtn.addEventListener('click', handleSaveClick);
-            }
+                saveBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    
+                    // Validate bank is selected
+                    const bankSelect = document.getElementById('pay_from_account');
+                    if (!bankSelect.value) {
+                        alert('Please select a bank account to pay from.');
+                        return;
+                    }
+                    
+                    // Validate bank balance
+                    const netPayment = items.reduce((sum, item) => sum + (parseFloat(item.debit) || 0) - (parseFloat(item.credit) || 0), 0);
+                    if (netPayment > selectedBankBalance) {
+                        alert('Insufficient bank balance!\nRequired: KWD ' + netPayment.toFixed(3) + '\nAvailable: KWD ' + selectedBankBalance.toFixed(3));
+                        return;
+                    }
+                    
+                    const button = this;
+                    const icon = document.getElementById('iconSavePaymentVoucher');
+                    const text = document.getElementById('textSavePaymentVoucher');
 
-            function handleSaveClick(event) {
-                event.preventDefault(); // Prevent form from submitting immediately
+                    button.disabled = true;
+                    icon.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>`;
+                    text.textContent = 'Saving...';
 
-                const button = document.getElementById('save-paymentvoucher-btn');
-                const icon = document.getElementById('iconSavePaymentVoucher');
-                const text = document.getElementById('textSavePaymentVoucher');
-
-                // Disable the button
-                button.disabled = true;
-
-                icon.innerHTML = `
-                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                        </svg>
-                    `;
-                text.textContent = 'Saving...';
-
-                setTimeout(() => {
-                    button.closest('form').submit();
-                }, 500);
-            }
-
-
-        });
-
-        document.getElementById('supplierName')?.addEventListener('input', function() {
-            const payToInput = document.getElementById('pay_to');
-            if (payToInput) {
-                payToInput.value = this.value;
-            }
-        });
-
-        document.getElementById('pay_to')?.addEventListener('input', function() {
-            const payToValue = this.value.trim();
-            const supplierSelect = document.getElementById('supplierName');
-
-            if (supplierSelect && payToValue) {
-                const options = supplierSelect.options ? Array.from(supplierSelect.options) : [];
-                const optionExists = options.some(opt => opt.value === payToValue);
-                if (optionExists) {
-                    supplierSelect.value = payToValue;
-                } else {
-                    // Optionally add the supplier to the list
-                    const newOption = document.createElement('option');
-                    newOption.value = payToValue;
-                    newOption.textContent = payToValue;
-                    supplierSelect.appendChild(newOption);
-                    supplierSelect.value = payToValue;
-                }
+                    setTimeout(() => {
+                        button.closest('form').submit();
+                    }, 500);
+                });
             }
         });
 
-        function updateHiddenAccountId(input, index) {
-            const name = input.value;
-            const acc = lastLevelAccounts.find(acc => acc.name === name);
-            if (acc) {
-                document.getElementById(`account_id_${index}`).value = acc.id;
-                document.getElementById(`selectedAccName_${index}`).innerText =
-                    `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
-            } else {
-                document.getElementById(`account_id_${index}`).value = '';
-                document.getElementById(`selectedAccName_${index}`).innerText = '';
-            }
-        }
-
-
+        // Toggle refund field and handle payment types
         function toggleRefundDatalist() {
             const type = document.getElementById('bankpaymenttype').value;
             const refundField = document.getElementById('refundNumberField');
 
-            // Show/hide refund field
             if (type === 'Refund') {
                 refundField.classList.remove('hidden');
             } else {
                 refundField.classList.add('hidden');
             }
 
-            // Reset the form state
             items = [];
             selectedJournalIds = [];
             renderTable();
 
-            lastSearchInfo.innerHTML = '';
-            lastSearchInfo.style.display = 'none';
+            document.getElementById('lastSearchInfo').innerHTML = '';
+            document.getElementById('lastSearchInfo').style.display = 'none';
 
             if (type === 'PaymentByDate') {
                 openPaymentByDateModal();
             }
         }
 
+        let lastSearchFrom = '';
+        let lastSearchTo = '';
+        let selectedJournalIds = [];
+
         function openPaymentByDateModal() {
             const today = new Date();
             const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1,
-                0); // This sets the last day of the current month
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
             const toDateString = date => {
                 const year = date.getFullYear();
@@ -853,49 +719,15 @@
 
             document.getElementById('dateFrom').value = toDateString(firstDayOfMonth);
             document.getElementById('dateTo').value = toDateString(lastDayOfMonth);
-
             document.getElementById('paymentByDateModal').classList.remove('hidden');
-            document.getElementById('recordsContainer').innerHTML =
-                '<p class="text-gray-500">Select a date range and click Search to load entries.</p>';
-
-            const modal = document.getElementById('paymentByDateModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                loadJournalEntries();
-            } else {
-                console.warn('Modal element not found');
-            }
+            document.getElementById('recordsContainer').innerHTML = '<p class="text-gray-500">Select a date range and click Search to load entries.</p>';
+            
+            loadJournalEntries();
         }
 
-
-
-        function closeModalAndShowLastSearch() {
-            const infoContainer = document.getElementById('lastSearchInfo');
-
-            if (lastSearchFrom && lastSearchTo) {
-                infoContainer.innerHTML = `
-            Last search: <strong>${lastSearchFrom} to ${lastSearchTo}</strong>${supplier ? ` for <strong>${supplier}</strong>` : ''}.
-            <a href="javascript:void(0);" onclick="reopenModal()" class="text-blue-600 underline ml-2">View again</a>
-        `;
-            } else {
-                infoContainer.innerHTML = '';
-            }
+        function closeModal() {
+            document.getElementById('paymentByDateModal').classList.add('hidden');
         }
-
-
-        function reopenModal() {
-            document.getElementById('openPaymentByDateModal').classList.remove('hidden'); // Example
-
-            if (lastSearchFrom && lastSearchTo) {
-                document.getElementById('dateFrom').value = lastSearchFrom;
-                document.getElementById('dateTo').value = lastSearchTo;
-                openPaymentByDateModal();
-            }
-        }
-
-        let lastSearchFrom = '';
-        let lastSearchTo = '';
-        let selectedJournalIds = [];
 
         function loadJournalEntries() {
             const from = document.getElementById('dateFrom').value;
@@ -923,281 +755,61 @@
                         return;
                     }
 
-                    // Table header
                     let tableHTML = `
-                    <div class="overflow-x-auto">
-                        <div class="max-h-[300px] overflow-y-auto">
-                            <table class="w-full border border-gray-300 text-sm">
-                                <thead class="bg-gray-100 sticky top-0">
-                                    <tr>
-                                        <th class="p-2 border text-center">Reconciled<br><small>Select all</small>
-                                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleAllJournals(this)">
-                                        </th>
-                                        <th class="p-2 border">Date</th>
-                                        <th class="p-2 border">A/C</th>
-                                        <th class="p-2 border">Name</th>
-                                        <th class="p-2 border">Description</th>
-                                        <th class="p-2 border">Outstanding Balance (KWD)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                `;
-                    lastSearchFrom = from;
-                    lastSearchTo = to;
+                        <div class="overflow-x-auto">
+                            <div class="max-h-[300px] overflow-y-auto">
+                                <table class="w-full border border-gray-300 text-sm">
+                                    <thead class="bg-gray-100 sticky top-0">
+                                        <tr>
+                                            <th class="p-2 border text-center">Select<br><input type="checkbox" id="selectAllCheckbox" onclick="toggleAllJournals(this)"></th>
+                                            <th class="p-2 border">Date</th>
+                                            <th class="p-2 border">A/C</th>
+                                            <th class="p-2 border">Name</th>
+                                            <th class="p-2 border">Description</th>
+                                            <th class="p-2 border">Outstanding (KWD)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+
                     data.forEach(record => {
-                        if (selectedJournalIds.includes(record.id)) return; // Skip if already selected
+                        if (selectedJournalIds.includes(record.id)) return;
 
                         const formattedDate = new Date(record.transaction_date).toLocaleDateString('en-GB');
                         tableHTML += `
-                        <tr class="border-t">
-                            <td class="p-2 border text-center">
-                                <input type="checkbox" 
-                                    class="payment-checkbox" 
-                                    value="${record.id}" 
-                                    data-id="${record.id}"
-                                    data-account-id="${record.account_id}"
-                                    data-account-name="${record.account_name}"  
-                                    data-debit="${record.debit}" 
-                                    data-credit="${record.credit}" 
-                                    data-transaction-id="${record.transaction_id}" 
-                                    data-description="${record.description}" 
-                                    onclick="selectJournalEntry(event)" />
-                            </td>
-                            <td class="p-2 border text-center">${formattedDate}</td>
-                            <td class="p-2 border text-center">[${record.root_name}]<br>${record.account_code}</td>
-                            <td class="p-2 border">${record.name}</td>
-                            <td class="p-2 border">${record.description}</td>
-                            <td class="p-2 border text-right">KWD ${Math.abs(parseFloat(record.credit) - parseFloat(record.debit)).toFixed(2)}</td>
-
-                        </tr>
-                    `;
+                            <tr class="border-t">
+                                <td class="p-2 border text-center">
+                                    <input type="checkbox" class="payment-checkbox" value="${record.id}"
+                                        data-id="${record.id}"
+                                        data-account-id="${record.account_id}"
+                                        data-account-name="${record.account_name}"
+                                        data-debit="${record.debit}"
+                                        data-credit="${record.credit}"
+                                        data-transaction-id="${record.transaction_id}"
+                                        data-description="${record.description}"
+                                        onclick="updateOutstandingTotal()" />
+                                </td>
+                                <td class="p-2 border text-center">${formattedDate}</td>
+                                <td class="p-2 border text-center">[${record.root_name}]<br>${record.account_code}</td>
+                                <td class="p-2 border">${record.name}</td>
+                                <td class="p-2 border">${record.description}</td>
+                                <td class="p-2 border text-right">KWD ${Math.abs(parseFloat(record.credit) - parseFloat(record.debit)).toFixed(3)}</td>
+                            </tr>`;
                     });
 
-
-                    // Append footer with search range
-                    tableHTML += `
-                            </tbody>
-                            <tfoot class="bg-gray-50">
-                                <tr>
-                                    <td colspan="7" class="p-2 border text-right text-sm italic text-gray-600">
-                                        Searched: ${from} to ${to} ${supplier ? 'by ' + supplier : ''}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            `;
-
+                    tableHTML += `</tbody></table></div></div>`;
                     container.innerHTML = tableHTML;
                 });
 
-
-
             const info = document.getElementById('lastSearchInfo');
-            info.innerHTML = `
-                <small>Last search by date from <strong>${from}</strong> to <strong>${to}</strong>${supplier ? ` for <strong>${supplier}</strong>` : ''}
-                    <a href="#" onclick="openModalWithLastSearch()" class="text-blue-400 ml-1">[View]</a>
-                </small>
-            `;
+            info.innerHTML = `<small>Last search: <strong>${from}</strong> to <strong>${to}</strong> <a href="#" onclick="openPaymentByDateModal()" class="text-blue-400 ml-1">[View]</a></small>`;
             info.style.display = 'block';
         }
 
-
-        function selectJournalEntry(event) {
-            const checkbox = event.target;
-            const record = {
-                id: parseInt(checkbox.value),
-                debit: parseFloat(checkbox.dataset.debit || 0).toFixed(2),
-                credit: parseFloat(checkbox.dataset.credit || 0).toFixed(2),
-                account_id: checkbox.dataset.accountId || null,
-                account_name: checkbox.dataset.accountName || null,
-                transaction_id: checkbox.dataset.transactionId || null,
-                description: checkbox.dataset.description || null
-            };
-
-            updateOutstandingTotal();
-        }
-
-
-        let supplier = "";
-
-        function openModalWithLastSearch() {
-            if (!lastSearchFrom || !lastSearchTo) {
-                console.warn("Search dates are missing.");
-                return;
-            }
-
-            // Sync dates in modal
-            const dateFromInput = document.getElementById('dateFrom');
-            const dateToInput = document.getElementById('dateTo');
-            if (dateFromInput) dateFromInput.value = lastSearchFrom;
-            if (dateToInput) dateToInput.value = lastSearchTo;
-
-            // Sync pay_to from main to supplierName in modal
-            const payToValue = document.getElementById('pay_to')?.value?.trim() || "";
-            const supplierSelect = document.getElementById('supplierName');
-
-            if (supplierSelect) {
-                // Check if payToValue already exists as option
-                const options = Array.from(supplierSelect.options || []);
-                const optionExists = options.some(opt => opt.value === payToValue);
-
-                if (payToValue) {
-                    if (!optionExists) {
-                        const newOption = document.createElement('option');
-                        newOption.value = payToValue;
-                        newOption.textContent = payToValue;
-                        supplierSelect.appendChild(newOption);
-                    }
-                    supplierSelect.value = payToValue;
-                } else {
-                    supplierSelect.value = ''; // Clear if empty
-                }
-            } else {
-                console.warn("Supplier select element not found.");
-            }
-
-            // Show modal and trigger journal entry load
-            const modal = document.getElementById('paymentByDateModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                loadJournalEntries();
-            } else {
-                console.warn("Payment by Date Modal not found.");
-            }
-
-            updateOutstandingTotal();
-        }
-
-
         function toggleAllJournals(masterCheckbox) {
-            const checkboxes = document.querySelectorAll('.payment-checkbox');
-            checkboxes.forEach(cb => {
+            document.querySelectorAll('.payment-checkbox').forEach(cb => {
                 cb.checked = masterCheckbox.checked;
             });
-
             updateOutstandingTotal();
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('paymentByDateModal');
-            const supplierSelect = document.getElementById('supplierName');
-            const payToInput = document.getElementById('pay_to');
-
-            // Sync back supplier name from modal to main pay_to input
-            if (supplierSelect && payToInput) {
-                const supplierValue = supplierSelect.value.trim();
-                if (supplierValue) {
-                    payToInput.value = supplierValue;
-                }
-            }
-
-            // Hide the modal
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        }
-
-        function submitSelectedPayments() {
-            const selectedCheckboxes = [...document.querySelectorAll('.payment-checkbox:checked')];
-
-            if (selectedCheckboxes.length === 0) {
-                alert("Please select at least one record.");
-                return;
-            }
-
-            // Extract selected records
-            const selectedRecords = selectedCheckboxes.map(cb => ({
-                journal_entry_id: parseInt(cb.value),
-                debit: parseFloat(cb.dataset.debit || 0),
-                credit: parseFloat(cb.dataset.credit || 0),
-                account_id: cb.dataset.accountId,
-                account_name: cb.dataset.accountName,
-                transaction_id: cb.dataset.transactionId,
-                description: cb.dataset.description
-            }));
-
-            // Group by account_id and aggregate amounts
-            const groupedByAccount = {};
-
-            selectedRecords.forEach(record => {
-                if (!groupedByAccount[record.account_id]) {
-                    groupedByAccount[record.account_id] = {
-                        account_id: record.account_id,
-                        account_name: record.account_name,
-                        total_debit: 0,
-                        total_credit: 0,
-                        journal_entry_ids: [],
-                        description: record.description
-                    };
-                }
-                groupedByAccount[record.account_id].total_debit += record.debit;
-                groupedByAccount[record.account_id].total_credit += record.credit;
-                groupedByAccount[record.account_id].journal_entry_ids.push(record.journal_entry_id);
-
-                selectedJournalIds.push(record.journal_entry_id);
-            });
-
-            // Loop through each group and merge or add into items
-            for (const acc_id in groupedByAccount) {
-                const group = groupedByAccount[acc_id];
-                const netDebit = group.total_credit - group.total_debit;
-
-                // Check if this account already exists in items
-                let existingItem = items.find(i => i.ac_code === acc_id);
-
-                if (existingItem) {
-                    // Merge amounts
-                    existingItem.debit = parseFloat(existingItem.debit) + netDebit;
-                    // Merge unique transaction ids
-                    const existingIds = Array.isArray(existingItem.reconciled_entry_ids) ? existingItem
-                        .reconciled_entry_ids : [];
-                    const newUniqueIds = [...new Set([...existingIds, ...group.journal_entry_ids])];
-                    existingItem.reconciled_entry_ids = newUniqueIds;
-                    existingItem.transaction_id = newUniqueIds;
-                } else {
-                    // Add new entry
-                    items.push({
-                        id: acc_id,
-                        ac_code: acc_id,
-                        transaction_id: group.journal_entry_ids,
-                        reconciled_entry_ids: group.journal_entry_ids,
-                        remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
-                        currency: "KWD",
-                        exchange_rate: 1.0,
-                        debit: netDebit,
-                        credit: 0,
-                        cheque_no: "",
-                        cheque_date: "",
-                        bank_name: "",
-                        branch: "",
-                        auth_no: "",
-                        balance: 0,
-                    });
-                }
-            }
-
-            console.log("Updated Items (Merged if exists):", items);
-
-            renderTable();
-            closeModal();
-        }
-
-        function appendLastSearchedDateOption(searchedDate) {
-            const select = document.getElementById('bankpaymenttype');
-            const existingOption = document.querySelector(`#bankpaymenttype option[value="LastSearch:${searchedDate}"]`);
-
-            if (!existingOption) {
-                const option = document.createElement('option');
-                option.value = `LastSearch:${searchedDate}`;
-                option.textContent = `Last Search: ${searchedDate}`;
-                option.disabled = true;
-                option.selected = true;
-
-                select.appendChild(option);
-            }
         }
 
         function updateOutstandingTotal() {
@@ -1215,13 +827,65 @@
 
             if (selectedCheckboxes.length > 0) {
                 container.classList.remove('hidden');
-                amountEl.textContent = totalOutstanding.toFixed(2);
+                amountEl.textContent = totalOutstanding.toFixed(3);
             } else {
                 container.classList.add('hidden');
-                amountEl.textContent = '0.00';
             }
         }
 
+        function submitSelectedPayments() {
+            const selectedCheckboxes = [...document.querySelectorAll('.payment-checkbox:checked')];
+
+            if (selectedCheckboxes.length === 0) {
+                alert("Please select at least one record.");
+                return;
+            }
+
+            const groupedByAccount = {};
+
+            selectedCheckboxes.forEach(cb => {
+                const accountId = cb.dataset.accountId;
+                if (!groupedByAccount[accountId]) {
+                    groupedByAccount[accountId] = {
+                        account_id: accountId,
+                        account_name: cb.dataset.accountName,
+                        total_debit: 0,
+                        total_credit: 0,
+                        journal_entry_ids: [],
+                    };
+                }
+                groupedByAccount[accountId].total_debit += parseFloat(cb.dataset.debit || 0);
+                groupedByAccount[accountId].total_credit += parseFloat(cb.dataset.credit || 0);
+                groupedByAccount[accountId].journal_entry_ids.push(parseInt(cb.value));
+                selectedJournalIds.push(parseInt(cb.value));
+            });
+
+            for (const accId in groupedByAccount) {
+                const group = groupedByAccount[accId];
+                const outstandingAmount = group.total_credit - group.total_debit;
+
+                items.push({
+                    id: accId,
+                    ac_code: accId,
+                    account_id: accId,
+                    transaction_id: group.journal_entry_ids.join(','),
+                    currency: "KWD",
+                    exchange_rate: 1.0,
+                    debit: 0,
+                    credit: outstandingAmount,
+                    cheque_no: "",
+                    cheque_date: "",
+                    bank_name: "",
+                    branch: "",
+                    auth_no: "",
+                    balance: 0,
+                    type_selector: "account",
+                });
+            }
+
+            renderTable();
+            closeModal();
+        }
     </script>
 
 </x-app-layout>

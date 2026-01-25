@@ -76,23 +76,6 @@
                                     <p>{{ $companies->email }}</p>
                                     <p>{{ $companies->phone }}</p>
                                 </div>
-                                @else
-                                <div class="custom-select w-full border rounded-lg mt-4">
-                                    <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select
-                                        Company
-                                    </div>
-                                    <div
-                                        class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                        @foreach ($companies as $company)
-                                        <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                            data-value="{{ $company->id }}">
-                                            {{ $company->name }}
-                                        </div>
-                                        @endforeach
-                                    </div>
-
-                                </div>
-
                                 @endif
                                 <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
                             </div>

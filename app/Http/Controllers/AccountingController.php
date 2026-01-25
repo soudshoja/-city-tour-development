@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Log;
-
-use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use App\Models\Company;
@@ -15,15 +17,12 @@ use App\Models\Client;
 use App\Models\Account;
 use App\Models\Supplier;
 use App\Models\JournalEntry;
+use App\Models\Transaction;
 use App\Models\Payment;
-use App\Models\Sequence;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\LedgerExport;
 use App\Models\CoaCategory;
+use App\Exports\LedgerExport;
 use App\Services\EncryptionService;
-use Illuminate\Support\Facades\Gate;
+use Carbon\Carbon;
 
 class AccountingController extends Controller
 {
@@ -150,7 +149,6 @@ class AccountingController extends Controller
         ]);
     }
 
-
     public function filterLedgers(Request $request)
     {
         $fromDate = $request->input('from_date');
@@ -209,7 +207,6 @@ class AccountingController extends Controller
         return response()->json($result);
     }
 
-
     public function exportExcel(Request $request)
     {
         // Extract ledgers and totals from the request
@@ -221,14 +218,13 @@ class AccountingController extends Controller
         return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'JournalEntryReport.xlsx');
     }
 
-
     public function showCompanySummary()
     {
         Gate::authorize('viewAny', Account::class);
 
         $user = Auth::user();
 
-        if($user->role_id != Role::COMPANY && $user->company == null) {
+        if ($user->role_id != Role::COMPANY && $user->company == null) {
             return abort(403, 'Unauthorized action.');
         }
 
@@ -287,7 +283,6 @@ class AccountingController extends Controller
         return view('accounting.summary', compact('company', 'accounts', 'JournalEntrys', 'companySummary'));
     }
 
-
     public function getAccountsByCompanyReceivable(Request $request)
     {
         $accounts = Account::where('company_id', $request->company_id)
@@ -315,7 +310,6 @@ class AccountingController extends Controller
         return response()->json(['accounts' => $accounts]);
     }
 
-
     public function getAccountsByCompanyPayable(Request $request)
     {
         $accounts = Account::where('company_id', $request->company_id)
@@ -342,7 +336,6 @@ class AccountingController extends Controller
 
         return response()->json(['accounts' => $accounts]);
     }
-
 
     public function getBranchByCompany(Request $request)
     {
@@ -458,39 +451,100 @@ class AccountingController extends Controller
     {
         Gate::authorize('viewAny', CoaCategory::class);
 
-        $user = auth()->user();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if ($user->role_id != Role::ADMIN) {
-            if ($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
-                return abort(403, 'Unauthorized action.');
-            } elseif ($user->role_id == Role::COMPANY)  {
-                $companies = Company::where('user_id', $user->id)->get();
-            } elseif ($user->role_id == Role::ACCOUNTANT) {
-                $companies = Company::where('id', $user->accountant->branch->company->id)->get();
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $companies = Company::find($companyId);
+            } else {
+                $companies = Company::all();
             }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companies = Company::find($user->company->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companies = Company::find($user->accountant->branch->company_id);
         } else {
-            $companies = Company::all();
+            return abort(403, 'Unauthorized action.');
         }
 
-        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
-        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+        $branches = collect();
+        $accounts = collect();
+        $bankAccounts = collect();
+        $JournalEntrysPayable = collect();
 
-        $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
-            ->orderByDesc('created_at')  // Sort by date in descending order
-            ->get()
-            ->groupBy('type');
+        if ($companyId) {
+            $accountsPayable = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->first();
 
-        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
-        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
+            if ($accountsPayable) {
+                $descendantIds = $this->getAllDescendantIds($accountsPayable->id);
+
+                $accounts = Account::where('company_id', $companyId)
+                    ->whereIn('id', $descendantIds)
+                    ->doesntHave('children')
+                    ->orderBy('name')
+                    ->get();
+            }
+
+            $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
+                ->where('company_id', $companyId)
+                ->where('debit', '>', 0)
+                ->with(['invoice', 'referenceAccount'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('type');
+
+            $branches = Branch::where('company_id', $companyId)->get();
+
+            $assets = Account::where('name', 'Assets')->where('company_id', $companyId)->first();
+            if ($assets) {
+                $bankParent = Account::where('parent_id', $assets->id)
+                    ->where('name', 'Bank Accounts')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if ($bankParent) {
+                    $bankAccounts = Account::where('parent_id', $bankParent->id)
+                        ->where('company_id', $companyId)
+                        ->get();
+                }
+            }
+        }
+
+        return view('accounting.payable-create', compact(
+            'companies',
+            'JournalEntrysPayable',
+            'companyId',
+            'branches',
+            'accounts',
+            'bankAccounts'
+        ));
+    }
+
+    /**
+     * Get all descendant account IDs recursively
+     */
+    private function getAllDescendantIds($parentId): array
+    {
+        $ids = [];
+        $children = Account::where('parent_id', $parentId)->pluck('id')->toArray();
+
+        foreach ($children as $childId) {
+            $ids[] = $childId;
+            $ids = array_merge($ids, $this->getAllDescendantIds($childId));
+        }
+
+        return $ids;
     }
 
     public function storePayableDetail(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        if ($user->role_id != Role::COMPANY) {
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ACCOUNTANT, Role::ADMIN])) {
             return abort(403, 'Unauthorized action.');
         }
 
@@ -498,112 +552,199 @@ class AccountingController extends Controller
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
             'branch_id' => 'required|integer',
-            'transaction_id' => 'nullable|integer',
+            'bank_account' => 'required|integer',
             'description' => 'required|string|max:255',
-            'debit' => 'nullable|numeric',
-            'credit' => 'nullable|numeric',
-            'balance' => 'nullable|numeric',
-            'invoice_id' => 'nullable|integer',
-            'voucher_number' => 'nullable|string|max:255',
-            'name' => 'nullable|string|max:255',
-            'type' => 'required|string|max:255',
-            'invoice_detail_id' => 'nullable|integer',
-            'type_reference_id' => 'nullable|integer',
+            'amount' => 'required|numeric|min:0.001',
+            'type' => 'required|in:payable,expenses',
         ]);
 
-        $encryptionService = new EncryptionService();
-        $type_reference_number = $encryptionService->generateEncryptedNumber();
+        $companyId = getCompanyId($user);
+        $amount = $request->amount;
 
-        $validated['type_reference_id'] = $type_reference_number;
-
-        //Account
-        if (auth()->user()->role_id === 1) {
-            $validated['company_id'] = 'required|integer';
-        } else {
-            $validated['company_id'] = $user->company->id;
-        }
-        $accountName = Account::find($request->account_id);
-        $bankaccountId = Account::find($request->bank_account);
-        $bankaccountName = $bankaccountId->name;
-
-        //Account_From (company_bank)
-        if (auth()->user()->role_id === 1) {
-            $companyName = Company::find($request->company_id)?->name;
-        } else {
-            $companyName = Company::find(auth()->user()->company->id)?->name;
+        $bankAccount = Account::find($request->bank_account);
+        if (!$bankAccount) {
+            return redirect()->back()->with('error', 'Bank account not found.');
         }
 
-        if ($request->has('amount')) {
-            $validated['debit'] = $request->amount;
-            $validated['credit'] = "0.00";
-            $validated['balance'] = $request->amount;
-        }
-        $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
-        $validated['name'] = $companyName;
-        JournalEntry::create($validated);
-
-        //update actual_balance 
-        Account::where('id', $request->bank_account)
-            ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
-
-
-        //Account_To (supplier_name)
-        if ($request->has('amount')) {
-            $validated['debit'] = "0.00";
-            $validated['credit'] = $request->amount;
-            $validated['balance'] = "0.00";
+        $selectedAccount = Account::find($request->account_id);
+        if (!$selectedAccount) {
+            return redirect()->back()->with('error', 'Account not found.');
         }
 
-        $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
-        $validated['name'] = $accountName->name;
-        JournalEntry::create($validated);
+        DB::beginTransaction();
+        try {
+            $prefix = $request->type === 'payable' ? 'PY' : 'EX';
+            $lastTransaction = Transaction::where('company_id', $companyId)
+                ->where('reference_number', 'like', $prefix . '-%')
+                ->orderByDesc('id')
+                ->first();
 
-        //update actual_balance 
-        Account::where('id', $request->bank_account)
-            ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+            $nextNumber = 1;
+            if ($lastTransaction) {
+                $lastNumber = (int) str_replace($prefix . '-', '', $lastTransaction->reference_number);
+                $nextNumber = $lastNumber + 1;
+            }
+            $referenceNumber = $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
 
-        return redirect()->route('payable-details.payable-create')
-            ->with('success', 'Entry added successfully!');
+            $transaction = Transaction::create([
+                'entity_id' => $companyId,
+                'entity_type' => 'company',
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'transaction_type' => 'debit', // Money going OUT
+                'amount' => $amount,
+                'date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'description' => $request->description,
+                'reference_number' => $referenceNumber,
+                'reference_type' => 'Payment', // Money going OUT
+                'name' => $bankAccount->name,
+                'transaction_date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+            ]);
+
+            $baseData = [
+                'transaction_id' => $transaction->id,
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'transaction_date' => $request->transaction_date,
+                'type' => $request->type,
+                'type_reference_id' => $selectedAccount->id,
+            ];
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $selectedAccount->id,
+                'description' => $request->description . ' (Sent payment from ' . strtoupper($bankAccount->name) . ' to ' . strtoupper($selectedAccount->name) . ')',
+                'name' => $selectedAccount->name,
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => $amount,
+            ]));
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $bankAccount->id,
+                'description' => $request->description . ' (Deducted from ' . strtoupper($bankAccount->name) . ' to ' . strtoupper($selectedAccount->name) . ')',
+                'name' => $bankAccount->name,
+                'debit' => 0,
+                'credit' => $amount,
+                'balance' => 0,
+            ]));
+
+            DB::commit();
+
+            return redirect()->route('payable-details.payable-create')
+                ->with('success', 'Entry added successfully! Reference: ' . $referenceNumber);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Payable Entry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 
     public function createReceivableDetail()
     {
         Gate::authorize('viewAny', CoaCategory::class);
 
-        $user = auth()->user();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if ($user->role_id != Role::ADMIN) {
-            if ($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
-                return abort(403, 'Unauthorized action.');
-            } elseif ($user->role_id == Role::COMPANY) {
-                $companies = Company::where('user_id', $user->id)->get();
-            } elseif ($user->role_id == Role::ACCOUNTANT) {
-                $companies = Company::where('id', $user->accountant->branch->company->id)->get();
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $companies = Company::find($companyId);
+            } else {
+                $companies = Company::all();
             }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companies = Company::find($user->company->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companies = Company::find($user->accountant->branch->company_id);
         } else {
-            $companies = Company::all();
+            return abort(403, 'Unauthorized action.');
         }
 
-        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
-        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+        $suppliers = collect();
+        $clients = collect();
+        $branches = collect();
+        $accounts = collect();
+        $agentsClients = collect();
+        $bankAccounts = collect();
+        $invoices = collect();
+        $JournalEntrysReceivable = collect();
 
-        $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
-            ->orderByDesc('created_at')
-            ->get()
-            ->groupBy('type');
+        if ($companyId) {
+            $parentIds = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->pluck('id');
+            $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
-        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
-        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+            $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
+                ->where('company_id', $companyId)
+                ->with(['invoice', 'referenceAccount'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('type');
 
-        return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysReceivable'));
+            $parentIdClients = Account::where('name', 'Accounts Receivable')
+                ->where('company_id', $companyId)
+                ->pluck('id');
+            $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+
+            // Load branches
+            $branches = Branch::where('company_id', $companyId)->get();
+
+            $accounts = Account::where('company_id', $companyId)
+                ->whereIn('level', [3, 4, 5])
+                ->get();
+
+            $agents = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
+            $clientsList = Client::where('company_id', $companyId)->get();
+
+            $agentsClients = $agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name, 'type' => 'agent'])
+                ->merge($clientsList->map(fn($c) => [
+                    'id' => $c->id,
+                    'name' => trim($c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name),
+                    'type' => 'client'
+                ]));
+
+            $assets = Account::where('name', 'Assets')->where('company_id', $companyId)->first();
+            $bankAccounts = collect();
+
+            if ($assets) {
+                $bankParent = Account::where('parent_id', $assets->id)
+                    ->where('name', 'Bank Accounts')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if ($bankParent) {
+                    $bankAccounts = Account::where('parent_id', $bankParent->id)
+                        ->where('company_id', $companyId)
+                        ->get();
+                }
+            }
+
+            $invoices = Invoice::whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+                ->with('client')
+                ->latest()
+                ->get();
+        }
+
+        return view('accounting.receivable-create', compact(
+            'companies',
+            'suppliers',
+            'clients',
+            'JournalEntrysReceivable',
+            'companyId',
+            'branches',
+            'accounts',
+            'agentsClients',
+            'bankAccounts',
+            'invoices'
+        ));
     }
 
     public function storeReceivableDetail(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-
-        if ($user->role_id != Role::COMPANY) {
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ACCOUNTANT, Role::ADMIN])) {
             return abort(403, 'Unauthorized action.');
         }
 
@@ -611,68 +752,100 @@ class AccountingController extends Controller
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
             'branch_id' => 'required|integer',
-            'transaction_id' => 'nullable|integer',
-            'description' => 'required|string|max:255',
-            'debit' => 'nullable|numeric',
-            'credit' => 'nullable|numeric',
-            'balance' => 'nullable|numeric',
+            'bank_account' => 'required|integer',
             'invoice_id' => 'nullable|integer',
-            'voucher_number' => 'nullable|string|max:255',
-            'name' => 'nullable|string|max:255',
-            'type' => 'required|string|max:255',
-            'invoice_detail_id' => 'nullable|integer',
-            'type_reference_id' => 'nullable|integer',
+            'description' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.001',
+            'type' => 'required|in:receivable,income',
         ]);
 
-        $encryptionService = new EncryptionService();
-        $type_reference_number = $encryptionService->generateEncryptedNumber();
+        $companyId = getCompanyId($user);
+        $amount = $request->amount;
 
-        $validated['type_reference_id'] = $type_reference_number;
-
-        // Check if user is admin (role_id = 1)
-        if (auth()->user()->role_id === 1) {
-            $validated['company_id'] = 'required|integer';
-        } else {
-            $validated['company_id'] = $user->company->id;
+        $bankAccount = Account::find($request->bank_account);
+        if (!$bankAccount) {
+            return redirect()->back()->with('error', 'Bank account not found.');
         }
 
-        $bankaccountId = Account::find($request->bank_account);
-        $bankaccountName = $bankaccountId->name;
-
-        //Account_From (client_name)
-        if ($request->has('amount')) {
-            $validated['debit'] = $request->amount;
-            $validated['credit'] = "0.00";
-            $validated['balance'] = $request->amount;
-        }
-        $validated['description'] = $request->description . ' (Received to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
-        $validated['name'] = $request->name;
-        JournalEntry::create($validated);
-
-        //Account_To (company_bank)
-        if ($request->has('amount')) {
-            $validated['debit'] = "0.00";
-            $validated['credit'] = $request->amount;
-            $validated['balance'] = "0.00";
+        $selectedAccount = Account::find($request->account_id);
+        if (!$selectedAccount) {
+            return redirect()->back()->with('error', 'Account not found.');
         }
 
-        if (auth()->user()->role_id === 1) {
-            $companyName = Company::find($request->company_id)?->name;
-        } else {
-            $companyName = Company::find(auth()->user()->company->id)?->name;
+        DB::beginTransaction();
+        try {
+            $prefix = $request->type === 'receivable' ? 'RV' : 'IN';
+            $lastTransaction = Transaction::where('company_id', $companyId)
+                ->where('reference_number', 'like', $prefix . '-%')
+                ->orderByDesc('id')
+                ->first();
+
+            $nextNumber = 1;
+            if ($lastTransaction) {
+                $lastNumber = (int) str_replace($prefix . '-', '', $lastTransaction->reference_number);
+                $nextNumber = $lastNumber + 1;
+            }
+            $referenceNumber = $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+            $transaction = Transaction::create([
+                'entity_id' => $companyId,
+                'entity_type' => 'company',
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'transaction_type' => 'credit',
+                'amount' => $amount,
+                'date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'description' => $request->description,
+                'invoice_id' => $request->invoice_id,
+                'reference_number' => $referenceNumber,
+                'reference_type' => 'Receipt',
+                'name' => $bankAccount->name,
+                'transaction_date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+            ]);
+
+            $baseData = [
+                'transaction_id' => $transaction->id,
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'invoice_id' => $request->invoice_id,
+                'transaction_date' => $request->transaction_date,
+                'type' => $request->type,
+                'type_reference_id' => $selectedAccount->id,
+            ];
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $bankAccount->id,
+                'description' => $request->description . ' (Received to ' . strtoupper($bankAccount->name) . ' from ' . strtoupper($request->name) . ')',
+                'name' => $bankAccount->name,
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => $amount,
+            ]));
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $selectedAccount->id,
+                'description' => $request->description . ' (Cleared & added to ' . strtoupper($bankAccount->name) . ' from ' . strtoupper($request->name) . ')',
+                'name' => $request->name,
+                'debit' => 0,
+                'credit' => $amount,
+                'balance' => 0,
+            ]));
+
+            DB::commit();
+
+            return redirect()->route('receivable-details.receivable-create')
+                ->with('success', 'Entry added successfully! Reference: ' . $referenceNumber);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Receivable Entry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
-
-        $validated['description'] = $request->description . ' (Cleared & added to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
-        $validated['name'] = $companyName;
-        JournalEntry::create($validated);
-
-        return redirect()->route('receivable-details.receivable-create')
-            ->with('success', 'Entry added successfully!');
     }
 
     public function createBankPayment()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if ($user->role_id != Role::ADMIN) {
             if ($user->role_id != Role::COMPANY) {
@@ -700,7 +873,7 @@ class AccountingController extends Controller
 
     public function storeBankPayment(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if ($user->role_id != Role::COMPANY) {
             return abort(403, 'Unauthorized action.');
@@ -729,7 +902,7 @@ class AccountingController extends Controller
         $validated['type_reference_id'] = $type_reference_number;
 
         //Account
-        if (auth()->user()->role_id === 1) {
+        if ($user->role_id === 1) {
             $validated['company_id'] = 'required|integer';
         } else {
             $validated['company_id'] = $user->company->id;
@@ -739,10 +912,10 @@ class AccountingController extends Controller
         $bankaccountName = $bankaccountId->name;
 
         //Account_From (company_bank)
-        if (auth()->user()->role_id === 1) {
+        if ($user->role_id === 1) {
             $companyName = Company::find($request->company_id)?->name;
         } else {
-            $companyName = Company::find(auth()->user()->company->id)?->name;
+            $companyName = Company::find($user->company->id)?->name;
         }
 
         if ($request->has('amount')) {

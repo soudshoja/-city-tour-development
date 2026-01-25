@@ -9,17 +9,31 @@ use Carbon\Carbon;
 
 class AutoBillingController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if ($user->role_id != Role::COMPANY) {
-            return abort(403, 'Unauthorized action.');
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ADMIN])) {
+            return redirect()->back()->with('error', 'Not Authorized');
         }
 
-        $company = $user->company;
-        if (! $company) {
-            return abort(403, 'No company profile linked to this account.');
+        if ($user->role_id == Role::ADMIN && !$companyId) {
+            return view('auto-billing.index', [
+                'company' => null,
+                'rules' => collect(),
+                'clients' => collect(),
+                'agents' => collect(),
+                'companyTimezone' => 'Asia/Kuala_Lumpur',
+                'paymentGateways' => collect(),
+                'paymentMethods' => collect(),
+                'noCompanySelected' => true,
+            ]);
+        }
+
+        $company = Company::with('nationality', 'branches')->find($companyId);
+        if (!$company) {
+            return abort(404, 'Company not found.');
         }
 
         $countryName = strtolower($company->nationality->name ?? '');
@@ -32,18 +46,16 @@ class AutoBillingController extends Controller
         $branchIds = $company->branches->pluck('id')->toArray();
         $agents = Agent::whereIn('branch_id', $branchIds)->get();
 
-        // Get all client IDs already used in rules
         $usedClientIds = AutoBilling::where('company_id', $company->id)
             ->pluck('client_id')
             ->toArray();
 
-        // Filter clients that are not already assigned
         $clients = Client::where(function ($q) use ($company) {
-                $q->where('company_id', $company->id)
+            $q->where('company_id', $company->id)
                 ->orWhereHas('agent.branch', function ($q2) use ($company) {
                     $q2->where('company_id', $company->id);
                 });
-            })
+        })
             ->whereNotIn('id', $usedClientIds)
             ->get();
 
@@ -67,7 +79,18 @@ class AutoBillingController extends Controller
 
     public function store(Request $request)
     {
-        $company = Company::find(Auth::user()->company->id);
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return back()->withErrors(['company' => 'No company selected.']);
+        }
+
+        $company = Company::with('nationality')->find($companyId);
+
+        if (!$company) {
+            return abort(404, 'Company not found.');
+        }
 
         $countryName = strtolower($company->nationality->name ?? '');
         $timezone = match (true) {
@@ -95,7 +118,7 @@ class AutoBillingController extends Controller
         $systemTime = $companyTime->copy()->setTimezone('Asia/Kuala_Lumpur');
 
         AutoBilling::create([
-            'company_id' => Auth::user()->company->id,
+            'company_id' => $companyId,
             'created_by' => $request->input('created_by'),
             'agent_id' => $request->input('agent_id'),
             'issued_by' => $request->input('issued_by'),
@@ -117,7 +140,19 @@ class AutoBillingController extends Controller
     {
         $rule = AutoBilling::findOrFail($id);
 
-        $company = Auth::user()->company;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($rule->company_id != $companyId) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $company = Company::with('nationality')->find($companyId);
+
+        if (!$company) {
+            return abort(404, 'Company not found.');
+        }
+
         $countryName = strtolower($company->nationality->name ?? '');
         $timezone = match (true) {
             str_contains($countryName, 'malaysia') => 'Asia/Kuala_Lumpur',
@@ -158,6 +193,13 @@ class AutoBillingController extends Controller
 
     public function destroy(AutoBilling $rule)
     {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($rule->company_id != $companyId) {
+            return abort(403, 'Unauthorized action.');
+        }
+
         $rule->delete();
         return back()->with('success', 'Rule deleted.');
     }

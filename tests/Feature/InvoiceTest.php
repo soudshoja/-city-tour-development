@@ -57,8 +57,6 @@ class InvoiceTest extends TestCase
 
         $user->assignRole($roleAdmin);
 
-        $roleAdmin->givePermissionTo('view invoice');
-
         $response = $this->actingAs($user)->get(route('invoices.index'));
 
         $response->assertStatus(403);

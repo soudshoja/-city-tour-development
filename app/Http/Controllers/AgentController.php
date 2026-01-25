@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+
 class AgentController extends Controller
 {
     use NotificationTrait;
@@ -38,29 +39,30 @@ class AgentController extends Controller
         Gate::authorize('viewAny', Agent::class);
 
         $user = Auth::user();
-        $agents = collect();
-        $agentCount = 0;
+        $companyId = getCompanyId($user);
 
-        if ($user->role_id == Role::COMPANY) {
-            // Get agents belonging to the company
-            $company_id = $user->company_id;
-            $branchesId = Branch::where('company_id', $user->company->id)->pluck('id');
-            $agents = Agent::whereIn('branch_id', $branchesId);
+        $agentsQuery = Agent::with(['branch.company', 'agentType'])->orderBy('created_at', 'desc');
 
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $agentsQuery->whereHas('branch', fn($q) => $q->where('company_id', $companyId));
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+            $agentsQuery->whereIn('branch_id', $branchIds);
         } elseif ($user->role_id == Role::BRANCH) {
-            // Get agents belonging to the branch
-            $branch_id = $user->branch_id;
-            $agents = Agent::where('branch_id', $branch_id);
-
-        } elseif ($user->role_id == Role::ADMIN) {
-            // Admin can see all agents
-            $agents = new Agent;
+            $agentsQuery->where('branch_id', $user->branch->id);
+        } elseif ($user->role_id == Role::AGENT) {
+            $agentsQuery->where('id', $user->agent->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $agentsQuery->where('branch_id', $user->accountant->branch_id);
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
-        if($request->has('search')) {
-            $search = $request->input('search');
-            // Filter agents based on the search query
-            $agents = $agents->where(function ($query) use ($search) {
+        if ($request->has('q')) {
+            $search = $request->input('q');
+            $agentsQuery->where(function ($query) use ($search) {
                 $searchTerm = '%' . strtolower($search) . '%';
                 $query->where('name', 'like', $searchTerm)
                     ->orWhere('amadeus_id', 'like', $searchTerm)
@@ -72,12 +74,9 @@ class AgentController extends Controller
             });
         }
 
-        $agentCount = $agents->count();
+        $agents = $agentsQuery->paginate(20)->withQueryString();
 
-        $agents = $agents->orderBy('created_at', 'desc')->paginate(20);
-
-        // Pass both 'agents' and 'agentCount' to the view
-        return view('agents.index', compact('agents', 'agentCount'));
+        return view('agents.index', compact('agents'));
     }
 
     public function new()
@@ -129,23 +128,23 @@ class AgentController extends Controller
         $commissionAccountId = $this->getCommissionAccountId($agent->branch->company_id);
 
         // Get ALL invoices for the month to calculate totals (without pagination)
-        $allInvoicesQuery = Invoice::with(['invoiceDetails.task', 'invoiceDetails.JournalEntrys' => function($q) use ($commissionAccountId) {
-                $q->where('account_id', $commissionAccountId);
-            }])
+        $allInvoicesQuery = Invoice::with(['invoiceDetails.task', 'invoiceDetails.JournalEntrys' => function ($q) use ($commissionAccountId) {
+            $q->where('account_id', $commissionAccountId);
+        }])
             ->where('agent_id', $id)
             ->whereBetween('invoice_date', [$month, $month->copy()->endOfMonth()]);
-            
+
         // Only filter by commission journal entries for non-salary agents
         if ($agent->type_id != 1) {
-            $allInvoicesQuery->whereHas('invoiceDetails.JournalEntrys', function($q) use ($commissionAccountId, $month) {
+            $allInvoicesQuery->whereHas('invoiceDetails.JournalEntrys', function ($q) use ($commissionAccountId, $month) {
                 $q->where('account_id', $commissionAccountId)
-                  ->whereBetween('transaction_date', [$month, $month->copy()->endOfMonth()]);
+                    ->whereBetween('transaction_date', [$month, $month->copy()->endOfMonth()]);
             });
         }
-        
+
         // Get all invoices for total calculations
         $allInvoices = $allInvoicesQuery->get();
-        
+
         // Calculate monthly totals from all invoices
         $monthlyCommission = 0;
         $monthlyProfit = 0;
@@ -153,18 +152,18 @@ class AgentController extends Controller
         $monthlyOutstanding = 0;
 
         foreach ($allInvoices as $invoice) {
-                $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-            
-                $invoiceCommission = 0;
-                if (in_array($agent->type_id, [2, 3, 4])) {
-                    foreach ($invoice->invoiceDetails as $detail) {
-                        $commissionEntries = $detail->JournalEntrys()
-                            ->where('account_id', $commissionAccountId)
-                            ->get();
-                        $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-                    }
+            $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
+
+            $invoiceCommission = 0;
+            if (in_array($agent->type_id, [2, 3, 4])) {
+                foreach ($invoice->invoiceDetails as $detail) {
+                    $commissionEntries = $detail->JournalEntrys()
+                        ->where('account_id', $commissionAccountId)
+                        ->get();
+                    $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
                 }
-            
+            }
+
             $monthlyProfit += $invoiceProfit;
             $monthlyCommission += $invoiceCommission;
         }
@@ -179,7 +178,7 @@ class AgentController extends Controller
             ->whereBetween('invoice_date', [$month, $month->copy()->endOfMonth()])
             ->where('status', '<>', 'paid')
             ->sum('amount');
-        
+
         // Format monthly totals
         $totalCommission = number_format($monthlyCommission, 2);
         $totalProfit = number_format($monthlyProfit, 2);
@@ -193,7 +192,7 @@ class AgentController extends Controller
         foreach ($invoices as $invoice) {
             // Calculate total profit for this invoice: markup_price + invoice_charge
             $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-            
+
             // Calculate net commission from journal entries linked to invoice details (credits - debits)
             $invoiceCommission = 0;
             if (in_array($agent->type_id, [2, 3, 4])) {
@@ -209,9 +208,9 @@ class AgentController extends Controller
             $invoice->total_profit = number_format($invoiceProfit, 2);
             $invoice->total_commission = number_format($invoiceCommission, 2);
             $invoice->task_count = $invoice->invoiceDetails->count();
-            
+
             // Process individual tasks for display
-            $invoice->tasks = $invoice->invoiceDetails->map(function($detail) {
+            $invoice->tasks = $invoice->invoiceDetails->map(function ($detail) {
                 return [
                     'task_reference' => $detail->task->reference ?? 'N/A',
                     'passenger_name' => $detail->task->passenger_name ?? 'N/A',
@@ -239,7 +238,7 @@ class AgentController extends Controller
             ->get()
             ->pluck('supplier.name')
             ->toArray();
-        
+
         $filterBonusMonth = (int) request('filter_month', now()->month);
         $filterBonusYear  = (int) request('filter_year', now()->year);
 
@@ -282,7 +281,7 @@ class AgentController extends Controller
 
         $from = Carbon::parse($month ?? now()->startOfMonth());
         $to = (clone $from)->endOfMonth();
-        
+
         // Get commission account ID dynamically
         $commissionAccountId = $this->getCommissionAccountId($agent->branch->company_id);
 
@@ -294,7 +293,7 @@ class AgentController extends Controller
         foreach ($invoices as $invoice) {
             // Add invoice charge to profit calculation
             $invoiceProfit = 0;
-            
+
             foreach ($invoice->invoiceDetails as $detail) {
                 $markup = $detail->markup_price ?? 0;
                 $invoiceProfit += $markup;
@@ -307,10 +306,10 @@ class AgentController extends Controller
                 } elseif ($agent->type_id == 3) {
                     // Type 3 ((Commission = total profit * %) + salary)
                     $commission += ($markup * ($agent->commission ?? 0.15));
-                } 
+                }
                 // Note: Type 4 is calculated after the loop based on total profit
             }
-            
+
             // Add invoice charge to total profit
             $profit += $invoiceProfit + ($invoice->invoice_charge ?? 0);
         }
@@ -362,8 +361,8 @@ class AgentController extends Controller
             if ($request->salary != $oldSalary && $request->salary > 0) {
                 $companyId = $agent->branch->company_id;
                 $salaryExpenseAccount = Account::where('name', 'Agent Salaries')
-                ->where('company_id', $agent->branch->company_id)
-                ->first();
+                    ->where('company_id', $agent->branch->company_id)
+                    ->first();
 
                 if ($salaryExpenseAccount) {
                     $transaction = Transaction::create([
@@ -409,7 +408,7 @@ class AgentController extends Controller
 
         try {
             $agent = Agent::findOrFail($id);
-            $agent->commission = $request->commission / 100; 
+            $agent->commission = $request->commission / 100;
             $agent->save();
 
             return redirect()->back()->with('success', 'Agent commission updated successfully');
@@ -432,9 +431,9 @@ class AgentController extends Controller
             'type_id' => 'required',
         ]);
 
-        $branch = Branch::with('company','account')->find($request->branch_id);
+        $branch = Branch::with('company', 'account')->find($request->branch_id);
 
-        if(!$branch) {
+        if (!$branch) {
             logger('Failed to create agent: Branch not found');
             return redirect()->back()->with('error', 'Branch not found');
         }
@@ -444,14 +443,14 @@ class AgentController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please contact support');
         }
 
-        $assetsAccount = Account::where('name' , 'Assets')->first();
+        $assetsAccount = Account::where('name', 'Assets')->first();
 
         if (!$assetsAccount) {
             logger('Failed to create agent: Assets account does not exist');
             return redirect()->back()->with('error', 'Something went wrong, please contact support');
         }
 
-        try{
+        try {
 
             $role = Role::where('name', 'agent')
                 ->where('company_id', $branch->company_id)
@@ -473,9 +472,7 @@ class AgentController extends Controller
                 'remember_token' => Str::random(10),
                 'first_login' => 1,
             ])->assignRole($role);
-
-
-        } catch(Exception $e){
+        } catch (Exception $e) {
             logger('Failed to create user for agent: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to create user');
         }
@@ -496,7 +493,7 @@ class AgentController extends Controller
             return redirect()->back()->with('error', 'Failed to create agent');
         }
 
-        try{
+        try {
             Account::create([
                 'serial_number' => $request->serial_number,
                 'account_type' => $request->account_type,
@@ -511,14 +508,14 @@ class AgentController extends Controller
                 'company_id' => $branch->company_id,
                 'agent_id' => $agent->id,
             ]);
-        } catch(Exception $e){
+        } catch (Exception $e) {
             $agent->delete();
             $user->delete();
 
             logger('Failed to create account for agent: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to create account');
         }
-    
+
         $this->storeNotification([
             'user_id' => $user->id,
             'title' => 'Agent Registration',
@@ -634,7 +631,7 @@ class AgentController extends Controller
         $account = Account::where('name', 'Commissions (Agents)')
             ->where('company_id', $companyId)
             ->first();
-        
+
         return $account ? $account->id : null;
     }
 }

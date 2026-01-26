@@ -3875,51 +3875,14 @@ class PaymentController extends Controller
                 if ($process === 'topup') {
                     $clientController = new ClientController;
                     $addCreditResponse = $clientController->addCredit($payment);
-                    if (isset($addCreditResponse['error'])) {
-                        throw new \RuntimeException('Failed to add credit: ' . $addCreditResponse['error']);
+
+                    if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                        throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
-                    $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')->where('company_id', $payment->agent->branch->company->id)->first();
-
-                    $clientAdvance = Account::where('name', 'Client')
-                        ->where('company_id', $payment->agent->branch->company->id)
-                        ->where('root_id', $liabilitiesAccount->id)
-                        ->first();
-
-                    $paymentGateway = Account::where('name', 'Payment Gateway')
-                        ->where('company_id', $payment->agent->branch->company_id)
-                        ->where('parent_id', $clientAdvance->id)
-                        ->first();
-
-                    $transaction = Transaction::create([
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'entity_id' => $payment->agent->branch->company->id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'debit',
-                        'amount' => $payment->amount,
-                        'description' => 'Topup success by ' . $payment->client->full_name,
+                    Log::info('Credit added successfully via addCredit()', [
                         'payment_id' => $payment->id,
-                        'payment_reference' => $response['id'],
-                        'reference_type' => 'Payment',
-                        'transaction_date' => now(),
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentGateway->id,
-                        'transaction_date' => now(),
-                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                        'debit' => 0,
-                        'credit' => $payment->amount,
-                        'balance' => $paymentGateway->actual_balance - $payment->amount,
-                        'name' => $payment->client->full_name,
-                        'type' => 'receivable',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentGateway->id
+                        'response' => $addCreditResponse,
                     ]);
                 } else {
                     $invoice = $payment->invoice;
@@ -4266,56 +4229,16 @@ class PaymentController extends Controller
                 $payment->save();
 
                 if ($process === 'topup') {
-                    // Handle topup/credit process (similar to Tap)
                     $clientController = new ClientController;
                     $addCreditResponse = $clientController->addCredit($payment);
-                    if (isset($addCreditResponse['error'])) {
-                        throw new \RuntimeException('Failed to add credit: ' . $addCreditResponse['error']);
+
+                    if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                        throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
-                    $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                        ->where('company_id', $payment->agent->branch->company->id)
-                        ->first();
-
-                    $clientAdvance = Account::where('name', 'Client')
-                        ->where('company_id', $payment->agent->branch->company->id)
-                        ->where('root_id', $liabilitiesAccount->id)
-                        ->first();
-
-                    $paymentGateway = Account::where('name', 'Payment Gateway')
-                        ->where('company_id', $payment->agent->branch->company_id)
-                        ->where('parent_id', $clientAdvance->id)
-                        ->first();
-
-                    $transaction = Transaction::create([
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'entity_id' => $payment->agent->branch->company->id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'debit',
-                        'amount' => $payment->amount,
-                        'description' => 'Topup success via KNET by ' . $payment->client->full_name,
+                    Log::info('Credit added successfully via addCredit()', [
                         'payment_id' => $payment->id,
-                        'payment_reference' => $responseData['paymentid'] ?? null,
-                        'reference_type' => 'Payment',
-                        'transaction_date' => now(),
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentGateway->id,
-                        'transaction_date' => now(),
-                        'description' => 'Advance Payment via KNET in voucher number: ' . $payment->voucher_number,
-                        'debit' => 0,
-                        'credit' => $payment->amount,
-                        'balance' => $paymentGateway->actual_balance - $payment->amount,
-                        'name' => $payment->client->full_name,
-                        'type' => 'receivable',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentGateway->id
+                        'response' => $addCreditResponse,
                     ]);
                 } else {
                     // Handle invoice payment
@@ -4926,77 +4849,24 @@ class PaymentController extends Controller
                 $clientController = new ClientController;
                 $addCreditResponse = $clientController->addCredit($payment);
 
-                if (isset($addCreditResponse['error'])) {
-                    throw new \Exception('Failed to add credit: ' . $addCreditResponse['error']);
+                if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                    throw new \Exception('Failed to add credit: ' . ($addCreditResponse['error'] ?? $addCreditResponse['message']));
                 }
 
-                // Get required accounts
-                $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                    ->where('company_id', $payment->agent->branch->company->id)
+                $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+
+                $paymentTransaction = $payment->paymentTransactions()
+                    ->where('reference_number', $statusData['InvoiceReference'])
                     ->first();
-                if (!$liabilitiesAccount) {
-                    throw new \Exception('Liabilities account not found');
-                }
-
-                $clientAdvance = Account::where('name', 'Client')
-                    ->where('company_id', $payment->agent->branch->company->id)
-                    ->where('root_id', $liabilitiesAccount->id)
-                    ->first();
-                if (!$clientAdvance) {
-                    throw new \Exception('Client advance account not found');
-                }
-
-                $paymentGateway = Account::where('name', 'Payment Gateway')
-                    ->where('company_id', $payment->agent->branch->company_id)
-                    ->where('parent_id', $clientAdvance->id)
-                    ->first();
-                if (!$paymentGateway) {
-                    throw new \Exception('Payment Gateway account not found');
-                }
-
-                $transactionRecord = Transaction::create([
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'entity_id' => $payment->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $payment->amount,
-                    'description' => 'Topup success by ' . $payment->client->full_name,
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'payment_reference' => $statusData['InvoiceReference'],
-                    'reference_type' => 'Payment',
-                    'transaction_date' => now(),
-                ]);
-
-                JournalEntry::create([
-                    'transaction_id' => $transactionRecord->id,
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'account_id' => $paymentGateway->id,
-                    'transaction_date' => now(),
-                    'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                    'debit' => 0,
-                    'credit' => $payment->amount,
-                    'balance' => $paymentGateway->actual_balance - $payment->amount,
-                    'name' => $payment->client->full_name,
-                    'type' => 'receivable',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $paymentGateway->id
-                ]);
-
-                $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $statusData['InvoiceReference'])->first();
 
                 if ($paymentTransaction) {
-
                     Log::info('[MYFATOORAH] Updating payment transaction ID: ' . $paymentTransaction->id, [
                         'payment_id' => $payment->id,
-                        'transaction_id' => $transactionRecord->id,
+                        'transaction_id' => $transactionId,
                         'status' => $statusData['InvoiceStatus'],
                     ]);
 
-                    $paymentTransaction->transaction_id = $transactionRecord->id;
+                    $paymentTransaction->transaction_id = $transactionId;
                     $paymentTransaction->status = $statusData['InvoiceStatus'];
                     $paymentTransaction->save();
                 } else {
@@ -5350,69 +5220,13 @@ class PaymentController extends Controller
                     $clientController = new ClientController;
                     $addCreditResponse = $clientController->addCredit($payment);
 
-                    if (isset($addCreditResponse['error'])) {
-                        Log::error('Failed to add credit to client', [
-                            'message' => $addCreditResponse['error'],
-                            'payment_id' => $payment->id,
-                        ]);
-                        throw new \RuntimeException('Failed to add credit: ' . $addCreditResponse['error']);
+                    if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                        throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
-                    $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                        ->where('company_id', $payment->agent->branch->company->id)
-                        ->first();
-
-                    if (!$liabilitiesAccount) {
-                        throw new \RuntimeException('Liabilities account not found');
-                    }
-
-                    $clientAdvance = Account::where('name', 'Client')
-                        ->where('company_id', $payment->agent->branch->company->id)
-                        ->where('root_id', $liabilitiesAccount->id)
-                        ->first();
-
-                    if (!$clientAdvance) {
-                        throw new \RuntimeException('Client advance account not found');
-                    }
-
-                    $paymentGateway = Account::where('name', 'Payment Gateway')
-                        ->where('company_id', $payment->agent->branch->company_id)
-                        ->where('parent_id', $clientAdvance->id)
-                        ->first();
-                    if (!$paymentGateway) {
-                        throw new \RuntimeException('Payment Gateway account not found');
-                    }
-
-                    $transactionRecord = Transaction::create([
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'entity_id' => $payment->agent->branch->company->id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'debit',
-                        'amount' => $payment->amount,
-                        'description' => 'Topup success by ' . $payment->client->full_name,
+                    Log::info('Credit added successfully via addCredit()', [
                         'payment_id' => $payment->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'payment_reference' => $trackId,
-                        'reference_type' => 'Payment',
-                        'transaction_date' => now(),
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_id' => $transactionRecord->id,
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentGateway->id,
-                        'transaction_date' => now(),
-                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                        'debit' => 0,
-                        'credit' => $payment->amount,
-                        'balance' => $paymentGateway->actual_balance - $payment->amount,
-                        'name' => $payment->client->full_name,
-                        'type' => 'receivable',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentGateway->id
+                        'response' => $addCreditResponse,
                     ]);
                 } else {
                     if (!empty($partialId)) {
@@ -5835,8 +5649,8 @@ class PaymentController extends Controller
         try {
             if ($process === 'topup') {
                 Log::info('Starting to process the credit for successfull callback from Hesabe');
-                $clientController = new ClientController();
 
+                $clientController = new ClientController;
                 $addCreditResponse = $clientController->addCredit($payment);
 
                 if (isset($addCreditResponse['error'])) {
@@ -5849,6 +5663,11 @@ class PaymentController extends Controller
                     ]);
                     return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error']);
                 }
+
+                Log::info('Credit added successfully via addCredit()', [
+                    'payment_id' => $payment->id,
+                    'response' => $addCreditResponse,
+                ]);
 
                 $creditCoa = $this->creditCOA($payment);
                 if (!$creditCoa['success']) {
@@ -6161,8 +5980,7 @@ class PaymentController extends Controller
                 // Process based on payment type
                 if ($process === 'topup') {
                     Log::info('Hesabe webhook: Processing credit for topup');
-                    $clientController = new ClientController();
-
+                    $clientController = new ClientController;
                     $addCreditResponse = $clientController->addCredit($payment);
 
                     if (isset($addCreditResponse['error'])) {
@@ -6173,6 +5991,11 @@ class PaymentController extends Controller
                         DB::rollback();
                         return response()->json(['error' => $addCreditResponse['error']], 500);
                     }
+
+                    Log::info('Credit added successfully via addCredit()', [
+                        'payment_id' => $payment->id,
+                        'response' => $addCreditResponse,
+                    ]);
 
                     $creditCoa = $this->creditCOA($payment);
                     if (!$creditCoa['success']) {

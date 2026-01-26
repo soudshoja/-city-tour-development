@@ -15,7 +15,7 @@ use App\Http\Controllers\CurrencyExchangeController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
-use App\http\Controllers\APIController;
+use App\Http\Controllers\APIController;
 use App\Services\MagicHolidayService;
 use App\Http\Webhooks\TaskWebhook;
 

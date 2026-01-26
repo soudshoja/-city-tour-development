@@ -1365,10 +1365,6 @@
                                                                                         </div>
                                                                                     </div>
 
-                                                                                    @php
-                                                                                    $filteredSurcharges = $task->supplierCompany
-                                                                                    ? $task->supplierCompany->supplierSurcharges()->forStatus($task->status)->get() : collect();
-                                                                                    @endphp
                                                                                     <div x-data="{
                                                                                             rawPrice: '{{ $task->price ?? 0 }}',
                                                                                             rawTax: '{{ $task->tax ?? 0 }}',

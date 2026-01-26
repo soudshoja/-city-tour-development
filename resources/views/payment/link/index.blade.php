@@ -56,7 +56,7 @@
                     Filters
                     @if (!empty($filters))
                     <span class="ml-1 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
-                        {{ collect($filters)->filter()->total() }}
+                        {{ collect($filters)->filter()->count() }}
                     </span>
                     @endif
                 </button>

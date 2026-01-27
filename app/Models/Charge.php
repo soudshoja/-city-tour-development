@@ -31,7 +31,6 @@ class Charge extends Model
         'branch_id',
         'acc_bank_id',
         'acc_fee_id',
-        'acc_fee_income_id',
         'acc_fee_bank_id',
         'is_auto_paid',
         'has_url',
@@ -74,11 +73,6 @@ class Charge extends Model
     public function accFee()
     {
         return $this->belongsTo(Account::class, 'acc_fee_id');
-    }
-
-    public function accIncome()
-    {
-        return $this->belongsTo(Account::class, 'acc_fee_income_id');
     }
 
     public function accBank()

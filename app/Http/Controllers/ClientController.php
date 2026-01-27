@@ -1057,7 +1057,7 @@ class ClientController extends Controller
         try {
             $bankPaymentFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_bank_id) : null;
             $bankCOAFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_id) : null;
-            $incomeAccount = $chargeRecord ? Account::find($chargeRecord->acc_fee_income_id) : null;
+            $incomeAccount = Account::where('name', 'Gateway Fee Recovery')->where('company_id', $companyId)->first();
 
             $liabilitiesAccount = Account::where('name', 'like', 'Liabilities%')
                 ->where('company_id', $companyId)
@@ -1145,7 +1145,7 @@ class ClientController extends Controller
             }
 
             // ENTRY 3: CREDIT Income (Fee Recovery) - ONLY if Client pays
-            if ($recordIncome && $incomeAccount && $gatewayFee > 0) {
+            if ($recordIncome && $gatewayFee > 0 && $incomeAccount) {
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $companyId,

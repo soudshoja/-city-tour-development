@@ -18,8 +18,8 @@
         @endif
 
         <button type="button"
-            @click="focusSearch($refs)"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-left bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
+        @click="open = !open; if(open) { $nextTick(() => focusSearch($refs)) }"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-left bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
             <span class="truncate block w-full" :class="selectedName ? 'text-gray-900' : 'text-gray-400'" x-text="selectedName || placeholder"></span>
         </button>
 

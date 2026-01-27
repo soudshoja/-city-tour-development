@@ -40,6 +40,7 @@ use App\Models\TBO;
 use App\Models\Wallet;
 use App\Models\SupplierSurchargeReference;
 use App\Models\MapHotel;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -70,14 +71,45 @@ class TaskController extends Controller
         Gate::authorize('viewAny', Task::class);
 
         $request->validate([
-            'filter' => 'nullable|array'
+            'user_id' => 'nullable|exists:users,id',
+            'filter' => 'nullable|array',
+            'q' => 'nullable|string'
         ]);
+
+        $user = User::find($request->user_id) ?? Auth::user();
+
+        $whoIsUser = determineUserRole($user);
+
+        if($whoIsUser['agents_id']){
+            $taskQuery = Task::with(['client', 'supplier', 'agent'])->whereIn('agent_id', [$whoIsUser['agents_id']]);
+        } elseif($whoIsUser['branches_id']){
+            $agents = Agent::where('branch_id', $whoIsUser['branches_id'])->pluck('id')->toArray();
+            $taskQuery = Task::with(['client', 'supplier', 'agent'])->whereIn('agent_id', $agents);
+        } else {
+            $taskQuery = Task::with(['client', 'supplier', 'agent'])->where('company_id', $whoIsUser['company_id']);
+        }
 
         $filter = $request->filter;
 
         try {
-            $taskQuery = Task::query();
-            
+            // Search functionality
+            if ($search = $request->query('q')) {
+                $searchTerm = '%' . strtolower($search) . '%';
+                $taskQuery->where(function ($q) use ($searchTerm) {
+                    $q->where('reference', 'LIKE', $searchTerm)
+                        ->orWhere('passenger_name', 'LIKE', $searchTerm)
+                        ->orWhere('gds_reference', 'LIKE', $searchTerm)
+                        ->orWhereHas('client', function ($qq) use ($searchTerm) {
+                            $qq->where('first_name', 'LIKE', $searchTerm)
+                                ->orWhere('middle_name', 'LIKE', $searchTerm)
+                                ->orWhere('last_name', 'LIKE', $searchTerm)
+                                ->orWhere('email', 'LIKE', $searchTerm)
+                                ->orWhere('phone', 'LIKE', $searchTerm);
+                        })
+                        ->orWhereHas('supplier', fn($qq) => $qq->where('name', 'LIKE', $searchTerm));
+                });
+            }
+
             if (!empty($filter) && is_array($filter)) {
                 $taskQuery->where(function ($query) use ($filter) {
                     foreach($filter as $field => $value) {
@@ -87,7 +119,7 @@ class TaskController extends Controller
                     }
                 });
             }
-            
+
             $taskQuery->orderBy('supplier_pay_date', 'desc');
 
         } catch (Exception $e) {
@@ -109,7 +141,7 @@ class TaskController extends Controller
                 'total' => $tasksTotal,
             ],
         ]);
-        
+
     }
 
     public function index(Request $request): View | RedirectResponse
@@ -5371,7 +5403,23 @@ class TaskController extends Controller
     public function detail()
     {
         $user = Auth::user();
-        
+
+        $taskIds = request()->get('tasks');
+
+        if (!$taskIds) {
+            return redirect()->route('tasks.index')->with('error', 'No tasks selected');
+        }
+
+        if (is_string($taskIds)) {
+            $taskIds = explode(',', $taskIds);
+        }
+
+        $tasks = Task::whereIn('id', $taskIds)->get();
+
+        if ($tasks->isEmpty()) {
+            return redirect()->route('tasks.index')->with('error', 'No tasks found');
+        }
+
         if ($user->role_id == Role::ADMIN) {
             $companyId = 1;
             $agents = Agent::all();
@@ -5391,6 +5439,12 @@ class TaskController extends Controller
             $branch = Branch::where('id', $user->accountant->branch->id)->pluck('id')->toArray();
             $agents = Agent::whereIn('branch_id', $branch)->get();
             $clients = Client::where('company_id', $companyId)->get();
+        }
+
+        foreach($tasks as $task){
+            if (($task->agent_id && !$agents->contains('id', $task->agent_id)) || $task->company_id != $companyId) {
+                return redirect()->back()->with('error', 'You do not have permission to view one or more selected tasks.');
+            }
         }
 
         if (!$companyId) {
@@ -5430,22 +5484,7 @@ class TaskController extends Controller
                 ];
             })
             ->toArray();
-                
-        $taskIds = request()->get('tasks');
-        
-        if (!$taskIds) {
-            return redirect()->route('tasks.index')->with('error', 'No tasks selected');
-        }
-        
-        if (is_string($taskIds)) {
-            $taskIds = explode(',', $taskIds);
-        }
-        
-        $tasks = Task::whereIn('id', $taskIds)->get();
-        
-        if ($tasks->isEmpty()) {
-            return redirect()->route('tasks.index')->with('error', 'No tasks found');
-        }
+
 
         $mapHotels = [];
         foreach ($tasks as $task) {

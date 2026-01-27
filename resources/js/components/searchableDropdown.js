@@ -62,6 +62,12 @@ export function searchableDropdown({
             this.search = '';
             this.open = false;
 
+            this.$dispatch('dropdown-select', {
+                name: name,
+                value: option.id,
+                displayName: option.name
+            });
+
             if (name === 'supplier_id') {
                 const selectElem = document.getElementById('select-supplier-task');
                 if (selectElem) {

@@ -147,7 +147,7 @@
         }
     </style>
 
-    <div class="min-h-screen flex flex-col" :class="isUpdating ? 'blur-sm pointer-events-none select-none' : ''"
+    <div class="flex flex-col" :class=""
         x-data="{
             selectedTaskId: {{ $tasks->first()->id }},
             tasks: {{ $tasks->toJson() }},
@@ -158,6 +158,18 @@
             showManualForm: false,
             showSidebar: false,
 
+            showAddTasksModal: false,
+            loadingTasks: false,
+            availableTasks: [],
+            selectedNewTasks: [],
+            taskSearch: '',
+            taskPagination: {
+                current_page: 1,
+                last_page: 1,
+                total: 0
+            },
+            searchTimeout: null,
+
             modalTaskId: null,
             modalClientName: '',
             modalPassengerName: '',
@@ -165,9 +177,6 @@
             modalAgentId: '',
             modalBranchName: '',
 
-            // =========================
-            // Multi Draft Preview System
-            // =========================
             previewOpen: false,
 
             drafts: {},
@@ -312,12 +321,49 @@
                 return `{{ route('invoices.create') }}?task_ids=` + this.selectedForInvoice.join(',');
             },
 
+            async loadTasks(page = 1) {
+                this.loadingTasks = true;
+                try {
+                    const response = await fetch(`{{ route('tasks.get-tasks') }}?page=${page}&q=${encodeURIComponent(this.taskSearch)}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.availableTasks = data.data.tasks.data;
+                        this.taskPagination = {
+                            current_page: data.data.tasks.current_page,
+                            last_page: data.data.tasks.last_page,
+                            total: data.data.tasks.total
+                        };
+                    }
+                } catch (error) {
+                    console.error('Error loading tasks:', error);
+                    alert('Failed to load tasks. Please try again.');
+                } finally {
+                    this.loadingTasks = false;
+                }
+            },
+
+            searchTasks() {
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.loadTasks(1);
+                }, 500);
+            },
+
+            addSelectedTasks() {
+                if (this.selectedNewTasks.length === 0) return;
+
+                const currentTaskIds = {{ $tasks->pluck('id')->toJson() }};
+                const allTaskIds = [...currentTaskIds, ...this.selectedNewTasks];
+                const uniqueTaskIds = [...new Set(allTaskIds)];
+
+                window.location.href = `{{ route('tasks.detail') }}?tasks=${uniqueTaskIds.join(',')}`;
+            },
+
             isUpdating: false,
             isSubmittingUpdates: false,
 
         }">
-
-
 
         <!-- Mobile Header -->
         <div class="lg:hidden flex items-center justify-between mb-4">
@@ -340,21 +386,32 @@
             Task Details
         </h1>
 
-        <div class="flex-1 pb-16">
-            <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-sm sm:text-base">
-                <li>
-                    <a href="{{ route('tasks.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
-                        Tasks List
-                    </a>
-                </li>
+        <div class="flex-1 pb-16 xl:pb-0">
+            <div class="flex justify-between items-start">
+                <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-sm sm:text-base">
+                    <li>
+                        <a href="{{ route('tasks.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                            Tasks List
+                        </a>
+                    </li>
 
-                <li class="flex items-center space-x-2 rtl:space-x-reverse">
-                    <span class="text-gray-400">&gt;</span>
-                    <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">
-                        Task Details
-                    </span>
-                </li>
-            </ul>
+                    <li class="flex items-center space-x-2 rtl:space-x-reverse">
+                        <span class="text-gray-400">&gt;</span>
+                        <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">
+                            Task Details
+                        </span>
+                    </li>
+                </ul>
+
+                <button
+                    @click="showAddTasksModal = true; loadTasks()"
+                    class="group relative p-1.5 hover:bg-blue-100 rounded-full transition bg-white shadow border border-gray-200 flex items-center gap-2"
+                    title="Add more tasks">
+                    <svg class="w-4 h-4 text-blue-600 group-hover:text-blue-700 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
 
             <!-- Mobile Sidebar Overlay -->
             <div
@@ -617,17 +674,13 @@
                 </div>
 
                 <!-- Main Content Area -->
-                <div class="flex-1 flex gap-4 min-w-0 items-start">
-
-                    <!-- LEFT COLUMN (Tasks + Invoice Box) -->
-                    <div class="flex-1 min-w-0 flex flex-col gap-4">
-
+                <div class="flex-1 flex-col xl:flex-row gap-4 min-w-0 items-start">
+                    <div class="flex flex-col xl:flex-row gap-4 pb-32 xl:pb-0">
                         <!-- Tasks -->
-                        <div class="flex flex-col min-w-0">
+                        <div class="flex flex-col min-w-0 w-full h-full">
                             @foreach($tasks as $task)
                             <div x-cloak x-show="selectedTaskId === {{ $task->id }}" class="flex flex-col gap-4">
 
-                                <!-- Task Header with Edit Icon -->
                                 <div class="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-sm p-4 sm:p-6 flex-shrink-0">
                                     <div class="flex items-start justify-between">
                                         <div class="flex-1 min-w-0">
@@ -642,7 +695,9 @@
                                                 reference: @js($task->reference),
                                                 status: @js($task->status),
                                                 client_id: @js($task->client_id),
+                                                client_name: @js($task->client ? $task->client->name . ' - ' . $task->client->phone : null),
                                                 agent_id: @js($task->agent_id),
+                                                agent_name: @js($task->agent->name ?? null),
                                                 supplier_id: @js($task->supplier_id),
                                                 payment_method_account_id: @js($task->payment_method_account_id),
                                                 supplier_pay_date: @js($task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : ''),
@@ -661,9 +716,9 @@
                                 </div>
 
                                 <!-- Content Grid -->
-                                <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+                                <div class="h-full grid grid-cols-1 xl:grid-cols-5 gap-4">
                                     <!-- Task Information - 2 columns on lg -->
-                                    <div class="xl:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                                    <div class="h-full xl:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
                                         <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
                                             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Task Information</h2>
                                         </div>
@@ -855,116 +910,116 @@
                                                     @endforelse
                                                 </div>
 
-                                            <!-- Desktop Flight Table -->
-                                            <div class="hidden sm:block overflow-x-auto">
-                                                <table class="min-w-full divide-y divide-gray-200">
-                                                    <thead class="bg-gray-50">
-                                                        <tr>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From</th>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To</th>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flight</th>
-                                                            @if($hasDuration)
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                                                            @endif
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                                                            @if($hasBaggage)
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baggage</th>
-                                                            @endif
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="bg-white divide-y divide-gray-200">
-                                                        @forelse($task->flightDetail as $flight)
-                                                        <tr>
-                                                            <td class="px-4 py-3 text-sm text-gray-500">{{ $loop->iteration }}</td>
-                                                            <td class="px-4 py-3">
-                                                                <p class="text-sm font-medium text-gray-900">{{ $flight->airport_from ?? 'N/A' }}</p>
-                                                                <p class="text-xs text-gray-500 mt-1">
-                                                                    {{ $flight->departure_time ? \Carbon\Carbon::parse($flight->departure_time)->format('d M Y, H:i') : '-' }}
-                                                                </p>
-                                                            </td>
-                                                            <td class="px-4 py-3">
-                                                                <p class="text-sm font-medium text-gray-900">{{ $flight->airport_to ?? 'N/A' }}</p>
-                                                                <p class="text-xs text-gray-500 mt-1">
-                                                                    {{ $flight->arrival_time ? \Carbon\Carbon::parse($flight->arrival_time)->format('d M Y, H:i') : '-' }}
-                                                                </p>
-                                                            </td>
-                                                            <td class="px-4 py-3">
-                                                                <p class="text-sm font-medium text-gray-900">{{ $flight->airline ?? 'N/A' }}</p>
-                                                                <p class="text-xs text-gray-500">{{ $flight->flight_number ?? '' }}</p>
-                                                            </td>
-                                                            @if($hasDuration)
-                                                            <td class="px-4 py-3 text-sm text-gray-500">{{ $flight->duration_time ?? '-' }}</td>
-                                                            @endif
-                                                            <td class="px-4 py-3">
-                                                                @if($flight->class_type)
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                                                    {{ ucfirst($flight->class_type) }}
-                                                                </span>
-                                                                @else
-                                                                <span class="text-sm text-gray-400">-</span>
+                                                <!-- Desktop Flight Table -->
+                                                <div class="hidden sm:block overflow-x-auto">
+                                                    <table class="min-w-full divide-y divide-gray-200">
+                                                        <thead class="bg-gray-50">
+                                                            <tr>
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From</th>
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To</th>
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flight</th>
+                                                                @if($hasDuration)
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                                                                 @endif
-                                                            </td>
-                                                            @if($hasBaggage)
-                                                            <td class="px-4 py-3">
-                                                                @if($flight->baggage_allowed)
-                                                                <span class="px-2 py-0.5 text-xs font-medium">
-                                                                    {{ $flight->baggage_allowed }}
-                                                                </span>
-                                                                @else
-                                                                <span class="text-sm text-gray-400">-</span>
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                                                                @if($hasBaggage)
+                                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baggage</th>
                                                                 @endif
-                                                            </td>
-                                                            @endif
-                                                        </tr>
-                                                        @empty
-                                                        <tr>
-                                                            <td colspan="{{ 4 + ($hasDuration ? 1 : 0) + ($hasBaggage ? 1 : 0) }}" class="px-4 py-3 text-sm text-gray-500 text-center italic">
-                                                                No flight details available
-                                                            </td>
-                                                        </tr>
-                                                        @endforelse
-                                                    </tbody>
-                                                </table>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody class="bg-white divide-y divide-gray-200">
+                                                            @forelse($task->flightDetail as $flight)
+                                                            <tr>
+                                                                <td class="px-4 py-3 text-sm text-gray-500">{{ $loop->iteration }}</td>
+                                                                <td class="px-4 py-3">
+                                                                    <p class="text-sm font-medium text-gray-900">{{ $flight->airport_from ?? 'N/A' }}</p>
+                                                                    <p class="text-xs text-gray-500 mt-1">
+                                                                        {{ $flight->departure_time ? \Carbon\Carbon::parse($flight->departure_time)->format('d M Y, H:i') : '-' }}
+                                                                    </p>
+                                                                </td>
+                                                                <td class="px-4 py-3">
+                                                                    <p class="text-sm font-medium text-gray-900">{{ $flight->airport_to ?? 'N/A' }}</p>
+                                                                    <p class="text-xs text-gray-500 mt-1">
+                                                                        {{ $flight->arrival_time ? \Carbon\Carbon::parse($flight->arrival_time)->format('d M Y, H:i') : '-' }}
+                                                                    </p>
+                                                                </td>
+                                                                <td class="px-4 py-3">
+                                                                    <p class="text-sm font-medium text-gray-900">{{ $flight->airline ?? 'N/A' }}</p>
+                                                                    <p class="text-xs text-gray-500">{{ $flight->flight_number ?? '' }}</p>
+                                                                </td>
+                                                                @if($hasDuration)
+                                                                <td class="px-4 py-3 text-sm text-gray-500">{{ $flight->duration_time ?? '-' }}</td>
+                                                                @endif
+                                                                <td class="px-4 py-3">
+                                                                    @if($flight->class_type)
+                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                                                        {{ ucfirst($flight->class_type) }}
+                                                                    </span>
+                                                                    @else
+                                                                    <span class="text-sm text-gray-400">-</span>
+                                                                    @endif
+                                                                </td>
+                                                                @if($hasBaggage)
+                                                                <td class="px-4 py-3">
+                                                                    @if($flight->baggage_allowed)
+                                                                    <span class="px-2 py-0.5 text-xs font-medium">
+                                                                        {{ $flight->baggage_allowed }}
+                                                                    </span>
+                                                                    @else
+                                                                    <span class="text-sm text-gray-400">-</span>
+                                                                    @endif
+                                                                </td>
+                                                                @endif
+                                                            </tr>
+                                                            @empty
+                                                            <tr>
+                                                                <td colspan="{{ 4 + ($hasDuration ? 1 : 0) + ($hasBaggage ? 1 : 0) }}" class="px-4 py-3 text-sm text-gray-500 text-center italic">
+                                                                    No flight details available
+                                                                </td>
+                                                            </tr>
+                                                            @endforelse
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
-                                        </div>
-                                        @elseif($task->type === 'hotel')
+                                            @elseif($task->type === 'hotel')
                                             <div class="p-4 sm:p-6">
                                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                                                     <div class="sm:col-span-3">
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
                                                         @if(isset($mapHotels[$task->id]))
-                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->name ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->name ?? 'N/A' }}</p>
                                                         @else
-                                                            <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? $task->venue ?? 'N/A') }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? $task->venue ?? 'N/A') }}</p>
                                                         @endif
                                                     </div>
 
                                                     @if(isset($mapHotels[$task->id]))
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                                                            <p class="text-sm font-medium text-gray-900">{{ ucfirst($mapHotels[$task->id]->address ?? 'N/A') }}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zipcode</p>
-                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->zipCode ?? 'N/A' }}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Location</p>
-                                                            <p class="text-sm text-gray-900">{{ ucwords(strtolower($mapHotels[$task->id]->city->name ?? '')) }}, {{ $mapHotels[$task->id]->city->country->name ?? 'N/A' }}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
-                                                            <p class="text-sm font-medium text-gray-900">+{{ $mapHotels[$task->id]->telephone ?? 'N/A' }}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Fax</p>
-                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->fax ?? 'N/A' }}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
-                                                            <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->email ?? 'N/A' }}</p>
-                                                        </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ ucfirst($mapHotels[$task->id]->address ?? 'N/A') }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zipcode</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->zipCode ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Location</p>
+                                                        <p class="text-sm text-gray-900">{{ ucwords(strtolower($mapHotels[$task->id]->city->name ?? '')) }}, {{ $mapHotels[$task->id]->city->country->name ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
+                                                        <p class="text-sm font-medium text-gray-900">+{{ $mapHotels[$task->id]->telephone ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Fax</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->fax ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->email ?? 'N/A' }}</p>
+                                                    </div>
                                                     @endif
 
                                                     <div>
@@ -981,32 +1036,32 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        @elseif($task->type === 'visa')
-                                        <div class="p-4 sm:p-6">
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Visa Type</p>
-                                                    <p class="text-sm text-gray-900">{{ $task->visaDetails->visa_type ?? 'N/A' }}</p>
+                                            @elseif($task->type === 'visa')
+                                            <div class="p-4 sm:p-6">
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Visa Type</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->visa_type ?? 'N/A' }}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        @elseif($task->type === 'insurance')
-                                        <div class="p-4 sm:p-6">
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Insurance Plan</p>
-                                                    <p class="text-sm text-gray-900">{{ $task->insuranceDetails->plan_name ?? 'N/A' }}</p>
+                                            @elseif($task->type === 'insurance')
+                                            <div class="p-4 sm:p-6">
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Insurance Plan</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->plan_name ?? 'N/A' }}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        @else
-                                        <div class="bg-gradient-to-br from-slate-50 to-gray-100 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-center p-8">
-                                            <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            <p class="text-sm text-gray-400">No additional details for this task type</p>
-                                        </div>
-                                        @endif
+                                            @else
+                                            <div class="bg-gradient-to-br from-slate-50 to-gray-100 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-center p-8">
+                                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                <p class="text-sm text-gray-400">No additional details for this task type</p>
+                                            </div>
+                                            @endif
 
                                             <!-- Collapsible Section -->
                                             <div class="" x-data="{ 
@@ -1018,57 +1073,57 @@
                                                 <div>
                                                     <button @click="showCancellation = !showCancellation"
                                                         class="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
-                                                    <div class="flex items-center gap-2">
-                                                        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                        <div class="flex items-center gap-2">
+                                                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                            </svg>
+                                                            <span class="text-sm font-semibold text-gray-700">Cancellation Policy</span>
+                                                        </div>
+                                                        <svg class="w-5 h-5 text-gray-400 transition-transform" :class="showCancellation ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                         </svg>
-                                                        <span class="text-sm font-semibold text-gray-700">Cancellation Policy</span>
-                                                    </div>
-                                                    <svg class="w-5 h-5 text-gray-400 transition-transform" :class="showCancellation ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </button>
-                                                <div x-cloak x-show="showCancellation" 
-                                                    class="px-4 sm:px-6 pb-4 mt-3">
-                                                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                                                        @php
+                                                    </button>
+                                                    <div x-cloak x-show="showCancellation"
+                                                        class="px-4 sm:px-6 pb-4 mt-3">
+                                                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                                            @php
                                                             $policy = $task->cancellation_policy;
-                                                            
+
                                                             // Remove surrounding quotes if present
                                                             $policy = trim($policy, '"');
-                                                            
+
                                                             // Unescape the JSON string
                                                             $policy = stripslashes($policy);
-                                                            
+
                                                             // Decode the JSON
                                                             $decoded = json_decode($policy, true);
-                                                        @endphp
-                                                        @if(is_array($decoded) && !empty($decoded))
+                                                            @endphp
+                                                            @if(is_array($decoded) && !empty($decoded))
                                                             <div class="space-y-2">
                                                                 @foreach($decoded as $item)
-                                                                    <div class="flex justify-between items-center py-2 border-b border-red-100 last:border-0">
-                                                                        <span class="text-sm font-medium text-gray-700 capitalize">
-                                                                            {{ $item['type'] ?? 'Policy' }}
-                                                                        </span>
-                                                                        <span class="text-sm font-semibold text-red-600">
-                                                                            @if(isset($item['charge']))
-                                                                                {{ number_format($item['charge'], 3) }} KWD
-                                                                            @elseif(isset($item['percentage']))
-                                                                                {{ $item['percentage'] }}%
-                                                                            @else
-                                                                                -
-                                                                            @endif
-                                                                        </span>
-                                                                    </div>
+                                                                <div class="flex justify-between items-center py-2 border-b border-red-100 last:border-0">
+                                                                    <span class="text-sm font-medium text-gray-700 capitalize">
+                                                                        {{ $item['type'] ?? 'Policy' }}
+                                                                    </span>
+                                                                    <span class="text-sm font-semibold text-red-600">
+                                                                        @if(isset($item['charge']))
+                                                                        {{ number_format($item['charge'], 3) }} KWD
+                                                                        @elseif(isset($item['percentage']))
+                                                                        {{ $item['percentage'] }}%
+                                                                        @else
+                                                                        -
+                                                                        @endif
+                                                                    </span>
+                                                                </div>
                                                                 @endforeach
                                                             </div>
-                                                        @else
+                                                            @else
                                                             <p class="text-sm text-gray-700 whitespace-pre-line">{{ $task->cancellation_policy }}</p>
-                                                        @endif
+                                                            @endif
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            @endif
+                                                @endif
 
                                                 <!-- Additional Information -->
                                                 @if($task->additional_info || $task->venue)
@@ -1116,9 +1171,16 @@
                                 class="fixed inset-0 z-50 overflow-y-auto"
                                 style="display: none;"
                                 @dropdown-select.window="
+                                    console.log('Dropdown select event received:', $event.detail);
                                     if (editDraft.task_id === {{ $task->id }}) {
-                                        if ($event.detail.name === 'client_id') editDraft.changes.client_id = $event.detail.value;
-                                        if ($event.detail.name === 'agent_id') editDraft.changes.agent_id = $event.detail.value;
+                                        if ($event.detail.name === 'client_id') {
+                                            editDraft.changes.client_id = $event.detail.value;
+                                            editDraft.changes.client_name = $event.detail.displayName;
+                                        }
+                                        if ($event.detail.name === 'agent_id') {
+                                            editDraft.changes.agent_id = $event.detail.value;
+                                            editDraft.changes.agent_name = $event.detail.displayName;
+                                        }
                                     }
                                 ">
 
@@ -1354,35 +1416,8 @@
                             @endforeach
                         </div>
 
-                        <!-- Proceed to Invoice Section (NOW INSIDE LEFT COLUMN) -->
-                        <div class="mt-2 bg-gradient-to-r from-blue-50 to-sky-50 rounded-lg border border-blue-200 p-4 sm:p-6 flex-shrink-0">
-                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div>
-                                    <h3 class="text-base sm:text-lg font-semibold text-blue-800">Ready to Invoice?</h3>
-
-                                    <p class="text-sm text-blue-600 mt-1">
-                                        Create invoice for
-                                        <span class="font-semibold" x-text="selectedForInvoice.length"></span>
-                                        out of
-                                        <span class="font-semibold">{{ $tasks->count() }}</span>
-                                        tasks
-                                    </p>
-                                </div>
-
-                                <a :href="getInvoiceUrl()"
-                                    class="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                                    :class="selectedForInvoice.length === 0 ? 'opacity-50 pointer-events-none' : ''">
-                                    <span>Create Invoice</span>
-                                    <span class="bg-white text-blue-700 text-xs font-bold px-2 py-1 rounded-full" x-text="selectedForInvoice.length"></span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT COLUMN (Preview Pane) -->
-                    <div x-cloak x-show="previewOpen" class="hidden xl:flex xl:w-[420px] flex-shrink-0">
-                        <div class="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden sticky top-4 self-start"
-                            style="max-height: calc(100vh - 2rem);">
+                        <!-- RIGHT COLUMN (Preview Pane) -->
+                        <div x-cloak x-show="previewOpen" class="grid grid-cols-1 w-full xl:max-w-72 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden sticky top-4 self-start overflow-y-auto">
 
                             <div class="px-4 py-4 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
                                 <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
@@ -1418,12 +1453,12 @@
 
                                             <div class="p-3 space-y-2">
                                                 <template x-for="field in Object.keys(draft.changes)" :key="field">
-                                                    <template x-if="String(draft.changes[field] ?? '') !== String(draft.original[field] ?? '')">
+                                                    <template x-if="String(draft.changes[field] ?? '') !== String(draft.original[field] ?? '') && !field.endsWith('_name')">
                                                         <div class="flex items-center justify-between text-xs border-b pb-2">
                                                             <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
                                                             <div class="text-right">
-                                                                <div class="text-gray-400 line-through" x-text="draft.original[field] ?? '-'"></div>
-                                                                <div class="text-gray-900 font-semibold" x-text="draft.changes[field] ?? '-'"></div>
+                                                                <div class="text-gray-400 line-through" x-text="field === 'client_id' ? (draft.original.client_name ?? draft.original[field] ?? '-') : (field === 'agent_id' ? (draft.original.agent_name ?? draft.original[field] ?? '-') : (draft.original[field] ?? '-'))"></div>
+                                                                <div class="text-gray-900 font-semibold" x-text="field === 'client_id' ? (draft.changes.client_name ?? draft.changes[field] ?? '-') : (field === 'agent_id' ? (draft.changes.agent_name ?? draft.changes[field] ?? '-') : (draft.changes[field] ?? '-'))"></div>
                                                             </div>
                                                         </div>
                                                     </template>
@@ -1464,8 +1499,31 @@
                             </div>
 
                         </div>
+
                     </div>
 
+                    <div class="fixed xl:mt-2 xl:relative bottom-0 xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto w-full z-10 xl:z-auto bg-gradient-to-r from-blue-50 to-sky-50 rounded-lg border border-blue-200 p-4 sm:p-6 flex-shrink-0 shadow-lg xl:shadow-none">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-base sm:text-lg font-semibold text-blue-800">Ready to Invoice?</h3>
+
+                                <p class="text-sm text-blue-600 mt-1">
+                                    Create invoice for
+                                    <span class="font-semibold" x-text="selectedForInvoice.length"></span>
+                                    out of
+                                    <span class="font-semibold">{{ $tasks->count() }}</span>
+                                    tasks
+                                </p>
+                            </div>
+
+                            <a :href="getInvoiceUrl()"
+                                class="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                :class="selectedForInvoice.length === 0 ? 'opacity-50 pointer-events-none' : ''">
+                                <span>Create Invoice</span>
+                                <span class="bg-white text-blue-700 text-xs font-bold px-2 py-1 rounded-full" x-text="selectedForInvoice.length"></span>
+                            </a>
+                        </div>
+                    </div>
 
                 </div>
 
@@ -1549,6 +1607,128 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Tasks Modal -->
+        <div x-cloak x-show="showAddTasksModal"
+            class="fixed inset-0 z-50 overflow-y-auto"
+            style="display: none;">
+
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity" @click="showAddTasksModal = false"></div>
+
+            <div class="flex h-screen items-center justify-center p-2 sm:p-4">
+                <div x-show="showAddTasksModal"
+                    class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl overflow-hidden"
+                    @click.stop>
+
+                    <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <h2 class="text-lg sm:text-xl font-bold text-gray-800">Add Tasks</h2>
+                            <p class="text-gray-600 italic text-xs mt-1">Select tasks to add to the current view</p>
+                        </div>
+                        <button type="button" @click="showAddTasksModal = false" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
+                            &times;
+                        </button>
+                    </div>
+
+                    <div class="px-4 sm:px-6 py-3 bg-white border-b border-gray-200">
+                        <input type="text"
+                            x-model="taskSearch"
+                            @input="searchTasks()"
+                            placeholder="Search tasks by reference, client, passenger..."
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div x-show="loadingTasks" class="p-8 text-center" style="height: 60vh;">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                        <p class="text-gray-600 mt-2">Loading tasks...</p>
+                    </div>
+
+                    <div x-show="!loadingTasks" class="p-4 sm:p-6 overflow-y-auto" style="height: 60vh;">
+                        <template x-if="availableTasks.length === 0">
+                            <p class="text-gray-500 italic text-center py-8">No tasks found</p>
+                        </template>
+
+                        <div class="space-y-2">
+                            <template x-for="task in availableTasks" :key="task.id">
+                                    <div
+                                        @click="if (selectedNewTasks.includes(task.id)) { selectedNewTasks = selectedNewTasks.filter(id => id !== task.id) } else { selectedNewTasks.push(task.id) }"
+                                        class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition cursor-pointer"
+                                        :class="selectedNewTasks.includes(task.id) ? 'bg-blue-50 border-blue-200' : ''">
+                                        <input type="checkbox"
+                                            :value="task.id"
+                                            x-model="selectedNewTasks"
+                                            @click.stop
+                                            class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-medium text-gray-900" x-text="task.reference"></span>
+                                                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" x-text="task.status"></span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mt-1">
+                                                <span x-text="task.passenger_name || 'No passenger'"></span>
+                                                <template x-if="task.client">
+                                                    <span> - <span x-text="task.client.name"></span></span>
+                                                </template>
+                                            </p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                Supplier: <span x-text="task.supplier?.name || 'N/A'"></span> |
+                                                Total: <span x-text="task.total || '0'"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </template>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div x-show="taskPagination.last_page > 1" class="mt-4 flex items-center justify-between">
+                            <button type="button"
+                                @click="loadTasks(taskPagination.current_page - 1)"
+                                :disabled="taskPagination.current_page === 1"
+                                :class="taskPagination.current_page === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg">
+                                Previous
+                            </button>
+
+                            <span class="text-sm text-gray-600">
+                                Page <span x-text="taskPagination.current_page"></span> of <span x-text="taskPagination.last_page"></span>
+                            </span>
+
+                            <button type="button"
+                                @click="loadTasks(taskPagination.current_page + 1)"
+                                :disabled="taskPagination.current_page === taskPagination.last_page"
+                                :class="taskPagination.current_page === taskPagination.last_page ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+                                class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg">
+                                Next
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+                        <p class="text-sm text-gray-600">
+                            <span x-text="selectedNewTasks.length"></span> task(s) selected
+                        </p>
+
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button type="button"
+                                @click="showAddTasksModal = false"
+                                class="flex-1 sm:flex-none px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                Cancel
+                            </button>
+
+                            <button type="button"
+                                @click="addSelectedTasks()"
+                                :disabled="selectedNewTasks.length === 0"
+                                :class="selectedNewTasks.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'"
+                                class="flex-1 sm:flex-none px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition">
+                                Add Tasks
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -1770,13 +1950,16 @@
                 </form>
             </div>
         </div>
-    </div>
-    <div x-cloak x-show="isUpdating"
-        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-xl px-6 py-5 w-[320px] text-center">
-            <div class="mx-auto mb-3 h-10 w-10 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin"></div>
-            <p class="text-sm font-semibold text-gray-800">Updating tasks...</p>
-            <p class="text-xs text-gray-500 mt-1">Please wait a moment</p>
+        <div x-cloak x-show="isUpdating"
+            class="fixed inset-0 z-30 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-xl px-6 py-5 w-[200px] text-center flex flex-col items-center gap-2">
+                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm font-semibold text-gray-800">Updating tasks...</p>
+                <p class="text-xs text-gray-500">Please wait a moment</p>
+            </div>
         </div>
     </div>
 

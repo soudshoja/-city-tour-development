@@ -2055,7 +2055,7 @@
                                 <h4 class="ml-4 font-black text-gray-900 dark:text-white text-xl">Flight Details</h4>
                             </div>
                             <div class="space-y-3">
-                                <template x-for="(flight, index) in taskData.flight_details" :key="flight.id">
+                                <template x-for="(flight, index) in taskData?.flight_details" :key="flight.id">
                                     <div class="relative bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border-l-4 border-blue-500 hover:border-blue-600 transition-all hover:shadow-2xl group">
                                         <div class="absolute top-4 right-4 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md" x-text="'Flight ' + (index + 1)"></div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
@@ -2134,7 +2134,7 @@
                                 <h4 class="ml-4 font-black text-gray-900 dark:text-white text-xl">Hotel Details</h4>
                             </div>
                             <div class="space-y-3">
-                                <template x-for="(hotel, index) in taskData.hotel_details" :key="hotel.id">
+                                <template x-for="(hotel, index) in taskData?.hotel_details" :key="hotel.id">
                                     <div class="relative bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border-l-4 border-green-500 hover:border-green-600 transition-all hover:shadow-2xl">
                                         <div class="absolute top-4 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md" x-text="'Hotel ' + (index + 1)"></div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
@@ -2189,7 +2189,7 @@
                                 <h4 class="ml-4 font-black text-gray-900 dark:text-white text-xl">Visa Details</h4>
                             </div>
                             <div class="space-y-3">
-                                <template x-for="(visa, index) in taskData.visa_details" :key="visa.id">
+                                <template x-for="(visa, index) in taskData?.visa_details" :key="visa.id">
                                     <div class="relative bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border-l-4 border-purple-500 hover:border-purple-600 transition-all hover:shadow-2xl">
                                         <div class="absolute top-4 right-4 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md" x-text="'Visa ' + (index + 1)"></div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
@@ -2226,7 +2226,7 @@
                                 <h4 class="ml-4 font-black text-gray-900 dark:text-white text-xl">Insurance Details</h4>
                             </div>
                             <div class="space-y-3">
-                                <template x-for="(insurance, index) in taskData.insurance_details" :key="insurance.id">
+                                <template x-for="(insurance, index) in taskData?.insurance_details" :key="insurance.id">
                                     <div class="relative bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border-l-4 border-yellow-500 hover:border-yellow-600 transition-all hover:shadow-2xl">
                                         <div class="absolute top-4 right-4 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md" x-text="'Policy ' + (index + 1)"></div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
@@ -2372,7 +2372,7 @@
 
 
                     <!-- Tax Records -->
-                    <div x-show="taskData?.taxes_record && taskData.taxes_record.toString().trim() !== ''" class="space-y-3">
+                    <div x-show="taskData?.taxes_record && taskData?.taxes_record.toString().trim() !== ''" class="space-y-3">
                         <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center">
                             <svg class="w-5 h-5 mr-2 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
@@ -2383,12 +2383,12 @@
 
                         <!-- Display Raw Value -->
                         <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border-l-4 border-emerald-500">
-                            <pre x-text="taskData.taxes_record" class="text-base font-mono text-gray-900 dark:text-white whitespace-pre-wrap break-words"></pre>
+                            <pre x-text="taskData?.taxes_record" class="text-base font-mono text-gray-900 dark:text-white whitespace-pre-wrap break-words"></pre>
                         </div>
                     </div>
 
                     <!-- No Tax Records Message -->
-                    <div x-show="!taskData?.taxes_record || taskData.taxes_record.toString().trim() === ''"
+                    <div x-show="!taskData?.taxes_record || taskData?.taxes_record.toString().trim() === ''"
                         class="text-center py-8">
                         <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full mb-4">
                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2456,8 +2456,8 @@
 
         localStorage.setItem("visibleColumns", JSON.stringify(visibleColumns));
 
-        console.log("Default columns from backend:", defaultColumns);
-        console.log("Visible columns being applied:", visibleColumns);
+        // console.log("Default columns from backend:", defaultColumns);
+        // console.log("Visible columns being applied:", visibleColumns);
 
         function updateColumnVisibility() {
             const checkboxes = document.querySelectorAll('.column-checkbox');

@@ -277,7 +277,6 @@ class FixPaymentLinkCOA extends Command
         //     }
         // }
 
-
         // FIX 2: Asset journal entry debit
         $assetEntry = JournalEntry::where('account_id', $chargeRecord->acc_fee_bank_id)
             ->where('description', 'LIKE', 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name . '%')
@@ -503,8 +502,12 @@ class FixPaymentLinkCOA extends Command
         }
 
         // FIX 5: Income entry - CREATE if client pays and missing
-        if ($shouldHaveIncome && $chargeRecord->acc_fee_income_id && $gatewayFee > 0) {
-            $incomeEntry = JournalEntry::where('account_id', $chargeRecord->acc_fee_income_id)
+        $gatewayFeeRecoveryAccount = Account::where('name', 'Gateway Fee Recovery')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if ($shouldHaveIncome && $gatewayFeeRecoveryAccount && $gatewayFee > 0) {
+            $incomeEntry = JournalEntry::where('account_id', $gatewayFeeRecoveryAccount->id)
                 ->where('voucher_number', $payment->voucher_number)
                 ->where('credit', '>', 0)
                 ->first();
@@ -518,33 +521,34 @@ class FixPaymentLinkCOA extends Command
                     'new_value' => number_format($gatewayFee, 3),
                 ];
                 if (!$isDryRun) {
-                    $transaction = Transaction::where('payment_id', $payment->id)->first();
+                    $transaction = Transaction::where('payment_id', $payment->id)
+                        ->where('description', 'LIKE', 'Client Advance via%')
+                        ->first();
                     if ($transaction) {
-                        $incomeAccount = Account::find($chargeRecord->acc_fee_income_id);
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
                             'branch_id' => $payment->agent->branch->id,
-                            'account_id' => $chargeRecord->acc_fee_income_id,
+                            'account_id' => $gatewayFeeRecoveryAccount->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => $payment->created_at,
                             'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                             'debit' => 0,
                             'credit' => $gatewayFee,
                             'balance' => 0,
-                            'name' => $incomeAccount->name ?? 'Gateway Fee Recovery',
+                            'name' => $gatewayFeeRecoveryAccount->name,
                             'type' => 'income',
-                            'type_reference_id' => $chargeRecord->acc_fee_income_id
+                            'type_reference_id' => $gatewayFeeRecoveryAccount->id
                         ]);
                     }
                 }
-                $this->accountsToRecalculate[] = $chargeRecord->acc_fee_income_id;
+                $this->accountsToRecalculate[] = $gatewayFeeRecoveryAccount->id;
             }
         }
 
         // FIX 6: DELETE wrong income entry if company pays
-        if (!$shouldHaveIncome && $chargeRecord->acc_fee_income_id) {
-            $wrongIncomeEntry = JournalEntry::where('account_id', $chargeRecord->acc_fee_income_id)
+        if (!$shouldHaveIncome && $gatewayFeeRecoveryAccount) {
+            $wrongIncomeEntry = JournalEntry::where('account_id', $gatewayFeeRecoveryAccount->id)
                 ->where('voucher_number', $payment->voucher_number)
                 ->where('credit', '>', 0)
                 ->first();
@@ -560,7 +564,50 @@ class FixPaymentLinkCOA extends Command
                 if (!$isDryRun) {
                     $wrongIncomeEntry->delete();
                 }
-                $this->accountsToRecalculate[] = $chargeRecord->acc_fee_income_id;
+                $this->accountsToRecalculate[] = $gatewayFeeRecoveryAccount->id;
+            }
+        }
+
+        // FIX 7: CREATE missing Liability entry if not exists
+        // This happens when old bug only created Asset + Expense but no Liability
+        $existingLiabilityEntry = JournalEntry::where('account_id', $paymentGatewayAccount->id)
+            ->where('voucher_number', $payment->voucher_number)
+            ->where('credit', '>', 0)
+            ->first();
+
+        if (!$existingLiabilityEntry) {
+            // Get the main transaction (should exist after FIX 4)
+            $mainTransaction = Transaction::where('payment_id', $payment->id)
+                ->where('description', 'LIKE', 'Client Advance via%')
+                ->first();
+
+            if ($mainTransaction) {
+                $fixes[] = [
+                    'payment_id' => $payment->id,
+                    'voucher' => $payment->voucher_number,
+                    'issue' => 'Missing liability entry',
+                    'old_value' => 'NONE',
+                    'new_value' => number_format($correctClientCredit, 3),
+                ];
+
+                if (!$isDryRun) {
+                    JournalEntry::create([
+                        'transaction_id' => $mainTransaction->id,
+                        'company_id' => $companyId,
+                        'branch_id' => $payment->agent->branch->id,
+                        'account_id' => $paymentGatewayAccount->id,
+                        'voucher_number' => $payment->voucher_number,
+                        'transaction_date' => $payment->created_at,
+                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                        'debit' => 0,
+                        'credit' => $correctClientCredit,
+                        'balance' => 0,
+                        'name' => $client->full_name,
+                        'type' => 'advance',
+                        'type_reference_id' => $client->id
+                    ]);
+                }
+                $this->accountsToRecalculate[] = $paymentGatewayAccount->id;
             }
         }
 

@@ -9,6 +9,7 @@ class InvoiceReceipt extends Model
     protected $fillable = [
         'type',
         'invoice_id',
+        'invoice_partial_id',
         'account_id',
         'credit_id',
         'transaction_id',
@@ -17,7 +18,7 @@ class InvoiceReceipt extends Model
         'is_used',
     ];
 
-    public function invoice() 
+    public function invoice()
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }

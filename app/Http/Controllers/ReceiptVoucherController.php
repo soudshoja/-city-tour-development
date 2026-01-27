@@ -398,7 +398,7 @@ class ReceiptVoucherController extends Controller
                         'branch_id' => $request->branch_id ?? $invoice->agent->branch->id,
                         'transaction_type' => 'debit',
                         'amount' => $amount,
-                        'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks: ' . $request->remarks_create,
+                        'description' => 'Cash payment success: ' . $invoice->invoice_number . '. Additional Remarks: ' . $request->remarks_create,
                         'invoice_id' => $invoiceId,
                         'reference_number' => $request->receiptvoucherref,
                         'reference_type' => 'Invoice',
@@ -888,7 +888,47 @@ class ReceiptVoucherController extends Controller
                 return ['status' => 'error', 'message' => 'Invoice detail not found'];
             }
 
-            $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)->first();
+            // Find the correct partial using invoice_partial_id from InvoiceReceipt
+            // Or fallback to finding Cash partial that's unpaid
+            $invoicePartial = null;
+
+            if ($invoiceReceipt->invoice_partial_id) {
+                $invoicePartial = InvoicePartial::find($invoiceReceipt->invoice_partial_id);
+                Log::info('[APPROVE] Found partial via invoice_receipt.invoice_partial_id', [
+                    'invoice_partial_id' => $invoiceReceipt->invoice_partial_id,
+                ]);
+            }
+
+            if (!$invoicePartial) {
+                // Fallback: Find the Cash partial that's still unpaid for this invoice
+                $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)
+                    ->where('payment_gateway', 'Cash')
+                    ->where('status', 'unpaid')
+                    ->first();
+
+                Log::info('[APPROVE] Found partial via Cash + unpaid fallback', [
+                    'invoice_partial_id' => $invoicePartial?->id,
+                ]);
+            }
+
+            if (!$invoicePartial) {
+                // Final fallback: Get any unpaid partial
+                $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)
+                    ->where('status', 'unpaid')
+                    ->first();
+
+                Log::info('[APPROVE] Found partial via unpaid fallback', [
+                    'invoice_partial_id' => $invoicePartial?->id,
+                ]);
+            }
+
+            if (!$invoicePartial) {
+                Log::error('No matching invoice partial found for cash approval', [
+                    'invoice_id' => $invoiceId,
+                    'invoice_receipt_id' => $invoiceReceipt->id,
+                ]);
+                return redirect()->back()->with('error', 'Invoice partial not found for cash payment');
+            }
 
             $client = Client::find($invoice->client_id);
             if (!$client) {
@@ -906,86 +946,59 @@ class ReceiptVoucherController extends Controller
                 try {
                     DB::beginTransaction();
 
-                    $remainingBalance = $invoice->amount - ($invoicePartial->amount);
-                    if ($remainingBalance > 0) { //Partial/Split Payment
-                        Log::info('Remaining balance: KWD ' . $remainingBalance . '. Proceed to create new partial for another payment to complete the transaction');
+                    // Step 1: Mark current partial as paid
+                    $invoicePartial->update([
+                        'status' => 'paid',
+                        'receipt_voucher_id' => $invoiceReceipt->id,
+                        'updated_at' => now(),
+                    ]);
+                    Log::info('[APPROVE] Marked invoice partial as paid', [
+                        'invoice_partial_id' => $invoicePartial->id,
+                    ]);
 
-                        $invoice->update([
-                            'status' => 'unpaid',
-                            'type' => 'partial',
-                            'payment_type' => 'partial',
-                            'paid_date' => now(),
-                        ]);
-                        Log::info('Succesfully updated the Invoice, status remained Unpaid as there is remaining balance of KWD ' . $remainingBalance);
+                    // Step 2: Mark receipt as approved
+                    $invoiceReceipt->update([
+                        'status' => 'approved',
+                        'is_used' => true,
+                    ]);
 
-                        $invoicePartial->update([
-                            'status' => 'paid',
-                            'type' => 'partial',
-                            'receipt_voucher_id' => $invoiceReceipt->id,
-                            'updated_at' => now(),
-                        ]);
-                        Log::info('Successfully updated the existing Invoice Partial, status remained Unpaid as there is remaining balance of KWD ' . $remainingBalance);
+                    // Step 3: Check if ALL partials for this invoice are now paid
+                    $hasUnpaidPartials = InvoicePartial::where('invoice_id', $invoiceId)
+                        ->where('status', '!=', 'paid')
+                        ->exists();
 
-                        $invoiceReceipt->update([
-                            'status' => 'approved',
-                            'is_used' => true,
-
-                        ]);
-
-                        $totalSum = InvoicePartial::where('invoice_id', $invoiceId)
-                            ->sum('amount');
-
-                        if ($totalSum < $invoice->amount) {
-                            $newPartial = InvoicePartial::create([
-                                'invoice_id' => $invoice->id,
-                                'invoice_number' => $invoice->invoice_number,
-                                'client_id' => $invoice->client_id,
-                                'service_charge' => 0,
-                                'amount' => $remainingBalance,
-                                'status' => 'unpaid',
-                                'expiry_date' => null,
-                                'type' => 'partial',
-                                'charge_id' => null,
-                                'payment_gateway' => 'Cash',
-                                'payment_method' => null,
-                                'payment_id' => null,
-                            ]);
-                            Log::info('Successfully created new Invoice Partial', [
-                                'response' => $newPartial,
-                            ]);
-                        }
-                    } elseif ($remainingBalance == 0) { //Full Payment
-                        Log::info('Has 0 of remaining balance. Proceed to pay the entire invoice');
-
+                    if (!$hasUnpaidPartials) {
+                        // All partials paid - mark invoice as paid
                         $invoice->update([
                             'status' => 'paid',
-                            'type' => 'full',
-                            'payment_type' => 'Cash',
                             'paid_date' => now(),
                         ]);
-                        Log::info('Succesfully updated the Invoice');
-
-                        $invoicePartial->update([
-                            'status' => 'paid',
-                            'type' => 'full',
-                            'receipt_voucher_id' => $invoiceReceipt->id,
-                            'updated_at' => now(),
+                        Log::info('[APPROVE] All partials paid - Invoice marked as PAID', [
+                            'invoice_id' => $invoice->id,
                         ]);
-                        Log::info('Successfully updated the existing Invoice Partial');
+                    } else {
+                        // Still has unpaid partials - mark invoice as partial
+                        $hasPaidPartials = InvoicePartial::where('invoice_id', $invoiceId)
+                            ->where('status', 'paid')
+                            ->exists();
 
-                        $invoiceReceipt->update([
-                            'status' => 'approved',
-                            'is_used' => true,
+                        $newStatus = $hasPaidPartials ? 'partial' : 'unpaid';
+                        $invoice->update(['status' => $newStatus]);
+
+                        Log::info('[APPROVE] Invoice has unpaid partials remaining', [
+                            'invoice_id' => $invoice->id,
+                            'new_status' => $newStatus,
                         ]);
                     }
 
-                    //Cash Account (Assets)
+                    // ENTRY 1: DEBIT Cash Asset (Cash received)
+                    // Assets > Cash In Hand > Receipt Voucher Cash
                     $assets = Account::where('name', 'like', '%Assets%')
                         ->where('company_id', $companyId)
                         ->value('id');
                     if (!$assets) {
                         Log::error('Assets root account not found');
-                        return ['status' => 'error', 'message' => 'Assets root account not found'];
+                        return redirect()->back()->with('error', 'Assets root account not found');
                     }
 
                     $receiptVoucherCash = Account::where('name', 'Receipt Voucher Cash')
@@ -994,7 +1007,7 @@ class ReceiptVoucherController extends Controller
                         ->first();
                     if (!$receiptVoucherCash) {
                         Log::error('Receipt Voucher Cash account not found', ['company_id' => $companyId]);
-                        return ['status' => 'error', 'message' => 'Receipt Voucher Cash account not found'];
+                        return redirect()->back()->with('error', 'Receipt Voucher Cash account not found');
                     }
 
                     JournalEntry::create([
@@ -1004,71 +1017,72 @@ class ReceiptVoucherController extends Controller
                         'branch_id' => $invoice->agent->branch->id,
                         'account_id' => $receiptVoucherCash->id,
                         'invoice_id' => $invoice->id,
-                        'invoice_details_id' => $invoiceDetail->id,
+                        'invoice_detail_id' => $invoiceDetail->id,
                         'transaction_date' => $transaction->transaction_date,
                         'description' => 'Client Pays Cash via (Assets): ' . $receiptVoucherCash->name,
                         'debit' => $invoicePartial->amount,
                         'credit' => 0,
-                        'balance' => $remainingBalance,
+                        'balance' => $receiptVoucherCash->actual_balance + $invoicePartial->amount,
                         'name' => $clientName,
-                        'type' => 'receivable',
+                        'type' => 'cash',
                         'voucher_number' => null,
                         'receipt_reference_number' => $transaction->reference_number,
                         'type_reference_id' => $receiptVoucherCash->id,
                     ]);
 
-                    //Advances Account (Liabilities)
-                    $liabilities = Account::where('name', 'like', '%Liabilities%')
-                        ->where('company_id', $companyId)
-                        ->value('id');
+                    $receiptVoucherCash->actual_balance += $invoicePartial->amount;
+                    $receiptVoucherCash->save();
 
-                    if (!$liabilities) {
-                        Log::error('Liabilities root account not found');
-                        return ['status' => 'error', 'message' => 'Assets root account not found'];
-                    }
-
-                    $clientAccount = Account::where('name', 'like', 'Client')
+                    // ENTRY 2: CREDIT Accounts Receivable (Invoice debt cleared)
+                    // Assets > Accounts Receivable > Clients
+                    $accountReceivable = Account::where('name', 'Accounts Receivable')
                         ->where('company_id', $companyId)
-                        ->where('root_id', $liabilities)
                         ->first();
-                    if (!$clientAccount) {
-                        Log::error('Client account not found');
-                        return ['status' => 'error', 'message' => 'Client account not found'];
+                    if (!$accountReceivable) {
+                        Log::error('Accounts Receivable account not found');
+                        return redirect()->back()->with('error', 'Accounts Receivable account not found');
                     }
 
-                    $cash = Account::where('name', 'like', 'Cash')
+                    $clientsReceivable = Account::where('name', 'Clients')
                         ->where('company_id', $companyId)
-                        ->where('parent_id', $clientAccount->id)
+                        ->where('parent_id', $accountReceivable->id)
                         ->first();
-                    if (!$cash) {
-                        Log::error('Cash account not found');
-                        return ['status' => 'error', 'message' => 'Cashs account not found'];
+                    if (!$clientsReceivable) {
+                        Log::error('Clients receivable account not found');
+                        return redirect()->back()->with('error', 'Clients receivable account not found');
                     }
+
+                    $totalPaidAmount = InvoicePartial::where('invoice_id', $invoiceId)
+                        ->where('status', 'paid')
+                        ->sum('amount');
+                    $remainingBalance = $invoice->amount - $totalPaidAmount;
 
                     JournalEntry::create([
                         'task_id' => $invoiceDetail->task_id,
                         'transaction_id' => $transaction->id,
                         'company_id' => $companyId,
                         'branch_id' => $invoice->agent->branch->id,
-                        'account_id' => $cash->id,
+                        'account_id' => $clientsReceivable->id,
                         'invoice_id' => $invoice->id,
-                        'invoice_details_id' => $invoiceDetail->id,
+                        'invoice_detail_id' => $invoiceDetail->id,
                         'transaction_date' => $transaction->transaction_date,
-                        'description' => 'Client Pays Invoice via (Advances): ' . $cash->name,
+                        'description' => 'Client Pays Invoice via (Receivable): ' . $clientsReceivable->name,
                         'debit' => 0,
                         'credit' => $invoicePartial->amount,
                         'balance' => $remainingBalance,
                         'name' => $clientName,
-                        'type' => 'payable',
+                        'type' => 'receivable',
                         'voucher_number' => null,
                         'receipt_reference_number' => $transaction->reference_number,
-                        'type_reference_id' => $cash->id,
+                        'type_reference_id' => $clientsReceivable->id,
                     ]);
 
-                    Log::info('Journal entry created successfully', [
+                    Log::info('[CASH INVOICE PAYMENT] Journal entries created successfully', [
+                        'invoice_number' => $invoice->invoice_number,
+                        'amount' => $invoicePartial->amount,
                         'journal_entries' => [
-                            'receipt_voucher_cash' => $receiptVoucherCash->name,
-                            'cash' => $cash->name,
+                            'debit_cash' => $receiptVoucherCash->name,
+                            'credit_receivable' => $clientsReceivable->name,
                         ],
                     ]);
 
@@ -1419,6 +1433,79 @@ class ReceiptVoucherController extends Controller
         }
     }
 
+    /**
+     * Create Receipt Voucher ONLY (no partial, no COA)
+     * Called from savePartial() after partial is already created
+     */
+    public function createReceiptVoucher(Invoice $invoice, InvoicePartial $invoicePartial, Request $request): array
+    {
+        $client = $invoice->client;
+        $clientName = $client->name ?? $client->full_name;
+        $amount = $invoicePartial->amount;
+        $ref = 'RV-' . Str::upper(Str::random(10));
+
+        try {
+            DB::beginTransaction();
+
+            // Create Receipt Voucher Transaction
+            $transaction = Transaction::create([
+                'entity_id'        => $invoice->agent->branch->company->id,
+                'entity_type'      => 'company',
+                'company_id'       => $invoice->agent->branch->company->id,
+                'branch_id'        => $invoice->agent->branch->id,
+                'transaction_type' => 'debit',
+                'amount'           => $amount,
+                'description'      => 'Cash payment success: ' . $invoice->invoice_number,
+                'invoice_id'       => $invoice->id,
+                'reference_number' => $ref,
+                'reference_type'   => 'Invoice',
+                'name'             => $clientName,
+                'transaction_date' => now(),
+            ]);
+
+            // Create Invoice Receipt
+            $invoiceReceipt = InvoiceReceipt::create([
+                'type'               => InvoiceReceiptType::INVOICE,
+                'invoice_id'         => $invoice->id,
+                'invoice_partial_id' => $invoicePartial->id,
+                'transaction_id'     => $transaction->id,
+                'amount'             => $amount,
+                'status'             => InvoiceReceiptStatus::PENDING,
+                'is_used'            => true,
+            ]);
+
+            if (!$invoiceReceipt) {
+                Log::error('Failed to create Invoice Receipt');
+            }
+
+            DB::commit();
+
+            Log::info('[RECEIPT VOUCHER] Created receipt voucher only', [
+                'invoice_id' => $invoice->id,
+                'invoice_partial_id' => $invoicePartial->id,
+                'transaction_id' => $transaction->id,
+                'reference' => $ref,
+            ]);
+
+            return [
+                'ok' => true,
+                'transaction_id' => $transaction->id,
+                'reference' => $ref,
+            ];
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('[RECEIPT VOUCHER] Failed to create', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
     public function autoGenerate(Invoice $invoice,  Request $request): JsonResponse
     {
         Log::info('Starting to auto generate an unpaid Receipt Voucher', [
@@ -1496,7 +1583,7 @@ class ReceiptVoucherController extends Controller
         try {
             DB::beginTransaction();
 
-            $uninvoicedTransaction = Transaction::where('invoice_id', $invoiceId)->where('transaction_type', 'cash')->first();
+            $uninvoicedTransaction = Transaction::where('invoice_id', $invoiceId)->where('description', 'like', 'Invoice:%Generated')->first();
             if (!$uninvoicedTransaction) {
                 $uninvoicedTransaction = Transaction::create([
                     'entity_id'        => $invoice->agent->branch->company->id,
@@ -1541,7 +1628,7 @@ class ReceiptVoucherController extends Controller
                 'branch_id'        => $invoice->agent->branch->id,
                 'transaction_type' => 'debit',
                 'amount'           => $amount,
-                'description'      => 'Payment for Invoice ' . $invoice->invoice_number,
+                'description'      => 'Cash payment success: ' . $invoice->invoice_number,
                 'invoice_id'       => $invoiceId,
                 'reference_number' => $ref,
                 'reference_type'   => 'Invoice',
@@ -1552,6 +1639,7 @@ class ReceiptVoucherController extends Controller
             $invoiceReceipt = InvoiceReceipt::create([
                 'type' => InvoiceReceiptType::INVOICE,
                 'invoice_id'     => $invoiceId,
+                'invoice_partial_id' => $invoicePartial->id,
                 'transaction_id' => $transaction->id,
                 'amount'         => $amount,
                 'status' => InvoiceReceiptStatus::PENDING,

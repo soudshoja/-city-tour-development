@@ -27,6 +27,11 @@ export function searchableDropdown({
                 this.selectedName = selectedItem.name;
             }
 
+            // Auto-select if there's only one item and nothing is selected
+            if (this.all.length === 1 && !this.selectedId) {
+                this.select(this.all[0]);
+            }
+
             window.addEventListener('reset-dropdowns', () => {
                 if (!this.hasChanged) {
                     this.selectedId = this.originalId;

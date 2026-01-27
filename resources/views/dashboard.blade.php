@@ -248,7 +248,7 @@
                 </div>
             </div>
             <div class="my-5 w-full p-10 pt-5 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full">
-                <div class="grid grid-cols-2 gap-4 mt-3 mx-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <a href="{{ route('reports.payable-supplier') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-red-500 dark:text-red-400 font-medium">Payable Supplier</p>
@@ -269,7 +269,7 @@
                             class="absolute top-2 right-2 text-green-400 dark:text-green-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                 </div>
-                <div class="grid grid-cols-3 gap-3 mt-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                     <a href="{{ route('reports.profit-agent') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Profit Agent Wise</p>

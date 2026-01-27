@@ -157,6 +157,7 @@
             showMenu: false,
             showManualForm: false,
             showSidebar: false,
+            showUploadForm: false,
 
             showAddTasksModal: false,
             loadingTasks: false,
@@ -169,6 +170,7 @@
                 total: 0
             },
             searchTimeout: null,
+            editingDetailsTaskId: null,
 
             modalTaskId: null,
             modalClientName: '',
@@ -220,15 +222,28 @@
                     this.editDraft = { task_id: null, original: {}, changes: {} };
                 }
 
+                // Also clear detail editing mode if this task was being edited
+                if (this.editingDetailsTaskId === taskId) {
+                    this.editingDetailsTaskId = null;
+                }
+
+                // Close preview only if no more drafts exist
                 if (Object.keys(this.drafts).length === 0) {
                     this.previewOpen = false;
                 }
             },
 
             closePreview() {
+                // Only close if there are no changes at all
+                if (this.hasAnyChanges()) {
+                    // Don't close - there are still changes from other tasks
+                    return;
+                }
+
                 this.previewOpen = false;
                 this.singleEditMode = false;
                 this.editDraft = { task_id: null, original: {}, changes: {} };
+                this.editingDetailsTaskId = null;
             },
 
             clearAllDrafts() {
@@ -236,6 +251,7 @@
                 this.previewOpen = false;
                 this.singleEditMode = false;
                 this.editDraft = { task_id: null, original: {}, changes: {} };
+                this.editingDetailsTaskId = null;
             },
 
             getTotalFromDraft(draft) {
@@ -360,8 +376,55 @@
                 window.location.href = `{{ route('tasks.detail') }}?tasks=${uniqueTaskIds.join(',')}`;
             },
 
+
             isUpdating: false,
             isSubmittingUpdates: false,
+
+            showUploadForm: false,
+            toggleDetailsEdit(taskId, taskData) {
+                if (this.editingDetailsTaskId === taskId) {
+                    // Cancel edit - revert detail changes
+                    if (this.drafts[taskId]) {
+                        // Restore original details
+                        const task = this.drafts[taskId];
+                        if (task.original.hotelDetails) {
+                            task.changes.hotelDetails = JSON.parse(JSON.stringify(task.original.hotelDetails));
+                        }
+                        if (task.original.insuranceDetails) {
+                            task.changes.insuranceDetails = JSON.parse(JSON.stringify(task.original.insuranceDetails));
+                        }
+                        if (task.original.visaDetails) {
+                            task.changes.visaDetails = JSON.parse(JSON.stringify(task.original.visaDetails));
+                        }
+                        if (task.original.flightDetails) {
+                            task.changes.flightDetails = JSON.parse(JSON.stringify(task.original.flightDetails));
+                        }
+
+                        // If there are no changes left after reverting details, remove the draft
+                        if (!this.hasChangesFor(taskId)) {
+                            delete this.drafts[taskId];
+
+                            // Close preview if no more changes
+                            if (Object.keys(this.drafts).length === 0) {
+                                this.previewOpen = false;
+                            }
+                        }
+                    }
+                    this.editingDetailsTaskId = null;
+                } else {
+                    // Ensure draft exists for this task (but don't open preview or main edit mode)
+                    if (!this.drafts[taskId]) {
+                        this.drafts[taskId] = {
+                            task_id: taskId,
+                            original: JSON.parse(JSON.stringify(taskData)),
+                            changes: JSON.parse(JSON.stringify(taskData)),
+                        };
+                    }
+                    this.editingDetailsTaskId = taskId;
+                    // Open preview pane to show detail changes
+                    this.previewOpen = true;
+                }
+            },
 
         }">
 
@@ -692,6 +755,7 @@
                                         <button
                                             @click="startSingleEdit({
                                                 id: {{ $task->id }},
+                                                type: @js($task->type),
                                                 reference: @js($task->reference),
                                                 status: @js($task->status),
                                                 client_id: @js($task->client_id),
@@ -705,6 +769,48 @@
                                                 tax: @js(number_format($task->tax ?? 0, 3, '.', '')),
                                                 surcharge: @js(number_format($task->surcharge ?? 0, 3, '.', '')),
                                                 supplier_surcharge: @js(number_format($task->supplier_surcharge ?? 0, 3, '.', '')),
+                                                @if($task->type === 'hotel' && $task->hotelDetails)
+                                                hotelDetails: {
+                                                    hotel_id: @js($task->hotelDetails->hotel_id),
+                                                    hotel_name: @js($task->hotelDetails->hotel->name ?? 'N/A'),
+                                                    room_type: @js($task->hotelDetails->room_type),
+                                                    check_in: @js($task->hotelDetails->check_in),
+                                                    check_out: @js($task->hotelDetails->check_out),
+                                                    room_number: @js($task->hotelDetails->room_number),
+                                                    meal_type: @js($task->hotelDetails->meal_type),
+                                                },
+                                                @elseif($task->type === 'insurance' && $task->insuranceDetails)
+                                                insuranceDetails: {
+                                                    insurance_type: @js($task->insuranceDetails->insurance_type),
+                                                    plan_type: @js($task->insuranceDetails->plan_type),
+                                                    destination: @js($task->insuranceDetails->destination),
+                                                    duration: @js($task->insuranceDetails->duration),
+                                                    package: @js($task->insuranceDetails->package),
+                                                },
+                                                @elseif($task->type === 'visa' && $task->visaDetails)
+                                                visaDetails: {
+                                                    visa_type: @js($task->visaDetails->visa_type),
+                                                    application_number: @js($task->visaDetails->application_number),
+                                                    issuing_country: @js($task->visaDetails->issuing_country),
+                                                    expiry_date: @js($task->visaDetails->expiry_date),
+                                                    number_of_entries: @js($task->visaDetails->number_of_entries),
+                                                    stay_duration: @js($task->visaDetails->stay_duration),
+                                                },
+                                                @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
+                                                flightDetails: @js($task->flightDetail->map(function($flight) {
+                                                    return [
+                                                        'id' => $flight->id,
+                                                        'airport_from' => $flight->airport_from,
+                                                        'airport_to' => $flight->airport_to,
+                                                        'departure_time' => $flight->departure_time,
+                                                        'arrival_time' => $flight->arrival_time,
+                                                        'flight_number' => $flight->flight_number,
+                                                        'class_type' => $flight->class_type,
+                                                        'duration_time' => $flight->duration_time,
+                                                        'baggage_allowed' => $flight->baggage_allowed,
+                                                    ];
+                                                })->toArray()),
+                                                @endif
                                             })"
 
                                             class="group relative p-2 hover:bg-slate-600 rounded-lg transition flex-shrink-0 ml-2">
@@ -836,14 +942,75 @@
 
                                     <!-- Type-Specific Details - 3 columns on lg -->
                                     <div class="xl:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
+                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0 flex items-center justify-between">
                                             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
                                                 {{ ucfirst($task->type) }} Details
                                             </h2>
+                                            <button
+                                                @click="toggleDetailsEdit({{ $task->id }}, {
+                                                    id: {{ $task->id }},
+                                                    type: @js($task->type),
+                                                    @if($task->type === 'hotel' && $task->hotelDetails)
+                                                    hotelDetails: {
+                                                        hotel_id: @js($task->hotelDetails->hotel_id),
+                                                        hotel_name: @js($task->hotelDetails->hotel->name ?? 'N/A'),
+                                                        room_type: @js($task->hotelDetails->room_type),
+                                                        check_in: @js($task->hotelDetails->check_in),
+                                                        check_out: @js($task->hotelDetails->check_out),
+                                                        room_number: @js($task->hotelDetails->room_number),
+                                                        meal_type: @js($task->hotelDetails->meal_type),
+                                                    },
+                                                    @elseif($task->type === 'insurance' && $task->insuranceDetails)
+                                                    insuranceDetails: {
+                                                        insurance_type: @js($task->insuranceDetails->insurance_type),
+                                                        plan_type: @js($task->insuranceDetails->plan_type),
+                                                        destination: @js($task->insuranceDetails->destination),
+                                                        duration: @js($task->insuranceDetails->duration),
+                                                        package: @js($task->insuranceDetails->package),
+                                                    },
+                                                    @elseif($task->type === 'visa' && $task->visaDetails)
+                                                    visaDetails: {
+                                                        visa_type: @js($task->visaDetails->visa_type),
+                                                        application_number: @js($task->visaDetails->application_number),
+                                                        issuing_country: @js($task->visaDetails->issuing_country),
+                                                        expiry_date: @js($task->visaDetails->expiry_date),
+                                                        number_of_entries: @js($task->visaDetails->number_of_entries),
+                                                        stay_duration: @js($task->visaDetails->stay_duration),
+                                                    },
+                                                    @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
+                                                    flightDetails: @js($task->flightDetail->map(function($flight) {
+                                                        return [
+                                                            'id' => $flight->id,
+                                                            'airport_from' => $flight->airport_from,
+                                                            'airport_to' => $flight->airport_to,
+                                                            'terminal_from' => $flight->terminal_from,
+                                                            'terminal_to' => $flight->terminal_to,
+                                                            'departure_time' => $flight->departure_time,
+                                                            'arrival_time' => $flight->arrival_time,
+                                                            'flight_number' => $flight->flight_number,
+                                                            'class_type' => $flight->class_type,
+                                                            'duration_time' => $flight->duration_time,
+                                                            'baggage_allowed' => $flight->baggage_allowed,
+                                                            'seat_no' => $flight->seat_no,
+                                                            'ticket_number' => $flight->ticket_number,
+                                                        ];
+                                                    })->toArray()),
+                                                    @endif
+                                                })"
+                                                class="group relative p-2 hover:bg-slate-200 rounded-lg transition flex-shrink-0">
+                                                <svg x-show="editingDetailsTaskId !== {{ $task->id }}" class="w-4 h-4 text-gray-600 group-hover:text-gray-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                </svg>
+                                                <svg x-show="editingDetailsTaskId === {{ $task->id }}" class="w-4 h-4 text-red-600 group-hover:text-red-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
                                         </div>
                                         <div class="flex-1 overflow-auto">
                                             @if($task->type === 'flight')
                                             <div class="p-4 sm:p-6">
+                                                <!-- View Mode -->
+                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}">
                                                 @php
                                                 $hasDuration = $task->flightDetail->whereNotNull('duration_time')->isNotEmpty();
                                                 $hasBaggage = $task->flightDetail->whereNotNull('baggage_allowed')->isNotEmpty();
@@ -982,46 +1149,147 @@
                                                         </tbody>
                                                     </table>
                                                 </div>
+                                                </div>
+                                                <!-- End View Mode -->
+
+                                                <!-- Edit Mode -->
+                                                <div x-show="editingDetailsTaskId === {{ $task->id }}">
+                                                    <template x-for="(flight, index) in (drafts[{{ $task->id }}]?.changes?.flightDetails || [])" :key="index">
+                                                        <div class="border border-gray-200 rounded-lg p-4 mb-4">
+                                                            <h3 class="text-sm font-semibold text-gray-700 mb-3">Flight <span x-text="index + 1"></span></h3>
+
+                                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Airport From</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].airport_from"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Terminal From</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].terminal_from"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Departure Time</label>
+                                                                    <input type="datetime-local"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].departure_time"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Airport To</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].airport_to"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Terminal To</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].terminal_to"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Arrival Time</label>
+                                                                    <input type="datetime-local"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].arrival_time"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Flight Number</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].flight_number"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Class Type</label>
+                                                                    <select x-model="drafts[{{ $task->id }}].changes.flightDetails[index].class_type"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                        <option value="">Select class</option>
+                                                                        <option value="economy">Economy</option>
+                                                                        <option value="business">Business</option>
+                                                                        <option value="first">First Class</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].duration_time"
+                                                                        placeholder="2h 30m"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Baggage Allowed</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].baggage_allowed"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Seat Number</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].seat_no"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Ticket Number</label>
+                                                                    <input type="text"
+                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].ticket_number"
+                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                                <!-- End Edit Mode -->
                                             </div>
                                             @elseif($task->type === 'hotel')
                                             <div class="p-4 sm:p-6">
-                                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                                <!-- View Mode -->
+                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                                                     <div class="sm:col-span-3">
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
-                                                        @if(isset($mapHotels[$task->id]))
-                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->name ?? 'N/A' }}</p>
-                                                        @else
-                                                        <p class="text-sm font-medium text-gray-900">{{ ucfirst($task->hotelDetails->hotel->name ?? $task->venue ?? 'N/A') }}</p>
-                                                        @endif
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</p>
                                                     </div>
 
-                                                    @if(isset($mapHotels[$task->id]))
+                                                    @if($task->hotelDetails->hotel)
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ ucfirst($mapHotels[$task->id]->address ?? 'N/A') }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->address ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
-                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zipcode</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->zipCode ?? 'N/A' }}</p>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">City</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->city ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
-                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Location</p>
-                                                        <p class="text-sm text-gray-900">{{ ucwords(strtolower($mapHotels[$task->id]->city->name ?? '')) }}, {{ $mapHotels[$task->id]->city->country->name ?? 'N/A' }}</p>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Country</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->hotel->country ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
-                                                        <p class="text-sm font-medium text-gray-900">+{{ $mapHotels[$task->id]->telephone ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->phone ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
-                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Fax</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->fax ?? 'N/A' }}</p>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zip Code</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->zip_code ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $mapHotels[$task->id]->email ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->email ?? 'N/A' }}</p>
                                                     </div>
                                                     @endif
 
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Room Type</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->room_type ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Room Number</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->room_number ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Meal Type</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->meal_type ?? 'N/A' }}</p>
+                                                    </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check In</p>
                                                         <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('D, d M Y') }}</p>
@@ -1035,22 +1303,213 @@
                                                         <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
                                                     </div>
                                                 </div>
+
+                                                <!-- Edit Mode -->
+                                                <div x-show="editingDetailsTaskId === {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div class="sm:col-span-2">
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Hotel</label>
+                                                        <div x-data="searchableDropdown({
+                                                            items: {{ $hotels }},
+                                                            selectedId: drafts[{{ $task->id }}]?.changes?.hotelDetails?.hotel_id || '',
+                                                            selectedName: drafts[{{ $task->id }}]?.changes?.hotelDetails?.hotel_name || '',
+                                                            name: 'hotel_id',
+                                                            placeholder: 'Select a hotel'
+                                                        })"
+                                                        x-init="init()"
+                                                        @dropdown-select="
+                                                            if (drafts[{{ $task->id }}]?.changes?.hotelDetails) {
+                                                                drafts[{{ $task->id }}].changes.hotelDetails.hotel_id = $event.detail.value;
+                                                                drafts[{{ $task->id }}].changes.hotelDetails.hotel_name = $event.detail.displayName;
+                                                            }
+                                                        "
+                                                        class="w-full">
+                                                            <div class="relative">
+                                                                <button type="button"
+                                                                @click="open = !open; if(open) { $nextTick(() => focusSearch($refs)) }"
+                                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
+                                                                    <span class="truncate block w-full" :class="selectedName ? 'text-gray-900' : 'text-gray-400'" x-text="selectedName || placeholder"></span>
+                                                                </button>
+
+                                                                <div x-cloak x-show="open" @click.away="open = false"
+                                                                    class="absolute bg-white z-10 border border-gray-300 w-full max-h-48 overflow-y-auto rounded-lg shadow-lg mt-1">
+                                                                    <div class="px-2 py-2">
+                                                                        <input type="text"
+                                                                            x-ref="searchInput"
+                                                                            x-model="search"
+                                                                            @input="filterOptions"
+                                                                            placeholder="Search hotels..."
+                                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                                    </div>
+
+                                                                    <template x-for="option in filtered.slice(0, 10)" :key="option.id">
+                                                                        <div @click="select(option)"
+                                                                            class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                                                            x-html="highlightMatch(option.name)">
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Room Type</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.room_type"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Room Number</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.room_number"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Meal Type</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.meal_type"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Check In</label>
+                                                        <input type="date"
+                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.check_in"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Check Out</label>
+                                                        <input type="date"
+                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.check_out"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                </div>
                                             </div>
                                             @elseif($task->type === 'visa')
                                             <div class="p-4 sm:p-6">
-                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                <!-- View Mode -->
+                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Visa Type</p>
                                                         <p class="text-sm text-gray-900">{{ $task->visaDetails->visa_type ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Application Number</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->application_number ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Issuing Country</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->issuing_country ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Expiry Date</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->expiry_date ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Number of Entries</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->number_of_entries ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Stay Duration</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->stay_duration ?? 'N/A' }}</p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Edit Mode -->
+                                                <div x-show="editingDetailsTaskId === {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Visa Type</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.visa_type"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Application Number</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.application_number"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Issuing Country</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.issuing_country"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Expiry Date</label>
+                                                        <input type="date"
+                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.expiry_date"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Number of Entries</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.number_of_entries"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Stay Duration</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.stay_duration"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                                                     </div>
                                                 </div>
                                             </div>
                                             @elseif($task->type === 'insurance')
                                             <div class="p-4 sm:p-6">
-                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                <!-- View Mode -->
+                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                     <div>
-                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Insurance Plan</p>
-                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->plan_name ?? 'N/A' }}</p>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Insurance Type</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->insurance_type ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Plan Type</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->plan_type ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Destination</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->destination ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Duration</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->duration ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div class="sm:col-span-2">
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Package</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->insuranceDetails->package ?? 'N/A' }}</p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Edit Mode -->
+                                                <div x-show="editingDetailsTaskId === {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Insurance Type</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.insurance_type"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Plan Type</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.plan_type"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Destination</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.destination"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.duration"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                                    </div>
+                                                    <div class="sm:col-span-2">
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Package</label>
+                                                        <input type="text"
+                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.package"
+                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                                                     </div>
                                                 </div>
                                             </div>
@@ -1452,8 +1911,9 @@
                                             </div>
 
                                             <div class="p-3 space-y-2">
+                                                <!-- Main Task Fields -->
                                                 <template x-for="field in Object.keys(draft.changes)" :key="field">
-                                                    <template x-if="String(draft.changes[field] ?? '') !== String(draft.original[field] ?? '') && !field.endsWith('_name')">
+                                                    <template x-if="String(draft.changes[field] ?? '') !== String(draft.original[field] ?? '') && !field.endsWith('_name') && !field.endsWith('Details') && field !== 'type'">
                                                         <div class="flex items-center justify-between text-xs border-b pb-2">
                                                             <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
                                                             <div class="text-right">
@@ -1462,6 +1922,60 @@
                                                             </div>
                                                         </div>
                                                     </template>
+                                                </template>
+
+                                                <!-- Hotel Details -->
+                                                <template x-if="draft.changes.hotelDetails && JSON.stringify(draft.changes.hotelDetails) !== JSON.stringify(draft.original.hotelDetails)">
+                                                    <div class="mt-3 pt-3 border-t">
+                                                        <div class="text-xs font-semibold text-gray-600 mb-2">Hotel Details</div>
+                                                        <template x-for="field in Object.keys(draft.changes.hotelDetails || {})" :key="field">
+                                                            <template x-if="String(draft.changes.hotelDetails[field] ?? '') !== String(draft.original.hotelDetails?.[field] ?? '')">
+                                                                <div class="flex items-center justify-between text-xs border-b pb-2 mb-1">
+                                                                    <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
+                                                                    <div class="text-right">
+                                                                        <div class="text-gray-400 line-through" x-text="draft.original.hotelDetails?.[field] ?? '-'"></div>
+                                                                        <div class="text-gray-900 font-semibold" x-text="draft.changes.hotelDetails[field] ?? '-'"></div>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Insurance Details -->
+                                                <template x-if="draft.changes.insuranceDetails && JSON.stringify(draft.changes.insuranceDetails) !== JSON.stringify(draft.original.insuranceDetails)">
+                                                    <div class="mt-3 pt-3 border-t">
+                                                        <div class="text-xs font-semibold text-gray-600 mb-2">Insurance Details</div>
+                                                        <template x-for="field in Object.keys(draft.changes.insuranceDetails || {})" :key="field">
+                                                            <template x-if="String(draft.changes.insuranceDetails[field] ?? '') !== String(draft.original.insuranceDetails?.[field] ?? '')">
+                                                                <div class="flex items-center justify-between text-xs border-b pb-2 mb-1">
+                                                                    <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
+                                                                    <div class="text-right">
+                                                                        <div class="text-gray-400 line-through" x-text="draft.original.insuranceDetails?.[field] ?? '-'"></div>
+                                                                        <div class="text-gray-900 font-semibold" x-text="draft.changes.insuranceDetails[field] ?? '-'"></div>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Visa Details -->
+                                                <template x-if="draft.changes.visaDetails && JSON.stringify(draft.changes.visaDetails) !== JSON.stringify(draft.original.visaDetails)">
+                                                    <div class="mt-3 pt-3 border-t">
+                                                        <div class="text-xs font-semibold text-gray-600 mb-2">Visa Details</div>
+                                                        <template x-for="field in Object.keys(draft.changes.visaDetails || {})" :key="field">
+                                                            <template x-if="String(draft.changes.visaDetails[field] ?? '') !== String(draft.original.visaDetails?.[field] ?? '')">
+                                                                <div class="flex items-center justify-between text-xs border-b pb-2 mb-1">
+                                                                    <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
+                                                                    <div class="text-right">
+                                                                        <div class="text-gray-400 line-through" x-text="draft.original.visaDetails?.[field] ?? '-'"></div>
+                                                                        <div class="text-gray-900 font-semibold" x-text="draft.changes.visaDetails[field] ?? '-'"></div>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+                                                        </template>
+                                                    </div>
                                                 </template>
 
                                                 <div class="flex items-center justify-between text-xs pt-2">
@@ -1778,6 +2292,7 @@
                 </div>
             </div>
         </div>
+
         <div x-cloak x-show="showManualForm"
             x-cloak
             class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
@@ -1964,8 +2479,6 @@
     </div>
 
     <script>
-        const clientForm = document.getElementById("client-formTask");
-
         const file = document.getElementById('file-task-passport');
         const fileName = document.getElementById('task-passport-file-name');
         const taskPassportProcessBtn = document.getElementById('task-passport-process-btn');
@@ -2110,36 +2623,6 @@
             button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full',
                 'text-sm', 'transition', 'duration-150');
             button.disabled = false;
-        }
-
-        function taskEditManager() {
-            return {
-                previewOpen: false,
-                editDraft: {
-                    task_id: null,
-                    original: {},
-                    changes: {}
-                },
-
-                startSingleEdit(task) {
-                    this.previewOpen = true;
-                    this.editDraft.task_id = task.id;
-
-                    this.editDraft.original = JSON.parse(JSON.stringify(task));
-                    this.editDraft.changes = JSON.parse(JSON.stringify(task));
-                },
-
-                hasChanges() {
-                    return JSON.stringify(this.editDraft.original) !== JSON.stringify(this.editDraft.changes);
-                },
-
-                closePreview() {
-                    this.previewOpen = false;
-                    this.editDraft.task_id = null;
-                    this.editDraft.original = {};
-                    this.editDraft.changes = {};
-                },
-            }
         }
     </script>
 

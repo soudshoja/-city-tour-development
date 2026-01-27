@@ -201,6 +201,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update-financial/{task}', [TaskController::class, 'updateAdminFinancial'])->name('update.financial');
         Route::post('/{task}/switch-invoice', [TaskController::class, 'switchInvoiceTask'])->name('switchInvoice');
         Route::put('/update-multi', [TaskController::class, 'updateMulti'])->name('updateMulti');
+        Route::get('/{task}/details', [TaskController::class, 'getTaskDetails'])->name('getDetails');
+        Route::post('/{task}/update-details', [TaskController::class, 'updateTaskDetails'])->name('updateDetails');
 
     });
 

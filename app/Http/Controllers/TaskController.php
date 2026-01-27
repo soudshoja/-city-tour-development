@@ -39,7 +39,6 @@ use App\Models\HotelBooking;
 use App\Models\TBO;
 use App\Models\Wallet;
 use App\Models\SupplierSurchargeReference;
-use App\Models\MapHotel;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -81,9 +80,9 @@ class TaskController extends Controller
 
         $whoIsUser = determineUserRole($user);
 
-        if($whoIsUser['agents_id']){
+        if ($whoIsUser['agents_id']) {
             $taskQuery = Task::with(['client', 'supplier', 'agent'])->whereIn('agent_id', [$whoIsUser['agents_id']]);
-        } elseif($whoIsUser['branches_id']){
+        } elseif ($whoIsUser['branches_id']) {
             $agents = Agent::where('branch_id', $whoIsUser['branches_id'])->pluck('id')->toArray();
             $taskQuery = Task::with(['client', 'supplier', 'agent'])->whereIn('agent_id', $agents);
         } else {
@@ -141,7 +140,6 @@ class TaskController extends Controller
                 'total' => $tasksTotal,
             ],
         ]);
-
     }
 
     public function index(Request $request): View | RedirectResponse
@@ -2664,67 +2662,66 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    $task = Task::findOrFail($id);
-    
-    $request->validate($this->getValidationRules($task), $this->getValidationMessages());
+    {
+        $task = Task::findOrFail($id);
 
-    DB::beginTransaction();
+        $request->validate($this->getValidationRules($task), $this->getValidationMessages());
 
-    try {
-        // 1. Capture state before changes
-        $oldValues = $this->captureOldValues($task);
+        DB::beginTransaction();
 
-        // 2. Apply basic field updates
-        $this->applyBasicUpdates($task, $request);
+        try {
+            // 1. Capture state before changes
+            $oldValues = $this->captureOldValues($task);
 
-        // 3. Detect what changed
-        $changes = $this->detectChanges($task, $oldValues);
+            // 2. Apply basic field updates
+            $this->applyBasicUpdates($task, $request);
 
-        // 4. Run only relevant handlers
-        $this->handleAutoBilling($task, $changes);
-        
-        if ($changes['supplier_pay_date']) {
-            $this->handleSupplierPayDateChange($task);
+            // 3. Detect what changed
+            $changes = $this->detectChanges($task, $oldValues);
+
+            // 4. Run only relevant handlers
+            $this->handleAutoBilling($task, $changes);
+
+            if ($changes['supplier_pay_date']) {
+                $this->handleSupplierPayDateChange($task);
+            }
+
+            if ($changes['payment_method_account_id']) {
+                $this->handlePaymentMethodChange($task, $oldValues['payment_method_account_id']);
+            }
+
+            if ($changes['status']) {
+                $this->handleStatusChange($task, $oldValues['status']);
+            }
+
+            if ($changes['agent_id']) {
+                $this->handleAgentChange($task);
+            }
+
+            if ($changes['client_id']) {
+                $this->handleClientChange($task, $oldValues['client_name']);
+            }
+
+            if ($changes['total'] || $changes['price'] || $changes['tax'] || $changes['surcharge']) {
+                $this->handleAmountChange($task);
+            }
+
+            // 5. Cascade to children if needed (only for issued tasks)
+            if ($task->status === 'issued' && ($changes['agent_id'] || $changes['client_id'])) {
+                $this->cascadeToChildTasks($task, $changes);
+            }
+
+            // 6. Update enabled status
+            $this->updateEnabledStatus($task, $changes);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Task updated successfully.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Task update failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
-
-        if ($changes['payment_method_account_id']) {
-            $this->handlePaymentMethodChange($task, $oldValues['payment_method_account_id']);
-        }
-
-        if ($changes['status']) {
-            $this->handleStatusChange($task, $oldValues['status']);
-        }
-
-        if ($changes['agent_id']) {
-            $this->handleAgentChange($task);
-        }
-
-        if ($changes['client_id']) {
-            $this->handleClientChange($task, $oldValues['client_name']);
-        }
-
-        if ($changes['total'] || $changes['price'] || $changes['tax'] || $changes['surcharge']) {
-            $this->handleAmountChange($task);
-        }
-
-        // 5. Cascade to children if needed (only for issued tasks)
-        if ($task->status === 'issued' && ($changes['agent_id'] || $changes['client_id'])) {
-            $this->cascadeToChildTasks($task, $changes);
-        }
-
-        // 6. Update enabled status
-        $this->updateEnabledStatus($task, $changes);
-
-        DB::commit();
-        return redirect()->back()->with('success', 'Task updated successfully.');
-
-    } catch (Exception $e) {
-        DB::rollBack();
-        Log::error('Task update failed: ' . $e->getMessage());
-        return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
     }
-}
 
     public function updateAdminFinancial(Request $request, Task $task)
     {
@@ -5422,7 +5419,9 @@ class TaskController extends Controller
             $taskIds = explode(',', $taskIds);
         }
 
-        $tasks = Task::whereIn('id', $taskIds)->get();
+        $tasks = Task::with(['hotelDetails.hotel', 'flightDetail', 'insuranceDetails', 'visaDetails'])
+            ->whereIn('id', $taskIds)
+            ->get();
 
         if ($tasks->isEmpty()) {
             return redirect()->route('tasks.index')->with('error', 'No tasks found');
@@ -5439,8 +5438,8 @@ class TaskController extends Controller
             $clients = Client::where('company_id', $companyId)->get();
         } elseif ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company->id;
-            $agent = Agent::where('user_id', $user->id)->first(); 
-            $agents = collect([$agent]); 
+            $agent = Agent::where('user_id', $user->id)->first();
+            $agents = collect([$agent]);
             $clients = Client::where('agent_id', $agent->id)->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             $companyId = $user->accountant->branch->company->id;
@@ -5449,7 +5448,7 @@ class TaskController extends Controller
             $clients = Client::where('company_id', $companyId)->get();
         }
 
-        foreach($tasks as $task){
+        foreach ($tasks as $task) {
             if (($task->agent_id && !$agents->contains('id', $task->agent_id)) || $task->company_id != $companyId) {
                 return redirect()->back()->with('error', 'You do not have permission to view one or more selected tasks.');
             }
@@ -5458,7 +5457,7 @@ class TaskController extends Controller
         if (!$companyId) {
             return redirect()->back()->with('error', 'Company not found for the user.');
         }
-    
+
         $liabilities = Account::where('name', 'Liabilities')
             ->where('company_id', $companyId)
             ->first();
@@ -5467,7 +5466,7 @@ class TaskController extends Controller
             Log::error('Liabilities account not found for company ID: ' . $companyId);
             return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
         }
-        
+
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $companyId)
             ->where('root_id', $liabilities->id)
@@ -5494,22 +5493,19 @@ class TaskController extends Controller
             ->toArray();
 
 
-        $mapHotels = [];
-        foreach ($tasks as $task) {
-            if ($task->type == 'hotel' && $task->venue) {
-                $mapHotel = MapHotel::with('city.country')->where('name', $task->venue)->first();
-                if ($mapHotel) {
-                    $mapHotels[$task->id] = $mapHotel;
-                }
-            }
-        }
+        $hotels = Hotel::orderBy('name', 'asc')->get(['id', 'name'])->map(function($hotel) {
+            return [
+                'id' => $hotel->id,
+                'name' => $hotel->name
+            ];
+        });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'mapHotels'));
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels'));
     }
 
     public function bulkUpdate(Request $request)
     {
-        /* $taskIds = json_decode($request->input('task_ids'), true); */        
+        /* $taskIds = json_decode($request->input('task_ids'), true); */
         $taskIds = $request->input('task_ids', []);
         $clientId = $request->input('bulk_client_id');
         $agentId = $request->input('bulk_agent_id');
@@ -5597,56 +5593,120 @@ class TaskController extends Controller
 
         return redirect()->back()->with('success', 'Tasks updated successfully');
     }
-    
-   public function updateMulti(Request $request)
-{
-    $draftsRaw = $request->input('drafts');
-    $drafts = is_string($draftsRaw) ? json_decode($draftsRaw, true) : $draftsRaw;
 
-    if (!$drafts || !is_array($drafts)) {
-        return back()->with('error', 'No changes received.');
-    }
+    public function updateMulti(Request $request)
+    {
+        $draftsRaw = $request->input('drafts');
+        $drafts = is_string($draftsRaw) ? json_decode($draftsRaw, true) : $draftsRaw;
 
-    DB::beginTransaction();
-
-    try {
-        $taskIds = array_keys($drafts);
-        $updatedCount = 0;
-
-        // Pre-load tasks to check existence
-        $existingIds = Task::whereIn('id', $taskIds)->pluck('id')->toArray();
-
-        foreach ($drafts as $taskId => $payload) {
-            if (!in_array((int) $taskId, $existingIds)) {
-                continue;
-            }
-
-            // Build request with defaults from existing task
-            $task = Task::find($taskId);
-            
-            $fakeRequest = new Request($payload);
-            $fakeRequest->merge([
-                'status' => $payload['status'] ?? $task->status,
-                'supplier_id' => $payload['supplier_id'] ?? $task->supplier_id,
-                'total' => $payload['total'] ?? $task->total,
-                'supplier_pay_date' => $payload['supplier_pay_date'] ?? $task->supplier_pay_date,
-            ]);
-
-            // Use refactored update() - it only runs what's needed
-            $this->update($fakeRequest, $taskId);
-            $updatedCount++;
+        if (!$drafts || !is_array($drafts)) {
+            return back()->with('error', 'No changes received.');
         }
 
-        DB::commit();
+        DB::beginTransaction();
 
-        return back()->with('success', "Updated {$updatedCount} tasks successfully");
+        try {
+            $taskIds = array_keys($drafts);
+            $updatedCount = 0;
 
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        Log::error('Multi update failed: ' . $e->getMessage());
-        return back()->with('error', 'Multi update failed: ' . $e->getMessage());
+            // Pre-load tasks to check existence
+            $existingIds = Task::whereIn('id', $taskIds)->pluck('id')->toArray();
+
+            foreach ($drafts as $taskId => $payload) {
+                if (!in_array((int) $taskId, $existingIds)) {
+                    continue;
+                }
+
+                // Build request with defaults from existing task
+                $task = Task::find($taskId);
+
+                // Extract detail fields before updating main task
+                $hotelDetails = $payload['hotelDetails'] ?? null;
+                $insuranceDetails = $payload['insuranceDetails'] ?? null;
+                $visaDetails = $payload['visaDetails'] ?? null;
+                $flightDetails = $payload['flightDetails'] ?? null;
+
+                // Remove detail fields from main payload
+                unset($payload['hotelDetails'], $payload['insuranceDetails'], $payload['visaDetails'], $payload['flightDetails'], $payload['type']);
+
+                $fakeRequest = new Request($payload);
+                $fakeRequest->merge([
+                    'status' => $payload['status'] ?? $task->status,
+                    'supplier_id' => $payload['supplier_id'] ?? $task->supplier_id,
+                    'total' => $payload['total'] ?? $task->total,
+                    'supplier_pay_date' => $payload['supplier_pay_date'] ?? $task->supplier_pay_date,
+                ]);
+
+                // Use refactored update() - it only runs what's needed
+                $this->update($fakeRequest, $taskId);
+
+                // Update details if provided
+                if ($hotelDetails && $task->hotelDetails) {
+                    $task->hotelDetails->update([
+                        'hotel_id' => $hotelDetails['hotel_id'] ?? $task->hotelDetails->hotel_id,
+                        'room_type' => $hotelDetails['room_type'] ?? $task->hotelDetails->room_type,
+                        'check_in' => $hotelDetails['check_in'] ?? $task->hotelDetails->check_in,
+                        'check_out' => $hotelDetails['check_out'] ?? $task->hotelDetails->check_out,
+                        'room_number' => $hotelDetails['room_number'] ?? $task->hotelDetails->room_number,
+                        'meal_type' => $hotelDetails['meal_type'] ?? $task->hotelDetails->meal_type,
+                    ]);
+                }
+
+                if ($insuranceDetails && $task->insuranceDetails) {
+                    $task->insuranceDetails->update([
+                        'insurance_type' => $insuranceDetails['insurance_type'] ?? $task->insuranceDetails->insurance_type,
+                        'plan_type' => $insuranceDetails['plan_type'] ?? $task->insuranceDetails->plan_type,
+                        'destination' => $insuranceDetails['destination'] ?? $task->insuranceDetails->destination,
+                        'duration' => $insuranceDetails['duration'] ?? $task->insuranceDetails->duration,
+                        'package' => $insuranceDetails['package'] ?? $task->insuranceDetails->package,
+                    ]);
+                }
+
+                if ($visaDetails && $task->visaDetails) {
+                    $task->visaDetails->update([
+                        'visa_type' => $visaDetails['visa_type'] ?? $task->visaDetails->visa_type,
+                        'application_number' => $visaDetails['application_number'] ?? $task->visaDetails->application_number,
+                        'issuing_country' => $visaDetails['issuing_country'] ?? $task->visaDetails->issuing_country,
+                        'expiry_date' => $visaDetails['expiry_date'] ?? $task->visaDetails->expiry_date,
+                        'number_of_entries' => $visaDetails['number_of_entries'] ?? $task->visaDetails->number_of_entries,
+                        'stay_duration' => $visaDetails['stay_duration'] ?? $task->visaDetails->stay_duration,
+                    ]);
+                }
+
+                if ($flightDetails && is_array($flightDetails) && $task->flightDetail->isNotEmpty()) {
+                    foreach ($flightDetails as $index => $flightData) {
+                        $flight = $task->flightDetail[$index] ?? null;
+                        if ($flight) {
+                            $flight->update([
+                                'airport_from' => $flightData['airport_from'] ?? $flight->airport_from,
+                                'terminal_from' => $flightData['terminal_from'] ?? $flight->terminal_from,
+                                'departure_time' => $flightData['departure_time'] ?? $flight->departure_time,
+                                'airport_to' => $flightData['airport_to'] ?? $flight->airport_to,
+                                'terminal_to' => $flightData['terminal_to'] ?? $flight->terminal_to,
+                                'arrival_time' => $flightData['arrival_time'] ?? $flight->arrival_time,
+                                'flight_number' => $flightData['flight_number'] ?? $flight->flight_number,
+                                'class_type' => $flightData['class_type'] ?? $flight->class_type,
+                                'duration_time' => $flightData['duration_time'] ?? $flight->duration_time,
+                                'baggage_allowed' => $flightData['baggage_allowed'] ?? $flight->baggage_allowed,
+                                'seat_no' => $flightData['seat_no'] ?? $flight->seat_no,
+                                'ticket_number' => $flightData['ticket_number'] ?? $flight->ticket_number,
+                            ]);
+                        }
+                    }
+                }
+
+                $updatedCount++;
+            }
+
+            DB::commit();
+
+            return back()->with('success', "Updated {$updatedCount} tasks successfully");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Multi update failed: ' . $e->getMessage());
+            return back()->with('error', 'Multi update failed: ' . $e->getMessage());
+        }
     }
-}
 
     private function getChangedFields(Task $task, array $incoming): array
     {
@@ -5696,286 +5756,415 @@ class TaskController extends Controller
     }
 
     private function captureOldValues(Task $task): array
-{
-    return [
-        'status' => $task->status,
-        'agent_id' => $task->agent_id,
-        'client_id' => $task->client_id,
-        'client_name' => $task->client_name,
-        'payment_method_account_id' => $task->payment_method_account_id,
-        'supplier_pay_date' => $task->supplier_pay_date,
-        'price' => $task->price,
-        'tax' => $task->tax,
-        'surcharge' => $task->surcharge,
-        'total' => $task->total,
-    ];
-}
-
-private function applyBasicUpdates(Task $task, Request $request): void
-{
-    $data = $request->only([
-        'reference', 'status', 'price', 'tax', 'surcharge', 'total',
-        'agent_id', 'supplier_id', 'original_task_id', 'payment_method_account_id',
-    ]);
-
-    if ($request->filled('client_id')) {
-        $client = Client::find($request->client_id);
-        if ($client) {
-            $data['client_id'] = $client->id;
-            $data['client_name'] = $client->full_name;
-        }
+    {
+        return [
+            'status' => $task->status,
+            'agent_id' => $task->agent_id,
+            'client_id' => $task->client_id,
+            'client_name' => $task->client_name,
+            'payment_method_account_id' => $task->payment_method_account_id,
+            'supplier_pay_date' => $task->supplier_pay_date,
+            'price' => $task->price,
+            'tax' => $task->tax,
+            'surcharge' => $task->surcharge,
+            'total' => $task->total,
+        ];
     }
 
-    if ($request->filled('agent_id')) {
-        $agent = Agent::find($request->agent_id);
-        if ($agent) {
-            $data['agent_id'] = $agent->id;
-            $data['agent_name'] = $agent->name;
-        }
-    }
-
-    if ($request->has('supplier_pay_date')) {
-        $data['supplier_pay_date'] = $request->input('supplier_pay_date');
-    }
-
-    $task->update($data);
-}
-
-private function detectChanges(Task $task, array $oldValues): array
-{
-    $changes = [];
-
-    foreach ($oldValues as $key => $oldValue) {
-        $newValue = $task->{$key};
-
-        // Normalize numeric
-        if (in_array($key, ['price', 'tax', 'surcharge', 'total'])) {
-            $oldValue = number_format((float)($oldValue ?? 0), 3, '.', '');
-            $newValue = number_format((float)($newValue ?? 0), 3, '.', '');
-        }
-
-        // Normalize date
-        if ($key === 'supplier_pay_date') {
-            $oldValue = $oldValue ? Carbon::parse($oldValue)->format('Y-m-d') : null;
-            $newValue = $newValue ? Carbon::parse($newValue)->format('Y-m-d') : null;
-        }
-
-        $changes[$key] = (string)$oldValue !== (string)$newValue;
-    }
-
-    return $changes;
-}
-
-// ============================================
-// SPECIFIC HANDLERS
-// ============================================
-
-private function handleAutoBilling(Task $task, array $changes): void
-{
-    // Only check if agent changed or no client assigned
-    if (!$changes['agent_id'] && $task->client_id) {
-        return;
-    }
-
-    $matchedRule = AutoBilling::where('company_id', $task->company_id)
-        ->where('is_active', true)
-        ->where(function ($q) use ($task) {
-            $q->where('created_by', $task->created_by)
-                ->orWhere('issued_by', $task->issued_by)
-                ->orWhere('agent_id', $task->agent_id);
-        })
-        ->get()
-        ->first(fn($r) =>
-            (!$r->created_by || $r->created_by === $task->created_by) &&
-            (!$r->issued_by || $r->issued_by === $task->issued_by) &&
-            (!$r->agent_id || $r->agent_id === $task->agent_id)
-        );
-
-    if ($matchedRule) {
-        $task->update([
-            'client_id' => $matchedRule->client_id,
-            'client_name' => optional($matchedRule->client)->full_name,
+    private function applyBasicUpdates(Task $task, Request $request): void
+    {
+        $data = $request->only([
+            'reference',
+            'status',
+            'price',
+            'tax',
+            'surcharge',
+            'total',
+            'agent_id',
+            'supplier_id',
+            'original_task_id',
+            'payment_method_account_id',
         ]);
-        Log::info("[AutoBilling] Linked task {$task->id} → Client {$matchedRule->client_id}");
+
+        if ($request->filled('client_id')) {
+            $client = Client::find($request->client_id);
+            if ($client) {
+                $data['client_id'] = $client->id;
+                $data['client_name'] = $client->full_name;
+            }
+        }
+
+        if ($request->filled('agent_id')) {
+            $agent = Agent::find($request->agent_id);
+            if ($agent) {
+                $data['agent_id'] = $agent->id;
+                $data['agent_name'] = $agent->name;
+            }
+        }
+
+        if ($request->has('supplier_pay_date')) {
+            $data['supplier_pay_date'] = $request->input('supplier_pay_date');
+        }
+
+        $task->update($data);
     }
-}
 
-private function handleSupplierPayDateChange(Task $task): void
-{
-    $newDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
-    if (!$newDate) return;
+    private function detectChanges(Task $task, array $oldValues): array
+    {
+        $changes = [];
 
-    $journalEntries = JournalEntry::with('transaction')
-        ->where('task_id', $task->id)
-        ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
-        ->get();
+        foreach ($oldValues as $key => $oldValue) {
+            $newValue = $task->{$key};
 
-    foreach ($journalEntries as $je) {
-        $je->transaction_date = $newDate;
-        $je->save();
+            // Normalize numeric
+            if (in_array($key, ['price', 'tax', 'surcharge', 'total'])) {
+                $oldValue = number_format((float)($oldValue ?? 0), 3, '.', '');
+                $newValue = number_format((float)($newValue ?? 0), 3, '.', '');
+            }
 
-        if ($je->transaction) {
-            $je->transaction->transaction_date = $newDate;
-            $je->transaction->save();
+            // Normalize date
+            if ($key === 'supplier_pay_date') {
+                $oldValue = $oldValue ? Carbon::parse($oldValue)->format('Y-m-d') : null;
+                $newValue = $newValue ? Carbon::parse($newValue)->format('Y-m-d') : null;
+            }
+
+            $changes[$key] = (string)$oldValue !== (string)$newValue;
+        }
+
+        return $changes;
+    }
+
+    // ============================================
+    // SPECIFIC HANDLERS
+    // ============================================
+
+    private function handleAutoBilling(Task $task, array $changes): void
+    {
+        // Only check if agent changed or no client assigned
+        if (!$changes['agent_id'] && $task->client_id) {
+            return;
+        }
+
+        $matchedRule = AutoBilling::where('company_id', $task->company_id)
+            ->where('is_active', true)
+            ->where(function ($q) use ($task) {
+                $q->where('created_by', $task->created_by)
+                    ->orWhere('issued_by', $task->issued_by)
+                    ->orWhere('agent_id', $task->agent_id);
+            })
+            ->get()
+            ->first(
+                fn($r) => (!$r->created_by || $r->created_by === $task->created_by) &&
+                    (!$r->issued_by || $r->issued_by === $task->issued_by) &&
+                    (!$r->agent_id || $r->agent_id === $task->agent_id)
+            );
+
+        if ($matchedRule) {
+            $task->update([
+                'client_id' => $matchedRule->client_id,
+                'client_name' => optional($matchedRule->client)->full_name,
+            ]);
+            Log::info("[AutoBilling] Linked task {$task->id} → Client {$matchedRule->client_id}");
         }
     }
-}
 
-private function handlePaymentMethodChange(Task $task, $oldPaymentMethod): void
-{
-    if ($task->payment_method_account_id == $oldPaymentMethod) return;
+    private function handleSupplierPayDateChange(Task $task): void
+    {
+        $newDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
+        if (!$newDate) return;
 
-    $response = $this->updateJournalPaymentMethod($task, $task->payment_method_account_id);
+        $journalEntries = JournalEntry::with('transaction')
+            ->where('task_id', $task->id)
+            ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
+            ->get();
 
-    if (!$response instanceof JsonResponse) {
-        throw new Exception('Failed to update payment method journal entries.');
+        foreach ($journalEntries as $je) {
+            $je->transaction_date = $newDate;
+            $je->save();
+
+            if ($je->transaction) {
+                $je->transaction->transaction_date = $newDate;
+                $je->transaction->save();
+            }
+        }
     }
 
-    if ($response->getData(true)['status'] !== 'success') {
-        throw new Exception('Failed to update payment method: ' . $response->getData()->message);
+    private function handlePaymentMethodChange(Task $task, $oldPaymentMethod): void
+    {
+        if ($task->payment_method_account_id == $oldPaymentMethod) return;
+
+        $response = $this->updateJournalPaymentMethod($task, $task->payment_method_account_id);
+
+        if (!$response instanceof JsonResponse) {
+            throw new Exception('Failed to update payment method journal entries.');
+        }
+
+        if ($response->getData(true)['status'] !== 'success') {
+            throw new Exception('Failed to update payment method: ' . $response->getData()->message);
+        }
     }
-}
 
-private function handleStatusChange(Task $task, $oldStatus): void
-{
-    if ($oldStatus === $task->status) return;
+    private function handleStatusChange(Task $task, $oldStatus): void
+    {
+        if ($oldStatus === $task->status) return;
 
-    if ($task->status === 'confirmed') {
-        Log::info('Status → confirmed: reverting financials', ['task' => $task->reference]);
-        $this->revertFinancialsForTask($task);
-    } elseif (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'])) {
-        if ($oldStatus === 'void') {
-            $this->revertFinancialsForVoid($task);
-        } else {
+        if ($task->status === 'confirmed') {
+            Log::info('Status → confirmed: reverting financials', ['task' => $task->reference]);
             $this->revertFinancialsForTask($task);
-        }
-        $this->processTaskFinancial($task);
-    }
-}
-
-private function handleAgentChange(Task $task): void
-{
-    if (!$task->agent_id) return;
-
-    Log::info('Agent changed', ['task' => $task->reference, 'agent_id' => $task->agent_id]);
-    $this->updateJournalEntriesBranch($task);
-}
-
-private function handleClientChange(Task $task, $prevClientName): void
-{
-    $journalEntries = JournalEntry::with('transaction')
-        ->where('task_id', $task->id)
-        ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
-        ->get();
-
-    foreach ($journalEntries as $entry) {
-        if ($entry->name === $prevClientName && $task->client) {
-            $entry->name = $task->client->full_name;
-            $entry->save();
-        }
-    }
-}
-
-private function handleAmountChange(Task $task): void
-{
-    $journalEntries = JournalEntry::with('transaction')
-        ->where('task_id', $task->id)
-        ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
-        ->get();
-
-    foreach ($journalEntries as $entry) {
-        if ($entry->transaction) {
-            $entry->transaction->amount = $task->total;
-            $entry->transaction->save();
-        }
-
-        if ($entry->debit > 0) {
-            $entry->debit = $task->total;
-        } else {
-            $entry->credit = $task->total;
-        }
-        $entry->balance = $task->total;
-
-        if (isset($entry->amount)) {
-            $entry->amount = $task->total;
-        }
-        $entry->save();
-    }
-}
-
-private function cascadeToChildTasks(Task $task, array $changes): void
-{
-    $children = Task::where('original_task_id', $task->id)->get();
-
-    foreach ($children as $child) {
-        if ($changes['agent_id']) {
-            $child->agent_id = $task->agent_id;
-        }
-        if ($changes['client_id']) {
-            $child->client_id = $task->client_id;
-            $child->client_name = $task->client_name;
-        }
-        $child->save();
-
-        if ($changes['agent_id']) {
-            $this->updateJournalEntriesBranch($child);
-        }
-    }
-}
-
-private function updateEnabledStatus(Task $task, array $changes): void
-{
-    $shouldBeEnabled = $task->is_complete && $task->agent_id && $task->client_id;
-
-    if ($shouldBeEnabled && !in_array($task->status, ['issued', 'confirmed']) && !$task->original_task_id) {
-        throw new Exception('Task must be linked to an original task');
-    }
-
-    // Check if financials need processing
-    $statusChanged = $changes['status'] ?? false;
-    
-    if ($shouldBeEnabled && !$statusChanged) {
-        $hasJournal = $task->status === 'void'
-            ? JournalEntry::where('task_id', $task->original_task_id)
-                ->whereHas('transaction', fn($q) => $q->whereRaw('LOWER(description) LIKE ?', ['%void%']))
-                ->exists()
-            : JournalEntry::where('task_id', $task->id)->exists();
-
-        if (!$hasJournal) {
-            Log::info('Processing financials for newly enabled task', ['task' => $task->reference]);
+        } elseif (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'])) {
+            if ($oldStatus === 'void') {
+                $this->revertFinancialsForVoid($task);
+            } else {
+                $this->revertFinancialsForTask($task);
+            }
             $this->processTaskFinancial($task);
         }
     }
 
-    $task->enabled = $shouldBeEnabled;
-    $task->save();
-}
+    private function handleAgentChange(Task $task): void
+    {
+        if (!$task->agent_id) return;
 
-private function getValidationRules(Task $task): array
-{
-    return [
-        'reference' => 'nullable|string',
-        'status' => 'required',
-        'price' => 'nullable|numeric',
-        'tax' => 'nullable|numeric',
-        'surcharge' => 'nullable|numeric',
-        'total' => 'required|numeric',
-        'payment_method_account_id' => 'nullable|string',
-        'agent_id' => 'nullable',
-        'client_id' => 'nullable|exists:clients,id',
-        'supplier_id' => 'required',
-        'original_task_id' => 'nullable|exists:tasks,id',
-        'supplier_pay_date' => $task->supplier_pay_date ? 'sometimes|date' : 'required|date',
-    ];
-}
+        Log::info('Agent changed', ['task' => $task->reference, 'agent_id' => $task->agent_id]);
+        $this->updateJournalEntriesBranch($task);
+    }
 
-private function getValidationMessages(): array
-{
-    return [
-        'supplier_id.required' => 'Please select a supplier',
-        'status.required' => 'Please select a status',
-        'total.required' => 'Please enter the total amount',
-        'supplier_pay_date.required' => 'Issued date is required',
-    ];
-}
+    private function handleClientChange(Task $task, $prevClientName): void
+    {
+        $journalEntries = JournalEntry::with('transaction')
+            ->where('task_id', $task->id)
+            ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
+            ->get();
+
+        foreach ($journalEntries as $entry) {
+            if ($entry->name === $prevClientName && $task->client) {
+                $entry->name = $task->client->full_name;
+                $entry->save();
+            }
+        }
+    }
+
+    private function handleAmountChange(Task $task): void
+    {
+        $journalEntries = JournalEntry::with('transaction')
+            ->where('task_id', $task->id)
+            ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
+            ->get();
+
+        foreach ($journalEntries as $entry) {
+            if ($entry->transaction) {
+                $entry->transaction->amount = $task->total;
+                $entry->transaction->save();
+            }
+
+            if ($entry->debit > 0) {
+                $entry->debit = $task->total;
+            } else {
+                $entry->credit = $task->total;
+            }
+            $entry->balance = $task->total;
+
+            if (isset($entry->amount)) {
+                $entry->amount = $task->total;
+            }
+            $entry->save();
+        }
+    }
+
+    private function cascadeToChildTasks(Task $task, array $changes): void
+    {
+        $children = Task::where('original_task_id', $task->id)->get();
+
+        foreach ($children as $child) {
+            if ($changes['agent_id']) {
+                $child->agent_id = $task->agent_id;
+            }
+            if ($changes['client_id']) {
+                $child->client_id = $task->client_id;
+                $child->client_name = $task->client_name;
+            }
+            $child->save();
+
+            if ($changes['agent_id']) {
+                $this->updateJournalEntriesBranch($child);
+            }
+        }
+    }
+
+    private function updateEnabledStatus(Task $task, array $changes): void
+    {
+        $shouldBeEnabled = $task->is_complete && $task->agent_id && $task->client_id;
+
+        if ($shouldBeEnabled && !in_array($task->status, ['issued', 'confirmed']) && !$task->original_task_id) {
+            throw new Exception('Task must be linked to an original task');
+        }
+
+        // Check if financials need processing
+        $statusChanged = $changes['status'] ?? false;
+
+        if ($shouldBeEnabled && !$statusChanged) {
+            $hasJournal = $task->status === 'void'
+                ? JournalEntry::where('task_id', $task->original_task_id)
+                ->whereHas('transaction', fn($q) => $q->whereRaw('LOWER(description) LIKE ?', ['%void%']))
+                ->exists()
+                : JournalEntry::where('task_id', $task->id)->exists();
+
+            if (!$hasJournal) {
+                Log::info('Processing financials for newly enabled task', ['task' => $task->reference]);
+                $this->processTaskFinancial($task);
+            }
+        }
+
+        $task->enabled = $shouldBeEnabled;
+        $task->save();
+    }
+
+    private function getValidationRules(Task $task): array
+    {
+        return [
+            'reference' => 'nullable|string',
+            'status' => 'required',
+            'price' => 'nullable|numeric',
+            'tax' => 'nullable|numeric',
+            'surcharge' => 'nullable|numeric',
+            'total' => 'required|numeric',
+            'payment_method_account_id' => 'nullable|string',
+            'agent_id' => 'nullable',
+            'client_id' => 'nullable|exists:clients,id',
+            'supplier_id' => 'required',
+            'original_task_id' => 'nullable|exists:tasks,id',
+            'supplier_pay_date' => $task->supplier_pay_date ? 'sometimes|date' : 'required|date',
+        ];
+    }
+
+    private function getValidationMessages(): array
+    {
+        return [
+            'supplier_id.required' => 'Please select a supplier',
+            'status.required' => 'Please select a status',
+            'total.required' => 'Please enter the total amount',
+            'supplier_pay_date.required' => 'Issued date is required',
+        ];
+    }
+
+    public function getTaskDetails(Task $task): JsonResponse
+    {
+        try {
+            $details = null;
+
+            switch ($task->type) {
+                case 'flight':
+                    $details = $task->flightDetail;
+                    break;
+                case 'hotel':
+                    $details = $task->hotelDetails;
+                    break;
+                case 'insurance':
+                    $details = $task->insuranceDetails;
+                    break;
+                case 'visa':
+                    $details = $task->visaDetails;
+                    break;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $details
+            ]);
+        } catch (Exception $e) {
+            Log::error('Error getting task details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load task details'
+            ], 500);
+        }
+    }
+
+    public function updateTaskDetails(Request $request, Task $task): JsonResponse
+    {
+        $type = $request->input('type');
+        $details = $request->input('details');
+
+        DB::beginTransaction();
+
+        try {
+            switch ($type) {
+                case 'flight':
+                    if (is_array($details) && isset($details[0])) {
+                        foreach ($details as $index => $flightData) {
+                            $flight = $task->flightDetail[$index] ?? null;
+                            if ($flight) {
+                                $flight->update([
+                                    'airport_from' => $flightData['airport_from'] ?? $flight->airport_from,
+                                    'airport_to' => $flightData['airport_to'] ?? $flight->airport_to,
+                                    'departure_time' => $flightData['departure_time'] ?? $flight->departure_time,
+                                    'arrival_time' => $flightData['arrival_time'] ?? $flight->arrival_time,
+                                    'flight_number' => $flightData['flight_number'] ?? $flight->flight_number,
+                                    'class_type' => $flightData['class_type'] ?? $flight->class_type,
+                                    'duration_time' => $flightData['duration_time'] ?? $flight->duration_time,
+                                    'baggage_allowed' => $flightData['baggage_allowed'] ?? $flight->baggage_allowed,
+                                ]);
+                            }
+                        }
+                    }
+                    break;
+
+                case 'hotel':
+                    if ($task->hotelDetails) {
+                        $task->hotelDetails->update([
+                            'hotel_id' => $details['hotel_id'] ?? $task->hotelDetails->hotel_id,
+                            'room_type' => $details['room_type'] ?? $task->hotelDetails->room_type,
+                            'check_in' => $details['check_in'] ?? $task->hotelDetails->check_in,
+                            'check_out' => $details['check_out'] ?? $task->hotelDetails->check_out,
+                            'room_number' => $details['room_number'] ?? $task->hotelDetails->room_number,
+                            'meal_type' => $details['meal_type'] ?? $task->hotelDetails->meal_type,
+                        ]);
+                    }
+                    break;
+
+                case 'insurance':
+                    if ($task->insuranceDetails) {
+                        $task->insuranceDetails->update([
+                            'insurance_type' => $details['insurance_type'] ?? $task->insuranceDetails->insurance_type,
+                            'plan_type' => $details['plan_type'] ?? $task->insuranceDetails->plan_type,
+                            'destination' => $details['destination'] ?? $task->insuranceDetails->destination,
+                            'duration' => $details['duration'] ?? $task->insuranceDetails->duration,
+                            'package' => $details['package'] ?? $task->insuranceDetails->package,
+                        ]);
+                    }
+                    break;
+
+                case 'visa':
+                    if ($task->visaDetails) {
+                        $task->visaDetails->update([
+                            'visa_type' => $details['visa_type'] ?? $task->visaDetails->visa_type,
+                            'application_number' => $details['application_number'] ?? $task->visaDetails->application_number,
+                            'issuing_country' => $details['issuing_country'] ?? $task->visaDetails->issuing_country,
+                            'expiry_date' => $details['expiry_date'] ?? $task->visaDetails->expiry_date,
+                            'number_of_entries' => $details['number_of_entries'] ?? $task->visaDetails->number_of_entries,
+                            'stay_duration' => $details['stay_duration'] ?? $task->visaDetails->stay_duration,
+                        ]);
+                    }
+                    break;
+
+                default:
+                    throw new Exception('Invalid task type');
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Task details updated successfully'
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating task details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update task details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

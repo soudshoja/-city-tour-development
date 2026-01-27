@@ -177,6 +177,8 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::post('/{task}/toggle-status', [TaskController::class, 'toggleStatus'])->name('toggleStatus');
         Route::get('/', [TaskController::class, 'index'])->name('index');
+        Route::get('detail', [TaskController::class, 'detail'])->name('detail');
+        Route::get('/get-tasks', [TaskController::class, 'getTasks'])->name('get-tasks');
         Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
@@ -194,9 +196,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', [TaskController::class, 'destroy'])->name('destroy');
         Route::post('/columns/save', [TaskController::class, 'saveColumnPrefs'])->name('columns.save');
         Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
+        Route::post('/tasks/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulk-update');
         Route::post('/store-manual', [TaskController::class, 'storeManualHotel'])->name('store.manual');
         Route::put('/update-financial/{task}', [TaskController::class, 'updateAdminFinancial'])->name('update.financial');
         Route::post('/{task}/switch-invoice', [TaskController::class, 'switchInvoiceTask'])->name('switchInvoice');
+        Route::put('/update-multi', [TaskController::class, 'updateMulti'])->name('updateMulti');
+
     });
 
     // SUPPLIERS

@@ -4,7 +4,7 @@
             CityTourApp
         </p>
     </div>
-    <div class="container mx-auto flex flex-wrap justify-center items-center gap-4 px-6 py-4">
+    <div class="container mx-auto flex flex-wrap justify-between items-center gap-4 ps-24 pe-5 py-4">
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <a href="{{ route('dashboard') }}" class="flex items-center">
                 <x-application-logo class="h-20 w-auto" />
@@ -23,46 +23,15 @@
         <!-- Right Section -->
         <div x-data="{ 
             toggle: false,
-            chatBox: false
+            open: false,
+            iataWallet: false
             }"
             class="flex items-center space-x-4 w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
-            <!-- Search Icon -->
-            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
-                <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 16">
-                    <path fill="currentColor" d="M6.5 13.02a5.5 5.5 0 0 1-3.89-1.61C1.57 10.37 1 8.99 1 7.52s.57-2.85 1.61-3.89c2.14-2.14 5.63-2.14 7.78 0C11.43 4.67 12 6.05 12 7.52s-.57 2.85-1.61 3.89a5.5 5.5 0 0 1-3.89 1.61m0-10c-1.15 0-2.3.44-3.18 1.32C2.47 5.19 2 6.32 2 7.52s.47 2.33 1.32 3.18a4.51 4.51 0 0 0 6.36 0C10.53 9.85 11 8.72 11 7.52s-.47-2.33-1.32-3.18A4.48 4.48 0 0 0 6.5 3.02" />
-                    <path fill="currentColor" d="M13.5 15a.47.47 0 0 1-.35-.15l-3.38-3.38c-.2-.2-.2-.51 0-.71s.51-.2.71 0l3.38 3.38c.2.2.2.51 0 .71c-.1.1-.23.15-.35.15Z" />
-                </svg>
-            </div>
-
-            <!-- chat Icon -->
-            <div
-                @click="chatBox = true"
-                class="relative ">
-                <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm cursor-pointer">
-                    <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
-                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                        <path fill="currentColor" d="M0 262q0 43 24.5 81T90 405q-2 7-4.5 18t-7 34.5t-3.5 39T85 512q30 0 60.5-16t48.5-32t19-16q55 0 107-21q-6-2-22.5-12T277 405h-64q-18 0-38 20q-28 25-53 36l6-77l-17-15q-68-44-68-107q0-16 6-36q-4-6-5.5-18.5T42 185v-23l1-13Q0 195 0 262M299 0q-89 0-151.5 52T85 177q0 72 62 118t152 46q1 0 20.5 21.5t51.5 43t62 21.5q7 0 8.5-11t-1.5-26.5t-7-31.5t-7-27l-4-11q41-25 65.5-62.5T512 177q0-73-62.5-125T299 0m102 284l-28 17l11 32q2 5 5 17t6 19q-22-15-52-45q-23-25-42-25q-70 0-120.5-32.5T130 177q-1-56 48.5-95T299 43t120.5 39t49.5 95q0 63-68 107" />
-                    </svg>
-                </div>
-                <div
-                    x-show="chatBox"
-                    x-cloak
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 transform scale-90"
-                    x-transition:enter-end="opacity-100 transform scale-100"
-                    x-transition:leave="transition ease-in duration-200"
-                    x-transition:leave-start="opacity-100 transform scale-100"
-                    x-transition:leave-end="opacity-0 transform scale-90"
-                    @click.away="chatBox = false"
-                    class="flex flex-col justify-end absolute bg-white dark:bg-gray-700 top-16 right-0 shadow-md  rounded-lg z-20 ">
-                    <livewire:chat />
-                </div>
-            </div>
 
             <!-- Notification Icon -->
-            <div x-data="{ toggle: false }" @click="toggle = true"
+            <div  @click="toggle = true"
                 class="relative">
-                <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm cursor-pointer">
+                <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow cursor-pointer">
                     <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
                     <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M10.146 3.248a2 2 0 0 1 3.708 0A7 7 0 0 1 19 10v4.697l1.832 2.748A1 1 0 0 1 20 19h-4.535a3.501 3.501 0 0 1-6.93 0H4a1 1 0 0 1-.832-1.555L5 14.697V10c0-3.224 2.18-5.94 5.146-6.752M10.586 19a1.5 1.5 0 0 0 2.829 0zM12 5a5 5 0 0 0-5 5v5a1 1 0 0 1-.168.555L5.869 17H18.13l-.963-1.445A1 1 0 0 1 17 15v-5a5 5 0 0 0-5-5" />
@@ -78,7 +47,7 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 transform scale-100"
                     x-transition:leave-end="opacity-0 transform scale-90"
-                    class="max-h-[550px] flex flex-col absolute top-16 right-0 w-96 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-md z-60">
+                    class="max-h-[550px] flex flex-col absolute top-16 right-0 w-96 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow z-60">
                     <div class="p-4 flex justify-between items-center">
                         <h2 class="bg-white dark:bg-gray-800 text-lg font-semibold rounded-t-lg">
                             Notifications
@@ -117,14 +86,63 @@
 
             </div>
 
+            <!-- IATA Wallet -->
+            <div class="p-0.5 h-12 w-12 rounded-full" @click="iataWallet = !iataWallet">
+                <div class="relative w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow cursor-pointer">
+                    <div x-data="iataDropdown()" class="relative" >
+                        <x-heroicon-o-wallet class="m-1 w-7 h-7 text-gray-800 dark:text-gray-300"/>
+
+                        <div x-cloak x-show="iataWallet" @click.away="iataWallet = false" class="absolute top-14 right-0 w-80 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
+                            <div class="p-4 bg-gradient-to-r from-green-50 to-teal-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                                        <svg class="w-4 h-4 mr-2 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z" />
+                                            <circle fill="currentColor" cx="16" cy="12" r="1.5" />
+                                        </svg>
+                                        IATA Company Wallet
+                                    </h5>
+
+                                    <!-- Reload Button -->
+                                    <button
+                                        id="reload-wallet-btn"
+                                        onclick="reloadWalletData()"
+                                        class="flex items-center px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors duration-200"
+                                        title="Reload wallet data">
+                                        <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                        </svg>
+                                        Reload
+                                    </button>
+                                </div>
+
+                                <div id="iata-info" class="space-y-2">
+                                    <!-- Initial content will be loaded by checkAndLoadWalletData() -->
+                                </div>
+                            </div>
+                            <div id="jazeera-section" class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                                        <svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z" />
+                                            <circle fill="currentColor" cx="16" cy="12" r="1.5" />
+                                        </svg>
+                                        Jazeera Airways Credit
+                                    </h5>
+                                </div>
+
+                                <div id="jazeera-info" class="space-y-2"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
 
             <!-- Profile Picture with Dropdown -->
             <div class="p-0.5 h-12 w-12 rounded-full {{$color}}">
-                <div class="relative w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
-                    @if(Auth::check())
-                    <!-- Authenticated User -->
-                    <div x-data="profileDropdown()" class="relative">
-                        <!-- Profile Image -->
+                <div class="relative w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow">
+                    <div class="relative">
                         <div @click="open = !open" class="w-full h-full object-cover cursor-pointer">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                 <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
@@ -132,12 +150,11 @@
                             </svg>
                         </div>
 
-                        <!-- Dropdown Menu -->
                         <div x-cloak x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-80 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
                             <!-- User Information & Profile -->
                             <a href="{{ route('profile.edit') }}">
                                 <div class="flex items-center p-4 border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
-                                    <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-full shadow-sm">
+                                    <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-full shadow">
                                         <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                             <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
                                             <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
@@ -153,49 +170,6 @@
                                 </div>
                             </a>
 
-                            <!-- IATA Wallet Information -->
-                            <div class="p-4 bg-gradient-to-r from-green-50 to-teal-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-                                        <svg class="w-4 h-4 mr-2 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                            <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z"/>
-                                            <circle fill="currentColor" cx="16" cy="12" r="1.5"/>
-                                        </svg>
-                                        IATA Company Wallet
-                                    </h5>
-                                    
-                                    <!-- Reload Button -->
-                                    <button 
-                                        id="reload-wallet-btn" 
-                                        onclick="reloadWalletData()" 
-                                        class="flex items-center px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors duration-200"
-                                        title="Reload wallet data">
-                                        <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                            <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                                        </svg>
-                                        Reload
-                                    </button>
-                                </div>
-                                
-                                <div id="iata-info" class="space-y-2">
-                                    <!-- Initial content will be loaded by checkAndLoadWalletData() -->
-                                </div>
-                            </div>
-                            <div id="jazeera-section" class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-                                        <svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                            <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z"/>
-                                            <circle fill="currentColor" cx="16" cy="12" r="1.5"/>
-                                        </svg>
-                                        Jazeera Airways Credit
-                                    </h5>
-                                </div>
-
-                                <div id="jazeera-info" class="space-y-2"></div>
-                            </div>
-
-                            <!-- Dropdown Links -->
                             <div>
 
                                 <!-- Logout -->
@@ -213,26 +187,6 @@
                         </div>
 
                     </div>
-                    @else
-                    <!-- Guest User -->
-                    <div x-data="{ open: false }" class="relative">
-                        <!-- Profile Image -->
-                        <div @click="open = !open" class="w-full h-full object-cover cursor-pointer h-[30px] w-[30px]">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
-                                <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
-                            </svg>
-                        </div>
-
-
-                        <!-- Dropdown Menu -->
-                        <div x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-48 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10">
-                            <x-dropdown-link :href="route('login')">
-                                {{ __('Login') }}
-                            </x-dropdown-link>
-                        </div>
-                    </div>
-                    @endif
                 </div>
             </div>
         </div>
@@ -251,10 +205,10 @@
     });
 
     document.addEventListener('alpine:init', () => {
-        Alpine.data('profileDropdown', () => ({
+        Alpine.data('iataDropdown', () => ({
             open: false,
             init() {
-                this.$watch('open', (value) => {
+                this.$watch('iataWallet', (value) => {
                     if (value === true) {
                         checkAndLoadWalletData();
                     }
@@ -265,7 +219,7 @@
 
     function checkAndLoadWalletData() {
         const now = new Date().getTime();
-        
+
         if (walletData && walletSessionExpiry && now < walletSessionExpiry) {
             displayWalletData(walletData);
         } else {
@@ -292,7 +246,7 @@
                 <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
             </div>
         `;
-        
+
         if (reloadBtn) {
             reloadBtn.disabled = true;
             reloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -334,7 +288,7 @@
             })
             .catch(error => {
                 console.error('Error fetching IATA Company Wallet:', error);
-                
+
                 const iataInfo = document.getElementById('iata-info');
                 iataInfo.innerHTML = `
                     <div class="text-center py-4">
@@ -357,11 +311,15 @@
 
     function displayWalletData(data) {
         const iataInfo = document.getElementById('iata-info');
-        const { wallets, iataBalance, walletName } = data;
+        const {
+            wallets,
+            iataBalance,
+            walletName
+        } = data;
 
         if (wallets.length > 0) {
             const now = new Date().getTime();
-            
+
             const walletsHtml = wallets.map(wallet => `
                 <div class="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
                     <div class="flex justify-between items-start mb-2">
@@ -438,25 +396,25 @@
     }
 
     function reloadJazeeraData() {
-    console.log('Reload Jazeera Airways Credit data');
-    creditData = null;
-    JazeeraAirwaysCredit();
-}
-
-function JazeeraAirwaysCredit() {
-    const section = document.getElementById('jazeera-section');
-    const creditInfo = document.getElementById('jazeera-info');
-
-    // 1️⃣ If data variable itself is missing → hide section entirely (not implemented yet)
-    if (typeof data === 'undefined' || data === null) {
-        if (section) section.classList.add('hidden');
-        return;
+        console.log('Reload Jazeera Airways Credit data');
+        creditData = null;
+        JazeeraAirwaysCredit();
     }
 
-    // 2️⃣ If data exists but is empty → show fallback message
-    if (!data.length) {
-        if (section) section.classList.remove('hidden');
-        creditInfo.innerHTML = `
+    function JazeeraAirwaysCredit() {
+        const section = document.getElementById('jazeera-section');
+        const creditInfo = document.getElementById('jazeera-info');
+
+        // 1️⃣ If data variable itself is missing → hide section entirely (not implemented yet)
+        if (typeof data === 'undefined' || data === null) {
+            if (section) section.classList.add('hidden');
+            return;
+        }
+
+        // 2️⃣ If data exists but is empty → show fallback message
+        if (!data.length) {
+            if (section) section.classList.remove('hidden');
+            creditInfo.innerHTML = `
             <div class="text-center py-4">
                 <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 
@@ -467,34 +425,36 @@ function JazeeraAirwaysCredit() {
                 </p>
             </div>
         `;
-        return;
-    }
+            return;
+        }
 
-    // 3️⃣ If valid data exists → show total
-    section.classList.remove('hidden');
-    const total = data.reduce((sum, entry) => sum + parseFloat(entry.balance || 0), 0).toFixed(3);
-    creditInfo.innerHTML = `
+        // 3️⃣ If valid data exists → show total
+        section.classList.remove('hidden');
+        const total = data.reduce((sum, entry) => sum + parseFloat(entry.balance || 0), 0).toFixed(3);
+        creditInfo.innerHTML = `
         <div class="flex flex-col items-center py-2">
             <p class="text-lg font-semibold text-sky-700 dark:text-sky-300">${total} KWD</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">Total Credit Spent</p>
         </div>
     `;
-}
+    }
 
-document.addEventListener('DOMContentLoaded', JazeeraAirwaysCredit);
+    document.addEventListener('DOMContentLoaded', JazeeraAirwaysCredit);
 
-// Optional: API-based display hook
-function displayJazeeraData(data) {
-    const section = document.getElementById('jazeera-section');
-    const jazeeraInfo = document.getElementById('jazeera-info');
-    const { records = [], total = 0 } = data;
+    // Optional: API-based display hook
+    function displayJazeeraData(data) {
+        const section = document.getElementById('jazeera-section');
+        const jazeeraInfo = document.getElementById('jazeera-info');
+        const {
+            records = [], total = 0
+        } = data;
 
-    if (!section || !jazeeraInfo) return;
+        if (!section || !jazeeraInfo) return;
 
-    if (!records.length) {
-        // keep visible if empty due to API error
-        section.classList.remove('hidden');
-        jazeeraInfo.innerHTML = `
+        if (!records.length) {
+            // keep visible if empty due to API error
+            section.classList.remove('hidden');
+            jazeeraInfo.innerHTML = `
             <div class="text-center py-4">
                 <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 
@@ -505,12 +465,12 @@ function displayJazeeraData(data) {
                 </p>
             </div>
         `;
-        return;
-    }
+            return;
+        }
 
-    // ✅ Show valid data
-    section.classList.remove('hidden');
-    jazeeraInfo.innerHTML = `
+        // ✅ Show valid data
+        section.classList.remove('hidden');
+        jazeeraInfo.innerHTML = `
         <div class="space-y-3">
             <div class="bg-gradient-to-r from-sky-50 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-sky-200 dark:border-sky-800">
                 <div class="flex items-center justify-between mb-2">
@@ -534,8 +494,7 @@ function displayJazeeraData(data) {
             </div>
         </div>
     `;
-}
-
+    }
 </script>
 
 

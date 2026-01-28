@@ -2676,6 +2676,9 @@ class TaskController extends Controller
             // 2. Apply basic field updates
             $this->applyBasicUpdates($task, $request);
 
+            // 2.5 Update detail fields
+            $this->updateDetailFieldsFromModal($task, $request);
+
             // 3. Detect what changed
             $changes = $this->detectChanges($task, $oldValues);
 
@@ -6077,6 +6080,75 @@ class TaskController extends Controller
                 'success' => false,
                 'message' => 'Failed to load task details'
             ], 500);
+        }
+    }
+
+    private function updateDetailFieldsFromModal(Task $task, Request $request): void
+    {
+        switch ($task->type) {
+            case 'hotel':
+                if ($task->hotelDetails && $request->has('hotel_id')) {
+                    $task->hotelDetails->update([
+                        'hotel_id' => $request->input('hotel_id'),
+                        'room_type' => $request->input('room_type'),
+                        'room_number' => $request->input('room_number'),
+                        'meal_type' => $request->input('meal_type'),
+                        'check_in' => $request->input('check_in'),
+                        'check_out' => $request->input('check_out'),
+                    ]);
+                }
+                break;
+
+            case 'flight':
+                if ($request->has('flights') && is_array($request->input('flights'))) {
+                    foreach ($request->input('flights') as $flightData) {
+                        if (isset($flightData['id'])) {
+                            $flight = $task->flightDetail->where('id', $flightData['id'])->first();
+                            if ($flight) {
+                                $flight->update([
+                                    'airport_from' => $flightData['airport_from'] ?? $flight->airport_from,
+                                    'terminal_from' => $flightData['terminal_from'] ?? $flight->terminal_from,
+                                    'departure_time' => $flightData['departure_time'] ?? $flight->departure_time,
+                                    'airport_to' => $flightData['airport_to'] ?? $flight->airport_to,
+                                    'terminal_to' => $flightData['terminal_to'] ?? $flight->terminal_to,
+                                    'arrival_time' => $flightData['arrival_time'] ?? $flight->arrival_time,
+                                    'flight_number' => $flightData['flight_number'] ?? $flight->flight_number,
+                                    'class_type' => $flightData['class_type'] ?? $flight->class_type,
+                                    'duration_time' => $flightData['duration_time'] ?? $flight->duration_time,
+                                    'baggage_allowed' => $flightData['baggage_allowed'] ?? $flight->baggage_allowed,
+                                    'seat_no' => $flightData['seat_no'] ?? $flight->seat_no,
+                                    'ticket_number' => $flightData['ticket_number'] ?? $flight->ticket_number,
+                                ]);
+                            }
+                        }
+                    }
+                }
+                break;
+
+            case 'insurance':
+                if ($task->insuranceDetails && $request->has('insurance_type')) {
+                    $task->insuranceDetails->update([
+                        'insurance_type' => $request->input('insurance_type'),
+                        'plan_type' => $request->input('plan_type'),
+                        'destination' => $request->input('destination'),
+                        'duration' => $request->input('duration'),
+                        'package' => $request->input('package'),
+                    ]);
+                }
+                break;
+
+            case 'visa':
+                if ($task->visaDetails && $request->has('visa_type')) {
+                    $task->visaDetails->update([
+                        'visa_type' => $request->input('visa_type'),
+                        'application_number' => $request->input('application_number'),
+                        'issuing_country' => $request->input('issuing_country'),
+                        'expiry_date' => $request->input('expiry_date'),
+                        'number_of_entries' => $request->input('number_of_entries'),
+                        'stay_duration' => $request->input('stay_duration'),
+                    ]);
+                }
+                break;
         }
     }
 

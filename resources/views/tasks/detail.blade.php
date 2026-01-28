@@ -170,7 +170,6 @@
                 total: 0
             },
             searchTimeout: null,
-            editingDetailsTaskId: null,
 
             modalTaskId: null,
             modalClientName: '',
@@ -222,11 +221,6 @@
                     this.editDraft = { task_id: null, original: {}, changes: {} };
                 }
 
-                // Also clear detail editing mode if this task was being edited
-                if (this.editingDetailsTaskId === taskId) {
-                    this.editingDetailsTaskId = null;
-                }
-
                 // Close preview only if no more drafts exist
                 if (Object.keys(this.drafts).length === 0) {
                     this.previewOpen = false;
@@ -234,16 +228,13 @@
             },
 
             closePreview() {
-                // Only close if there are no changes at all
-                if (this.hasAnyChanges()) {
-                    // Don't close - there are still changes from other tasks
-                    return;
-                }
-
-                this.previewOpen = false;
                 this.singleEditMode = false;
-                this.editDraft = { task_id: null, original: {}, changes: {} };
-                this.editingDetailsTaskId = null;
+
+                // Only close preview if there are no changes
+                if(!this.hasAnyChanges()){
+                    this.previewOpen = false;
+                    this.editDraft = { task_id: null, original: {}, changes: {} };
+                }
             },
 
             clearAllDrafts() {
@@ -251,7 +242,6 @@
                 this.previewOpen = false;
                 this.singleEditMode = false;
                 this.editDraft = { task_id: null, original: {}, changes: {} };
-                this.editingDetailsTaskId = null;
             },
 
             getTotalFromDraft(draft) {
@@ -381,50 +371,6 @@
             isSubmittingUpdates: false,
 
             showUploadForm: false,
-            toggleDetailsEdit(taskId, taskData) {
-                if (this.editingDetailsTaskId === taskId) {
-                    // Cancel edit - revert detail changes
-                    if (this.drafts[taskId]) {
-                        // Restore original details
-                        const task = this.drafts[taskId];
-                        if (task.original.hotelDetails) {
-                            task.changes.hotelDetails = JSON.parse(JSON.stringify(task.original.hotelDetails));
-                        }
-                        if (task.original.insuranceDetails) {
-                            task.changes.insuranceDetails = JSON.parse(JSON.stringify(task.original.insuranceDetails));
-                        }
-                        if (task.original.visaDetails) {
-                            task.changes.visaDetails = JSON.parse(JSON.stringify(task.original.visaDetails));
-                        }
-                        if (task.original.flightDetails) {
-                            task.changes.flightDetails = JSON.parse(JSON.stringify(task.original.flightDetails));
-                        }
-
-                        // If there are no changes left after reverting details, remove the draft
-                        if (!this.hasChangesFor(taskId)) {
-                            delete this.drafts[taskId];
-
-                            // Close preview if no more changes
-                            if (Object.keys(this.drafts).length === 0) {
-                                this.previewOpen = false;
-                            }
-                        }
-                    }
-                    this.editingDetailsTaskId = null;
-                } else {
-                    // Ensure draft exists for this task (but don't open preview or main edit mode)
-                    if (!this.drafts[taskId]) {
-                        this.drafts[taskId] = {
-                            task_id: taskId,
-                            original: JSON.parse(JSON.stringify(taskData)),
-                            changes: JSON.parse(JSON.stringify(taskData)),
-                        };
-                    }
-                    this.editingDetailsTaskId = taskId;
-                    // Open preview pane to show detail changes
-                    this.previewOpen = true;
-                }
-            },
 
         }">
 
@@ -618,7 +564,7 @@
                 </div>
 
                 <!-- Desktop Sidebar (original, only visible on lg+) -->
-                <div class="hidden lg:flex w-80 flex-shrink-0">
+                <div class="hidden lg:flex w-72 flex-shrink-0">
                     <div class="bg-white shadow-sm border border-gray-200 sticky top-4 flex flex-col w-full rounded-lg" style="max-height: calc(100vh - 2rem);">
                         <div class="px-4 py-3 flex-shrink-0">
                             <div class="flex items-center justify-between">
@@ -942,75 +888,14 @@
 
                                     <!-- Type-Specific Details - 3 columns on lg -->
                                     <div class="xl:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0 flex items-center justify-between">
+                                        <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex-shrink-0">
                                             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
                                                 {{ ucfirst($task->type) }} Details
                                             </h2>
-                                            <button
-                                                @click="toggleDetailsEdit({{ $task->id }}, {
-                                                    id: {{ $task->id }},
-                                                    type: @js($task->type),
-                                                    @if($task->type === 'hotel' && $task->hotelDetails)
-                                                    hotelDetails: {
-                                                        hotel_id: @js($task->hotelDetails->hotel_id),
-                                                        hotel_name: @js($task->hotelDetails->hotel->name ?? 'N/A'),
-                                                        room_type: @js($task->hotelDetails->room_type),
-                                                        check_in: @js($task->hotelDetails->check_in),
-                                                        check_out: @js($task->hotelDetails->check_out),
-                                                        room_number: @js($task->hotelDetails->room_number),
-                                                        meal_type: @js($task->hotelDetails->meal_type),
-                                                    },
-                                                    @elseif($task->type === 'insurance' && $task->insuranceDetails)
-                                                    insuranceDetails: {
-                                                        insurance_type: @js($task->insuranceDetails->insurance_type),
-                                                        plan_type: @js($task->insuranceDetails->plan_type),
-                                                        destination: @js($task->insuranceDetails->destination),
-                                                        duration: @js($task->insuranceDetails->duration),
-                                                        package: @js($task->insuranceDetails->package),
-                                                    },
-                                                    @elseif($task->type === 'visa' && $task->visaDetails)
-                                                    visaDetails: {
-                                                        visa_type: @js($task->visaDetails->visa_type),
-                                                        application_number: @js($task->visaDetails->application_number),
-                                                        issuing_country: @js($task->visaDetails->issuing_country),
-                                                        expiry_date: @js($task->visaDetails->expiry_date),
-                                                        number_of_entries: @js($task->visaDetails->number_of_entries),
-                                                        stay_duration: @js($task->visaDetails->stay_duration),
-                                                    },
-                                                    @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
-                                                    flightDetails: @js($task->flightDetail->map(function($flight) {
-                                                        return [
-                                                            'id' => $flight->id,
-                                                            'airport_from' => $flight->airport_from,
-                                                            'airport_to' => $flight->airport_to,
-                                                            'terminal_from' => $flight->terminal_from,
-                                                            'terminal_to' => $flight->terminal_to,
-                                                            'departure_time' => $flight->departure_time,
-                                                            'arrival_time' => $flight->arrival_time,
-                                                            'flight_number' => $flight->flight_number,
-                                                            'class_type' => $flight->class_type,
-                                                            'duration_time' => $flight->duration_time,
-                                                            'baggage_allowed' => $flight->baggage_allowed,
-                                                            'seat_no' => $flight->seat_no,
-                                                            'ticket_number' => $flight->ticket_number,
-                                                        ];
-                                                    })->toArray()),
-                                                    @endif
-                                                })"
-                                                class="group relative p-2 hover:bg-slate-200 rounded-lg transition flex-shrink-0">
-                                                <svg x-show="editingDetailsTaskId !== {{ $task->id }}" class="w-4 h-4 text-gray-600 group-hover:text-gray-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                </svg>
-                                                <svg x-show="editingDetailsTaskId === {{ $task->id }}" class="w-4 h-4 text-red-600 group-hover:text-red-900 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
                                         </div>
                                         <div class="flex-1 overflow-auto">
                                             @if($task->type === 'flight')
                                             <div class="p-4 sm:p-6">
-                                                <!-- View Mode -->
-                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}">
                                                 @php
                                                 $hasDuration = $task->flightDetail->whereNotNull('duration_time')->isNotEmpty();
                                                 $hasBaggage = $task->flightDetail->whereNotNull('baggage_allowed')->isNotEmpty();
@@ -1149,103 +1034,10 @@
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                </div>
-                                                <!-- End View Mode -->
-
-                                                <!-- Edit Mode -->
-                                                <div x-show="editingDetailsTaskId === {{ $task->id }}">
-                                                    <template x-for="(flight, index) in (drafts[{{ $task->id }}]?.changes?.flightDetails || [])" :key="index">
-                                                        <div class="border border-gray-200 rounded-lg p-4 mb-4">
-                                                            <h3 class="text-sm font-semibold text-gray-700 mb-3">Flight <span x-text="index + 1"></span></h3>
-
-                                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Airport From</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].airport_from"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Terminal From</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].terminal_from"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Departure Time</label>
-                                                                    <input type="datetime-local"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].departure_time"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Airport To</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].airport_to"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Terminal To</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].terminal_to"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Arrival Time</label>
-                                                                    <input type="datetime-local"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].arrival_time"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Flight Number</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].flight_number"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Class Type</label>
-                                                                    <select x-model="drafts[{{ $task->id }}].changes.flightDetails[index].class_type"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                        <option value="">Select class</option>
-                                                                        <option value="economy">Economy</option>
-                                                                        <option value="business">Business</option>
-                                                                        <option value="first">First Class</option>
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].duration_time"
-                                                                        placeholder="2h 30m"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Baggage Allowed</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].baggage_allowed"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Seat Number</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].seat_no"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                                <div>
-                                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Ticket Number</label>
-                                                                    <input type="text"
-                                                                        x-model="drafts[{{ $task->id }}].changes.flightDetails[index].ticket_number"
-                                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                                <!-- End Edit Mode -->
                                             </div>
                                             @elseif($task->type === 'hotel')
                                             <div class="p-4 sm:p-6">
-                                                <!-- View Mode -->
-                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                                                     <div class="sm:col-span-3">
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
                                                         <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</p>
@@ -1303,90 +1095,10 @@
                                                         <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
                                                     </div>
                                                 </div>
-
-                                                <!-- Edit Mode -->
-                                                <div x-show="editingDetailsTaskId === {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div class="sm:col-span-2">
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Hotel</label>
-                                                        <div x-data="searchableDropdown({
-                                                            items: {{ $hotels }},
-                                                            selectedId: drafts[{{ $task->id }}]?.changes?.hotelDetails?.hotel_id || '',
-                                                            selectedName: drafts[{{ $task->id }}]?.changes?.hotelDetails?.hotel_name || '',
-                                                            name: 'hotel_id',
-                                                            placeholder: 'Select a hotel'
-                                                        })"
-                                                        x-init="init()"
-                                                        @dropdown-select="
-                                                            if (drafts[{{ $task->id }}]?.changes?.hotelDetails) {
-                                                                drafts[{{ $task->id }}].changes.hotelDetails.hotel_id = $event.detail.value;
-                                                                drafts[{{ $task->id }}].changes.hotelDetails.hotel_name = $event.detail.displayName;
-                                                            }
-                                                        "
-                                                        class="w-full">
-                                                            <div class="relative">
-                                                                <button type="button"
-                                                                @click="open = !open; if(open) { $nextTick(() => focusSearch($refs)) }"
-                                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
-                                                                    <span class="truncate block w-full" :class="selectedName ? 'text-gray-900' : 'text-gray-400'" x-text="selectedName || placeholder"></span>
-                                                                </button>
-
-                                                                <div x-cloak x-show="open" @click.away="open = false"
-                                                                    class="absolute bg-white z-10 border border-gray-300 w-full max-h-48 overflow-y-auto rounded-lg shadow-lg mt-1">
-                                                                    <div class="px-2 py-2">
-                                                                        <input type="text"
-                                                                            x-ref="searchInput"
-                                                                            x-model="search"
-                                                                            @input="filterOptions"
-                                                                            placeholder="Search hotels..."
-                                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
-                                                                    </div>
-
-                                                                    <template x-for="option in filtered.slice(0, 10)" :key="option.id">
-                                                                        <div @click="select(option)"
-                                                                            class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                                                            x-html="highlightMatch(option.name)">
-                                                                        </div>
-                                                                    </template>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Room Type</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.room_type"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Room Number</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.room_number"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Meal Type</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.meal_type"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Check In</label>
-                                                        <input type="date"
-                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.check_in"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Check Out</label>
-                                                        <input type="date"
-                                                            x-model="drafts[{{ $task->id }}].changes.hotelDetails.check_out"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                </div>
                                             </div>
                                             @elseif($task->type === 'visa')
                                             <div class="p-4 sm:p-6">
-                                                <!-- View Mode -->
-                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Visa Type</p>
                                                         <p class="text-sm text-gray-900">{{ $task->visaDetails->visa_type ?? 'N/A' }}</p>
@@ -1412,51 +1124,10 @@
                                                         <p class="text-sm text-gray-900">{{ $task->visaDetails->stay_duration ?? 'N/A' }}</p>
                                                     </div>
                                                 </div>
-
-                                                <!-- Edit Mode -->
-                                                <div x-show="editingDetailsTaskId === {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Visa Type</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.visa_type"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Application Number</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.application_number"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Issuing Country</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.issuing_country"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Expiry Date</label>
-                                                        <input type="date"
-                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.expiry_date"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Number of Entries</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.number_of_entries"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Stay Duration</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.visaDetails.stay_duration"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                </div>
                                             </div>
                                             @elseif($task->type === 'insurance')
                                             <div class="p-4 sm:p-6">
-                                                <!-- View Mode -->
-                                                <div x-show="editingDetailsTaskId !== {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Insurance Type</p>
                                                         <p class="text-sm text-gray-900">{{ $task->insuranceDetails->insurance_type ?? 'N/A' }}</p>
@@ -1476,40 +1147,6 @@
                                                     <div class="sm:col-span-2">
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Package</p>
                                                         <p class="text-sm text-gray-900">{{ $task->insuranceDetails->package ?? 'N/A' }}</p>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Edit Mode -->
-                                                <div x-show="editingDetailsTaskId === {{ $task->id }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Insurance Type</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.insurance_type"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Plan Type</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.plan_type"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Destination</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.destination"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.duration"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                                                    </div>
-                                                    <div class="sm:col-span-2">
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Package</label>
-                                                        <input type="text"
-                                                            x-model="drafts[{{ $task->id }}].changes.insuranceDetails.package"
-                                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                                                     </div>
                                                 </div>
                                             </div>
@@ -1644,7 +1281,7 @@
                                 ">
 
                                 <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
-                                    @click="singleEditMode = false"></div>
+                                    @click="closePreview()"></div>
 
                                 <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
                                     @php
@@ -1655,7 +1292,7 @@
 
                                     <div x-show="singleEditMode"
                                         x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
-                                        class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden"
+                                        class="relative bg-white rounded-lg shadow-xl w-full max-w-7xl overflow-hidden"
                                         @click.stop>
 
                                         <form action="{{ route('tasks.update', $task->id) }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
@@ -1674,186 +1311,204 @@
                                                         @endif
                                                     </p>
                                                 </div>
-                                                <button type="button" @click="singleEditMode = false" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
+                                                <button type="button" @click="closePreview()" class="text-gray-400 hover:text-red-500 text-2xl p-2 flex-shrink-0">
                                                     &times;
                                                 </button>
                                             </div>
 
                                             <!-- Form Content - Scrollable -->
                                             <div class="p-4 sm:p-6 overflow-y-auto flex-1">
-                                                <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
-                                                    <div class="flex flex-col gap-4 sm:gap-6">
-                                                        <!-- Reference & Status -->
-                                                        <div class="flex flex-col sm:flex-row gap-4">
-                                                            <div class="flex-1">
-                                                                <label for="reference" class="block text-sm font-medium text-gray-700">Reference</label>
-                                                                <input type="text"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-base"
-                                                                    name="reference"
-                                                                    x-model="editDraft.changes.reference">
+                                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <!-- Left Column: Main Task Fields -->
+                                                    <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
+                                                        <div class="flex flex-col gap-4 sm:gap-6">
+                                                            <!-- Reference & Status -->
+                                                            <div class="flex flex-col sm:flex-row gap-4">
+                                                                <div class="flex-1">
+                                                                    <label for="reference" class="block text-sm font-medium text-gray-700">Reference</label>
+                                                                    <input type="text"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-base"
+                                                                        name="reference"
+                                                                        x-model="editDraft.changes.reference">
+                                                                </div>
+
+                                                                <div class="flex-1">
+                                                                    <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+
+                                                                    @if ($task->status === 'refund')
+                                                                    <select name="status"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-base"
+                                                                        disabled>
+                                                                        <option value="refund" selected>Refund</option>
+                                                                    </select>
+
+                                                                    <input type="hidden" name="status" value="refund">
+                                                                    @else
+                                                                    <select name="status"
+                                                                        id="status_{{ $task->id }}"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-base"
+                                                                        x-model="editDraft.changes.status">
+                                                                        <option value="">Set Status</option>
+                                                                        <option value="confirmed">Confirmed</option>
+                                                                        <option value="issued">Issued</option>
+                                                                        <option value="reissued">Reissued</option>
+                                                                        <option value="refund">Refund</option>
+                                                                        <option value="void">Void</option>
+                                                                        <option value="emd">Emd</option>
+                                                                    </select>
+                                                                    @endif
+                                                                </div>
                                                             </div>
 
-                                                            <div class="flex-1">
-                                                                <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                                                            <!-- Supplier & Type -->
+                                                            <div class="flex flex-col sm:flex-row gap-4">
+                                                                <div class="flex-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Supplier</label>
+                                                                    <input type="text"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full bg-gray-200"
+                                                                        value="{{ $task->supplier->name ?? '' }}"
+                                                                        readonly>
+                                                                    <input type="hidden" name="supplier_id" value="{{ $task->supplier->id ?? '' }}">
+                                                                </div>
 
-                                                                @if ($task->status === 'refund')
-                                                                <select name="status"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-base"
-                                                                    disabled>
-                                                                    <option value="refund" selected>Refund</option>
-                                                                </select>
-
-                                                                <input type="hidden" name="status" value="refund">
-                                                                @else
-                                                                <select name="status"
-                                                                    id="status_{{ $task->id }}"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-base"
-                                                                    x-model="editDraft.changes.status">
-                                                                    <option value="">Set Status</option>
-                                                                    <option value="confirmed">Confirmed</option>
-                                                                    <option value="issued">Issued</option>
-                                                                    <option value="reissued">Reissued</option>
-                                                                    <option value="refund">Refund</option>
-                                                                    <option value="void">Void</option>
-                                                                    <option value="emd">Emd</option>
-                                                                </select>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Supplier & Type -->
-                                                        <div class="flex flex-col sm:flex-row gap-4">
-                                                            <div class="flex-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Supplier</label>
-                                                                <input type="text"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full bg-gray-200"
-                                                                    value="{{ $task->supplier->name ?? '' }}"
-                                                                    readonly>
-                                                                <input type="hidden" name="supplier_id" value="{{ $task->supplier->id ?? '' }}">
+                                                                <div class="flex-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Task Type</label>
+                                                                    <input type="text"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full bg-gray-200"
+                                                                        value="{{ ucfirst($task->type) }}"
+                                                                        readonly>
+                                                                </div>
                                                             </div>
 
-                                                            <div class="flex-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Task Type</label>
-                                                                <input type="text"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full bg-gray-200"
-                                                                    value="{{ ucfirst($task->type) }}"
-                                                                    readonly>
-                                                            </div>
-                                                        </div>
+                                                            <!-- Client & Agent -->
+                                                            <div class="flex flex-col sm:flex-row gap-4">
+                                                                <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input'}}">
+                                                                    <label class="block text-sm font-medium text-gray-700">Client</label>
+                                                                    <x-searchable-dropdown
+                                                                        name="client_id"
+                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
+                                                                        :selectedId="$task->client_id"
+                                                                        :selectedName="$task->client ? $task->client->name . ' - ' . $task->client->phone : null"
+                                                                        placeholder="Select Client" />
+                                                                </div>
 
-                                                        <!-- Client & Agent -->
-                                                        <div class="flex flex-col sm:flex-row gap-4">
-                                                            <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input'}}">
-                                                                <label class="block text-sm font-medium text-gray-700">Client</label>
-                                                                <x-searchable-dropdown
-                                                                    name="client_id"
-                                                                    :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
-                                                                    :selectedId="$task->client_id"
-                                                                    :selectedName="$task->client ? $task->client->name . ' - ' . $task->client->phone : null"
-                                                                    placeholder="Select Client" />
-                                                            </div>
-
-                                                            <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input'}}">
-                                                                <label class="block text-sm font-medium text-gray-700">Agent</label>
-                                                                <x-searchable-dropdown
-                                                                    name="agent_id"
-                                                                    :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                                                    :selectedId="$task->agent_id"
-                                                                    :selectedName="$task->agent->name ?? null"
-                                                                    placeholder="Select Agent" />
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Pricing -->
-                                                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                                                            <div class="col-span-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Price</label>
-                                                                <input type="text"
-                                                                    name="price"
-                                                                    x-model="editDraft.changes.price"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                                <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input'}}">
+                                                                    <label class="block text-sm font-medium text-gray-700">Agent</label>
+                                                                    <x-searchable-dropdown
+                                                                        name="agent_id"
+                                                                        :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                                                        :selectedId="$task->agent_id"
+                                                                        :selectedName="$task->agent->name ?? null"
+                                                                        placeholder="Select Agent" />
+                                                                </div>
                                                             </div>
 
-                                                            <div class="col-span-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Tax</label>
-                                                                <input type="text"
-                                                                    name="tax"
-                                                                    x-model="editDraft.changes.tax"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm">
-                                                            </div>
+                                                            <!-- Pricing -->
+                                                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                                                                <div class="col-span-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                    <input type="text"
+                                                                        name="price"
+                                                                        x-model="editDraft.changes.price"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                                </div>
 
-                                                            <div class="col-span-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                                <input type="text"
-                                                                    name="surcharge"
-                                                                    x-model="editDraft.changes.surcharge"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm">
-                                                            </div>
+                                                                <div class="col-span-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                    <input type="text"
+                                                                        name="tax"
+                                                                        x-model="editDraft.changes.tax"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                                </div>
 
-                                                            <div class="col-span-1">
-                                                                <label class="block text-xs sm:text-sm font-medium text-gray-700 truncate">Supplier Surcharge</label>
-                                                                <input type="text"
-                                                                    name="supplier_surcharge"
-                                                                    x-model="editDraft.changes.supplier_surcharge"
-                                                                    readonly
-                                                                    class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full text-sm">
-                                                            </div>
+                                                                <div class="col-span-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                    <input type="text"
+                                                                        name="surcharge"
+                                                                        x-model="editDraft.changes.surcharge"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-sm">
+                                                                </div>
 
-                                                            <div class="col-span-2 sm:col-span-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Total</label>
-                                                                <input type="text"
-                                                                    name="total"
-                                                                    readonly
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm font-semibold"
-                                                                    :value="(
+                                                                <div class="col-span-1">
+                                                                    <label class="block text-xs sm:text-sm font-medium text-gray-700 truncate">Supplier Surcharge</label>
+                                                                    <input type="text"
+                                                                        name="supplier_surcharge"
+                                                                        x-model="editDraft.changes.supplier_surcharge"
+                                                                        readonly
+                                                                        class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full text-sm">
+                                                                </div>
+
+                                                                <div class="col-span-2 sm:col-span-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                    <input type="text"
+                                                                        name="total"
+                                                                        readonly
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-sm font-semibold"
+                                                                        :value="(
                                                                     (parseFloat(editDraft.changes.price || 0) || 0) +
                                                                     (parseFloat(editDraft.changes.tax || 0) || 0) +
                                                                     (parseFloat(editDraft.changes.surcharge || 0) || 0) +
                                                                     (parseFloat(editDraft.changes.supplier_surcharge || 0) || 0)
                                                                 ).toFixed(3)">
+                                                                </div>
                                                             </div>
-                                                        </div>
 
-                                                        <div class="flex flex-col sm:flex-row gap-4">
-                                                            <div class="flex-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                                <select name="payment_method_account_id"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full text-sm"
-                                                                    x-model="editDraft.changes.payment_method_account_id">
-                                                                    <option value="">Select Payment Method</option>
-                                                                    @foreach($listOfCreditors as $groupName => $accounts)
-                                                                    <optgroup label="{{ $groupName }}">
-                                                                        @foreach($accounts as $method)
-                                                                        <option value="{{ $method['id'] }}">
-                                                                            {{ $method['name'] }}
-                                                                        </option>
+                                                            <div class="flex flex-col sm:flex-row gap-4">
+                                                                <div class="flex-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                    <select name="payment_method_account_id"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full text-sm"
+                                                                        x-model="editDraft.changes.payment_method_account_id">
+                                                                        <option value="">Select Payment Method</option>
+                                                                        @foreach($listOfCreditors as $groupName => $accounts)
+                                                                        <optgroup label="{{ $groupName }}">
+                                                                            @foreach($accounts as $method)
+                                                                            <option value="{{ $method['id'] }}">
+                                                                                {{ $method['name'] }}
+                                                                            </option>
+                                                                            @endforeach
+                                                                        </optgroup>
                                                                         @endforeach
-                                                                    </optgroup>
-                                                                    @endforeach
-                                                                </select>
+                                                                    </select>
+                                                                </div>
+
+                                                                <div class="flex-1">
+                                                                    <label class="block text-sm font-medium text-gray-700">Issued Date</label>
+                                                                    <input type="date"
+                                                                        name="supplier_pay_date"
+                                                                        class="border border-gray-300 p-2 rounded-md w-full"
+                                                                        x-model="editDraft.changes.supplier_pay_date">
+                                                                </div>
                                                             </div>
 
-                                                            <div class="flex-1">
-                                                                <label class="block text-sm font-medium text-gray-700">Issued Date</label>
-                                                                <input type="date"
-                                                                    name="supplier_pay_date"
-                                                                    class="border border-gray-300 p-2 rounded-md w-full"
-                                                                    x-model="editDraft.changes.supplier_pay_date">
+                                                            <div>
+                                                                <label class="block text-sm font-medium text-gray-700">Additional Info</label>
+                                                                <textarea rows="3"
+                                                                    readonly
+                                                                    class="border border-gray-300 p-3 rounded-md bg-gray-200 w-full resize-none text-sm">{{ $task->additional_info }} - {{ $task->venue }}</textarea>
                                                             </div>
                                                         </div>
+                                                    </fieldset>
 
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700">Additional Info</label>
-                                                            <textarea rows="3"
-                                                                readonly
-                                                                class="border border-gray-300 p-3 rounded-md bg-gray-200 w-full resize-none text-sm">{{ $task->additional_info }} - {{ $task->venue }}</textarea>
-                                                        </div>
+                                                    <!-- Right Column: Detail Fields -->
+                                                    <div class="border-l border-gray-200 pl-6">
+                                                        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ ucfirst($task->type) }} Details</h3>
+
+                                                        @if($task->type === 'hotel' && $task->hotelDetails)
+                                                        @include('tasks.partial.hotel-details-form', ['task' => $task, 'hotels' => $hotels])
+                                                        @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
+                                                        @include('tasks.partial.flight-details-form', ['task' => $task])
+                                                        @elseif($task->type === 'insurance' && $task->insuranceDetails)
+                                                        @include('tasks.partial.insurance-details-form', ['task' => $task])
+                                                        @elseif($task->type === 'visa' && $task->visaDetails)
+                                                        @include('tasks.partial.visa-details-form', ['task' => $task])
+                                                        @endif
                                                     </div>
-                                                </fieldset>
+                                                </div>
                                             </div>
 
                                             <!-- Footer -->
-                                            <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+                                            <!-- <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
                                                 <button type="button"
                                                     @click="closePreview()"
                                                     class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
@@ -1867,7 +1522,7 @@
                                                     class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
                                                     Update Task
                                                 </button>
-                                            </div>
+                                            </div> -->
                                         </form>
                                     </div>
                                 </div>
@@ -1882,10 +1537,6 @@
                                 <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
                                     Preview Changes
                                 </h3>
-
-                                <button type="button" @click="closePreview()" class="text-gray-400 hover:text-red-500 text-xl">
-                                    &times;
-                                </button>
                             </div>
 
                             <div class="p-4 space-y-4 overflow-y-auto hover-scrollbar" style="max-height: calc(100vh - 220px);">
@@ -2167,34 +1818,34 @@
 
                         <div class="space-y-2">
                             <template x-for="task in availableTasks" :key="task.id">
-                                    <div
-                                        @click="if (selectedNewTasks.includes(task.id)) { selectedNewTasks = selectedNewTasks.filter(id => id !== task.id) } else { selectedNewTasks.push(task.id) }"
-                                        class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition cursor-pointer"
-                                        :class="selectedNewTasks.includes(task.id) ? 'bg-blue-50 border-blue-200' : ''">
-                                        <input type="checkbox"
-                                            :value="task.id"
-                                            x-model="selectedNewTasks"
-                                            @click.stop
-                                            class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                <div
+                                    @click="if (selectedNewTasks.includes(task.id)) { selectedNewTasks = selectedNewTasks.filter(id => id !== task.id) } else { selectedNewTasks.push(task.id) }"
+                                    class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition cursor-pointer"
+                                    :class="selectedNewTasks.includes(task.id) ? 'bg-blue-50 border-blue-200' : ''">
+                                    <input type="checkbox"
+                                        :value="task.id"
+                                        x-model="selectedNewTasks"
+                                        @click.stop
+                                        class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
 
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-medium text-gray-900" x-text="task.reference"></span>
-                                                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" x-text="task.status"></span>
-                                            </div>
-                                            <p class="text-sm text-gray-600 mt-1">
-                                                <span x-text="task.passenger_name || 'No passenger'"></span>
-                                                <template x-if="task.client">
-                                                    <span> - <span x-text="task.client.name"></span></span>
-                                                </template>
-                                            </p>
-                                            <p class="text-xs text-gray-500 mt-1">
-                                                Supplier: <span x-text="task.supplier?.name || 'N/A'"></span> |
-                                                Total: <span x-text="task.total || '0'"></span>
-                                            </p>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-medium text-gray-900" x-text="task.reference"></span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" x-text="task.status"></span>
                                         </div>
+                                        <p class="text-sm text-gray-600 mt-1">
+                                            <span x-text="task.passenger_name || 'No passenger'"></span>
+                                            <template x-if="task.client">
+                                                <span> - <span x-text="task.client.name"></span></span>
+                                            </template>
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Supplier: <span x-text="task.supplier?.name || 'N/A'"></span> |
+                                            Total: <span x-text="task.total || '0'"></span>
+                                        </p>
                                     </div>
-                                </template>
+                                </div>
+                            </template>
                         </div>
 
                         <!-- Pagination -->

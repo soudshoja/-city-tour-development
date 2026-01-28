@@ -222,7 +222,7 @@ thead {
 }
 
 ::-webkit-scrollbar {
-    width: 10px;
+    width: 5px;
 }
 /* Track */
 ::-webkit-scrollbar-track {
@@ -232,7 +232,7 @@ thead {
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-    background: #b1c0db;
+    background: #737b8b;
     border-radius: 10px;
 }
 

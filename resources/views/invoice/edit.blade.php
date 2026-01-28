@@ -4658,7 +4658,7 @@
                     }
 
                     // ▶️ New endpoint for receipt import
-                    url = `{{ route('import') }}`;
+                    url = `{{ route('receipt-voucher.import') }}`;
 
                     fd.append('source', 'receipt');
                     fd.append('receipt_reference', receiptRef);

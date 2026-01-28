@@ -727,17 +727,22 @@ Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name(
 Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
 Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
 
-
-Route::post('/receipt-voucher/approve/{id}', [ReceiptVoucherController::class, 'approve'])->name('receipt-voucher.approve');
-Route::get('/receipt-voucher', [ReceiptVoucherController::class, 'index'])->name('receipt-voucher.index');
-Route::get('/receipt-voucher/create', [ReceiptVoucherController::class, 'create'])->name('receipt-voucher.create');
-Route::post('/receipt-voucher/store', [ReceiptVoucherController::class, 'store'])->name('receipt-voucher.store');
-Route::get('/receipt-voucher/edit/{id}', [ReceiptVoucherController::class, 'edit'])->name('receipt-voucher.edit');
-Route::put('/receipt-voucher/update/{id}', [ReceiptVoucherController::class, 'update'])->name('receipt-voucher.update');
-Route::get('/receipt-voucher/fetch-journals-by-date', [ReceiptVoucherController::class, 'fetchPaymentsByDate'])->name('receipt-voucher.fetchPaymentsByDate');
-Route::get('/receipt-voucher/fetch-journals-view', [ReceiptVoucherController::class, 'fetchJournalEntriesByIds'])->name('receipt-voucher.fetch-journals');
-Route::post('/receipt-voucher/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('receipt-voucher.decline-reconcile');
-Route::post('/receipt-voucher/import', [ReceiptVoucherController::class, 'import'])->name('import');
+Route::group([
+    'prefix' => 'receipt-voucher',
+    'as' => 'receipt-voucher.',
+], function () {
+    Route::get('/', [ReceiptVoucherController::class, 'index'])->name('index');
+    Route::get('/create', [ReceiptVoucherController::class, 'create'])->name('create');
+    Route::post('/store', [ReceiptVoucherController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [ReceiptVoucherController::class, 'edit'])->name('edit');
+    Route::put('/update/{id}', [ReceiptVoucherController::class, 'update'])->name('update');
+    Route::post('/approve/{id}', [ReceiptVoucherController::class, 'approve'])->name('approve');
+    Route::get('/fetch-journals-by-date', [ReceiptVoucherController::class, 'fetchPaymentsByDate'])->name('fetchPaymentsByDate');
+    Route::get('/fetch-journals-view', [ReceiptVoucherController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
+    Route::post('/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('decline-reconcile');
+    Route::post('/import', [ReceiptVoucherController::class, 'import'])->name('import');
+    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+});
 
 Route::group([
     'prefix' => 'bank-payments',

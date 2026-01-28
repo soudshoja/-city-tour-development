@@ -11,7 +11,7 @@
         @php
             $isReadOnly = strtolower($refund->status) === 'completed';
             $firstTask = $refund->refundDetails->first()?->task;
-            $firstInvoice = $firstTask?->originalTask?->invoiceDetail?->invoice;
+            $firstInvoice = $firstTask?->invoiceDetail?->invoice;
             $isPaidInvoice = in_array($firstInvoice?->status, ['paid', 'refunded', 'partial refund']);
             $isEditing = isset($refund) && $refund;
         @endphp
@@ -112,7 +112,7 @@
             @foreach($refund->refundDetails as $detail)
                 @php
                     $task = $detail->task;
-                    $invoiceDetail = $task->originalTask->invoiceDetail;
+                    $invoiceDetail = $task->invoiceDetail;
                     $invoiceStatus = $invoiceDetail->invoice->status;
                 @endphp
 

@@ -577,1208 +577,1227 @@
         </div>
     </div>
 
-            <div class="panel rounded-lg">
-                <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <x-search
-                        :action="route('tasks.index')"
-                        searchParam="q"
-                        placeholder="Quick search for tasks" />
+    <div class="panel rounded-lg">
+        <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
+            <x-search
+                :action="route('tasks.index')"
+                searchParam="q"
+                placeholder="Quick search for tasks" />
 
-                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" id="showVoidCheckbox"
-                            class="sr-only peer"
-                            {{ request('show_void') == '1' ? 'checked' : '' }}
-                            onchange="window.location='{{ request()->fullUrlWithQuery(['show_void' => '1']) }}'; if(!this.checked) window.location='{{ request()->fullUrlWithQuery(['show_void' => null]) }}';">
-                        <span class="w-10 h-5 bg-gray-300 rounded-full relative transition peer-checked:bg-orange-400">
-                            <span class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition peer-checked:translate-x-5"></span>
-                        </span>
-                        <span class="ml-2 text-xs md:text-sm font-medium text-gray-700 dark:text-black">Show Void Tasks</span>
-                    </label>
-                    <button type="button" id="toggleFilters"
-                        class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 32 32">
-                            <path fill="#333333"
-                                d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
-                        </svg>
-                        <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                    </button>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="showVoidCheckbox"
+                    class="sr-only peer"
+                    {{ request('show_void') == '1' ? 'checked' : '' }}
+                    onchange="window.location='{{ request()->fullUrlWithQuery(['show_void' => '1']) }}'; if(!this.checked) window.location='{{ request()->fullUrlWithQuery(['show_void' => null]) }}';">
+                <span class="w-10 h-5 bg-gray-300 rounded-full relative transition peer-checked:bg-orange-400">
+                    <span class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition peer-checked:translate-x-5"></span>
+                </span>
+                <span class="ml-2 text-xs md:text-sm font-medium text-gray-700 dark:text-black">Show Void Tasks</span>
+            </label>
+            <button type="button" id="toggleFilters"
+                class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
+                <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 32 32">
+                    <path fill="#333333"
+                        d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
+                </svg>
+                <span class="text-xs md:text-sm dark:text-black">Filters</span>
+            </button>
 
-                    <!-- Modal for Advanced Filters -->
-                    <div id="filterModal" class="filter-modal">
-                        <div class="filter-modal-content">
-                            <div class="filter-modal-header">
-                                <div class="relative w-full">
-                                    <h3>Advanced Filters</h3>
-                                </div>
-                                <div class="flex customCenter justify-end">
-                                    <button id="closeFilterModal" class="close-modal-btn">&times;</button>
-                                </div>
-                            </div>
-                            <div id="filterContainer">
-                                <!-- Filter rows will be dynamically added here -->
-                            </div>
-                            <div class="filter-modal-footer">
-                                <div class="flex gap-3">
-                                    <button id="addFilterRow" class="add-filter-btn">Add Filter</button>
-                                </div>
-                                <div class="flex gap-3">
-                                    <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
-                                </div>
-                                <div class="flex gap-3">
-                                    <button id="clearAllActiveFilters2"
-                                        class="clear-all-filters-btn">
-                                        Clear All
-                                    </button>
-                                </div>
-
-                            </div>
+            <!-- Modal for Advanced Filters -->
+            <div id="filterModal" class="filter-modal">
+                <div class="filter-modal-content">
+                    <div class="filter-modal-header">
+                        <div class="relative w-full">
+                            <h3>Advanced Filters</h3>
+                        </div>
+                        <div class="flex customCenter justify-end">
+                            <button id="closeFilterModal" class="close-modal-btn">&times;</button>
                         </div>
                     </div>
-                    <div class="relative">
-                        <button type="button" id="customizeColumnsBtn"
-                            class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
-                            <span>Customize columns</span>
+                    <div id="filterContainer">
+                        <!-- Filter rows will be dynamically added here -->
+                    </div>
+                    <div class="filter-modal-footer">
+                        <div class="flex gap-3">
+                            <button id="addFilterRow" class="add-filter-btn">Add Filter</button>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="clearAllActiveFilters2"
+                                class="clear-all-filters-btn">
+                                Clear All
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="relative">
+                <button type="button" id="customizeColumnsBtn"
+                    class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
+                    <span>Customize columns</span>
+                </button>
+                <div id="columnDropdownContent"
+                    class="hidden absolute z-50 mt-2 right-0 w-60 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg p-3 space-y-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="font-semibold text-sm text-gray-700">Visible Columns</h4>
+                        <button type="button" id="clearAllColumns" class="text-xs text-red-600 hover:underline focus:outline-none">
+                            Clear All
                         </button>
-                        <div id="columnDropdownContent"
-                            class="hidden absolute z-50 mt-2 right-0 w-60 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg p-3 space-y-2">
-                            <div class="flex justify-between items-center mb-1">
-                                <h4 class="font-semibold text-sm text-gray-700">Visible Columns</h4>
-                                <button type="button" id="clearAllColumns" class="text-xs text-red-600 hover:underline focus:outline-none">
-                                    Clear All
-                                </button>
-                            </div>
-                            <hr class="border-gray-300 mb-2" />
-                            <div class="space-y-2">
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-reference" class="text-sm text-gray-700">Reference</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-price" class="text-sm text-gray-700">Price</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-status" class="text-sm text-gray-700">Status</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issued Date</label>
-                                </div>
-                                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
-                                </div>
-                                @endif
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-info" class="text-sm text-gray-700">Info</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-type" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-type" class="text-sm text-gray-700">Type</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-gds-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-gds-reference" class="text-sm text-gray-700">GDS Reference</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-amadeus-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-amadeus-reference" class="text-sm text-gray-700">Amadeus Reference</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-created-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-created-by" class="text-sm text-gray-700">Created By</label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-issued-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-issued-by" class="text-sm text-gray-700">Issued By</label>
-                                </div>
-                                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-branch-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-branch-name" class="text-sm text-gray-700">Branch Name</label>
-                                </div>
-                                @endif
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
-                                </div>
-                                @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-file-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-file-name" class="text-sm text-gray-700">File Name</label>
-                                </div>
-                                @endif
-                            </div>
+                    </div>
+                    <hr class="border-gray-300 mb-2" />
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-reference" class="text-sm text-gray-700">Reference</label>
                         </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-price" class="text-sm text-gray-700">Price</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-status" class="text-sm text-gray-700">Status</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issued Date</label>
+                        </div>
+                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
+                        </div>
+                        @endif
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-info" class="text-sm text-gray-700">Info</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-type" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-type" class="text-sm text-gray-700">Type</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-gds-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-gds-reference" class="text-sm text-gray-700">GDS Reference</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-amadeus-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-amadeus-reference" class="text-sm text-gray-700">Amadeus Reference</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-created-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-created-by" class="text-sm text-gray-700">Created By</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-issued-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-issued-by" class="text-sm text-gray-700">Issued By</label>
+                        </div>
+                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-branch-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-branch-name" class="text-sm text-gray-700">Branch Name</label>
+                        </div>
+                        @endif
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
+                        </div>
+                        @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-file-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-file-name" class="text-sm text-gray-700">File Name</label>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="activeFiltersContainer" class="active-filters">
+            <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-4 transition-all duration-300">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18m-9 5h9" />
+                        </svg>
+                        Active Filters
+                    </h4>
+
+                    <div class="flex gap-3">
+                        <button id="editActiveFilters"
+                            class="text-sm font-medium text-green-600 hover:bg-green-100 px-3 py-1 rounded-lg transition-all">
+                            ✏️ Modify
+                        </button>
+                        <button id="clearAllActiveFilters"
+                            class="text-sm font-medium text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg transition-all">
+                            🗑️ Clear All
+                        </button>
                     </div>
                 </div>
 
-                <div id="activeFiltersContainer" class="active-filters">
-                    <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-4 transition-all duration-300">
-                        <!-- Header -->
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18m-9 5h9" />
-                                </svg>
-                                Active Filters
-                            </h4>
+                <!-- Active Filter Tags -->
+                <div id="activeFiltersList" class="flex flex-wrap gap-2">
 
-                            <div class="flex gap-3">
-                                <button id="editActiveFilters"
-                                    class="text-sm font-medium text-green-600 hover:bg-green-100 px-3 py-1 rounded-lg transition-all">
-                                    ✏️ Modify
-                                </button>
-                                <button id="clearAllActiveFilters"
-                                    class="text-sm font-medium text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg transition-all">
-                                    🗑️ Clear All
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Active Filter Tags -->
-                        <div id="activeFiltersList" class="flex flex-wrap gap-2">
-
-                        </div>
-                    </div>
                 </div>
+            </div>
+        </div>
 
+        <div class="dataTable-wrapper">
+            <div class="w-full flex m-2 ">
+                @php
+                $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
+                // Set viewType to 'invoice' ONLY for Un Invoiced tab, otherwise keep the current value
+                $viewType = $invoiced == '0'
+                ? request()->input('view_type', 'invoice')
+                : request()->input('view_type', '');
+                @endphp
+                <form method="GET" action="{{ route('tasks.index') }}" class="flex gap-0 w-full">
+                    @foreach(request()->except(['invoiced', 'page', 'view_type']) as $key => $value)
+                    @if(is_array($value))
+                    @foreach($value as $v)
+                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                    @endforeach
+                    @else
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endif
+                    @endforeach
+                    <input type="hidden" name="view_type" value="{{ $viewType }}">
+                    <button type="submit" name="invoiced" value="0"
+                        class="w-full text-center py-1 rounded-l-lg font-bold text-lg transition
+                            {{ $invoiced == '0' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
+                        Un Invoiced
+                    </button>
+                    <button type="submit" name="invoiced" value="1"
+                        class="w-full text-center py-1 rounded-r-lg font-bold text-lg transition
+                            {{ $invoiced == '1' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
+                        Invoiced
+                    </button>
+                </form>
+            </div>
+            <div x-data="{ shown: 15 }">
                 <div class="dataTable-wrapper">
-                    <div class="w-full flex m-2 ">
-                        @php
-                        $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
-                        // Set viewType to 'invoice' ONLY for Un Invoiced tab, otherwise keep the current value
-                        $viewType = $invoiced == '0'
-                        ? request()->input('view_type', 'invoice')
-                        : request()->input('view_type', '');
-                        @endphp
-                        <form method="GET" action="{{ route('tasks.index') }}" class="flex gap-0 w-full">
-                            @foreach(request()->except(['invoiced', 'page', 'view_type']) as $key => $value)
-                            @if(is_array($value))
-                            @foreach($value as $v)
-                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
-                            @endforeach
-                            @else
-                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                            @endif
-                            @endforeach
-                            <input type="hidden" name="view_type" value="{{ $viewType }}">
-                            <button type="submit" name="invoiced" value="0"
-                                class="w-full text-center py-1 rounded-l-lg font-bold text-lg transition
-                                    {{ $invoiced == '0' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
-                                Un Invoiced
-                            </button>
-                            <button type="submit" name="invoiced" value="1"
-                                class="w-full text-center py-1 rounded-r-lg font-bold text-lg transition
-                                    {{ $invoiced == '1' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
-                                Invoiced
-                            </button>
-                        </form>
-                    </div>
-                    <div x-data="{ shown: 15 }">
-                        <div class="dataTable-wrapper">
-                            <div class="dataTable-container h-max">
-                                <div x-data="{
-                                    showUploadForm: false,
-                                    showManualForm: false,
-                                    showFileInput: false,
-                                    modalTaskId: null,
-                                    modalClientName: '',
-                                    modalPassengerName: '',
-                                    modalAgentName: '',
-                                    modalAgentId: '',
-                                    modalBranchName: '',
-                                    chooseMethodModal: false,
-                                    showUploadForm: false,
-                                    showManualForm: false,
-                                    showBulkEditModal: false,
-                                    selectedTasks: [],
-                                    originalInvoiceRoute: '{{ route('invoices.create') }}',
-                                    openManualForm(taskId, clientName, passengerName, agentName, agentId, branchName) {
-                                        this.modalTaskId = taskId;
-                                        this.modalClientName = clientName;
-                                        this.modalPassengerName = passengerName;
-                                        this.modalAgentName = agentName;
-                                        this.modalAgentId = agentId;
-                                        this.modalBranchName = branchName;
-                                        this.chooseMethodModal = false;
-                                        this.showManualForm = true;
+                    <div class="dataTable-container h-max">
+                        <div x-data="{
+                            showUploadForm: false,
+                            showManualForm: false,
+                            showFileInput: false,
+                            modalTaskId: null,
+                            modalClientName: '',
+                            modalPassengerName: '',
+                            modalAgentName: '',
+                            modalAgentId: '',
+                            modalBranchName: '',
+                            chooseMethodModal: false,
+                            showUploadForm: false,
+                            showManualForm: false,
+                            showBulkEditModal: false,
+                            selectedTasks: [],
+                            canEditTasks: false,
+                            originalInvoiceRoute: '{{ route('invoices.create') }}',
+                            openManualForm(taskId, clientName, passengerName, agentName, agentId, branchName) {
+                                this.modalTaskId = taskId;
+                                this.modalClientName = clientName;
+                                this.modalPassengerName = passengerName;
+                                this.modalAgentName = agentName;
+                                this.modalAgentId = agentId;
+                                this.modalBranchName = branchName;
+                                this.chooseMethodModal = false;
+                                this.showManualForm = true;
+                            },
+                            closeAll() {
+                                this.chooseMethodModal = false;
+                                this.showUploadForm = false;
+                                this.showManualForm = false;
+                                window.dispatchEvent(new CustomEvent('reset-dropdowns'));
+                            },
+                            submitBulkEdit() {
+                                const form = document.getElementById('bulk-edit-form');
+                                const formData = new FormData(form);
+                                formData.append('task_ids', JSON.stringify(this.selectedTasks));
+
+                                fetch('{{ route('tasks.bulkUpdate') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
                                     },
-                                    closeAll() {
-                                        this.chooseMethodModal = false;
-                                        this.showUploadForm = false;
-                                        this.showManualForm = false;
-                                        window.dispatchEvent(new CustomEvent('reset-dropdowns'));
-                                    },
-                                    submitBulkEdit() {
-                                        const form = document.getElementById('bulk-edit-form');
-                                        const formData = new FormData(form);
-                                        formData.append('task_ids', JSON.stringify(this.selectedTasks));
-
-                                        fetch('{{ route('tasks.bulkUpdate') }}', {
-                                            method: 'POST',
-                                            headers: {
-                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                                'Accept': 'application/json'
-                                            },
-                                            body: formData
-                                        })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                alert('Tasks updated successfully!');
-                                                this.showBulkEditModal = false;
-                                                window.location.reload();
-                                            } else {
-                                                alert(data.message || 'Failed to update tasks.');
-                                            }
-                                        })
-                                        .catch(error => {
-                                            alert('Error updating tasks.');
-                                            console.error(error);
-                                        });
-                                    },
-                                    toggleTaskSelection(taskId) {
-                                        const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
-                                        const taskStatus = taskRow?.getAttribute('data-status');
-                                        const isRefund = taskStatus === 'refund';
-                                        
-                                        const index = this.selectedTasks.indexOf(taskId);
-                                        
-                                        if (index > -1) {
-                                            // Remove if already selected
-                                            this.selectedTasks.splice(index, 1);
-                                        } else {
-                                            // Add to selection
-                                            if (isRefund) {
-                                                // If selecting a refund task, clear all non-refund selections
-                                                this.selectedTasks = this.selectedTasks.filter(id => {
-                                                    const row = document.querySelector(`[data-task-id='${id}']`);
-                                                    return row?.getAttribute('data-status') === 'refund';
-                                                });
-                                                this.selectedTasks.push(taskId);
-                                            } else {
-                                                // If selecting a non-refund task, clear all refund selections
-                                                this.selectedTasks = this.selectedTasks.filter(id => {
-                                                    const row = document.querySelector(`[data-task-id='${id}']`);
-                                                    return row?.getAttribute('data-status') !== 'refund';
-                                                });
-                                                this.selectedTasks.push(taskId);
-                                            }
-                                        }
-                                        
-                                        window.selectedTasksGlobal = [...this.selectedTasks];
-                                        this.updateFloatingActions();
-                                    },
-                                    updateFloatingActions() {
-                                        const floating = document.getElementById('floatingActions');
-                                        const invoiceBtn = document.getElementById('createInvoiceBtn');
-                                        const refundBtn = document.getElementById('proceedRefundBtn');
-
-                                        const hideButtons = () => {
-                                            invoiceBtn?.classList.add('hidden');
-                                            refundBtn?.classList.add('hidden');
-                                        };
-
-                                        if (this.selectedTasks.length === 0) {
-                                            floating?.classList.add('hidden');
-                                            hideButtons();
-                                            return;
-                                        }
-
-                                        const selected = this.selectedTasks.map(id => {
-                                            const row = document.querySelector(`[data-task-id='${id}']`);
-                                            return {
-                                                id,
-                                                agent_id: row?.getAttribute('data-agent-id'),
-                                                enabled: row?.getAttribute('data-enabled') === 'true',
-                                                status: row?.getAttribute('data-status'),
-                                                refundDetail: row?.getAttribute('data-refund-detail') === 'true',
-                                                is_complete: row?.getAttribute('data-is-complete') === 'true',
-                                                invoiceDetail: row?.getAttribute('data-invoice-detail') === 'true',
-                                            };
-                                        });
-
-                                        const ids = this.selectedTasks.join(',');
-
-                                        const canCreateInvoice = selected.every(t => this.canCreateInvoice(t));
-                                        const canProceedRefund = selected.every(t =>
-                                            t.status === 'refund' && t.is_complete && !t.refundDetail && t.agent_id && t.enabled
-                                        );
-
-                                        const shouldShow = canCreateInvoice || canProceedRefund || this.selectedTasks.length > 0;
-
-                                        if (!shouldShow) {
-                                            floating?.classList.add('hidden');
-                                            hideButtons();
-                                            return;
-                                        }
-
-                                        floating?.classList.remove('hidden');
-                                        hideButtons();
-
-                                        if (canCreateInvoice) {
-                                            invoiceBtn?.classList.remove('hidden');
-                                            invoiceBtn?.setAttribute('data-route', `/invoices/create?task_ids=${ids}`);
-                                        }
-
-                                        if (canProceedRefund) {
-                                            refundBtn?.classList.remove('hidden');
-                                            refundBtn?.setAttribute('data-route', `/refunds/create?task_ids=${ids}`);
-                                        }
-
-                                        const bulkEditBtn = document.querySelector('[x-show=\'selectedTasks.length > 1\']');
-                                        if (this.selectedTasks.length > 1) {
-                                            bulkEditBtn?.classList.remove('hidden');
-                                        } else {
-                                            bulkEditBtn?.classList.add('hidden');
-                                        }
-                                    },
-                                    canCreateInvoice(task) {
-                                        if (!task.agent_id) return false;
-                                        return task.enabled && (
-                                            (task.status === 'refund' && task.is_complete) || (task.status !== 'refund' && !task.invoiceDetail)
-                                        );
-                                    },
-                                    clearSelectedTasks() {
-                                        this.selectedTasks = [];
-                                        window.selectedTasksGlobal = [];
-                                        this.updateFloatingActions();
+                                    body: formData
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        alert('Tasks updated successfully!');
+                                        this.showBulkEditModal = false;
+                                        window.location.reload();
+                                    } else {
+                                        alert(data.message || 'Failed to update tasks.');
                                     }
-                                }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-                                    <table class="table-hover whitespace-nowrap dataTable-table">
-                                        <thead>
-                                            <tr>
-                                                <th data-column="actions">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</span>
-                                                </th>
-                                                <th data-column="reference">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
-                                                </th>
-                                                <th data-column="bill-to">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
-                                                </th>
-                                                <th data-column="passenger-name">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
-                                                </th>
-                                                <th data-column="agent-name">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
-                                                </th>
-                                                @can('viewPrice', 'App\Models\Task')
-                                                <th data-column="price">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
-                                                </th>
-                                                @endcan
-                                                <th data-column="status">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</span>
-                                                </th>
-                                                <th data-column="supplier">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
-                                                </th>
-                                                <th data-column="supplier-pay-date" class="column-hidden">
-                                                    <a href="{{ request()->fullUrlWithQuery([
-                                                                'sortBy' => 'supplier_pay_date',
-                                                                'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-                                                            ]) }}"
-                                                        class="inline-flex w-full items-center justify-center gap-2 text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-                                                        Issued Date
-                                                        @if(request('sortBy') !== 'supplier_pay_date')
-                                                        <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
-                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                                            <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
-                                                        </svg>
-                                                        @else
-                                                        <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
-                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                            @if(request('sortOrder', 'desc') === 'asc')
-                                                            <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
-                                                            @else
-                                                            <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
-                                                            @endif
-                                                        </svg>
-                                                        @endif
-                                                    </a>
-                                                </th>
-                                                <th data-column="created-at" class="column-hidden">
-                                                    <a href="{{ request()->fullUrlWithQuery([
-                                                                    'sortBy' => 'created_at',
-                                                                    'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-                                                                ]) }}"
-                                                        class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-                                                        Created Date
-                                                        @if(request('sortBy') !== 'created_at')
-                                                        <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
-                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                                            <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
-                                                        </svg>
-                                                        @else
-                                                        <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
-                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                            @if(request('sortOrder') === 'asc')
-                                                            <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
-                                                            @else
-                                                            <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
-                                                            @endif
-                                                        </svg>
-                                                        @endif
-                                                    </a>
-                                                </th>
-                                                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <th data-column="cancellation-deadline" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Cancellation Deadline</span>
-                                                </th>
-                                                @endif
-                                                <th data-column="info">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
-                                                </th>
-                                                <th data-column="type" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</span>
-                                                </th>
-                                                <th data-column="gds-reference" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</span>
-                                                </th>
-                                                <th data-column="amadeus-reference" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</span>
-                                                </th>
-                                                <th data-column="created-by" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</span>
-                                                </th>
-                                                <th data-column="issued-by" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</span>
-                                                </th>
-                                                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <th data-column="branch-name" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</span>
-                                                </th>
-                                                @endif
-                                                <th data-column="invoice" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</span>
-                                                </th>
-                                                <th data-column="file-name" class="column-hidden">
-                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">File Name</span>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="myTableBody">
-                                            @if ($tasks->isEmpty())
-                                            <tr>
-                                                <td colspan="17" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
-                                            </tr>
-                                            @else
-                                            @foreach ($tasks as $key => $task)
-                                            @php
-                                            $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id
-                                            : !$task->refundDetail && $task->is_complete && $task->agent_id;
-                                            @endphp
-                                            <tr class="taskRow task-row 
-                                                {{ ($task->invoiceDetail) ? '!cursor-not-allowed' : 'cursor-pointer' }}"
-                                                @click="{{ (!$task->invoiceDetail) ? "toggleTaskSelection($task->id)" : '' }}"
-                                                x-show="{{ $key }} < shown" x-cloak
-                                                :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
-                                                data-agent-id="{{ $task->agent_id }}"
-                                                data-status="{{ $task->status }}"
-                                                data-task-id="{{ $task->id }}"
-                                                data-enabled="{{ $task->enabled ? 'true' : 'false' }}"
-                                                data-invoice-detail="{{ $task->invoiceDetail ? 'true' : 'false' }}"
-                                                data-refund-detail="{{ $task->refundDetail ? 'true' : 'false' }}"
-                                                data-is-complete="{{ $task->is_complete ? 'true' : 'false' }}">
+                                })
+                                .catch(error => {
+                                    alert('Error updating tasks.');
+                                    console.error(error);
+                                });
+                            },
+                            toggleTaskSelection(taskId) {
+                                const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
+                                const taskStatus = taskRow?.getAttribute('data-status');
+                                const isRefund = taskStatus === 'refund';
+                                
+                                const index = this.selectedTasks.indexOf(taskId);
+                                
+                                if (index > -1) {
+                                    // Remove if already selected
+                                    this.selectedTasks.splice(index, 1);
+                                } else {
+                                    // Add to selection
+                                    if (isRefund) {
+                                        // If selecting a refund task, clear all non-refund selections
+                                        this.selectedTasks = this.selectedTasks.filter(id => {
+                                            const row = document.querySelector(`[data-task-id='${id}']`);
+                                            return row?.getAttribute('data-status') === 'refund';
+                                        });
+                                        this.selectedTasks.push(taskId);
+                                    } else {
+                                        // If selecting a non-refund task, clear all refund selections
+                                        this.selectedTasks = this.selectedTasks.filter(id => {
+                                            const row = document.querySelector(`[data-task-id='${id}']`);
+                                            return row?.getAttribute('data-status') !== 'refund';
+                                        });
+                                        this.selectedTasks.push(taskId);
+                                    }
+                                }
+                                
+                                window.selectedTasksGlobal = [...this.selectedTasks];
+                                this.updateFloatingActions();
+                            },
+                            updateFloatingActions() {
+                                const floating = document.getElementById('floatingActions');
+                                const invoiceBtn = document.getElementById('createInvoiceBtn');
+                                const refundBtn = document.getElementById('proceedRefundBtn');
 
-                                                <td data-column="actions" class="p-3 text-sm">
-                                                    <div class="flex items-center justify-center h-full min-h-[40px]">
-                                                        @if (!$isSelectable)
-                                                        @php
+                                const hideButtons = () => {
+                                    invoiceBtn?.classList.add('hidden');
+                                    refundBtn?.classList.add('hidden');
+                                };
+
+                                if (this.selectedTasks.length === 0) {
+                                    floating?.classList.add('hidden');
+                                    hideButtons();
+                                    this.canEditTasks = false;
+                                    return;
+                                }
+
+                                const selected = this.selectedTasks.map(id => {
+                                    const row = document.querySelector(`[data-task-id='${id}']`);
+                                    return {
+                                        id,
+                                        agent_id: row?.getAttribute('data-agent-id'),
+                                        enabled: row?.getAttribute('data-enabled') === 'true',
+                                        status: row?.getAttribute('data-status'),
+                                        refundDetail: row?.getAttribute('data-refund-detail') === 'true',
+                                        is_complete: row?.getAttribute('data-is-complete') === 'true',
+                                        invoiceDetail: row?.getAttribute('data-invoice-detail') === 'true',
+                                        invoice_status: row?.getAttribute('data-invoice-status') || '',
+                                    };
+                                });
+
+                                const ids = this.selectedTasks.join(',');
+
+                                const canCreateInvoice = selected.every(t => this.canCreateInvoice(t));
+                                const canProceedRefund = selected.every(t =>
+                                    t.invoiceDetail && !t.refundDetail && t.agent_id && t.enabled && t.invoice_status && ['paid', 'unpaid', 'partial', 'partial refund'].includes(t.invoice_status.toLowerCase())  
+                                );
+                                
+                                this.canEditTasks = selected.every(t => !t.invoiceDetail);
+
+                                const shouldShow = canCreateInvoice || canProceedRefund || this.canEditTasks;
+
+                                if (!shouldShow) {
+                                    floating?.classList.add('hidden');
+                                    hideButtons();
+                                    return;
+                                }
+
+                                floating?.classList.remove('hidden');
+                                hideButtons();
+
+                                if (canCreateInvoice) {
+                                    invoiceBtn?.classList.remove('hidden');
+                                    invoiceBtn?.setAttribute('data-route', `/invoices/create?task_ids=${ids}`);
+                                }
+
+                                if (canProceedRefund) {
+                                    refundBtn?.classList.remove('hidden');
+                                    refundBtn?.setAttribute('data-route', `/refunds/create?task_ids=${ids}`);
+                                }
+                            },
+                            canCreateInvoice(task) {
+                                if (!task.agent_id) return false;
+                                return task.enabled && (
+                                    (task.status === 'refund' && task.is_complete) || (task.status !== 'refund' && !task.invoiceDetail)
+                                );
+                            },
+                            clearSelectedTasks() {
+                                this.selectedTasks = [];
+                                window.selectedTasksGlobal = [];
+                                this.updateFloatingActions();
+                            }
+                        }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
+                            <table class="table-hover whitespace-nowrap dataTable-table">
+                                <thead>
+                                    <tr>
+                                        <th data-column="actions">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</span>
+                                        </th>
+                                        <th data-column="reference">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
+                                        </th>
+                                        <th data-column="bill-to">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
+                                        </th>
+                                        <th data-column="passenger-name">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
+                                        </th>
+                                        <th data-column="agent-name">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
+                                        </th>
+                                        @can('viewPrice', 'App\Models\Task')
+                                        <th data-column="price">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
+                                        </th>
+                                        @endcan
+                                        <th data-column="status">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</span>
+                                        </th>
+                                        <th data-column="supplier">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
+                                        </th>
+                                        <th data-column="supplier-pay-date" class="column-hidden">
+                                            <a href="{{ request()->fullUrlWithQuery([
+                                                        'sortBy' => 'supplier_pay_date',
+                                                        'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                    ]) }}"
+                                                class="inline-flex w-full items-center justify-center gap-2 text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                Issued Date
+                                                @if(request('sortBy') !== 'supplier_pay_date')
+                                                <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                                </svg>
+                                                @else
+                                                <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                    @if(request('sortOrder', 'desc') === 'asc')
+                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                                    @else
+                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                                    @endif
+                                                </svg>
+                                                @endif
+                                            </a>
+                                        </th>
+                                        <th data-column="created-at" class="column-hidden">
+                                            <a href="{{ request()->fullUrlWithQuery([
+                                                            'sortBy' => 'created_at',
+                                                            'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                        ]) }}"
+                                                class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                Created Date
+                                                @if(request('sortBy') !== 'created_at')
+                                                <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                                </svg>
+                                                @else
+                                                <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                    @if(request('sortOrder') === 'asc')
+                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                                    @else
+                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                                    @endif
+                                                </svg>
+                                                @endif
+                                            </a>
+                                        </th>
+                                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                        <th data-column="cancellation-deadline" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Cancellation Deadline</span>
+                                        </th>
+                                        @endif
+                                        <th data-column="info">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
+                                        </th>
+                                        <th data-column="type" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</span>
+                                        </th>
+                                        <th data-column="gds-reference" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</span>
+                                        </th>
+                                        <th data-column="amadeus-reference" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</span>
+                                        </th>
+                                        <th data-column="created-by" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</span>
+                                        </th>
+                                        <th data-column="issued-by" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</span>
+                                        </th>
+                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                        <th data-column="branch-name" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</span>
+                                        </th>
+                                        @endif
+                                        <th data-column="invoice" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</span>
+                                        </th>
+                                        <th data-column="file-name" class="column-hidden">
+                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">File Name</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="myTableBody">
+                                    @if ($tasks->isEmpty())
+                                    <tr>
+                                        <td colspan="17" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
+                                    </tr>
+                                    @else
+                                    @foreach ($tasks as $key => $task)
+                                    @php
+                                    $canSelectForInvoice = !$task->invoiceDetail && $task->enabled && $task->agent_id && $task->status !== 'refund';
+                                    $canSelectForRefund = $task->invoiceDetail 
+                                        && !$task->refundDetail 
+                                        && $task->agent_id 
+                                        && $task->enabled
+                                        && in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund']);
+                                    $isSelectable = $canSelectForInvoice || $canSelectForRefund;
+                                    @endphp
+                                    <tr class="taskRow task-row cursor-pointer"
+                                        @click="toggleTaskSelection({{ $task->id }})"
+                                        x-show="{{ $key }} < shown" x-cloak
+                                        :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
+                                        data-agent-id="{{ $task->agent_id }}"
+                                        data-status="{{ $task->status }}"
+                                        data-task-id="{{ $task->id }}"
+                                        data-task-reference="{{ $task->reference}}"
+                                        data-enabled="{{ $task->enabled ? 'true' : 'false' }}"
+                                        data-invoice-detail="{{ $task->invoiceDetail ? 'true' : 'false' }}"
+                                        data-invoice-status="{{ $task->invoiceDetail?->invoice?->status ?? '' }}" 
+                                        data-refund-detail="{{ $task->refundDetail ? 'true' : 'false' }}"
+                                        data-is-complete="{{ $task->is_complete ? 'true' : 'false' }}">
+
+                                        <td data-column="actions" class="p-3 text-sm">
+                                            <div class="flex items-center justify-center h-full min-h-[40px]">
+                                                @if (!$isSelectable)
+                                                    @php
                                                         $reasons = [];
-                                                        if (!$task->enabled) $reasons[] = 'Task is currently disabled';
-                                                        if (!$task->agent_id) $reasons[] = 'Agent not selected';
-                                                        if ($task->invoiceDetail) $reasons[] = 'Invoice already created';
-                                                        if ($task->status === 'refund' && $task->refundDetail) $reasons[] = 'Refund already processed';
-                                                        if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
-                                                        if (!in_array($task->status, ['issued', 'confirmed']) && !$task->original_task_id) $reasons[] = 'No original task link';
+                                                        
+                                                        // For uninvoiced tasks
+                                                        if (!$task->invoiceDetail) {
+                                                            if (!$task->enabled) $reasons[] = 'Task is disabled';
+                                                            if (!$task->agent_id) $reasons[] = 'No agent assigned';
+                                                            if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
+                                                        }
+                                                        
+                                                        // For invoiced tasks (can't be refunded)
+                                                        if ($task->invoiceDetail) {
+                                                            if ($task->refundDetail) $reasons[] = 'Refund already processed';
+                                                            if (!$task->agent_id) $reasons[] = 'No agent assigned';
+                                                            if (!$task->enabled) $reasons[] = 'Task is disabled';
+                                                            if (!in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund'])) {
+                                                                $invoiceStatus = $task->invoiceDetail?->invoice?->status ?? 'unknown';
+                                                                $reasons[] = "Invoice status is '{$invoiceStatus}'";
+                                                            }
+                                                        }
+                                                        
                                                         $tooltipText = implode(', ', $reasons);
-                                                        @endphp
-                                                        <div class="relative group cursor-default">
-                                                            <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0zm-9-1V7h2v2H9zm0 2h2v4H9v-4z" clip-rule="evenodd" />
-                                                            </svg>
-                                                            <div class="absolute top-1/2 left-full -translate-y-1/2 w-[170px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
-                                                                {{ $tooltipText }}
-                                                            </div>
+                                                    @endphp
+                                                    <div class="relative group cursor-default">
+                                                        <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0zm-9-1V7h2v2H9zm0 2h2v4H9v-4z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        <div class="absolute top-1/2 left-full -translate-y-1/2 w-[200px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
+                                                            {{ $tooltipText ?: 'Cannot select this task' }}
                                                         </div>
-                                                        @endif
-                                                        @php
-                                                        $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
-                                                            ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
-                                                            ->exists();
-                                                        @endphp
-                                                        <div class="flex items-center justify-center h-full mr-2">
-                                                            <label class="switch m-0" @click.stop
-                                                                data-tooltip="{{ $isInvoicedAndPaid ? 'This task is invoiced and paid — enabling/disabling is not allowed.' : 'Toggle task availability' }}">
-                                                                <input type="checkbox"
-                                                                    class="toggle-task-status"
-                                                                    data-task-id="{{ $task->id }}"
-                                                                    {{ $task->enabled ? 'checked' : '' }}
-                                                                    {{ $isInvoicedAndPaid ? 'disabled' : '' }}>
-                                                                <span class="slider round {{ $isInvoicedAndPaid ? 'opacity-50 cursor-not-allowed' : '' }}"></span>
-                                                            </label>
+                                                    </div>
+                                                @endif
+                                                {{-- ... rest of the actions column code ... --}}
+                                                @php
+                                                $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                                    ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                                    ->exists();
+                                                @endphp
+                                                <div class="flex items-center justify-center h-full mr-2">
+                                                    <label class="switch m-0" @click.stop
+                                                        data-tooltip="{{ $isInvoicedAndPaid ? 'This task is invoiced and paid — enabling/disabling is not allowed.' : 'Toggle task availability' }}">
+                                                        <input type="checkbox"
+                                                            class="toggle-task-status"
+                                                            data-task-id="{{ $task->id }}"
+                                                            {{ $task->enabled ? 'checked' : '' }}
+                                                            {{ $isInvoicedAndPaid ? 'disabled' : '' }}>
+                                                        <span class="slider round {{ $isInvoicedAndPaid ? 'opacity-50 cursor-not-allowed' : '' }}"></span>
+                                                    </label>
+                                                </div>
+                                                <div x-data="{ open: false, editOpen: false, adminAmountOpen: false }"
+                                                    @keydown.escape.window="open = false; editOpen = false; adminAmountOpen = false"
+                                                    class="relative flex items-center justify-center h-full">
+                                                    <button @click.stop="open = !open" x-ref="button"
+                                                        class="p-2 rounded-full bg-gray-100 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none flex items-center justify-center">
+                                                        <svg class="w-5 h-5 text-gray-700 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                            <circle cx="5" cy="12" r="2" />
+                                                            <circle cx="12" cy="12" r="2" />
+                                                            <circle cx="19" cy="12" r="2" />
+                                                        </svg>
+                                                    </button>
+                                                    <template x-teleport="body">
+                                                        <div x-show="open" @click.away="open = false" x-anchor.bottom-start.offset.5="$refs.button"
+                                                            x-cloak class="absolute z-[9999] w-32 rounded-md bg-white shadow-lg border border-gray-200">
+                                                            <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
+                                                                <li>
+                                                                    <a href="{{ route('tasks.detail', ['tasks' => $task->id]) }}" target="_blank"
+                                                                        class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                                        <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
+                                                                            <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                                                                        </svg>
+                                                                        View Task
+                                                                    </a>
+                                                                </li>
+                                                                @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                                                <li>
+                                                                    <a href="javascript:void(0);" @click.stop="adminAmountOpen = true"
+                                                                        class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                                        <svg class="w-7 h-7 mr-2 text-amber-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                            <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z" />
+                                                                        </svg>
+                                                                        Edit Task Financials
+                                                                    </a>
+                                                                </li>
+                                                                @endif
+                                                                @include('tasks.partial.confirm-issue', ['task' => $task])
+                                                            </ul>
                                                         </div>
-                                                        <div x-data="{ open: false, editOpen: false, adminAmountOpen: false }"
-                                                            @keydown.escape.window="open = false; editOpen = false; adminAmountOpen = false"
-                                                            class="relative flex items-center justify-center h-full">
-                                                            <button @click.stop="open = !open" x-ref="button"
-                                                                class="p-2 rounded-full bg-gray-100 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none flex items-center justify-center">
-                                                                <svg class="w-5 h-5 text-gray-700 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
-                                                                    <circle cx="5" cy="12" r="2" />
-                                                                    <circle cx="12" cy="12" r="2" />
-                                                                    <circle cx="19" cy="12" r="2" />
-                                                                </svg>
-                                                            </button>
-                                                            <template x-teleport="body">
-                                                                <div x-show="open" @click.away="open = false" x-anchor.bottom-start.offset.5="$refs.button"
-                                                                    x-cloak class="absolute z-[9999] w-32 rounded-md bg-white shadow-lg border border-gray-200">
-                                                                    <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
-                                                                       <li>
-                                                                            <a href="{{ route('tasks.detail', ['tasks' => $task->id]) }}" target="_blank"
-                                                                                class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                                                                <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
-                                                                                    <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-                                                                                </svg>
-                                                                                View Task
-                                                                            </a>
-                                                                        </li>
-                                                                        @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
-                                                                        <li>
-                                                                            <a href="javascript:void(0);" @click.stop="adminAmountOpen = true"
-                                                                                class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                                                                <svg class="w-7 h-7 mr-2 text-amber-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                                                    <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z" />
-                                                                                </svg>
-                                                                                Edit Task Financials
-                                                                            </a>
-                                                                        </li>
-                                                                        @endif
-                                                                        @include('tasks.partial.confirm-issue', ['task' => $task])
-                                                                    </ul>
-                                                                </div>
-                                                            </template>
-                                                            <template x-teleport="body">
-                                                                <div x-show="adminAmountOpen" x-cloak
-                                                                    class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800/60">
-                                                                    <form id="financial-form-{{ $task->id }}" action="{{ route('tasks.update.financial', $task->id) }}" method="POST"
-                                                                        class="inline-flex flex-col gap-4 items-stretch w-full sm:max-w-md mx-4 bg-white rounded-md border p-6 relative">
-                                                                        @csrf
-                                                                        @method('PUT')
-                                                                        <div @click.away="adminAmountOpen = false">
-                                                                            <button type="button" @click="adminAmountOpen = false"
-                                                                                class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">&times;</button>
-                                                                            <div class="mb-2">
-                                                                                <h2 class="text-xl font-bold text-gray-800">Edit Task Financials</h2>
-                                                                                <p class="text-gray-600 italic text-xs mt-1">
-                                                                                    Update <strong>Price</strong>, <strong>Tax</strong>, and <strong>Surcharge</strong>.
-                                                                                    The <strong>Total</strong> recalculates automatically. This action update the task and its related COA records.
-                                                                                    @if($isInvoicedAndPaid)
-                                                                                    It will also recalculate commission for the <strong>paid</strong> invoice.
-                                                                                    @endif
-                                                                                </p>
-                                                                            </div>
-                                                                            <div x-data="{
-                                                                                    rawPrice: '{{ $task->price ?? 0 }}',
-                                                                                    rawTax: '{{ $task->tax ?? 0 }}',
-                                                                                    rawSurcharge: '{{ $task->surcharge ?? 0 }}',
-                                                                                    get total() {
-                                                                                        const p = parseFloat((this.rawPrice||'').toString().replace(/,/g,'')) || 0;
-                                                                                        const t = parseFloat((this.rawTax||'').toString().replace(/,/g,'')) || 0;
-                                                                                        const s = parseFloat((this.rawSurcharge||'').toString().replace(/,/g,'')) || 0;
-                                                                                        return (p + t + s).toFixed(3);
-                                                                                    }
-                                                                                }"
-                                                                                class="space-y-3">
-                                                                                <div>
-                                                                                    <label class="block text-sm font-medium text-gray-700">Price</label>
-                                                                                    <input name="price" x-model="rawPrice" class="border p-2 border-gray-300 rounded-md w-full">
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label class="block text-sm font-medium text-gray-700">Tax</label>
-                                                                                    <input name="tax" x-model="rawTax" class="border p-2 border-gray-300 rounded-md w-full">
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                                                    <input name="surcharge" x-model="rawSurcharge" class="border p-2 border-gray-300 rounded-md w-full">
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label class="block text-sm font-medium text-gray-700">Total</label>
-                                                                                    <input required readonly name="total" :value="total" class="border border-gray-300 p-2 rounded-md w-full bg-gray-100">
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label class="block text-sm font-medium text-gray-700">Remarks *</label>
-                                                                                    <textarea required name="remarks" rows="3" class="border border-gray-300 p-2 rounded-md w-full"
-                                                                                        placeholder="Enter reason for adjustment (required)"></textarea>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div class="mt-4 flex items-center justify-between gap-3">
-                                                                                <button type="button" @click="adminAmountOpen = false"
-                                                                                    class="px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700">Cancel</button>
-                                                                                <button type="submit"
-                                                                                    class="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white">Apply Adjustment</button>
-                                                                            </div>
+                                                    </template>
+                                                    <template x-teleport="body">
+                                                        <div x-show="adminAmountOpen" x-cloak
+                                                            class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800/60">
+                                                            <form id="financial-form-{{ $task->id }}" action="{{ route('tasks.update.financial', $task->id) }}" method="POST"
+                                                                class="inline-flex flex-col gap-4 items-stretch w-full sm:max-w-md mx-4 bg-white rounded-md border p-6 relative">
+                                                                @csrf
+                                                                @method('PUT')
+                                                                <div @click.away="adminAmountOpen = false">
+                                                                    <button type="button" @click="adminAmountOpen = false"
+                                                                        class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">&times;</button>
+                                                                    <div class="mb-2">
+                                                                        <h2 class="text-xl font-bold text-gray-800">Edit Task Financials</h2>
+                                                                        <p class="text-gray-600 italic text-xs mt-1">
+                                                                            Update <strong>Price</strong>, <strong>Tax</strong>, and <strong>Surcharge</strong>.
+                                                                            The <strong>Total</strong> recalculates automatically. This action update the task and its related COA records.
+                                                                            @if($isInvoicedAndPaid)
+                                                                            It will also recalculate commission for the <strong>paid</strong> invoice.
+                                                                            @endif
+                                                                        </p>
+                                                                    </div>
+                                                                    <div x-data="{
+                                                                            rawPrice: '{{ $task->price ?? 0 }}',
+                                                                            rawTax: '{{ $task->tax ?? 0 }}',
+                                                                            rawSurcharge: '{{ $task->surcharge ?? 0 }}',
+                                                                            get total() {
+                                                                                const p = parseFloat((this.rawPrice||'').toString().replace(/,/g,'')) || 0;
+                                                                                const t = parseFloat((this.rawTax||'').toString().replace(/,/g,'')) || 0;
+                                                                                const s = parseFloat((this.rawSurcharge||'').toString().replace(/,/g,'')) || 0;
+                                                                                return (p + t + s).toFixed(3);
+                                                                            }
+                                                                        }"
+                                                                        class="space-y-3">
+                                                                        <div>
+                                                                            <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                            <input name="price" x-model="rawPrice" class="border p-2 border-gray-300 rounded-md w-full">
                                                                         </div>
-                                                                    </form>
+                                                                        <div>
+                                                                            <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                            <input name="tax" x-model="rawTax" class="border p-2 border-gray-300 rounded-md w-full">
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                            <input name="surcharge" x-model="rawSurcharge" class="border p-2 border-gray-300 rounded-md w-full">
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                            <input required readonly name="total" :value="total" class="border border-gray-300 p-2 rounded-md w-full bg-gray-100">
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="block text-sm font-medium text-gray-700">Remarks *</label>
+                                                                            <textarea required name="remarks" rows="3" class="border border-gray-300 p-2 rounded-md w-full"
+                                                                                placeholder="Enter reason for adjustment (required)"></textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="mt-4 flex items-center justify-between gap-3">
+                                                                        <button type="button" @click="adminAmountOpen = false"
+                                                                            class="px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700">Cancel</button>
+                                                                        <button type="submit"
+                                                                            class="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white">Apply Adjustment</button>
+                                                                    </div>
                                                                 </div>
-                                                            </template>
+                                                            </form>
                                                         </div>
-                                                        @can('destroy', App\Models\Task::class)
-                                                        <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="ml-1">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="group" @click.stop>
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300 group-hover:stroke-red-500">
-                                                                    <path d="M20.5001 6H3.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
-                                                                    <path d="M18.8332 8.5L18.3732 15.3991C18.1962 18.054 18.1077 19.3815 17.2427 20.1907C16.3777 21 15.0473 21 12.3865 21H11.6132C8.95235 21 7.62195 21 6.75694 20.1907C5.89194 19.3815 5.80344 18.054 5.62644 15.3991L5.1665 8.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
-                                                                    <path d="M9.5 11L10 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
-                                                                    <path d="M14.5 11L14 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
-                                                                    <path d="M6.5 6C6.55588 6 6.58382 6 6.60915 5.99936C7.43259 5.97849 8.15902 5.45491 8.43922 4.68032C8.44784 4.65649 8.45667 4.62999 8.47434 4.57697L8.57143 4.28571C8.65431 4.03708 8.69575 3.91276 8.75071 3.8072C8.97001 3.38607 9.37574 3.09364 9.84461 3.01877C9.96213 3 10.0932 3 10.3553 3H13.6447C13.9068 3 14.0379 3 14.1554 3.01877C14.6243 3.09364 15.03 3.38607 15.2493 3.8072C15.3043 3.91276 15.3457 4.03708 15.4286 4.28571L15.5257 4.57697C15.5433 4.62992 15.5522 4.65651 15.5608 4.68032C15.841 5.45491 16.5674 5.97849 17.3909 5.99936C17.4162 6 17.4441 6 17.5 6" stroke="" stroke-width="1.5" />
-                                                                </svg>
-                                                            </button>
-                                                        </form>
-                                                        @endcan
-                                                    </div>
-                                                </td>
-                                                <td data-column="reference" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->reference }}
-                                                </td>
-                                                <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
-                                                    @if ($task->client)
-                                                    <p>{{ $task->client->full_name }}</p>
-                                                    <p>{{ $task->client->phone ?? 'No phone' }}</p>
-                                                    @else
-                                                    <p class="{{ $task->client ?? 'no-client relative' }}">
-                                                        <button
-                                                            @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
-                                                            {{ $task->client !== null ? 'disabled' : '' }}>
-                                                            {{ $task->client->full_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
-                                                        </button>
-                                                    </p>
-                                                    @endif
-                                                </td>
-                                                <td data-column="passenger-name" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    <div class="relative group max-w-[180px] mx-auto">
-                                                        <div class="truncate cursor-default">
-                                                            {{ $task->passenger_name ?? 'Not Set' }}
-                                                        </div>
-                                                        @if ($task->passenger_name)
-                                                        <div class="absolute z-10 hidden group-hover:block bg-gray-500 text-white text-xs rounded py-1 px-2 left-1/2 -translate-x-1/2 mt-1 shadow-lg">
-                                                            {{ $task->passenger_name }}
-                                                        </div>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td data-column="agent-name" class="p-3 text-sm text-center font-semibold text-gray-500">
-                                                    {{ $task->agent->name ?? 'Not Set' }}
-                                                </td>
-                                                @can('viewPrice', 'App\Models\Task')
-                                                <td data-column="price" class="p-3 text-sm text-center font-semibold DarkBTextcolor dark:text-gray-300">
-                                                    {{ $task->total ?? '-' }}
-                                                </td>
-                                                @endcan
-                                                <td data-column="status" class="text-center">
-                                                    <span
-                                                        class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
-                                                        @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
-                                                        {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
-                                                    </span>
-                                                </td>
-                                                <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->supplier->name }}
-                                                </td>
-                                                <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : 'Not Set' }}
-                                                </td>
-                                                <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->created_at }}
-                                                </td>
-                                                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <td data-column="cancellation-deadline" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y') : 'Not Set' }}
-                                                </td>
-                                                @endif
-                                                <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                    @if ($task->type === 'flight')
-                                                    @php
-                                                    $flight = $task->flightDetails;
-                                                    $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
-                                                    @endphp
-                                                    @if ($isFlightDataEmpty)
-                                                    <div class="text-gray-500 text-sm">Flight info not available</div>
-                                                    @else
-                                                    <div class="flex justify-between items-center gap-4 text-center text-sm">
-                                                        <div class="flex flex-col items-center">
-                                                            <span class="font-bold text-base">
-                                                                {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : 'N/A'}}
-                                                            </span>
-                                                            <span class="text-gray-600 text-sm">
-                                                                {{ $task->flightDetails->airport_from ?? 'N/A' }}
-                                                            </span>
-                                                        </div>
-                                                        <div class="text-blue-700 text-lg"> ✈ </div>
-                                                        <div class="flex flex-col items-center">
-                                                            <span class="font-bold text-base">
-                                                                {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : 'N/A'}}
-                                                            </span>
-                                                            <span class="text-gray-600 text-sm">
-                                                                {{ $task->flightDetails->airport_to ?? 'N/A' }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    @endif
-                                                    @elseif ($task->type === 'hotel')
-                                                    @php
-                                                    $hotelDetails = $task->hotelDetails;
-                                                    $hotel = $hotelDetails?->hotel;
-                                                    $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
-                                                    @endphp
-                                                    @if ($isHotelDataEmpty)
-                                                    <div class="text-gray-500 text-sm">Hotel info not available</div>
-                                                    @else
-                                                    <div class="flex items-start gap-2 text-sm text-left">
-                                                        <div class="pt-1">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                            </svg>
-                                                        </div>
-                                                        <div class="flex flex-col">
-                                                            <div class="relative max-w-[180px]" data-tooltip-left="{{ $task->hotelDetails->hotel->name ?? '-' }}">
-                                                                <div class="truncate">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</div>
-                                                            </div>
-                                                            <div class="text-sm text-gray-500 whitespace-nowrap">
-                                                                {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    @endif
-                                                    @else
-                                                    <div class="text-sm text-gray-700 whitespace-pre-line break-words leading-tight">
-                                                        {{ $task->additional_info ?? '-' }}
-                                                    </div>
-                                                    @endif
-                                                </td>
-                                                <td data-column="type" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->type }}
-                                                </td>
-                                                <td data-column="gds-reference" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->gds_reference ?? 'Not Available' }}
-                                                </td>
-                                                <td data-column="amadeus-reference" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->airline_reference ?? 'Not Available' }}
-                                                </td>
-                                                <td data-column="created-by" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->created_by ?? 'Not Set' }}
-                                                </td>
-                                                <td data-column="issued-by" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->issued_by ?? 'Not Set' }}
-                                                </td>
-                                                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <td data-column="branch-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-500">
-                                                    {{ $task->agent->branch->name ?? 'Not Set' }}
-                                                </td>
-                                                @endif
-                                                <td data-column="invoice" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    @if ($task->invoiceDetail)
-                                                    <a target="_blank"
-                                                        href="{{ route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}">
-                                                        <span
-                                                            data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
-                                                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
-                                                            {{ $task->invoiceDetail->invoice_number }}
-                                                        </span>
-                                                    </a>
-                                                    @else
-                                                    <span
-                                                        class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
-                                                        Not Yet
-                                                    </span>
-                                                    @endif
-                                                </td>
-                                                @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <td data-column="file-name" class="column-hidden flex p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    @if(!empty($task->file_name))
-                                                    <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
-                                                    <div @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
-                                                        data-tooltip-left="Copy filename">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                        </svg>
-                                                    </div>
-                                                    @else
-                                                    <p>No Files</p>
-                                                    @endif
-                                                </td>
-                                                @endif
-                                            </tr>
-                                            @endforeach
-                                            @endif
-                                        </tbody>
-
-                                        <!-- Upload Passport -->
-                                        <div x-show="showUploadForm" x-transition x-cloak
-                                            class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
-                                            <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
-                                                <div class="flex items-start justify-between mb-6">
-                                                    <div>
-                                                        <h2 class="text-xl font-bold text-gray-800">Upload Passport</h2>
-                                                        <p class="text-gray-500 italic text-xs mt-1">Please choose
-                                                            appropriate file to proceed</p>
-                                                    </div>
-                                                    <button @click="closeAll()"
-                                                        class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
-                                                        &times;
-                                                    </button>
+                                                    </template>
                                                 </div>
-
-                                                <!--                                             <input type="hidden" name="task_id" :value="modalTaskId"> -->
-                                                <div id="passport">
-                                                    <input type="file" id="passport-upload-input"
-                                                        accept="image/*,application/pdf"
-                                                        class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        hidden>
-                                                    <div id="file-preview-container" class="mt-4"></div>
-                                                    <!-- For image preview -->
-                                                    <div id="upload-status" class="mt-2 text-sm text-gray-600"></div>
-                                                    <!-- For upload status -->
-                                                    <div id="passport-details" class="mt-4 text-sm text-gray-800"></div>
-                                                    <!-- For displaying extracted details -->
-                                                </div>
-
-                                                <div class="flex justify-between mt-10">
-                                                    <button @click="closeAll()" type="button"
-                                                        class="w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
-                                                        Cancel
-                                                    </button>
-
-                                                    <button id="submit-passport-upload"
-                                                        @click="showFileInput = !showFileInput"
-                                                        class="w-32 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-full shadow-sm transition-all duration-150">
-                                                        Upload
-                                                    </button>
-
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Manual Fill Form -->
-                                        <div x-show="showManualForm" x-cloak
-                                            class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
-                                            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 h-[90vh] sm:overflow-visible overflow-y-auto transition-all duration-300">
-                                                <!-- Header with title and close button -->
-                                                <div class="flex items-center justify-between mb-2">
-                                                    <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
-                                                    <button @click="closeAll()"
-                                                        class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
-                                                </div>
-
-                                                <!-- Subtitle -->
-                                                <p class="text-gray-600 italic text-xs mb-6">Please fill in the required
-                                                    client information to register</p>
-
-                                                <!-- Form -->
-                                                <form action="{{ route('clients.store') }}" method="POST"
-                                                    id="client-formTask" class="space-y-4">
+                                                @can('destroy', App\Models\Task::class)
+                                                <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="ml-1">
                                                     @csrf
-                                                    <input type="hidden" name="task_id" :value="modalTaskId">
-                                                    <input type="hidden" name="agent_id" :value="modalAgentId">
-                                                    <!-- Name -->
-                                                    <div id="upload-passport-container"
-                                                        class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
-                                                        ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
-                                                        <svg width="24" height="24" viewBox="0 0 24 24"
-                                                            fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                            <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5"
-                                                                stroke-linecap="round" />
-                                                            <path
-                                                                d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5"
-                                                                stroke="#1C274C" stroke-width="1.5" />
-                                                            <path
-                                                                d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z"
-                                                                stroke="#1C274C" stroke-width="1.5" />
+                                                    @method('DELETE')
+                                                    <button type="submit" class="group" @click.stop>
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300 group-hover:stroke-red-500">
+                                                            <path d="M20.5001 6H3.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M18.8332 8.5L18.3732 15.3991C18.1962 18.054 18.1077 19.3815 17.2427 20.1907C16.3777 21 15.0473 21 12.3865 21H11.6132C8.95235 21 7.62195 21 6.75694 20.1907C5.89194 19.3815 5.80344 18.054 5.62644 15.3991L5.1665 8.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M9.5 11L10 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M14.5 11L14 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M6.5 6C6.55588 6 6.58382 6 6.60915 5.99936C7.43259 5.97849 8.15902 5.45491 8.43922 4.68032C8.44784 4.65649 8.45667 4.62999 8.47434 4.57697L8.57143 4.28571C8.65431 4.03708 8.69575 3.91276 8.75071 3.8072C8.97001 3.38607 9.37574 3.09364 9.84461 3.01877C9.96213 3 10.0932 3 10.3553 3H13.6447C13.9068 3 14.0379 3 14.1554 3.01877C14.6243 3.09364 15.03 3.38607 15.2493 3.8072C15.3043 3.91276 15.3457 4.03708 15.4286 4.28571L15.5257 4.57697C15.5433 4.62992 15.5522 4.65651 15.5608 4.68032C15.841 5.45491 16.5674 5.97849 17.3909 5.99936C17.4162 6 17.4441 6 17.5 6" stroke="" stroke-width="1.5" />
                                                         </svg>
-                                                        <input type="file" name="file" id="file-task-passport"
-                                                            class="hidden"
-                                                            accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
-                                                        <p id="task-passport-file-name">
-                                                            You can drag and drop a file here
-                                                        </p>
-                                                        <label for="file-task-passport"
-                                                            class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
-                                                            Upload File
-                                                        </label>
-                                                    </div>
-                                                    <div class="my-2">
-                                                        <button id="task-passport-process-btn"
-                                                            class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
-                                                            disabled>
-                                                            Process File
-                                                        </button>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                                                        <input type="text" name="first_name" id="nameTask"
-                                                            :value="modalClientName" placeholder="Client's First Name"
-                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                                                        <input type="text" name="middle_name" id="middleNameTask"
-                                                            placeholder="Client's Middle Name"
-                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                                                        <input type="text" name="last_name" id="lastNameTask"
-                                                            placeholder="Client's Last Name"
-                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
-                                                        <input type="text" name="passenger_name" id="passengerName"
-                                                            :value="modalPassengerName" placeholder="Passengers's name"
-                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"
-                                                            disabled>
-                                                    </div>
-
-                                                    <!-- Email + DOB -->
-                                                    <div class="flex gap-4 mb-3">
-                                                        <div class="w-1/2">
-                                                            <label
-                                                                class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                                            <input type="email" name="email" id="emailTask"
-                                                                placeholder="Client's email"
-                                                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-                                                        <div class="w-1/2">
-                                                            <label
-                                                                class="block text-sm font-medium text-gray-700 mb-1">Date
-                                                                of Birth</label>
-                                                            <input type="date" name="date_of_birth" id="date_of_birthTask"
-                                                                class="w-full text-gray-700 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Phone -->
-                                                    <div class="mb-3">
-                                                        <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                        <div class="flex gap-2">
-                                                            <div class="relative w-40">
-                                                                <x-searchable-dropdown name="dial_code" :items="\App\Models\Country::all()->map(
-                                                                    fn($country) => [
-                                                                        'id' => $country->dialing_code,
-                                                                        'name' =>
-                                                                            $country->dialing_code . ' ' . $country->name,
-                                                                    ],
-                                                                )"
-                                                                    placeholder=" Search Dial Code" :showAllOnOpen="true" />
-                                                            </div>
-                                                            <input type="text" name="phone"
-                                                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                id="phoneTask" placeholder="Client's phone number"
-                                                                required>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Passport + Civil -->
-                                                    <div class="flex gap-4 mb-3">
-                                                        <div class="w-1/2">
-                                                            <label
-                                                                class="block text-sm font-medium text-gray-700 mb-1">Passport
-                                                                Number</label>
-                                                            <input type="text" name="passport_no" id="passport_noTask"
-                                                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-                                                        <div class="w-1/2">
-                                                            <label
-                                                                class="block text-sm font-medium text-gray-700 mb-1">Civil
-                                                                Number</label>
-                                                            <input type="text" name="civil_no" id="civil_noTask"
-                                                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-                                                    </div>
-                                                    <!-- Address -->
-                                                    <div class="mb-3">
-                                                        <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                                                        <input type="text" name="address" id="addressTask"
-                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            placeholder="Client's address">
-                                                    </div>
-
-                                                    <!-- Agent Name -->
-                                                    <div>
-                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Agent's Name</label>
-                                                        <x-searchable-dropdown name="agent_id"
-                                                            :items="$agents" placeholder="Search Agent"
-                                                            :showAllOnOpen="true" />
-                                                    </div>
-
-                                                    <!-- Buttons -->
-                                                    <div class="flex justify-between gap-3 pt-4 mt-4">
-                                                        <button type="button" @click="closeAll()"
-                                                            class="w-[45%] sm:w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
-                                                            Cancel
-                                                        </button>
-                                                        <button type="submit"
-                                                            class="w-[45%] sm:w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
-                                                            Register Client
-                                                        </button>
-                                                    </div>
+                                                    </button>
                                                 </form>
+                                                @endcan
                                             </div>
-                                        </div>
-                                    </table>
-                                    <div x-show="showBulkEditModal" x-transition x-cloak
-                                        class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
-                                        <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
-                                            <div class="flex items-start justify-between mb-2">
-                                                <div>
-                                                    <h2 class="text-xl font-bold text-gray-800">Bulk Edit Tasks</h2>
-                                                    <p class="text-gray-600 italic text-xs mt-1">Update Client, Agent, or Payment Method for selected tasks</p>
+                                        </td>
+                                        <td data-column="reference" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->reference }}
+                                        </td>
+                                        <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
+                                            @if ($task->client)
+                                            <p>{{ $task->client->full_name }}</p>
+                                            <p>{{ $task->client->phone ?? 'No phone' }}</p>
+                                            @else
+                                            <p class="{{ $task->client ?? 'no-client relative' }}">
+                                                <button
+                                                    @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
+                                                    {{ $task->client !== null ? 'disabled' : '' }}>
+                                                    {{ $task->client->full_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                </button>
+                                            </p>
+                                            @endif
+                                        </td>
+                                        <td data-column="passenger-name" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            <div class="relative group max-w-[180px] mx-auto">
+                                                <div class="truncate cursor-default">
+                                                    {{ $task->passenger_name ?? 'Not Set' }}
                                                 </div>
-                                                <button @click="showBulkEditModal = false"
-                                                    class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
-                                                    &times;
+                                                @if ($task->passenger_name)
+                                                <div class="absolute z-10 hidden group-hover:block bg-gray-500 text-white text-xs rounded py-1 px-2 left-1/2 -translate-x-1/2 mt-1 shadow-lg">
+                                                    {{ $task->passenger_name }}
+                                                </div>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td data-column="agent-name" class="p-3 text-sm text-center font-semibold text-gray-500">
+                                            {{ $task->agent->name ?? 'Not Set' }}
+                                        </td>
+                                        @can('viewPrice', 'App\Models\Task')
+                                        <td data-column="price" class="p-3 text-sm text-center font-semibold DarkBTextcolor dark:text-gray-300">
+                                            {{ $task->total ?? '-' }}
+                                        </td>
+                                        @endcan
+                                        <td data-column="status" class="text-center">
+                                            <span
+                                                class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
+                                                @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
+                                                {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
+                                            </span>
+                                        </td>
+                                        <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->supplier->name }}
+                                        </td>
+                                        <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : 'Not Set' }}
+                                        </td>
+                                        <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->created_at }}
+                                        </td>
+                                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                        <td data-column="cancellation-deadline" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y') : 'Not Set' }}
+                                        </td>
+                                        @endif
+                                        <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                            @if ($task->type === 'flight')
+                                            @php
+                                            $flight = $task->flightDetails;
+                                            $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
+                                            @endphp
+                                            @if ($isFlightDataEmpty)
+                                            <div class="text-gray-500 text-sm">Flight info not available</div>
+                                            @else
+                                            <div class="flex justify-between items-center gap-4 text-center text-sm">
+                                                <div class="flex flex-col items-center">
+                                                    <span class="font-bold text-base">
+                                                        {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : 'N/A'}}
+                                                    </span>
+                                                    <span class="text-gray-600 text-sm">
+                                                        {{ $task->flightDetails->airport_from ?? 'N/A' }}
+                                                    </span>
+                                                </div>
+                                                <div class="text-blue-700 text-lg"> ✈ </div>
+                                                <div class="flex flex-col items-center">
+                                                    <span class="font-bold text-base">
+                                                        {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : 'N/A'}}
+                                                    </span>
+                                                    <span class="text-gray-600 text-sm">
+                                                        {{ $task->flightDetails->airport_to ?? 'N/A' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            @endif
+                                            @elseif ($task->type === 'hotel')
+                                            @php
+                                            $hotelDetails = $task->hotelDetails;
+                                            $hotel = $hotelDetails?->hotel;
+                                            $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
+                                            @endphp
+                                            @if ($isHotelDataEmpty)
+                                            <div class="text-gray-500 text-sm">Hotel info not available</div>
+                                            @else
+                                            <div class="flex items-start gap-2 text-sm text-left">
+                                                <div class="pt-1">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                    </svg>
+                                                </div>
+                                                <div class="flex flex-col">
+                                                    <div class="relative max-w-[180px]" data-tooltip-left="{{ $task->hotelDetails->hotel->name ?? '-' }}">
+                                                        <div class="truncate">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</div>
+                                                    </div>
+                                                    <div class="text-sm text-gray-500 whitespace-nowrap">
+                                                        {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            @endif
+                                            @else
+                                            <div class="text-sm text-gray-700 whitespace-pre-line break-words leading-tight">
+                                                {{ $task->additional_info ?? '-' }}
+                                            </div>
+                                            @endif
+                                        </td>
+                                        <td data-column="type" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->type }}
+                                        </td>
+                                        <td data-column="gds-reference" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->gds_reference ?? 'Not Available' }}
+                                        </td>
+                                        <td data-column="amadeus-reference" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->airline_reference ?? 'Not Available' }}
+                                        </td>
+                                        <td data-column="created-by" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->created_by ?? 'Not Set' }}
+                                        </td>
+                                        <td data-column="issued-by" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            {{ $task->issued_by ?? 'Not Set' }}
+                                        </td>
+                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                        <td data-column="branch-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-500">
+                                            {{ $task->agent->branch->name ?? 'Not Set' }}
+                                        </td>
+                                        @endif
+                                        <td data-column="invoice" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            @if ($task->invoiceDetail)
+                                            <a target="_blank"
+                                                href="{{ route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}">
+                                                <span
+                                                    data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
+                                                    class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
+                                                    {{ $task->invoiceDetail->invoice_number }}
+                                                </span>
+                                            </a>
+                                            @else
+                                            <span
+                                                class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
+                                                Not Yet
+                                            </span>
+                                            @endif
+                                        </td>
+                                        @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                        <td data-column="file-name" class="column-hidden flex p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                            @if(!empty($task->file_name))
+                                            <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
+                                            <div @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
+                                                data-tooltip-left="Copy filename">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                            @else
+                                            <p>No Files</p>
+                                            @endif
+                                        </td>
+                                        @endif
+                                    </tr>
+                                    @endforeach
+                                    @endif
+                                </tbody>
+
+                                <!-- Upload Passport -->
+                                <div x-show="showUploadForm" x-transition x-cloak
+                                    class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
+                                    <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
+                                        <div class="flex items-start justify-between mb-6">
+                                            <div>
+                                                <h2 class="text-xl font-bold text-gray-800">Upload Passport</h2>
+                                                <p class="text-gray-500 italic text-xs mt-1">Please choose
+                                                    appropriate file to proceed</p>
+                                            </div>
+                                            <button @click="closeAll()"
+                                                class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
+                                                &times;
+                                            </button>
+                                        </div>
+
+                                        <!--                                             <input type="hidden" name="task_id" :value="modalTaskId"> -->
+                                        <div id="passport">
+                                            <input type="file" id="passport-upload-input"
+                                                accept="image/*,application/pdf"
+                                                class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                hidden>
+                                            <div id="file-preview-container" class="mt-4"></div>
+                                            <!-- For image preview -->
+                                            <div id="upload-status" class="mt-2 text-sm text-gray-600"></div>
+                                            <!-- For upload status -->
+                                            <div id="passport-details" class="mt-4 text-sm text-gray-800"></div>
+                                            <!-- For displaying extracted details -->
+                                        </div>
+
+                                        <div class="flex justify-between mt-10">
+                                            <button @click="closeAll()" type="button"
+                                                class="w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
+                                                Cancel
+                                            </button>
+
+                                            <button id="submit-passport-upload"
+                                                @click="showFileInput = !showFileInput"
+                                                class="w-32 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-full shadow-sm transition-all duration-150">
+                                                Upload
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Manual Fill Form -->
+                                <div x-show="showManualForm" x-cloak
+                                    class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
+                                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 h-[90vh] sm:overflow-visible overflow-y-auto transition-all duration-300">
+                                        <!-- Header with title and close button -->
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
+                                            <button @click="closeAll()"
+                                                class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+                                        </div>
+
+                                        <!-- Subtitle -->
+                                        <p class="text-gray-600 italic text-xs mb-6">Please fill in the required
+                                            client information to register</p>
+
+                                        <!-- Form -->
+                                        <form action="{{ route('clients.store') }}" method="POST"
+                                            id="client-formTask" class="space-y-4">
+                                            @csrf
+                                            <input type="hidden" name="task_id" :value="modalTaskId">
+                                            <input type="hidden" name="agent_id" :value="modalAgentId">
+                                            <!-- Name -->
+                                            <div id="upload-passport-container"
+                                                class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
+                                                ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+                                                <svg width="24" height="24" viewBox="0 0 24 24"
+                                                    fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5"
+                                                        stroke-linecap="round" />
+                                                    <path
+                                                        d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5"
+                                                        stroke="#1C274C" stroke-width="1.5" />
+                                                    <path
+                                                        d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z"
+                                                        stroke="#1C274C" stroke-width="1.5" />
+                                                </svg>
+                                                <input type="file" name="file" id="file-task-passport"
+                                                    class="hidden"
+                                                    accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
+                                                <p id="task-passport-file-name">
+                                                    You can drag and drop a file here
+                                                </p>
+                                                <label for="file-task-passport"
+                                                    class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
+                                                    Upload File
+                                                </label>
+                                            </div>
+                                            <div class="my-2">
+                                                <button id="task-passport-process-btn"
+                                                    class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
+                                                    disabled>
+                                                    Process File
                                                 </button>
                                             </div>
-                                            <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                                                    <x-searchable-dropdown name="bulk_client_id"
-                                                        :items="$fullClients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
-                                                        placeholder="Select Client" />
-                                                </div>
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
-                                                    <x-searchable-dropdown name="bulk_agent_id"
-                                                        :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                                        placeholder="Select Agent" />
-                                                </div>
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                                                    <x-searchable-dropdown name="bulk_payment_method_id"
-                                                        :items="$paymentMethod->map(fn($m) => ['id' => $m->id, 'name' => $m->name])"
-                                                        placeholder="Select Payment Method" />
-                                                </div>
-                                                <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
-                                                    <button type="button"
-                                                        @click="showBulkEditModal = false"
-                                                        class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
-                                                        Cancel
-                                                    </button>
-                                                    <button type="submit"
-                                                        class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition">
-                                                        Update Tasks
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
+                                            <div class="mb-3">
+                                                <label
+                                                    class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                                <input type="text" name="first_name" id="nameTask"
+                                                    :value="modalClientName" placeholder="Client's First Name"
+                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label
+                                                    class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                                                <input type="text" name="middle_name" id="middleNameTask"
+                                                    placeholder="Client's Middle Name"
+                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label
+                                                    class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                                <input type="text" name="last_name" id="lastNameTask"
+                                                    placeholder="Client's Last Name"
+                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label
+                                                    class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
+                                                <input type="text" name="passenger_name" id="passengerName"
+                                                    :value="modalPassengerName" placeholder="Passengers's name"
+                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"
+                                                    disabled>
+                                            </div>
 
-                                    <div id="floatingActions"
-                                        class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
-                                        <div class="flex items-center gap-5 h-full">
-                                            <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}" type="button"
-                                                class="hidden flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                    <path fill="#ffffff"
-                                                        d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
-                                                </svg>
-                                                <span class="text-sm">Create Invoice</span>
-                                            </button>
-                                            <button id="proceedRefundBtn" data-route="{{ route('refunds.create') }}" type="button"
-                                                class="hidden flex px-5 py-3 gap-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm items-center transition-colors duration-200">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                    <path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Zm2 5v8h-2V8h2Z" />
-                                                </svg>
-                                                <span class="text-sm">Proceed Refund</span>
-                                            </button>
+                                            <!-- Email + DOB -->
+                                            <div class="flex gap-4 mb-3">
+                                                <div class="w-1/2">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                                    <input type="email" name="email" id="emailTask"
+                                                        placeholder="Client's email"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                                <div class="w-1/2">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Date
+                                                        of Birth</label>
+                                                    <input type="date" name="date_of_birth" id="date_of_birthTask"
+                                                        class="w-full text-gray-700 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                            </div>
+
+                                            <!-- Phone -->
+                                            <div class="mb-3">
+                                                <label
+                                                    class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                <div class="flex gap-2">
+                                                    <div class="relative w-40">
+                                                        <x-searchable-dropdown name="dial_code" :items="\App\Models\Country::all()->map(
+                                                            fn($country) => [
+                                                                'id' => $country->dialing_code,
+                                                                'name' =>
+                                                                    $country->dialing_code . ' ' . $country->name,
+                                                            ],
+                                                        )"
+                                                            placeholder=" Search Dial Code" :showAllOnOpen="true" />
+                                                    </div>
+                                                    <input type="text" name="phone"
+                                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        id="phoneTask" placeholder="Client's phone number"
+                                                        required>
+                                                </div>
+                                            </div>
+
+                                            <!-- Passport + Civil -->
+                                            <div class="flex gap-4 mb-3">
+                                                <div class="w-1/2">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Passport
+                                                        Number</label>
+                                                    <input type="text" name="passport_no" id="passport_noTask"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                                <div class="w-1/2">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Civil
+                                                        Number</label>
+                                                    <input type="text" name="civil_no" id="civil_noTask"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                            </div>
+                                            <!-- Address -->
+                                            <div class="mb-3">
+                                                <label
+                                                    class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                                <input type="text" name="address" id="addressTask"
+                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="Client's address">
+                                            </div>
+
+                                            <!-- Agent Name -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Agent's Name</label>
+                                                <x-searchable-dropdown name="agent_id"
+                                                    :items="$agents" placeholder="Search Agent"
+                                                    :showAllOnOpen="true" />
+                                            </div>
+
+                                            <!-- Buttons -->
+                                            <div class="flex justify-between gap-3 pt-4 mt-4">
+                                                <button type="button" @click="closeAll()"
+                                                    class="w-[45%] sm:w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
+                                                    Cancel
+                                                </button>
+                                                <button type="submit"
+                                                    class="w-[45%] sm:w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
+                                                    Register Client
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </table>
+                            <div x-show="showBulkEditModal" x-transition x-cloak
+                                class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
+                                <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div>
+                                            <h2 class="text-xl font-bold text-gray-800">Bulk Edit Tasks</h2>
+                                            <p class="text-gray-600 italic text-xs mt-1">Update Client, Agent, or Payment Method for selected tasks</p>
                                         </div>
-                                        <button type="button" 
-                                            x-show="selectedTasks.length > 0" 
-                                            @click="window.open('{{ route('tasks.detail') }}?tasks=' + selectedTasks.join(','), '_blank')"
-                                            class="flex px-5 py-3 gap-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-sm items-center transition-colors duration-200">
-                                            <span class="text-sm text-white" x-text="selectedTasks.length > 1 ? 'Bulk Edit' : 'Edit Task'"></span>
+                                        <button @click="showBulkEditModal = false"
+                                            class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                                            &times;
                                         </button>
-                                        <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
-                                            class="flex cursor-pointer items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
-                                                <path fill="#E53935"
-                                                    d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
-                                            </svg>
-                                        </div>
                                     </div>
+                                    <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                                            <x-searchable-dropdown name="bulk_client_id"
+                                                :items="$fullClients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
+                                                placeholder="Select Client" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                                            <x-searchable-dropdown name="bulk_agent_id"
+                                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                                placeholder="Select Agent" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                                            <x-searchable-dropdown name="bulk_payment_method_id"
+                                                :items="$paymentMethod->map(fn($m) => ['id' => $m->id, 'name' => $m->name])"
+                                                placeholder="Select Payment Method" />
+                                        </div>
+                                        <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
+                                            <button type="button"
+                                                @click="showBulkEditModal = false"
+                                                class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
+                                                Cancel
+                                            </button>
+                                            <button type="submit"
+                                                class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition">
+                                                Update Tasks
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
-                            <!-- <div id="loadMoreWrapper" class="text-center my-4"
-                                x-show="shown < {{ count($tasks) }}" x-cloak>
-                                <button @click="shown += 10"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                    Load More
+
+                            <div id="floatingActions"
+                                class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
+                                <div class="flex items-center gap-5 h-full">
+                                    <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}" type="button"
+                                        class="hidden flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                            <path fill="#ffffff"
+                                                d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
+                                        </svg>
+                                        <span class="text-sm">Create Invoice</span>
+                                    </button>
+                                    <button id="proceedRefundBtn" data-route="{{ route('refunds.create') }}" type="button"
+                                        class="hidden flex px-5 py-3 gap-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm items-center transition-colors duration-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Zm2 5v8h-2V8h2Z" />
+                                        </svg>
+                                        <span class="text-sm">Proceed Refund</span>
+                                    </button>
+                                </div>
+                                <button type="button" 
+                                    x-show="canEditTasks"
+                                    @click="window.open('{{ route('tasks.detail') }}?tasks=' + selectedTasks.join(','), '_blank')"
+                                    class="flex px-5 py-3 gap-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                    <span class="text-sm text-white" x-text="selectedTasks.length > 1 ? 'Bulk Edit' : 'Edit Task'"></span>
                                 </button>
-                            </div> -->
-                        </div>
-
-                        <x-pagination :data="$tasks->appends(request()->query())" />
-
-                        <div id="taskInvoicePlaceholder"
-                            class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                            <div id="invoiceModalContent">
-                                <div id="invoiceModalBody" class="rounded-t-md bg-white">
-                                </div>
-                                <div id="invoiceFooter"
-                                    class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
-                                    <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
+                                <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
+                                    class="flex cursor-pointer items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
+                                        <path fill="#E53935"
+                                            d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
+                                    </svg>
                                 </div>
                             </div>
                         </div>
-                        <div id="taskRefundPlaceholder"
-                            class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                            <div id="refundModalContent">
-                                <div id="refundModalBody" class="rounded-t-md bg-white">
-                                </div>
-                                <div id="refundFooter"
-                                    class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
-                                    <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
-                                </div>
-                            </div>
+                    </div>
+                    <!-- <div id="loadMoreWrapper" class="text-center my-4"
+                        x-show="shown < {{ count($tasks) }}" x-cloak>
+                        <button @click="shown += 10"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Load More
+                        </button>
+                    </div> -->
+                </div>
+
+                <x-pagination :data="$tasks->appends(request()->query())" />
+
+                <div id="taskInvoicePlaceholder"
+                    class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+                    <div id="invoiceModalContent">
+                        <div id="invoiceModalBody" class="rounded-t-md bg-white">
+                        </div>
+                        <div id="invoiceFooter"
+                            class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
+                            <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
+                        </div>
+                    </div>
+                </div>
+                <div id="taskRefundPlaceholder"
+                    class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+                    <div id="refundModalContent">
+                        <div id="refundModalBody" class="rounded-t-md bg-white">
+                        </div>
+                        <div id="refundFooter"
+                            class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
+                            <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    
     <div x-data="{ 
         showTaskModal: false, 
         showTaxPopup: false,
@@ -1804,7 +1823,7 @@
             }
         }
     }"
-        @view-task.window="console.log('view-task event received:', $event.detail); fetchTaskDetails($event.detail.id)">
+    @view-task.window="console.log('view-task event received:', $event.detail); fetchTaskDetails($event.detail.id)">
 
         <!-- Modal Overlay -->
         <div x-show="showTaskModal"
@@ -1909,12 +1928,12 @@
                                             <span class="text-base text-gray-600 dark:text-gray-400 font-medium">Status:</span>
                                             <span x-text="taskData?.status"
                                                 :class="{
-                                                      'text-green-700 bg-green-100 dark:bg-green-900/50 dark:text-green-300': taskData?.status === 'confirmed',
-                                                      'text-blue-700 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300': taskData?.status === 'issued',
-                                                      'text-yellow-700 bg-yellow-100 dark:bg-yellow-900/50 dark:text-yellow-300': taskData?.status === 'pending',
-                                                      'text-red-700 bg-red-100 dark:bg-red-900/50 dark:text-red-300': taskData?.status === 'void',
-                                                      'text-gray-700 bg-gray-100 dark:bg-gray-700 dark:text-gray-300': !['confirmed', 'issued', 'pending', 'void'].includes(taskData?.status)
-                                                  }"
+                                                    'text-green-700 bg-green-100 dark:bg-green-900/50 dark:text-green-300': taskData?.status === 'confirmed',
+                                                    'text-blue-700 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300': taskData?.status === 'issued',
+                                                    'text-yellow-700 bg-yellow-100 dark:bg-yellow-900/50 dark:text-yellow-300': taskData?.status === 'pending',
+                                                    'text-red-700 bg-red-100 dark:bg-red-900/50 dark:text-red-300': taskData?.status === 'void',
+                                                    'text-gray-700 bg-gray-100 dark:bg-gray-700 dark:text-gray-300': !['confirmed', 'issued', 'pending', 'void'].includes(taskData?.status)
+                                                }"
                                                 class="text-base font-bold capitalize px-3 py-1.5 rounded-full shadow-sm"></span>
                                         </div>
                                         <div x-show="taskData?.passenger_name" class="flex items-start justify-between group/item hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
@@ -2395,7 +2414,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div>  
     </div>
 </x-app-layout>
 

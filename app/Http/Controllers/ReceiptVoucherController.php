@@ -636,6 +636,21 @@ class ReceiptVoucherController extends Controller
         }
     }
 
+    public function show($companyId, $voucherNumber)
+    {
+        $invoiceReceipt = InvoiceReceipt::with([
+            'invoice.client',
+            'transaction',
+        ])
+            ->whereHas('transaction', function ($q) use ($companyId, $voucherNumber) {
+                $q->where('company_id', $companyId)
+                    ->where('reference_number', $voucherNumber);
+            })
+            ->firstOrFail();
+
+        return view('receipt-voucher.show', compact('invoiceReceipt'));
+    }
+
     private function storeJournalEntryEntries($items, $request, $transactionId)
     {
         foreach ($items as $item) {

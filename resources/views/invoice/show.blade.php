@@ -681,6 +681,15 @@
                                 <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
                                     class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
                                 </a>
+                            @elseif ($partial->payment_gateway === 'Cash')
+                                @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                    <a href="{{ route('receipt-voucher.show', ['companyId' => $companyId,
+                                        'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 underline" target="_blank">
+                                        {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-600 italic">Cash (Receipt pending)</span>
+                                @endif
                             @else
                                 <span class="text-gray-600 italic">Receipt voucher TBA</span>
                             @endif

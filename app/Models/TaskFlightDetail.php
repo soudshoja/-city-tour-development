@@ -17,15 +17,18 @@ class TaskFlightDetail extends Model
         'departure_time',
         'country_id_from',
         'airport_from',
+        'airport_from_id',
         'terminal_from',
         'arrival_time',
         'duration_time',
         'country_id_to',
         'airport_to',
+        'airport_to_id',
         'terminal_to',
         'airline_id',
+        'airline_id_new',
         'flight_number',
-        'ticket_number',    
+        'ticket_number',
         'class_type',
         'baggage_allowed',
         'equipment',
@@ -97,6 +100,21 @@ class TaskFlightDetail extends Model
     public function task()
     {
         return $this->belongsTo(Agent::class, 'task_id');
+    }
+
+    public function airportFrom()
+    {
+        return $this->belongsTo(Airport::class, 'airport_from_id');
+    }
+
+    public function airportTo()
+    {
+        return $this->belongsTo(Airport::class, 'airport_to_id');
+    }
+
+    public function airline()
+    {
+        return $this->belongsTo(Airline::class, 'airline_id_new');
     }
 
 

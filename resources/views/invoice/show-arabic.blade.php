@@ -215,9 +215,9 @@
                         @endif
                     </td>
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
-                    <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
+                    <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 3) }}</td>
                     <td class="px-4 py-2 border">
-                        {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 2, '.', ',') }}
+                        {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 3, '.', ',') }}
                     </td>
                 </tr>
                 @endforeach
@@ -275,12 +275,12 @@
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
                         @else
-                        {{ number_format($partial->amount, 2) }}
+                        {{ number_format($partial->amount, 3) }}
                         @endif
                     </td>
-                    <!-- <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td> -->
+                    <!-- <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 3) }}</td> -->
                 </tr>
                 @endforeach
             </tbody>
@@ -336,9 +336,9 @@
                     <td class="px-4 py-2 border"> {{$partial->status}}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
                         @else
-                        {{ number_format($partial->amount, 2) }}
+                        {{ number_format($partial->amount, 3) }}
                         @endif
                     </td>
                 </tr>
@@ -399,7 +399,7 @@
                         {{ $partial->client->full_name }}
 
                         @if ($creditBalance > 0 && $partial->status === 'unpaid')
-                        <br>رصيد المحفظة: {{ number_format($creditBalance, 2) }} |
+                        <br>رصيد المحفظة: {{ number_format($creditBalance, 3) }} |
                         <button @click="open = true" type="button" class="text-blue-600 underline text">
                             استخدم الآن لسداد هذا الجزء؟
                         </button>
@@ -446,9 +446,9 @@
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
                         @else
-                        {{ number_format($partial->amount, 2) }}
+                        {{ number_format($partial->amount, 3) }}
                         @endif
                     </td>
                 </tr>
@@ -468,21 +468,21 @@
             <div class="w-1/3 text-sm">
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>المجموع الفرعي:</span>
-                    <span>{{ number_format($invoice->sub_amount, 2) }}</span>
+                    <span>{{ number_format($invoice->sub_amount, 3) }}</span>
                 </div>
                 @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                 @foreach ($checkUtilizeCredit as $credit)
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>محفظة العميل ({{ $credit->created_at->format('d M Y') }}):</span>
 
-                    <span>{{ number_format($credit->amount, 2) }}</span>
+                    <span>{{ number_format($credit->amount, 3) }}</span>
                 </div>
                 @endforeach
                 @endif
 
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>الضريبة ({{ $invoice->tax_rate }}%):</span>
-                    <span>{{ number_format($invoice->tax, 2) }}</span>
+                    <span>{{ number_format($invoice->tax, 3) }}</span>
                 </div>
 
                 @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
@@ -493,21 +493,21 @@
                 @if ($paidServiceCharge > 0)
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>رسوم الخدمة:</span>
-                    <span>{{ number_format($paidServiceCharge, 2) }}</span>
+                    <span>{{ number_format($paidServiceCharge, 3) }}</span>
                 </div>
                 @endif
                 @else
                 @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>رسوم الخدمة @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                    <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
+                    <span>{{ number_format($totalGatewayFee['fee'], 3) }}</span>
                 </div>
                 @endif
                 @endif
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>المجموع الكلي:</span>
                     <span>
-                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 3) }}
                     </span>
                 </div>
             </div>
@@ -542,7 +542,7 @@
                 @csrf
 
                 <input type="hidden" id="totalAmountInput" name="total_amount"
-                    value="{{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}">
+                    value="{{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 3) }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                 <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
@@ -666,7 +666,7 @@
                             <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         @endif
                         <td class="px-4 py-2 border">
-                            {{ number_format($partial->amount ?? 0, 2) }}
+                            {{ number_format($partial->amount ?? 0, 3) }}
                         </td>
                     </tr>
                     @endforeach
@@ -713,7 +713,7 @@
 
         let balanceElement = document.getElementById('balance');
         if (balanceElement) {
-            balanceElement.textContent = balance.toFixed(2);
+            balanceElement.textContent = balance.toFixed(3);
         }
 
         const totalAmountDisplay = document.getElementById("totalAmountDisplay");
@@ -798,14 +798,14 @@
                 }
             });
 
-            totalAmountInput.value = totalForSubmission.toFixed(2);
+            totalAmountInput.value = totalForSubmission.toFixed(3);
 
             if (totalAmountDisplay) {
-                totalAmountDisplay.textContent = totalForDisplay.toFixed(2);
+                totalAmountDisplay.textContent = totalForDisplay.toFixed(3);
             }
 
             console.log("Amount for submission (backend):", totalAmountInput.value);
-            console.log("Amount for display (frontend):", totalForDisplay.toFixed(2));
+            console.log("Amount for display (frontend):", totalForDisplay.toFixed(3));
         }
 
         $(document).ready(function() {
@@ -825,9 +825,9 @@
                     if (index > -1) selectedItems.splice(index, 1);
                 }
 
-                $('#selectedTotal').text(selectedTotal.toFixed(2));
+                $('#selectedTotal').text(selectedTotal.toFixed(3));
                 $('#selectedItems').val(selectedItems.join(','));
-                $('#totalAmount').val(selectedTotal.toFixed(2));
+                $('#totalAmount').val(selectedTotal.toFixed(3));
             });
         });
 

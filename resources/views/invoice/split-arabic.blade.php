@@ -131,9 +131,9 @@
                              </p>
                          </td>
                          <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
-                         <td class="px-4 py-2 border">{{ number_format($invoicePartial->amount ?? 0, 2) }}</td>
+                         <td class="px-4 py-2 border">{{ number_format($invoicePartial->amount ?? 0, 3) }}</td>
                          <td class="px-4 py-2 border">
-                             {{ number_format(($detail->quantity ?? 1) * ($invoicePartial->amount ?? 0), 2, '.', ',') }}
+                             {{ number_format(($detail->quantity ?? 1) * ($invoicePartial->amount ?? 0), 3, '.', ',') }}
 
                          </td>
                      </tr>
@@ -147,29 +147,29 @@
              <div class="w-1/3 text-sm">
                  <div class="flex justify-between py-2 border-b border-gray-200">
                      <span>المجموع الفرعي:</span>
-                     <span>{{ number_format($invoicePartial->status === 'paid' ? $invoicePartial->amount - $invoicePartial->service_charge : $invoicePartial->amount, 2) }}</span>
+                     <span>{{ number_format($invoicePartial->status === 'paid' ? $invoicePartial->amount - $invoicePartial->service_charge : $invoicePartial->amount, 3) }}</span>
                  </div>
                  @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                      @foreach ($checkUtilizeCredit as $credit)
                          <div class="flex justify-between py-2 border-b border-gray-200">
                              <span>محفظة العميل ({{ $credit->created_at->format('d M Y') }}):</span>
-                             <span>{{ number_format($credit->amount, 2) }}</span>
+                             <span>{{ number_format($credit->amount, 3) }}</span>
                          </div>
                      @endforeach
                  @endif
                  <div class="flex justify-between py-2 border-b border-gray-200">
                      <span>الضريبة ({{ $invoice->tax_rate }}%):</span>
-                     <span>{{ number_format($invoice->tax, 2) }}</span>
+                     <span>{{ number_format($invoice->tax, 3) }}</span>
                  </div>
                  @if(isset($gatewayFee['paid_by']) && $gatewayFee['paid_by'] !== 'Company' && $invoicePartial->service_charge > 0)
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>رسوم الخدمة:</span>
-                    <span>{{ number_format($invoicePartial->service_charge, 2) }}</span>
+                    <span>{{ number_format($invoicePartial->service_charge, 3) }}</span>
                 </div>
                 @endif
                  <div class="flex justify-between py-2 font-bold text-gray-800">
                      <span>المجموع:</span>
-                     <span>{{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}</span>
+                     <span>{{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 3) }}</span>
                  </div>
              </div>
          </div>
@@ -240,7 +240,7 @@
                                  peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border
                                  border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f]
                                  hover:shadow-xl hover:text-black">
-                                 Pay Now with Credit (Balance: {{ number_format($creditBalance, 2) }} KWD)
+                                 Pay Now with Credit (Balance: {{ number_format($creditBalance, 3) }} KWD)
                              </button>
                          </div>
                      @endif
@@ -277,7 +277,7 @@
 
                  <div class="flex items-center gap-2">
                      <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                        {{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                        {{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')), 3) }}
                      </span>
                  </div>
              @else
@@ -341,9 +341,9 @@
                      if (index > -1) selectedItems.splice(index, 1);
                  }
 
-                 $('#selectedTotal').text(selectedTotal.toFixed(2));
+                 $('#selectedTotal').text(selectedTotal.toFixed(3));
                  $('#selectedItems').val(selectedItems.join(','));
-                 $('#totalAmount').val(selectedTotal.toFixed(2));
+                 $('#totalAmount').val(selectedTotal.toFixed(3));
              });
          });
      </script>

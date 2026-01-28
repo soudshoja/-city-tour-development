@@ -162,7 +162,7 @@
                         @foreach($payment->paymentItems as $item)
                         <tr class="border-t border-gray-200">
                             <td class="py-3 px-4">{{ $item->product_name }}</td>
-                            <td class="py-3 px-4">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="py-3 px-4">{{ number_format($item->quantity, 3) }}</td>
                             <td class="py-3 px-4">{{ number_format($item->unit_price, 3) }} {{ $item->currency }}</td>
                             <td class="py-3 px-4 font-semibold">{{ number_format($item->extended_amount, 3) }} {{ $item->currency }}</td>
                         </tr>
@@ -212,12 +212,12 @@
 
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>{{ __('invoice.amount') }}:</span>
-                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
+                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 3) }} {{ $payment->currency }}</span>
                 </div>
 
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>{{ __('invoice.total') }}:</span>
-                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
+                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 3) }} {{ $payment->currency }}</span>
                 </div>
             </div>
         </div>

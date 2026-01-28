@@ -11,10 +11,14 @@ class Airline extends Model
 
     protected $fillable = [
         'name',
-        'iata_designator',
-        'code',
+        'name_ar',
         'icao_designator',
-        'country_id'
+        'country_id',
+        'accounting_code',
+        'alliance',
+        'airline_type',
+        'is_active',
+        'logo_path',
     ];
 
     public function country()

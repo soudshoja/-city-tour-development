@@ -7,8 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 class Airport extends Model
 {
     protected $fillable = [
-        'location',
-        'city_code',
-        'airport'
+        'name',
+        'name_ar',
+        'iata_code',
+        'icao_code',
+        'city_id',
+        'country_id',
+        'timezone',
+        'latitude',
+        'longitude',
+        'altitude',
+        'is_active',
     ];
 }

@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\Agent;
 use App\Models\TaskFlightDetail;
 use App\Models\Airline;
+use App\Models\Airport;
 use App\Models\Client;
 use App\Models\Country;
 use App\Models\Hotel;
@@ -5422,7 +5423,7 @@ class TaskController extends Controller
             $taskIds = explode(',', $taskIds);
         }
 
-        $tasks = Task::with(['hotelDetails.hotel', 'flightDetail', 'insuranceDetails', 'visaDetails'])
+        $tasks = Task::with(['hotelDetails.hotel', 'flightDetail.airportFrom', 'flightDetail.airportTo', 'flightDetail.airline', 'insuranceDetails', 'visaDetails'])
             ->whereIn('id', $taskIds)
             ->get();
 
@@ -5503,7 +5504,21 @@ class TaskController extends Controller
             ];
         });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels'));
+        $airports = Airport::orderBy('iata_code', 'asc')->get(['id', 'iata_code', 'name'])->map(function($airport) {
+            return [
+                'id' => $airport->id,
+                'name' => $airport->iata_code . ' - ' . $airport->name
+            ];
+        });
+
+        $airlines = Airline::orderBy('name', 'asc')->get(['id', 'iata_designator', 'name'])->map(function($airline) {
+            return [
+                'id' => $airline->id,
+                'name' => $airline->iata_designator . ' - ' . $airline->name
+            ];
+        });
+
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels', 'airports', 'airlines'));
     }
 
     public function bulkUpdate(Request $request)
@@ -5599,6 +5614,11 @@ class TaskController extends Controller
 
     public function updateMulti(Request $request)
     {
+        Log::info('Bulk update request received', [
+            'user_id' => Auth::id(),
+            'request_data' => $request->all(),
+        ]);
+
         $draftsRaw = $request->input('drafts');
         $drafts = is_string($draftsRaw) ? json_decode($draftsRaw, true) : $draftsRaw;
 
@@ -5653,6 +5673,14 @@ class TaskController extends Controller
                         'room_number' => $hotelDetails['room_number'] ?? $task->hotelDetails->room_number,
                         'meal_type' => $hotelDetails['meal_type'] ?? $task->hotelDetails->meal_type,
                     ]);
+
+                    // Update venue with hotel name
+                    if (isset($hotelDetails['hotel_id']) && $hotelDetails['hotel_id']) {
+                        $hotel = Hotel::find($hotelDetails['hotel_id']);
+                        if ($hotel) {
+                            $task->update(['venue' => $hotel->name]);
+                        }
+                    }
                 }
 
                 if ($insuranceDetails && $task->insuranceDetails) {
@@ -5663,6 +5691,11 @@ class TaskController extends Controller
                         'duration' => $insuranceDetails['duration'] ?? $task->insuranceDetails->duration,
                         'package' => $insuranceDetails['package'] ?? $task->insuranceDetails->package,
                     ]);
+
+                    // Update venue with destination
+                    if (isset($insuranceDetails['destination']) && $insuranceDetails['destination']) {
+                        $task->update(['venue' => $insuranceDetails['destination']]);
+                    }
                 }
 
                 if ($visaDetails && $task->visaDetails) {
@@ -5674,19 +5707,56 @@ class TaskController extends Controller
                         'number_of_entries' => $visaDetails['number_of_entries'] ?? $task->visaDetails->number_of_entries,
                         'stay_duration' => $visaDetails['stay_duration'] ?? $task->visaDetails->stay_duration,
                     ]);
+
+                    // Update venue with issuing country
+                    if (isset($visaDetails['issuing_country']) && $visaDetails['issuing_country']) {
+                        $task->update(['venue' => $visaDetails['issuing_country']]);
+                    }
                 }
 
                 if ($flightDetails && is_array($flightDetails) && $task->flightDetail->isNotEmpty()) {
                     foreach ($flightDetails as $index => $flightData) {
                         $flight = $task->flightDetail[$index] ?? null;
                         if ($flight) {
+                            // Parse datetime fields
+                            $departureTime = isset($flightData['departure_time']) && $flightData['departure_time']
+                                ? Carbon::parse($flightData['departure_time'])->format('Y-m-d H:i:s')
+                                : $flight->departure_time;
+
+                            $arrivalTime = isset($flightData['arrival_time']) && $flightData['arrival_time']
+                                ? Carbon::parse($flightData['arrival_time'])->format('Y-m-d H:i:s')
+                                : $flight->arrival_time;
+
+                            // Populate old string columns from FK relationships for backward compatibility
+                            $airportFrom = $flightData['airport_from'] ?? $flight->airport_from;
+                            if (isset($flightData['airport_from_id']) && $flightData['airport_from_id']) {
+                                $airportFromModel = Airport::find($flightData['airport_from_id']);
+                                $airportFrom = $airportFromModel ? $airportFromModel->iata_code : $airportFrom;
+                            }
+
+                            $airportTo = $flightData['airport_to'] ?? $flight->airport_to;
+                            if (isset($flightData['airport_to_id']) && $flightData['airport_to_id']) {
+                                $airportToModel = Airport::find($flightData['airport_to_id']);
+                                $airportTo = $airportToModel ? $airportToModel->iata_code : $airportTo;
+                            }
+
+                            $airlineId = $flight->airline_id;
+                            if (isset($flightData['airline_id_new']) && $flightData['airline_id_new']) {
+                                $airlineModel = Airline::find($flightData['airline_id_new']);
+                                $airlineId = $airlineModel ? $airlineModel->name : $airlineId;
+                            }
+
                             $flight->update([
-                                'airport_from' => $flightData['airport_from'] ?? $flight->airport_from,
+                                'airport_from_id' => $flightData['airport_from_id'] ?? $flight->airport_from_id,
+                                'airport_from' => $airportFrom,
                                 'terminal_from' => $flightData['terminal_from'] ?? $flight->terminal_from,
-                                'departure_time' => $flightData['departure_time'] ?? $flight->departure_time,
-                                'airport_to' => $flightData['airport_to'] ?? $flight->airport_to,
+                                'departure_time' => $departureTime,
+                                'airport_to_id' => $flightData['airport_to_id'] ?? $flight->airport_to_id,
+                                'airport_to' => $airportTo,
                                 'terminal_to' => $flightData['terminal_to'] ?? $flight->terminal_to,
-                                'arrival_time' => $flightData['arrival_time'] ?? $flight->arrival_time,
+                                'arrival_time' => $arrivalTime,
+                                'airline_id_new' => $flightData['airline_id_new'] ?? $flight->airline_id_new,
+                                'airline_id' => $airlineId,
                                 'flight_number' => $flightData['flight_number'] ?? $flight->flight_number,
                                 'class_type' => $flightData['class_type'] ?? $flight->class_type,
                                 'duration_time' => $flightData['duration_time'] ?? $flight->duration_time,
@@ -5694,6 +5764,23 @@ class TaskController extends Controller
                                 'seat_no' => $flightData['seat_no'] ?? $flight->seat_no,
                                 'ticket_number' => $flightData['ticket_number'] ?? $flight->ticket_number,
                             ]);
+                        }
+                    }
+
+                    // Update venue with flight route (e.g., "KWI - DOH - LHR")
+                    $task->refresh();
+                    $flights = $task->flightDetail;
+                    if ($flights->isNotEmpty()) {
+                        $route = [];
+                        foreach ($flights as $index => $flight) {
+                            if ($index === 0) {
+                                $route[] = $flight->airport_from;
+                            }
+                            $route[] = $flight->airport_to;
+                        }
+                        $venue = implode(' - ', array_filter($route));
+                        if ($venue) {
+                            $task->update(['venue' => $venue]);
                         }
                     }
                 }
@@ -6105,11 +6192,9 @@ class TaskController extends Controller
                         if (isset($flightData['id'])) {
                             $flight = $task->flightDetail->where('id', $flightData['id'])->first();
                             if ($flight) {
-                                $flight->update([
-                                    'airport_from' => $flightData['airport_from'] ?? $flight->airport_from,
+                                $updateData = [
                                     'terminal_from' => $flightData['terminal_from'] ?? $flight->terminal_from,
                                     'departure_time' => $flightData['departure_time'] ?? $flight->departure_time,
-                                    'airport_to' => $flightData['airport_to'] ?? $flight->airport_to,
                                     'terminal_to' => $flightData['terminal_to'] ?? $flight->terminal_to,
                                     'arrival_time' => $flightData['arrival_time'] ?? $flight->arrival_time,
                                     'flight_number' => $flightData['flight_number'] ?? $flight->flight_number,
@@ -6118,7 +6203,27 @@ class TaskController extends Controller
                                     'baggage_allowed' => $flightData['baggage_allowed'] ?? $flight->baggage_allowed,
                                     'seat_no' => $flightData['seat_no'] ?? $flight->seat_no,
                                     'ticket_number' => $flightData['ticket_number'] ?? $flight->ticket_number,
-                                ]);
+                                ];
+
+                                if (isset($flightData['airport_from_id'])) {
+                                    $airportFrom = Airport::find($flightData['airport_from_id']);
+                                    $updateData['airport_from_id'] = $airportFrom->id;
+                                    $updateData['airport_from'] = $airportFrom->iata_code;
+                                }
+
+                                if (isset($flightData['airport_to_id'])) {
+                                    $airportTo = Airport::find($flightData['airport_to_id']);
+                                    $updateData['airport_to_id'] = $airportTo->id;
+                                    $updateData['airport_to'] = $airportTo->iata_code;
+                                }
+
+                                if (isset($flightData['airline_id_new'])) {
+                                    $airline = Airline::find($flightData['airline_id_new']);
+                                    $updateData['airline_id_new'] = $airline->id;
+                                    $updateData['airline_id'] = $airline->name;
+                                }
+
+                                $flight->update($updateData);
                             }
                         }
                     }

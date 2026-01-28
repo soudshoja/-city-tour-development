@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-4" @change="updateVisaDetail($event)">
     <!-- Visa Type & Application Number -->
     <div class="grid grid-cols-2 gap-4">
         <div>

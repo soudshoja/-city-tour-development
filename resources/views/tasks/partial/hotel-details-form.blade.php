@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-4" @change="updateHotelDetail($event)" @dropdown-select="updateHotelDetail($event)">
     <!-- Hotel Selection -->
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Hotel</label>

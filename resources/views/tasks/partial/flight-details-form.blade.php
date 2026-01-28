@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-4" @change="updateFlightDetail($event)" @dropdown-select="updateFlightDetail($event)">
     @forelse($task->flightDetail as $index => $flight)
     <div class="border border-gray-200 rounded-lg p-4">
         <h4 class="text-sm font-semibold text-gray-700 mb-3">Flight {{ $index + 1 }}</h4>
@@ -8,10 +8,12 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Airport From</label>
-                    <input type="text"
-                        name="flights[{{ $index }}][airport_from]"
-                        value="{{ $flight->airport_from }}"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <x-searchable-dropdown
+                        name="flights[{{ $index }}][airport_from_id]"
+                        :items="$airports"
+                        :selectedId="$flight->airport_from_id ?? ''"
+                        :selectedName="$flight->airportFrom ? $flight->airportFrom->iata_code . ' - ' . $flight->airportFrom->name : ($flight->airport_from ?? '')"
+                        placeholder="Select airport" />
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Terminal From</label>
@@ -35,10 +37,12 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Airport To</label>
-                    <input type="text"
-                        name="flights[{{ $index }}][airport_to]"
-                        value="{{ $flight->airport_to }}"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <x-searchable-dropdown
+                        name="flights[{{ $index }}][airport_to_id]"
+                        :items="$airports"
+                        :selectedId="$flight->airport_to_id ?? ''"
+                        :selectedName="$flight->airportTo ? $flight->airportTo->iata_code . ' - ' . $flight->airportTo->name : ($flight->airport_to ?? '')"
+                        placeholder="Select airport" />
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Terminal To</label>
@@ -56,6 +60,17 @@
                     name="flights[{{ $index }}][arrival_time]"
                     value="{{ $flight->arrival_time ? \Carbon\Carbon::parse($flight->arrival_time)->format('Y-m-d\TH:i') : '' }}"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+            </div>
+
+            <!-- Airline -->
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Airline</label>
+                <x-searchable-dropdown
+                    name="flights[{{ $index }}][airline_id_new]"
+                    :items="$airlines"
+                    :selectedId="$flight->airline_id_new ?? ''"
+                    :selectedName="$flight->airline ? $flight->airline->iata_designator . ' - ' . $flight->airline->name : ($flight->airline_id ?? '')"
+                    placeholder="Select airline" />
             </div>
 
             <!-- Flight Number & Class Type -->

@@ -253,6 +253,110 @@
                 return (p + t + s + ss).toFixed(3);
             },
 
+            updateFlightDetail(event) {
+                let name, value, displayName;
+
+                if (event.detail) {
+                    name = event.detail.name;
+                    value = event.detail.value;
+                    displayName = event.detail.displayName;
+                } else {
+                    name = event.target.name;
+                    value = event.target.value;
+                }
+
+                if (!name || !name.startsWith('flights[')) return;
+
+                const match = name.match(/flights\[(\d+)\]\[(\w+)\]/);
+                if (!match) return;
+
+                const index = parseInt(match[1]);
+                const field = match[2];
+
+                if (!this.editDraft.changes.flightDetails) {
+                    this.editDraft.changes.flightDetails = [...this.editDraft.original.flightDetails];
+                }
+
+                if (!this.editDraft.changes.flightDetails[index]) {
+                    this.editDraft.changes.flightDetails[index] = {...this.editDraft.original.flightDetails[index]};
+                }
+
+                this.editDraft.changes.flightDetails[index][field] = value;
+
+                if (displayName) {
+                    this.editDraft.changes.flightDetails[index][field + '_display'] = displayName;
+                }
+
+                if (this.drafts[this.editDraft.task_id]) {
+                    this.drafts[this.editDraft.task_id].changes.flightDetails = this.editDraft.changes.flightDetails;
+                }
+            },
+
+            updateHotelDetail(event) {
+                let field, value, displayName;
+
+                if (event.detail) {
+                    field = event.detail.name;
+                    value = event.detail.value;
+                    displayName = event.detail.displayName;
+                } else {
+                    field = event.target.name;
+                    value = event.target.value;
+                }
+
+                if (!field) return;
+
+                if (!this.editDraft.changes.hotelDetails) {
+                    this.editDraft.changes.hotelDetails = {...this.editDraft.original.hotelDetails};
+                }
+
+                this.editDraft.changes.hotelDetails[field] = value;
+
+                if (displayName) {
+                    this.editDraft.changes.hotelDetails[field + '_display'] = displayName;
+                }
+
+                if (this.drafts[this.editDraft.task_id]) {
+                    this.drafts[this.editDraft.task_id].changes.hotelDetails = this.editDraft.changes.hotelDetails;
+                }
+            },
+
+            updateInsuranceDetail(event) {
+                const target = event.target;
+                const field = target.name;
+                const value = target.value;
+
+                if (!field) return;
+
+                if (!this.editDraft.changes.insuranceDetails) {
+                    this.editDraft.changes.insuranceDetails = {...this.editDraft.original.insuranceDetails};
+                }
+
+                this.editDraft.changes.insuranceDetails[field] = value;
+
+                if (this.drafts[this.editDraft.task_id]) {
+                    this.drafts[this.editDraft.task_id].changes.insuranceDetails = this.editDraft.changes.insuranceDetails;
+                }
+            },
+
+            updateVisaDetail(event) {
+                const target = event.target;
+                const field = target.name;
+                const value = target.value;
+
+                if (!field) return;
+
+                if (!this.editDraft.changes.visaDetails) {
+                    this.editDraft.changes.visaDetails = {...this.editDraft.original.visaDetails};
+                }
+
+                this.editDraft.changes.visaDetails[field] = value;
+
+                if (this.drafts[this.editDraft.task_id]) {
+                    this.drafts[this.editDraft.task_id].changes.visaDetails = this.editDraft.changes.visaDetails;
+                }
+            },
+
             getPayload() {
                 const payload = {};
 
@@ -262,9 +366,36 @@
 
                     const changed = {};
                     Object.keys(d.changes || {}).forEach(k => {
-                        const oldVal = String(d.original?.[k] ?? '');
-                        const newVal = String(d.changes?.[k] ?? '');
-                        if (oldVal !== newVal) changed[k] = d.changes[k];
+                        // Use JSON.stringify for objects/arrays to properly compare their content
+                        const isObject = typeof d.original?.[k] === 'object' || typeof d.changes?.[k] === 'object';
+                        const oldVal = isObject ? JSON.stringify(d.original?.[k] ?? '') : String(d.original?.[k] ?? '');
+                        const newVal = isObject ? JSON.stringify(d.changes?.[k] ?? '') : String(d.changes?.[k] ?? '');
+                        if (oldVal !== newVal) {
+                            if (typeof d.changes[k] === 'object' && d.changes[k] !== null && Array.isArray(d.changes[k])) {
+                                changed[k] = d.changes[k].map(item => {
+                                    if (typeof item === 'object' && item !== null) {
+                                        const cleaned = {};
+                                        Object.keys(item).forEach(field => {
+                                            if (!field.endsWith('_display')) {
+                                                cleaned[field] = item[field];
+                                            }
+                                        });
+                                        return cleaned;
+                                    }
+                                    return item;
+                                });
+                            } else if (typeof d.changes[k] === 'object' && d.changes[k] !== null) {
+                                const cleaned = {};
+                                Object.keys(d.changes[k]).forEach(field => {
+                                    if (!field.endsWith('_display')) {
+                                        cleaned[field] = d.changes[k][field];
+                                    }
+                                });
+                                changed[k] = cleaned;
+                            } else {
+                                changed[k] = d.changes[k];
+                            }
+                        }
                     });
 
                     if (Object.keys(changed).length > 0) {
@@ -746,14 +877,21 @@
                                                 flightDetails: @js($task->flightDetail->map(function($flight) {
                                                     return [
                                                         'id' => $flight->id,
+                                                        'airport_from_id' => $flight->airport_from_id,
+                                                        'airport_to_id' => $flight->airport_to_id,
+                                                        'airline_id_new' => $flight->airline_id_new,
                                                         'airport_from' => $flight->airport_from,
                                                         'airport_to' => $flight->airport_to,
+                                                        'terminal_from' => $flight->terminal_from,
+                                                        'terminal_to' => $flight->terminal_to,
                                                         'departure_time' => $flight->departure_time,
                                                         'arrival_time' => $flight->arrival_time,
                                                         'flight_number' => $flight->flight_number,
                                                         'class_type' => $flight->class_type,
                                                         'duration_time' => $flight->duration_time,
                                                         'baggage_allowed' => $flight->baggage_allowed,
+                                                        'seat_no' => $flight->seat_no,
+                                                        'ticket_number' => $flight->ticket_number,
                                                     ];
                                                 })->toArray()),
                                                 @endif
@@ -939,7 +1077,7 @@
                                                         <div class="flex flex-wrap gap-3 text-xs text-gray-600 pt-2 border-t border-gray-200">
                                                             <div>
                                                                 <span class="text-gray-400">Airline:</span>
-                                                                <span class="font-medium">{{ $flight->airline ?? 'N/A' }} {{ $flight->flight_number ?? '' }}</span>
+                                                                <span class="font-medium">{{ $flight->airline_id ?? 'N/A' }} {{ $flight->flight_number ?? '' }}</span>
                                                             </div>
                                                             @if($hasDuration && $flight->duration_time)
                                                             <div>
@@ -997,7 +1135,7 @@
                                                                     </p>
                                                                 </td>
                                                                 <td class="px-4 py-3">
-                                                                    <p class="text-sm font-medium text-gray-900">{{ $flight->airline ?? 'N/A' }}</p>
+                                                                    <p class="text-sm font-medium text-gray-900">{{ $flight->airline ? $flight->airline->name : "N/A"}}</p>
                                                                     <p class="text-xs text-gray-500">{{ $flight->flight_number ?? '' }}</p>
                                                                 </td>
                                                                 @if($hasDuration)
@@ -1267,7 +1405,6 @@
                                 class="fixed inset-0 z-50 overflow-y-auto"
                                 style="display: none;"
                                 @dropdown-select.window="
-                                    console.log('Dropdown select event received:', $event.detail);
                                     if (editDraft.task_id === {{ $task->id }}) {
                                         if ($event.detail.name === 'client_id') {
                                             editDraft.changes.client_id = $event.detail.value;
@@ -1580,12 +1717,12 @@
                                                     <div class="mt-3 pt-3 border-t">
                                                         <div class="text-xs font-semibold text-gray-600 mb-2">Hotel Details</div>
                                                         <template x-for="field in Object.keys(draft.changes.hotelDetails || {})" :key="field">
-                                                            <template x-if="String(draft.changes.hotelDetails[field] ?? '') !== String(draft.original.hotelDetails?.[field] ?? '')">
+                                                            <template x-if="String(draft.changes.hotelDetails[field] ?? '') !== String(draft.original.hotelDetails?.[field] ?? '') && !field.endsWith('_display')">
                                                                 <div class="flex items-center justify-between text-xs border-b pb-2 mb-1">
                                                                     <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
                                                                     <div class="text-right">
                                                                         <div class="text-gray-400 line-through" x-text="draft.original.hotelDetails?.[field] ?? '-'"></div>
-                                                                        <div class="text-gray-900 font-semibold" x-text="draft.changes.hotelDetails[field] ?? '-'"></div>
+                                                                        <div class="text-gray-900 font-semibold" x-text="draft.changes.hotelDetails[field + '_display'] ?? draft.changes.hotelDetails[field] ?? '-'"></div>
                                                                     </div>
                                                                 </div>
                                                             </template>
@@ -1623,6 +1760,31 @@
                                                                         <div class="text-gray-400 line-through" x-text="draft.original.visaDetails?.[field] ?? '-'"></div>
                                                                         <div class="text-gray-900 font-semibold" x-text="draft.changes.visaDetails[field] ?? '-'"></div>
                                                                     </div>
+                                                                </div>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Flight Details -->
+                                                <template x-if="draft.changes.flightDetails && JSON.stringify(draft.changes.flightDetails) !== JSON.stringify(draft.original.flightDetails)">
+                                                    <div class="mt-3 pt-3 border-t">
+                                                        <div class="text-xs font-semibold text-gray-600 mb-2">Flight Details</div>
+                                                        <template x-for="(flight, index) in (draft.changes.flightDetails || [])" :key="index">
+                                                            <template x-if="JSON.stringify(flight) !== JSON.stringify(draft.original.flightDetails?.[index])">
+                                                                <div class="mb-3 p-2 bg-gray-50 rounded border">
+                                                                    <div class="text-xs font-medium text-gray-700 mb-2">Flight <span x-text="index + 1"></span></div>
+                                                                    <template x-for="field in Object.keys(flight || {})" :key="field">
+                                                                        <template x-if="String(flight[field] ?? '') !== String(draft.original.flightDetails?.[index]?.[field] ?? '') && field !== 'id' && !field.endsWith('_display')">
+                                                                            <div class="flex items-center justify-between text-xs border-b border-gray-200 pb-1 mb-1">
+                                                                                <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
+                                                                                <div class="text-right">
+                                                                                    <div class="text-gray-400 line-through text-xs" x-text="draft.original.flightDetails?.[index]?.[field] ?? '-'"></div>
+                                                                                    <div class="text-gray-900 font-semibold text-xs" x-text="flight[field + '_display'] ?? flight[field] ?? '-'"></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </template>
+                                                                    </template>
                                                                 </div>
                                                             </template>
                                                         </template>

@@ -1192,17 +1192,21 @@ class PaymentController extends Controller
             }
         }
 
+        $partial = InvoicePartial::findOrFail($invoicePartialId);
+        $originalAmount = $partial->amount;
+
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->full_name,
             'pay_to' => $invoice->agent->branch->company->name,
+            'created_by' => Auth::id(),
             'currency' => 'KWD',
             'payment_date' => Carbon::now(),
-            'amount' => $data['total_amount'],
+            'service_charge' => $finalAmount - $originalAmount,
+            'amount' => $originalAmount,
             'payment_gateway' => $data['payment_gateway'],
             'payment_method_id' => $data['payment_method'],
             'status' => 'pending',
-            'payment_reference' => $invoice->id,
             'invoice_id' => $invoice->id,
             'client_id' => $invoice->client_id,
             'agent_id' => $invoice->agent_id
@@ -1500,185 +1504,9 @@ class PaymentController extends Controller
         }
     }
 
-    public function processMyFatoorah(array $data)
-    {
-        $focus = $data['Data']['focusTransaction'];
-        $invoiceId = $data['Data']['CustomerReference']; // You stored this in CustomerReference
-        $paymentReference = $focus['PaymentId'];
-        // $totalPaidAmount = $focus['TransationValue'];
-        $totalPaidAmount = floatval(str_replace(',', '', $focus['TransationValue']));
-        $totalPaidAmount = round($totalPaidAmount, 2);
-        $paymentGateway = $focus['PaymentGateway'];
-
-        // STEP 1: Fetch the invoice
-        $invoice = Invoice::with('agent.branch', 'client')->find($invoiceId);
-        if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found.');
-        }
-
-        // STEP 2: Fetch related payment
-        $payment = Payment::where('invoice_id', $invoice->id)
-            ->where('payment_reference', $invoice->id)
-            ->where('status', 'initiate')
-            ->latest()->first();
-
-        if (!$payment) {
-            return redirect()->back()->with('error', 'Payment not found.');
-        }
-
-        // STEP 3: Update payment record
-        $payment->status = 'completed';
-        $payment->completed = 1;
-        $payment->payment_reference = $paymentReference;
-        $payment->save();
-
-        // STEP 4: Get financial accounts
-        $chargeRecord = Charge::where('name', 'LIKE', $paymentGateway)
-            ->where('company_id', $invoice->agent->branch->company->id)
-            ->first();
-
-        if (!$chargeRecord) {
-            return redirect()->back()->with('error', 'Charge account not configured.');
-        }
-
-        $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
-        $tapAccount = Account::find($chargeRecord->acc_fee_id);
-        $receivableAccount = Account::where('name', 'Clients')->first();
-
-        // STEP 5: Create transaction
-        $transaction = Transaction::create([
-            'branch_id' => $invoice->agent->branch->id,
-            'company_id' => $invoice->agent->branch->company->id,
-            'entity_id' => $invoice->agent->branch->company->id,
-            'entity_type' => 'company',
-            'transaction_type' => 'debit',
-            'amount' => $totalPaidAmount,
-            'description' => 'Payment via MyFatoorah for Invoice: ' . $invoice->invoice_number,
-            'invoice_id' => $invoice->id,
-            'reference_type' => 'Invoice',
-        ]);
-
-        $invoiceDetail = InvoiceDetail::where('invoice_number', $invoice->invoice_number)->first();
-        $client = $invoice->client;
-
-        // Receivable Journal
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'branch_id' => $invoice->agent->branch->id,
-            'company_id' => $invoice->agent->branch->company->id,
-            'invoice_id' => $invoice->id,
-            'account_id' => $receivableAccount->id,
-            'invoice_detail_id' => $invoiceDetail->id,
-            'transaction_date' => now(),
-            'description' => 'Client payment received via MyFatoorah',
-            'debit' => 0,
-            'credit' => $totalPaidAmount,
-            'balance' => $invoiceDetail->task_price - $totalPaidAmount,
-            'name' => $client->full_name,
-            'type' => 'receivable',
-            'voucher_number' => $payment->voucher_number,
-            'type_reference_id' => $receivableAccount->id,
-        ]);
-
-        // Bank assets (excluding fee)
-        $netAmount = $totalPaidAmount - $chargeRecord->amount;
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'branch_id' => $invoice->agent->branch->id,
-            'company_id' => $invoice->agent->branch->company->id,
-            'invoice_id' => $invoice->id,
-            'invoice_detail_id' => $invoiceDetail->id,
-            'account_id' => $bankPaymentFee->id,
-            'transaction_date' => now(),
-            'description' => 'Net payment received',
-            'debit' => $netAmount,
-            'credit' => 0,
-            'balance' => $invoiceDetail->task_price - $totalPaidAmount,
-            'name' => $bankPaymentFee->name,
-            'type' => 'bank',
-            'voucher_number' => $payment->voucher_number,
-            'type_reference_id' => $bankPaymentFee->id,
-        ]);
-        $bankPaymentFee->actual_balance += $netAmount;
-        $bankPaymentFee->save();
-
-        // Fee as expense
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'branch_id' => $invoice->agent->branch->id,
-            'company_id' => $invoice->agent->branch->company->id,
-            'invoice_id' => $invoice->id,
-            'invoice_detail_id' => $invoiceDetail->id,
-            'account_id' => $tapAccount->id,
-            'transaction_date' => now(),
-            'description' => 'MyFatoorah service fee',
-            'debit' => $chargeRecord->amount,
-            'credit' => 0,
-            'balance' => $tapAccount->actual_balance + $chargeRecord->amount,
-            'name' => $tapAccount->name,
-            'type' => 'charges',
-            'voucher_number' => $payment->voucher_number,
-            'type_reference_id' => $tapAccount->id,
-        ]);
-        $tapAccount->actual_balance += $chargeRecord->amount;
-        $tapAccount->save();
-
-        // STEP 6: Update invoice status
-        $invoice->status = 'paid';
-        $invoice->paid_date = now();
-        $invoice->save();
-
-        // STEP 7: Update invoice partials (optional based on your use case)
-        InvoicePartial::where('invoice_id', $invoice->id)->update([
-            'status' => 'paid',
-            'payment_id' => $payment->id
-        ]);
-
-        $this->storeNotification([
-            'user_id' => $invoice->agent->id,
-            'title' => 'Payment Successful',
-            'message' => 'Payment received via MyFatoorah for invoice ' . $invoice->invoice_number,
-        ]);
-
-        return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])
-            ->with('status', 'Payment successful via MyFatoorah!');
-    }
-
-    public function check($tap_id)
-    {
-        $tap = new Tap();
-
-        $response = $tap->getCharge($tap_id);
-
-        if (isset($response['errors'])) {
-            return response()->json(['error' => $response['errors'][0]['description']], 500);
-        }
-
-        return response()->json($response);
-    }
-
     public function webhook(Request $request)
     {
         Log::info('Tap Payment Webhook received: ' . $request->getContent());
-    }
-
-    public function paymentClientProcess(Request $request)
-    {
-        $tap = new Tap();
-
-        $tap_id = $request->tap_id;
-
-        $response = $tap->getCharge($tap_id);
-
-        if (isset($response['errors'])) {
-            return view('clients.response', ['status' => 'error', 'message' => 'Payment error']);
-        }
-
-        if ($response['status'] != 'CAPTURED') {
-            return view('clients.response', ['status' => 'error', 'message' => 'Payment error']);
-        }
-
-        return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
     }
 
     public function getPaymentStatusMyFatoorah($invoiceId): JsonResponse
@@ -3867,6 +3695,7 @@ class PaymentController extends Controller
                 $payment->completed = 1;
                 $payment->service_charge = $finalPaidAmount - $payment->amount;
                 $payment->payment_reference = $response['id'];
+                $payment->payment_date = now();
                 $payment->save();
 
                 if ($process === 'topup') {
@@ -4074,11 +3903,21 @@ class PaymentController extends Controller
 
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
-                $this->storeNotification([
+                $storeNotificationData = [
                     'user_id' => $receiptInfo['agent']->user_id,
                     'title'   => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
-                ]);
+                ];
+
+                if ($payment->invoice) {
+                    $storeNotificationData['type'] = 'invoice';
+                    $storeNotificationData['invoice'] = $payment->invoice;
+                } else {
+                    $storeNotificationData['type'] = 'payment';
+                    $storeNotificationData['payment'] = $payment;
+                }
+
+                $this->storeNotificationWithSendingPdf($storeNotificationData);
 
                 (new ResayilController())->message(
                     $receiptInfo['agent']->phone_number,
@@ -4094,8 +3933,22 @@ class PaymentController extends Controller
             DB::transaction(function () use ($payment, $responseData, $process, $partialId) {
                 $finalPaidAmount = floatval($responseData['amt'] ?? $payment->amount);
 
-                // Store KNET payment details
-                // Note: You may want to create a KnetPayment model similar to TapPayment
+                $paymentTransaction = $payment->paymentTransactions()
+                    ->where('reference_number', $responseData['trackid'] ?? null)
+                    ->orWhere('track_id', $responseData['trackid'] ?? null)
+                    ->first();
+
+                if ($paymentTransaction) {
+                    $paymentTransaction->status = $responseData['result'] ?? 'CAPTURED';
+                    $paymentTransaction->track_id = $responseData['trackid'] ?? $paymentTransaction->track_id;
+                    $paymentTransaction->save();
+
+                    Log::info('[KNET] Payment transaction updated', [
+                        'payment_transaction_id' => $paymentTransaction->id,
+                        'status' => $paymentTransaction->status,
+                    ]);
+                }
+
                 $payment->status = 'completed';
                 $payment->completed = 1;
                 $payment->service_charge = $finalPaidAmount - $payment->amount;
@@ -4107,7 +3960,7 @@ class PaymentController extends Controller
                     $clientController = new ClientController;
                     $addCreditResponse = $clientController->addCredit($payment);
 
-                    if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                    if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
                         throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
@@ -4166,13 +4019,34 @@ class PaymentController extends Controller
                 }
             });
 
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via KNET callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via KNET callback', $tboResult);
+                }
+            }
+
+            $payment->refresh();
+
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
 
-            $this->storeNotification([
+            $storeNotificationData = [
                 'user_id' => $receiptInfo['agent']->user_id,
                 'title'   => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
-            ]);
+            ];
+
+            if ($payment->invoice) {
+                $storeNotificationData['type'] = 'invoice';
+                $storeNotificationData['invoice'] = $payment->invoice;
+            } else {
+                $storeNotificationData['type'] = 'payment';
+                $storeNotificationData['payment'] = $payment;
+            }
+
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $receiptInfo['agent']->phone_number,
@@ -4454,8 +4328,6 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment link deleted successfully!');
     }
 
-    public function shareLink($paymentId) {}
-
     public function handleWebhookFatoorah(Request $request)
     {
         $secretKey = config('services.myfatoorah.webhook_secret_key');
@@ -4620,6 +4492,8 @@ class PaymentController extends Controller
             $finalPaidAmount = $statusData['InvoiceValue'];
 
             $payment->status = 'completed';
+            $payment->service_charge = $finalPaidAmount - $payment->amount;
+            $payment->payment_date = now();
             $payment->save();
 
             $transaction = $statusData['InvoiceTransactions'][0] ?? [];
@@ -4767,16 +4641,13 @@ class PaymentController extends Controller
 
             if ($payment->status === 'completed') {
                 $invoice = $payment->invoice;
-
                 if ($invoice && $invoice->status !== 'paid') {
                     $invoice->status = 'paid';
                     $invoice->paid_date = now();
                     $invoice->save();
-
-                    Log::info('Invoice status updated to paid for already completed payment', ['invoice_id' => $invoice->id]);
                 }
 
-                Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
+                Log::info('[UPAYMENT] Callback ignored: payment already completed', ['payment_id' => $payment->id]);
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
@@ -4794,17 +4665,15 @@ class PaymentController extends Controller
             $transaction = $statusResponse['data']['transaction'];
             $result = strtoupper($transaction['result'] ?? '');
             $status = $transaction['status'] ?? '';
-            $orderId = $transaction['order_id'] ?? '';
-            $paymentId = $transaction['payment_id'] ?? '';
             $totalPaidAmount = floatval($transaction['total_price'] ?? 0);
 
-            // Check if payment was successful
             if ($result !== 'CAPTURED' || strtolower($status) !== 'done') {
-                Log::error('UPayment transaction not successful', [
+                Log::error('[UPAYMENT] Transaction not successful', [
                     'result' => $result,
                     'status' => $status,
                     'track_id' => $trackId
                 ]);
+
                 UpaymentPayment::create([
                     'payment_int_id' => $payment->id,
                     'payment_id' => $transaction['payment_id'] ?? null,
@@ -4818,13 +4687,14 @@ class PaymentController extends Controller
                     'payment_date' => $transaction['payment_date'] ?? $transaction['transaction_date'] ?? now(),
                     'payload' => $statusResponse,
                 ]);
+
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
                 $storeNotificationData = [
                     'user_id' => $receiptInfo['agent']->user_id,
                     'title'   => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
-                    'type' => $process ?? 'payment',
+                    'type' => $process,
                 ];
 
                 if ($process === 'invoice' && $payment->invoice) {
@@ -4832,8 +4702,6 @@ class PaymentController extends Controller
                 } else {
                     $storeNotificationData['payment'] = $payment;
                 }
-
-                Log::info('[UPAYMENT] Storing notification for failed payment for agent ID: ' . $receiptInfo['agent']->id, $storeNotificationData);
 
                 $this->storeNotificationWithSendingPdf($storeNotificationData);
 
@@ -4846,27 +4714,28 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
             }
 
-            Log::info('Processing UPayment', [
-                'process' => $process,
-                'payment_id' => $payment->id,
-                'total_amount' => $totalPaidAmount
-            ]);
-
             DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $partialId) {
-                // Mark payment as completed
+
+                $paymentTransaction = $payment->paymentTransactions()
+                    ->where('reference_number', $trackId)
+                    ->first();
+
+                if ($paymentTransaction) {
+                    $paymentTransaction->status = $transaction['status'] ?? 'done';
+                    $paymentTransaction->track_id = $transaction['track_id'] ?? $paymentTransaction->track_id;
+                    $paymentTransaction->save();
+
+                    Log::info('[UPAYMENT] Payment transaction updated', [
+                        'payment_transaction_id' => $paymentTransaction->id,
+                        'status' => $paymentTransaction->status,
+                    ]);
+                }
+
                 $payment->status = 'completed';
                 $payment->completed = 1;
+                $payment->service_charge = $totalPaidAmount - $payment->amount;
+                $payment->payment_date = now();
                 $payment->save();
-
-                // Process TBO booking if applicable
-                $tboResult = $this->processTBOBookingAfterPayment($payment);
-                if ($tboResult !== null) {
-                    if ($tboResult['success']) {
-                        Log::info('TBO booking processed successfully via UPayment callback', $tboResult);
-                    } else {
-                        Log::error('TBO booking failed via UPayment callback', $tboResult);
-                    }
-                }
 
                 UpaymentPayment::create([
                     'payment_int_id' => $payment->id,
@@ -4882,11 +4751,11 @@ class PaymentController extends Controller
                     'payload' => $statusResponse,
                 ]);
 
-                if ($process == 'topup') {
+                if ($process === 'topup') {
                     $clientController = new ClientController;
                     $addCreditResponse = $clientController->addCredit($payment);
 
-                    if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                    if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
                         throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
@@ -4916,7 +4785,6 @@ class PaymentController extends Controller
                     }
                     $invoice->save();
 
-                    // Create journal entries for invoice payment
                     $coaResult = $this->createInvoicePaymentCOA(
                         payment: $payment,
                         finalPaidAmount: $totalPaidAmount,
@@ -4941,16 +4809,25 @@ class PaymentController extends Controller
                 }
             }
 
-            // Reload payment to get updated hotel booking with confirmation_no
             $payment->refresh();
 
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
 
-            $this->storeNotification([
+            $storeNotificationData = [
                 'user_id' => $receiptInfo['agent']->user_id,
                 'title'   => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
-            ]);
+            ];
+
+            if ($payment->invoice) {
+                $storeNotificationData['type'] = 'invoice';
+                $storeNotificationData['invoice'] = $payment->invoice;
+            } else {
+                $storeNotificationData['type'] = 'payment';
+                $storeNotificationData['payment'] = $payment;
+            }
+
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $receiptInfo['agent']->phone_number,
@@ -5069,10 +4946,20 @@ class PaymentController extends Controller
                 return redirect()->route('payment.failed')->with('error', 'Payment record not found');
             }
 
+            if ($payment->status === 'completed') {
+                Log::info('Hesabe callback: Payment already processed', [
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                ]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
             $payment->payment_reference = $data['transactionId'];
             $payment->invoice_reference = $data['trackID'];
             $payment->payment_date = $data['paidOn'] ?? now();
             $payment->status = 'completed';
+            $payment->service_charge = $data['amount'] - $payment->amount;
             $payment->save();
 
 
@@ -5178,34 +5065,23 @@ class PaymentController extends Controller
 
         try {
             if ($process === 'topup') {
-                Log::info('Starting to process the credit for successfull callback from Hesabe');
+                Log::info('Starting to process the credit for successful callback from Hesabe');
 
                 $clientController = new ClientController;
                 $addCreditResponse = $clientController->addCredit($payment);
 
-                if (isset($addCreditResponse['error'])) {
-                    logger('Failed to add credit to client', [
-                        'message' => $addCreditResponse['error'],
-                        'payment_reference' => $data['transactionId'],
-                    ]);
+                if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
                     Log::error('Failed to add credit to client', [
+                        'message' => $addCreditResponse['error'] ?? $addCreditResponse['message'],
                         'payment_reference' => $data['transactionId'],
                     ]);
-                    return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error']);
+                    return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error'] ?? $addCreditResponse['message']);
                 }
 
                 Log::info('Credit added successfully via addCredit()', [
                     'payment_id' => $payment->id,
                     'response' => $addCreditResponse,
                 ]);
-
-                $creditCoa = $this->creditCOA($payment);
-                if (!$creditCoa['success']) {
-                    Log::error('Failed to create journal entry for failed payment', [
-                        'message' => $creditCoa['message'],
-                    ]);
-                    return redirect()->to($receiptInfo['url'])->with('error', $creditCoa['message']);
-                }
             } elseif ($process === 'invoice') {
                 Log::info('Starting to process the invoice for successful callback from Hesabe');
 
@@ -5341,14 +5217,6 @@ class PaymentController extends Controller
                 ]
             );
 
-            $creditCoa = $this->creditCOA($payment);
-            if (!$creditCoa['success']) {
-                Log::error('Failed to create journal entry for failed payment', [
-                    'message' => $creditCoa['message'],
-                    'voucher_number' => $voucherNumber,
-                ]);
-            }
-
             DB::commit();
 
             if ($payment) {
@@ -5448,40 +5316,56 @@ class PaymentController extends Controller
             // Check if payment was successful
             if (strtoupper($status) === 'SUCCESSFUL' && $statusCode == 1) {
 
-                // Update payment transaction if token exists
+                $paymentStatusData = null;
+                $fullPaymentResponse = null;
+
                 if ($paymentToken) {
                     Log::info('[HESABE WEBHOOK] Payment token found in the response', [
                         'payment_token' => $paymentToken,
                         'status' => $status,
                     ]);
 
-                    $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
+                    $hesabe = new Hesabe();
+                    $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
 
-                    if ($paymentTransaction) {
-                        $hesabe = new Hesabe();
-                        $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
+                    if ($getPaymentStatus['status'] == true) {
+                        $paymentStatusData = $getPaymentStatus['data'];
+                        $fullPaymentResponse = $getPaymentStatus;
 
-                        if ($getPaymentStatus['status'] == true) {
-                            $paymentTransaction->status = $getPaymentStatus['data']['status'] ?? 'Completed';
-                            $paymentTransaction->track_id = $getPaymentStatus['data']['TrackID'] ?? $paymentTransaction->track_id;
+                        Log::info('[HESABE WEBHOOK] Full payment status retrieved', [
+                            'payment_token' => $paymentToken,
+                            'data' => $paymentStatusData,
+                        ]);
+
+                        $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
+
+                        if ($paymentTransaction) {
+                            $paymentTransaction->status = $paymentStatusData['status'] ?? 'Completed';
+                            $paymentTransaction->track_id = $paymentStatusData['TrackID'] ?? $paymentTransaction->track_id;
                             $paymentTransaction->save();
 
                             Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
                                 'payment_transaction_id' => $paymentTransaction->id,
                                 'status' => $paymentTransaction->status
                             ]);
+                        } else {
+                            Log::warning('[HESABE WEBHOOK] Payment transaction not found for the given payment token', [
+                                'payment_token' => $paymentToken
+                            ]);
                         }
                     } else {
-                        Log::warning('[HESABE WEBHOOK] Payment transaction not found for the given payment token', [
-                            'payment_token' => $paymentToken
+                        Log::warning('[HESABE WEBHOOK] Failed to get payment status from Hesabe API', [
+                            'payment_token' => $paymentToken,
+                            'response' => $getPaymentStatus,
                         ]);
                     }
                 }
 
-                $payment->payment_reference = $paymentToken;
-                $payment->invoice_reference = $voucherNumber;
+                $payment->payment_reference = $paymentStatusData['TransactionID'] ?? $paymentToken;
+                $payment->invoice_reference = $paymentStatusData['TrackID'] ?? $voucherNumber;
                 $payment->payment_date = $datetime ? \Carbon\Carbon::parse($datetime) : now();
                 $payment->status = 'completed';
+                $payment->service_charge = $paymentStatusData['amount'] - $payment->amount;
                 $payment->save();
 
                 // Process TBO booking if applicable
@@ -5500,16 +5384,16 @@ class PaymentController extends Controller
                 HesabePayment::updateOrCreate(
                     ['payment_int_id' => $payment->id],
                     [
-                        'status' => $status,
-                        'payment_token' => $paymentToken,
-                        'payment_id' => null,
-                        'order_reference_number' => $voucherNumber,
-                        'auth_code' => null,
-                        'track_id' => $voucherNumber,
-                        'transaction_id' => $paymentToken,
-                        'invoice_id' => null,
-                        'paid_on' => $datetime,
-                        'payload' => $request->all(),
+                        'status' => $paymentStatusData['status'] ?? $status,
+                        'payment_token' => $paymentStatusData['token'] ?? $paymentToken,
+                        'payment_id' => $paymentStatusData['PaymentID'] ?? null,
+                        'order_reference_number' => $paymentStatusData['reference_number'] ?? $voucherNumber,
+                        'auth_code' => $paymentStatusData['auth'] ?? null,
+                        'track_id' => $paymentStatusData['TrackID'] ?? null,
+                        'transaction_id' => $paymentStatusData['TransactionID'] ?? null,
+                        'invoice_id' => $paymentStatusData['Id'] ?? null,
+                        'paid_on' => $paymentStatusData['datetime'] ?? $datetime,
+                        'payload' => $fullPaymentResponse ?? $request->all(),
                     ]
                 );
 
@@ -5532,13 +5416,6 @@ class PaymentController extends Controller
                         'payment_id' => $payment->id,
                         'response' => $addCreditResponse,
                     ]);
-
-                    $creditCoa = $this->creditCOA($payment);
-                    if (!$creditCoa['success']) {
-                        Log::error('Hesabe webhook: Failed to create journal entry', [
-                            'message' => $creditCoa['message'],
-                        ]);
-                    }
                 } else {
                     // Process invoice payment
                     Log::info('Hesabe webhook: Processing invoice payment');
@@ -5597,14 +5474,27 @@ class PaymentController extends Controller
                 ], 200);
             } else {
                 // Payment failed
+                $paymentStatusData = null;
+                $fullPaymentResponse = null;
+
+                if ($paymentToken) {
+                    $hesabe = new Hesabe();
+                    $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
+
+                    if ($getPaymentStatus['status'] == true) {
+                        $paymentStatusData = $getPaymentStatus['data'];
+                        $fullPaymentResponse = $getPaymentStatus;
+                    }
+                }
+
                 Log::error('Hesabe webhook: Payment failed', [
                     'status' => $status,
                     'status_code' => $statusCode,
                     'voucher_number' => $voucherNumber,
                 ]);
 
-                $payment->payment_reference = $paymentToken;
-                $payment->invoice_reference = $voucherNumber;
+                $payment->payment_reference = $paymentStatusData['TransactionID'] ?? $paymentToken;
+                $payment->invoice_reference = $paymentStatusData['TrackID'] ?? $voucherNumber;
                 $payment->payment_date = $datetime ? \Carbon\Carbon::parse($datetime) : now();
                 $payment->status = 'failed';
                 $payment->save();
@@ -5612,16 +5502,16 @@ class PaymentController extends Controller
                 HesabePayment::updateOrCreate(
                     ['payment_int_id' => $payment->id],
                     [
-                        'status' => $status,
-                        'payment_token' => $paymentToken,
-                        'payment_id' => null,
-                        'order_reference_number' => $voucherNumber,
-                        'auth_code' => null,
-                        'track_id' => $voucherNumber,
-                        'transaction_id' => $paymentToken,
-                        'invoice_id' => null,
-                        'paid_on' => $datetime,
-                        'payload' => $request->all(),
+                        'status' => $paymentStatusData['status'] ?? $status,
+                        'payment_token' => $paymentStatusData['token'] ?? $paymentToken,
+                        'payment_id' => $paymentStatusData['PaymentID'] ?? null,
+                        'order_reference_number' => $paymentStatusData['reference_number'] ?? $voucherNumber,
+                        'auth_code' => $paymentStatusData['auth'] ?? null,
+                        'track_id' => $paymentStatusData['TrackID'] ?? null,
+                        'transaction_id' => $paymentStatusData['TransactionID'] ?? null,
+                        'invoice_id' => $paymentStatusData['Id'] ?? null,
+                        'paid_on' => $paymentStatusData['datetime'] ?? $datetime,
+                        'payload' => $fullPaymentResponse ?? $request->all(),
                     ]
                 );
 
@@ -5874,130 +5764,6 @@ class PaymentController extends Controller
                 'transaction_id' => null,
             ];
         }
-    }
-
-    public function creditCOA($payment): array
-    {
-        Log::info('Starting to create the COA for payment link');
-
-        $hesabePayment = HesabePayment::where('order_reference_number', $payment->voucher_number)->first();
-        if (!$hesabePayment) {
-            Log::warning('HesabePayment record not found', ['voucher' => $payment->voucher_number]);
-            return ['success' => false, 'message' => 'Payment record not found in gateway table'];
-        }
-
-        if (in_array($hesabePayment->status, ['ACCEPT', 'CAPTURED'])) {
-            Log::info('Credit payment success, creating credit COA');
-
-            try {
-                $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                    ->where('company_id', $payment->agent->branch->company->id)
-                    ->first();
-                if (!$liabilitiesAccount) {
-                    return ['success' => false, 'message' => 'Liabilities account not found'];
-                }
-
-                $clientAdvance = Account::where('name', 'Client')
-                    ->where('company_id', $payment->agent->branch->company->id)
-                    ->where('root_id', $liabilitiesAccount->id)
-                    ->first();
-                if (!$clientAdvance) {
-                    return ['success' => false, 'message' => 'Client advance account not found'];
-                }
-
-                $paymentGateway = Account::where('name', 'Payment Gateway')
-                    ->where('company_id', $payment->agent->branch->company_id)
-                    ->where('parent_id', $clientAdvance->id)
-                    ->first();
-                if (!$paymentGateway) {
-                    return ['success' => false, 'message' => 'Payment Gateway account not found'];
-                }
-
-                DB::beginTransaction();
-
-                try {
-                    $transaction = Transaction::create([
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'entity_id' => $payment->agent->branch->company->id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'debit',
-                        'amount' => $payment->amount,
-                        'description' => 'Topup success by ' . $payment->client->full_name,
-                        'payment_id' => $payment->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'payment_reference' => $payment->payment_reference,
-                        'reference_type' => 'Payment',
-                        'transaction_date' => now(),
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentGateway->id,
-                        'transaction_date' => now(),
-                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                        'debit' => 0,
-                        'credit' => $payment->amount,
-                        'balance' => $paymentGateway->actual_balance - $payment->amount,
-                        'name' => $payment->client->full_name,
-                        'type' => 'receivable',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentGateway->id
-                    ]);
-
-                    DB::commit();
-                    return ['success' => true, 'message' => 'Credit COA created successfully'];
-                } catch (Exception $e) {
-                    DB::rollback();
-                    logger('Failed to create journal entry for payment link', [
-                        'message' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-
-                    return ['success' => false, 'message' => 'Payment cannot be updated: ' . $e->getMessage()];
-                }
-            } catch (Exception $e) {
-                Log::error('Error creating journal entry for a successful credit payment', [
-                    'status' => 'error',
-                    'trace' => $e->getTraceAsString(),
-                    'payment_id' => $payment->id,
-                ]);
-
-                return ['success' => false, 'message' => 'Error creating journal entry'];
-            }
-        } elseif (in_array($hesabePayment->status, ['ERROR', 'CANCEL'])) {
-            Log::info('Credit payment failed, creating credit COA');
-            try {
-                $payment = Payment::with('client', 'agent.branch')->find($payment->id);
-
-                Transaction::create([
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'entity_id' => $payment->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $payment->amount,
-                    'description' => 'Topup failed by ' . $payment->client->full_name,
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'payment_reference' => $payment->payment_reference,
-                    'reference_type' => 'Payment',
-                    'transaction_date' => now(),
-                ]);
-                return ['success' => false, 'message' => 'Topup transaction failed'];
-            } catch (Exception $e) {
-                logger('Error creating journal entry for a failed credit payment', [
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                return ['success' => false, 'message' => 'Error creating failed COA: ' . $e->getMessage()];
-            }
-        }
-        return ['success' => false, 'message' => 'Unhandled payment status: ' . $hesabePayment->status];
     }
 
     public function success()

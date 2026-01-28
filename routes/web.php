@@ -497,7 +497,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
         Route::get('/failed', [PaymentController::class, 'failed'])->name('failed')->withoutMiddleware(['auth']);
-        Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
 
         Route::group([
             'prefix' => 'link',
@@ -513,7 +512,6 @@ Route::middleware(['auth'])->group(function () {
             })->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
-            Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');
             Route::post('/initiate', [PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);

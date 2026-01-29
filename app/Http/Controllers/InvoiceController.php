@@ -203,6 +203,10 @@ class InvoiceController extends Controller
                     return Redirect::route('tasks.index')->with('error', 'Task not found!');
                 }
 
+                if($task->invoiceDetail){
+                    return Redirect::route('tasks.index')->with('error', 'One or more selected tasks are already invoiced');
+                }
+
                 if (!$task->is_complete) {
                     return Redirect::route('tasks.index')->with('error', 'Task does not have full information!');
                 }

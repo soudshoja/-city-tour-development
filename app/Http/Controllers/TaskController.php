@@ -2600,6 +2600,9 @@ class TaskController extends Controller
             'client',
             'flightDetails.countryFrom',
             'flightDetails.countryTo',
+            'flightDetails.airportFrom',
+            'flightDetails.airportTo',
+            'flightDetails.airline',
             'hotelDetails.hotel',
             'insuranceDetails',
             'visaDetails',
@@ -5452,10 +5455,30 @@ class TaskController extends Controller
             $clients = Client::where('company_id', $companyId)->get();
         }
 
+        $hasInvoicedTasks = false;
+        $hasPaidInvoicedTasks = false;
+
         foreach ($tasks as $task) {
             if (($task->agent_id && !$agents->contains('id', $task->agent_id)) || $task->company_id != $companyId) {
                 return redirect()->back()->with('error', 'You do not have permission to view one or more selected tasks.');
             }
+
+            // Check if task has an invoice
+            if ($task->invoiceDetail) {
+                // If invoice is paid, block access completely
+                if ($task->invoiceDetail->paid == 1) {
+                    $hasPaidInvoicedTasks = true;
+                }
+                // If invoice exists but not paid, allow access but flag for warning
+                else {
+                    $hasInvoicedTasks = true;
+                }
+            }
+        }
+
+        // Block access if any task has a paid invoice
+        if ($hasPaidInvoicedTasks) {
+            return redirect()->back()->with('error', 'One or more selected tasks have paid invoices and cannot be edited.');
         }
 
         if (!$companyId) {
@@ -5518,7 +5541,7 @@ class TaskController extends Controller
             ];
         });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels', 'airports', 'airlines'));
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels', 'airports', 'airlines', 'hasInvoicedTasks'));
     }
 
     public function bulkUpdate(Request $request)

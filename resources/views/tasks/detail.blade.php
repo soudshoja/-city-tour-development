@@ -553,6 +553,17 @@
                 </button>
             </div>
 
+            @if($hasInvoicedTasks ?? false)
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <div class="flex">
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            <strong>Warning:</strong> One or more tasks in this view have already been invoiced. You can edit these tasks, but you cannot create invoice for these tasks again.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            @endif
             <!-- Mobile Sidebar Overlay -->
             <div
                 x-show="showSidebar"
@@ -620,7 +631,7 @@
                                 <div class="px-4 py-3">
 
                                     @php
-                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
+                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference && !$task->invoiceDetail;
                                     @endphp
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1">
@@ -628,13 +639,20 @@
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
-                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $canInvoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
                                                     @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
                                                     {{ $canInvoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
+                                                    @if($task->invoiceDetail)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                                        Invoiced
+                                                    </span>
+                                                    @endif
+                                                </div>
                                                 <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
                                             </div>
 
@@ -651,7 +669,12 @@
 
                                             $missingCount = count($missing);
 
-                                            if ($missingCount === 0) {
+                                            // Check if task is already invoiced first
+                                            if ($task->invoiceDetail) {
+                                            $dotColor = 'bg-orange-500';
+                                            $glowColor = 'bg-orange-400/40';
+                                            $tooltipText = 'Already Invoiced';
+                                            } elseif ($missingCount === 0) {
                                             $dotColor = 'bg-green-500';
                                             $glowColor = 'bg-green-400/40';
                                             $tooltipText = 'Ready for invoice';
@@ -683,13 +706,6 @@
                                 </div>
                             </div>
                             @endforeach
-                        </div>
-
-                        <div class="px-4 py-4 bg-white flex-shrink-0 border-t border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <p class="text-xs text-gray-500 uppercase font-semibold">Total Amount</p>
-                                <p class="text-lg font-bold text-blue-600">KWD {{ number_format($tasks->sum('total'), 3) }}</p>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -733,7 +749,7 @@
                                 <div class="px-4 py-3">
 
                                     @php
-                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
+                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference && !$task->invoiceDetail;
                                     @endphp
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1">
@@ -741,13 +757,20 @@
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
-                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $canInvoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
                                                     @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
                                                     {{ $canInvoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
+                                                    @if($task->invoiceDetail)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                                        Invoiced
+                                                    </span>
+                                                    @endif
+                                                </div>
                                                 <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
                                             </div>
 
@@ -766,7 +789,12 @@
 
                                             $missingCount = count($missing);
 
-                                            if ($missingCount === 0) {
+                                            // Check if task is already invoiced first
+                                            if ($task->invoiceDetail) {
+                                            $dotColor = 'bg-orange-500';
+                                            $glowColor = 'bg-orange-400/40';
+                                            $tooltipText = 'Already Invoiced';
+                                            } elseif ($missingCount === 0) {
                                             $dotColor = 'bg-green-500';
                                             $glowColor = 'bg-green-400/40';
                                             $tooltipText = 'Ready for invoice';
@@ -804,12 +832,6 @@
                             @endforeach
                         </div>
 
-                        <div class="px-4 py-4 bg-white flex-shrink-0 border-t border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <p class="text-xs text-gray-500 uppercase font-semibold">Total Amount</p>
-                                <p class="text-lg font-bold text-blue-600">KWD {{ number_format($tasks->sum('total'), 3) }}</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

@@ -661,6 +661,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/save-tab', [SettingController::class, 'saveTab'])->name('save-tab');
         Route::get('/charges', [SettingController::class, 'getCharges'])->name('charges');
         Route::get('/payment-methods', [SettingController::class, 'getPaymentMethods'])->name('payment-methods');
+        Route::get('/agent-charges', [SettingController::class, 'getAgentCharges'])->name('agent-charges');
+        Route::post('/agent-charges', [SettingController::class, 'storeAgentCharge'])->name('agent-charges.store');
+        Route::post('/agent-charges/bulk-update', [SettingController::class, 'bulkUpdateAgentCharges'])->name('agent-charges.bulk-update');
+        Route::delete('/agent-charges/{id}', [SettingController::class, 'deleteAgentCharge'])->name('agent-charges.delete');
     });
 
     Route::group([

@@ -1009,13 +1009,18 @@ class ClientController extends Controller
             ->where('company_id', $companyId)
             ->first();
 
-        $feeData = ChargeService::calculateGatewayFeeFromPayment($payment, $companyId);
-        $gatewayFee = $feeData['gatewayFee'];
-        $paidBy = $payment->paymentMethod?->paid_by ?? $feeData['paidBy'];
+        $chargeResult = ChargeService::calculate(
+            $payment->amount,
+            $companyId,
+            $payment->payment_method_id,
+            $payment->payment_gateway
+        );
+        $accountingFee = $chargeResult['accountingFee'];
+        $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
 
         // STEP 2: Calculate amounts based on WHO PAYS FEE
         if ($paidBy === 'Company') {
-            $assetAmount = $payment->amount - $gatewayFee;
+            $assetAmount = $payment->amount - $accountingFee;
             $clientCreditAmount = $payment->amount;
             $recordIncome = false;
         } else {
@@ -1028,7 +1033,8 @@ class ClientController extends Controller
             'payment_id' => $payment->id,
             'paid_by' => $paidBy,
             'payment_amount' => $payment->amount,
-            'gateway_fee' => $gatewayFee,
+            'gateway_fee' => $chargeResult['gatewayFee'],
+            'accounting_fee' => $accountingFee,
             'asset_amount' => $assetAmount,
             'client_credit' => $clientCreditAmount,
             'record_income' => $recordIncome,
@@ -1123,7 +1129,7 @@ class ClientController extends Controller
             }
 
             // ENTRY 2: DEBIT Expense (Gateway Fee) - ALWAYS
-            if ($bankCOAFee && $gatewayFee > 0) {
+            if ($bankCOAFee && $accountingFee > 0) {
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $companyId,
@@ -1132,20 +1138,20 @@ class ClientController extends Controller
                     'voucher_number' => $payment->voucher_number,
                     'transaction_date' => now(),
                     'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
-                    'debit' => $gatewayFee,
+                    'debit' => $accountingFee,
                     'credit' => 0,
-                    'balance' => $bankCOAFee->actual_balance + $gatewayFee,
+                    'balance' => $bankCOAFee->actual_balance + $accountingFee,
                     'name' => $bankCOAFee->name,
                     'type' => 'charges',
                     'type_reference_id' => $bankCOAFee->id
                 ]);
 
-                $bankCOAFee->actual_balance += $gatewayFee;
+                $bankCOAFee->actual_balance += $accountingFee;
                 $bankCOAFee->save();
             }
 
             // ENTRY 3: CREDIT Income (Fee Recovery) - ONLY if Client pays
-            if ($recordIncome && $gatewayFee > 0 && $incomeAccount) {
+            if ($recordIncome && $accountingFee > 0 && $incomeAccount) {
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $companyId,
@@ -1155,14 +1161,14 @@ class ClientController extends Controller
                     'transaction_date' => now(),
                     'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                     'debit' => 0,
-                    'credit' => $gatewayFee,
-                    'balance' => $incomeAccount->actual_balance + $gatewayFee,
+                    'credit' => $accountingFee,
+                    'balance' => $incomeAccount->actual_balance + $accountingFee,
                     'name' => $incomeAccount->name,
                     'type' => 'income',
                     'type_reference_id' => $incomeAccount->id
                 ]);
 
-                $incomeAccount->actual_balance += $gatewayFee;
+                $incomeAccount->actual_balance += $accountingFee;
                 $incomeAccount->save();
             }
 
@@ -1194,7 +1200,8 @@ class ClientController extends Controller
                 'data' => [
                     'client_id' => $client->id,
                     'credit' => $clientCreditAmount,
-                    'gateway_fee' => $gatewayFee,
+                    'gateway_fee' => $chargeResult['gatewayFee'],
+                    'accounting_fee' => $accountingFee,
                     'paid_by' => $paidBy,
                     'asset_amount' => $assetAmount,
                     'transaction_id' => $transaction->id,

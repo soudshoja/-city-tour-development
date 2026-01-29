@@ -54,7 +54,7 @@ class CreateClientCredit extends Command
             $this->info("Found {$payments->count()} payments to process");
 
             $this->table(
-                ['ID','Voucher Number','Payment Gateway','Payment Method ID','Status'],
+                ['ID', 'Voucher Number', 'Payment Gateway', 'Payment Method ID', 'Status'],
                 $payments->map(function ($payment) {
                     return [
                         $payment->id,
@@ -136,7 +136,7 @@ class CreateClientCredit extends Command
 
         DB::beginTransaction();
 
-          try {
+        try {
             $topupCreditClientData = [
                 'company_id'  => $agent->branch->company->id,
                 'client_id'   => $client->id,
@@ -188,61 +188,14 @@ class CreateClientCredit extends Command
                     ->first();
             }
 
-            if (strtolower($creditPayment->payment_gateway) === 'myfatoorah') {
-                try {
-                    $gatewayFee = ChargeService::FatoorahCharge($creditPayment->amount, $paymentMethod->id, $creditPayment->agent->branch->company_id)['gatewayFee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('FatoorahCharge exception', [
-                        'message' => $e->getMessage(),
-                        'paymentMethod' => $paymentMethod->id,
-                        'company_id' => $creditPayment->agent->branch->company_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } elseif (strtolower($creditPayment->payment_gateway) === 'tap') {
-                try {
-                    $gatewayFee = ChargeService::TapCharge([
-                        'amount' => $creditPayment->amount,
-                        'client_id' => $creditPayment->client_id,
-                        'agent_id' => $creditPayment->agent_id,
-                        'currency' => $creditPayment->currency
-                    ], $creditPayment->payment_gateway)['gatewayFee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('TapCharge exception', [
-                        'message' => $e->getMessage(),
-                        'amount' => $creditPayment->amount,
-                        'client_id' => $creditPayment->client_id,
-                        'agent_id' => $creditPayment->agent_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } elseif (strtolower($creditPayment->payment_gateway) === 'hesabe') {
-                try {
-                    $gatewayFee = ChargeService::HesabeCharge($creditPayment->amount, $paymentMethod->id, $creditPayment->agent->branch->company_id)['gatewayFee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('HesabeCharge exception', [
-                        'message' => $e->getMessage(),
-                        'amount' => $creditPayment->amount,
-                        'payment_method' => $paymentMethod->id,
-                        'company_id' => $creditPayment->agent->branch->company_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } else if (strtolower($creditPayment->payment_gateway) === 'upayment') {
-                try {
-                    $gatewayFee = ChargeService::UPaymentCharge($creditPayment->amount, $paymentMethod->id, $creditPayment->agent->branch->company_id)['fee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('PaypalCharge exception', [
-                        'message' => $e->getMessage(),
-                        'amount' => $creditPayment->amount,
-                        'payment_method' => $paymentMethod->id,
-                        'company_id' => $creditPayment->agent->branch->company_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } else {
-                $gatewayFee = $chargeRecord?->amount ?? 0;
-            }
+            $chargeResult = ChargeService::calculate(
+                $creditPayment->amount,
+                $agent->branch->company_id,
+                $paymentMethod?->id,
+                $creditPayment->payment_gateway
+            );
+            $accountingFee = $chargeResult['accountingFee'];
+            $paidBy = $chargeResult['paid_by'];
 
             $transaction = Transaction::create([
                 'branch_id' =>  $agent->branch->id,
@@ -278,11 +231,9 @@ class CreateClientCredit extends Command
                     'type_reference_id' => $bankPaymentFee->id
                 ]);
 
-                $bankPaymentFee->actual_balance += ($creditPayment->amount - $gatewayFee);
+                $bankPaymentFee->actual_balance += ($creditPayment->amount - $accountingFee);
                 $bankPaymentFee->save();
             }
-
-            $bankCOAFee->actual_balance += $gatewayFee;
 
             if ($bankCOAFee) {
                 JournalEntry::create([
@@ -293,15 +244,15 @@ class CreateClientCredit extends Command
                     'voucher_number'    => $creditPayment->voucher_number,
                     'transaction_date'  => Carbon::now(),
                     'description'       => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
-                    'debit'             => $gatewayFee,
+                    'debit'             => $accountingFee,
                     'credit'            => 0,
-                    'balance'           => $bankCOAFee->actual_balance + $gatewayFee,
+                    'balance'           => $bankCOAFee->actual_balance + $accountingFee,
                     'name'              => $bankCOAFee->name,
                     'type'              => 'charges',
                     'type_reference_id' => $bankCOAFee->id
                 ]);
 
-                $bankCOAFee->actual_balance += $gatewayFee;
+                $bankCOAFee->actual_balance += $accountingFee;
                 $bankCOAFee->save();
             }
         } catch (Exception $e) {

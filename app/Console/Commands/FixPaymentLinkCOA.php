@@ -245,12 +245,17 @@ class FixPaymentLinkCOA extends Command
         $bankCOAFee = Account::find($chargeRecord->acc_fee_id);
         if (!$bankPaymentFee) return ['action' => 'skipped'];
 
-        $feeData = ChargeService::calculateGatewayFeeFromPayment($payment, $companyId);
-        $gatewayFee = $feeData['gatewayFee'];
-        $paidBy = $payment->paymentMethod?->paid_by ?? $feeData['paidBy'];
+        $chargeResult = ChargeService::calculate(
+            $payment->amount,
+            $companyId,
+            $payment->payment_method_id,
+            $payment->payment_gateway
+        );
+        $accountingFee = $chargeResult['accountingFee'];
+        $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
 
         if ($paidBy === 'Company') {
-            $correctAssetAmount = $payment->amount - $gatewayFee;
+            $correctAssetAmount = $payment->amount - $accountingFee;
             $correctClientCredit = $payment->amount;
             $shouldHaveIncome = false;
         } else {
@@ -506,7 +511,7 @@ class FixPaymentLinkCOA extends Command
             ->where('company_id', $companyId)
             ->first();
 
-        if ($shouldHaveIncome && $gatewayFeeRecoveryAccount && $gatewayFee > 0) {
+        if ($shouldHaveIncome && $gatewayFeeRecoveryAccount && $accountingFee > 0) {
             $incomeEntry = JournalEntry::where('account_id', $gatewayFeeRecoveryAccount->id)
                 ->where('voucher_number', $payment->voucher_number)
                 ->where('credit', '>', 0)
@@ -518,7 +523,7 @@ class FixPaymentLinkCOA extends Command
                     'voucher' => $payment->voucher_number,
                     'issue' => 'Missing income entry',
                     'old_value' => 'NONE',
-                    'new_value' => number_format($gatewayFee, 3),
+                    'new_value' => number_format($accountingFee, 3),
                 ];
                 if (!$isDryRun) {
                     $transaction = Transaction::where('payment_id', $payment->id)
@@ -534,7 +539,7 @@ class FixPaymentLinkCOA extends Command
                             'transaction_date' => $payment->created_at,
                             'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                             'debit' => 0,
-                            'credit' => $gatewayFee,
+                            'credit' => $accountingFee,
                             'balance' => 0,
                             'name' => $gatewayFeeRecoveryAccount->name,
                             'type' => 'income',

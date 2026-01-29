@@ -201,11 +201,11 @@ class PaymentController extends Controller
             ->first();
 
         if (!$invoice) {
-            return auth()->user() ? redirect()->back()->with('error', 'Invoice not found!') : abort(404, 'Invoice not found!');
+            return Auth::user() ? redirect()->back()->with('error', 'Invoice not found!') : abort(404, 'Invoice not found!');
         }
 
         if (!$invoice->client) {
-            return auth()->user() ? redirect()->back()->with('error', 'Client not found for this invoice!') : abort(404, 'Client not found for this invoice!');
+            return Auth::user() ? redirect()->back()->with('error', 'Client not found for this invoice!') : abort(404, 'Client not found for this invoice!');
         }
 
         $client = $invoice->client;
@@ -214,7 +214,7 @@ class PaymentController extends Controller
 
         if (!$companyId) {
             Log::error('InvoiceController@create: Company not found for the invoice', ['invoice_id' => $invoice->id]);
-            return auth()->user() ? redirect()->back()->with('error', 'Company not found for this invoice!') : abort(404);
+            return Auth::user() ? redirect()->back()->with('error', 'Company not found for this invoice!') : abort(404);
         }
 
         $company = $companyId ? Company::find($companyId) : null;
@@ -250,7 +250,7 @@ class PaymentController extends Controller
         if ((isset($response['error'])) || (isset($response['status']) && $response['status'] === 'error')) {
             $errorMessage = $response['message'] ?? ($response['error'] ?? 'Payment initiation failed');
 
-            if (auth()->user()) {
+            if (Auth::user()) {
                 return redirect()->back()->with('error', $errorMessage);
             }
 
@@ -1360,7 +1360,7 @@ class PaymentController extends Controller
             $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
             $companyId = optional($payment->agent->branch)->company_id;
 
-            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, 'Hesabe');
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $firstName = $payment->client->first_name;
@@ -2005,88 +2005,6 @@ class PaymentController extends Controller
                     ];
                 }
 
-                $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                    ->where('company_id', $payment->agent->branch->company->id)
-                    ->first();
-
-                if (!$liabilitiesAccount) {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Liabilities account not found'
-                    ];
-                }
-
-                $clientAdvance = Account::where('name', 'Client')
-                    ->where('company_id', $payment->agent->branch->company->id)
-                    ->where('root_id', $liabilitiesAccount->id)
-                    ->first();
-
-                if (!$clientAdvance) {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Client advance account not found'
-                    ];
-                }
-
-                $paymentGateway = Account::where('name', 'Payment Gateway')
-                    ->where('company_id', $payment->agent->branch->company_id)
-                    ->where('parent_id', $clientAdvance->id)
-                    ->first();
-                if (!$paymentGateway) {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Payment Gateway account not found'
-                    ];
-                }
-
-                DB::beginTransaction();
-
-                try {
-                    $transaction = Transaction::create([
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'entity_id' => $payment->agent->branch->company->id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'debit',
-                        'amount' => $payment->amount,
-                        'description' => 'Topup success by ' . $payment->client->full_name,
-                        'payment_id' => $payment->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'payment_reference' => $payment->payment_reference,
-                        'reference_type' => 'Payment',
-                        'transaction_date' => now(),
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $payment->agent->branch->id,
-                        'company_id' => $payment->agent->branch->company->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentGateway->id,
-                        'transaction_date' => now(),
-                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                        'debit' => 0,
-                        'credit' => $payment->amount,
-                        'balance' => $paymentGateway->actual_balance - $payment->amount,
-                        'name' => $payment->client->full_name,
-                        'type' => 'receivable',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentGateway->id
-                    ]);
-
-                    Log::info('Successfully created transaction and journal entry for import payment of ' . $payment->payment_gateway . ' from the portal');
-                } catch (Exception $e) {
-                    DB::rollBack();
-                    logger('Failed to create journal entry', [
-                        'message' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                    return [
-                        'status' => 'error',
-                        'message' => 'Payment cannot be updated',
-                    ];
-                }
-
                 DB::commit();
 
                 return [
@@ -2477,23 +2395,8 @@ class PaymentController extends Controller
 
         Log::info('[PAYMENT LINK] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount . ' KWD');
 
-        if (strtolower($request->payment_gateway) === 'myfatoorah') {
-            $chargeResult = ChargeService::FatoorahCharge($totalAmount, $paymentMethodId, $companyId);
-        } else if (strtolower($request->payment_gateway) === 'tap') {
-
-            $chargeResult = ChargeService::getFee(
-                gatewayName: 'Tap',
-                amount: $totalAmount,
-                methodCode: $paymentMethodId,
-                companyId: $companyId
-            );
-        } else if (strtolower($request->payment_gateway) === 'upayment') {
-            $chargeResult = ChargeService::UPaymentCharge($totalAmount, $paymentMethodId, $companyId);
-        } else if (strtolower($request->payment_gateway) === 'hesabe') {
-            $chargeResult = ChargeService::HesabeCharge($totalAmount, $paymentMethodId, $companyId);
-        }
-
-        $serviceCharge = $chargeResult['fee'] ?? 0;
+        $chargeResult = ChargeService::calculate($totalAmount, $companyId, $paymentMethodId, $request->payment_gateway);
+        $serviceCharge = $chargeResult['gatewayFee'] ?? 0;
 
         try {
             $data = [
@@ -2585,15 +2488,15 @@ class PaymentController extends Controller
             ->first();
 
         if (!$payment) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
+            return Auth::user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
         if (!$payment->client) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
+            return Auth::user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
         if (!$payment->agent) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
+            return Auth::user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
         $locale = $payment->language === 'ARB' ? 'ar' : 'en';
@@ -2646,19 +2549,13 @@ class PaymentController extends Controller
 
                 $tempChargeResult = [
                     'finalAmount' => $payment->amount,
-                    'fee' => 0,
+                    'gatewayFee' => 0,
                     'amount' => $payment->amount,
                     'gatewayFee' => 0,
                 ];
 
                 try {
-                    $tempChargeResult = ChargeService::getFee(
-                        gatewayName: $payment->payment_gateway,
-                        amount: $payment->amount,
-                        methodCode: $payment->payment_method_id ?? null,
-                        companyId: $companyId,
-                        currency: $payment->currency
-                    );
+                    $tempChargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, $payment->payment_gateway);
                 } catch (Exception $e) {
                     Log::error('getFee exception in paymentShowLink', [
                         'gateway' => $payment->payment_gateway,
@@ -2667,7 +2564,7 @@ class PaymentController extends Controller
                     ]);
                 }
 
-                $gatewayFee = $tempChargeResult['fee'] ?? 0;
+                $gatewayFee = $tempChargeResult['gatewayFee'] ?? 0;
                 $finalAmount = $payment->amount;
             }
         } else if ($payment->status !== 'completed') {
@@ -2681,26 +2578,20 @@ class PaymentController extends Controller
             $chargeResult = [];
 
             try {
-                $chargeResult = ChargeService::getFee(
-                    gatewayName: $payment->payment_gateway,
-                    amount: $payment->amount,
-                    methodCode: $payment->payment_method_id ?? null,
-                    companyId: $companyId,
-                    currency: $payment->currency
-                );
+                $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, $payment->payment_gateway);
             } catch (Exception $e) {
                 Log::error('getFee exception in paymentShowLink (unpaid)', [
                     'gateway' => $payment->payment_gateway,
                     'message' => $e->getMessage(),
                     'payment_id' => $payment->id,
                 ]);
-                $chargeResult = ['fee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
+                $chargeResult = ['gatewayFee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
             }
 
-            $gatewayFee = $chargeResult['fee'] ?? 0;
+            $gatewayFee = $chargeResult['gatewayFee'] ?? 0;
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
-            $payment->service_charge = ($chargeResult['paid_by'] === 'Company') ? 0 : $chargeResult['fee'];
+            $payment->service_charge = ($chargeResult['paid_by'] === 'Company') ? 0 : $chargeResult['gatewayFee'];
             $payment->save();
         } else {
             $gatewayFee = $payment->service_charge ?? 0;
@@ -2744,15 +2635,9 @@ class PaymentController extends Controller
 
             if ($currentMethod) {
                 try {
-                    $feeResult = ChargeService::getFee(
-                        gatewayName: $currentMethod->charge->name ?? null,
-                        amount: $payment->amount,
-                        methodCode: $currentMethod->id,
-                        companyId: $companyId,
-                        currency: $payment->currency,
-                    );
+                    $feeResult = ChargeService::calculate($payment->amount, $companyId, $currentMethod->id, $currentMethod->charge->name ?? null);
 
-                    $currentMethod->calculated_fee = $feeResult['fee'] ?? 0;
+                    $currentMethod->calculated_fee = $feeResult['gatewayFee'] ?? 0;
                     $currentMethod->final_amount = $feeResult['finalAmount'] ?? $payment->amount;
                     $currentMethod->paid_by = $feeResult['paid_by'] ?? 'Company';
                 } catch (Exception $e) {
@@ -2797,7 +2682,7 @@ class PaymentController extends Controller
         $payment = Payment::with('invoice')->find($request->payment_id);
 
         if (!$payment) {
-            if (auth()->user()) {
+            if (Auth::user()) {
                 return redirect()->back()->with('error', 'Payment not found.');
             }
 
@@ -2815,13 +2700,7 @@ class PaymentController extends Controller
             $tap = new Tap();
             $paymentMethod = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
-            $chargeResult = ChargeService::getFee(
-                gatewayName: 'Tap',
-                amount: $payment->amount,
-                methodCode: $paymentMethod,
-                companyId: $payment->agent->branch->company_id,
-                currency: $payment->currency,
-            );
+            $chargeResult = ChargeService::calculate($payment->amount, $payment->agent->branch->company_id, $paymentMethod, 'Tap');
 
             $finalAmount = $chargeResult['finalAmount'];
 
@@ -2866,7 +2745,7 @@ class PaymentController extends Controller
 
             if (!$companyId) {
                 Log::error('Company ID not found for the payment.', ['payment_id' => $payment->id]);
-                return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
+                return Auth::user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
             }
 
             if ($payment->status === 'initiate') {
@@ -2904,23 +2783,8 @@ class PaymentController extends Controller
                 $clientPhone = ltrim($clientPhone, '0'); // Optionally remove leading zero
             }
 
-            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-
+            $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, 'MyFatoorah');
             $finalAmount = $chargeResult['finalAmount'];
-
-            // $companyId = null;
-
-            // if ($auth->role_id == Role::COMPANY) {
-            //     $companyId = Company::where('user_id', $auth->id)->value('id');
-            // } elseif ($auth->role_id == Role::AGENT) {
-            //     $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-            //     $companyId = $agent->branch->company->id;
-            // } elseif ($auth->role_id == Role::ACCOUNTANT) {
-            //     $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-            //     $companyId = $accountant->branch->company->id;
-            // } else {
-            //     $companyId = Company::value('id');
-            // }
 
             $company = $companyId ? Company::find($companyId) : null;
             $companyEmail = $company?->email ?? 'admin@citytravelers.co';
@@ -3025,7 +2889,7 @@ class PaymentController extends Controller
             $lastName = $payment->client->last_name;
             $customerName = trim("$firstName $middleName $lastName");
 
-            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, 'Hesabe');
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $checkoutPayload = [
@@ -3139,7 +3003,7 @@ class PaymentController extends Controller
                 $clientPhone = ltrim($clientPhone, '0');
             }
 
-            $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $company->id);
+            $chargeResult = ChargeService::calculate($payment->amount, $company->id, $payment->payment_method_id, 'UPayment');
             $finalAmount  = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $requestUPayment = new Request([
@@ -3240,23 +3104,10 @@ class PaymentController extends Controller
         $config = $configService->getMyFatoorahConfig();
 
         $companyId = $payment->agent->branch->company_id;
-
         if (!$companyId) {
             Log::error('reinitiateMyFatoorah: Company ID not found for the payment.', ['payment_id' => $payment->id]);
-            return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
+            return Auth::user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
         }
-
-        // if ($auth->role_id == Role::COMPANY) {
-        //     $companyId = Company::where('user_id', $auth->id)->value('id');
-        // } elseif ($auth->role_id == Role::AGENT) {
-        //     $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-        //     $companyId = $agent->branch->company->id;
-        // } elseif ($auth->role_id == Role::ACCOUNTANT) {
-        //     $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-        //     $companyId = $accountant->branch->company->id;
-        // } else {
-        //     $companyId = Company::value('id');
-        // }
 
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';
@@ -3269,7 +3120,7 @@ class PaymentController extends Controller
         $apiKey = $cfg['api_key'];
         $baseUrl = $cfg['base_url'];
 
-        $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $company->id);
+        $chargeResult = ChargeService::calculate($payment->amount, $company->id, $payment->payment_method_id, 'MyFatoorah');
         $finalAmount = $chargeResult['finalAmount'];
 
         $executePayload = [
@@ -3306,7 +3157,7 @@ class PaymentController extends Controller
 
         if (!$executeResponse->successful()) {
             Log::error('MyFatoorah reinitiate failed', ['response' => $executeResponse->body()]);
-            return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to reinitiate MyFatoorah payment.') : abort(500);
+            return Auth::user() ? redirect()->route('invoices.index')->with('error', 'Failed to reinitiate MyFatoorah payment.') : abort(500);
         }
 
         $resData = $executeResponse->json() ?? [];
@@ -3321,12 +3172,12 @@ class PaymentController extends Controller
             return redirect($invoiceUrl);
         }
 
-        return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to retrieve MyFatoorah reinitiation URL.') : abort(500);
+        return Auth::user() ? redirect()->route('invoices.index')->with('error', 'Failed to retrieve MyFatoorah reinitiation URL.') : abort(500);
     }
 
     protected function reinitiateUPayment($payment, $company, $client, $clientPhone)
     {
-        $charge = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $company->id);
+        $charge = ChargeService::calculate($payment->amount, $company->id, $payment->payment_method_id, 'UPayment');
         $finalAmount = $charge['finalAmount'] ?? $payment->amount;
 
         $request = new Request([
@@ -5637,15 +5488,15 @@ class PaymentController extends Controller
                     throw new \Exception('One or more required financial accounts not found');
                 }
 
-                $feeResult = ChargeService::calculateGatewayFeeFromPayment($payment, $companyId);
-                $gatewayFee = $feeResult['gatewayFee'] ?? 0;
-                $paidBy = $feeResult['paidBy'] ?? 'Company';
-                $netAmount = $finalPaidAmount - $gatewayFee;
+                $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, $gatewayName);
+                $accountingFee = $chargeResult['accountingFee'] ?? 0;
+                $paidBy = $chargeResult['paidBy'] ?? 'Company';
+                $netAmount = $finalPaidAmount - $accountingFee;
 
                 Log::info('[INVOICE COA] Amount calculations', [
                     'payment_id' => $payment->id,
                     'final_paid_amount' => $finalPaidAmount,
-                    'gateway_fee' => $gatewayFee,
+                    'gateway_fee' => $accountingFee,
                     'net_amount' => $netAmount,
                     'gateway' => $gatewayName,
                 ]);
@@ -5722,16 +5573,16 @@ class PaymentController extends Controller
                     'invoice_detail_id' => $invoiceDetail->id,
                     'transaction_date' => now(),
                     'description' => $feeDescription,
-                    'debit' => $gatewayFee,
+                    'debit' => $accountingFee,
                     'credit' => 0,
-                    'balance' => $gatewayExpenseAccount->actual_balance + $gatewayFee,
+                    'balance' => $gatewayExpenseAccount->actual_balance + $accountingFee,
                     'name' => $gatewayExpenseAccount->name,
                     'type' => 'charges',
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $gatewayExpenseAccount->id,
                 ]);
 
-                $gatewayExpenseAccount->actual_balance += $gatewayFee;
+                $gatewayExpenseAccount->actual_balance += $accountingFee;
                 $gatewayExpenseAccount->save();
 
                 Log::info('[INVOICE COA] Journal entries created successfully', [
@@ -5740,8 +5591,8 @@ class PaymentController extends Controller
                     'invoice_number' => $invoice->invoice_number,
                     'credit_receivable' => $finalPaidAmount,
                     'debit_gateway_asset' => $netAmount,
-                    'debit_gateway_fee' => $gatewayFee,
-                    'balanced' => ($finalPaidAmount == ($netAmount + $gatewayFee)) ? 'YES' : 'NO',
+                    'debit_gateway_fee' => $accountingFee,
+                    'balanced' => ($finalPaidAmount == ($netAmount + $accountingFee)) ? 'YES' : 'NO',
                 ]);
 
                 return [
@@ -6431,14 +6282,7 @@ class PaymentController extends Controller
             $tap = new Tap();
             $paymentMethodId = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
-            $chargeResult = ChargeService::getFee(
-                gatewayName: 'Tap',
-                amount: $payment->amount,
-                methodCode: $paymentMethodId,
-                companyId: $payment->agent->branch->company_id,
-                currency: $payment->currency,
-            );
-
+            $chargeResult = ChargeService::calculate($payment->amount, $payment->agent->branch->company_id, $paymentMethodId, 'Tap');
             $finalAmount = $chargeResult['finalAmount'];
 
             $requestTap = new Request([
@@ -6481,7 +6325,7 @@ class PaymentController extends Controller
 
             if (!$companyId) {
                 Log::error('[MULTI PAYMENT] Company ID not found for the payment.', ['payment_id' => $payment->id]);
-                return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
+                return Auth::user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
             }
 
             $client = $payment->client;
@@ -6492,7 +6336,7 @@ class PaymentController extends Controller
                 $clientPhone = ltrim($clientPhone, '0');
             }
 
-            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, 'MyFatoorah');
             $finalAmount = $chargeResult['finalAmount'];
 
             $firstName = $payment->client->first_name;
@@ -6603,7 +6447,7 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = $payment->agent->branch->company_id;
 
-            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, 'Hesabe');
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $client = $payment->client;
@@ -6699,7 +6543,7 @@ class PaymentController extends Controller
                 $clientPhone = ltrim($clientPhone, '0');
             }
 
-            $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $company->id);
+            $chargeResult = ChargeService::calculate($payment->amount, $company->id, $payment->payment_method_id, 'UPayment');
             $finalAmount  = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $requestUPayment = new Request([

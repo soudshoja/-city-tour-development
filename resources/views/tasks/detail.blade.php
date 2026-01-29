@@ -1585,9 +1585,10 @@
                                                                     <label class="block text-sm font-medium text-gray-700">Client</label>
                                                                     <x-searchable-dropdown
                                                                         name="client_id"
-                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
+                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
+                                                                        :maxResults="50"
                                                                         :selectedId="$task->client_id"
-                                                                        :selectedName="$task->client ? $task->client->name . ' - ' . $task->client->phone : null"
+                                                                        :selectedName="$task->client ? $task->client->full_name . ' - ' . $task->client->phone : null"
                                                                         placeholder="Select Client" />
                                                                 </div>
 
@@ -1956,7 +1957,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
                                     <x-searchable-dropdown
                                         name="bulk_client_id"
-                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
+                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
                                         placeholder="Select Client" />
                                 </div>
 

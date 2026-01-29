@@ -1169,7 +1169,7 @@
                                                                 <div x-show="open" @click.away="open = false" x-anchor.bottom-start.offset.5="$refs.button"
                                                                     x-cloak class="absolute z-[9999] w-32 rounded-md bg-white shadow-lg border border-gray-200">
                                                                     <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
-                                                                        @if(!$task->invoiceDetail || $task->invoiceDetail->invoice->status !== 'paid')
+                                                                        @if($isInvoicedAndPaid == false)
                                                                         <li>
                                                                             <a href="{{ route('tasks.detail', ['tasks' => $task->id]) }}" target="_blank"
                                                                                 class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">

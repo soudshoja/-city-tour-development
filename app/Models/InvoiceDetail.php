@@ -20,6 +20,8 @@ class InvoiceDetail extends Model
         'task_price',
         'supplier_price',
         'markup_price',
+        'profit',
+        'commission',
         'paid',
     ];
 

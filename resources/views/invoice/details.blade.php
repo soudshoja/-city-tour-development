@@ -109,7 +109,7 @@
                                         {{ number_format($item->supplier_price, 2) }}
                                     </td>
                                     <td class="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                                        {{ number_format($item->markup_price, 2) }}
+                                        {{ number_format($item->profit, 2) }}
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="inline-flex items-center gap-2">

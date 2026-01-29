@@ -82,12 +82,12 @@ class TaskController extends Controller
         $whoIsUser = determineUserRole($user);
 
         if ($whoIsUser['agents_id']) {
-            $taskQuery = Task::with(['client', 'supplier', 'agent'])->whereIn('agent_id', [$whoIsUser['agents_id']]);
+            $taskQuery = Task::with(['client', 'supplier', 'agent', 'invoiceDetail.invoice'])->whereIn('agent_id', [$whoIsUser['agents_id']]);
         } elseif ($whoIsUser['branches_id']) {
             $agents = Agent::where('branch_id', $whoIsUser['branches_id'])->pluck('id')->toArray();
-            $taskQuery = Task::with(['client', 'supplier', 'agent'])->whereIn('agent_id', $agents);
+            $taskQuery = Task::with(['client', 'supplier', 'agent', 'invoiceDetail.invoice'])->whereIn('agent_id', $agents);
         } else {
-            $taskQuery = Task::with(['client', 'supplier', 'agent'])->where('company_id', $whoIsUser['company_id']);
+            $taskQuery = Task::with(['client', 'supplier', 'agent', 'invoiceDetail.invoice'])->where('company_id', $whoIsUser['company_id']);
         }
 
         $filter = $request->filter;
@@ -5426,7 +5426,7 @@ class TaskController extends Controller
             $taskIds = explode(',', $taskIds);
         }
 
-        $tasks = Task::with(['hotelDetails.hotel', 'flightDetail.airportFrom', 'flightDetail.airportTo', 'flightDetail.airline', 'insuranceDetails', 'visaDetails'])
+        $tasks = Task::with(['hotelDetails.hotel', 'flightDetail.airportFrom', 'flightDetail.airportTo', 'flightDetail.airline', 'insuranceDetails', 'visaDetails', 'invoiceDetail.invoice'])
             ->whereIn('id', $taskIds)
             ->get();
 
@@ -5466,7 +5466,7 @@ class TaskController extends Controller
             // Check if task has an invoice
             if ($task->invoiceDetail) {
                 // If invoice is paid, block access completely
-                if ($task->invoiceDetail->paid == 1) {
+                if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
                     $hasPaidInvoicedTasks = true;
                 }
                 // If invoice exists but not paid, allow access but flag for warning

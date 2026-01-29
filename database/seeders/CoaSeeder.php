@@ -112,14 +112,15 @@ class CoaSeeder extends Seeder
             ['code' => '3400', 'name' => 'Retained Earnings',           'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
         
             // Income (Level 2 and deeper)
-            ['code' => '4100', 'name' => 'Direct Income',     'level' => 2, 'parent' => 'Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-            ['code' => '4110', 'name' => 'Flight Booking Revenue',      'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-            ['code' => '4120', 'name' => 'Hotel Booking Revenue',       'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4100', 'name' => 'Direct Income', 'level' => 2, 'parent' => 'Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4110', 'name' => 'Flight Booking Revenue', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4120', 'name' => 'Hotel Booking Revenue', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4130', 'name' => 'Commission & Service Fee Income', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-            ['code' => '4140', 'name' => 'Sales',                       'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-            ['code' => '4150', 'name' => 'Services (other)',            'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4130', 'name' => 'Gateway Fee Recovery', 'level' => 4, 'parent' => 'Commission & Service Fee Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4140', 'name' => 'Sales', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4150', 'name' => 'Services (other)', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
         
-            ['code' => '4200', 'name' => 'Indirect Income',             'level' => 2, 'parent' => 'Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '4200', 'name' => 'Indirect Income', 'level' => 2, 'parent' => 'Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
         
             // Expenses (Level 2 and deeper)
             ['code' => '5100', 'name' => 'Direct Expenses (Cost of Sales)', 'level' => 2, 'parent' => 'Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],

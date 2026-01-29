@@ -1002,192 +1002,209 @@ class ClientController extends Controller
             ];
         }
 
+        $companyId = $agent->branch->company->id;
 
+        // STEP 1: Get charge configuration and calculate fee
+        $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        $feeData = ChargeService::calculateGatewayFeeFromPayment($payment, $companyId);
+        $gatewayFee = $feeData['gatewayFee'];
+        $paidBy = $payment->paymentMethod?->paid_by ?? $feeData['paidBy'];
+
+        // STEP 2: Calculate amounts based on WHO PAYS FEE
+        if ($paidBy === 'Company') {
+            $assetAmount = $payment->amount - $gatewayFee;
+            $clientCreditAmount = $payment->amount;
+            $recordIncome = false;
+        } else {
+            $assetAmount = $payment->amount;
+            $clientCreditAmount = $payment->amount;
+            $recordIncome = true;
+        }
+
+        Log::info('addCredit calculation', [
+            'payment_id' => $payment->id,
+            'paid_by' => $paidBy,
+            'payment_amount' => $payment->amount,
+            'gateway_fee' => $gatewayFee,
+            'asset_amount' => $assetAmount,
+            'client_credit' => $clientCreditAmount,
+            'record_income' => $recordIncome,
+        ]);
+
+        // STEP 3: Create Credit record
         DB::beginTransaction();
         try {
-            // Insert credit table
-            $topupCreditClientData = [
-                'company_id'  => $agent->branch->company->id,
+            Credit::create([
+                'company_id'  => $companyId,
                 'client_id'   => $client->id,
                 'type'        => 'Topup',
                 'payment_id'  => $payment->id,
                 'description' => 'Topup Credit via ' . $payment->voucher_number,
-                'amount'      => $payment->amount,
-            ];
-
-            Log::info('Creating Credit record:', $topupCreditClientData);
-
-            Credit::create($topupCreditClientData);
-
-            Log::info('Credit record created successfully for client ID: ' . $client->id);
+                'amount'      => $clientCreditAmount,
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to create Credit record', [
-                'data'  => $topupCreditClientData,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Failed to create Credit record', ['error' => $e->getMessage()]);
+            return ['status' => 'error', 'message' => 'Failed to create Credit record'];
         }
         DB::commit();
 
+        // STEP 4: Create Journal Entries (ALL IN ONE TRANSACTION)
         DB::beginTransaction();
         try {
+            $bankPaymentFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_bank_id) : null;
+            $bankCOAFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_id) : null;
+            $incomeAccount = Account::where('name', 'Gateway Fee Recovery')->where('company_id', $companyId)->first();
 
-            $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
-                ->where('company_id', $agent->branch->company->id)
-                ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id', 'paid_by')
+            $liabilitiesAccount = Account::where('name', 'like', 'Liabilities%')
+                ->where('company_id', $companyId)
                 ->first();
-            $paymentMethod = $payment->paymentMethod;
-            $paidBy = $paymentMethod?->paid_by ?? $chargeRecord?->paid_by ?? 'Company';
 
-            if ($chargeRecord) {
-                $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
-                $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
-                $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
-
-                $bankCOAFee = Account::where('id', $coaFeeIdRec)
-                    ->where('company_id', $agent->branch->company->id)
-                    ->first();
-
-                $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
-                    ->where('company_id', $agent->branch->company->id)
-                    ->first();
+            if (!$liabilitiesAccount) {
+                throw new \Exception('Liabilities account not found');
             }
 
-            if (strtolower($payment->payment_gateway) === 'myfatoorah') {
-                try {
-                    $gatewayFee = ChargeService::FatoorahCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('FatoorahCharge exception', [
-                        'message' => $e->getMessage(),
-                        'paymentMethod' => $paymentMethod->id,
-                        'company_id' => $payment->agent->branch->company_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } elseif (strtolower($payment->payment_gateway) === 'tap') {
-                try {
-                    $gatewayFee = ChargeService::TapCharge([
-                        'amount' => $payment->amount,
-                        'client_id' => $payment->client_id,
-                        'agent_id' => $payment->agent_id,
-                        'currency' => $payment->currency
-                    ], $payment->payment_gateway)['gatewayFee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('TapCharge exception', [
-                        'message' => $e->getMessage(),
-                        'amount' => $payment->amount,
-                        'client_id' => $payment->client_id,
-                        'agent_id' => $payment->agent_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
-                try {
-                    $gatewayFee = ChargeService::HesabeCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('HesabeCharge exception', [
-                        'message' => $e->getMessage(),
-                        'amount' => $payment->amount,
-                        'payment_method' => $paymentMethod->id,
-                        'company_id' => $payment->agent->branch->company_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } else if (strtolower($payment->payment_gateway) === 'upayment') {
-                try {
-                    $gatewayFee = ChargeService::UPaymentCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['fee'] ?? 0;
-                } catch (Exception $e) {
-                    Log::error('PaypalCharge exception', [
-                        'message' => $e->getMessage(),
-                        'amount' => $payment->amount,
-                        'payment_method' => $paymentMethod->id,
-                        'company_id' => $payment->agent->branch->company_id,
-                    ]);
-                    $gatewayFee = 0;
-                }
-            } else {
-                $gatewayFee = $chargeRecord?->amount ?? 0;
+            $clientAdvance = Account::where('name', 'Client')
+                ->where('company_id', $companyId)
+                ->where('root_id', $liabilitiesAccount->id)
+                ->first();
+
+            if (!$clientAdvance) {
+                throw new \Exception('Client Advance account not found');
             }
 
+            $clientAdvancePaymentGateway = Account::where('name', 'Payment Gateway')
+                ->where('company_id', $companyId)
+                ->where('parent_id', $clientAdvance->id)
+                ->first();
+
+            if (!$clientAdvancePaymentGateway) {
+                throw new \Exception('Client Advance Payment Gateway account not found');
+            }
+
+            // CREATE ONE TRANSACTION FOR ALL ENTRIES
             $transaction = Transaction::create([
-                'branch_id' =>  $agent->branch->id,
-                'company_id' =>  $agent->branch->company->id,
-                'entity_id' =>  $agent->branch->company->id,
+                'branch_id' => $agent->branch->id,
+                'company_id' => $companyId,
+                'entity_id' => $client->id,
                 'entity_type' => 'client',
-                'transaction_type' => 'debit',
-                'amount' => $payment->amount,
-                'description' => 'Client Credit of ' . $client->full_name,
-                'invoice_id' => null,
+                'transaction_type' => 'credit',
+                'amount' => $clientCreditAmount,
+                'description' => 'Client Advance via ' . $payment->voucher_number,
+                'payment_id' => $payment->id,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
                 'transaction_date' => now(),
             ]);
 
-            $receivableAccount = Account::where('name', 'Clients')->first();
-            $receivableAccountId = $receivableAccount->id;
-
+            // ENTRY 1: DEBIT Asset (Payment Gateway Bank)
             if ($bankPaymentFee) {
-                // Create record to payment_gateway assets coa account (OK)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
-                    'company_id' => $agent->branch->company->id,
+                    'company_id' => $companyId,
                     'branch_id' => $agent->branch->id,
-                    'account_id' =>  $bankPaymentFee->id,
-                    'transaction_date' => Carbon::now(),
+                    'account_id' => $bankPaymentFee->id,
+                    'transaction_date' => now(),
                     'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
-                    'debit' => $payment->amount,
+                    'debit' => $assetAmount,
                     'credit' => 0,
-                    'name' =>  $bankPaymentFee->name,
+                    'balance' => $bankPaymentFee->actual_balance + $assetAmount,
+                    'name' => $bankPaymentFee->name,
                     'type' => 'bank',
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $bankPaymentFee->id
                 ]);
 
-                $bankPaymentFee->actual_balance += ($payment->amount - $gatewayFee);
+                $bankPaymentFee->actual_balance += $assetAmount;
                 $bankPaymentFee->save();
             }
 
-            $bankCOAFee->actual_balance += $gatewayFee;
-
-            if ($bankCOAFee) {
+            // ENTRY 2: DEBIT Expense (Gateway Fee) - ALWAYS
+            if ($bankCOAFee && $gatewayFee > 0) {
                 JournalEntry::create([
-                    'transaction_id'    => $transaction->id,
-                    'company_id'        => $agent->branch->company->id,
-                    'branch_id'         => $agent->branch->id,
-                    'account_id'        => $bankCOAFee->id,
-                    'voucher_number'    => $payment->voucher_number,
-                    'transaction_date'  => Carbon::now(),
-                    'description'       => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
-                    'debit'             => $gatewayFee,
-                    'credit'            => 0,
-                    'balance'           => $bankCOAFee->actual_balance + $gatewayFee,
-                    'name'              => $bankCOAFee->name,
-                    'type'              => 'charges',
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $companyId,
+                    'branch_id' => $agent->branch->id,
+                    'account_id' => $bankCOAFee->id,
+                    'voucher_number' => $payment->voucher_number,
+                    'transaction_date' => now(),
+                    'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
+                    'debit' => $gatewayFee,
+                    'credit' => 0,
+                    'balance' => $bankCOAFee->actual_balance + $gatewayFee,
+                    'name' => $bankCOAFee->name,
+                    'type' => 'charges',
                     'type_reference_id' => $bankCOAFee->id
                 ]);
 
                 $bankCOAFee->actual_balance += $gatewayFee;
                 $bankCOAFee->save();
             }
-        } catch (Exception $e) {
-            DB::rollBack();
-            logger('Error adding JournalEntry: ' . $e->getMessage());
-            return [
-                'status' => 'error',
-                'message' => 'Failed to add JournalEntry',
-            ];
-        }
 
-        DB::commit();
-        return [
-            'status' => 'success',
-            'message' => 'Credit added successfully',
-            'data' => [
-                'client_id' => $client->id,
-                'credit' => $payment->amount,
-            ],
-        ];
+            // ENTRY 3: CREDIT Income (Fee Recovery) - ONLY if Client pays
+            if ($recordIncome && $gatewayFee > 0 && $incomeAccount) {
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $companyId,
+                    'branch_id' => $agent->branch->id,
+                    'account_id' => $incomeAccount->id,
+                    'voucher_number' => $payment->voucher_number,
+                    'transaction_date' => now(),
+                    'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
+                    'debit' => 0,
+                    'credit' => $gatewayFee,
+                    'balance' => $incomeAccount->actual_balance + $gatewayFee,
+                    'name' => $incomeAccount->name,
+                    'type' => 'income',
+                    'type_reference_id' => $incomeAccount->id
+                ]);
+
+                $incomeAccount->actual_balance += $gatewayFee;
+                $incomeAccount->save();
+            }
+
+            // ENTRY 4: CREDIT Liability (Client Advance)
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'branch_id' => $agent->branch->id,
+                'company_id' => $companyId,
+                'account_id' => $clientAdvancePaymentGateway->id,
+                'transaction_date' => now(),
+                'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                'debit' => 0,
+                'credit' => $clientCreditAmount,
+                'balance' => $clientAdvancePaymentGateway->actual_balance + $clientCreditAmount,
+                'name' => $client->full_name,
+                'type' => 'advance',
+                'voucher_number' => $payment->voucher_number,
+                'type_reference_id' => $client->id
+            ]);
+
+            $clientAdvancePaymentGateway->actual_balance += $clientCreditAmount;
+            $clientAdvancePaymentGateway->save();
+
+            DB::commit();
+
+            return [
+                'status' => 'success',
+                'message' => 'Credit added successfully',
+                'data' => [
+                    'client_id' => $client->id,
+                    'credit' => $clientCreditAmount,
+                    'gateway_fee' => $gatewayFee,
+                    'paid_by' => $paidBy,
+                    'asset_amount' => $assetAmount,
+                    'transaction_id' => $transaction->id,
+                ],
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error adding JournalEntry: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Failed to add JournalEntry: ' . $e->getMessage()];
+        }
     }
 
     public function updateCredit($id, $amount)

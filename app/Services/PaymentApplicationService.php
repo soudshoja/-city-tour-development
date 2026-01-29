@@ -140,11 +140,16 @@ class PaymentApplicationService
                 $invoiceController = app(\App\Http\Controllers\InvoiceController::class);
                 $clientName = $invoice->client?->full_name;
 
-                foreach ($invoice->tasks as $task) {
+                $invoiceDetails = $invoice->invoiceDetails()->with('task.agent')->get();
+                foreach ($invoiceDetails as $invoiceDetail) {
+                    if (!$invoiceDetail->task) {
+                        continue;
+                    }
+                    $task = $invoiceDetail->task;
                     $invoiceController->addJournalEntry(
                         $task,
                         $invoice->id,
-                        $task->invoiceDetail->id,
+                        $invoiceDetail->id,
                         $transaction->id,
                         $clientName
                     );

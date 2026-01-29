@@ -47,7 +47,7 @@ class ChargeService
         } else {
             $calculated = $chargeValue;
         }
-        
+
         // Round up to nearest whole number (ceiling)
         return ceil($calculated);
     }
@@ -94,7 +94,7 @@ class ChargeService
         $totalFee = 0;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
-           $totalFee = $fee;
+            $totalFee = $fee;
         }
 
         $finalAmount = $amount + $totalFee;
@@ -135,7 +135,7 @@ class ChargeService
 
         $paidBy = $method->paid_by;
         $apiServiceCharge = $method->service_charge ?? 0;
-        
+
         // Determine which self charge to use: self_charge takes priority over service_charge (amount)
         $selfChargeValue = $method->self_charge ? $method->self_charge : $method->service_charge;
         $selfChargeType = $method->charge_type ?? 'Flat Rate';
@@ -148,7 +148,7 @@ class ChargeService
         $totalFee = 0;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
-           $totalFee = $selfChargeAmount;
+            $totalFee = $selfChargeAmount;
         }
 
         $finalAmount = $amount + $totalFee;
@@ -194,7 +194,7 @@ class ChargeService
         if (!$charge) {
             // Fallback to payment method if charge not found
             $method = PaymentMethod::find($methodCode);
-            
+
             if (!$method) {
                 Log::warning('No UPayment charge or payment method found', [
                     'method_code' => $methodCode,
@@ -223,7 +223,7 @@ class ChargeService
         $totalFee = 0;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
-           $totalFee = $fee;
+            $totalFee = $fee;
         }
 
         $finalAmount = $amount + $totalFee;
@@ -259,7 +259,7 @@ class ChargeService
 
         $paidBy = $method->paid_by;
         $apiServiceCharge = $method->service_charge ?? 0;
-        
+
         // Determine which self charge to use: self_charge takes priority over service_charge (amount)
         $selfChargeValue = $method->self_charge ? $method->self_charge : $method->service_charge;
         $selfChargeType = $method->charge_type ?? 'Flat Rate';
@@ -272,7 +272,7 @@ class ChargeService
         $totalFee = 0;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
-           $totalFee = $selfChargeAmount;
+            $totalFee = $selfChargeAmount;
         }
 
         $finalAmount = $amount + $totalFee;
@@ -336,10 +336,10 @@ class ChargeService
             } else {
                 $paidBy = $method->paid_by;
                 $apiServiceCharge = $method->service_charge ?? 0;
-                
+
                 $selfChargeValue = $method->self_charge ?? $method->service_charge ?? 0;
                 $selfChargeType = $method->charge_type ?? 'Flat Rate';
-                
+
                 $selfChargeAmount = 0;
                 if ($selfChargeValue > 0) {
                     $selfChargeAmount = ceil(self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType));
@@ -445,5 +445,61 @@ class ChargeService
             selfCharge: $charge->self_charge,
             gatewayFee: $fee,
         );
+    }
+
+    /**
+     * Calculate gateway fee from Payment object
+     * Unified method for use in addCredit(), fix commands, etc.
+     * 
+     * @param Payment $payment The payment object
+     * @param int $companyId The company ID
+     * @return array ['gatewayFee' => float, 'paidBy' => string]
+     */
+    public static function calculateGatewayFeeFromPayment($payment, int $companyId): array
+    {
+        try {
+            $gateway = strtolower($payment->payment_gateway ?? '');
+            $methodId = $payment->payment_method_id;
+
+            $result = null;
+
+            if ($gateway === 'myfatoorah') {
+                $result = self::FatoorahCharge($payment->amount, $methodId, $companyId);
+            } elseif ($gateway === 'tap') {
+                $result = self::TapCharge([
+                    'amount' => $payment->amount,
+                    'client_id' => $payment->client_id,
+                    'agent_id' => $payment->agent_id,
+                    'currency' => $payment->currency ?? 'KWD'
+                ], $payment->payment_gateway);
+            } elseif ($gateway === 'hesabe') {
+                $result = self::HesabeCharge($payment->amount, $methodId);
+            } elseif ($gateway === 'upayment') {
+                $result = self::UPaymentCharge($payment->amount, $methodId, $companyId);
+            } else {
+                $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                return [
+                    'gatewayFee' => (float) ($chargeRecord?->amount ?? 0),
+                    'paidBy' => $chargeRecord?->paid_by ?? 'Company',
+                ];
+            }
+
+            return [
+                'gatewayFee' => $result['gatewayFee'] ?? 0,
+                'paidBy' => $result['paid_by'] ?? 'Company',
+            ];
+        } catch (\Exception $e) {
+            Log::warning('calculateGatewayFeeFromPayment error', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage()
+            ]);
+            return [
+                'gatewayFee' => 0,
+                'paidBy' => 'Company',
+            ];
+        }
     }
 }

@@ -157,7 +157,7 @@
                         @foreach($payment->paymentItems as $item)
                         <tr class="border-t border-gray-200">
                             <td class="py-3 px-4">{{ $item->product_name }}</td>
-                            <td class="py-3 px-4">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="py-3 px-4">{{ number_format($item->quantity, 3) }}</td>
                             <td class="py-3 px-4">{{ number_format($item->unit_price, 3) }} {{ $item->currency }}</td>
                             <td class="py-3 px-4 font-semibold">{{ number_format($item->extended_amount, 3) }} {{ $item->currency }}</td>
                         </tr>
@@ -411,7 +411,7 @@
 
                         const finalAmount = this.getAttribute('data-final-amount');
                         if (finalAmount) {
-                            const formattedAmount = parseFloat(finalAmount).toFixed(2) + ' {{ $payment->currency }}';
+                            const formattedAmount = parseFloat(finalAmount).toFixed(3) + ' {{ $payment->currency }}';
                             document.getElementById('display-amount').textContent = formattedAmount;
                             document.getElementById('total-amount').textContent = formattedAmount;
                         }

@@ -553,7 +553,7 @@
 
         let balanceElement = document.getElementById('balance');
         if (balanceElement) {
-            balanceElement.textContent = balance.toFixed(2);
+            balanceElement.textContent = balance.toFixed(3);
         }
     </script>
 </body>

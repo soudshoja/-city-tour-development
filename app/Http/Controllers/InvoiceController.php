@@ -857,7 +857,6 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'gateway' => 'required',
             'method' => 'nullable|string',
-            // 'credit' => 'nullable|boolean',
             'external_url' => 'nullable|url',
             'invoice_charge' => 'nullable|numeric|min:0',
             'companyId' => 'required',
@@ -919,18 +918,8 @@ class InvoiceController extends Controller
 
             // Handle new payment types: cash
             if ($isCash) {
-                try {
-                    $receiptVoucher = new ReceiptVoucherController();
-                    return $receiptVoucher->autoGenerate($invoice, $request);
-
-                    if (! $invoice instanceof \App\Models\Invoice) {
-                        Log::error('Expected Invoice, got: ' . (is_object($invoice) ? get_class($invoice) : gettype($invoice)));
-                        return response()->json(['ok' => false, 'message' => 'Internal type mismatch'], 500);
-                    }
-                } catch (Exception $e) {
-                    Log::error('Failed to auto generate the receipt voucer: ' . $e->getMessage());
-                    throw new \Exception('Failed to auto generate the receipt voucer: ' . $e->getMessage());
-                }
+                $gateway = 'Cash';
+                $status = 'unpaid';
             }
 
             $gatewayFee = 0;
@@ -971,6 +960,8 @@ class InvoiceController extends Controller
                     'charge_id' => Charge::where('name', $gateway)->value('id'),
                 ]);
 
+                $appliedPayments = []; // Track applied payments for COA
+
                 if ($credit) {
                     $paymentAllocations = $request->input('payment_allocations', []);
 
@@ -978,15 +969,22 @@ class InvoiceController extends Controller
                         // Use PaymentApplicationService to link to specific payments
                         try {
                             $paymentService = app(PaymentApplicationService::class);
-                            $paymentService->linkPaymentsToInvoicePartial(
+                            $result = $paymentService->linkPaymentsToInvoicePartial(
                                 $invoice,
                                 $invoicePartial,
                                 $paymentAllocations
                             );
+
+                            // Collect applied payments for COA creation
+                            if ($result['success'] && !empty($result['applied_payments'])) {
+                                $appliedPayments = $result['applied_payments'];
+                            }
+
                             Log::info('Payment allocations applied via PaymentApplicationService', [
                                 'invoice_id' => $invoice->id,
                                 'invoice_partial_id' => $invoicePartial->id,
                                 'allocations' => $paymentAllocations,
+                                'applied_payments' => $appliedPayments,
                             ]);
                         } catch (Exception $e) {
                             Log::error('Failed to apply payment allocations: ' . $e->getMessage());
@@ -995,15 +993,26 @@ class InvoiceController extends Controller
                     } else {
                         // Fallback: create credit record without linking to specific payment (legacy behavior)
                         try {
-                            Credit::create([
-                                'company_id'  => $invoicePartial->client->agent->branch->company_id,
-                                'client_id'   => $invoicePartial->client->id,
+                            $creditRecord = Credit::create([
+                                'company_id'  => $invoice->agent?->branch?->company_id,
+                                'branch_id'   => $invoice->agent?->branch_id,
+                                'client_id'   => $invoice->client_id,
                                 'invoice_id'  => $invoice->id,
                                 'invoice_partial_id'  => $invoicePartial->id,
-                                'type'        => 'Invoice',
+                                'type'        => Credit::INVOICE,
                                 'description' => 'Payment for ' . $invoice->invoice_number,
-                                'amount'      => - ($amount),
+                                'amount'      => -$amount,
                             ]);
+
+                            // Build applied payments for COA (legacy - no specific voucher)
+                            $appliedPayments[] = [
+                                'credit_id' => $creditRecord->id,
+                                'payment_id' => null,
+                                'refund_id' => null,
+                                'voucher_number' => 'Client Credit',
+                                'amount_applied' => $amount,
+                                'invoice_partial_id' => $invoicePartial->id,
+                            ];
                         } catch (Exception $e) {
                             Log::error('Failed to create Credit: ' . $e->getMessage());
                             throw new \Exception('Failed to create credit record: ' . $e->getMessage());
@@ -1047,7 +1056,9 @@ class InvoiceController extends Controller
 
                 $invoice->save();
 
-                $transaction = Transaction::where('invoice_id', $invoice->id)->first();
+                $transaction = Transaction::where('invoice_id', $invoice->id)
+                    ->where('reference_type', 'Invoice')
+                    ->first();
 
                 if (!$transaction) {
                     $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
@@ -1105,6 +1116,22 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'transaction_id' => $transaction->id,
                     ]);
+                }
+
+                // STEP 2: CREDIT PAYMENT COA
+                if ($credit && !empty($appliedPayments)) {
+                    $totalCreditApplied = array_sum(array_column($appliedPayments, 'amount_applied'));
+                    $this->createCreditPaymentCOA($invoice, $appliedPayments, $totalCreditApplied);
+                }
+
+                // STEP 3: For Cash - Create Receipt Voucher
+                if ($isCash) {
+                    $receiptVoucher = new ReceiptVoucherController();
+                    $rvResult = $receiptVoucher->createReceiptVoucher($invoice, $invoicePartial, $request);
+
+                    if (!$rvResult['ok']) {
+                        throw new \Exception($rvResult['message'] ?? 'Failed to create receipt voucher');
+                    }
                 }
 
                 return response()->json([
@@ -1593,6 +1620,169 @@ class InvoiceController extends Controller
         ]);
     }
 
+    protected function createCreditPaymentCOA(Invoice $invoice, array $appliedPayments, float $totalAmount): ?Transaction
+    {
+        try {
+            $companyId = $invoice->agent?->branch?->company_id;
+            $branchId = $invoice->agent?->branch_id;
+
+            if (!$companyId) {
+                Log::warning('[CREDIT PAYMENT COA] Company ID not found', [
+                    'invoice_id' => $invoice->id,
+                ]);
+                return null;
+            }
+
+            $liabilityAccount = null;
+
+            $liabilities = Account::where('company_id', $companyId)
+                ->where('name', 'like', 'Liabilities%')
+                ->whereNull('parent_id')
+                ->first();
+
+            if ($liabilities) {
+                $advances = Account::where('company_id', $companyId)
+                    ->where('name', 'Advances')
+                    ->where('parent_id', $liabilities->id)
+                    ->first();
+
+                if ($advances) {
+                    $clientAdvance = Account::where('company_id', $companyId)
+                        ->where('name', 'Client')
+                        ->where('parent_id', $advances->id)
+                        ->first();
+
+                    if ($clientAdvance) {
+                        $liabilityAccount = Account::where('company_id', $companyId)
+                            ->where('name', 'Payment Gateway')
+                            ->where('parent_id', $clientAdvance->id)
+                            ->first();
+                    }
+                }
+            }
+
+            if (!$liabilityAccount) {
+                $liabilityAccount = Account::where('company_id', $companyId)
+                    ->where('name', 'Payment Gateway')
+                    ->whereHas('parent', fn($q) => $q->where('name', 'Client'))
+                    ->first();
+            }
+
+            $receivableAccount = null;
+
+            $accountsReceivable = Account::where('company_id', $companyId)
+                ->where('name', 'Accounts Receivable')
+                ->first();
+
+            if ($accountsReceivable) {
+                $receivableAccount = Account::where('company_id', $companyId)
+                    ->where('name', 'Clients')
+                    ->where('parent_id', $accountsReceivable->id)
+                    ->first();
+            }
+
+            if (!$receivableAccount) {
+                $receivableAccount = Account::where('company_id', $companyId)
+                    ->where('name', 'Clients')
+                    ->whereHas('parent', fn($q) => $q->where('name', 'Accounts Receivable'))
+                    ->first();
+            }
+
+            if (!$liabilityAccount || !$receivableAccount) {
+                Log::warning('[CREDIT PAYMENT COA] Required accounts not found', [
+                    'company_id' => $companyId,
+                    'liability_found' => $liabilityAccount ? true : false,
+                    'receivable_found' => $receivableAccount ? true : false,
+                ]);
+                return null;
+            }
+
+            $voucherList = implode(', ', array_column($appliedPayments, 'voucher_number'));
+
+            $transaction = Transaction::create([
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'entity_id' => $invoice->client_id,
+                'entity_type' => 'Client',
+                'transaction_type' => 'debit',
+                'amount' => $totalAmount,
+                'description' => "Credit Payment for {$invoice->invoice_number}",
+                'invoice_id' => $invoice->id,
+                'reference_type' => 'Payment',
+                'reference_number' => $invoice->invoice_number,
+                'transaction_date' => now(),
+            ]);
+
+            Log::info('[CREDIT PAYMENT COA] Created Transaction', [
+                'transaction_id' => $transaction->id,
+                'invoice_id' => $invoice->id,
+                'total_amount' => $totalAmount,
+                'vouchers_used' => $voucherList,
+            ]);
+
+            foreach ($appliedPayments as $payment) {
+                $voucherNumber = $payment['voucher_number'] ?? 'Client Credit';
+                $amountApplied = $payment['amount_applied'] ?? 0;
+                $invoicePartialId = $payment['invoice_partial_id'] ?? null;
+
+                if ($amountApplied <= 0) continue;
+
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $branchId,
+                    'company_id' => $companyId,
+                    'account_id' => $liabilityAccount->id,
+                    'invoice_id' => $invoice->id,
+                    'invoice_partial_id' => $invoicePartialId,
+                    'agent_id' => $invoice->agent_id,
+                    'transaction_date' => now(),
+                    'description' => "Apply Client Credit from {$voucherNumber}",
+                    'debit' => $amountApplied,
+                    'credit' => 0,
+                    'balance' => $liabilityAccount->actual_balance ?? 0,
+                    'name' => $liabilityAccount->name,
+                    'type' => 'payable',
+                    'currency' => $invoice->currency ?? 'KWD',
+                ]);
+
+                Log::info('[CREDIT PAYMENT COA] Created DEBIT entry', [
+                    'voucher' => $voucherNumber,
+                    'debit' => $amountApplied,
+                ]);
+            }
+
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'branch_id' => $branchId,
+                'company_id' => $companyId,
+                'account_id' => $receivableAccount->id,
+                'invoice_id' => $invoice->id,
+                'invoice_partial_id' => null,
+                'agent_id' => $invoice->agent_id,
+                'transaction_date' => now(),
+                'description' => "Invoice {$invoice->invoice_number} paid via Client Credit",
+                'debit' => 0,
+                'credit' => $totalAmount,
+                'balance' => $receivableAccount->actual_balance ?? 0,
+                'name' => $receivableAccount->name,
+                'type' => 'receivable',
+                'currency' => $invoice->currency ?? 'KWD',
+            ]);
+
+            Log::info('[CREDIT PAYMENT COA] Created CREDIT entry', [
+                'credit' => $totalAmount,
+            ]);
+
+            return $transaction;
+        } catch (\Exception $e) {
+            Log::error('[CREDIT PAYMENT COA] Failed', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
     /**
      * Create journal entries for cash and credit payment types
      */
@@ -2075,7 +2265,10 @@ class InvoiceController extends Controller
     {
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
-        $invoicePartial = InvoicePartial::where('id', $partialId)->where('invoice_number', $invoiceNumber)->where('client_id', $clientId)->with('client', 'invoice')->first();
+        $invoicePartial = InvoicePartial::where('id', $partialId)
+            ->where('invoice_number', $invoiceNumber)
+            ->with('client', 'invoice')
+            ->first();
 
         // Check if the invoice exists
         if (!$invoice) {

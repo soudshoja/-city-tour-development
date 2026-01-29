@@ -17,15 +17,15 @@ class InvoicePartial extends Model
         'service_charge',
         'amount',
         'status',
-        'expiry_date',  
-        'type',    
+        'expiry_date',
+        'type',
         'charge_id',
         'payment_gateway',
         'payment_method',
         'payment_id',
         'receipt_voucher_id',
     ];
-    
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');
@@ -33,12 +33,17 @@ class InvoicePartial extends Model
 
     public function invoice()
     {
-        return $this->belongsTo(Invoice::class, 'invoice_id');             
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function invoiceReceipt()
+    {
+        return $this->hasOne(InvoiceReceipt::class, 'invoice_partial_id');
     }
 
     public function payment()
     {
-        return $this->belongsTo(Payment::class, 'payment_id');             
+        return $this->belongsTo(Payment::class, 'payment_id');
     }
 
     public function paymentMethod()

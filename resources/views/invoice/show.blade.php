@@ -287,9 +287,9 @@
                         @endif
                     </td>
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
-                    <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
+                    <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 3) }}</td>
                     <td class="px-4 py-2 border">
-                        {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 2, '.', ',') }}
+                        {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 3, '.', ',') }}
                     </td>
                 </tr>
                 @endforeach
@@ -346,9 +346,9 @@
                     <td class="px-4 py-2 border"> {{$partial->status}}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
                         @else
-                        {{ number_format($partial->amount, 2) }}
+                        {{ number_format($partial->amount, 3) }}
                         @endif
                     </td>
                 </tr>
@@ -409,7 +409,7 @@
                         {{ $partial->client->full_name }}
 
                         <!-- @if ($creditBalance > 0 && $partial->status === 'unpaid')
-                        <br>Credit Balance: {{ number_format($creditBalance, 2) }} |
+                        <br>Credit Balance: {{ number_format($creditBalance, 3) }} |
                         <button @click="open = true" type="button" class="text-blue-600 underline text">
                             Use now to pay this payment split?
                         </button>
@@ -456,9 +456,9 @@
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
                         @else
-                        {{ number_format($partial->amount, 2) }}
+                        {{ number_format($partial->amount, 3) }}
                         @endif
                     </td>
                 </tr>
@@ -478,21 +478,21 @@
             <div class="w-1/3 text-sm">
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
-                    <span>{{ number_format($invoice->sub_amount, 2) }}</span>
+                    <span>{{ number_format($invoice->sub_amount, 3) }}</span>
                 </div>
                 @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                 @foreach ($checkUtilizeCredit as $credit)
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Client's Credit ({{ $credit->created_at->format('d M Y') }}):</span>
 
-                    <span>{{ number_format($credit->amount, 2) }}</span>
+                    <span>{{ number_format($credit->amount, 3) }}</span>
                 </div>
                 @endforeach
                 @endif
 
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Tax ({{ $invoice->tax_rate }}%):</span>
-                    <span>{{ number_format($invoice->tax, 2) }}</span>
+                    <span>{{ number_format($invoice->tax, 3) }}</span>
                 </div>
 
                 @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
@@ -503,19 +503,19 @@
                 @if ($paidServiceCharge > 0)
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Service Charge:</span>
-                    <span>{{ number_format($paidServiceCharge, 2) }}</span>
+                    <span>{{ number_format($paidServiceCharge, 3) }}</span>
                 </div>
                 @endif
                 @else
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                    <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
+                    <span>{{ number_format($totalGatewayFee['fee'], 3) }}</span>
                 </div>
                 @endif
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
-                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 3) }}
                     </span>
                 </div>
             </div>
@@ -681,10 +681,17 @@
                                 <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
                                     class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
                                 </a>
-                            @elseif ($partial->payment_gateway === 'Tabby')
-                                <span class="text-gray-600 italic">Receipt voucher TBA</span>
+                            @elseif ($partial->payment_gateway === 'Cash')
+                                @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                    <a href="{{ route('receipt-voucher.show', ['companyId' => $companyId,
+                                        'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 underline" target="_blank">
+                                        {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-600 italic">Cash (Receipt pending)</span>
+                                @endif
                             @else
-                                <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">Credit</a>
+                                <span class="text-gray-600 italic">Receipt voucher TBA</span>
                             @endif
                         </td>
                         <td class="px-4 py-2 border">
@@ -719,7 +726,7 @@
                             <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         @endif
                         <td class="px-4 py-2 border">
-                            {{ number_format($partial->amount ?? 0, 2) }}
+                            {{ number_format($partial->amount ?? 0, 3) }}
                         </td>
                     </tr>
                     @endforeach
@@ -764,7 +771,7 @@
 
         let balanceElement = document.getElementById('balance');
         if (balanceElement) {
-            balanceElement.textContent = balance.toFixed(2);
+            balanceElement.textContent = balance.toFixed(3);
         }
 
         const totalAmountDisplay = document.getElementById("totalAmountDisplay");
@@ -849,14 +856,14 @@
                 }
             });
 
-            totalAmountInput.value = totalForSubmission.toFixed(2);
+            totalAmountInput.value = totalForSubmission.toFixed(3);
 
             if (totalAmountDisplay) {
-                totalAmountDisplay.textContent = totalForDisplay.toFixed(2);
+                totalAmountDisplay.textContent = totalForDisplay.toFixed(3);
             }
 
             console.log("Amount for submission (backend):", totalAmountInput.value);
-            console.log("Amount for display (frontend):", totalForDisplay.toFixed(2));
+            console.log("Amount for display (frontend):", totalForDisplay.toFixed(3));
         }
 
         $(document).ready(function() {
@@ -876,9 +883,9 @@
                     if (index > -1) selectedItems.splice(index, 1);
                 }
 
-                $('#selectedTotal').text(selectedTotal.toFixed(2));
+                $('#selectedTotal').text(selectedTotal.toFixed(3));
                 $('#selectedItems').val(selectedItems.join(','));
-                $('#totalAmount').val(selectedTotal.toFixed(2));
+                $('#totalAmount').val(selectedTotal.toFixed(3));
             });
         });
 

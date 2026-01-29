@@ -142,10 +142,10 @@ class RunAutoBilling extends Command
                         $task->client_id &&
                         !empty($task->supplier_pay_date) &&
                         JournalEntry::where('task_id', $task->id)
-                            ->whereHas('transaction', function ($q) use ($task) {
-                                $q->where('description', 'like', '%' . ($task->reference ?? '') . '%');
-                            })
-                            ->exists()
+                        ->whereHas('transaction', function ($q) use ($task) {
+                            $q->where('description', 'like', '%' . ($task->reference ?? '') . '%');
+                        })
+                        ->exists()
                     ) {
                         $task->enabled = true;
                         $task->save();
@@ -272,24 +272,14 @@ class RunAutoBilling extends Command
                 $fee = 0;
 
                 try {
-                    switch (strtolower($gateway)) {
-                        case 'myfatoorah':
-                            $fee = ChargeService::FatoorahCharge($totalAmount, $rule->method_id, $rule->company_id)['fee'] ?? 0;
-                            break;
-                        case 'hesabe':
-                            $fee = ChargeService::HesabeCharge($totalAmount, $rule->method_id, $rule->company_id)['fee'] ?? 0;
-                            break;
-                        case 'tap':
-                            $fee = ChargeService::TapCharge([
-                                'amount' => $totalAmount,
-                                'client_id' => $invoice->client_id,
-                                'agent_id' => $invoice->agent_id,
-                                'currency' => $invoice->currency
-                            ], $gateway)['fee'] ?? 0;
-                            break;
-                        case 'upayment':
-                            $fee = ChargeService::UPaymentCharge($totalAmount, $rule->method_id, $rule->company_id)['fee'] ?? 0;
-                            break;
+                    if ($gateway) {
+                        $chargeResult = ChargeService::calculate(
+                            $totalAmount,
+                            $rule->company_id,
+                            $rule->method_id,
+                            $gateway
+                        );
+                        $fee = $chargeResult['gatewayFee'] ?? 0;
                     }
                 } catch (Exception $e) {
                     Log::error("[AutoBilling] Gateway fee calculation failed: {$e->getMessage()}");
@@ -315,7 +305,7 @@ class RunAutoBilling extends Command
 
                 $this->storeNotificationWithEmail([
                     'type' => 'autobill',
-                    'user_id'=> $rule->company->user_id,
+                    'user_id' => $rule->company->user_id,
                     'title' => 'AutoBill Invoice Generated',
                     'message' => "Invoice #{$invoiceNumber} successfully created for {$clientName} ({$tasks->count()} task[s]).\n\n"
                         . "View Invoice: " . route('invoice.show', ['companyId' => $rule->company_id, 'invoiceNumber' => $invoiceNumber]),
@@ -353,7 +343,7 @@ class RunAutoBilling extends Command
 
                 $this->storeNotificationWithEmail([
                     'type' => 'autobill',
-                    'user_id'=> $rule->company->user_id,
+                    'user_id' => $rule->company->user_id,
                     'title' => 'AutoBill Invoice Failed Generated',
                     'message' => "AutoBilling failed for {$clientName} (Rule #{$rule->id}).\n" . "Please review the AutoBilling log for more details.",
                     'clientName' => $clientName,

@@ -500,7 +500,7 @@
                 @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>رسوم الخدمة @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                    <span>{{ number_format($totalGatewayFee['fee'], 3) }}</span>
+                    <span>{{ number_format($totalGatewayFee['gatewayFee'], 3) }}</span>
                 </div>
                 @endif
                 @endif

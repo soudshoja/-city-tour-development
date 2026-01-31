@@ -5447,7 +5447,11 @@ class TaskController extends Controller
             $companyId = $user->agent->branch->company->id;
             $agent = Agent::where('user_id', $user->id)->first();
             $agents = collect([$agent]);
-            $clients = Client::where('agent_id', $agent->id)->get();
+            $clients = Client::where('agent_id', $agent->id)
+                ->orWhereHas('agents', function ($query) use ($agent) {
+                    $query->where('agent_id', $agent->id);
+                })
+                ->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             $companyId = $user->accountant->branch->company->id;
             $branch = Branch::where('id', $user->accountant->branch->id)->pluck('id')->toArray();

@@ -1,27 +1,36 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-B87S_z_Z.css",
+    "file": "assets/app-Dox8d9TX.css",
     "src": "resources/css/app.css",
-    "isEntry": true
+    "isEntry": true,
+    "names": [
+      "app.css"
+    ]
   },
   "resources/css/cityCss.css": {
-    "file": "assets/cityCss-DFHiI5Dt.css",
+    "file": "assets/cityCss-z4Edh4w_.css",
     "src": "resources/css/cityCss.css",
-    "isEntry": true
+    "isEntry": true,
+    "names": [
+      "cityCss.css"
+    ]
   },
   "resources/css/style.css": {
-    "file": "assets/style-kXjhsEK_.css",
+    "file": "assets/style-DSmvl4Wu.css",
     "src": "resources/css/style.css",
-    "isEntry": true
+    "isEntry": true,
+    "names": [
+      "style.css"
+    ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-kiKVgKE7.js",
+    "file": "assets/app-HPSvmL1Z.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true
   },
   "resources/js/jsbyNisma.js": {
-    "file": "assets/jsbyNisma-B3Pv2v3g.js",
+    "file": "assets/jsbyNisma-DnWfmHM-.js",
     "name": "jsbyNisma",
     "src": "resources/js/jsbyNisma.js",
     "isEntry": true

@@ -41,7 +41,7 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-6 mt-10">Refund Calculation</h3>
 
             @php
-                $calculatedRefundCharge = $task->calculated_refund_charge ?? ($task->originalTask->total - $task->total);
+                $calculatedRefundCharge = $task->calculated_refund_charge ?? ($task->total - $task->total);
             @endphp
 
             <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-6 space-y-6 xl:space-y-0 xl:space-x-6">
@@ -49,7 +49,7 @@
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Original Task (Cost Price)</label>
                     <div class="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 font-semibold">
-                        {{ number_format($task->originalTask->total, 3, '.', '') }}
+                        {{ number_format($task->total, 3, '.', '') }}
                     </div>
                 </div>
 

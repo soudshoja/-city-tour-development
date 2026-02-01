@@ -45,8 +45,20 @@ class RefundController extends Controller
         $companyId = getCompanyId($user);
         $refundClients = collect();
 
-        $refundsQuery = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice'])
-            ->orderBy('id', 'desc');
+        // Get sort parameters
+        $sortField = $request->input('sort', 'created_at');
+        $sortDirection = $request->input('direction', 'desc');
+
+        // Validate sort field to prevent SQL injection
+        $allowedSortFields = ['refund_number', 'created_at', 'client_name'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate direction
+        $sortDirection = in_array($sortDirection, ['asc', 'desc']) ? $sortDirection : 'desc';
+
+        $refundsQuery = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice']);
 
         if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
@@ -70,9 +82,21 @@ class RefundController extends Controller
             $refundsQuery->where('branch_id', $user->accountant->branch_id);
         }
 
-        $refunds = $refundsQuery->paginate(15)->withQueryString();
+        // Handle sorting
+        if ($sortField === 'client_name') {
+            // For client_name, we need to sort the collection after fetching
+            $refunds = $refundsQuery->orderBy('created_at', 'desc')->get();
+            
+            // Sort the collection by client name
+            $refunds = $refunds->sortBy(function ($refund) {
+                return strtolower($refund->refundDetails->pluck('client.full_name')->first() ?? '');
+            }, SORT_REGULAR, $sortDirection === 'desc')->values();
+        } else {
+            // Direct column sorting
+            $refunds = $refundsQuery->orderBy($sortField, $sortDirection)->get();
+        }
 
-        $totalRefunds = $refunds->total();
+        $totalRefunds = $refunds->count();
         $totalRefundClients = $refundClients->count();
 
         return view('refunds.index', compact(
@@ -101,7 +125,6 @@ class RefundController extends Controller
         $tasks = Task::with([
             'agent.branch.company',
             'client',
-            'originalTask.invoiceDetail.invoice',
             'originalTask.invoiceDetail'
         ])->whereIn('id', $taskIdsArray)->get();
 
@@ -121,9 +144,10 @@ class RefundController extends Controller
         $invoiceIds = collect();
         foreach ($tasks as $task) {
             if (
-                !$task->originalTask || !$task->originalTask->invoiceDetail || !$task->originalTask->invoiceDetail->invoice
+                !$task->invoiceDetail || !$task->invoiceDetail->invoice
             ) {
-                return redirect()->back()->withErrors(['error' => "Original task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
+                Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
+                return redirect()->back()->withErrors(['error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
             }
 
             if (($task->agent->agent_type_id ?? 1) != 1 && ($task->agent->commission <= 0)) {
@@ -132,7 +156,7 @@ class RefundController extends Controller
                 ]);
             }
 
-            $invoicePaymentStatus = strtolower($task->originalTask->invoiceDetail->invoice->status);
+            $invoicePaymentStatus = strtolower($task->invoiceDetail->invoice->status);
             if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
                 Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
                 return redirect()->back()->withErrors([
@@ -140,7 +164,7 @@ class RefundController extends Controller
                 ]);
             }
             $allClients->push($task->client);
-            $invoiceIds->push($task->originalTask->invoiceDetail->invoice->id);
+            $invoiceIds->push($task->invoiceDetail->invoice->id);
         }
 
         if ($invoiceIds->unique()->count() > 1) {
@@ -172,7 +196,7 @@ class RefundController extends Controller
     }
 
     public function store(Request $request)
-    {
+    { 
         $validatedData = $request->validate([
             'date' => ['required', 'date'],
             'method' => ['nullable', 'in:Bank,Cash,Online,Credit'],
@@ -196,7 +220,8 @@ class RefundController extends Controller
 
         DB::beginTransaction();
         try {
-            $firstTask = Task::with('agent.branch')->findOrFail($validatedData['tasks'][0]['task_id']);
+            // ← Changed: Load invoiceDetail directly
+            $firstTask = Task::with(['agent.branch', 'invoiceDetail.invoice'])->findOrFail($validatedData['tasks'][0]['task_id']);
 
             $refundSequence = RefundSequence::firstOrCreate(['company_id' => $firstTask->company_id], ['current_sequence' => 1]);
             $refundNumber = $this->generateRefundNumber($refundSequence->current_sequence);
@@ -217,7 +242,7 @@ class RefundController extends Controller
                 'company_id' => $firstTask->company_id,
                 'branch_id' => $firstTask->agent->branch_id,
                 'agent_id' => $firstTask->agent_id,
-                'invoice_id' => $firstTask->originalTask->invoiceDetail->invoice->id,
+                'invoice_id' => $firstTask->invoiceDetail->invoice->id,  // ← Changed: Direct access
                 'method' => $validatedData['method'] ?? null,
                 'remarks' => $validatedData['remarks'],
                 'remarks_internal' => $validatedData['remarks_internal'],
@@ -231,8 +256,9 @@ class RefundController extends Controller
             ]);
 
             foreach ($validatedData['tasks'] as $taskData) {
-                $task = Task::with('originalTask.invoiceDetail.invoice', 'client', 'agent.branch')->findOrFail($taskData['task_id']);
-                $paymentStatus = $task->originalTask->invoiceDetail->invoice->status;
+                // ← Changed: Load invoiceDetail directly
+                $task = Task::with(['invoiceDetail.invoice', 'client', 'agent.branch'])->findOrFail($taskData['task_id']);
+                $paymentStatus = $task->invoiceDetail->invoice->status;  // ← Changed: Direct access
 
                 RefundDetail::create([
                     'refund_id' => $refund->id,
@@ -255,8 +281,9 @@ class RefundController extends Controller
             } elseif ($paymentStatus === 'unpaid') {
                 $invoice = $refund->originalInvoice;
 
+                // ← Changed: Get task IDs directly (no originalTask)
                 $refundedTaskIds = $refund->refundDetails
-                    ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
+                    ->pluck('task_id')
                     ->filter()
                     ->toArray();
 
@@ -736,7 +763,7 @@ class RefundController extends Controller
     public function edit(Refund $refund)
     {
         $refund->load([
-            'refundDetails.task.originalTask.invoiceDetail.invoice',
+            'refundDetails.task.invoiceDetail.invoice',
             'refundDetails.task.agent.branch.company',
             'refundDetails.task.client',
         ]);
@@ -746,8 +773,8 @@ class RefundController extends Controller
         }
 
         $firstTask = $refund->refundDetails->first()->task;
-        $invoicePaid = in_array($firstTask->originalTask->invoiceDetail->invoice->status ?? '', ['paid', 'partial refund']);
-        $invoiceDetail = $firstTask->originalTask->invoiceDetail;
+        $invoicePaid = in_array($firstTask->invoiceDetail->invoice->status ?? '', ['paid', 'partial refund']);
+        $invoiceDetail = $firstTask->invoiceDetail;
 
         $paymentGateways = Charge::where('company_id', $firstTask->agent->branch->company_id)
             ->where('is_active', true)->get();
@@ -1787,5 +1814,57 @@ class RefundController extends Controller
             Log::error('Failed to create invoice from refund: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to create invoice from refund.'], 500);
         }
+    }
+
+    public function getEligibleTasks(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $tasksQuery = Task::with([
+            'client',
+            'agent.branch',
+            'originalTask.invoiceDetail.invoice'
+        ])
+        ->whereIn('status', ['issued', 'reissued'])
+        ->whereHas('client')
+        ->whereHas('agent')
+        ->whereHas('invoiceDetail.invoice', function ($q) {
+            $q->whereIn('status', ['paid', 'unpaid', 'partial', 'partial refund']);
+        })
+        ->whereDoesntHave('refundDetail');
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $tasksQuery->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId));
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $tasksQuery->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId));
+        } elseif ($user->role_id == Role::BRANCH) {
+            $tasksQuery->whereHas('agent', fn($q) => $q->where('branch_id', $user->branch->id));
+        } elseif ($user->role_id == Role::AGENT) {
+            $tasksQuery->where('agent_id', $user->agent->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $tasksQuery->whereHas('agent', fn($q) => $q->where('branch_id', $user->accountant->branch_id));
+        }
+
+        $tasks = $tasksQuery->orderBy('created_at', 'desc')->limit(100)->get();
+
+        $formatted = $tasks->map(function ($task) {
+            return [
+                'id' => $task->id,
+                'reference' => $task->reference,
+                'type' => $task->type,
+                'status' => $task->status,
+                'client_name' => $task->client->full_name ?? 'N/A',
+                'invoice_number' => $task->invoiceDetail?->invoice?->invoice_number ?? 'N/A',
+                'invoice_status' => $task->invoiceDetail?->invoice?->status ?? 'N/A',
+                'amount' => $task->invoiceDetail?->task_price ?? 0,
+            ];
+        });
+
+        return response()->json([
+            'tasks' => $formatted,
+        ]);
     }
 }

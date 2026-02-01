@@ -486,6 +486,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
         Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
         Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+        Route::get('/eligible-tasks', [RefundController::class, 'getEligibleTasks'])->name('eligible-tasks');
     });
 
 

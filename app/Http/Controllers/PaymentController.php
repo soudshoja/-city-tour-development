@@ -258,7 +258,7 @@ class PaymentController extends Controller
         }
 
         $this->storeNotification([
-            'user_id' => $invoice->agent->id,
+            'user_id' => $invoice->agent->user_id,
             'title' => 'Payment Initiated',
             'message' => 'Payment has been initiated for invoice: ' . $invoiceNumber,
         ]);
@@ -2264,7 +2264,6 @@ class PaymentController extends Controller
 
         if ($source === 'import') {
             return $this->importPaymentProcess($request);
-            exit;
         }
 
         $request->validate([
@@ -2712,7 +2711,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'payment_gateway' => $paymentGateway,
                 'payment_method_id' => $paymentMethod,
-                'description' => 'Payment for' . $payment->voucher_number,
+                'description' => 'Payment for ' . $payment->voucher_number,
                 'process' => $process,
             ]);
 
@@ -3561,6 +3560,20 @@ class PaymentController extends Controller
                         'payment_id' => $payment->id,
                         'response' => $addCreditResponse,
                     ]);
+
+
+                    if ($paymentTransaction) {
+                        $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+
+                        Log::info('[MYFATOORAH] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                            'payment_id' => $payment->id,
+                            'transaction_id' => $transactionId,
+                        ]);
+
+                        $paymentTransaction->transaction_id = $transactionId;
+                        $paymentTransaction->save();
+                    }
+
                 } else {
                     $coaResult = $this->createInvoicePaymentCOA(
                         payment: $payment,
@@ -3575,11 +3588,6 @@ class PaymentController extends Controller
                     }
 
                     $transaction = Transaction::find($coaResult['transaction_id']);
-                }
-
-                if ($paymentTransaction) {
-                    $paymentTransaction->transaction_id = $transaction->id;
-                    $paymentTransaction->save();
                 }
             });
 
@@ -3696,7 +3704,7 @@ class PaymentController extends Controller
             $partialId = $responseData['udf5'] ?? null;
 
             // Determine process type (invoice or topup)
-            $process = $voucherNumber ? 'topup' : 'invoice';
+            $process = $invoiceNumber ? 'invoice' : 'topup';
 
             if (!$paymentId) {
                 Log::error('KNET Response: Missing payment_id in UDF', ['response' => $responseData]);
@@ -3813,6 +3821,22 @@ class PaymentController extends Controller
 
                     if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
                         throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
+                    }
+
+                    $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+                    if ($paymentTransaction && $transactionId) {
+                        Log::info('[KNET] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                            'payment_id' => $payment->id,
+                            'transaction_id' => $transactionId,
+                        ]);
+
+                        $paymentTransaction->transaction_id = $transactionId;
+                        $paymentTransaction->save();
+                    } else {
+                        Log::warning('[KNET] Payment transaction or transaction ID missing for update', [
+                            'payment_transaction_exists' => $paymentTransaction !== null,
+                            'transaction_id' => $transactionId,
+                        ]);
                     }
 
                     Log::info('Credit added successfully via addCredit()', [
@@ -4610,6 +4634,23 @@ class PaymentController extends Controller
                         throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
+                    $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+
+                    if($paymentTransaction && $transactionId) {
+                        Log::info('[UPAYMENT] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                            'payment_id' => $payment->id,
+                            'status' => $transaction['status'] ?? '',
+                        ]);
+
+                        $paymentTransaction->transaction_id = $transactionId;
+                        $paymentTransaction->save();
+                    } else {
+                        Log::warning('[UPAYMENT] Payment transaction not found or missing transaction ID for reference: ' . $trackId, [
+                            'payment_id' => $payment->id,
+                            'transaction_id' => $transactionId,
+                        ]);
+                    }
+
                     Log::info('Credit added successfully via addCredit()', [
                         'payment_id' => $payment->id,
                         'response' => $addCreditResponse,
@@ -4813,6 +4854,7 @@ class PaymentController extends Controller
             $payment->service_charge = $data['amount'] - $payment->amount;
             $payment->save();
 
+            $paymentTransaction = null;
 
             if ($paymentToken) {
                 Log::info('[HESABE] Payment token found in the response', [
@@ -4894,27 +4936,26 @@ class PaymentController extends Controller
 
         DB::beginTransaction();
 
-        HesabePayment::updateOrCreate(
-            [
-                'payment_int_id' => $payment->id,
-            ],
-            [
-                'status' => $data['resultCode'] ?? null,
-                'payment_token' => $data['paymentToken'] ?? null,
-                'payment_id' => $data['paymentId'] ?? null,
-                'order_reference_number' => $data['orderReferenceNumber'] ?? null,
-                'auth_code' => $data['auth'] ?? null,
-                'track_id' => $data['trackID'] ?? null,
-                'transaction_id' => $data['transactionId'] ?? null,
-                'invoice_id' => $data['Id'] ?? null,
-                'paid_on' => $data['paidOn'] ?? null,
-                'payload' => $responseData,
-            ]
-        );
-
-        DB::commit();
-
         try {
+
+            HesabePayment::updateOrCreate(
+                [
+                    'payment_int_id' => $payment->id,
+                ],
+                [
+                    'status' => $data['resultCode'] ?? null,
+                    'payment_token' => $data['paymentToken'] ?? null,
+                    'payment_id' => $data['paymentId'] ?? null,
+                    'order_reference_number' => $data['orderReferenceNumber'] ?? null,
+                    'auth_code' => $data['auth'] ?? null,
+                    'track_id' => $data['trackID'] ?? null,
+                    'transaction_id' => $data['transactionId'] ?? null,
+                    'invoice_id' => $data['Id'] ?? null,
+                    'paid_on' => $data['paidOn'] ?? null,
+                    'payload' => $responseData,
+                ]
+            );
+
             if ($process === 'topup') {
                 Log::info('Starting to process the credit for successful callback from Hesabe');
 
@@ -4927,6 +4968,25 @@ class PaymentController extends Controller
                         'payment_reference' => $data['transactionId'],
                     ]);
                     return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error'] ?? $addCreditResponse['message']);
+                }
+
+                $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+
+                if ($paymentTransaction && $transactionId) {
+
+                    Log::info('[HESABE] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                        'payment_id' => $payment->id,
+                        'transaction_id' => $transactionId,
+                    ]);
+
+                    $paymentTransaction->transaction_id = $transactionId;
+                    $paymentTransaction->save();
+                } else {
+
+                    Log::warning('[HESABE] Payment transaction not found or transaction ID missing', [
+                        'payment_id' => $payment->id,
+                        'transaction_id' => $transactionId,
+                    ]);
                 }
 
                 Log::info('Credit added successfully via addCredit()', [
@@ -4966,7 +5026,7 @@ class PaymentController extends Controller
                 $storeNotificationData['payment'] = $payment;
             }
 
-            Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
+            Log::info('[HESABE] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
 
             $this->storeNotificationWithSendingPdf($storeNotificationData);
 
@@ -4984,6 +5044,8 @@ class PaymentController extends Controller
 
             return redirect()->to($receiptInfo['url'])->with('error', 'Payment to Hesabe failed');
         }
+
+        DB::commit();
 
         return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
     }
@@ -5086,7 +5148,8 @@ class PaymentController extends Controller
                     $receiptInfo['message']
                 );
 
-                return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed — ' . ($creditCoa['message'] ?? 'Transaction declined.'));
+                return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed — Transaction declined.');
+
             }
 
             return redirect()->route('payment.failed')->with('error', 'Payment failed.');
@@ -5169,6 +5232,7 @@ class PaymentController extends Controller
 
                 $paymentStatusData = null;
                 $fullPaymentResponse = null;
+                $paymentTransaction = null;
 
                 if ($paymentToken) {
                     Log::info('[HESABE WEBHOOK] Payment token found in the response', [
@@ -5216,7 +5280,7 @@ class PaymentController extends Controller
                 $payment->invoice_reference = $paymentStatusData['TrackID'] ?? $voucherNumber;
                 $payment->payment_date = $datetime ? \Carbon\Carbon::parse($datetime) : now();
                 $payment->status = 'completed';
-                $payment->service_charge = $paymentStatusData['amount'] - $payment->amount;
+                $payment->service_charge = isset($paymentStatusData['amount']) ? $paymentStatusData['amount'] - $payment->amount : 0;
                 $payment->save();
 
                 // Process TBO booking if applicable
@@ -5261,6 +5325,26 @@ class PaymentController extends Controller
                         ]);
                         DB::rollback();
                         return response()->json(['error' => $addCreditResponse['error']], 500);
+                    }
+
+                    $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+
+                    if($paymentTransaction && $transactionId) {
+
+                        Log::info('[HESABE WEBHOOK] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                            'payment_id' => $payment->id,
+                            'transaction_id' => $transactionId,
+                        ]);
+
+                        $paymentTransaction->transaction_id = $transactionId;
+                        $paymentTransaction->save();
+                    } else {
+
+                        Log::warning('[HESABE WEBHOOK] Payment transaction not found or transaction ID missing', [
+                            'payment_id' => $payment->id,
+                            'transaction_id' => $transactionId,
+                        ]);
+
                     }
 
                     Log::info('Credit added successfully via addCredit()', [

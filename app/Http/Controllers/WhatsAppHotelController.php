@@ -2440,18 +2440,18 @@ class WhatsAppHotelController extends Controller
             }
 
             // Calculate gateway charges using ChargeService
-            $chargeResult = ChargeService::getFee(
-                gatewayName: $input['payment_gateway'],
-                amount: $input['amount'],
-                methodCode: $paymentMethod?->id,
-                companyId: $companyId,
-                currency: $input['currency'] ?? 'KWD'
+            $chargeResult = ChargeService::calculate(
+                $input['amount'],
+                $companyId,
+                $paymentMethod?->id,
+                $input['payment_gateway']
             );
 
             Log::channel('whatsapp')->info('TBO B2C Payment charge calculated', [
                 'original_amount' => $input['amount'],
                 'final_amount' => $chargeResult['finalAmount'],
-                'fee' => $chargeResult['fee'],
+                'gateway_fee' => $chargeResult['gatewayFee'],
+                'accounting_fee' => $chargeResult['accountingFee'],
                 'paid_by' => $chargeResult['paid_by'],
                 'payment_gateway' => $input['payment_gateway'],
                 'payment_method_id' => $paymentMethod?->id,
@@ -2463,7 +2463,7 @@ class WhatsAppHotelController extends Controller
                 'pay_to' => $agent->branch->company->name,
                 'currency' => $input['currency'] ?? 'USD',
                 'payment_date' => now(),
-                'service_charge' => $chargeResult['fee'],
+                'service_charge' => $chargeResult['gatewayFee'],
                 'amount' => $chargeResult['finalAmount'],
                 'status' => 'pending',
                 'client_id' => $client->id,

@@ -106,15 +106,15 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                                        {{ number_format($item->supplier_price, 2) }}
+                                        {{ number_format($item->supplier_price, 3) }}
                                     </td>
                                     <td class="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                                        {{ number_format($item->profit, 2) }}
+                                        {{ number_format($item->profit, 3) }}
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="inline-flex items-center gap-2">
                                             <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                {{ number_format($item->task_price, 2) }}
+                                                {{ number_format($item->task_price, 3) }}
                                             </span>
                                             <button type="button" @click.stop="open = !open" class="text-gray-400 hover:text-gray-600">
                                                 <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -351,20 +351,20 @@
                         <dl class="space-y-3 text-sm">
                             <div class="flex justify-between">
                                 <dt class="text-gray-600 dark:text-slate-400">Total Net:</dt>
-                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoiceDetails->sum('supplier_price'), 2) }} KWD</dd>
+                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoiceDetails->sum('supplier_price'), 3) }} KWD</dd>
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-600 dark:text-slate-400">Subtotal:</dt>
-                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->sub_amount, 2) }} KWD</dd>
+                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->sub_amount, 3) }} KWD</dd>
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-600 dark:text-slate-400">Service Charges:</dt>
-                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoicePartials->sum('service_charge') ?? 0, 2) }} KWD</dd>
+                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoicePartials->sum('service_charge') ?? 0, 3) }} KWD</dd>
                             </div>
                             <div class="flex justify-between pt-3 border-t border-gray-200 dark:border-slate-700">
                                 <dt class="text-base font-semibold text-gray-900 dark:text-white">Total Amount:</dt>
                                 <dd class="text-base font-semibold text-gray-900 dark:text-white">
-                                    {{ number_format($invoice->amount + $invoice->invoicePartials->sum('service_charge'), 2) }} KWD
+                                    {{ number_format($invoice->amount + $invoice->invoicePartials->sum('service_charge'), 3) }} KWD
                                 </dd>
                             </div>
                         </dl>
@@ -438,13 +438,13 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">
-                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount : $partial->amount - $partial->service_charge, 2) }} KWD
+                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount : $partial->amount - $partial->service_charge, 3) }} KWD
                                 </td>
                                 <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
-                                    {{ number_format($partial->service_charge ?? 0, 2) }} KWD
+                                    {{ number_format($partial->service_charge ?? 0, 3) }} KWD
                                 </td>
                                 <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
-                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount + $partial->service_charge : $partial->amount, 2) }} KWD
+                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount + $partial->service_charge : $partial->amount, 3) }} KWD
                                 </td>
                             </tr>
                             @endforeach
@@ -452,8 +452,8 @@
                     </table>
                 </div>
                 <p class="mt-3 text-xs text-gray-600 dark:text-slate-400">
-                    Paid {{ number_format($invoice->invoicePartials->filter(fn($p) => strtolower($p->status ?? '') === 'paid')->sum('amount'), 2) }} KWD
-                    of {{ number_format($invoice->amount + $partials->sum('service_charge'), 2) }} KWD
+                    Paid {{ number_format($invoice->invoicePartials->filter(fn($p) => strtolower($p->status ?? '') === 'paid')->sum('amount'), 3) }} KWD
+                    of {{ number_format($invoice->amount + $partials->sum('service_charge'), 3) }} KWD
                 </p>
                 @endif
             </section>
@@ -481,16 +481,16 @@
                                 <td class="px-6 py-4 text-sm text-gray-800 dark:text-slate-200">{{ $entry->description ?? '-' }}</td>
                                 <td class="px-6 py-4 text-right text-sm">
                                     <span class="font-semibold {{ $entry->debit > 0 ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-slate-400' }}">
-                                        {{ number_format($entry->debit, 2) }}
+                                        {{ number_format($entry->debit, 3) }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right text-sm">
                                     <span class="font-semibold {{ $entry->credit > 0 ? 'text-green-700 dark:text-green-300' : 'text-gray-600 dark:text-slate-400' }}">
-                                        {{ number_format($entry->credit, 2) }}
+                                        {{ number_format($entry->credit, 3) }}
                                     </span>
                                 </td>
                                 <!-- <td class="px-6 py-4 text-right text-sm font-bold {{ $entry->running_balance >= 0 ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-slate-100' }}">
-                                        {{ $entry->running_balance !== null ? number_format($entry->running_balance, 2) : 'N/A' }}
+                                        {{ $entry->running_balance !== null ? number_format($entry->running_balance, 3) : 'N/A' }}
                                     </td> -->
                             </tr>
                             @endforeach

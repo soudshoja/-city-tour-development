@@ -2232,7 +2232,7 @@ class ReportController extends Controller
 
         $profit = 0;
         foreach ($invoices as $inv) {
-            $profit += $inv->invoiceDetails->sum('markup_price');
+            $profit += $inv->invoiceDetails->sum('profit');
         }
 
         $topAgentRow = (clone $partials)
@@ -2614,16 +2614,14 @@ class ReportController extends Controller
         $rate = $agent->commission ?? 0.15;
         $salary = $agent->salary ?? 0.0;
         $target = $agent->target ?? 0.0;
-        $profitTotal   = 0.0;
-        $perInvoiceRate = [];
+        $profitTotal = 0.0;
         $invoiceProfit = [];
 
+        // Step 1: Sum stored profit and commission from invoice_details
         foreach ($invoices as $invoice) {
-            $invProfit = $invoice->invoiceDetails->sum('markup_price');
+            $invProfit = $invoice->invoiceDetails->sum('profit');
             $invoiceProfit[$invoice->id] = $invProfit;
             $profitTotal += $invProfit;
-
-            $perInvoiceRate[$invoice->id] = $invProfit * $rate;
             $invoice->computed_profit = $invProfit;
         }
 
@@ -2638,21 +2636,23 @@ class ReportController extends Controller
                 break;
 
             case 2: // Commission only
-                $commissionTotal = array_sum($perInvoiceRate);
                 foreach ($invoices as $invoice) {
-                    $invoice->computed_commission = $perInvoiceRate[$invoice->id];
+                    $invComm = $invoice->invoiceDetails->sum('commission');
+                    $invoice->computed_commission = $invComm;
+                    $commissionTotal += $invComm;
                 }
                 break;
 
-            case 3: // Both-A: sum of (profit*rate) per invoice + salary once
-                $commissionTotal = array_sum($perInvoiceRate) + $salary;
+            case 3: // Both-A: stored commission + salary
                 foreach ($invoices as $invoice) {
-                    // show the rate portion only at invoice level
-                    $invoice->computed_commission = $perInvoiceRate[$invoice->id];
+                    $invComm = $invoice->invoiceDetails->sum('commission');
+                    $invoice->computed_commission = $invComm; // Rate part only per invoice
+                    $commissionTotal += $invComm;
                 }
+                $commissionTotal += $salary; // Salary added to total only
                 break;
 
-            case 4: // Both-B: only if total profit > target, then (profit - salary)*rate + salary
+            case 4: // Both-B: (profit - salary) × rate + salary, only if profit > target
                 if ($profitTotal > $target) {
                     $base = max($profitTotal - $salary, 0.0);
                     $ratePool = $base * $rate;
@@ -2681,7 +2681,6 @@ class ReportController extends Controller
         return [
             'profit' => $profitTotal,
             'commission' => $commissionTotal,
-            'per_invoice' => $perInvoiceRate,
         ];
     }
 

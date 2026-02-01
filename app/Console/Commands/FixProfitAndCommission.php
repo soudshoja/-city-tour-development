@@ -64,8 +64,8 @@ class FixProfitAndCommission extends Command
             'invoicePartials',
         ]);
 
-        // Only agents with commission (types 2, 3)
-        $query->whereHas('agent', fn($q) => $q->whereIn('type_id', [2, 3]));
+        // Only agents with commission (types 2, 3, 4)
+        $query->whereHas('agent', fn($q) => $q->whereIn('type_id', [2, 3, 4]));
 
         if ($invoiceId = $this->option('invoice')) {
             $query->where('id', $invoiceId);

@@ -77,22 +77,22 @@ class ProfileController extends Controller
 
                 if ($stored) {
                     if (in_array($typeId, [2, 3, 4])) {
-                        $totalCommission = number_format($stored->total_commission, 2);
+                        $totalCommission = number_format($stored->total_commission, 3);
                     }
-                    $totalProfit = number_format($stored->total_profit, 2);
+                    $totalProfit = number_format($stored->total_profit, 3);
                 } else {
                     $summary = app(AgentController::class)->calculateMonthlySummary($profile, $month);
                     if (in_array($typeId, [2, 3, 4])) {
-                        $totalCommission = number_format($summary['commission'], 2);
+                        $totalCommission = number_format($summary['commission'], 3);
                     }
-                    $totalProfit = number_format($summary['profit'], 2);
+                    $totalProfit = number_format($summary['profit'], 3);
                 }
 
                 $commissionData = $this->getAgentCommissions($profile->id, $month, $viewType);
 
-                $totalProfit = number_format($commissionData['totalProfit'], 2);
+                $totalProfit = number_format($commissionData['totalProfit'], 3);
                 if (in_array($typeId, [2, 3, 4])) {
-                    $totalCommission = number_format($commissionData['totalCommission'], 2);
+                    $totalCommission = number_format($commissionData['totalCommission'], 3);
                 }
 
                 $filterBonusMonth = (int) request('filter_month', now()->month);
@@ -554,59 +554,27 @@ class ProfileController extends Controller
      */
     private function getCommissionsByInvoice($agent, $start, $end, $commissionAccountId)
     {
-        // For salary-only agents (type 1), show all invoices in date range
-        // For other agents, only show invoices with commission journal entries
-        $query = Invoice::with(['invoiceDetails.task', 'invoiceDetails.JournalEntrys' => function ($q) use ($commissionAccountId) {
-            $q->where('account_id', $commissionAccountId);
-        }])
+        $query = Invoice::with(['invoiceDetails.task'])
             ->where('agent_id', $agent->id)
-            ->whereBetween('invoice_date', [$start, $end]);
+            ->whereBetween('invoice_date', [$start, $end])
+            ->orderBy('invoice_date', 'asc');
 
-        // Only filter by commission journal entries for non-salary agents
-        if ($agent->type_id != 1) {
-            $query->whereHas('invoiceDetails.JournalEntrys', function ($q) use ($commissionAccountId, $start, $end) {
-                $q->where('account_id', $commissionAccountId)
-                    ->whereBetween('transaction_date', [$start, $end]);
-            });
-        }
-
-        $query->orderBy('invoice_date', 'asc');
-
-        // Calculate totals from ALL invoices in the month BEFORE pagination
+        // Calculate totals from ALL invoices BEFORE pagination
         $allInvoices = $query->get();
-        $totalProfit = $allInvoices->sum(function ($invoice) {
-            return $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-        });
 
-        // Calculate total commission from all journal entries in the month
+        $totalProfit = $allInvoices->sum(fn($inv) => $inv->invoiceDetails->sum('profit'));
         $totalCommission = 0;
         if (in_array($agent->type_id, [2, 3, 4])) {
-            foreach ($allInvoices as $invoice) {
-                foreach ($invoice->invoiceDetails as $detail) {
-                    $commissionEntries = $detail->JournalEntrys()
-                        ->where('account_id', $commissionAccountId)
-                        ->get();
-                    $totalCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-                }
-            }
+            $totalCommission = $allInvoices->sum(fn($inv) => $inv->invoiceDetails->sum('commission'));
         }
 
         $paginated = $query->paginate(5, ['*'], 'commission');
 
-        $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent, $commissionAccountId) {
-            // Calculate total profit for this invoice: markup_price + invoice_charge
-            $totalProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-
-            // Calculate net commission from journal entries linked to invoice details (credits - debits)
-            $totalCommission = 0;
-            if (in_array($agent->type_id, [2, 3, 4])) {
-                foreach ($invoice->invoiceDetails as $detail) {
-                    $commissionEntries = $detail->JournalEntrys()
-                        ->where('account_id', $commissionAccountId)
-                        ->get();
-                    $totalCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-                }
-            }
+        $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent) {
+            $invoiceProfit = $invoice->invoiceDetails->sum('profit');
+            $invoiceCommission = in_array($agent->type_id, [2, 3, 4])
+                ? $invoice->invoiceDetails->sum('commission')
+                : 0;
 
             return [
                 'type' => 'invoice',
@@ -615,16 +583,14 @@ class ProfileController extends Controller
                 'invoice_date' => $invoice->invoice_date,
                 'company_id' => $invoice->agent->branch->company_id,
                 'task_count' => $invoice->invoiceDetails->count(),
-                'total_profit' => $totalProfit,
-                'total_commission' => $totalCommission,
-                'tasks' => $invoice->invoiceDetails->map(function ($detail) {
-                    return [
-                        'task_reference' => $detail->task->reference ?? 'N/A',
-                        'passenger_name' => $detail->task->passenger_name ?? 'N/A',
-                        'task_price' => $detail->task_price,
-                        'markup_price' => $detail->markup_price,
-                    ];
-                }),
+                'total_profit' => $invoiceProfit,
+                'total_commission' => $invoiceCommission,
+                'tasks' => $invoice->invoiceDetails->map(fn($detail) => [
+                    'task_reference' => $detail->task->reference ?? 'N/A',
+                    'passenger_name' => $detail->task->passenger_name ?? 'N/A',
+                    'task_price' => $detail->task_price,
+                    'markup_price' => $detail->markup_price,
+                ]),
             ];
         });
 
@@ -642,96 +608,35 @@ class ProfileController extends Controller
      */
     private function getCommissionsByTask($agent, $start, $end, $commissionAccountId)
     {
-        // Get tasks that have commission journal entries for this agent (linked via invoice_detail_id)
-        $query = JournalEntry::with(['invoice.invoiceDetails.task', 'invoiceDetail.task'])
-            ->join('invoice_details', 'journal_entries.invoice_detail_id', '=', 'invoice_details.id')
-            ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
-            ->where('journal_entries.account_id', $commissionAccountId)
-            ->where('invoices.agent_id', $agent->id)
-            ->whereBetween('journal_entries.transaction_date', [$start, $end])
-            ->select('journal_entries.*')
-            ->orderBy('journal_entries.transaction_date', 'asc');
+        $query = InvoiceDetail::with(['task', 'invoice.agent.branch'])
+            ->whereHas('invoice', fn($q) => $q->where('agent_id', $agent->id)
+                ->whereBetween('invoice_date', [$start, $end]))
+            ->orderBy('id', 'asc');
 
         // Calculate totals from ALL tasks in the month BEFORE pagination
-        $allEntries = $query->get();
-        $totalProfit = 0;
-        $totalCommission = 0;
-
-        foreach ($allEntries as $entry) {
-            $invoice = $entry->invoice;
-            $invoiceDetail = $entry->invoiceDetail;
-
-            // Calculate profit: markup + proportional invoice charge
-            $markupProfit = $invoiceDetail?->markup_price ?? 0;
-
-            // Add proportional invoice charge
-            $totalTaskPrice = $invoice->invoiceDetails->sum('task_price');
-            $taskPrice = $invoiceDetail?->task_price ?? 0;
-
-            if ($totalTaskPrice > 0 && $invoice->invoice_charge > 0) {
-                $proportionalCharge = ($taskPrice / $totalTaskPrice) * $invoice->invoice_charge;
-                $markupProfit += $proportionalCharge;
-            }
-
-            $totalProfit += $markupProfit;
-
-            // Calculate commission for applicable agent types
-            if (in_array($agent->type_id, [2, 3, 4])) {
-                $commissionEntries = $invoiceDetail?->JournalEntrys()
-                    ->where('account_id', $commissionAccountId)
-                    ->get();
-
-                if ($commissionEntries) {
-                    $netCommission = $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-                    $totalCommission += $netCommission;
-                }
-            }
-        }
+        $allDetails = $query->get();
+        $totalProfit = $allDetails->sum('profit');
+        $totalCommission = in_array($agent->type_id, [2, 3, 4]) ? $allDetails->sum('commission') : 0;
 
         $paginated = $query->paginate(5, ['*'], 'commission');
 
-        $mapped = $paginated->getCollection()->map(function ($entry) use ($agent, $commissionAccountId) {
-            $invoice = $entry->invoice;
-            $task = $entry->invoiceDetail?->task;
-
-            if (!$task) {
-                // Fallback: get first task from invoice
-                $task = $invoice->invoiceDetails->first()?->task;
-            }
-
-            // Get all commission entries for this specific invoice detail to calculate net commission
-            $commissionEntries = JournalEntry::where('invoice_detail_id', $entry->invoice_detail_id)
-                ->where('account_id', $commissionAccountId)
-                ->get();
-
-            $netCommission = $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-
-            // Get profit for this specific task: markup_price + proportional invoice_charge
-            $taskProfit = $entry->invoiceDetail?->markup_price ?? 0;
-
-            // Add proportional invoice charge based on task price vs total invoice amount
-            $invoice = $entry->invoice;
-            $totalTaskPrice = $invoice->invoiceDetails->sum('task_price');
-            $taskPrice = $entry->invoiceDetail?->task_price ?? 0;
-
-            if ($totalTaskPrice > 0 && $invoice->invoice_charge > 0) {
-                $proportionalCharge = ($taskPrice / $totalTaskPrice) * $invoice->invoice_charge;
-                $taskProfit += $proportionalCharge;
-            }
+        $mapped = $paginated->getCollection()->map(function ($detail) use ($agent) {
+            $task = $detail->task;
+            $invoice = $detail->invoice;
 
             return [
                 'type' => 'task',
                 'task_reference' => $task?->reference ?? 'N/A',
                 'passenger_name' => $task?->passenger_name ?? 'N/A',
-                'transaction_date' => $entry->transaction_date,
-                'task_profit' => $taskProfit,
-                'net_commission' => $netCommission,
+                'transaction_date' => $invoice->invoice_date,
+                'task_profit' => $detail->profit ?? 0,
+                'net_commission' => in_array($agent->type_id, [2, 3, 4]) ? ($detail->commission ?? 0) : 0,
                 'invoice' => [
                     'id' => $invoice->id,
                     'number' => $invoice->invoice_number,
                     'date' => $invoice->invoice_date,
                     'company_id' => $invoice->agent->branch->company_id,
-                    'total_profit' => $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0),
+                    'total_profit' => $invoice->invoiceDetails->sum('profit'),
                     'payment_type' => $this->getPaymentTypeLabel($invoice),
                 ],
                 'task_details' => $task ? [

@@ -144,12 +144,12 @@ default => 'Commission & Profit'
                         <td class="py-3 px-4 border-b">{{ $item['passenger_name'] }}</td>
                         @if($showProfit)
                         <td class="py-3 px-4 border-b text-blue-700 font-semibold">
-                            {{ number_format($item['task_profit'], 2) }}
+                            {{ number_format($item['task_profit'], 3) }}
                         </td>
                         @endif
                         @if($showCommission)
                         <td class="py-3 px-4 border-b text-green-700 font-semibold">
-                            {{ number_format($item['net_commission'], 2) }}
+                            {{ number_format($item['net_commission'], 3) }}
                         </td>
                         @endif
                         @php
@@ -187,7 +187,7 @@ default => 'Commission & Profit'
                                     <div><strong>Passenger:</strong> {{ $item['passenger_name'] }}</div>
                                     <div><strong>Invoice Date:</strong> {{ \Carbon\Carbon::parse($item['invoice']['date'])->format('d-m-Y') }}</div>
                                     <div><strong>Payment Type:</strong> {{ $item['invoice']['payment_type'] }}</div>
-                                    <div><strong>Invoice Total Profit:</strong> {{ number_format($item['invoice']['total_profit'], 2) }} KWD</div>
+                                    <div><strong>Invoice Total Profit:</strong> {{ number_format($item['invoice']['total_profit'], 3) }} KWD</div>
                                 </div>
 
                                 @if(isset($item['task_details']['flight_details']))
@@ -238,12 +238,12 @@ default => 'Commission & Profit'
                         <td class="py-3 px-4 border-b">{{ $item['task_count'] }}</td>
                         @if($showProfit)
                         <td class="py-3 px-4 border-b text-blue-700 font-semibold">
-                            {{ number_format($item['total_profit'], 2) }}
+                            {{ number_format($item['total_profit'], 3) }}
                         </td>
                         @endif
                         @if($showCommission)
                         <td class="py-3 px-4 border-b text-green-700 font-semibold">
-                            {{ number_format($item['total_commission'], 2) }}
+                            {{ number_format($item['total_commission'], 3) }}
                         </td>
                         @endif
                         <td class="py-3 px-4 border-b">
@@ -262,9 +262,9 @@ default => 'Commission & Profit'
                                 <div class="grid grid-cols-2 md:grid-cols-3 gap-1 mb-4">
                                     <div><strong>Invoice Date:</strong> {{ \Carbon\Carbon::parse($item['invoice_date'])->format('d-m-Y') }}</div>
                                     <div><strong>Total Tasks:</strong> {{ $item['task_count'] }}</div>
-                                    <div><strong>Total Profit:</strong> {{ number_format($item['total_profit'], 2) }} KWD</div>
+                                    <div><strong>Total Profit:</strong> {{ number_format($item['total_profit'], 3) }} KWD</div>
                                     @if($showCommission)
-                                    <div><strong>Total Commission:</strong> {{ number_format($item['total_commission'], 2) }} KWD</div>
+                                    <div><strong>Total Commission:</strong> {{ number_format($item['total_commission'], 3) }} KWD</div>
                                     @endif
                                 </div>
 
@@ -276,8 +276,8 @@ default => 'Commission & Profit'
                                             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                                                 <div><strong>Task:</strong> {{ $task['task_reference'] }}</div>
                                                 <div><strong>Passenger:</strong> {{ $task['passenger_name'] }}</div>
-                                                <div><strong>Price:</strong> {{ number_format($task['task_price'], 2) }} KWD</div>
-                                                <div><strong>Profit:</strong> {{ number_format($task['markup_price'], 2) }} KWD</div>
+                                                <div><strong>Price:</strong> {{ number_format($task['task_price'], 3) }} KWD</div>
+                                                <div><strong>Profit:</strong> {{ number_format($task['markup_price'], 3) }} KWD</div>
                                             </div>
                                         </div>
                                         @endforeach

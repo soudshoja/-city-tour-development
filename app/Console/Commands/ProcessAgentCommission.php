@@ -30,7 +30,7 @@ class ProcessAgentCommission extends Command
     public function handle()
     {
         $month = Carbon::createFromDate(date('Y'), date('m'), 1)->subMonth();
-        $agents = Agent::whereIn('type_id', [3, 4])->get();
+        $agents = Agent::whereIn('type_id', [2, 3, 4])->get();
 
         foreach ($agents as $agent) {
             $summary = app(AgentController::class)->calculateMonthlySummary($agent, $month);
@@ -51,6 +51,6 @@ class ProcessAgentCommission extends Command
             );
         }
 
-        $this->info('Agent monthly commissions calculated.');
+        $this->info("Processed {$agents->count()} agents for {$month->format('F Y')}.");
     }
 }

@@ -1,11 +1,6 @@
 <?php
 
-
-// app/Models/Agent.php
-
 namespace App\Models;
-
-
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -56,7 +51,7 @@ class Agent extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-    
+
     public function account()
     {
         return $this->hasOne(Account::class, 'agent_id');
@@ -65,5 +60,51 @@ class Agent extends Model
     public function refundClients()
     {
         return $this->hasMany(RefundClient::class);
+    }
+
+    /**
+     * Get the charge setting for this agent.
+     */
+    public function chargeSetting()
+    {
+        return $this->hasOne(AgentCharge::class);
+    }
+
+    /**
+     * Get the charge settings relationship scoped to a specific company.
+     * Use this when you need company-specific settings.
+     */
+    public function chargeSettingForCompany($companyId)
+    {
+        return $this->hasOne(AgentCharge::class)
+            ->where('company_id', $companyId);
+    }
+
+    /**
+     * Get the effective charge setting for this agent.
+     * Returns default if no custom setting exists.
+     * 
+     * @param int|null $companyId Optional company ID override
+     * @return AgentCharge
+     */
+    public function getEffectiveChargeSetting(?int $companyId = null): AgentCharge
+    {
+        $companyId = $companyId ?? $this->branch?->company_id;
+
+        if (!$companyId) {
+            // Return default setting
+            return new AgentCharge([
+                'agent_id' => $this->id,
+                'gateway_charge_bearer' => 'company',
+                'gateway_agent_percentage' => 0,
+                'gateway_company_percentage' => 100,
+                'supplier_charge_bearer' => 'company',
+                'supplier_agent_percentage' => 0,
+                'supplier_company_percentage' => 100,
+                'is_active' => true,
+            ]);
+        }
+
+        return AgentCharge::getForAgent($this->id, $companyId);
     }
 }

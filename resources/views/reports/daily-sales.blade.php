@@ -1022,7 +1022,7 @@
                                                         <div><strong>Payment Type:</strong> {{ ucfirst($task->invoiceDetail->invoice->payment_type ?? 'Not Set') }}</div>
                                                         <div><strong>Invoice Price:</strong> {{ number_format($task->invoiceDetail->task_price, 3) }} KWD</div>
                                                         <div><strong>Supplier Price:</strong> {{ number_format($task->invoiceDetail->supplier_price, 3) }} KWD</div>
-                                                        <div><strong>Profit:</strong> {{ number_format($task->invoiceDetail->markup_price, 3) }} KWD</div>
+                                                        <div><strong>Profit:</strong> {{ number_format($task->invoiceDetail->profit, 3) }} KWD</div>
                                                     </div>
                                                 </div>
                                                 @if($paymentInfo->isNotEmpty())

@@ -414,10 +414,10 @@
                                 {{ $invoice->payment_type ? ucwords($invoice->payment_type) : 'N/A' }}
                             </td>
                             <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                {{ number_format($invoice->invoicedetails->sum('supplier_price'), 3) }} {{ $invoice->currency }}
+                                {{ number_format($invoice->invoiceDetails->sum('supplier_price'), 3) }} {{ $invoice->currency }}
                             </td>
                             <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                {{ number_format($invoice->invoicedetails->sum('markup_price'), 3) }} {{ $invoice->currency }}
+                                {{ number_format($invoice->invoiceDetails->sum('profit'), 3) }} {{ $invoice->currency }}
                             </td>
                             <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                 @if ($invoice->status === 'paid' && !$invoice->refund && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
@@ -430,7 +430,7 @@
                                 @endif
                             </td>
                             <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                {{ number_format($invoice->service_charges, 3) }} {{ $invoice->currency }}
+                                {{ number_format($invoice->invoicePartials->sum('service_charge'), 3) }} {{ $invoice->currency }}
                             </td>
                             <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                 {{ number_format($invoice->client_pay, 3) }} {{ $invoice->currency }}

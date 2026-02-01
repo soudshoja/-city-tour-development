@@ -79,6 +79,17 @@
                         </svg>
                         Payment Methods
                     </button>
+
+                    <!-- Agent Charges Tab -->
+                    <button
+                        @click="saveTab('agent-charges')" :class="activeTab === 'agent-charges' 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        Agent Charges
+                    </button>
                 </nav>
             </div>
 
@@ -102,7 +113,9 @@
                 <div x-show="activeTab === 'payment-methods'" x-cloak>
                     @include('settings.partial.payment_methods')
                 </div>
-
+                <div x-show="activeTab === 'agent-charges'" x-cloak>
+                    @include('settings.partial.agent_charges')
+                </div>
             </div>
         </div>
     </div>
@@ -113,18 +126,22 @@
             console.log("Active Tab: {{ $activeTab }}");
 
             if ("{{ $activeTab }}" === 'charges') {
-                window.Alpine && Alpine.nextTick(()=> {
+                window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('charges-tab-loaded'));
                 });
             } else if ("{{ $activeTab }}" === 'payment') {
-                window.Alpine && Alpine.nextTick(()=> {
+                window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('payment-tab-loaded'));
                 });
-            }  else if ("{{ $activeTab }}" === 'payment-methods') {
-                window.Alpine && Alpine.nextTick(()=> {
+            } else if ("{{ $activeTab }}" === 'payment-methods') {
+                window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('payment-methods-tab-loaded'));
                 });
-            }         
+            } else if ("{{ $activeTab }}" === 'agent-charges') {
+                window.Alpine && Alpine.nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('agent-charges-tab-loaded'));
+                });
+            }
         });
 
         function settingsPage() {
@@ -136,7 +153,7 @@
                     // Load data for the active tab on page load
                     if (this.activeTab === 'terms') {
                         this.loadTemplates();
-                    } 
+                    }
                 },
 
                 saveTab(tab) {
@@ -161,6 +178,8 @@
                         window.dispatchEvent(new CustomEvent('payment-tab-loaded'));
                     } else if (tab === 'payment-methods') {
                         window.dispatchEvent(new CustomEvent('payment-methods-tab-loaded'));
+                    } else if (tab === 'agent-charges') {
+                        window.dispatchEvent(new CustomEvent('agent-charges-tab-loaded'));
                     }
                 },
 

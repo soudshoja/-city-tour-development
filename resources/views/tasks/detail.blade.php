@@ -645,12 +645,24 @@
                                                     {{ $canInvoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex items-center gap-2 flex-wrap">
                                                     <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
                                                     @if($task->invoiceDetail)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                                                        Invoiced
-                                                    </span>
+                                                        @if($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid')
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="Cannot be edited - Invoice is paid">
+                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            Paid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
+                                                        </span>
+                                                        @else
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" title="Already invoiced - Changes won't affect invoice">
+                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            Unpaid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
+                                                        </span>
+                                                        @endif
                                                     @endif
                                                 </div>
                                                 <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
@@ -671,9 +683,17 @@
 
                                             // Check if task is already invoiced first
                                             if ($task->invoiceDetail) {
-                                            $dotColor = 'bg-orange-500';
-                                            $glowColor = 'bg-orange-400/40';
-                                            $tooltipText = 'Already Invoiced';
+                                                if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
+                                                    $dotColor = 'bg-red-500';
+                                                    $glowColor = 'bg-red-400/40';
+                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                    $tooltipText = 'Paid Invoice: ' . $invoiceNum;
+                                                } else {
+                                                    $dotColor = 'bg-orange-500';
+                                                    $glowColor = 'bg-orange-400/40';
+                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                    $tooltipText = 'Unpaid Invoice: ' . $invoiceNum;
+                                                }
                                             } elseif ($missingCount === 0) {
                                             $dotColor = 'bg-green-500';
                                             $glowColor = 'bg-green-400/40';
@@ -763,12 +783,24 @@
                                                     {{ $canInvoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex items-center gap-2 flex-wrap">
                                                     <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
                                                     @if($task->invoiceDetail)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                                                        Invoiced
-                                                    </span>
+                                                        @if($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid')
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="Cannot be edited - Invoice is paid">
+                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            Paid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
+                                                        </span>
+                                                        @else
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" title="Already invoiced - Changes won't affect invoice">
+                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            Unpaid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
+                                                        </span>
+                                                        @endif
                                                     @endif
                                                 </div>
                                                 <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
@@ -791,9 +823,17 @@
 
                                             // Check if task is already invoiced first
                                             if ($task->invoiceDetail) {
-                                            $dotColor = 'bg-orange-500';
-                                            $glowColor = 'bg-orange-400/40';
-                                            $tooltipText = 'Already Invoiced';
+                                                if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
+                                                    $dotColor = 'bg-red-500';
+                                                    $glowColor = 'bg-red-400/40';
+                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                    $tooltipText = 'Paid Invoice: ' . $invoiceNum;
+                                                } else {
+                                                    $dotColor = 'bg-orange-500';
+                                                    $glowColor = 'bg-orange-400/40';
+                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                    $tooltipText = 'Unpaid Invoice: ' . $invoiceNum;
+                                                }
                                             } elseif ($missingCount === 0) {
                                             $dotColor = 'bg-green-500';
                                             $glowColor = 'bg-green-400/40';
@@ -1545,9 +1585,10 @@
                                                                     <label class="block text-sm font-medium text-gray-700">Client</label>
                                                                     <x-searchable-dropdown
                                                                         name="client_id"
-                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
+                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
+                                                                        :maxResults="50"
                                                                         :selectedId="$task->client_id"
-                                                                        :selectedName="$task->client ? $task->client->name . ' - ' . $task->client->phone : null"
+                                                                        :selectedName="$task->client ? $task->client->full_name . ' - ' . $task->client->phone : null"
                                                                         placeholder="Select Client" />
                                                                 </div>
 
@@ -1916,7 +1957,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
                                     <x-searchable-dropdown
                                         name="bulk_client_id"
-                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name . ' - ' . $c->phone])"
+                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
                                         placeholder="Select Client" />
                                 </div>
 
@@ -2003,19 +2044,45 @@
                         <div class="space-y-2">
                             <template x-for="task in availableTasks" :key="task.id">
                                 <div
-                                    @click="if (selectedNewTasks.includes(task.id)) { selectedNewTasks = selectedNewTasks.filter(id => id !== task.id) } else { selectedNewTasks.push(task.id) }"
-                                    class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition cursor-pointer"
-                                    :class="selectedNewTasks.includes(task.id) ? 'bg-blue-50 border-blue-200' : ''">
+                                    @click="if (!task.invoice_detail || !task.invoice_detail.invoice || task.invoice_detail.invoice.status !== 'paid') { if (selectedNewTasks.includes(task.id)) { selectedNewTasks = selectedNewTasks.filter(id => id !== task.id) } else { selectedNewTasks.push(task.id) } }"
+                                    class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg transition"
+                                    :class="{
+                                        'bg-blue-50 border-blue-200': selectedNewTasks.includes(task.id) && (!task.invoice_detail || !task.invoice_detail.invoice || task.invoice_detail.invoice.status !== 'paid'),
+                                        'bg-red-50 border-red-200 opacity-60': task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status === 'paid',
+                                        'bg-orange-50 border-orange-200': task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status !== 'paid',
+                                        'hover:bg-gray-50 cursor-pointer': !task.invoice_detail || !task.invoice_detail.invoice || task.invoice_detail.invoice.status !== 'paid',
+                                        'cursor-not-allowed': task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status === 'paid'
+                                    }">
                                     <input type="checkbox"
                                         :value="task.id"
                                         x-model="selectedNewTasks"
                                         @click.stop
-                                        class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                        :disabled="task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status === 'paid'"
+                                        class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        :class="(task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status === 'paid') ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'">
 
                                     <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap">
                                             <span class="font-medium text-gray-900" x-text="task.reference"></span>
                                             <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" x-text="task.status"></span>
+
+                                            <!-- Invoice Status Badges -->
+                                            <template x-if="task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status === 'paid'">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                                    </svg>
+                                                    Paid Invoice:&nbsp;<span x-text="task.invoice_detail.invoice?.invoice_number || task.invoice_detail.invoice_number"></span>
+                                                </span>
+                                            </template>
+                                            <template x-if="task.invoice_detail && task.invoice_detail.invoice && task.invoice_detail.invoice.status !== 'paid'">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                                    </svg>
+                                                    Unpaid Invoice:&nbsp;<span x-text="task.invoice_detail.invoice?.invoice_number || task.invoice_detail.invoice_number"></span>
+                                                </span>
+                                            </template>
                                         </div>
                                         <p class="text-sm text-gray-600 mt-1">
                                             <span x-text="task.passenger_name || 'No passenger'"></span>

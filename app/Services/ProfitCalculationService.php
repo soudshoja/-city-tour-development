@@ -133,7 +133,7 @@ class ProfitCalculationService
 
         return [
             'details' => $results,
-            'total_profit' => round($totalProfit, 3),
+            'total_profit' => $totalProfit,
             'total_gateway_charge' => $totalGatewayCharge,
             'detail_count' => $detailCount,
         ];
@@ -150,18 +150,13 @@ class ProfitCalculationService
     public function updateInvoiceDetailProfit(InvoiceDetail $invoiceDetail, ?float $gatewayCharge = null, ?float $supplierSurcharge = null): InvoiceDetail
     {
         $result = $this->calculateProfit($invoiceDetail, $gatewayCharge, $supplierSurcharge);
-
-        $invoiceDetail->extra_charge = $result['extra_charge'];
-        $invoiceDetail->agent_charge_deduction = $result['agent_charge_deduction'];
         $invoiceDetail->profit = $result['profit'];
-        $invoiceDetail->charge_bearer = $result['charge_bearer'];
-        $invoiceDetail->agent_percentage_applied = $result['agent_percentage_applied'];
 
         // Calculate commission if agent type requires it (types 2, 3, 4)
         $agent = $invoiceDetail->invoice?->agent ?? $invoiceDetail->task?->agent;
         if ($agent && in_array($agent->type_id, [2, 3, 4])) {
             $commissionRate = (float) ($agent->commission ?? 0.15);
-            $invoiceDetail->commission = round($result['profit'] * $commissionRate, 3);
+            $invoiceDetail->commission = $result['profit'] * $commissionRate;
         }
 
         $invoiceDetail->save();
@@ -193,12 +188,12 @@ class ProfitCalculationService
 
         if ($totalInvoiceAmount > 0) {
             $proportion = $invoiceDetail->task_price / $totalInvoiceAmount;
-            return round($totalGatewayCharge * $proportion, 3);
+            return $totalGatewayCharge * $proportion;
         }
 
         // Equal distribution if amounts are zero
         $detailCount = $invoice->invoiceDetails->count();
-        return $detailCount > 0 ? round($totalGatewayCharge / $detailCount, 3) : 0;
+        return $detailCount > 0 ? $totalGatewayCharge / $detailCount : 0;
     }
 
     /**
@@ -283,9 +278,9 @@ class ProfitCalculationService
             'task_price' => (float) $invoiceDetail->task_price,
             'supplier_price' => (float) $invoiceDetail->supplier_price,
             'base_markup' => (float) $invoiceDetail->markup_price,
-            'extra_charge' => round($extraCharge, 3),
-            'agent_charge_deduction' => round($agentChargeDeduction, 3),
-            'profit' => round($profit, 3),
+            'extra_charge' => $extraCharge,
+            'agent_charge_deduction' => $agentChargeDeduction,
+            'profit' => $profit,
             'charge_bearer' => $settings?->charge_bearer ?? AgentCharge::BEARER_COMPANY,
             'agent_percentage_applied' => $settings?->getAgentPercentageToApply() ?? 0,
         ];
@@ -308,6 +303,6 @@ class ProfitCalculationService
         $commissionRate = (float) ($agent->commission ?? 0.15);
         $profit = (float) $invoiceDetail->profit;
 
-        return round($profit * $commissionRate, 3);
+        return $profit * $commissionRate;
     }
 }

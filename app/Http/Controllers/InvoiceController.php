@@ -1438,8 +1438,7 @@ class InvoiceController extends Controller
             ]);
         }
 
-        // ENTRY 3 & 4: Commission (Expense + Liability)
-        // Only for agent types 2, 3, 4
+        // ENTRY 3 & 4: Profit (ALL types) + Commission (types 2, 3, 4 only)
         try {
             $agent = $task->agent;
 
@@ -1451,127 +1450,114 @@ class InvoiceController extends Controller
                 ]);
             }
 
+            $companyId = $task->company_id ?? $agent->branch?->company_id;
+
+            // ── Profit calculation for ALL agent types ──
+            $selling = (float) ($task->invoiceDetail->task_price ?? 0);
+            $supplier = (float) ($task->total ?? 0);
+            $markup = $selling - $supplier;
+
+            $settings = AgentCharge::getForAgent($agent->id, $companyId);
+            $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $companyId);
+            $taskCount = $invoice->invoiceDetails->count();
+            $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
+            $supplierSurcharge = $this->getSupplierSurchargeForTask($task, $companyId);
+            $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
+            $agentChargeDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
+
+            $profit = round($markup - $agentChargeDeduction, 3);
+
+            // ── Commission ONLY for types 2, 3, 4 ──
+            $commission = 0;
             if (in_array($agent->type_id, [2, 3, 4])) {
-                $companyId = $task->company_id ?? $agent->branch?->company_id;
-
-                $selling = (float) ($task->invoiceDetail->task_price ?? 0);
-                $supplier = (float) ($task->total ?? 0);
-                $markup = $selling - $supplier;
                 $rate = (float) ($agent->commission ?? 0.15);
-
-                // Get agent charge settings
-                $settings = AgentCharge::getForAgent($agent->id, $companyId);
-
-                // Calculate gateway charge using accountingFee (exact, no rounding)
-                $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $companyId);
-                $taskCount = $invoice->invoiceDetails->count();
-                $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
-
-                // Get supplier surcharge from supplier_surcharges table
-                $supplierSurcharge = $this->getSupplierSurchargeForTask($task, $companyId);
-
-                // Total extra charges
-                $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
-
-                // Calculate agent's charge deduction based on settings
-                $agentChargeDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
-
-                // Calculate profit (markup - agent's share of charges)
-                $profit = round($markup - $agentChargeDeduction, 3);
-
-                // Commission is based on PROFIT
                 $commission = round($profit * $rate, 3);
+            }
 
-                // Update invoice detail with profit information
-                $invoiceDetail = InvoiceDetail::find($task->invoiceDetail->id ?? null);
-                if ($invoiceDetail) {
-                    $invoiceDetail->extra_charge = $totalExtraCharge;
-                    $invoiceDetail->agent_charge_deduction = $agentChargeDeduction;
-                    $invoiceDetail->profit = $profit;
-                    $invoiceDetail->commission = $commission;
-                    $invoiceDetail->save();
+            // ── Save profit + commission for ALL agent types ──
+            $invoiceDetail = InvoiceDetail::find($task->invoiceDetail->id ?? null);
+            if ($invoiceDetail) {
+                $invoiceDetail->profit = $profit;
+                $invoiceDetail->commission = $commission;
+                $invoiceDetail->save();
+            }
+
+            Log::info('Profit & commission calculated', [
+                'agent_id' => $agent->id,
+                'agent_type' => $agent->type_id,
+                'markup' => $markup,
+                'gateway_charge' => $gatewayChargePerTask,
+                'supplier_surcharge' => $supplierSurcharge,
+                'charge_bearer' => $settings->charge_bearer,
+                'agent_deduction' => $agentChargeDeduction,
+                'profit' => $profit,
+                'commission_rate' => $agent->commission ?? 0.15,
+                'commission' => $commission,
+            ]);
+
+            // ── COA entries only when commission != 0 ──
+            if ($commission != 0) {
+                $commissionExpenseAccount = Account::where('name', 'like', 'Commissions Expense (Agents)%')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                $commissionLiabilityAccount = Account::where('name', 'like', 'Commissions (Agents)%')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                $absCommission = abs($commission);
+
+                if ($commissionExpenseAccount) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $task->agent->branch_id ?? null,
+                        'company_id' => $companyId,
+                        'account_id' => $commissionExpenseAccount->id,
+                        'task_id' => $task->id ?? null,
+                        'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => $invoice->invoice_date,
+                        'description' => 'Agents Commissions for (Expenses): ' . $agent->name,
+                        'debit'  => $commission > 0 ? $absCommission : 0,
+                        'credit' => $commission < 0 ? $absCommission : 0,
+                        'balance' => $commissionExpenseAccount->balance ?? 0,
+                        'name' => $commissionExpenseAccount->name,
+                        'type' => 'receivable',
+                        'currency' => $task->currency ?? 'KWD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $commission,
+                    ]);
                 }
 
-                Log::info('Commission calculated based on profit', [
-                    'agent_id' => $agent->id,
-                    'markup' => $markup,
-                    'gateway_charge_per_task' => $gatewayChargePerTask,
-                    'supplier_surcharge' => $supplierSurcharge,
-                    'total_extra_charge' => $totalExtraCharge,
-                    'charge_bearer' => $settings->charge_bearer,
-                    'agent_charge_deduction' => $agentChargeDeduction,
-                    'profit' => $profit,
-                    'commission_rate' => $rate,
-                    'commission' => $commission,
-                ]);
-
-                // Create commission entries for non-zero commission (positive OR negative)
-                if ($commission != 0) {
-                    // Get commission accounts
-                    $commissionExpenseAccount = Account::where('name', 'like', 'Commissions Expense (Agents)%')
-                        ->where('company_id', $task->company_id)
-                        ->first();
-
-                    $commissionLiabilityAccount = Account::where('name', 'like', 'Commissions (Agents)%')
-                        ->where('company_id', $task->company_id)
-                        ->first();
-
-                    $absCommission = abs($commission);
-
-                    // ENTRY 3: Commission Expense
-                    if ($commissionExpenseAccount) {
-                        JournalEntry::create([
-                            'transaction_id' => $transactionId,
-                            'branch_id' => $task->agent->branch_id ?? null,
-                            'company_id' => $task->company_id ?? null,
-                            'account_id' => $commissionExpenseAccount->id,
-                            'task_id' => $task->id ?? null,
-                            'agent_id' => $task->agent_id ?? $invoice->agent_id,
-                            'invoice_id' => $invoiceId,
-                            'invoice_detail_id' => $invoiceDetailId,
-                            'transaction_date' => $invoice->invoice_date,
-                            'description' => 'Agents Commissions for (Expenses): ' . $agent->name,
-                            'debit'  => $commission > 0 ? $absCommission : 0,   // positive → debit
-                            'credit' => $commission < 0 ? $absCommission : 0,   // negative → credit
-                            'balance' => $commissionExpenseAccount->balance ?? 0,
-                            'name' => $commissionExpenseAccount->name,
-                            'type' => 'receivable',
-                            'currency' => $task->currency ?? 'KWD',
-                            'exchange_rate' => $task->exchange_rate ?? 1.00,
-                            'amount' => $commission,
-                        ]);
-                    }
-
-                    // ENTRY 4: CREDIT Commission Liability
-                    if ($commissionLiabilityAccount) {
-                        JournalEntry::create([
-                            'transaction_id' => $transactionId,
-                            'branch_id' => $task->agent->branch_id ?? null,
-                            'company_id' => $task->company_id ?? null,
-                            'account_id' => $commissionLiabilityAccount->id,
-                            'task_id' => $task->id ?? null,
-                            'agent_id' => $task->agent_id ?? $invoice->agent_id,
-                            'invoice_id' => $invoiceId,
-                            'invoice_detail_id' => $invoiceDetailId,
-                            'transaction_date' => $invoice->invoice_date,
-                            'description' => 'Agents Commissions for (Liabilities): ' . $agent->name,
-                            'debit'  => $commission < 0 ? $absCommission : 0,   // negative → debit
-                            'credit' => $commission > 0 ? $absCommission : 0,   // positive → credit
-                            'balance' => $commissionLiabilityAccount->balance ?? 0,
-                            'name' => $commissionLiabilityAccount->name,
-                            'type' => 'payable',
-                            'currency' => $task->currency ?? 'KWD',
-                            'exchange_rate' => $task->exchange_rate ?? 1.00,
-                            'amount' => $commission,
-                        ]);
-                    }
+                if ($commissionLiabilityAccount) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $task->agent->branch_id ?? null,
+                        'company_id' => $companyId,
+                        'account_id' => $commissionLiabilityAccount->id,
+                        'task_id' => $task->id ?? null,
+                        'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => $invoice->invoice_date,
+                        'description' => 'Agents Commissions for (Liabilities): ' . $agent->name,
+                        'debit'  => $commission < 0 ? $absCommission : 0,
+                        'credit' => $commission > 0 ? $absCommission : 0,
+                        'balance' => $commissionLiabilityAccount->balance ?? 0,
+                        'name' => $commissionLiabilityAccount->name,
+                        'type' => 'payable',
+                        'currency' => $task->currency ?? 'KWD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $commission,
+                    ]);
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Commission Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
+            Log::error('Profit/Commission Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create commission entries',
+                'message' => 'Failed to create profit/commission entries',
             ]);
         }
 
@@ -2604,7 +2590,7 @@ class InvoiceController extends Controller
                     'company_id' => $entry->company_id,
                     'branch_id' => $entry->branch_id,
                     'invoice_id' => $entry->invoice_id,
-                    'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                    'agent_id' => $invoice->agent_id,
                     'invoice_detail_id' => $entry->invoice_detail_id,
                     'transaction_date' => $entry->transaction_date,
                     'type' => $entry->type,
@@ -2650,27 +2636,56 @@ class InvoiceController extends Controller
 
             foreach ($transactionToReverse->journalEntries as $entry) {
                 $relevantDetail = $updatedDetails->firstWhere('id', $entry->invoice_detail_id);
+                if (!$relevantDetail) continue;
+
                 $taskSpecificAmount = $relevantDetail->task_price;
                 $newDebit = 0;
                 $newCredit = 0;
-                $commission = 0;
                 $agent = $invoice->agent;
+
+                // ── Profit for ALL agent types ──
+                $markup = $taskSpecificAmount - $relevantDetail->supplier_price;
+                $agentCompanyId = $agent->branch->company_id ?? $companyId;
+
+                $settings = AgentCharge::getForAgent($agent->id, $agentCompanyId);
+                $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $agentCompanyId);
+                $taskCount = $invoice->invoiceDetails->count();
+                $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
+
+                $task = $relevantDetail->task;
+                $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $agentCompanyId) : 0;
+
+                $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
+                $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
+
+                $profit = round($markup - $agentDeduction, 3);
+
+                // Commission ONLY for types 2, 3, 4
+                $commission = 0;
                 if (in_array($agent->type_id, [2, 3, 4])) {
                     $rate = (float) ($agent->commission ?? 0.15);
-                    $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
+                    $commission = round($profit * $rate, 3);
                 }
+
+                $relevantDetail->profit = $profit;
+                $relevantDetail->commission = $commission;
+                $relevantDetail->save();
 
                 if (str_contains($entry->description, 'Invoice created for (Assets)')) {
                     $newDebit = $taskSpecificAmount;
                 } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
                     $newCredit = $taskSpecificAmount;
                 } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
-                    $newDebit = $commission;
+                    $absCommission = abs($commission);
+                    $newDebit  = $commission > 0 ? $absCommission : 0;
+                    $newCredit = $commission < 0 ? $absCommission : 0;
                 } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                    $newCredit = $commission;
+                    $absCommission = abs($commission);
+                    $newDebit  = $commission < 0 ? $absCommission : 0;
+                    $newCredit = $commission > 0 ? $absCommission : 0;
                 }
 
-                if ($newDebit > 0 || $newCredit > 0) {
+                if ($newDebit != 0 || $newCredit != 0) {
                     JournalEntry::create([
                         'transaction_id' => $correctedTransaction->id,
                         'account_id' => $entry->account_id,
@@ -2683,7 +2698,7 @@ class InvoiceController extends Controller
                         'company_id' => $entry->company_id,
                         'branch_id' => $entry->branch_id,
                         'invoice_id' => $entry->invoice_id,
-                        'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                        'agent_id' => $invoice->agent_id,
                         'invoice_detail_id' => $entry->invoice_detail_id,
                         'transaction_date' => $entry->transaction_date,
                         'type' => $entry->type,
@@ -3716,7 +3731,7 @@ class InvoiceController extends Controller
 
                 $transactionToReverse = $invoice->transactions()->orderBy('id', 'desc')->first();
 
-                if (!$transactionToReverse && $transactionToReverse->isEmpty()) {
+                if (!$transactionToReverse) {
                     $transactionToReverse = Transaction::where('invoice_id', $invoice->id)
                         ->where('description', 'LIKE', 'Invoice reversal for%')
                         ->orderBy('created_at', 'desc')
@@ -3799,39 +3814,60 @@ class InvoiceController extends Controller
                     'amount' => $invoice->amount,
                 ]);
 
+                $agent = $invoice->agent;
+                $agentCompanyId = $agent->branch->company_id ?? $companyId;
+
                 foreach ($transactionToReverse->journalEntries as $entry) {
                     $relevantDetail = $updatedDetails->firstWhere('id', $entry->invoice_detail_id);
                     if ($relevantDetail && !str_contains($entry->description, JournalEntry::ADDITIONAL_INVOICE_CHARGE)) {
                         $taskSpecificAmount = $relevantDetail->task_price;
                         $newDebit = 0;
                         $newCredit = 0;
-                        $commission = 0;
-                        $agent = $invoice->agent;
 
+                        // ── Profit for ALL agent types ──
+                        $markup = $taskSpecificAmount - $relevantDetail->supplier_price;
+
+                        $settings = AgentCharge::getForAgent($agent->id, $agentCompanyId);
+                        $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $agentCompanyId);
+                        $taskCount = $invoice->invoiceDetails->count();
+                        $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
+
+                        $task = $relevantDetail->task;
+                        $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $agentCompanyId) : 0;
+
+                        $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
+                        $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
+
+                        $profit = round($markup - $agentDeduction, 3);
+
+                        // Commission ONLY for types 2, 3, 4
+                        $commission = 0;
                         if (in_array($agent->type_id, [2, 3, 4])) {
                             $rate = (float) ($agent->commission ?? 0.15);
-                            $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
+                            $commission = round($profit * $rate, 3);
                         }
 
-                        if (!str_contains($entry->description, JournalEntry::ADDITIONAL_INVOICE_CHARGE)) {
-                            if (str_contains($entry->description, 'Invoice created for (Assets)')) {
-                                $newDebit = $taskSpecificAmount;
-                            } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
-                                $newCredit = $taskSpecificAmount;
-                            } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
-                                $newDebit = $commission;
-                            } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                                $newCredit = $commission;
-                            }
+                        $relevantDetail->profit = $profit;
+                        $relevantDetail->commission = $commission;
+                        $relevantDetail->save();
+
+                        if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                            $newDebit = $taskSpecificAmount;
+                        } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
+                            $newCredit = $taskSpecificAmount;
+                        } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                            $absCommission = abs($commission);
+                            $newDebit  = $commission > 0 ? $absCommission : 0;
+                            $newCredit = $commission < 0 ? $absCommission : 0;
+                        } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                            $absCommission = abs($commission);
+                            $newDebit = $commission < 0 ? $absCommission : 0;
+                            $newCredit = $commission > 0 ? $absCommission : 0;
                         }
 
-                        if ($newDebit > 0 || $newCredit > 0) {
+                        if ($newDebit != 0 || $newCredit != 0) {
 
                             $description = $entry->description;
-
-                            // if(!str_contains($description, 'correction by')){
-                            //     $description = $entry->description . ' correction by ' . $whoIsUser;
-                            // }
 
                             JournalEntry::create([
                                 'transaction_id' => $correctedTransaction->id,
@@ -3845,7 +3881,7 @@ class InvoiceController extends Controller
                                 'company_id' => $entry->company_id,
                                 'branch_id' => $entry->branch_id,
                                 'invoice_id' => $entry->invoice_id,
-                                'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                                'agent_id' => $invoice->agent_id,
                                 'invoice_detail_id' => $entry->invoice_detail_id,
                                 'transaction_date' => $entry->transaction_date,
                                 'type' => $entry->type,
@@ -3854,14 +3890,48 @@ class InvoiceController extends Controller
                             ]);
                         }
                     } else {
+                        $newDebit = 0;
+                        $newCredit = 0;
+                        $invoiceChargeCommission = 0;
+
+                        if (in_array($agent->type_id, [2, 3, 4])) {
+                            $invoiceChargeCommission = ($invoice->invoice_charge ?? 0) * ($agent->commission ?? 0.15);
+                        }
+
                         if (str_contains($entry->description, 'Invoice created for (Assets)')) {
                             $newDebit = $invoice->invoice_charge;
                         } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
                             $newCredit = $invoice->invoice_charge;
                         } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
-                            $newDebit = $invoice->invoice_charge * ($agent->commission ?? 0.15);
+                            $absComm = abs($invoiceChargeCommission);
+                            $newDebit  = $invoiceChargeCommission > 0 ? $absComm : 0;
+                            $newCredit = $invoiceChargeCommission < 0 ? $absComm : 0;
                         } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                            $newCredit = $invoice->invoice_charge * ($agent->commission ?? 0.15);
+                            $absComm = abs($invoiceChargeCommission);
+                            $newDebit  = $invoiceChargeCommission < 0 ? $absComm : 0;
+                            $newCredit = $invoiceChargeCommission > 0 ? $absComm : 0;
+                        }
+
+                        if ($newDebit != 0 || $newCredit != 0) {
+                            JournalEntry::create([
+                                'transaction_id' => $correctedTransaction->id,
+                                'account_id' => $entry->account_id,
+                                'description' => $entry->description,
+                                'debit' => $newDebit,
+                                'credit' => $newCredit,
+                                'entity_id' => $entry->entity_id ?? null,
+                                'entity_type' => $entry->entity_type ?? null,
+                                'amount' => $invoice->invoice_charge,
+                                'company_id' => $entry->company_id,
+                                'branch_id' => $entry->branch_id,
+                                'invoice_id' => $entry->invoice_id,
+                                'agent_id' => $invoice->agent_id,
+                                'invoice_detail_id' => $entry->invoice_detail_id,
+                                'transaction_date' => $entry->transaction_date,
+                                'type' => $entry->type,
+                                'task_id' => $entry->task_id,
+                                'name' => $entry->name,
+                            ]);
                         }
                     }
                 }
@@ -4147,99 +4217,74 @@ class InvoiceController extends Controller
 
         $transactionId = $transaction->id;
 
-
-
+        // Commission Entries (Expense + Liability)
         try {
-            DB::transaction(function () use (
-                $agent,
-                $transactionId,
-                $invoice,
-                $newAmount,
-                $companyId,
-                $additionalDesc,
-            ) {
+            if (in_array($agent->type_id, [2, 3, 4])) {
+                $rate = (float) ($agent->commission ?? 0.15);
+                $commission = round($rate * $newAmount, 3);
 
-                $additionalDesc = $additionalDesc ? $additionalDesc . ' - ' : '';
-                // Commission Expense Entry
-                try {
-                    if (in_array($agent->type_id, [2, 3, 4])) {
-                        $rate = (float) ($agent->commission ?? 0.15);
-                        $commission = $rate * $newAmount;
+                if ($commission != 0) {
+                    $absCommission = abs($commission);
 
-                        $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
-                            ->where('company_id', $companyId)
-                            ->first();
+                    $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
+                        ->where('company_id', $companyId)
+                        ->first();
 
-                        if ($commissionExpenses) {
-                            JournalEntry::create([
-                                'transaction_id' => $transactionId,
-                                'branch_id' => $agent->branch_id ?? null,
-                                'company_id' => $companyId,
-                                'account_id' => $commissionExpenses->id,
-                                'task_id' => null,
-                                'agent_id' => $invoice->agent_id,
-                                'invoice_id' => $invoice->id,
-                                'transaction_date' => $invoice->invoice_date,
-                                'description' => $additionalDesc . 'Agents Commissions for (Expenses): ' . $agent->name,
-                                'debit' => $commission,
-                                'credit' => 0,
-                                'balance' => $commissionExpenses->balance ?? 0,
-                                'name' => $commissionExpenses->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
-                                'type' => 'receivable',
-                                'currency' => 'USD',
-                                'exchange_rate' => 1.00,
-                                'amount' => $commission,
-                            ]);
-                        }
+                    $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
+                        ->where('company_id', $companyId)
+                        ->first();
+
+                    // EXPENSE: DEBIT if positive, CREDIT if negative
+                    if ($commissionExpenses) {
+                        JournalEntry::create([
+                            'transaction_id' => $transactionId,
+                            'branch_id' => $agent->branch_id ?? null,
+                            'company_id' => $companyId,
+                            'account_id' => $commissionExpenses->id,
+                            'task_id' => null,
+                            'agent_id' => $invoice->agent_id,
+                            'invoice_id' => $invoice->id,
+                            'transaction_date' => $invoice->invoice_date,
+                            'description' => $additionalDesc . 'Agents Commissions for (Expenses): ' . $agent->name,
+                            'debit'  => $commission > 0 ? $absCommission : 0,
+                            'credit' => $commission < 0 ? $absCommission : 0,
+                            'balance' => $commissionExpenses->balance ?? 0,
+                            'name' => $commissionExpenses->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                            'type' => 'receivable',
+                            'currency' => 'KWD',
+                            'exchange_rate' => 1.00,
+                            'amount' => $absCommission,
+                        ]);
                     }
-                } catch (\Exception $e) {
-                    Log::error('Commission Expense Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
-                    throw new \Exception('Failed to create commission expense entry: ' . $e->getMessage());
-                }
 
-                // Commission Liability Entry
-                try {
-                    if (in_array($agent->type_id, [2, 3, 4])) {
-                        $rate = (float) ($agent->commission ?? 0.15);
-                        $commission = $rate * $newAmount;
-
-                        $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
-                            ->where('company_id', $companyId)
-                            ->first();
-
-
-                        if ($accruedCommissions) {
-                            JournalEntry::create([
-                                'transaction_id' => $transactionId,
-                                'branch_id' => $agent->branch_id ?? null,
-                                'company_id' => $companyId,
-                                'account_id' => $accruedCommissions->id,
-                                'task_id' => null,
-                                'agent_id' => $invoice->agent_id,
-                                'invoice_id' => $invoice->id,
-                                'transaction_date' => $invoice->invoice_date,
-                                'description' => $additionalDesc . 'Agents Commissions for (Liabilities): ' . $agent->name,
-                                'debit' => 0,
-                                'credit' => $commission,
-                                'balance' => $accruedCommissions->balance ?? 0,
-                                'name' => $accruedCommissions->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
-                                'type' => 'payable',
-                                'currency' => 'USD',
-                                'exchange_rate' => 1.00,
-                                'amount' => $commission,
-                            ]);
-                        }
+                    // LIABILITY: CREDIT if positive, DEBIT if negative
+                    if ($accruedCommissions) {
+                        JournalEntry::create([
+                            'transaction_id' => $transactionId,
+                            'branch_id' => $agent->branch_id ?? null,
+                            'company_id' => $companyId,
+                            'account_id' => $accruedCommissions->id,
+                            'task_id' => null,
+                            'agent_id' => $invoice->agent_id,
+                            'invoice_id' => $invoice->id,
+                            'transaction_date' => $invoice->invoice_date,
+                            'description' => $additionalDesc . 'Agents Commissions for (Liabilities): ' . $agent->name,
+                            'debit'  => $commission < 0 ? $absCommission : 0,
+                            'credit' => $commission > 0 ? $absCommission : 0,
+                            'balance' => $accruedCommissions->balance ?? 0,
+                            'name' => $accruedCommissions->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                            'type' => 'payable',
+                            'currency' => 'KWD',
+                            'exchange_rate' => 1.00,
+                            'amount' => $absCommission,
+                        ]);
                     }
-                } catch (Exception $e) {
-                    Log::error('Commission Liability Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
-                    throw new Exception('Failed to create commission liability entry: ' . $e->getMessage());
                 }
-            });
-
+            }
             return ['status' => 'success'];
-        } catch (Exception $e) {
-            Log::error('Agent commission transaction failed: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
-            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        } catch (\Exception $e) {
+            Log::error('Commission Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+            throw new \Exception('Failed to create commission entries: ' . $e->getMessage());
         }
     }
 

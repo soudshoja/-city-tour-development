@@ -57,15 +57,11 @@ class FixProfitAndCommission extends Command
         }
         $this->newLine();
 
-        // Build query
         $query = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
             'invoicePartials',
         ]);
-
-        // Only agents with commission (types 2, 3, 4)
-        $query->whereHas('agent', fn($q) => $q->whereIn('type_id', [2, 3, 4]));
 
         if ($invoiceId = $this->option('invoice')) {
             $query->where('id', $invoiceId);
@@ -206,7 +202,12 @@ class FixProfitAndCommission extends Command
         $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
 
         $newProfit = round($markup - $agentDeduction, 3);
-        $newCommission = round($newProfit * $commissionRate, 3);
+
+        // Commission ONLY for types 2, 3, 4
+        $newCommission = 0;
+        if (in_array($agent->type_id, [2, 3, 4])) {
+            $newCommission = round($newProfit * $commissionRate, 3);
+        }
 
         $oldProfit = (float) ($detail->profit ?? 0);
         $oldCommission = (float) ($detail->commission ?? 0);
@@ -246,7 +247,7 @@ class FixProfitAndCommission extends Command
                     $this->updatedDetails++;
                 }
 
-                if ($transactionId) {
+                if ($transactionId && $newCommission != 0) {
                     $this->fixOrCreateCommissionEntries(
                         $detail,
                         $invoice,
@@ -289,7 +290,6 @@ class FixProfitAndCommission extends Command
             return;
         }
 
-        // Handle positive vs negative commission
         // Positive: DEBIT Expense, CREDIT Liability (company owes agent)
         // Negative: CREDIT Expense, DEBIT Liability (agent owes company)
         $isNegative = $commission < 0;

@@ -49,7 +49,7 @@
         <span class="text-md font-medium text-gray-600 dark:text-gray-400">Total Bonus</span>
         <div class="text-right leading-tight">
             <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {{ number_format($hasBonus->sum('amount'), 2) }} KWD
+                {{ number_format($hasBonus->sum('amount'), 3) }} KWD
             </p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
                 Last updated:
@@ -82,7 +82,7 @@
                 <tr class="transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
                     <td class="py-2 px-4 text-gray-800 dark:text-gray-300 font-medium">{{ $bonus->transaction?->reference_number }}</td>
                     <td class="py-2 px-4 text-gray-600 dark:text-gray-300">{{ $bonus->transaction?->description }}</td>
-                    <td class="py-2 px-4 text-right font-semibold text-gray-900 dark:text-gray-100">{{ number_format($bonus->amount, 2) }}</td>
+                    <td class="py-2 px-4 text-right font-semibold text-gray-900 dark:text-gray-100">{{ number_format($bonus->amount, 3) }}</td>
                     <td class="py-2 px-4 text-right font-semibold text-gray-900 dark:text-gray-100">{{ $bonus->created_at->format('d M Y') }}</td>
                 </tr>
                 @empty

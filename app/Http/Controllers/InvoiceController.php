@@ -1439,7 +1439,7 @@ class InvoiceController extends Controller
         }
 
         // ENTRY 3 & 4: Commission (Expense + Liability)
-        // Only for agent types 2, 3
+        // Only for agent types 2, 3, 4
         try {
             $agent = $task->agent;
 
@@ -1451,7 +1451,7 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            if (in_array($agent->type_id, [2, 3])) {
+            if (in_array($agent->type_id, [2, 3, 4])) {
                 $companyId = $task->company_id ?? $agent->branch?->company_id;
 
                 $selling = (float) ($task->invoiceDetail->task_price ?? 0);
@@ -1505,8 +1505,8 @@ class InvoiceController extends Controller
                     'commission' => $commission,
                 ]);
 
-                // Only create commission entries if commission > 0
-                if ($commission > 0) {
+                // Create commission entries for non-zero commission (positive OR negative)
+                if ($commission != 0) {
                     // Get commission accounts
                     $commissionExpenseAccount = Account::where('name', 'like', 'Commissions Expense (Agents)%')
                         ->where('company_id', $task->company_id)
@@ -1516,7 +1516,9 @@ class InvoiceController extends Controller
                         ->where('company_id', $task->company_id)
                         ->first();
 
-                    // ENTRY 3: DEBIT Commission Expense
+                    $absCommission = abs($commission);
+
+                    // ENTRY 3: Commission Expense
                     if ($commissionExpenseAccount) {
                         JournalEntry::create([
                             'transaction_id' => $transactionId,
@@ -1529,8 +1531,8 @@ class InvoiceController extends Controller
                             'invoice_detail_id' => $invoiceDetailId,
                             'transaction_date' => $invoice->invoice_date,
                             'description' => 'Agents Commissions for (Expenses): ' . $agent->name,
-                            'debit' => $commission,
-                            'credit' => 0,
+                            'debit'  => $commission > 0 ? $absCommission : 0,   // positive → debit
+                            'credit' => $commission < 0 ? $absCommission : 0,   // negative → credit
                             'balance' => $commissionExpenseAccount->balance ?? 0,
                             'name' => $commissionExpenseAccount->name,
                             'type' => 'receivable',
@@ -1540,7 +1542,7 @@ class InvoiceController extends Controller
                         ]);
                     }
 
-                    // ✅ FIX: ENTRY 4: CREDIT Commission Liability (WAS MISSING!)
+                    // ENTRY 4: CREDIT Commission Liability
                     if ($commissionLiabilityAccount) {
                         JournalEntry::create([
                             'transaction_id' => $transactionId,
@@ -1553,8 +1555,8 @@ class InvoiceController extends Controller
                             'invoice_detail_id' => $invoiceDetailId,
                             'transaction_date' => $invoice->invoice_date,
                             'description' => 'Agents Commissions for (Liabilities): ' . $agent->name,
-                            'debit' => 0,
-                            'credit' => $commission,
+                            'debit'  => $commission < 0 ? $absCommission : 0,   // negative → debit
+                            'credit' => $commission > 0 ? $absCommission : 0,   // positive → credit
                             'balance' => $commissionLiabilityAccount->balance ?? 0,
                             'name' => $commissionLiabilityAccount->name,
                             'type' => 'payable',
@@ -2653,7 +2655,7 @@ class InvoiceController extends Controller
                 $newCredit = 0;
                 $commission = 0;
                 $agent = $invoice->agent;
-                if (in_array($agent->type_id, [2, 3])) {
+                if (in_array($agent->type_id, [2, 3, 4])) {
                     $rate = (float) ($agent->commission ?? 0.15);
                     $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
                 }
@@ -3806,7 +3808,7 @@ class InvoiceController extends Controller
                         $commission = 0;
                         $agent = $invoice->agent;
 
-                        if (in_array($agent->type_id, [2, 3])) {
+                        if (in_array($agent->type_id, [2, 3, 4])) {
                             $rate = (float) ($agent->commission ?? 0.15);
                             $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
                         }
@@ -4160,7 +4162,7 @@ class InvoiceController extends Controller
                 $additionalDesc = $additionalDesc ? $additionalDesc . ' - ' : '';
                 // Commission Expense Entry
                 try {
-                    if (in_array($agent->type_id, [2, 3])) {
+                    if (in_array($agent->type_id, [2, 3, 4])) {
                         $rate = (float) ($agent->commission ?? 0.15);
                         $commission = $rate * $newAmount;
 
@@ -4197,7 +4199,7 @@ class InvoiceController extends Controller
 
                 // Commission Liability Entry
                 try {
-                    if (in_array($agent->type_id, [2, 3])) {
+                    if (in_array($agent->type_id, [2, 3, 4])) {
                         $rate = (float) ($agent->commission ?? 0.15);
                         $commission = $rate * $newAmount;
 

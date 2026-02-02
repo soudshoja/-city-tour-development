@@ -143,11 +143,36 @@ class RefundController extends Controller
         $allClients = collect();
         $invoiceIds = collect();
         foreach ($tasks as $task) {
-            if (
-                !$task->invoiceDetail || !$task->invoiceDetail->invoice
-            ) {
-                Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
-                return redirect()->back()->withErrors(['error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
+            // Check if task is a refund task and validate originalTask
+            if (strtolower($task->status) === 'refund') {
+                if (!$task->originalTask) {
+                    Log::error('Refund task ' . $task->reference . ' does not have an original task linked');
+                    return redirect()->back()->withErrors([
+                        'error' => "Refund task {$task->reference} must be linked to an original task before processing."
+                    ]);
+                }
+
+                if (!$task->originalTask->invoiceDetail || !$task->originalTask->invoiceDetail->invoice) {
+                    Log::error('Original task for refund task ' . $task->reference . ' has not been invoiced');
+                    return redirect()->back()->withErrors([
+                        'error' => "The original task for {$task->reference} has not been invoiced yet. Cannot process refund."
+                    ]);
+                }
+            }
+
+            if (strtolower($task->status) !== 'refund') {
+                if (!$task->invoiceDetail || !$task->invoiceDetail->invoice) {
+                    Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
+                    return redirect()->back()->withErrors(['error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
+                }
+
+                $invoicePaymentStatus = strtolower($task->invoiceDetail->invoice->status);
+                if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
+                    Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
+                    return redirect()->back()->withErrors([
+                        'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
+                    ]);
+                }
             }
 
             if (($task->agent->agent_type_id ?? 1) != 1 && ($task->agent->commission <= 0)) {
@@ -155,16 +180,13 @@ class RefundController extends Controller
                     'error' => "The agent for task {$task->reference} does not have a valid commission to process a refund. Please set a valid commission for the agent."
                 ]);
             }
-
-            $invoicePaymentStatus = strtolower($task->invoiceDetail->invoice->status);
-            if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
-                Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
-                return redirect()->back()->withErrors([
-                    'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
-                ]);
-            }
             $allClients->push($task->client);
-            $invoiceIds->push($task->invoiceDetail->invoice->id);
+
+            if (strtolower($task->status) === 'refund') {
+                $invoiceIds->push($task->originalTask->invoiceDetail->invoice->id);
+            } else {
+                $invoiceIds->push($task->invoiceDetail->invoice->id);
+            }
         }
 
         if ($invoiceIds->unique()->count() > 1) {

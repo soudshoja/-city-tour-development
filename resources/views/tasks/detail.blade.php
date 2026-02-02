@@ -1559,6 +1559,28 @@
                                                                 </div>
                                                             </div>
 
+                                                            <!-- Original Task (Only for non-issued/confirmed tasks) -->
+                                                            @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed' || $task->status == null)
+                                                            <div class="flex flex-col sm:flex-row gap-4">
+                                                                <div class="flex-1 min-w-0">
+                                                                    @php
+                                                                    $selectedOriginalTask = $task->originalTask;
+                                                                    @endphp
+
+                                                                    <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
+                                                                    <x-ajax-searchable-dropdown
+                                                                            name="original_task_id"
+                                                                            :selectedId="$task->original_task_id"
+                                                                            :selectedName="$selectedOriginalTask
+                                                                            ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
+                                                                            : null"
+                                                                            :taskId="$task->id"
+                                                                            :ajaxUrl="route('tasks.search-original-tasks')"
+                                                                            placeholder="Search and select original task" />
+                                                                </div>
+                                                            </div>
+                                                            @endif
+
                                                             <!-- Supplier & Type -->
                                                             <div class="flex flex-col sm:flex-row gap-4">
                                                                 <div class="flex-1">

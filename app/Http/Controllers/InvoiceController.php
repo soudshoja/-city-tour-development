@@ -739,12 +739,30 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
+            $companyId = $invoicePartial->invoice?->agent?->branch?->company_id;
+            $newFee = 0;
+            if ($companyId) {
+                $result = ChargeService::calculate(
+                    (float) $invoicePartial->amount,
+                    $companyId,
+                    $method,
+                    $request->gateway
+                );
+                $newFee = $result['accountingFee'] ?? 0;
+            }
+
             $invoicePartial->update([
                 'charge_id' => $charge->id,
                 'payment_gateway' => $request->gateway,
                 'payment_method' => $method,
+                'gateway_fee' => $newFee,
                 'updated_at' => now(),
             ]);
+
+            // Recalculate profit since gateway fee changed
+            if ($invoicePartial->invoice) {
+                $this->recalculateProfitForInvoice($invoicePartial->invoice);
+            }
 
             DB::commit();
         } catch (Exception $e) {
@@ -815,8 +833,12 @@ class InvoiceController extends Controller
                 'charge_id' => Charge::where('name', $validated['gateway'])->value('id'),
                 'payment_method' => $validated['method'] ?? null,
                 'service_charge' => $gatewayFee['gatewayFee'] ?? 0,
+                'gateway_fee' => $gatewayFee['accountingFee'] ?? 0,
                 'amount' => $invoice->amount,
             ]);
+
+            // Recalculate profit for all details since gateway fee changed
+            $this->recalculateProfitForInvoice($invoice);
         } else {
             return response()->json(['message' => 'Invoice partial not found.'], 404);
         }
@@ -924,6 +946,7 @@ class InvoiceController extends Controller
                     'invoice_number' => $invoiceNumber,
                     'client_id' => $clientId,
                     'service_charge' => $credit ? 0 : ($gatewayFee['gatewayFee'] ?? 0),
+                    'gateway_fee' => $credit ? 0 : ($gatewayFee['accountingFee'] ?? 0),
                     'amount' => $amount,
                     'status' => $status,
                     'expiry_date' => $date,
@@ -975,6 +998,7 @@ class InvoiceController extends Controller
                                 'type'        => Credit::INVOICE,
                                 'description' => 'Payment for ' . $invoice->invoice_number,
                                 'amount'      => -$amount,
+                                'gateway_fee' => 0, // Legacy credit usage — no source payment linked
                             ]);
 
                             // Build applied payments for COA (legacy - no specific voucher)
@@ -1089,6 +1113,9 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'transaction_id' => $transaction->id,
                     ]);
+
+                    // Recalculate profit with updated gateway fees from new partial
+                    $this->recalculateProfitForInvoice($invoice);
                 }
 
                 // STEP 2: CREDIT PAYMENT COA
@@ -1240,7 +1267,6 @@ class InvoiceController extends Controller
             ]);
         }
 
-
         if (!empty($tasks)) {
             foreach ($tasks as $task) {
 
@@ -1267,6 +1293,7 @@ class InvoiceController extends Controller
                         'task_price' =>  $task['invprice'],
                         'supplier_price' => $selectedtask->total,
                         'markup_price' => $task['invprice'] - $selectedtask->total,
+                        'profit' => $task['invprice'] - $selectedtask->total,
                         'paid' => false,
                     ]);
                 } catch (Exception $e) {
@@ -1274,20 +1301,6 @@ class InvoiceController extends Controller
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                     return response()->json('Something Went Wrong', 500);
                 }
-
-                // Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
-                // if ($payableAccount) {
-                //     $filteredPayableChildAccount = $payableAccount->children()
-                //         ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
-                //         ->first(); // Get the first matching child account
-                //     Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
-                //     $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
-                // } else {
-                //     $PayablechildAccountId = null; // Handle case when no parent account is found
-                // }
-
-
-
             }
         }
 
@@ -1461,8 +1474,8 @@ class InvoiceController extends Controller
             $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $companyId);
             $taskCount = $invoice->invoiceDetails->count();
             $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
-            $supplierSurcharge = $this->getSupplierSurchargeForTask($task, $companyId);
-            $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
+            // $supplierSurcharge = $this->getSupplierSurchargeForTask($task, $companyId);
+            $totalExtraCharge = $gatewayChargePerTask; // + $supplierSurcharge;
             $agentChargeDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
 
             $profit = round($markup - $agentChargeDeduction, 3);
@@ -1487,7 +1500,7 @@ class InvoiceController extends Controller
                 'agent_type' => $agent->type_id,
                 'markup' => $markup,
                 'gateway_charge' => $gatewayChargePerTask,
-                'supplier_surcharge' => $supplierSurcharge,
+                // 'supplier_surcharge' => $supplierSurcharge,
                 'charge_bearer' => $settings->charge_bearer,
                 'agent_deduction' => $agentChargeDeduction,
                 'profit' => $profit,
@@ -1573,24 +1586,104 @@ class InvoiceController extends Controller
      */
     private function calculateTotalAccountingFee(Invoice $invoice, int $companyId): float
     {
-        $total = 0;
-
-        $paidPartials = InvoicePartial::where('invoice_id', $invoice->id)
-            ->where('status', 'paid')
+        // Non-credit partials — stored gateway_fee
+        $partialFees = (float) InvoicePartial::where('invoice_id', $invoice->id)
             ->whereNotNull('payment_gateway')
-            ->get();
+            ->whereNotIn('payment_gateway', ['Credit', 'Cash'])
+            ->sum('gateway_fee');
 
-        foreach ($paidPartials as $partial) {
-            $result = ChargeService::calculate(
-                (float) $partial->amount,
-                $companyId,
-                $partial->payment_method,
-                $partial->payment_gateway
-            );
-            $total += $result['accountingFee'] ?? 0;
+        // Credit usage — proportional fees
+        $creditFees = (float) Credit::where('invoice_id', $invoice->id)
+            ->where('amount', '<', 0)
+            ->sum('gateway_fee');
+
+        return round($partialFees + abs($creditFees), 3);
+    }
+
+    /**
+     * Recalculate profit and commission for all details on an invoice
+     * Called when gateway changes affect the accounting fee
+     */
+    public function recalculateProfitForInvoice(Invoice $invoice): void
+    {
+        $invoice->load(['invoiceDetails.task', 'agent.branch']);
+
+        $agent = $invoice->agent;
+        if (!$agent) return;
+
+        $companyId = $agent->branch?->company_id;
+        if (!$companyId) return;
+
+        $settings = AgentCharge::getForAgent($agent->id, $companyId);
+        $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $companyId);
+        $taskCount = $invoice->invoiceDetails->count();
+        $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
+
+        foreach ($invoice->invoiceDetails as $detail) {
+            $markup = (float) $detail->task_price - (float) $detail->supplier_price;
+
+            // $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $companyId) : 0;
+            $totalExtraCharge = $gatewayChargePerTask; // + $supplierSurcharge;
+            $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
+
+            $profit = round($markup - $agentDeduction, 3);
+
+            $oldCommission = (float) $detail->commission;
+            $commission = 0;
+            if (in_array($agent->type_id, [2, 3, 4])) {
+                $rate = (float) ($agent->commission ?? 0.15);
+                $commission = round($profit * $rate, 3);
+            }
+
+            $detail->profit = $profit;
+            $detail->commission = $commission;
+            $detail->save();
+
+            // Update commission journal entries if changed
+            $commissionDiff = round($commission - $oldCommission, 3);
+            if (abs($commissionDiff) > 0.001) {
+                $commissionEntries = JournalEntry::where('invoice_id', $invoice->id)
+                    ->where('invoice_detail_id', $detail->id)
+                    ->where('description', 'LIKE', '%Agents Commissions%')
+                    ->get();
+
+                foreach ($commissionEntries as $entry) {
+                    $account = Account::find($entry->account_id);
+
+                    if ($entry->debit > 0) {
+                        $entry->debit = $commission;
+                        if ($account) {
+                            $account->actual_balance += $commissionDiff;
+                            $account->save();
+                            $entry->balance = $account->actual_balance;
+                        }
+                        $entry->save();
+                    } elseif ($entry->credit > 0) {
+                        $entry->credit = $commission;
+                        if ($account) {
+                            $account->actual_balance += $commissionDiff;
+                            $account->save();
+                            $entry->balance = $account->actual_balance;
+                        }
+                        $entry->save();
+                    }
+                }
+
+                Log::info('Commission journal entries updated', [
+                    'invoice_id' => $invoice->id,
+                    'detail_id' => $detail->id,
+                    'old_commission' => $oldCommission,
+                    'new_commission' => $commission,
+                    'diff' => $commissionDiff,
+                ]);
+            }
         }
 
-        return $total;
+        Log::info('Profit recalculated after gateway change', [
+            'invoice_id' => $invoice->id,
+            'total_accounting_fee' => $totalAccountingFee,
+            'fee_per_task' => $gatewayChargePerTask,
+        ]);
     }
 
     /**
@@ -2653,9 +2746,8 @@ class InvoiceController extends Controller
                 $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
 
                 $task = $relevantDetail->task;
-                $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $agentCompanyId) : 0;
-
-                $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
+                // $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $agentCompanyId) : 0;
+                $totalExtraCharge = $gatewayChargePerTask; // + $supplierSurcharge;
                 $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
 
                 $profit = round($markup - $agentDeduction, 3);
@@ -3833,9 +3925,8 @@ class InvoiceController extends Controller
                         $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
 
                         $task = $relevantDetail->task;
-                        $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $agentCompanyId) : 0;
-
-                        $totalExtraCharge = $gatewayChargePerTask + $supplierSurcharge;
+                        // $supplierSurcharge = $task ? $this->getSupplierSurchargeForTask($task, $agentCompanyId) : 0;
+                        $totalExtraCharge = $gatewayChargePerTask; // + $supplierSurcharge;
                         $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
 
                         $profit = round($markup - $agentDeduction, 3);
@@ -4795,11 +4886,20 @@ class InvoiceController extends Controller
 
                 $charge = Charge::where('name', $payment->payment_gateway)->first();
 
+                // Calculate gateway_fee for this payment
+                $autoChargeResult = ChargeService::calculate(
+                    (float) $payment->amount,
+                    $task->company_id,
+                    $payment->payment_method_id,
+                    $payment->payment_gateway
+                );
+
                 $invoicePartial = InvoicePartial::create([
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
                     'client_id' => $invoice->client_id,
                     'service_charge' => $payment->service_charge,
+                    'gateway_fee' => $autoChargeResult['accountingFee'] ?? 0,
                     'amount' => $payment->amount,
                     'status' => 'paid',
                     'expiry_date' => $invoice->due_date,

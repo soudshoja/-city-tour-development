@@ -26,6 +26,7 @@ class Credit extends Model
         'type',
         'description',
         'amount',
+        'gateway_fee',
         'topup_by',
         'created_at',
         'updated_at',

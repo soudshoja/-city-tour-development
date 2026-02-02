@@ -11,7 +11,7 @@
         <div class="flex justify-between items-center mb-6">
             <div>
                 <h3 class="text-lg font-semibold text-gray-800">Agent Extra Charge Settings</h3>
-                <p class="text-sm text-gray-500 mt-1">Configure who bears extra charges (gateway fees + supplier surcharges) for profit calculation</p>
+                <p class="text-sm text-gray-500 mt-1">Configure who bears extra charges (gateway fees) for profit calculation</p> {{--  + supplier surcharges --}}
             </div>
             <button @click="showBulkModal = true"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
@@ -31,7 +31,7 @@
                     <p class="font-medium mb-1">How profit calculation works:</p>
                     <ul class="list-disc list-inside space-y-1 text-blue-700">
                         <li><strong>Profit = Markup - Agent's Charge Deduction</strong></li>
-                        <li><strong>Extra Charges</strong> = Gateway Fees (service_charge) + Supplier Surcharges</li>
+                        <li><strong>Extra Charges</strong> = Gateway Fees</li> {{-- (service_charge) + Supplier Surcharges --}}
                         <li><strong>Company Bears All:</strong> Agent keeps full markup as profit</li>
                         <li><strong>Agent Bears All:</strong> Full extra charges deducted from agent's profit</li>
                         <li><strong>Split:</strong> Charges shared based on percentage setting</li>

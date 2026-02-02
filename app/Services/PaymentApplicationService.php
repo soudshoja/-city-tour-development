@@ -201,12 +201,22 @@ class PaymentApplicationService
                 // Calculate how much to actually apply from this payment
                 $applyFromThis = min($requestedAmount, $remainingToApply);
 
+                // Calculate proportional gateway fee from source payment
+                $proportionalFee = 0;
+                if ($sourceCredit->payment_id) {
+                    $sourcePayment = $sourceCredit->payment;
+                    if ($sourcePayment && $sourcePayment->amount > 0 && $sourcePayment->gateway_fee > 0) {
+                        $proportionalFee = round($sourcePayment->gateway_fee * ($applyFromThis / $sourcePayment->amount), 3);
+                    }
+                }
+
                 // Create InvoicePartial record for credit portion
                 $invoicePartial = InvoicePartial::create([
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
                     'client_id' => $invoice->client_id,
                     'agent_id' => $invoice->agent_id,
+                    'gateway_fee' => $proportionalFee,
                     'amount' => $applyFromThis,
                     'status' => 'paid',
                     'type' => $paymentMode,
@@ -233,6 +243,7 @@ class PaymentApplicationService
                     'invoice_partial_id' => $invoicePartial->id,
                     'type' => Credit::INVOICE,
                     'amount' => -$applyFromThis,
+                    'gateway_fee' => $proportionalFee,
                     'description' => "Payment for {$invoice->invoice_number} via {$voucherNumber}",
                 ]);
 
@@ -551,6 +562,14 @@ class PaymentApplicationService
 
             $applyFromThis = min($requestedAmount, $remainingToApply);
 
+            $proportionalFee = 0;
+            if ($paymentId) {
+                $sourcePayment = Payment::find($paymentId);
+                if ($sourcePayment && $sourcePayment->amount > 0 && $sourcePayment->gateway_fee > 0) {
+                    $proportionalFee = round($sourcePayment->gateway_fee * ($applyFromThis / $sourcePayment->amount), 3);
+                }
+            }
+
             $credit = Credit::create([
                 'company_id' => $invoice->agent?->branch?->company_id,
                 'branch_id' => $invoice->agent?->branch_id,
@@ -561,6 +580,7 @@ class PaymentApplicationService
                 'invoice_partial_id' => $invoicePartial->id,
                 'type' => Credit::INVOICE,
                 'amount' => -$applyFromThis,
+                'gateway_fee' => $proportionalFee,
                 'description' => "Payment for $invoice->invoice_number via {$voucherNumber}",
             ]);
 

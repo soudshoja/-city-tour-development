@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentCharge;
+use App\Models\Credit;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
@@ -149,35 +150,18 @@ class FixProfitAndCommission extends Command
 
     private function getTotalAccountingFee(Invoice $invoice, int $companyId): float
     {
-        $total = 0;
-        $partials = InvoicePartial::where('invoice_id', $invoice->id)->get();
+        // Non-credit partials — stored gateway_fee
+        $partialFees = (float) InvoicePartial::where('invoice_id', $invoice->id)
+            ->whereNotNull('payment_gateway')
+            ->whereNot('payment_gateway', 'Credit')
+            ->sum('gateway_fee');
 
-        foreach ($partials as $partial) {
-            if (!$partial->payment_gateway) continue;
+        // Credit usage — proportional fees
+        $creditFees = (float) Credit::where('invoice_id', $invoice->id)
+            ->where('amount', '<', 0)
+            ->sum('gateway_fee');
 
-            $gateway = strtolower($partial->payment_gateway);
-            if ($gateway === 'credit' || $gateway === 'credit balance') continue;
-
-            $amount = (float) $partial->amount;
-            if ($amount <= 0) continue;
-
-            $methodId = null;
-            if ($partial->payment_method) {
-                if (is_numeric($partial->payment_method)) {
-                    $methodId = (int) $partial->payment_method;
-                } else {
-                    $method = PaymentMethod::where('name', $partial->payment_method)
-                        ->where('company_id', $companyId)
-                        ->first();
-                    $methodId = $method?->id;
-                }
-            }
-
-            $result = ChargeService::calculate($amount, $companyId, $methodId, $partial->payment_gateway);
-            $total += $result['accountingFee'] ?? 0;
-        }
-
-        return $total;
+        return round($partialFees + abs($creditFees), 3);
     }
 
     private function processDetail(
@@ -197,8 +181,8 @@ class FixProfitAndCommission extends Command
         $markup = (float) ($detail->markup_price ?? ($taskPrice - $supplierPrice));
 
         $serviceChargePortion = ($detailCount > 0) ? round($totalAccountingFee / $detailCount, 3) : 0;
-        $supplierSurcharge = $this->getSupplierSurcharge($detail, $companyId);
-        $totalExtraCharge = $serviceChargePortion + $supplierSurcharge;
+        // $supplierSurcharge = $this->getSupplierSurcharge($detail, $companyId);
+        $totalExtraCharge = $serviceChargePortion; // + $supplierSurcharge
         $agentDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
 
         $newProfit = round($markup - $agentDeduction, 3);
@@ -223,7 +207,7 @@ class FixProfitAndCommission extends Command
                 'task_id' => $detail->task_id,
                 'markup' => $markup,
                 'service_charge' => $serviceChargePortion,
-                'supplier_surcharge' => $supplierSurcharge,
+                // 'supplier_surcharge' => $supplierSurcharge,
                 'total_extra_charge' => $totalExtraCharge,
                 'agent_deduction' => $agentDeduction,
                 'old_profit' => $oldProfit,

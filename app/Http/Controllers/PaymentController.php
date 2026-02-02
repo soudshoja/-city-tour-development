@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
-use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Redirect;
@@ -19,20 +17,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use App\Services\HesabeCrypt;
 use App\Services\GatewayConfigService;
-use App\Services\WhatsAppNotificationService;
 use App\Services\ChargeService;
 use App\Support\PaymentGateway\Tap;
 use App\Support\PaymentGateway\MyFatoorah;
 use App\Support\PaymentGateway\Hesabe;
 use App\Support\PaymentGateway\UPayment;
-use App\Mail\PaymentLinkEmail;
-use Google\Rpc\Context\AttributeContext\Response;
 use App\Http\Traits\NotificationTrait;
 use App\Http\Traits\CurrencyExchangeTrait;
 use App\Http\Controllers\ClientController;
-use App\Enums\ChargeType;
-use App\Enums\NotificationEmailTypeEnum;
-use App\Enums\PaymentMailTypeEnum;
 use App\Http\Traits\EmailNotificationTrait;
 use App\Models\HesabePayment;
 use App\Models\UpaymentPayment;
@@ -71,9 +63,6 @@ use App\Services\TBOHolidayService;
 use App\Support\PaymentGateway\Knet;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Support\Facades\Gate;
-use SebastianBergmann\Type\TrueType;
-use Symfony\Component\Mime\DraftEmail;
 use Throwable;
 
 class PaymentController extends Controller
@@ -538,7 +527,6 @@ class PaymentController extends Controller
             ];
         }
     }
-
 
     private function createTaskFromTBOBooking(Payment $payment, TBO $tboBooking, array $bookingResult): ?array
     {
@@ -5491,6 +5479,10 @@ class PaymentController extends Controller
                 $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, $gatewayName);
                 $accountingFee = $chargeResult['accountingFee'] ?? 0;
                 $paidBy = $chargeResult['paidBy'] ?? 'Company';
+
+                $payment->gateway_fee = $accountingFee;
+                $payment->save();
+
                 $netAmount = $finalPaidAmount - $accountingFee;
 
                 Log::info('[INVOICE COA] Amount calculations', [
@@ -5594,6 +5586,10 @@ class PaymentController extends Controller
                     'debit_gateway_fee' => $accountingFee,
                     'balanced' => ($finalPaidAmount == ($netAmount + $accountingFee)) ? 'YES' : 'NO',
                 ]);
+
+                // Recalculate profit after each payment (deduct gateway fees progressively)
+                $invoiceController = app(InvoiceController::class);
+                $invoiceController->recalculateProfitForInvoice($invoice);
 
                 return [
                     'success' => true,

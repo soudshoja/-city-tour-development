@@ -3059,15 +3059,17 @@ class InvoiceController extends Controller
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
             })
-            ->with('agent', 'client', 'invoiceDetails', 'invoiceDetails.task', 'invoicePartials')
+            ->with('agent', 'client', 'invoiceDetails', 'invoiceDetails.task.paymentMethod', 'invoicePartials')
             ->first();
 
         $company = Company::find($companyId);
 
-        $journalEntries = JournalEntry::where('invoice_id', $invoice->id)->get();
-        if (!$journalEntries) {
-            return response()->json(['message' => 'Journal entry not found'], 404);
-        }
+        $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
+
+        $journalEntries = JournalEntry::where('invoice_id', $invoice->id)
+            ->orWhereIn('task_id', $taskIds)
+            ->get();
+
         $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
 
         return view('invoice.details', compact('invoice', 'company', 'journalEntries'));

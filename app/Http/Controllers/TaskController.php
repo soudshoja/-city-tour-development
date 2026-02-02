@@ -6371,4 +6371,46 @@ class TaskController extends Controller
         }
     }
 
+    public function searchOriginalTasks(Request $request)
+    {
+        $taskId = $request->input('task_id');
+        $search = $request->input('search', '');
+
+        $task = Task::find($taskId);
+
+        if (!$task) {
+            return response()->json(['error' => 'Task not found'], 404);
+        }
+
+        $query = Task::with('client')
+            ->whereIn('status', ['issued', 'reissued'])
+            ->where('id', '!=', $taskId)
+            ->where(function ($q) use ($task) {
+                $q->where('reference', $task->original_reference)
+                    ->orWhere('reference', $task->reference)
+                    ->orWhere('passenger_name', $task->passenger_name);
+            });
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('reference', 'like', "%{$search}%")
+                    ->orWhereHas('client', function ($clientQuery) use ($search) {
+                        $clientQuery->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('client_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $tasks = $query->limit(10)->get();
+
+        return response()->json([
+            'tasks' => $tasks->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
+                ];
+            })
+        ]);
+    }
+
 }

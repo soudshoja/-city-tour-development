@@ -9,11 +9,21 @@
                 <div id="overall-summary-display" class="text-2xl font-bold text-right mb-4"></div>
 
                 @php
-                    $invoiceIds = $tasks->pluck('invoiceDetail.invoice.id')->filter()->unique()->values();
-                    $invoiceStatus = optional($tasks->first()->invoiceDetail->invoice)->status;
-                    $isPaidInvoice = in_array(strtolower($invoiceStatus), ['paid', 'partial refund']);
-                    $firstInvoice = $tasks->first()->invoiceDetail->invoice ?? null;
+                    $invoiceIds = $tasks->map(function($task) {
+                        if (strtolower($task->status) === 'refund') {
+                            return $task->originalTask->invoiceDetail->invoice->id ?? null;
+                        }
+                        return $task->invoiceDetail->invoice->id ?? null;
+                    })->filter()->unique()->values();
+
                     $firstTask = $tasks->first();
+                    if (strtolower($firstTask->status) === 'refund') {
+                        $firstInvoice = $firstTask->originalTask->invoiceDetail->invoice ?? null;
+                    } else {
+                        $firstInvoice = $firstTask->invoiceDetail->invoice ?? null;
+                    }
+                    $invoiceStatus = $firstInvoice?->status;
+                    $isPaidInvoice = in_array(strtolower($invoiceStatus), ['paid', 'partial refund']);
                 @endphp
 
                 @if ($firstInvoice)
@@ -138,8 +148,13 @@
 
 
             @foreach($tasks as $task)
+                @php
+                    $taskInvoice = strtolower($task->status) === 'refund'
+                        ? ($task->originalTask->invoiceDetail->invoice ?? null)
+                        : ($task->invoiceDetail->invoice ?? null);
+                @endphp
                 <div class="task-refund-section bg-gray-50 border p-6 mt-8 rounded-lg shadow-sm">
-                    <input type="hidden" class="refund-status" value="{{ strtolower($task->invoiceDetail->invoice->status) }}">
+                    <input type="hidden" class="refund-status" value="{{ strtolower($taskInvoice?->status ?? 'unpaid') }}">
                     <h3 class="text-xl font-bold mb-4">Refund Task #{{ $task->reference }}</h3>
                     <input type="hidden" name="tasks[{{ $loop->index }}][task_id]" value="{{ $task->id }}">
 
@@ -207,29 +222,28 @@
                     </div>
                     <hr class="my-6">
 
-                    @if (in_array(strtolower($task->originalTask?->invoiceDetail?->invoice?->status), ['paid', 'partial refund']))
+                    @if (in_array(strtolower($taskInvoice?->status ?? ''), ['paid', 'partial refund']))
                         @include('refunds.partial.paid-invoice-section', [
                             'task' => $task,
-                            'invoiceDetail' => $task->invoiceDetail,
+                            'invoiceDetail' => strtolower($task->status) === 'refund' ? $task->originalTask->invoiceDetail : $task->invoiceDetail,
                             'loopIndex' => $loop->index,
                             'refundDetail' => null,
                             'isEditing' => false,
                             'isReadOnly' => false,
                         ])
-                    @elseif ($task->originalTask?->invoiceDetail?->invoice?->status === 'unpaid')
+                    @elseif (strtolower($taskInvoice?->status ?? '') === 'unpaid')
                         @include('refunds.partial.unpaid-invoice-section', [
                             'task' => $task,
-                            'invoiceDetail' => $task->invoiceDetail,
+                            'invoiceDetail' => strtolower($task->status) === 'refund' ? $task->originalTask->invoiceDetail : $task->invoiceDetail,
                             'loopIndex' => $loop->index,
                             'refundDetail' => null,
                             'isEditing' => false,
                             'isReadOnly' => false,
                         ])
                     @else
-                        {{-- For partial, credit, or other cases --}}
                         @include('refunds.partial.unpaid-invoice-section', [
                             'task' => $task,
-                            'invoiceDetail' => $task->invoiceDetail,
+                            'invoiceDetail' => strtolower($task->status) === 'refund' ? $task->originalTask->invoiceDetail : $task->invoiceDetail,
                             'loopIndex' => $loop->index,
                             'refundDetail' => null,
                             'isEditing' => false,

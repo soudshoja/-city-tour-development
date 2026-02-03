@@ -18,6 +18,8 @@ export function ajaxSearchableDropdown({
         taskId,
         ajaxUrl,
         debounceTimer: null,
+        originalId: selectedId,
+        originalName: selectedName,
 
         init() {
             // If there's a selected name but filtered is empty, populate it
@@ -65,11 +67,14 @@ export function ajaxSearchableDropdown({
             this.search = '';
             this.open = false;
 
-            this.$dispatch('dropdown-select', {
-                name: this.name,
-                value: option.id,
-                displayName: option.name
-            });
+            // ONLY dispatch if value actually changed
+            if (String(option.id) !== String(this.originalId)) {
+                this.$dispatch('dropdown-select', {
+                    name: this.name,
+                    value: option.id,
+                    displayName: option.name
+                });
+            }
         },
 
         focusSearch($refs) {

@@ -3,17 +3,14 @@
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-3xl font-bold text-gray-700">Edit Refund #{{ $refund->refund_number }}</h1>
             <a href="{{ route('refunds.index') }}"
-            class="inline-flex items-center px-4 py-2 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition duration-200">
+               class="inline-flex items-center px-4 py-2 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition duration-200">
                 ← Back
             </a>
         </div>
 
         @php
             $isReadOnly = strtolower($refund->status) === 'completed';
-            $firstTask = $refund->refundDetails->first()?->task;
-            $firstInvoice = $firstTask?->invoiceDetail?->invoice;
-            $isPaidInvoice = in_array($firstInvoice?->status, ['paid', 'refunded', 'partial refund']);
-            $isEditing = isset($refund) && $refund;
+            $isEditing = true;
         @endphp
 
         <form action="{{ route('refunds.update', $refund->id) }}" method="POST">
@@ -55,22 +52,20 @@
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">Refund Date</label>
                     <input type="date" name="date" id="date"
-                        value="{{ $refund->refund_date?->toDateString() ?? now()->toDateString() }}"
-                        {{ $isReadOnly ? 'readonly disabled' : '' }}
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring focus:ring-indigo-100">
+                           value="{{ $refund->refund_date?->toDateString() ?? now()->toDateString() }}"
+                           {{ $isReadOnly ? 'readonly disabled' : '' }}
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                 </div>
 
-                @if (in_array(strtolower($firstInvoice?->status), ['paid', 'partial refund']))
+                @if ($isPaidInvoice)
                     <div class="mt-6 p-6 border rounded-lg bg-gray-50">
                         <h3 class="text-xl font-bold mb-4">Refund Method</h3>
-                        <label class="block text-gray-700 font-semibold mb-2">Refund Method</label>
-                        <select name="method" id="method"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" required>
+                        <select name="method" class="w-full px-4 py-2 border border-gray-300 rounded-lg" required>
                             <option value="">Select</option>
-                            <option value="Cash" {{ old('method', $isEditing ? $refund->method : '') == 'Cash' ? 'selected' : '' }}>Cash</option>
-                            <option value="Bank" {{ old('method', $isEditing ? $refund->method : '') == 'Bank' ? 'selected' : '' }}>Bank</option>
-                            <option value="Online" {{ old('method', $isEditing ? $refund->method : '') == 'Online' ? 'selected' : '' }}>Online</option>
-                            <option value="Credit" {{ old('method', $isEditing ? $refund->method : '') == 'Credit' ? 'selected' : '' }}>{{$firstTask->client->full_name }}'s Credit</option>
+                            <option value="Cash" {{ $refund->method == 'Cash' ? 'selected' : '' }}>Cash</option>
+                            <option value="Bank" {{ $refund->method == 'Bank' ? 'selected' : '' }}>Bank</option>
+                            <option value="Online" {{ $refund->method == 'Online' ? 'selected' : '' }}>Online</option>
+                            <option value="Credit" {{ $refund->method == 'Credit' ? 'selected' : '' }}>{{ $firstTask->client->full_name }}'s Credit</option>
                         </select>
                     </div>
                 @else
@@ -82,28 +77,25 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">Remarks</label>
-                        <input type="text" name="remarks" value="{{ old('remarks', $isEditing && $refund ? $refund->remarks : '') }}"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        <input type="text" name="remarks" value="{{ old('remarks', $refund->remarks) }}"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">Internal Remarks</label>
-                        <input type="text" name="remarks_internal" value="{{ old('remarks_internal', $isEditing && $refund ? $refund->remarks_internal : '') }}"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        <input type="text" name="remarks_internal" value="{{ old('remarks_internal', $refund->remarks_internal) }}"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                 </div>
 
                 <div class="mt-6">
                     <label class="block text-gray-700 font-semibold mb-2">Reason</label>
-                    <textarea name="reason" rows="3" value="{{ old('reason', $isEditing && $refund ? $refund->reason : '') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"></textarea>
-                    @error('reason')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                    @enderror
+                    <textarea name="reason" rows="3"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg">{{ old('reason', $refund->reason) }}</textarea>
                 </div>
 
                 @unless($isReadOnly)
                     <button type="submit"
-                        class="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-300">
+                            class="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
                         Update Refund
                     </button>
                 @endunless
@@ -112,8 +104,9 @@
             @foreach($refund->refundDetails as $detail)
                 @php
                     $task = $detail->task;
-                    $invoiceDetail = $task->invoiceDetail;
-                    $invoiceStatus = $invoiceDetail->invoice->status;
+                    $sourceTask = $detail->computed_source_task;
+                    $invoiceDetail = $detail->computed_invoice_detail;
+                    $invoiceStatus = $detail->computed_invoice_status;
                 @endphp
 
                 <div class="task-refund-section bg-gray-50 border p-6 mt-8 rounded-lg shadow-sm">
@@ -123,6 +116,7 @@
                     @if(in_array($invoiceStatus, ['paid', 'refunded', 'partial refund']))
                         @include('refunds.partial.paid-invoice-section', [
                             'task' => $task,
+                            'sourceTask' => $sourceTask,
                             'invoiceDetail' => $invoiceDetail,
                             'refundDetail' => $detail,
                             'loopIndex' => $loop->index,
@@ -132,6 +126,7 @@
                     @else
                         @include('refunds.partial.unpaid-invoice-section', [
                             'task' => $task,
+                            'sourceTask' => $sourceTask,
                             'invoiceDetail' => $invoiceDetail,
                             'refundDetail' => $detail,
                             'loopIndex' => $loop->index,

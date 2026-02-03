@@ -911,12 +911,14 @@
 
                                 const hideButtons = () => {
                                     invoiceBtn?.classList.add('hidden');
-                                    refundBtn?.classList.add('hidden');
+                                    // Don't hide refund button, just disable it
                                 };
 
                                 if (this.selectedTasks.length === 0) {
                                     floating?.classList.add('hidden');
                                     hideButtons();
+                                    const refundBtn = document.getElementById('proceedRefundBtn');
+                                    refundBtn?.classList.add('hidden');
                                     this.canEditTasks = false;
                                     return;
                                 }
@@ -932,23 +934,39 @@
                                         is_complete: row?.getAttribute('data-is-complete') === 'true',
                                         invoiceDetail: row?.getAttribute('data-invoice-detail') === 'true',
                                         invoice_status: row?.getAttribute('data-invoice-status') || '',
+                                        hasOriginalTask: row?.getAttribute('data-has-original-task') === 'true',
+                                        originalTaskInvoiced: row?.getAttribute('data-original-task-invoiced') === 'true',
                                     };
                                 });
 
                                 const ids = this.selectedTasks.join(',');
 
                                 const canCreateInvoice = selected.every(t => this.canCreateInvoice(t));
-                                const canProceedRefund = selected.every(t =>
-                                    t.invoiceDetail && !t.refundDetail && t.agent_id && t.enabled && t.invoice_status && ['paid', 'unpaid', 'partial', 'partial refund'].includes(t.invoice_status.toLowerCase())  
-                                );
-                                
+
+                                // Single check for refund button - determines if it should be enabled or disabled
+                                const canProceedRefund = selected.every(t => {
+                                    // Task must not already have a refund
+                                    if (t.refundDetail) return false;
+
+                                    // For refund status tasks: must have original task AND original task must be invoiced
+                                    if (t.status === 'refund') {
+                                        return t.hasOriginalTask && t.originalTaskInvoiced;
+                                    }
+
+                                    // For regular tasks: must be invoiced with valid status
+                                    return t.invoiceDetail && t.agent_id && t.enabled &&
+                                           t.invoice_status && ['paid', 'unpaid', 'partial', 'partial refund'].includes(t.invoice_status.toLowerCase());
+                                });
+
                                 this.canEditTasks = selected.every(t => !t.invoiceDetail);
 
-                                const shouldShow = canCreateInvoice || canProceedRefund || this.canEditTasks;
+                                const shouldShow = canCreateInvoice || this.canEditTasks || true; // Always show floating actions when tasks selected
 
                                 if (!shouldShow) {
                                     floating?.classList.add('hidden');
                                     hideButtons();
+                                    const refundBtn = document.getElementById('proceedRefundBtn');
+                                    refundBtn?.classList.add('hidden');
                                     return;
                                 }
 
@@ -960,9 +978,59 @@
                                     invoiceBtn?.setAttribute('data-route', `/invoices/create?task_ids=${ids}`);
                                 }
 
+                                // Always show refund button and set route
+                                refundBtn?.classList.remove('hidden');
+                                refundBtn?.setAttribute('data-route', `/refunds/create?task_ids=${ids}`);
+
+                                // Enable or disable based on validation
                                 if (canProceedRefund) {
-                                    refundBtn?.classList.remove('hidden');
-                                    refundBtn?.setAttribute('data-route', `/refunds/create?task_ids=${ids}`);
+                                    refundBtn?.classList.remove('opacity-50', 'cursor-not-allowed');
+                                    refundBtn?.classList.add('hover:bg-red-600', 'cursor-pointer');
+                                    refundBtn?.removeAttribute('disabled');
+                                    refundBtn?.removeAttribute('title');
+                                } else {
+                                    refundBtn?.classList.add('opacity-50', 'cursor-not-allowed');
+                                    refundBtn?.classList.remove('hover:bg-red-600', 'cursor-pointer');
+                                    refundBtn?.setAttribute('disabled', 'true');
+
+                                    // Determine the specific reason for disabling (matching backend validation)
+                                    let disabledReason = '';
+                                    const refundTasks = selected.filter(t => t.status === 'refund');
+                                    const alreadyRefunded = selected.some(t => t.refundDetail);
+
+                                    if (alreadyRefunded) {
+                                        disabledReason = 'Selected tasks already have refund records';
+                                    } else if (refundTasks.length > 0) {
+                                        const missingOriginalTask = refundTasks.some(t => !t.hasOriginalTask);
+                                        const originalTaskNotInvoiced = refundTasks.some(t => t.hasOriginalTask && !t.originalTaskInvoiced);
+
+                                        if (missingOriginalTask && originalTaskNotInvoiced) {
+                                            disabledReason = 'Refund tasks must be linked to original task and the original task must be invoiced';
+                                        } else if (missingOriginalTask) {
+                                            disabledReason = 'Refund tasks must be linked to an original task';
+                                        } else if (originalTaskNotInvoiced) {
+                                            disabledReason = 'Original task must be invoiced before proceeding with refund';
+                                        }
+                                    } else {
+                                        // Non-refund tasks that don't meet criteria
+                                        const regularTasks = selected.filter(t => t.status !== 'refund');
+                                        const notInvoiced = regularTasks.some(t => !t.invoiceDetail);
+                                        const noAgent = regularTasks.some(t => !t.agent_id);
+                                        const notEnabled = regularTasks.some(t => !t.enabled);
+                                        const invalidStatus = regularTasks.some(t => !t.invoice_status || !['paid', 'unpaid', 'partial', 'partial refund'].includes(t.invoice_status.toLowerCase()));
+
+                                        if (notInvoiced) {
+                                            disabledReason = 'Selected tasks must be invoiced before refund';
+                                        } else if (noAgent) {
+                                            disabledReason = 'Selected tasks must have an agent assigned';
+                                        } else if (notEnabled) {
+                                            disabledReason = 'Selected tasks must be enabled';
+                                        } else if (invalidStatus) {
+                                            disabledReason = 'Invoice status must be paid, unpaid, partial, or partial refund';
+                                        }
+                                    }
+
+                                    refundBtn?.setAttribute('title', disabledReason || 'Cannot proceed with refund');
                                 }
                             },
                             canCreateInvoice(task) {
@@ -1099,11 +1167,12 @@
                                     @foreach ($tasks as $key => $task)
                                     @php
                                     $canSelectForInvoice = !$task->invoiceDetail && $task->enabled && $task->agent_id && $task->status !== 'refund';
-                                    $canSelectForRefund = $task->invoiceDetail
+                                    $canSelectForRefund = ($task->status === 'refund' && $task->originalTask && $task->originalTask->invoiceDetail && !$task->refundDetail)
+                                    || ($task->invoiceDetail
                                     && !$task->refundDetail
                                     && $task->agent_id
                                     && $task->enabled
-                                    && in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund']);
+                                    && in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund']));
                                     $isSelectable = $canSelectForInvoice || $canSelectForRefund;
                                     @endphp
                                     <tr class="taskRow task-row cursor-pointer"
@@ -1118,7 +1187,9 @@
                                         data-invoice-detail="{{ $task->invoiceDetail ? 'true' : 'false' }}"
                                         data-invoice-status="{{ $task->invoiceDetail?->invoice?->status ?? '' }}"
                                         data-refund-detail="{{ $task->refundDetail ? 'true' : 'false' }}"
-                                        data-is-complete="{{ $task->is_complete ? 'true' : 'false' }}">
+                                        data-is-complete="{{ $task->is_complete ? 'true' : 'false' }}"
+                                        data-has-original-task="{{ $task->originalTask ? 'true' : 'false' }}"
+                                        data-original-task-invoiced="{{ $task->originalTask && $task->originalTask->invoiceDetail ? 'true' : 'false' }}">
 
                                         <td data-column="actions" class="p-3 text-sm">
                                             <div class="flex items-center justify-center h-full min-h-[40px]">
@@ -1126,11 +1197,17 @@
                                                 @php
                                                 $reasons = [];
 
+                                                // For refund tasks
+                                                if ($task->status === 'refund') {
+                                                if (!$task->originalTask) $reasons[] = 'No original task linked';
+                                                elseif (!$task->originalTask->invoiceDetail) $reasons[] = 'Original task not invoiced';
+                                                if (!$task->is_complete) $reasons[] = 'Refund not complete';
+                                                }
+
                                                 // For uninvoiced tasks
-                                                if (!$task->invoiceDetail) {
+                                                if (!$task->invoiceDetail && $task->status !== 'refund') {
                                                 if (!$task->enabled) $reasons[] = 'Task is disabled';
                                                 if (!$task->agent_id) $reasons[] = 'No agent assigned';
-                                                if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
                                                 }
 
                                                 // For invoiced tasks (can't be refunded)
@@ -1528,174 +1605,176 @@
                                 <!-- Manual Fill Form -->
                                 <div x-show="showManualForm" x-cloak
                                     class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
-                                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 h-[90vh] sm:overflow-visible overflow-y-auto transition-all duration-300">
-                                        <!-- Header with title and close button -->
-                                        <div class="flex items-center justify-between mb-2">
-                                            <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
-                                            <button @click="closeAll()"
-                                                class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
-                                        </div>
-
-                                        <!-- Subtitle -->
-                                        <p class="text-gray-600 italic text-xs mb-6">Please fill in the required
-                                            client information to register</p>
-
-                                        <!-- Form -->
-                                        <form action="{{ route('clients.store') }}" method="POST"
-                                            id="client-formTask" class="space-y-4">
-                                            @csrf
-                                            <input type="hidden" name="task_id" :value="modalTaskId">
-                                            <input type="hidden" name="agent_id" :value="modalAgentId">
-                                            <!-- Name -->
-                                            <div id="upload-passport-container"
-                                                class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
-                                                ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
-                                                <svg width="24" height="24" viewBox="0 0 24 24"
-                                                    fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5"
-                                                        stroke-linecap="round" />
-                                                    <path
-                                                        d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5"
-                                                        stroke="#1C274C" stroke-width="1.5" />
-                                                    <path
-                                                        d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z"
-                                                        stroke="#1C274C" stroke-width="1.5" />
-                                                </svg>
-                                                <input type="file" name="file" id="file-task-passport"
-                                                    class="hidden"
-                                                    accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
-                                                <p id="task-passport-file-name">
-                                                    You can drag and drop a file here
-                                                </p>
-                                                <label for="file-task-passport"
-                                                    class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
-                                                    Upload File
-                                                </label>
-                                            </div>
-                                            <div class="my-2">
-                                                <button id="task-passport-process-btn"
-                                                    class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
-                                                    disabled>
-                                                    Process File
-                                                </button>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label
-                                                    class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                                                <input type="text" name="first_name" id="nameTask"
-                                                    :value="modalClientName" placeholder="Client's First Name"
-                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label
-                                                    class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                                                <input type="text" name="middle_name" id="middleNameTask"
-                                                    placeholder="Client's Middle Name"
-                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label
-                                                    class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                                                <input type="text" name="last_name" id="lastNameTask"
-                                                    placeholder="Client's Last Name"
-                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label
-                                                    class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
-                                                <input type="text" name="passenger_name" id="passengerName"
-                                                    :value="modalPassengerName" placeholder="Passengers's name"
-                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"
-                                                    disabled>
+                                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md py-6 ps-6 pe-2 h-[90vh] transition-all duration-300">
+                                        <div class="h-full overflow-y-auto pe-4">
+                                            <!-- Header with title and close button -->
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
+                                                <button @click="closeAll()"
+                                                    class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
                                             </div>
 
-                                            <!-- Email + DOB -->
-                                            <div class="flex gap-4 mb-3">
-                                                <div class="w-1/2">
+                                            <!-- Subtitle -->
+                                            <p class="text-gray-600 italic text-xs mb-6">Please fill in the required
+                                                client information to register</p>
+
+                                            <!-- Form -->
+                                            <form action="{{ route('clients.store') }}" method="POST"
+                                                id="client-formTask" class="space-y-4">
+                                                @csrf
+                                                <input type="hidden" name="task_id" :value="modalTaskId">
+                                                <input type="hidden" name="agent_id" :value="modalAgentId">
+                                                <!-- Name -->
+                                                <div id="upload-passport-container"
+                                                    class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
+                                                    ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24"
+                                                        fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5"
+                                                            stroke-linecap="round" />
+                                                        <path
+                                                            d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5"
+                                                            stroke="#1C274C" stroke-width="1.5" />
+                                                        <path
+                                                            d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z"
+                                                            stroke="#1C274C" stroke-width="1.5" />
+                                                    </svg>
+                                                    <input type="file" name="file" id="file-task-passport"
+                                                        class="hidden"
+                                                        accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
+                                                    <p id="task-passport-file-name">
+                                                        You can drag and drop a file here
+                                                    </p>
+                                                    <label for="file-task-passport"
+                                                        class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
+                                                        Upload File
+                                                    </label>
+                                                </div>
+                                                <div class="my-2">
+                                                    <button id="task-passport-process-btn"
+                                                        class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
+                                                        disabled>
+                                                        Process File
+                                                    </button>
+                                                </div>
+                                                <div class="mb-3">
                                                     <label
-                                                        class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                                    <input type="email" name="email" id="emailTask"
-                                                        placeholder="Client's email"
+                                                        class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                                    <input type="text" name="first_name" id="nameTask"
+                                                        :value="modalClientName" placeholder="Client's First Name"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                                                    <input type="text" name="middle_name" id="middleNameTask"
+                                                        placeholder="Client's Middle Name"
                                                         class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 </div>
-                                                <div class="w-1/2">
+                                                <div class="mb-3">
                                                     <label
-                                                        class="block text-sm font-medium text-gray-700 mb-1">Date
-                                                        of Birth</label>
-                                                    <input type="date" name="date_of_birth" id="date_of_birthTask"
-                                                        class="w-full text-gray-700 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                                    <input type="text" name="last_name" id="lastNameTask"
+                                                        placeholder="Client's Last Name"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 </div>
-                                            </div>
+                                                <div class="mb-3">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
+                                                    <input type="text" name="passenger_name" id="passengerName"
+                                                        :value="modalPassengerName" placeholder="Passengers's name"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"
+                                                        disabled>
+                                                </div>
 
-                                            <!-- Phone -->
-                                            <div class="mb-3">
-                                                <label
-                                                    class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                <div class="flex gap-2">
-                                                    <div class="relative w-40">
-                                                        <x-searchable-dropdown name="dial_code" :items="\App\Models\Country::all()->map(
+                                                <!-- Email + DOB -->
+                                                <div class="flex gap-4 mb-3">
+                                                    <div class="w-1/2">
+                                                        <label
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                                        <input type="email" name="email" id="emailTask"
+                                                            placeholder="Client's email"
+                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                    </div>
+                                                    <div class="w-1/2">
+                                                        <label
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Date
+                                                            of Birth</label>
+                                                        <input type="date" name="date_of_birth" id="date_of_birthTask"
+                                                            class="w-full text-gray-700 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                    </div>
+                                                </div>
+
+                                                <!-- Phone -->
+                                                <div class="mb-3">
+                                                    <label
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                    <div class="flex gap-2">
+                                                        <div class="relative w-40">
+                                                            <x-searchable-dropdown name="dial_code" :items="\App\Models\Country::all()->map(
                                                             fn($country) => [
                                                                 'id' => $country->dialing_code,
                                                                 'name' =>
                                                                     $country->dialing_code . ' ' . $country->name,
                                                             ],
                                                         )"
-                                                            placeholder=" Search Dial Code" :showAllOnOpen="true" />
+                                                                placeholder=" Search Dial Code" :showAllOnOpen="true" />
+                                                        </div>
+                                                        <input type="text" name="phone"
+                                                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            id="phoneTask" placeholder="Client's phone number"
+                                                            required>
                                                     </div>
-                                                    <input type="text" name="phone"
-                                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        id="phoneTask" placeholder="Client's phone number"
-                                                        required>
                                                 </div>
-                                            </div>
 
-                                            <!-- Passport + Civil -->
-                                            <div class="flex gap-4 mb-3">
-                                                <div class="w-1/2">
+                                                <!-- Passport + Civil -->
+                                                <div class="flex gap-4 mb-3">
+                                                    <div class="w-1/2">
+                                                        <label
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Passport
+                                                            Number</label>
+                                                        <input type="text" name="passport_no" id="passport_noTask"
+                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                    </div>
+                                                    <div class="w-1/2">
+                                                        <label
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Civil
+                                                            Number</label>
+                                                        <input type="text" name="civil_no" id="civil_noTask"
+                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                    </div>
+                                                </div>
+                                                <!-- Address -->
+                                                <div class="mb-3">
                                                     <label
-                                                        class="block text-sm font-medium text-gray-700 mb-1">Passport
-                                                        Number</label>
-                                                    <input type="text" name="passport_no" id="passport_noTask"
-                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                        class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                                    <input type="text" name="address" id="addressTask"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Client's address">
                                                 </div>
-                                                <div class="w-1/2">
-                                                    <label
-                                                        class="block text-sm font-medium text-gray-700 mb-1">Civil
-                                                        Number</label>
-                                                    <input type="text" name="civil_no" id="civil_noTask"
-                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+                                                <!-- Agent Name -->
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Agent's Name</label>
+                                                    <x-searchable-dropdown name="agent_id"
+                                                        :items="$agents" placeholder="Search Agent"
+                                                        :showAllOnOpen="true" />
                                                 </div>
-                                            </div>
-                                            <!-- Address -->
-                                            <div class="mb-3">
-                                                <label
-                                                    class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                                                <input type="text" name="address" id="addressTask"
-                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="Client's address">
-                                            </div>
 
-                                            <!-- Agent Name -->
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Agent's Name</label>
-                                                <x-searchable-dropdown name="agent_id"
-                                                    :items="$agents" placeholder="Search Agent"
-                                                    :showAllOnOpen="true" />
-                                            </div>
-
-                                            <!-- Buttons -->
-                                            <div class="flex justify-between gap-3 pt-4 mt-4">
-                                                <button type="button" @click="closeAll()"
-                                                    class="w-[45%] sm:w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
-                                                    Cancel
-                                                </button>
-                                                <button type="submit"
-                                                    class="w-[45%] sm:w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
-                                                    Register Client
-                                                </button>
-                                            </div>
-                                        </form>
+                                                <!-- Buttons -->
+                                                <div class="flex justify-between gap-3 pt-4 mt-4">
+                                                    <button type="button" @click="closeAll()"
+                                                        class="w-[45%] sm:w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit"
+                                                        class="w-[45%] sm:w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
+                                                        Register Client
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </table>
@@ -2586,6 +2665,10 @@
         });
 
         document.getElementById('proceedRefundBtn')?.addEventListener('click', function() {
+            // Prevent action if button is disabled
+            if (this.hasAttribute('disabled')) {
+                return;
+            }
             const selectedTasks = window.selectedTasksGlobal ?? [];
             if (selectedTasks.length === 0) return alert('No task selected.');
             const route = this.getAttribute('data-route');

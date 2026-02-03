@@ -2,6 +2,9 @@ import { searchableDropdown } from './components/searchableDropdown';
 
 window.searchableDropdown = searchableDropdown;
 
+import { ajaxSearchableDropdown } from './components/ajaxSearchableDropdown';
+window.ajaxSearchableDropdown = ajaxSearchableDropdown;
+
 import { multiPicker } from './components/multiPicker';
 window.multiPicker = multiPicker;
 

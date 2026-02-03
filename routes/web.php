@@ -179,6 +179,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [TaskController::class, 'index'])->name('index');
         Route::get('detail', [TaskController::class, 'detail'])->name('detail');
         Route::get('/get-tasks', [TaskController::class, 'getTasks'])->name('get-tasks');
+        Route::get('/search-original-tasks', [TaskController::class, 'searchOriginalTasks'])->name('search-original-tasks');
         Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');

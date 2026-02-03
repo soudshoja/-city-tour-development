@@ -7,27 +7,27 @@
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Task Selling Price</label>
                     <input readonly type="number" step="0.001"
-                        name="tasks[{{ $loopIndex }}][original_invoice_price]"
-                        value="{{ number_format($invoiceDetail->task_price, 3, '.', '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
+                           name="tasks[{{ $loopIndex }}][original_invoice_price]"
+                           value="{{ number_format($invoiceDetail->task_price, 3, '.', '') }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
                 </div>
 
                 <div class="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2"
-                        viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
+                         viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Task Cost Price</label>
                     <input readonly type="number" step="0.001"
-                        name="tasks[{{ $loopIndex }}][original_task_cost]"
-                        value="{{ number_format($invoiceDetail->supplier_price, 3, '.', '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
+                           name="tasks[{{ $loopIndex }}][original_task_cost]"
+                           value="{{ number_format($invoiceDetail->supplier_price, 3, '.', '') }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
                 </div>
 
                 <div class="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
                     <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" stroke-width="2"
-                        viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"/></svg>
+                         viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"/></svg>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
@@ -41,21 +41,21 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-6 mt-10">Refund Calculation</h3>
 
             @php
-                $calculatedRefundCharge = $task->calculated_refund_charge ?? ($task->total - $task->total);
+                $originalTaskTotal = $sourceTask->total ?? 0;
+                $calculatedRefundCharge = $task->calculated_refund_charge ?? ($originalTaskTotal - $task->total);
             @endphp
 
             <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-6 space-y-6 xl:space-y-0 xl:space-x-6">
-
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Original Task (Cost Price)</label>
                     <div class="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 font-semibold">
-                        {{ number_format($task->total, 3, '.', '') }}
+                        {{ number_format($originalTaskTotal, 3, '.', '') }}
                     </div>
                 </div>
 
                 <div class="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2"
-                        viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
+                         viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
@@ -67,7 +67,7 @@
 
                 <div class="flex items-center justify-center w-8 h-8 bg-red-100 rounded-full">
                     <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" stroke-width="2"
-                        viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"/></svg>
+                         viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"/></svg>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
@@ -76,10 +76,9 @@
                         {{ number_format($calculatedRefundCharge, 3, '.', '') }}
                     </div>
                     <input type="hidden" name="tasks[{{ $loopIndex }}][supplier_charge]" id="supplierChargeInput_{{ $loopIndex }}"
-                        value="{{ number_format($calculatedRefundCharge, 3, '.', '') }}">
+                           value="{{ number_format($calculatedRefundCharge, 3, '.', '') }}">
                 </div>
             </div>
-
         </div>
 
         <div class="text-right bg-gray-50 rounded-2xl p-6 lg:p-10 min-w-0">

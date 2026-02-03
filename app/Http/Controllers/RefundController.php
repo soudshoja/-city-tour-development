@@ -86,7 +86,7 @@ class RefundController extends Controller
         if ($sortField === 'client_name') {
             // For client_name, we need to sort the collection after fetching
             $refunds = $refundsQuery->orderBy('created_at', 'desc')->get();
-            
+
             // Sort the collection by client name
             $refunds = $refunds->sortBy(function ($refund) {
                 return strtolower($refund->refundDetails->pluck('client.full_name')->first() ?? '');
@@ -125,7 +125,16 @@ class RefundController extends Controller
         $tasks = Task::with([
             'agent.branch.company',
             'client',
-            'originalTask.invoiceDetail'
+            'invoiceDetail.invoice',
+            'originalTask.invoiceDetail.invoice',
+            'originalTask.flightDetail',
+            'originalTask.hotelDetails.hotel',
+            'originalTask.visaDetails',
+            'originalTask.insuranceDetails',
+            'flightDetail',
+            'hotelDetails.hotel',
+            'visaDetails',
+            'insuranceDetails',
         ])->whereIn('id', $taskIdsArray)->get();
 
         if ($tasks->isEmpty()) {
@@ -142,12 +151,62 @@ class RefundController extends Controller
 
         $allClients = collect();
         $invoiceIds = collect();
+
+        // Process tasks and add computed properties
+        $tasks->transform(function ($task) use (&$allClients, &$invoiceIds) {
+            $isRefundStatus = strtolower($task->status) === 'refund';
+
+            // Determine source task for details
+            $sourceTask = $isRefundStatus ? $task->originalTask : $task;
+
+            // Compute invoice detail
+            $invoiceDetail = $isRefundStatus ? $task->originalTask?->invoiceDetail : $task->invoiceDetail;
+            $invoice = $invoiceDetail?->invoice;
+
+            // Attach computed properties
+            $task->computed_source_task = $sourceTask;
+            $task->computed_invoice_detail = $invoiceDetail;
+            $task->computed_invoice = $invoice;
+            $task->computed_invoice_status = $invoice?->status;
+            $task->is_refund_status = $isRefundStatus;
+
+            $allClients->push($task->client);
+            if ($invoice) {
+                $invoiceIds->push($invoice->id);
+            }
+
+            return $task;
+        });
+
         foreach ($tasks as $task) {
-            if (
-                !$task->invoiceDetail || !$task->invoiceDetail->invoice
-            ) {
-                Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
-                return redirect()->back()->withErrors(['error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
+            // Check if task is a refund task and validate originalTask
+            if ($task->is_refund_status) {
+                if (!$task->originalTask) {
+                    Log::error('Refund task ' . $task->reference . ' does not have an original task linked');
+                    return redirect()->back()->withErrors([
+                        'error' => "Refund task {$task->reference} must be linked to an original task before processing."
+                    ]);
+                }
+
+                if (!$task->computed_invoice_detail || !$task->computed_invoice) {
+                    Log::error('Original task for refund task ' . $task->reference . ' has not been invoiced');
+                    return redirect()->back()->withErrors([
+                        'error' => "The original task for {$task->reference} has not been invoiced yet. Cannot process refund."
+                    ]);
+                }
+            } else {
+                if (!$task->computed_invoice_detail || !$task->computed_invoice) {
+                    Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
+                    return redirect()->back()->withErrors(['error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
+                }
+
+                $invoicePaymentStatus = strtolower($task->computed_invoice_status);
+                if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
+                    Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
+                    return redirect()->back()->withErrors([
+                        'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
+                    ]);
+                }
             }
 
             if (($task->agent->agent_type_id ?? 1) != 1 && ($task->agent->commission <= 0)) {
@@ -155,16 +214,6 @@ class RefundController extends Controller
                     'error' => "The agent for task {$task->reference} does not have a valid commission to process a refund. Please set a valid commission for the agent."
                 ]);
             }
-
-            $invoicePaymentStatus = strtolower($task->invoiceDetail->invoice->status);
-            if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
-                Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
-                return redirect()->back()->withErrors([
-                    'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
-                ]);
-            }
-            $allClients->push($task->client);
-            $invoiceIds->push($task->invoiceDetail->invoice->id);
         }
 
         if ($invoiceIds->unique()->count() > 1) {
@@ -174,29 +223,38 @@ class RefundController extends Controller
         }
 
         $uniqueClients = $allClients->unique('id');
+        $firstTask = $tasks->first();
+        $firstInvoice = $firstTask->computed_invoice;
+        $isPaidInvoice = in_array(strtolower($firstInvoice?->status ?? ''), ['paid', 'partial refund']);
 
         $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)
             ->get();
 
         $paymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $tasks->first()->agent->branch->company_id)
+            ->where('company_id', $firstTask->agent->branch->company_id)
             ->get();
 
-        $refundSequence = RefundSequence::firstOrCreate(['company_id' => $tasks->first()->agent->branch->company_id], ['current_sequence' => 1]);
+        $refundSequence = RefundSequence::firstOrCreate(
+            ['company_id' => $firstTask->agent->branch->company_id],
+            ['current_sequence' => 1]
+        );
         $refundNumber = $this->generateRefundNumber($refundSequence->current_sequence);
 
         return view('refunds.create-multi', [
             'refundNumber' => $refundNumber,
             'tasks' => $tasks,
             'uniqueClients' => $uniqueClients,
+            'firstTask' => $firstTask,
+            'firstInvoice' => $firstInvoice,
+            'isPaidInvoice' => $isPaidInvoice,
             'paymentGateways' => $paymentGateways,
             'paymentMethods' => $paymentMethods,
         ]);
     }
 
     public function store(Request $request)
-    { 
+    {
         $validatedData = $request->validate([
             'date' => ['required', 'date'],
             'method' => ['nullable', 'in:Bank,Cash,Online,Credit'],
@@ -221,7 +279,19 @@ class RefundController extends Controller
         DB::beginTransaction();
         try {
             // ← Changed: Load invoiceDetail directly
-            $firstTask = Task::with(['agent.branch', 'invoiceDetail.invoice'])->findOrFail($validatedData['tasks'][0]['task_id']);
+            $firstTask = Task::with(['agent.branch', 'invoiceDetail.invoice', 'originalTask.invoiceDetail.invoice'])->findOrFail($validatedData['tasks'][0]['task_id']);
+
+            $getInvoice = function ($task) {
+                if ($task->status === 'refund' && $task->originalTask) {
+                    // Refund task - get invoice from original task
+                    return $task->originalTask->invoiceDetail?->invoice;
+                } else {
+                    // Non-refund task - get invoice directly
+                    return $task->invoiceDetail?->invoice;
+                }
+            };
+
+            $firstInvoice = $getInvoice($firstTask);
 
             $refundSequence = RefundSequence::firstOrCreate(['company_id' => $firstTask->company_id], ['current_sequence' => 1]);
             $refundNumber = $this->generateRefundNumber($refundSequence->current_sequence);
@@ -242,7 +312,7 @@ class RefundController extends Controller
                 'company_id' => $firstTask->company_id,
                 'branch_id' => $firstTask->agent->branch_id,
                 'agent_id' => $firstTask->agent_id,
-                'invoice_id' => $firstTask->invoiceDetail->invoice->id,  // ← Changed: Direct access
+                'invoice_id' => $firstInvoice->id,
                 'method' => $validatedData['method'] ?? null,
                 'remarks' => $validatedData['remarks'],
                 'remarks_internal' => $validatedData['remarks_internal'],
@@ -257,8 +327,10 @@ class RefundController extends Controller
 
             foreach ($validatedData['tasks'] as $taskData) {
                 // ← Changed: Load invoiceDetail directly
-                $task = Task::with(['invoiceDetail.invoice', 'client', 'agent.branch'])->findOrFail($taskData['task_id']);
-                $paymentStatus = $task->invoiceDetail->invoice->status;  // ← Changed: Direct access
+                $task = Task::with(['client', 'agent.branch', 'invoiceDetail.invoice', 'originalTask.invoiceDetail.invoice'])->findOrFail($taskData['task_id']);
+
+                $invoice = $getInvoice($task);
+                $paymentStatus = $invoice->status;
 
                 RefundDetail::create([
                     'refund_id' => $refund->id,
@@ -283,7 +355,11 @@ class RefundController extends Controller
 
                 // ← Changed: Get task IDs directly (no originalTask)
                 $refundedTaskIds = $refund->refundDetails
-                    ->pluck('task_id')
+                    ->map(
+                        fn($d) => strtolower($d->task?->status) === 'refund'
+                            ? $d->task->original_task_id
+                            : $d->task_id
+                    )
                     ->filter()
                     ->toArray();
 
@@ -764,6 +840,15 @@ class RefundController extends Controller
     {
         $refund->load([
             'refundDetails.task.invoiceDetail.invoice',
+            'refundDetails.task.originalTask.invoiceDetail.invoice',
+            'refundDetails.task.originalTask.flightDetails',
+            'refundDetails.task.originalTask.hotelDetails.hotel',
+            'refundDetails.task.originalTask.visaDetails',
+            'refundDetails.task.originalTask.insuranceDetails',
+            'refundDetails.task.flightDetails',
+            'refundDetails.task.hotelDetails.hotel',
+            'refundDetails.task.visaDetails',
+            'refundDetails.task.insuranceDetails',
             'refundDetails.task.agent.branch.company',
             'refundDetails.task.client',
         ]);
@@ -772,9 +857,28 @@ class RefundController extends Controller
             return back()->withErrors(['error' => 'No refund details found for this refund.']);
         }
 
-        $firstTask = $refund->refundDetails->first()->task;
-        $invoicePaid = in_array($firstTask->invoiceDetail->invoice->status ?? '', ['paid', 'partial refund']);
-        $invoiceDetail = $firstTask->invoiceDetail;
+        // Process each refund detail to add computed properties
+        $refund->refundDetails->transform(function ($detail) {
+            $task = $detail->task;
+            $isRefundStatus = strtolower($task->status) === 'refund';
+
+            $sourceTask = $isRefundStatus ? $task->originalTask : $task;
+            $invoiceDetail = $isRefundStatus ? $task->originalTask?->invoiceDetail : $task->invoiceDetail;
+
+            // Attach computed properties to the detail
+            $detail->computed_source_task = $sourceTask;
+            $detail->computed_invoice_detail = $invoiceDetail;
+            $detail->computed_invoice = $invoiceDetail?->invoice;
+            $detail->computed_invoice_status = $invoiceDetail?->invoice?->status;
+            $detail->is_refund_status = $isRefundStatus;
+
+            return $detail;
+        });
+
+        $firstDetail = $refund->refundDetails->first();
+        $firstTask = $firstDetail->task;
+        $firstInvoice = $firstDetail->computed_invoice;
+        $isPaidInvoice = in_array($firstInvoice?->status ?? '', ['paid', 'partial refund']);
 
         $paymentGateways = Charge::where('company_id', $firstTask->agent->branch->company_id)
             ->where('is_active', true)->get();
@@ -784,8 +888,9 @@ class RefundController extends Controller
 
         return view('refunds.edit', [
             'refund' => $refund,
-            'invoicePaid' => $invoicePaid,
-            'invoiceDetail' => $invoiceDetail,
+            'firstTask' => $firstTask,
+            'firstInvoice' => $firstInvoice,
+            'isPaidInvoice' => $isPaidInvoice,
             'paymentGateways' => $paymentGateways,
             'paymentMethods' => $paymentMethods,
         ]);

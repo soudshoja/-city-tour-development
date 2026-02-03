@@ -4,15 +4,19 @@
             <!-- Original Task (Cost Price) -->
             <div>
                 <label class="block text-gray-700 font-semibold">Original Task (Cost Price)</label>
-                <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][original_task_cost]" value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][original_task_cost]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 3, '.', '') }}">
             </div>
 
             <!-- Original Task Profit -->
             <div>
                 <label class="block text-gray-700 font-semibold">Original Task Profit</label>
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
-                    <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][original_task_profit]" value="{{ number_format($invoiceDetail->markup_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][original_task_profit]"
+                        value="{{ number_format($invoiceDetail->markup_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
@@ -20,28 +24,37 @@
             <div>
                 <label class="block text-gray-700 font-semibold">Original Task Selling Price</label>
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path></svg>
-                    <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][original_invoice_price]" value="{{ number_format($invoiceDetail->task_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                    </svg>
+                    <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][original_invoice_price]"
+                        value="{{ number_format($invoiceDetail->task_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
             <div class="col-span-full"><hr class="my-4"></div>
 
+            @php
+                $originalTaskCost = $sourceTask->total ?? ($invoiceDetail->task_price - $invoiceDetail->markup_price);
+            @endphp
+
             <!-- Refund Fee to Client -->
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">Refund Fee to Client</label>
-                <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][refund_fee_to_client]"
+                <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][refund_fee_to_client]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
                     value="{{ old('tasks.' . $loopIndex . '.refund_fee_to_client', ($isEditing && isset($refundDetail) && $refundDetail)
-                        ? number_format($refundDetail->refund_fee_to_client ?? 0, 3, '.', '') : number_format($task->refund_charge ?? 0, 3, '.', '')) }}"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                        ? number_format($refundDetail->refund_fee_to_client ?? 0, 3, '.', '') : number_format($task->refund_charge ?? 0, 3, '.', '')) }}">
             </div>
 
             <!-- Refund Task Supplier Charges -->
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">Supplier Charges</label>
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path></svg>
-                    <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][supplier_charge]" value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                    </svg>
+                    <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][supplier_charge]" 
+                        value="{{ number_format($originalTaskCost - $task->total, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
@@ -49,24 +62,30 @@
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">New Profit</label>
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path></svg>
-                    <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][new_task_profit]"
-                        value="{{ old('tasks.' . $loopIndex . '.new_task_profit', $isEditing && $refundDetail ? number_format($refundDetail->new_task_profit, 3, '.', '') : number_format(0, 3, '.', '')) }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                    </svg>
+                    <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][new_task_profit]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
+                        value="{{ old('tasks.' . $loopIndex . '.new_task_profit', $isEditing && $refundDetail 
+                            ? number_format($refundDetail->new_task_profit, 3, '.', '') : number_format(0, 3, '.', '')) }}">
                 </div>
             </div>
 
             <!-- Refund Task (Cost Price) -->
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">Refund Task (Cost Price)</label>
-                <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][refund_task_cost_price]" value="{{ number_format($task->total, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][refund_task_cost_price]" 
+                       value="{{ number_format($task->total, 3, '.', '') }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
             </div>
 
             <!-- New Profit (repeated for layout) -->
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">New Profit</label>
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path></svg>
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                    </svg>
                     <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][new_profit_display]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
@@ -75,7 +94,9 @@
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">Total Refund to Client</label>
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path></svg>
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                    </svg>
                     <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][total_refund_to_client]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                 </div>
             </div>
@@ -94,7 +115,7 @@
         const totalRefundToClientInput = document.querySelector(`[name="tasks[${loopIndex}][total_refund_to_client]"]`);
         const refundTaskCostPriceInput = document.querySelector(`[name="tasks[${loopIndex}][refund_task_cost_price]"]`);
         const totalNetRefundChargeInput = document.querySelector(`[name="tasks[${loopIndex}][total_nett_refund_charge]"]`);
-
+        const originalTaskCost = {{ $originalTaskCost ?? 0 }};
         let initialized = false; // track whether auto-fill already happened
 
         function safeParse(v) {

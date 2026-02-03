@@ -909,6 +909,7 @@
                                                 surcharge: @js(number_format($task->surcharge ?? 0, 3, '.', '')),
                                                 supplier_surcharge: @js(number_format($task->supplier_surcharge ?? 0, 3, '.', '')),
                                                 original_task_id: @js($task->original_task_id),
+                                                original_task_name: @js($task->original_task_id),
                                                 @if($task->type === 'hotel' && $task->hotelDetails)
                                                 hotelDetails: {
                                                     hotel_id: @js($task->hotelDetails->hotel_id),
@@ -1565,7 +1566,7 @@
                                                             </div>
 
                                                             <!-- Original Task (Only for non-issued/confirmed tasks) -->
-                                                            @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed' || $task->status == null)
+                                                            @if (!in_array(strtolower((string) $task->status), ['issued', 'confirmed'], true))
                                                             <div class="flex flex-col sm:flex-row gap-4">
                                                                 <div class="flex-1 min-w-0">
                                                                     @php

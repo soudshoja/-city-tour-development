@@ -9,12 +9,6 @@
                 <div id="overall-summary-display" class="text-2xl font-bold text-right mb-4"></div>
 
                 @php
-                    $invoiceIds = $tasks->map(function($task) {
-                        if (strtolower($task->status) === 'refund') {
-                            return $task->originalTask->invoiceDetail->invoice->id ?? null;
-                        }
-                        return $task->invoiceDetail->invoice->id ?? null;
-                    })->filter()->unique()->values();
 
                     $firstTask = $tasks->first();
                     if (strtolower($firstTask->status) === 'refund') {

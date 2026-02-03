@@ -48,10 +48,19 @@ export function ajaxSearchableDropdown({
                 url.searchParams.append('search', this.search);
 
                 const response = await fetch(url);
+
+                if (!response.ok) {
+                    console.error('Error fetching tasks: HTTP', response.status, response.statusText);
+                    this.filtered = [];
+                    return;
+                }
+
                 const data = await response.json();
 
-                if (data.tasks) {
+                if (data && Array.isArray(data.tasks)) {
                     this.filtered = data.tasks;
+                } else {
+                    this.filtered = [];
                 }
             } catch (error) {
                 console.error('Error fetching tasks:', error);
@@ -89,9 +98,14 @@ export function ajaxSearchableDropdown({
             });
         },
 
+        escapeRegex(value) {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        },
+
         highlightMatch(name) {
             if (!this.search) return name;
-            const regex = new RegExp(`(${this.search})`, 'gi');
+            const escapedSearch = this.escapeRegex(this.search);
+            const regex = new RegExp(`(${escapedSearch})`, 'gi');
             return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
         }
     };

@@ -149,9 +149,9 @@
 
             @foreach($tasks as $task)
                 @php
-                    $taskInvoice = strtolower($task->status) === 'refund'
-                        ? ($task->originalTask->invoiceDetail->invoice ?? null)
-                        : ($task->invoiceDetail->invoice ?? null);
+                    $sourceTask = $task->computed_source_task;
+                    $invoiceDetail = $task->computed_invoice_detail;
+                    $taskInvoice = $task->computed_invoice;
                 @endphp
                 <div class="task-refund-section bg-gray-50 border p-6 mt-8 rounded-lg shadow-sm">
                     <input type="hidden" class="refund-status" value="{{ strtolower($taskInvoice?->status ?? 'unpaid') }}">
@@ -161,80 +161,66 @@
                     <div class="bg-gradient-to-r from-blue-50 via-white to-blue-50 shadow-sm rounded-xl p-5 border border-blue-100 mb-6">
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v1m0 14v1m8-8h1M4 12H3m15.364-6.364l.707.707M6.343 17.657l-.707.707m12.728 0l.707-.707M6.343 6.343l-.707-.707" />
-                                </svg>
                                 Task Info
                             </h3>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-y-1 text-gray-700 text-sm leading-relaxed">
                             <div><strong>Passenger Name:</strong> {{ $task->passenger_name ?? 'N/A' }}</div>
 
-                            @switch($task->type)
+                            @switch($sourceTask->type ?? $task->type)
                                 @case('flight')
-                                    <div><strong>Ticket Number:</strong> {{ $task->ticket_number ?? 'N/A' }}</div>
+                                    <div><strong>Ticket Number:</strong> {{ $sourceTask->ticket_number ?? 'N/A' }}</div>
                                     <div><strong>Route:</strong>
-                                        {{ $task->flightDetails->countryFrom->name ?? '' }} ({{ $task->flightDetails->airport_from ?? '' }})
+                                        {{ $sourceTask->flightDetails->countryFrom->name ?? '' }} ({{ $sourceTask->flightDetails->airport_from ?? '' }})
                                         →
-                                        {{ $task->flightDetails->countryTo->name ?? '' }} ({{ $task->flightDetails->airport_to ?? '' }})
+                                        {{ $sourceTask->flightDetails->countryTo->name ?? '' }} ({{ $sourceTask->flightDetails->airport_to ?? '' }})
                                     </div>
-                                    <div><strong>Departure Time:</strong> {{ $task->flightDetails->readable_departure_time ?? 'N/A' }}</div>
-                                    <div><strong>Arrival Time:</strong> {{ $task->flightDetails->readable_arrival_time ?? 'N/A' }}</div>
+                                    <div><strong>Departure Time:</strong> {{ $sourceTask->flightDetails->readable_departure_time ?? 'N/A' }}</div>
+                                    <div><strong>Arrival Time:</strong> {{ $sourceTask->flightDetails->readable_arrival_time ?? 'N/A' }}</div>
                                     @break
 
                                 @case('hotel')
-                                    <div><strong>Hotel Name:</strong> {{ $task->hotelDetails->hotel->name ?? 'N/A' }}</div>
-                                    <div><strong>Check-In:</strong> {{ $task->hotelDetails->readable_check_in ?? 'N/A' }}</div>
-                                    <div><strong>Check-Out:</strong> {{ $task->hotelDetails->readable_check_out ?? 'N/A' }}</div>
-                                    <div><strong>Room Type:</strong> 
-                                        {{ $task->hotelDetails->room_type ?? $task->hotelDetails->room_category ?? 'N/A' }}</div>
+                                    <div><strong>Hotel Name:</strong> {{ $sourceTask->hotelDetails->hotel->name ?? 'N/A' }}</div>
+                                    <div><strong>Check-In:</strong> {{ $sourceTask->hotelDetails->readable_check_in ?? 'N/A' }}</div>
+                                    <div><strong>Check-Out:</strong> {{ $sourceTask->hotelDetails->readable_check_out ?? 'N/A' }}</div>
+                                    <div><strong>Room Type:</strong> {{ $sourceTask->hotelDetails->room_type ?? $sourceTask->hotelDetails->room_category ?? 'N/A' }}</div>
                                     @php
-                                        $roomDetails = json_decode($task->hotelDetails->room_details ?? '{}', true);
+                                        $roomDetails = json_decode($sourceTask->hotelDetails->room_details ?? '{}', true);
                                         $passengerCount = count($roomDetails['passengers'] ?? []);
                                     @endphp
-                                    <div><strong>Number of Pax:</strong> {{ $passengerCount ?: ($task->number_of_pax ?? 'N/A') }}</div>
+                                    <div><strong>Number of Pax:</strong> {{ $passengerCount ?: ($sourceTask->number_of_pax ?? 'N/A') }}</div>
                                     @break
 
                                 @case('visa')
-                                    <div><strong>Visa Type:</strong> {{ $task->visaDetails->visa_type ?? 'N/A' }}</div>
-                                    <div><strong>Application #:</strong> {{ $task->visaDetails->application_number ?? 'N/A' }}</div>
+                                    <div><strong>Visa Type:</strong> {{ $sourceTask->visaDetails->visa_type ?? 'N/A' }}</div>
+                                    <div><strong>Application #:</strong> {{ $sourceTask->visaDetails->application_number ?? 'N/A' }}</div>
                                     <div><strong>Expiry Date:</strong>
-                                        {{ !empty($task->visaDetails->expiry_date)
-                                            ? \Carbon\Carbon::parse($task->visaDetails->expiry_date)->format('d M Y') : 'N/A' }}
+                                        {{ !empty($sourceTask->visaDetails->expiry_date)
+                                            ? \Carbon\Carbon::parse($sourceTask->visaDetails->expiry_date)->format('d M Y') : 'N/A' }}
                                     </div>
-                                    <div><strong>Entries:</strong> {{ $task->visaDetails->number_of_entries ?? 'N/A' }}</div>
-                                    <div><strong>Stay Duration:</strong> {{ $task->visaDetails->stay_duration ?? 'N/A' }}</div>
-                                    <div><strong>Issuing Country:</strong> {{ $task->visaDetails->issuing_country ?? 'N/A' }}</div>
+                                    <div><strong>Entries:</strong> {{ $sourceTask->visaDetails->number_of_entries ?? 'N/A' }}</div>
+                                    <div><strong>Stay Duration:</strong> {{ $sourceTask->visaDetails->stay_duration ?? 'N/A' }}</div>
+                                    <div><strong>Issuing Country:</strong> {{ $sourceTask->visaDetails->issuing_country ?? 'N/A' }}</div>
                                     @break
 
                                 @case('insurance')
-                                    <div><strong>Insurance Type:</strong> {{ $task->insuranceDetails->insurance_type ?? 'N/A' }}</div>
-                                    <div><strong>Destination:</strong> {{ $task->insuranceDetails->destination ?? 'N/A' }}</div>
-                                    <div><strong>Plan Type:</strong> {{ $task->insuranceDetails->plan_type ?? 'N/A' }}</div>
-                                    <div><strong>Duration:</strong> {{ $task->insuranceDetails->duration ?? 'N/A' }}</div>
-                                    <div><strong>Package:</strong> {{ $task->insuranceDetails->package ?? 'N/A' }}</div>
-                                    <div><strong>Document Ref:</strong> {{ $task->insuranceDetails->document_reference ?? 'N/A' }}</div>
-                                    <div><strong>Paid Leaves:</strong> {{ $task->insuranceDetails->paid_leaves ?? 'N/A' }}</div>
+                                    <div><strong>Insurance Type:</strong> {{ $sourceTask->insuranceDetails->insurance_type ?? 'N/A' }}</div>
+                                    <div><strong>Destination:</strong> {{ $sourceTask->insuranceDetails->destination ?? 'N/A' }}</div>
+                                    <div><strong>Plan Type:</strong> {{ $sourceTask->insuranceDetails->plan_type ?? 'N/A' }}</div>
+                                    <div><strong>Duration:</strong> {{ $sourceTask->insuranceDetails->duration ?? 'N/A' }}</div>
+                                    <div><strong>Package:</strong> {{ $sourceTask->insuranceDetails->package ?? 'N/A' }}</div>
                                     @break
                             @endswitch
                         </div>
                     </div>
+
                     <hr class="my-6">
 
                     @if (in_array(strtolower($taskInvoice?->status ?? ''), ['paid', 'partial refund']))
                         @include('refunds.partial.paid-invoice-section', [
                             'task' => $task,
-                            'invoiceDetail' => strtolower($task->status) === 'refund' ? $task->originalTask->invoiceDetail : $task->invoiceDetail,
-                            'loopIndex' => $loop->index,
-                            'refundDetail' => null,
-                            'isEditing' => false,
-                            'isReadOnly' => false,
-                        ])
-                    @elseif (strtolower($taskInvoice?->status ?? '') === 'unpaid')
-                        @include('refunds.partial.unpaid-invoice-section', [
-                            'task' => $task,
-                            'invoiceDetail' => strtolower($task->status) === 'refund' ? $task->originalTask->invoiceDetail : $task->invoiceDetail,
+                            'sourceTask' => $sourceTask,
+                            'invoiceDetail' => $invoiceDetail,
                             'loopIndex' => $loop->index,
                             'refundDetail' => null,
                             'isEditing' => false,
@@ -243,17 +229,19 @@
                     @else
                         @include('refunds.partial.unpaid-invoice-section', [
                             'task' => $task,
-                            'invoiceDetail' => strtolower($task->status) === 'refund' ? $task->originalTask->invoiceDetail : $task->invoiceDetail,
+                            'sourceTask' => $sourceTask,
+                            'invoiceDetail' => $invoiceDetail,
                             'loopIndex' => $loop->index,
                             'refundDetail' => null,
                             'isEditing' => false,
                             'isReadOnly' => false,
                         ])
                     @endif
+
                     <div class="mt-4">
-                        <label for="tasks[{{ $loop->index }}][remarks]" class="block text-gray-700 font-semibold mb-2">Remarks for Task {{ $task->reference }}</label>
-                        <input type="text" name="tasks[{{ $loop->index }}][remarks]" id="tasks[{{ $loop->index }}][remarks]"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        <label class="block text-gray-700 font-semibold mb-2">Remarks for Task {{ $task->reference }}</label>
+                        <input type="text" name="tasks[{{ $loop->index }}][remarks]"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                 </div>
             @endforeach

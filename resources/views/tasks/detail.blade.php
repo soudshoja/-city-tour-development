@@ -908,6 +908,7 @@
                                                 tax: @js(number_format($task->tax ?? 0, 3, '.', '')),
                                                 surcharge: @js(number_format($task->surcharge ?? 0, 3, '.', '')),
                                                 supplier_surcharge: @js(number_format($task->supplier_surcharge ?? 0, 3, '.', '')),
+                                                original_task_id: @js($task->original_task_id),
                                                 @if($task->type === 'hotel' && $task->hotelDetails)
                                                 hotelDetails: {
                                                     hotel_id: @js($task->hotelDetails->hotel_id),
@@ -1476,6 +1477,10 @@
                                             editDraft.changes.agent_id = $event.detail.value;
                                             editDraft.changes.agent_name = $event.detail.displayName;
                                         }
+                                        if ($event.detail.name === 'original_task_id') {
+                                            editDraft.changes.original_task_id = $event.detail.value;
+                                            editDraft.changes.original_task_name = $event.detail.displayName;
+                                        }
                                     }
                                 ">
 
@@ -1790,8 +1795,18 @@
                                                         <div class="flex items-center justify-between text-xs border-b pb-2">
                                                             <div class="text-gray-500 capitalize" x-text="field.replaceAll('_',' ')"></div>
                                                             <div class="text-right">
-                                                                <div class="text-gray-400 line-through" x-text="field === 'client_id' ? (draft.original.client_name ?? draft.original[field] ?? '-') : (field === 'agent_id' ? (draft.original.agent_name ?? draft.original[field] ?? '-') : (draft.original[field] ?? '-'))"></div>
-                                                                <div class="text-gray-900 font-semibold" x-text="field === 'client_id' ? (draft.changes.client_name ?? draft.changes[field] ?? '-') : (field === 'agent_id' ? (draft.changes.agent_name ?? draft.changes[field] ?? '-') : (draft.changes[field] ?? '-'))"></div>
+                                                                <div class="text-gray-400 line-through" 
+                                                                    x-text="field === 'client_id' ? (draft.original.client_name ?? draft.original[field] ?? '-') 
+                                                                        : (field === 'agent_id' ? (draft.original.agent_name ?? draft.original[field] ?? '-') 
+                                                                        : (field === 'original_task_id' ? (draft.original.original_task_name ?? draft.original[field] ?? '-') 
+                                                                        : (draft.original[field] ?? '-')))">
+                                                                </div>
+                                                                <div class="text-gray-900 font-semibold" 
+                                                                    x-text="field === 'client_id' ? (draft.changes.client_name ?? draft.changes[field] ?? '-') 
+                                                                        : (field === 'agent_id' ? (draft.changes.agent_name ?? draft.changes[field] ?? '-') 
+                                                                        : (field === 'original_task_id' ? (draft.changes.original_task_name ?? draft.changes[field] ?? '-') 
+                                                                        : (draft.changes[field] ?? '-')))">
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </template>

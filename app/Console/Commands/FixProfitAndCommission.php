@@ -150,10 +150,10 @@ class FixProfitAndCommission extends Command
 
     private function getTotalAccountingFee(Invoice $invoice, int $companyId): float
     {
-        // Non-credit partials — stored gateway_fee
+        // Non-credit and non-cash partials — stored gateway_fee
         $partialFees = (float) InvoicePartial::where('invoice_id', $invoice->id)
             ->whereNotNull('payment_gateway')
-            ->whereNot('payment_gateway', 'Credit')
+            ->whereNotIn('payment_gateway', ['Credit', 'Cash'])
             ->sum('gateway_fee');
 
         // Credit usage — proportional fees

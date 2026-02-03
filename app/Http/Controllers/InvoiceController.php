@@ -3062,12 +3062,17 @@ class InvoiceController extends Controller
             ->with('agent', 'client', 'invoiceDetails', 'invoiceDetails.task.paymentMethod', 'invoicePartials')
             ->first();
 
+        if (! $invoice) {
+            abort(404, 'Invoice not found.');
+        }
         $company = Company::find($companyId);
 
         $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
 
-        $journalEntries = JournalEntry::where('invoice_id', $invoice->id)
-            ->orWhereIn('task_id', $taskIds)
+        $journalEntries = JournalEntry::where(function ($q) use ($invoice, $taskIds) {
+                $q->where('invoice_id', $invoice->id)
+                  ->orWhereIn('task_id', $taskIds);
+            })
             ->get();
 
         $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);

@@ -1018,6 +1018,9 @@ class ClientController extends Controller
         $accountingFee = $chargeResult['accountingFee'];
         $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
 
+        $payment->gateway_fee = $accountingFee;
+        $payment->save();
+
         // STEP 2: Calculate amounts based on WHO PAYS FEE
         if ($paidBy === 'Company') {
             $assetAmount = $payment->amount - $accountingFee;
@@ -1050,6 +1053,7 @@ class ClientController extends Controller
                 'payment_id'  => $payment->id,
                 'description' => 'Topup Credit via ' . $payment->voucher_number,
                 'amount'      => $clientCreditAmount,
+                'gateway_fee' => $accountingFee,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1091,7 +1095,6 @@ class ClientController extends Controller
                 throw new \Exception('Client Advance Payment Gateway account not found');
             }
 
-            // CREATE ONE TRANSACTION FOR ALL ENTRIES
             $transaction = Transaction::create([
                 'branch_id' => $agent->branch->id,
                 'company_id' => $companyId,
@@ -1212,53 +1215,6 @@ class ClientController extends Controller
             Log::error('Error adding JournalEntry: ' . $e->getMessage());
             return ['status' => 'error', 'message' => 'Failed to add JournalEntry: ' . $e->getMessage()];
         }
-    }
-
-    public function updateCredit($id, $amount)
-    {
-        try {
-            $client = Client::findOrFail($id);
-            // $client->credit = $amount;
-            // $client->save();
-
-            $balanceCredit = Credit::getTotalCreditsByClient($client->id);
-            $difference = $amount - $balanceCredit;
-
-            Log::info('Credit Update', [
-                'client_id'       => $client->id,
-                'client_name'     => $client->full_name,
-                'current_balance' => $balanceCredit,
-                'new_amount'      => $amount,
-                'difference'      => $difference,
-                'change_type'     => $difference > 0 ? 'Increase' : ($difference < 0 ? 'Decrease' : 'No change'),
-            ]);
-
-            if ($difference != 0) {
-                Credit::create([
-                    'company_id'  => $client->agent->branch->company->id,
-                    'client_id'   => $client->id,
-                    'type'        => 'Update Credit',
-                    'description' => 'Update Credit for ' . $client->full_name,
-                    'amount'      => $difference,
-                ]);
-            }
-        } catch (Exception $e) {
-            logger('Error updating credit: ' . $e->getMessage());
-            return [
-                'status' => 'error',
-                'message' => 'Failed to update credit',
-            ];
-        }
-
-        logger('Credit updated successfully for client ID: ' . $id);
-        return [
-            'status' => 'success',
-            'message' => 'Credit updated successfully',
-            'data' => [
-                'client_id' => $client->id,
-                'credit' => $difference,
-            ],
-        ];
     }
 
     public function refund($id, Request $request)

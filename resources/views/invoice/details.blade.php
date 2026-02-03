@@ -146,16 +146,26 @@
                                                 <dt class="font-medium text-gray-500 dark:text-slate-400">GDS Reference</dt>
                                                 <dd class="text-gray-900 dark:text-slate-200">{{ $item->task->gds_reference ?: 'N/A' }}</dd>
                                             </div>
-                                            <div>
+                                            <!-- <div>
                                                 <dt class="font-medium text-gray-500 dark:text-slate-400">Airline Reference</dt>
                                                 <dd class="text-gray-900 dark:text-slate-200">{{ $item->task->airline_reference ?: 'N/A' }}</dd>
-                                            </div>
+                                            </div> -->
                                             <div>
                                                 <dt class="font-medium text-gray-500 dark:text-slate-400">Issued Date</dt>
                                                 <dd class="text-gray-900 dark:text-slate-200">
                                                     {{ optional($item->task->issued_date)->format('d M Y') ?? 'N/A' }}
                                                 </dd>
                                             </div>
+                                            @if($item->task->paymentMethod)
+                                            <div>
+                                                <dt class="font-medium text-gray-500 dark:text-slate-400">Payment Method</dt>
+                                                <dd class="text-gray-900 dark:text-slate-200">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                                        {{ $item->task->paymentMethod->name }}
+                                                    </span>
+                                                </dd>
+                                            </div>
+                                            @endif
                                             <div class="sm:col-span-2 md:col-span-2">
                                                 <dt class="font-medium text-gray-500 dark:text-slate-400">Additional Info</dt>
                                                 <dd class="text-gray-900 dark:text-slate-200">{{ $item->task->additional_info }}</dd>
@@ -457,7 +467,7 @@
                 </p>
                 @endif
             </section>
-            @if($invoice->payment_type)
+            @if($journalEntries->isNotEmpty())
             <section class="px-8 pt-2 pb-6">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Financial Ledger</h2>
                 <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded-lg">

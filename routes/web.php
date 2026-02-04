@@ -117,6 +117,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/download-pdf', [SystemSettingController::class, 'downloadPdf'])->name('download-pdf');
         Route::post('/save-tab', [SystemSettingController::class, 'saveTab'])->name('save-tab');
         Route::post('/check-file-status', [SystemSettingController::class, 'checkFileStatus'])->name('check-file-status');
+        Route::get('/hotels/list', [SystemSettingController::class, 'hotelsList'])->name('hotels.list');
+        Route::post('/hotels', [SystemSettingController::class, 'storeHotel'])->name('hotels.store');
+        Route::put('/hotels/{id}', [SystemSettingController::class, 'updateHotel'])->name('hotels.update');
+        Route::delete('/hotels/{id}', [SystemSettingController::class, 'deleteHotel'])->name('hotels.delete');
+        Route::get('/countries/search', [SystemSettingController::class, 'searchCountries'])->name('countries.search');
+        Route::post('/countries', [SystemSettingController::class, 'storeCountry'])->name('countries.store');
     });
 
     // Agents list

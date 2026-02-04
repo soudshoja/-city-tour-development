@@ -3561,7 +3561,6 @@ class PaymentController extends Controller
                         $paymentTransaction->transaction_id = $transactionId;
                         $paymentTransaction->save();
                     }
-
                 } else {
                     $coaResult = $this->createInvoicePaymentCOA(
                         payment: $payment,
@@ -4624,7 +4623,7 @@ class PaymentController extends Controller
 
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
 
-                    if($paymentTransaction && $transactionId) {
+                    if ($paymentTransaction && $transactionId) {
                         Log::info('[UPAYMENT] Updating payment transaction ID: ' . $paymentTransaction->id, [
                             'payment_id' => $payment->id,
                             'status' => $transaction['status'] ?? '',
@@ -5137,7 +5136,6 @@ class PaymentController extends Controller
                 );
 
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed — Transaction declined.');
-
             }
 
             return redirect()->route('payment.failed')->with('error', 'Payment failed.');
@@ -5317,7 +5315,7 @@ class PaymentController extends Controller
 
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
 
-                    if($paymentTransaction && $transactionId) {
+                    if ($paymentTransaction && $transactionId) {
 
                         Log::info('[HESABE WEBHOOK] Updating payment transaction ID: ' . $paymentTransaction->id, [
                             'payment_id' => $payment->id,
@@ -5332,7 +5330,6 @@ class PaymentController extends Controller
                             'payment_id' => $payment->id,
                             'transaction_id' => $transactionId,
                         ]);
-
                     }
 
                     Log::info('Credit added successfully via addCredit()', [
@@ -6724,5 +6721,108 @@ class PaymentController extends Controller
         );
 
         return $response->body();
+    }
+
+    public function outstanding(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $plSort = in_array($request->input('ps', 'created_at'), ['voucher_number', 'client_name', 'created_at']) ? $request->input('ps', 'created_at') : 'created_at';
+        $plDirection = in_array($request->input('pd', 'desc'), ['asc', 'desc']) ? $request->input('pd', 'desc') : 'desc';
+        $invSort = in_array($request->input('is', 'created_at'), ['invoice_number', 'created_at', 'invoice_date']) ? $request->input('is', 'created_at') : 'created_at';
+        $invDirection = in_array($request->input('id', 'desc'), ['asc', 'desc']) ? $request->input('id', 'desc') : 'desc';
+        $search = $request->input('search', '');
+
+        $agentsQuery = Agent::query();
+        switch ($user->role_id) {
+            case Role::ADMIN:
+                if ($companyId) $agentsQuery->whereHas('branch', fn($q) => $q->where('company_id', $companyId));
+                break;
+            case Role::COMPANY:
+            case Role::ACCOUNTANT:
+                $agentsQuery->whereIn('branch_id', Branch::where('company_id', $companyId)->pluck('id'));
+                break;
+            case Role::BRANCH:
+                $agentsQuery->where('branch_id', $user->branch->id);
+                break;
+            case Role::AGENT:
+                $agentsQuery->where('id', $user->agent->id);
+                break;
+            default:
+                return redirect()->back()->with('error', 'You are not authorized to view this page.');
+        }
+        $agentIds = $agentsQuery->pluck('id')->toArray();
+
+        $paymentLinksQuery = Payment::with(['client', 'agent', 'paymentMethod', 'createdBy', 'myFatoorahPayment', 'hesabePayment'])
+            ->where(fn($q) => $q->whereHas('invoice', fn($sub) => $sub->whereIn('invoices.agent_id', $agentIds))
+                ->orWhereIn('payments.agent_id', $agentIds))
+            ->where('payments.status', '!=', 'completed');
+
+        if ($search) {
+            $paymentLinksQuery->where(function ($q) use ($search) {
+                $q->where('payments.voucher_number', 'like', "%{$search}%")
+                    ->orWhereHas('client', fn($sub) => $sub->where(fn($s) => $s
+                        ->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) like ?", ["%{$search}%"])))
+                    ->orWhereHas('agent', fn($sub) => $sub->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($plSort === 'client_name') {
+            $paymentLinksQuery->leftJoin('clients', 'payments.client_id', '=', 'clients.id')
+                ->orderByRaw("CONCAT(COALESCE(clients.first_name, ''), ' ', COALESCE(clients.middle_name, ''), ' ', COALESCE(clients.last_name, '')) $plDirection")
+                ->select('payments.*');
+        } else {
+            $paymentLinksQuery->orderBy("payments.$plSort", $plDirection);
+        }
+
+        $paymentLinks = $paymentLinksQuery->paginate(20, ['*'], 'pp');
+        $totalPaymentLinks = Payment::where(fn($q) => $q->whereHas('invoice', fn($sub) => $sub->whereIn('invoices.agent_id', $agentIds))
+            ->orWhereIn('payments.agent_id', $agentIds))
+            ->where('payments.status', '!=', 'completed')
+            ->count();
+
+        $companiesId = ($user->role_id == Role::ADMIN && !$companyId) ? Company::pluck('id')->toArray() : [$companyId];
+
+        $invoicesQuery = Invoice::with(['agent.branch', 'invoiceDetails.task.supplier', 'client', 'invoicePartials'])
+            ->whereIn('agent_id', $agentIds)
+            ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId))
+            ->whereIn('status', ['unpaid', 'partial']);
+
+        if ($search) {
+            $invoicesQuery->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                    ->orWhereHas('client', fn($sub) => $sub->where(fn($s) => $s
+                        ->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) like ?", ["%{$search}%"])))
+                    ->orWhereHas('agent', fn($sub) => $sub->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $invoices = $invoicesQuery->orderBy($invSort, $invDirection)->paginate(20, ['*'], 'ip');
+
+        $invoices->each(fn($invoice) => $invoice->client_pay = $invoice->amount + $invoice->invoicePartials->sum('service_charge'));
+
+        $totalInvoices = Invoice::whereIn('agent_id', $agentIds)
+            ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId))
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->count();
+
+        return view('payment.outstanding', compact(
+            'paymentLinks',
+            'totalPaymentLinks',
+            'invoices',
+            'totalInvoices',
+            'plSort',
+            'plDirection',
+            'invSort',
+            'invDirection',
+            'search'
+        ));
     }
 }

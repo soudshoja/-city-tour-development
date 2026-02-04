@@ -24,6 +24,19 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Tasks
                 list</a></menuitem>
             @endcan
+            @can('viewAny', App\Models\Payment::class)
+            <menuitem>
+                <a href="{{ route('payment.outstanding') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Outstanding
+                    </div>
+                </a>
+            </menuitem>
+            @endcan
         </menu>
         </menuitem>
 

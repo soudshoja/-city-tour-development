@@ -1,3 +1,6 @@
+@push('styles')
+    @vite(['resources/css/system-setting/main.css', 'resources/css/system-setting/hotel.css'])
+@endpush
 <x-app-layout>
     <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
         <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Dashboard</a>
@@ -45,6 +48,16 @@
                         </svg>
                         WhatsApp
                     </button>
+
+                    <button
+                        @click="saveTab('hotel')"
+                        :class="activeTab === 'hotel' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                        Hotel
+                    </button>
                 </nav>
             </div>
 
@@ -55,6 +68,10 @@
 
                 <div x-show="activeTab === 'whatsapp'" x-cloak>
                     @include('admin.system-settings.partials.whatsapp')
+                </div>
+
+                <div x-show="activeTab === 'hotel'">
+                    @include('admin.system-settings.partials.hotel')
                 </div>
             </div>
         </div>

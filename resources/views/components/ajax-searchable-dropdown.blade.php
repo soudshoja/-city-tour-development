@@ -5,7 +5,8 @@
 'taskId' => '',
 'ajaxUrl' => '',
 'placeholder' => 'Select an option',
-'label' => null
+'label' => null,
+'responseKey' => 'tasks',
 ])
 <div
     x-data="ajaxSearchableDropdown({
@@ -14,7 +15,8 @@
         name: '{{ $name ?? 'dropdown' }}',
         placeholder: '{{ $placeholder ?? 'Select an option' }}',
         taskId: '{{ $taskId }}',
-        ajaxUrl: '{{ $ajaxUrl }}'
+        ajaxUrl: '{{ $ajaxUrl }}',
+        responseKey: '{{ $responseKey ?? 'tasks' }}',
     })"
     x-init="init()"
     class="w-full">
@@ -46,14 +48,18 @@
                 Loading...
             </div>
 
-            <div x-show="!loading && filtered.length === 0" class="px-3 py-2 text-sm text-gray-500 text-center">
-                No results found
-            </div>
+            <template x-if="!loading">
+                <div>
+                    <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-gray-500 text-center">
+                        No results found
+                    </div>
 
-            <template x-for="option in filtered" :key="option.id">
-                <div @click="select(option)"
-                    class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                    x-html="highlightMatch(option.name)">
+                    <template x-for="option in filtered" :key="option.id">
+                        <div @click="select(option)"
+                            class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            x-html="highlightMatch(option.name)">
+                        </div>
+                    </template>
                 </div>
             </template>
         </div>

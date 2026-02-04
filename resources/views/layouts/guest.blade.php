@@ -7,14 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
 
-    <link rel="stylesheet" type="text/css" media="screen" href="{{ asset('css/perfect-scrollbar.min.css') }}" />
-    <link rel="stylesheet" type="text/css" media="screen" href="{{ asset('css/style.css') }}" />
-    <link rel="stylesheet" type="text/css" media="screen" href="{{ asset('css/animate.css') }}" />
-    <link rel="stylesheet" type="text/css" media="screen" href="{{ asset('css/app.css') }}" />
-
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
-
+    @include('layouts.links')
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -23,7 +16,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
     <!-- Scripts -->
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/guest.css'])
 
     {!! RecaptchaV3::initJs() !!}
 

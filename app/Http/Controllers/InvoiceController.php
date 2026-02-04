@@ -156,34 +156,6 @@ class InvoiceController extends Controller
         return view('invoice.index', compact('invoices', 'totalNet', 'totalSales', 'companyId'));
     }
 
-    public function salelist()
-    {
-        $user = Auth::user();
-
-        // Ensure that the user is a company
-        if ($user->role_id !== Role::COMPANY) {
-            return redirect()->back()->with('error', 'Unauthorized access.');
-        }
-
-        // Get all agents under the company
-        $agents = Agent::with(['branch' => function ($query) use ($user) {
-            $query->where('branch_id', $user->company->branch->id);
-        }])->pluck('id');
-
-        // Get invoices related to those agents
-        $invoices = Invoice::where('status', 'paid')->with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
-
-        // Get clients related to the agents
-        $clients = Client::whereIn('agent_id', $agents)->get();
-
-        // Get tasks related to the agents
-        $tasks = Task::whereIn('agent_id', $agents)->get();
-
-        $totalInvoices = $invoices->total();
-
-        return view('invoice.salelist', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
-    }
-
     public function create(Request $request)
     {
         $user = Auth::user();

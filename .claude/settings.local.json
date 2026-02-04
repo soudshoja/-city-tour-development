@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for class in \"recent-submenu\" \"sidebar\" \"sticky-column\" \"sticky-header\" \"toggle-sidebar\")",
+      "Bash(do echo \"=== $class ===\")",
+      "Bash(done)",
+      "Bash(for class in \"btn-danger\" \"btn-dark\" \"btn-info\" \"btn-lg\" \"btn-outline-danger\" \"btn-outline-dark\" \"btn-outline-info\" \"btn-outline-primary\" \"btn-outline-secondary\" \"btn-outline-success\" \"btn-outline-warning\")"
+    ]
+  }
+}

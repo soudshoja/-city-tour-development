@@ -505,6 +505,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
         Route::get('/failed', [PaymentController::class, 'failed'])->name('failed')->withoutMiddleware(['auth']);
+        Route::get('/outstanding', [PaymentController::class, 'outstanding'])->name('outstanding');
 
         Route::group([
             'prefix' => 'link',

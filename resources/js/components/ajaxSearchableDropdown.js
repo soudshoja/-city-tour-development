@@ -4,7 +4,8 @@ export function ajaxSearchableDropdown({
     selectedName = '',
     placeholder = 'Select an option',
     taskId = '',
-    ajaxUrl = ''
+    ajaxUrl = '',
+    responseKey = 'tasks',
 }) {
     return {
         open: false,
@@ -20,6 +21,7 @@ export function ajaxSearchableDropdown({
         debounceTimer: null,
         originalId: selectedId,
         originalName: selectedName,
+        responseKey,
 
         init() {
             // If there's a selected name but filtered is empty, populate it
@@ -57,8 +59,8 @@ export function ajaxSearchableDropdown({
 
                 const data = await response.json();
 
-                if (data && Array.isArray(data.tasks)) {
-                    this.filtered = data.tasks;
+                if (data && Array.isArray(data[this.responseKey])) {
+                    this.filtered = data[this.responseKey];
                 } else {
                     this.filtered = [];
                 }

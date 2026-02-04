@@ -174,8 +174,8 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                            <textarea name="api_key" rows="3" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your secret key" required></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">API Key <span class="text-gray-400 font-normal">(Optional)</span></label>
+                            <textarea name="api_key" rows="3" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your secret key (optional for custom gateways)"></textarea>
                         </div>
 
                         <div class="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -189,6 +189,16 @@
                                     <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
+                            <div class="flex items-center justify-between border-t border-gray-200 pt-3">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
+                                    <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" checked>
+                                    <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
                             @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
                             <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                 <div>
@@ -196,7 +206,7 @@
                                     <p class="text-xs text-gray-400">Allow payment link generation</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer" checked>
+                                    <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer">
                                     <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
@@ -254,6 +264,17 @@
                             </div>
                             <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                 <div>
+                                    <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
+                                    <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice">
+                                    <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
+                            <div class="flex items-center justify-between border-t border-gray-200 pt-3">
+                                <div>
                                     <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
                                     <p class="text-xs text-gray-400">Allow payment link generation</p>
                                 </div>
@@ -262,6 +283,7 @@
                                     <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
+                            @endif
                         </div>
                     </div>
 

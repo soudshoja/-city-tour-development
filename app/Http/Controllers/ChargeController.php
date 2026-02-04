@@ -192,7 +192,7 @@ class ChargeController extends Controller
             'can_charge_invoice' => 'nullable|boolean',
             'is_active' => 'nullable|boolean',
             'can_generate_link' => 'nullable|boolean',
-            'api_key' => 'required|string',
+            'api_key' => 'nullable|string',
         ]);
 
         // Fetch COA for Payment Gateway
@@ -277,11 +277,11 @@ class ChargeController extends Controller
                 'branch_id' => $branchId,
                 'charge_type' => $request->get('charge_type'),
                 'paid_by' => $request->get('paid_by'),
-                'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
-                'has_url' => $request->has('has_url') ? 1 : 0,
-                'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
-                'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
-                'can_generate_link' => $request->has('can_generate_link') ? $request->boolean('can_generate_link') : true,
+                'is_auto_paid' => $request->boolean('is_auto_paid'),
+                'has_url' => $request->boolean('has_url'),
+                'can_charge_invoice' => $request->boolean('can_charge_invoice'),
+                'is_active' => $request->boolean('is_active'),
+                'can_generate_link' => $request->boolean('can_generate_link'),
                 'api_key' => $request->get('api_key'),
                 'is_system_default' => false,
                 'can_be_deleted' => true,

@@ -18,10 +18,16 @@ use App\Models\Client;
 use App\Models\Charge;
 use App\Models\Company;
 use App\Models\PaymentMethod;
+use App\Models\Country;
+use App\Models\Setting;
+use App\Models\Agent;
+use App\Models\Supplier;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Arr;
 use App\Http\Controllers\Controller;
 use App\Models\InvoiceSequence;
 use App\Models\RefundClient;
@@ -113,145 +119,329 @@ class RefundController extends Controller
         return sprintf('RF-%s-%05d', $year, $sequence);
     }
 
-    public function create(Request $request)
-    {
-        $taskIds = $request->query('task_ids', '');
-        $taskIdsArray = is_string($taskIds) ? explode(',', $taskIds) : $taskIds;
+   public function create(Request $request)
+{
+    $user = Auth::user();
+    $companyId = getCompanyId($user);
 
-        if (empty($taskIdsArray)) {
-            return redirect()->back()->withErrors(['error' => 'No tasks selected for refund.']);
+    $selectedCompany = $companyId ? Company::find($companyId) : null;
+    $agents = collect();
+    $branches = collect();
+    $clients = collect();
+    $agentsId = [];
+
+    $taskIds = $request->query('task_ids', '');
+    $taskIdsArray = is_string($taskIds) ? explode(',', $taskIds) : $taskIds;
+
+    if (empty($taskIdsArray)) {
+        return redirect()->back()->withErrors(['error' => 'No tasks selected for refund.']);
+    }
+
+    // Load tasks for VALIDATION with computed relationships
+    $tasksForValidation = Task::with([
+        'agent.branch.company',
+        'client',
+        'supplier',
+        'invoiceDetail.invoice',
+        'originalTask.invoiceDetail.invoice',
+    ])->whereIn('id', $taskIdsArray)->get();
+
+    if ($tasksForValidation->isEmpty()) {
+        return back()->withErrors(['error' => 'No valid tasks found for refund.']);
+    }
+
+    // Check if already refunded
+    $refundedTaskIds = RefundDetail::whereIn('task_id', $tasksForValidation->pluck('id'))->pluck('task_id')->unique();
+    if ($refundedTaskIds->isNotEmpty()) {
+        $refundedTaskRefs = $tasksForValidation->whereIn('id', $refundedTaskIds)->pluck('reference')->join(', ');
+        return redirect()->back()->withErrors([
+            'error' => "Refund already exists for task(s): {$refundedTaskRefs}. You cannot create a new refund for these tasks."
+        ]);
+    }
+
+    $invoiceIds = collect();
+
+    // ========== VALIDATIONS (don't modify the tasks) ==========
+    foreach ($tasksForValidation as $task) {
+        $isRefundStatus = strtolower($task->status) === 'refund';
+        $invoiceDetail = $isRefundStatus ? $task->originalTask?->invoiceDetail : $task->invoiceDetail;
+        $invoice = $invoiceDetail?->invoice;
+
+        if ($invoice) {
+            $invoiceIds->push($invoice->id);
         }
 
-        $tasks = Task::with([
-            'agent.branch.company',
-            'client',
-            'invoiceDetail.invoice',
-            'originalTask.invoiceDetail.invoice',
-            'originalTask.flightDetail',
-            'originalTask.hotelDetails.hotel',
-            'originalTask.visaDetails',
-            'originalTask.insuranceDetails',
-            'flightDetail',
-            'hotelDetails.hotel',
-            'visaDetails',
-            'insuranceDetails',
-        ])->whereIn('id', $taskIdsArray)->get();
-
-        if ($tasks->isEmpty()) {
-            return back()->withErrors(['error' => 'No valid tasks found for refund.']);
-        }
-
-        $refundedTaskIds = RefundDetail::whereIn('task_id', $tasks->pluck('id'))->pluck('task_id')->unique();
-        if ($refundedTaskIds->isNotEmpty()) {
-            $refundedTaskRefs = $tasks->whereIn('id', $refundedTaskIds)->pluck('reference')->join(', ');
-            return redirect()->back()->withErrors([
-                'error' => "Refund already exists for task(s): {$refundedTaskRefs}. You cannot create a new refund for these tasks."
-            ]);
-        }
-
-        $allClients = collect();
-        $invoiceIds = collect();
-
-        // Process tasks and add computed properties
-        $tasks->transform(function ($task) use (&$allClients, &$invoiceIds) {
-            $isRefundStatus = strtolower($task->status) === 'refund';
-
-            // Determine source task for details
-            $sourceTask = $isRefundStatus ? $task->originalTask : $task;
-
-            // Compute invoice detail
-            $invoiceDetail = $isRefundStatus ? $task->originalTask?->invoiceDetail : $task->invoiceDetail;
-            $invoice = $invoiceDetail?->invoice;
-
-            // Attach computed properties
-            $task->computed_source_task = $sourceTask;
-            $task->computed_invoice_detail = $invoiceDetail;
-            $task->computed_invoice = $invoice;
-            $task->computed_invoice_status = $invoice?->status;
-            $task->is_refund_status = $isRefundStatus;
-
-            $allClients->push($task->client);
-            if ($invoice) {
-                $invoiceIds->push($invoice->id);
-            }
-
-            return $task;
-        });
-
-        foreach ($tasks as $task) {
-            // Check if task is a refund task and validate originalTask
-            if ($task->is_refund_status) {
-                if (!$task->originalTask) {
-                    Log::error('Refund task ' . $task->reference . ' does not have an original task linked');
-                    return redirect()->back()->withErrors([
-                        'error' => "Refund task {$task->reference} must be linked to an original task before processing."
-                    ]);
-                }
-
-                if (!$task->computed_invoice_detail || !$task->computed_invoice) {
-                    Log::error('Original task for refund task ' . $task->reference . ' has not been invoiced');
-                    return redirect()->back()->withErrors([
-                        'error' => "The original task for {$task->reference} has not been invoiced yet. Cannot process refund."
-                    ]);
-                }
-            } else {
-                if (!$task->computed_invoice_detail || !$task->computed_invoice) {
-                    Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
-                    return redirect()->back()->withErrors(['error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."]);
-                }
-
-                $invoicePaymentStatus = strtolower($task->computed_invoice_status);
-                if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
-                    Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
-                    return redirect()->back()->withErrors([
-                        'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
-                    ]);
-                }
-            }
-
-            if (($task->agent->agent_type_id ?? 1) != 1 && ($task->agent->commission <= 0)) {
+        if ($isRefundStatus) {
+            if (!$task->originalTask) {
+                Log::error('Refund task ' . $task->reference . ' does not have an original task linked');
                 return redirect()->back()->withErrors([
-                    'error' => "The agent for task {$task->reference} does not have a valid commission to process a refund. Please set a valid commission for the agent."
+                    'error' => "Refund task {$task->reference} must be linked to an original task before processing."
+                ]);
+            }
+
+            if (!$invoiceDetail || !$invoice) {
+                Log::error('Original task for refund task ' . $task->reference . ' has not been invoiced');
+                return redirect()->back()->withErrors([
+                    'error' => "The original task for {$task->reference} has not been invoiced yet. Cannot process refund."
+                ]);
+            }
+        } else {
+            if (!$invoiceDetail || !$invoice) {
+                Log::error('Task for ' . $task->reference . ' has not yet been invoiced or invoice details are missing');
+                return redirect()->back()->withErrors([
+                    'error' => "Task for {$task->reference} has not been invoiced yet or invoice details are missing."
+                ]);
+            }
+
+            $invoicePaymentStatus = strtolower($invoice->status ?? '');
+            if (!in_array($invoicePaymentStatus, ['paid', 'unpaid', 'partial', 'partial refund'])) {
+                Log::error('Invoice status of task ' . $task->reference . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
+                return redirect()->back()->withErrors([
+                    'error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.'
                 ]);
             }
         }
 
-        if ($invoiceIds->unique()->count() > 1) {
+        if (($task->agent->agent_type_id ?? 1) != 1 && ($task->agent->commission ?? 0) <= 0) {
             return redirect()->back()->withErrors([
-                'error' => 'Refund cannot include tasks from different original invoices. Please process each invoice refund separately.'
+                'error' => "The agent for task {$task->reference} does not have a valid commission to process a refund. Please set a valid commission for the agent."
             ]);
         }
+    }
 
-        $uniqueClients = $allClients->unique('id');
-        $firstTask = $tasks->first();
-        $firstInvoice = $firstTask->computed_invoice;
-        $isPaidInvoice = in_array(strtolower($firstInvoice?->status ?? ''), ['paid', 'partial refund']);
-
-        $paymentGateways = Charge::where('can_generate_link', true)
-            ->where('is_active', true)
-            ->get();
-
-        $paymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $firstTask->agent->branch->company_id)
-            ->get();
-
-        $refundSequence = RefundSequence::firstOrCreate(
-            ['company_id' => $firstTask->agent->branch->company_id],
-            ['current_sequence' => 1]
-        );
-        $refundNumber = $this->generateRefundNumber($refundSequence->current_sequence);
-
-        return view('refunds.create-multi', [
-            'refundNumber' => $refundNumber,
-            'tasks' => $tasks,
-            'uniqueClients' => $uniqueClients,
-            'firstTask' => $firstTask,
-            'firstInvoice' => $firstInvoice,
-            'isPaidInvoice' => $isPaidInvoice,
-            'paymentGateways' => $paymentGateways,
-            'paymentMethods' => $paymentMethods,
+    // Validation: different invoices
+    if ($invoiceIds->unique()->count() > 1) {
+        return redirect()->back()->withErrors([
+            'error' => 'Refund cannot include tasks from different original invoices. Please process each invoice refund separately.'
         ]);
     }
+
+    // Get first invoice for refund-specific data
+    $firstTaskForValidation = $tasksForValidation->first();
+    $isRefundStatus = strtolower($firstTaskForValidation->status) === 'refund';
+    $firstInvoice = $isRefundStatus 
+        ? $firstTaskForValidation->originalTask?->invoiceDetail?->invoice 
+        : $firstTaskForValidation->invoiceDetail?->invoice;
+    $isPaidInvoice = in_array(strtolower($firstInvoice?->status ?? ''), ['paid', 'partial refund']);
+
+    // ========== NOW LOAD TASKS THE SAME WAY AS INVOICE CONTROLLER ==========
+    $selectedTasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
+        ->whereIn('id', $taskIdsArray)
+        ->get();
+
+    // Map tasks exactly like InvoiceController does
+   // ⭐ Map tasks with refund-specific calculations
+$selectedTasks = $selectedTasks->map(function ($task) use ($tasksForValidation) {
+    // Find the corresponding validation task to get relationships
+    $validationTask = $tasksForValidation->firstWhere('id', $task->id);
+    
+    $isRefundStatus = strtolower($task->status) === 'refund';
+    
+    // Get invoice detail from original invoice
+    $invoiceDetail = $isRefundStatus 
+        ? $validationTask?->originalTask?->invoiceDetail 
+        : $validationTask?->invoiceDetail;
+    
+    // Get source task (original task for refund status)
+    $sourceTask = $isRefundStatus 
+        ? $validationTask?->originalTask 
+        : $validationTask;
+    
+    // Standard mappings (same as InvoiceController)
+    $task->agent_name = $task->agent->name ?? null;
+    $task->branch_name = $task->agent->branch->name ?? null;
+    $task->supplier_name = $task->supplier->name ?? null;
+    $task->client_name = $task->client->full_name ?? null;
+    
+    // ========== REFUND-SPECIFIC CALCULATIONS ==========
+    
+    // 1. Original Task Profit (your markup when you sold the original task)
+    $originalTaskProfit = floatval($invoiceDetail?->markup_price ?? 0);
+    
+    // 2. Supplier Charge (cost you lose from the refund)
+    //    = Original Task Cost - Refund Task Cost
+    $originalTaskCost = floatval($sourceTask?->total ?? 0);
+    $refundTaskCost = floatval($task->total);
+    $supplierCharge = $originalTaskCost - $refundTaskCost;
+    
+    // 3. Task Price for Refund = Original Profit + Supplier Charge
+    //    This is what you need to collect from client (at minimum)
+    $taskPriceForRefund = $originalTaskProfit + $supplierCharge;
+    
+    // ========== OVERRIDE VALUES ==========
+    
+    // Keep original values for reference
+    $task->original_task_total = $task->total;
+    
+    // Override total with calculated refund task price
+    $task->total = $taskPriceForRefund;
+    
+    // Store additional values for JavaScript display/reference
+    $task->refund_original_profit = $originalTaskProfit;
+    $task->refund_supplier_charge = $supplierCharge;
+    $task->refund_original_invoice_price = floatval($invoiceDetail?->task_price ?? 0);
+    $task->refund_original_supplier_cost = floatval($invoiceDetail?->supplier_price ?? 0);
+    
+    return $task;
+});
+
+    // Get first task data
+    $firstTask = $selectedTasks->first();
+    $taskCompanyId = $firstTask->agent->branch->company_id ?? null;
+
+    if ($user->role_id == Role::ADMIN && $taskCompanyId) {
+        $companyId = $taskCompanyId;
+    }
+
+    // ========== ROLE-BASED DATA LOADING (same as InvoiceController) ==========
+    if ($user->role_id == Role::ADMIN) {
+        if ($companyId) {
+            $company = Company::with('branches.agents')->find($companyId);
+            $agents = $company->branches->flatMap->agents;
+            $branches = $company->branches;
+            $agentsId = $agents->pluck('id')->toArray();
+            $selectedCompany = $company;
+
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId)->where('is_active', true);
+            })->with('companies')->get();
+        } else {
+            $agents = Agent::with('branch.company')->get();
+            $branches = Branch::all();
+            $agentsId = $agents->pluck('id')->toArray();
+
+            $suppliers = Supplier::with(['companies' => function ($query) {
+                $query->where('is_active', true);
+            }])->get();
+        }
+    } elseif ($user->role_id == Role::COMPANY) {
+        $company = Company::with('branches.agents')->find($companyId);
+        $agents = $company->branches->flatMap->agents;
+        $branches = $company->branches;
+        $selectedCompany = $company;
+        $agentsId = $agents->pluck('id')->toArray();
+
+        $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId)->where('is_active', true);
+        })->with('companies')->get();
+    } elseif ($user->role_id == Role::BRANCH) {
+        $agents = Agent::where('branch_id', $user->branch->id)->get();
+        $agentsId = $agents->pluck('id')->toArray();
+        $branches = Branch::where('company_id', $companyId)->get();
+        $selectedCompany = $user->branch->company;
+
+        $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId)->where('is_active', true);
+        })->with('companies')->get();
+    } elseif ($user->role_id == Role::AGENT) {
+        $agent = $user->agent;
+        $agents = Agent::where('id', $agent->id)->get();
+        $agentsId = [$agent->id];
+        $branches = Branch::where('company_id', $companyId)->get();
+        $selectedCompany = $agent->branch->company;
+
+        $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId)->where('is_active', true);
+        })->with('companies')->get();
+    } elseif ($user->role_id == Role::ACCOUNTANT) {
+        $agents = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
+        $agentsId = $agents->pluck('id')->toArray();
+        $branches = Branch::where('company_id', $companyId)->get();
+        $selectedCompany = Company::find($companyId);
+
+        $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId)->where('is_active', true);
+        })->with('companies')->get();
+    } else {
+        return redirect()->back()->with('error', 'Unauthorized access.');
+    }
+
+    if ($user->role_id == Role::ADMIN && $companyId) {
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();
+    } elseif ($user->role_id == Role::ADMIN) {
+        $clients = Client::all();
+    } else {
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();
+    }
+
+    if ($selectedTasks->count() > 0) {
+        $clientIds = $selectedTasks->pluck('client_id')->unique();
+        $agentIds = $selectedTasks->pluck('agent_id')->unique();
+        $selectedAgent = Agent::find($agentIds->first());
+        $selectedClient = $clientIds->count() >= 1 ? Client::find($clientIds->first()) : null;
+    } else {
+        $selectedAgent = null;
+        $selectedClient = null;
+    }
+
+    $agentId = $selectedAgent ? $selectedAgent->id : $agentsId;
+    $agentId = Arr::flatten((array) $agentId);
+    $clientId = $selectedClient ? $selectedClient->id : null;
+
+    // For refund, no additional tasks to add (empty collection)
+    $tasks = collect();
+    
+    $todayDate = Carbon::now()->format('Y-m-d');
+    $appUrl = config('app.url');
+    $countries = Country::all();
+
+    $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')
+        ->where('company_id', $companyId)
+        ->first();
+
+    $invoiceExpireDefault = $invoiceExpireDefault
+        ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days'))
+        : date('Y-m-d', strtotime('+5 days'));
+
+    $invoiceSequence = InvoiceSequence::firstOrCreate(
+        ['company_id' => $companyId],
+        ['current_sequence' => 1]
+    );
+    $invoiceNumber = app(InvoiceController::class)->generateInvoiceNumber($invoiceSequence->current_sequence);
+
+    $refundSequence = RefundSequence::firstOrCreate(
+        ['company_id' => $companyId],
+        ['current_sequence' => 1]
+    );
+    $refundNumber = $this->generateRefundNumber($refundSequence->current_sequence);
+
+    // ========== RETURN VIEW (same structure as InvoiceController) ==========
+    return view('invoice.create', compact(
+        'clients',
+        'agents',
+        'branches',
+        'agentId',
+        'clientId',
+        'tasks',
+        'suppliers',
+        'invoiceNumber',
+        'selectedTasks',
+        'selectedAgent',
+        'selectedClient',
+        'selectedCompany',
+        'todayDate',
+        'appUrl',
+        'companyId',
+        'invoiceExpireDefault',
+        'countries'
+    ))->with([
+        // Refund-specific variables
+        'isRefund' => true,
+        'refundNumber' => $refundNumber,
+        'firstInvoice' => $firstInvoice,
+        'isPaidInvoice' => $isPaidInvoice,
+    ]);
+}
 
     public function store(Request $request)
     {

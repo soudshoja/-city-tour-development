@@ -349,7 +349,13 @@
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            <span id="button-text">Save</span>
+                            <span id="button-text">
+                                @if($isRefund ?? false)
+                                    Process Refund
+                                @else
+                                    Generate Invoice
+                                @endif
+                            </span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
@@ -663,6 +669,10 @@
     </div>
 
     <script>
+        alert('SCRIPT EXECUTED');
+
+        console.log('🔥 SCRIPT LOADED');
+
         let selectedInvoiceTasks = @json($selectedTasks);
         let branches = @json($branches);
         let clients = @json($clients);
@@ -672,10 +682,12 @@
         let allTasks = [];
         let filteredTasks = [];
         const itemsBody = document.getElementById('items-body');
-        const appUrl = @json($appUrl);
+        const appUrl = @json($appUrl ?? null);
         let toggle = false;
         let selectedPaymentLink = null;
         let netTotal = 0;
+        const isRefund = @json($isRefund ?? false);
+        const refundNumber = @json($refundNumber ?? null);
 
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -948,8 +960,8 @@
                                         id="invprice-modal-${item.id}"
                                         class="invoice-price-${item.id}"
                                         type="number"
-                                        name="invprice",
-                                        placeholder="Enter Invoice Price",
+                                        name="invprice"
+                                        placeholder="Enter Invoice Price"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'invprice-modal')"
                                         value="${item.invprice ?? ''}"
@@ -957,16 +969,16 @@
                                     <input
                                         id="remark-${item.id}"
                                         type="text"
-                                        name="remark",
-                                        placeholder="Enter Remark",
+                                        name="remark"
+                                        placeholder="Enter Remark"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'remark')"
                                     >
                                     <input
                                         id="note-${item.id}"
                                         type="text"
-                                        name="note",
-                                        placeholder="Enter Note",
+                                        name="note"
+                                        placeholder="Enter Note"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'note')"
                                     >
@@ -1327,6 +1339,36 @@
             selectTab.classList.add('hidden');
         });
 
+        function debugInvoiceState(label = 'DEBUG SNAPSHOT') {
+            console.group(`🧾 ${label}`);
+
+            console.log('Company:', @json($selectedCompany ?? null));
+            console.log('Company ID:', @json($companyId ?? null));
+
+            console.log('Branches:', branches);
+            console.log('Agents:', agents);
+            console.log('Clients:', clients);
+
+            console.log('Selected Agent:', selectedAgent);
+            console.log('Selected Client:', selectedClient);
+
+            console.log('Selected Agent ID (input):', document.getElementById('agentId')?.value);
+            console.log('Selected Client ID (input):', document.getElementById('receiverId')?.value);
+            console.log('Selected Branch ID:', document.getElementById('selectedBranch')?.value);
+
+            console.log('Selected Tasks (IDs):', @json($selectedTasks ?? []));
+            console.log('Selected Tasks (items[]):', items);
+
+            console.log('Invoice Number:', document.getElementById('invoiceNumber')?.value);
+            console.log('Invoice Date:', document.getElementById('invoiceDate')?.value);
+            console.log('Due Date:', document.getElementById('dueDate')?.value);
+            console.log('Currency:', document.getElementById('currency')?.value);
+
+            console.log('Subtotal:', document.getElementById('subTotal')?.value);
+            console.log('Net Total:', document.getElementById('netTotal')?.value);
+
+            console.groupEnd();
+        }
 
         function selectTask(task) {
             items.push({
@@ -1603,12 +1645,15 @@
             document.body.appendChild(alert);
         }
 
-        // Generate invoice
+        // Generate invoice for task or refund
         async function generateInvoice() {
             isSaving = true;
             updateButtonState();
 
-            const invoiceUrl = "{{ route('invoice.store') }}";
+            const invoiceUrl = isRefund
+                ? "{{ route('refunds.store') }}"
+                : "{{ route('invoice.store') }}";
+
             const csrfToken = "{{ csrf_token() }}";
 
             const currencyElement = document.getElementById('currency');
@@ -1620,66 +1665,105 @@
             const agentIdElement = document.getElementById('agentId');
             const selectedBranch = document.getElementById('selectedBranch');
 
-            const currency = currencyElement ? currencyElement.value : null;
-            const invoiceNumber = invoiceNumberElement ? invoiceNumberElement.value : null;
-            const invdate = invdateElement ? invdateElement.value : null;
-            const duedate = duedateElement ? duedateElement.value : null;
-            const subTotal = subTotalElement ? subTotalElement.value : null;
-            const firstTask = (Array.isArray(items) && items.length) ? items[0] : null;
-            let clientId = clientIdElement?.value || firstTask?.client_id || firstTask?.client?.id || null;
-            if (clientIdElement && !clientIdElement.value && clientId) clientIdElement.value = clientId;
-            const agentId = agentIdElement ? agentIdElement.value : null;
-            const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
+            const currency = currencyElement?.value ?? null;
+            const invoiceNumber = invoiceNumberElement?.value ?? null;
+            const invdate = invdateElement?.value ?? null;
+            const duedate = duedateElement?.value ?? null;
+            const subTotal = subTotalElement?.value ?? null;
+
+            const firstTask = Array.isArray(items) && items.length ? items[0] : null;
+
+            let clientId =
+                clientIdElement?.value ||
+                firstTask?.client_id ||
+                firstTask?.client?.id ||
+                null;
+
+            if (clientIdElement && !clientIdElement.value && clientId) {
+                clientIdElement.value = clientId;
+            }
+
+            const agentId = agentIdElement?.value ?? null;
+            const selectedBranchValue = selectedBranch?.value ?? null;
             const tasks = items;
 
-            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', Array.isArray(items) ? items.length : 0);
+            console.log('DEBUG -> isRefund:', isRefund);
+            console.log('DEBUG -> items:', items);
 
-            buttonText.style.display = "none";
-            buttonLoading.style.display = "inline";
-
-            let errorMessages = [];
-            const companyId = "{{ $companyId ?? '' }}";
-
-            // Validate all inputs and add specific messages
-            if (!currency) errorMessages.push("Currency is missing.");
-            if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
-            if (!invdate) errorMessages.push("Invoice date is missing.");
-            // if (!duedate) errorMessages.push("Due date is missing.");
-            if (!subTotal) errorMessages.push("Subtotal is missing.");
-            if (!clientId) errorMessages.push("Client ID is missing.");
-            if (!agentId) errorMessages.push("Agent ID is missing.");
-            if (!items.length) errorMessages.push("No tasks have been selected.");
-            if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
-
-            // Check if there are any errors
-            if (errorMessages.length > 0) {
-                // Create the error notification element
-                let errorNotification = document.createElement('div');
-                errorNotification.className =
-                    "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
-                errorNotification.innerHTML = `
-                        <ul>
-                            ${errorMessages.map(message => `<li>${message}</li>`).join('')}
-                        </ul>
-                        <button type="button" class="close text-white ml-2" aria-label="Close"
-                            onclick="this.parentElement.style.display='none';">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    `;
-
-                // Append the error notification to the body
-                document.body.appendChild(errorNotification);
-
-                // Reset button state or perform any cleanup
+            // ======================
+            // BASIC VALIDATION
+            // ======================
+            if (!invdate) {
+                console.error('Missing date');
                 resetButtonState();
                 return;
             }
 
-            // Proceed with the form submission or further processing
-            console.log("All required data is provided. Proceeding...");
+            if (!items.length) {
+                console.error('No tasks selected');
+                resetButtonState();
+                return;
+            }
 
+            if (!isRefund) {
+                if (!currency || !invoiceNumber || !subTotal || !clientId || !agentId || !selectedBranchValue) {
+                    console.error('Missing invoice fields');
+                    resetButtonState();
+                    return;
+                }
+            }
+
+            // ======================
+            // PAYLOAD BUILDING
+            // ======================
+            const payload = isRefund
+                ? {
+                    date: invdate,
+                    client_id: clientId,
+                    tasks: items.map(item => {
+                        const originalInvoicePrice = Number(item.invprice ?? 0);
+                        const originalTaskCost = Number(item.total ?? 0);
+                        const originalTaskProfit = originalInvoicePrice - originalTaskCost;
+
+                        const refundFee = Number(
+                            item.refund_fee_to_client ?? originalInvoicePrice
+                        );
+
+                        const supplierCharge = Number(item.supplier_charge ?? 0);
+
+                        return {
+                            task_id: item.id,
+                            original_invoice_price: originalInvoicePrice,
+                            original_task_cost: originalTaskCost,
+                            original_task_profit: originalTaskProfit,
+                            refund_fee_to_client: refundFee,
+                            supplier_charge: supplierCharge,
+                            new_task_profit: originalTaskProfit - supplierCharge,
+                            total_refund_to_client: refundFee,
+                            remarks: item.remark ?? null,
+                            payment_gateway_option: item.payment_gateway_option ?? null,
+                            payment_method: item.payment_method ?? null,
+                        };
+                    }),
+                }
+                : {
+                    clientId,
+                    agentId,
+                    tasks,
+                    subTotal,
+                    invoiceNumber,
+                    currency,
+                    invdate,
+                    duedate,
+                };
+
+            console.log('REQUEST URL:', invoiceUrl);
+            console.log('REQUEST PAYLOAD:', payload);
+
+            // ======================
+            // REQUEST
+            // ======================
             try {
-                console.log('invoiceUrl: ', invoiceUrl);
                 const response = await fetch(invoiceUrl, {
                     method: 'POST',
                     headers: {
@@ -1687,66 +1771,50 @@
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                     },
-                    body: JSON.stringify({
-                        clientId,
-                        agentId,
-                        tasks,
-                        subTotal,
-                        invoiceNumber,
-                        currency,
-                        invdate,
-                        duedate
-
-                    })
+                    body: JSON.stringify(payload),
                 });
 
+                const responseText = await response.text();
+                let result;
+
+                try {
+                    result = JSON.parse(responseText);
+                } catch {
+                    console.error('Non-JSON response:', responseText);
+                    throw new Error('Invalid server response');
+                }
+
+                console.log('RESPONSE:', result);
+
                 if (!response.ok) {
-                    throw new Error("Failed to generate");
+                    console.error('Server validation failed:', result);
+                    resetButtonState();
+                    return;
                 }
 
-                const result = await response.json();
-                const {
-                    invoiceId: newInvoiceId,
-                    invoiceNumber: newInvoiceNumber
-                } = result;
+                // ======================
+                // SUCCESS
+                // ======================
+                if (!isRefund) {
+                    document.getElementById('invoiceId').value = result.invoiceId;
+                    document.getElementById('invoiceNumber').value = result.invoiceNumber;
 
-                // Only update invoice number if this is a new invoice (no invoiceId before)
-                if (!invoiceId) {
-                    document.getElementById('invoiceNumber').value = newInvoiceNumber;
+                    location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}"
+                        .replace(':companyId', "{{ $companyId }}")
+                        .replace(':invoiceNumber', result.invoiceNumber);
+                } else {
+                    // refund success → backend redirects
+                    console.log('Refund processed successfully');
                 }
-                document.getElementById('invoiceId').value = newInvoiceId;
-                const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
 
                 isSaved = true;
                 updateButtonState();
 
-                setTimeout(() => {
-                    checkInvoiceId();
-                }, 100);
-
-                location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(
-                    ":invoiceNumber", invoiceNumber
-                )
-
             } catch (error) {
-                console.error(error);
-                let alert = document.createElement('div');
-                alert.innerHTML = ` 
-                        <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                            Error Generating Invoice
-                            <button type="button" class="close text-white ml-2" aria-label="Close"
-                                onclick="this.parentElement.style.display='none';">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        `
-                document.body.appendChild(alert);
-
+                console.error('Request failed:', error);
                 resetButtonState();
-            } finally {
-                // Reset button states
             }
-        };
+        }
 
         function resetButtonState() {
             isSaving = false;
@@ -1851,8 +1919,7 @@
                 noAgentsFound.classList.toggle('hidden', anyVisible);
             });
         });
-    </script>
-    <script>
+   
         document.getElementById('select-supplier-task')?.addEventListener('change', function() {
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);

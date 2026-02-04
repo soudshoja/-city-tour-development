@@ -1,36 +1,20 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-gzQpxcBA.css",
+    "file": "assets/app-BvO6Uniu.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "names": [
       "app.css"
     ]
   },
-  "resources/css/cityCss.css": {
-    "file": "assets/cityCss-z4Edh4w_.css",
-    "src": "resources/css/cityCss.css",
-    "isEntry": true,
-    "names": [
-      "cityCss.css"
-    ]
-  },
-  "resources/css/style.css": {
-    "file": "assets/style-DSmvl4Wu.css",
-    "src": "resources/css/style.css",
-    "isEntry": true,
-    "names": [
-      "style.css"
-    ]
-  },
   "resources/js/app.js": {
-    "file": "assets/app-HPSvmL1Z.js",
+    "file": "assets/app-HmKelmoX.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true
   },
   "resources/js/jsbyNisma.js": {
-    "file": "assets/jsbyNisma-DnWfmHM-.js",
+    "file": "assets/jsbyNisma-l0sNRNKZ.js",
     "name": "jsbyNisma",
     "src": "resources/js/jsbyNisma.js",
     "isEntry": true

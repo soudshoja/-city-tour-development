@@ -14,17 +14,20 @@ class Hotel extends Model
         'address',
         'city',
         'state',
+        'country_id',
         'country',
         'zip_code',
         'phone',
         'email',
         'website',
+        'latitude',
+        'longitude',
         'rating',
         'image',
         'description',
     ];
 
-    public function country()
+    public function countryRelation()
     {
         return $this->belongsTo(Country::class, 'country_id');
     }

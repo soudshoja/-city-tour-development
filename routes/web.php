@@ -117,6 +117,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/download-pdf', [SystemSettingController::class, 'downloadPdf'])->name('download-pdf');
         Route::post('/save-tab', [SystemSettingController::class, 'saveTab'])->name('save-tab');
         Route::post('/check-file-status', [SystemSettingController::class, 'checkFileStatus'])->name('check-file-status');
+        Route::get('/hotels/list', [SystemSettingController::class, 'hotelsList'])->name('hotels.list');
+        Route::post('/hotels', [SystemSettingController::class, 'storeHotel'])->name('hotels.store');
+        Route::put('/hotels/{id}', [SystemSettingController::class, 'updateHotel'])->name('hotels.update');
+        Route::delete('/hotels/{id}', [SystemSettingController::class, 'deleteHotel'])->name('hotels.delete');
+        Route::get('/countries/search', [SystemSettingController::class, 'searchCountries'])->name('countries.search');
+        Route::post('/countries', [SystemSettingController::class, 'storeCountry'])->name('countries.store');
     });
 
     // Agents list
@@ -505,6 +511,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
         Route::get('/failed', [PaymentController::class, 'failed'])->name('failed')->withoutMiddleware(['auth']);
+        Route::get('/outstanding', [PaymentController::class, 'outstanding'])->name('outstanding');
 
         Route::group([
             'prefix' => 'link',

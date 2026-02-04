@@ -129,10 +129,6 @@ html.dark [data-tooltip]::after {
     border-color: #0e1726 transparent transparent transparent; /* Matches tooltip background */
 }
 
-[x-cloak] {
-    display: none !important;
-}
-
 .dark .flatpickr-calendar {
     border: 1px solid #0e1a2c;
     background: #0e1a2c;
@@ -10933,4 +10929,905 @@ select::-moz-focus-inner {
     input {
         font-size: 12px !important;
     }
+}
+
+/* --------------------------------------------------------------------------
+   Page Header
+   -------------------------------------------------------------------------- */
+.main-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.main-page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.main-page-title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Shape (clip-path for angled tabs)
+   -------------------------------------------------------------------------- */
+.main-tab-shape {
+    clip-path: polygon(12px 0, calc(100% - 4px) 0, 100% 100%, 0 100%);
+}
+
+/* --------------------------------------------------------------------------
+   Panel Container
+   -------------------------------------------------------------------------- */
+.main-panel {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    padding: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tabs Bar
+   -------------------------------------------------------------------------- */
+.main-tabs-bar {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0;
+    background-color: #f1f5f9;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-top: 0.5rem;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Button Base
+   -------------------------------------------------------------------------- */
+.main-tab {
+    position: relative;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    cursor: pointer;
+    border: none;
+}
+
+.main-tab-active {
+    background-color: #ffffff;
+    color: #2563eb;
+    z-index: 10;
+}
+
+.main-tab-inactive {
+    background-color: #e2e8f0;
+    color: #64748b;
+}
+
+.main-tab-inactive:hover {
+    background-color: #cbd5e1;
+    color: #334155;
+}
+
+.main-tab-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.main-tab-content-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Badge (count indicator)
+   -------------------------------------------------------------------------- */
+.main-tab-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.main-tab-badge-blue {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+
+.main-tab-badge-amber {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.main-tab-badge-red {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Content Area
+   -------------------------------------------------------------------------- */
+.main-tab-content {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    border-top-left-radius: 0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    padding: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Section Header
+   -------------------------------------------------------------------------- */
+.main-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.main-section-title {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.main-section-subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   Table Container
+   -------------------------------------------------------------------------- */
+.main-table-container {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.main-table-scroll {
+    overflow-x: auto;
+}
+
+.main-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* --------------------------------------------------------------------------
+   Table Header
+   -------------------------------------------------------------------------- */
+.main-table thead,
+.main-table-thead {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.main-table-th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+.main-table-th-center {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+.main-table-th-right {
+    text-align: right;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Table Body
+   -------------------------------------------------------------------------- */
+.main-table-row {
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.main-table-row:hover {
+    background-color: #eff6ff;
+}
+
+.main-table-row-static {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.main-table-td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.main-table-td-bold {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.main-table-td-link {
+    color: #2563eb;
+    font-size: 0.875rem;
+}
+
+.main-table-td-link:hover {
+    text-decoration: underline;
+}
+
+.main-table-td-center {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+    text-align: center;
+}
+
+.main-table-td-right {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+    text-align: right;
+}
+
+/* --------------------------------------------------------------------------
+   Table Empty State
+   -------------------------------------------------------------------------- */
+.main-table-empty {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.main-table-empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.main-table-empty-icon {
+    width: 3rem;
+    height: 3rem;
+    color: #4ade80;
+    margin-bottom: 0.5rem;
+}
+
+.main-table-empty-title {
+    font-weight: 500;
+    color: #16a34a;
+}
+
+.main-table-empty-subtitle {
+    color: #9ca3af;
+}
+
+/* --------------------------------------------------------------------------
+   Table Pagination
+   -------------------------------------------------------------------------- */
+.main-table-pagination {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* --------------------------------------------------------------------------
+   Sortable Header
+   -------------------------------------------------------------------------- */
+.main-sort-link {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+    white-space: nowrap;
+    color: inherit;
+    text-decoration: none;
+}
+
+.main-sort-link:hover {
+    color: #334155;
+}
+
+.main-sort-icons {
+    display: flex;
+    flex-direction: column;
+}
+
+.main-sort-icon {
+    width: 0.625rem;
+    height: 0.625rem;
+    color: #cbd5e1;
+}
+
+.main-sort-icon-down {
+    margin-top: -0.25rem;
+}
+
+.main-sort-icon-active {
+    color: #3b82f6;
+}
+
+/* --------------------------------------------------------------------------
+   Status Badges
+   -------------------------------------------------------------------------- */
+.main-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid;
+}
+
+.main-badge-yellow {
+    background-color: #fef9c3;
+    color: #a16207;
+    border-color: #fde047;
+}
+
+.main-badge-blue {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border-color: #93c5fd;
+}
+
+.main-badge-red {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+.main-badge-green {
+    background-color: #dcfce7;
+    color: #15803d;
+    border-color: #86efac;
+}
+
+.main-badge-amber {
+    background-color: #fef3c7;
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+.main-badge-gray {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border-color: #d1d5db;
+}
+
+/* --------------------------------------------------------------------------
+   Action Buttons
+   -------------------------------------------------------------------------- */
+.main-action-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: #dbeafe;
+    border-radius: 9999px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: box-shadow 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.main-action-btn:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   Action Icons in Table
+   -------------------------------------------------------------------------- */
+.main-action-icons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.main-action-icon {
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.15s;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.main-action-icon:hover {
+    opacity: 0.8;
+}
+
+/* --------------------------------------------------------------------------
+   Page Header - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.dark .main-page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.dark .main-page-title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Shape (clip-path for angled tabs) - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-tab-shape {
+    clip-path: polygon(12px 0, calc(100% - 4px) 0, 100% 100%, 0 100%);
+}
+
+/* --------------------------------------------------------------------------
+   Panel Container - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-panel {
+    background-color: #1e293b;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    padding: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tabs Bar - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-tabs-bar {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0;
+    background-color: #0f172a;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-top: 0.5rem;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Button Base - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-tab {
+    position: relative;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    cursor: pointer;
+    border: none;
+}
+
+.dark .main-tab-active {
+    background-color: #1e293b;
+    color: #60a5fa;
+    z-index: 10;
+}
+
+.dark .main-tab-inactive {
+    background-color: #334155;
+    color: #94a3b8;
+}
+
+.dark .main-tab-inactive:hover {
+    background-color: #475569;
+    color: #cbd5e1;
+}
+
+.dark .main-tab-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.dark .main-tab-content-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Badge (count indicator) - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-tab-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.dark .main-tab-badge-blue {
+    background-color: #1e3a8a;
+    color: #93c5fd;
+}
+
+.dark .main-tab-badge-amber {
+    background-color: #78350f;
+    color: #fbbf24;
+}
+
+.dark .main-tab-badge-red {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+}
+
+/* --------------------------------------------------------------------------
+   Tab Content Area - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-tab-content {
+    background-color: #1e293b;
+    border-radius: 0.5rem;
+    border-top-left-radius: 0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    padding: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Section Header - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.dark .main-section-title {
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.dark .main-section-subtitle {
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+/* --------------------------------------------------------------------------
+   Table Container - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-table-container {
+    background-color: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.dark .main-table-scroll {
+    overflow-x: auto;
+}
+
+.dark .main-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* --------------------------------------------------------------------------
+   Table Header - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-table thead,
+.dark .main-table-thead {
+    background-color: #1e293b;
+    border-bottom: 1px solid #334155;
+}
+
+.dark .main-table-th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+.dark .main-table-th-center {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+.dark .main-table-th-right {
+    text-align: right;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Table Body - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-table-row {
+    border-bottom: 1px solid #334155;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.dark .main-table-row:hover {
+    background-color: #1e3a8a;
+}
+
+.dark .main-table-row-static {
+    border-bottom: 1px solid #334155;
+}
+
+.dark .main-table-td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+}
+
+.dark .main-table-td-bold {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+.dark .main-table-td-link {
+    color: #60a5fa;
+    font-size: 0.875rem;
+}
+
+.dark .main-table-td-link:hover {
+    text-decoration: underline;
+}
+
+.dark .main-table-td-center {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    text-align: center;
+}
+
+.dark .main-table-td-right {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    text-align: right;
+}
+
+/* --------------------------------------------------------------------------
+   Table Empty State - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-table-empty {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+.dark .main-table-empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dark .main-table-empty-icon {
+    width: 3rem;
+    height: 3rem;
+    color: #22c55e;
+    margin-bottom: 0.5rem;
+}
+
+.dark .main-table-empty-title {
+    font-weight: 500;
+    color: #4ade80;
+}
+
+.dark .main-table-empty-subtitle {
+    color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   Table Pagination - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-table-pagination {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #334155;
+}
+
+/* --------------------------------------------------------------------------
+   Sortable Header - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-sort-link {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+    white-space: nowrap;
+    color: inherit;
+    text-decoration: none;
+}
+
+.dark .main-sort-link:hover {
+    color: #cbd5e1;
+}
+
+.dark .main-sort-icons {
+    display: flex;
+    flex-direction: column;
+}
+
+.dark .main-sort-icon {
+    width: 0.625rem;
+    height: 0.625rem;
+    color: #475569;
+}
+
+.dark .main-sort-icon-down {
+    margin-top: -0.25rem;
+}
+
+.dark .main-sort-icon-active {
+    color: #60a5fa;
+}
+
+/* --------------------------------------------------------------------------
+   Status Badges - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid;
+}
+
+.dark .main-badge-yellow {
+    background-color: #78350f;
+    color: #fbbf24;
+    border-color: #a16207;
+}
+
+.dark .main-badge-blue {
+    background-color: #1e3a8a;
+    color: #93c5fd;
+    border-color: #3b82f6;
+}
+
+.dark .main-badge-red {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+    border-color: #dc2626;
+}
+
+.dark .main-badge-green {
+    background-color: #14532d;
+    color: #86efac;
+    border-color: #22c55e;
+}
+
+.dark .main-badge-amber {
+    background-color: #78350f;
+    color: #fbbf24;
+    border-color: #d97706;
+}
+
+.dark .main-badge-gray {
+    background-color: #374151;
+    color: #d1d5db;
+    border-color: #6b7280;
+}
+
+/* --------------------------------------------------------------------------
+   Action Buttons - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-action-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: #1e3a8a;
+    border-radius: 9999px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    transition: box-shadow 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.dark .main-action-btn:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   Action Icons in Table - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .main-action-icons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.dark .main-action-icon {
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.15s;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.dark .main-action-icon:hover {
+    opacity: 0.8;
+}
+
+/* --------------------------------------------------------------------------
+   Search Component - Dark Mode
+   -------------------------------------------------------------------------- */
+.dark .search-container {
+    background-color: #0f172a;
+    border: 1px solid #334155;
+}
+
+.dark .search-input {
+    background-color: #1e293b;
+    color: #f1f5f9;
+    border-color: #334155;
+}
+
+.dark .search-input::placeholder {
+    color: #64748b;
+}
+
+.dark .search-input:focus {
+    border-color: #60a5fa;
+    background-color: #1e293b;
+}
+
+.dark .search-button {
+    background-color: #1e3a8a;
+    color: #93c5fd;
+}
+
+.dark .search-button:hover {
+    background-color: #1e40af;
 }

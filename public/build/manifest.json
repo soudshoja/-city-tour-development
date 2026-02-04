@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-BvO6Uniu.css",
+    "file": "assets/app-CNCBdrr0.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "names": [
@@ -8,11 +8,35 @@
     ]
   },
   "resources/css/guest.css": {
-    "file": "assets/guest-CNK-PWuk.css",
+    "file": "assets/guest-DZp9cbGn.css",
     "src": "resources/css/guest.css",
     "isEntry": true,
     "names": [
       "guest.css"
+    ]
+  },
+  "resources/css/refund.css": {
+    "file": "assets/refund-BlAgcRVe.css",
+    "src": "resources/css/refund.css",
+    "isEntry": true,
+    "names": [
+      "refund.css"
+    ]
+  },
+  "resources/css/system-setting/hotel.css": {
+    "file": "assets/hotel-BMsx5EmD.css",
+    "src": "resources/css/system-setting/hotel.css",
+    "isEntry": true,
+    "names": [
+      "hotel.css"
+    ]
+  },
+  "resources/css/system-setting/main.css": {
+    "file": "assets/main--6LlRSmu.css",
+    "src": "resources/css/system-setting/main.css",
+    "isEntry": true,
+    "names": [
+      "main.css"
     ]
   },
   "resources/css/task/index.css": {
@@ -24,7 +48,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-HmKelmoX.js",
+    "file": "assets/app-BcOmsKdI.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true

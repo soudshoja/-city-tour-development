@@ -95,6 +95,11 @@ class Payment extends Model
         return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
     }
 
+    public function hesabePayment()
+    {
+        return $this->hasOne(HesabePayment::class, 'payment_int_id', 'id');
+    }
+
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');

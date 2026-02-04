@@ -6,6 +6,7 @@ export default defineConfig({
         laravel({
             input: [
                 "resources/css/app.css",
+                "resources/css/task/index.css",
                 "resources/js/jsbyNisma.js",
                 "resources/js/app.js",
                 "resources/js/tools.js",

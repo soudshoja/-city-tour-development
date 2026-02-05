@@ -47,6 +47,15 @@ class Agent extends Model
     {
         return $this->belongsToMany(Client::class, 'client_agents', 'agent_id', 'client_id');
     }
+
+    public function clientQuery()
+    {
+        return Client::where('agent_id', $this->id)
+            ->orWhereHas('agents', function ($query) {
+                $query->where('agent_id', $this->id);
+            });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');

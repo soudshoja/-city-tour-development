@@ -2,11 +2,10 @@
 'name' => 'dropdown',
 'selectedId' => '',
 'selectedName' => '',
-'taskId' => '',
+'dataId' => '',
 'ajaxUrl' => '',
 'placeholder' => 'Select an option',
 'label' => null,
-'responseKey' => 'tasks',
 ])
 <div
     x-data="ajaxSearchableDropdown({
@@ -14,9 +13,8 @@
         selectedName: '{{ $selectedName ?? '' }}',
         name: '{{ $name ?? 'dropdown' }}',
         placeholder: '{{ $placeholder ?? 'Select an option' }}',
-        taskId: '{{ $taskId }}',
+        dataId: '{{ $dataId }}',
         ajaxUrl: '{{ $ajaxUrl }}',
-        responseKey: '{{ $responseKey ?? 'tasks' }}',
     })"
     x-init="init()"
     class="w-full">
@@ -54,7 +52,7 @@
                         No results found
                     </div>
 
-                    <template x-for="option in filtered" :key="option.id">
+                    <template x-for="(option, index) in filtered" :key="option.id + '-' + index">
                         <div @click="select(option)"
                             class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                             x-html="highlightMatch(option.name)">

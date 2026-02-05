@@ -17,6 +17,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\AutoBillingController;
 use App\Http\Controllers\ChargeController;
+use App\Http\Controllers\HotelController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\ExportController;
@@ -579,6 +580,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/request-assignment', [ClientController::class, 'requestAssignment'])->name('request-assignment');
         Route::get('/assignment/approve/{token}', [ClientController::class, 'approveAssignment'])->name('assignment.approve');
         Route::get('/assignment/deny/{token}', [ClientController::class, 'denyAssignment'])->name('assignment.deny');
+
+        Route::group([
+            'prefix' => 'ajax',
+            'as' => 'ajax.',
+        ], function() {
+            Route::get('/search', [ClientController::class, 'searchClient'])->name('search');
+        });
     });
 
     Route::group([
@@ -704,6 +712,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/reminders', [ReminderController::class, 'store'])->name('store');
         Route::post('/reminders/bulk', [ReminderController::class, 'bulk'])->name('bulk');
     });
+
+    Route::group([
+        'prefix' => 'hotel',
+        'as' => 'hotel.',
+    ], function () {
+
+        Route::group([
+            'prefix' => 'ajax',
+            'as' => 'ajax.',
+        ], function() {
+            Route::get('/search', [HotelController::class, 'searchHotel'])->name('search');
+        });
+
+    });
+
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {

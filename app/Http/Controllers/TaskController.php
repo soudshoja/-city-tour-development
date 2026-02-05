@@ -170,17 +170,12 @@ class TaskController extends Controller
                 $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
                 $agentsId = $agents->pluck('id');
                 $clients = Client::whereIn('agent_id', $agentsId)->get();
-                $fullClients = Client::where(function ($q) use ($agentsId) {
-                    $q->whereIn('agent_id', $agentsId)
-                        ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
-                })->get();
 
                 $query->where('company_id', $companyId);
                 $suppliers = $suppliers->activeForCompany($companyId)->get();
             } else {
                 $clients = Client::all();
                 $agents = Agent::all();
-                $fullClients = Client::all();
                 $suppliers = $suppliers->get();
             }
         } elseif ($user->role_id == Role::COMPANY) {
@@ -188,10 +183,6 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $fullClients = Client::where(function ($q) use ($agentsId) {
-                $q->whereIn('agent_id', $agentsId)
-                    ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
-            })->get();
 
             $query->where('company_id', $companyId);
             $suppliers = $suppliers->activeForCompany($companyId)->get();
@@ -199,20 +190,12 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $fullClients = Client::where(function ($q) use ($agentsId) {
-                $q->whereIn('agent_id', $agentsId)
-                    ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
-            })->get();
 
             $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
             $suppliers = $suppliers->activeForCompany($user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
-            $fullClients = Client::where(function ($q) use ($user) {
-                $q->where('agent_id', $user->agent->id)
-                    ->orWhereHas('agents', fn($qq) => $qq->where('agent_id', $user->agent->id));
-            })->get();
 
             $query->where(function ($q) use ($user) {
                 $q->where('agent_id', $user->agent->id)
@@ -231,10 +214,6 @@ class TaskController extends Controller
             }
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $fullClients = Client::where(function ($q) use ($agentsId) {
-                $q->whereIn('agent_id', $agentsId)
-                    ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
-            })->get();
 
             $query->where('company_id', $companyId);
             $suppliers = $suppliers->activeForCompany($companyId)->get();
@@ -540,7 +519,6 @@ class TaskController extends Controller
         }
 
         $countries = Country::all();
-        $hotels = Hotel::all();
         $currencyExchange = (new AppLayout())->currencySidebar();
         $currencies = $currencyExchange['currencies'];
 
@@ -580,11 +558,9 @@ class TaskController extends Controller
             'taskCount',
             'agents',
             'clients',
-            'fullClients',
             'suppliers',
             'types',
             'countries',
-            'hotels',
             'paymentMethod',
             'visibleColumns',
             'allTypes',
@@ -6373,7 +6349,7 @@ class TaskController extends Controller
 
     public function searchOriginalTasks(Request $request)
     {
-        $taskId = $request->input('task_id');
+        $taskId = $request->input('id');
         $search = $request->input('search', '');
 
         $task = Task::find($taskId);
@@ -6395,7 +6371,7 @@ class TaskController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('reference', 'like', "%{$search}%")
                     ->orWhereHas('client', function ($clientQuery) use ($search) {
-                        $clientQuery->where('full_name', 'like', "%{$search}%")
+                    $clientQuery->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $search . '%'])
                             ->orWhere('client_name', 'like', "%{$search}%");
                     });
             });
@@ -6403,14 +6379,14 @@ class TaskController extends Controller
 
         $tasks = $query->limit(10)->get();
 
-        return response()->json([
-            'tasks' => $tasks->map(function ($t) {
+        return response()->json(
+            $tasks->map(function ($t) {
                 return [
                     'id' => $t->id,
                     'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
                 ];
             })
-        ]);
+        );
     }
 
 }

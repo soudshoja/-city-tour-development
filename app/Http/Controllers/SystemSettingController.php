@@ -256,7 +256,7 @@ class SystemSettingController extends Controller
                 'name' => $c->name . ' (' . $c->iso_code . ')'
             ]);
 
-        return response()->json(['countries' => $countries]);
+        return response()->json($countries);
     }
 
     public function storeCountry(Request $request)

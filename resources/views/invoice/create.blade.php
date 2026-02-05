@@ -154,6 +154,11 @@
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
+                        <div class="flex items-center w-full">
+                            <label for="RefundNumber" class="w-full text-sm font-semibold">Refund Number</label>
+                            <input id="RefundNumber" type="text" name="RefundNumber" value="{{ $refundNumber }}"
+                                class="w-full form-input" placeholder="Refund Number" />
+                        </div>
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}" />
@@ -669,10 +674,6 @@
     </div>
 
     <script>
-        alert('SCRIPT EXECUTED');
-
-        console.log('🔥 SCRIPT LOADED');
-
         let selectedInvoiceTasks = @json($selectedTasks);
         let branches = @json($branches);
         let clients = @json($clients);
@@ -1339,37 +1340,6 @@
             selectTab.classList.add('hidden');
         });
 
-        function debugInvoiceState(label = 'DEBUG SNAPSHOT') {
-            console.group(`🧾 ${label}`);
-
-            console.log('Company:', @json($selectedCompany ?? null));
-            console.log('Company ID:', @json($companyId ?? null));
-
-            console.log('Branches:', branches);
-            console.log('Agents:', agents);
-            console.log('Clients:', clients);
-
-            console.log('Selected Agent:', selectedAgent);
-            console.log('Selected Client:', selectedClient);
-
-            console.log('Selected Agent ID (input):', document.getElementById('agentId')?.value);
-            console.log('Selected Client ID (input):', document.getElementById('receiverId')?.value);
-            console.log('Selected Branch ID:', document.getElementById('selectedBranch')?.value);
-
-            console.log('Selected Tasks (IDs):', @json($selectedTasks ?? []));
-            console.log('Selected Tasks (items[]):', items);
-
-            console.log('Invoice Number:', document.getElementById('invoiceNumber')?.value);
-            console.log('Invoice Date:', document.getElementById('invoiceDate')?.value);
-            console.log('Due Date:', document.getElementById('dueDate')?.value);
-            console.log('Currency:', document.getElementById('currency')?.value);
-
-            console.log('Subtotal:', document.getElementById('subTotal')?.value);
-            console.log('Net Total:', document.getElementById('netTotal')?.value);
-
-            console.groupEnd();
-        }
-
         function selectTask(task) {
             items.push({
                 ...task,
@@ -1688,34 +1658,49 @@
             const tasks = items;
 
             console.log('DEBUG -> isRefund:', isRefund);
-            console.log('DEBUG -> items:', items);
+            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', items.length);
 
-            // ======================
-            // BASIC VALIDATION
-            // ======================
-            if (!invdate) {
-                console.error('Missing date');
-                resetButtonState();
-                return;
-            }
+            buttonText.style.display = "none";
+            buttonLoading.style.display = "inline";
 
-            if (!items.length) {
-                console.error('No tasks selected');
-                resetButtonState();
-                return;
-            }
 
+            let errorMessages = [];
+            const companyId = "{{ $companyId ?? '' }}";
+
+            if (!invdate) errorMessages.push("Invoice/Refund date is missing.");
+            if (!items.length) errorMessages.push("No tasks have been selected.");
+
+            // Invoice-specific validation
             if (!isRefund) {
-                if (!currency || !invoiceNumber || !subTotal || !clientId || !agentId || !selectedBranchValue) {
-                    console.error('Missing invoice fields');
-                    resetButtonState();
-                    return;
-                }
+                if (!currency) errorMessages.push("Currency is missing.");
+                if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
+                if (!subTotal) errorMessages.push("Subtotal is missing.");
+                if (!clientId) errorMessages.push("Client ID is missing.");
+                if (!agentId) errorMessages.push("Agent ID is missing.");
+                if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
             }
 
-            // ======================
-            // PAYLOAD BUILDING
-            // ======================
+            if (errorMessages.length > 0) {
+                let errorNotification = document.createElement('div');
+                errorNotification.className =
+                    "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
+                errorNotification.innerHTML = `
+                    <ul>
+                        ${errorMessages.map(message => `<li>${message}</li>`).join('')}
+                    </ul>
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                `;
+                document.body.appendChild(errorNotification);
+                resetButtonState();
+                return;
+            }
+
+            console.log("All required data is provided. Proceeding...");
+
+
             const payload = isRefund
                 ? {
                     date: invdate,
@@ -1724,11 +1709,7 @@
                         const originalInvoicePrice = Number(item.invprice ?? 0);
                         const originalTaskCost = Number(item.total ?? 0);
                         const originalTaskProfit = originalInvoicePrice - originalTaskCost;
-
-                        const refundFee = Number(
-                            item.refund_fee_to_client ?? originalInvoicePrice
-                        );
-
+                        const refundFee = Number(item.refund_fee_to_client ?? originalInvoicePrice);
                         const supplierCharge = Number(item.supplier_charge ?? 0);
 
                         return {
@@ -1760,9 +1741,6 @@
             console.log('REQUEST URL:', invoiceUrl);
             console.log('REQUEST PAYLOAD:', payload);
 
-            // ======================
-            // REQUEST
-            // ======================
             try {
                 const response = await fetch(invoiceUrl, {
                     method: 'POST',
@@ -1774,44 +1752,65 @@
                     body: JSON.stringify(payload),
                 });
 
-                const responseText = await response.text();
-                let result;
-
-                try {
-                    result = JSON.parse(responseText);
-                } catch {
-                    console.error('Non-JSON response:', responseText);
-                    throw new Error('Invalid server response');
+                if (!response.ok) {
+                    throw new Error(`Failed to ${isRefund ? 'process refund' : 'generate invoice'}`);
                 }
 
+                const result = await response.json();
                 console.log('RESPONSE:', result);
 
-                if (!response.ok) {
-                    console.error('Server validation failed:', result);
-                    resetButtonState();
-                    return;
-                }
 
-                // ======================
-                // SUCCESS
-                // ======================
-                if (!isRefund) {
-                    document.getElementById('invoiceId').value = result.invoiceId;
-                    document.getElementById('invoiceNumber').value = result.invoiceNumber;
-
-                    location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}"
-                        .replace(':companyId', "{{ $companyId }}")
-                        .replace(':invoiceNumber', result.invoiceNumber);
-                } else {
-                    // refund success → backend redirects
+                if (isRefund) {
+                    // Refund success
                     console.log('Refund processed successfully');
-                }
+                    isSaved = true;
+                    updateButtonState();
+                    
+                    // If backend provides a redirect URL, use it
+                    if (result.redirect) {
+                        location.href = result.redirect;
+                    }
+                    // Otherwise stay on page or handle as needed
+                    
+                } else {
+                    // Invoice success
+                    const { invoiceId: newInvoiceId, invoiceNumber: newInvoiceNumber } = result;
 
-                isSaved = true;
-                updateButtonState();
+                    // Update hidden fields
+                    if (!invoiceId) {
+                        document.getElementById('invoiceNumber').value = newInvoiceNumber;
+                    }
+                    document.getElementById('invoiceId').value = newInvoiceId;
+
+                    isSaved = true;
+                    updateButtonState();
+
+                    setTimeout(() => {
+                        checkInvoiceId();
+                    }, 100);
+
+                    // Redirect to invoice edit page
+                    location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}"
+                        .replace(':companyId', companyId)
+                        .replace(':invoiceNumber', invoiceNumber || newInvoiceNumber);
+                }
 
             } catch (error) {
-                console.error('Request failed:', error);
+                console.error('=== ERROR ===');
+                console.error('Error:', error);
+
+                let alert = document.createElement('div');
+                alert.innerHTML = `
+                    <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                        ${isRefund ? 'Error Processing Refund' : 'Error Generating Invoice'}
+                        <button type="button" class="close text-white ml-2" aria-label="Close"
+                            onclick="this.parentElement.style.display='none';">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(alert);
+
                 resetButtonState();
             }
         }

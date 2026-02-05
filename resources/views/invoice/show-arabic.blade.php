@@ -149,7 +149,7 @@
             </div>
         </div>
 
-        @if (in_array($invoice->payment_type, ['full', 'credit', 'cash'], true))
+        @if (in_array($invoice->payment_type, ['full', 'credit'], true))
         <div class="flex justify-end mb-4">
             <h3 class="text-lg font-bold text-gray-800">{{ ucfirst($invoice->payment_type )}} Payment ({{ $invoice->currency }})</h3>
         </div>

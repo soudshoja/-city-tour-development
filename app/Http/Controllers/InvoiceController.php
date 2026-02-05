@@ -473,9 +473,7 @@ class InvoiceController extends Controller
             $query->where('is_active', true);
         }])->where('is_active', true)->get();
 
-        $invoiceGateways = Charge::where('is_active', true)
-            ->where('can_generate_link', true)
-            ->get();
+        $invoiceGateways = Charge::where('is_active', true)->get();
         $invoiceCharges = Charge::where('company_id', $invoice->agent->branch->company_id)
             ->where('is_active', true)
             ->where('can_charge_invoice', true)
@@ -642,32 +640,78 @@ class InvoiceController extends Controller
         Log::info('Starting to update Payment Type');
 
         try {
-            $invoice = Invoice::where('id', $request->invoice_id)
-                ->where('status', 'unpaid')
-                ->first();
-            if (!$invoice) {
-                return redirect()->back()->with('error', 'Invoice not found');
-            }
+            return DB::transaction(function () use ($request) {
+                $invoice = Invoice::where('id', $request->invoice_id)
+                    ->where('status', 'unpaid')
+                    ->first();
 
-            $invoice->payment_type = null;
-            $invoice->save();
-
-            $invoicePartials = InvoicePartial::where('invoice_id', $request->invoice_id)->get();
-
-            if ($invoicePartials->isNotEmpty()) {
-                foreach ($invoicePartials as $partial) {
-                    Log::info('Deleting InvoicePartial', ['invoice_partial_id' => $partial->id]);
-                    $partial->delete();
+                if (!$invoice) {
+                    return redirect()->back()->with('error', 'Invoice not found');
                 }
-                Log::info('Payment type changed, all related partials deleted for invoice ID: ' . $invoice->id);
-            } else {
-                Log::info('Payment type changed, no related invoice partial found for invoice ID: ' . $invoice->id);
-            }
 
-            return redirect()->back()->with('success', 'Payment Type changed successfully');
+                $invoicePartials = InvoicePartial::where('invoice_id', $request->invoice_id)->get();
+
+                if ($invoicePartials->isNotEmpty()) {
+                    foreach ($invoicePartials as $partial) {
+                        Log::info('Processing InvoicePartial for deletion', ['invoice_partial_id' => $partial->id]);
+
+                        // 1. Delete Invoice Receipts (Receipt Vouchers) linked to this partial
+                        $invoiceReceipts = InvoiceReceipt::where('invoice_partial_id', $partial->id)->get();
+                        foreach ($invoiceReceipts as $receipt) {
+                            if ($receipt->transaction_id) {
+                                JournalEntry::where('transaction_id', $receipt->transaction_id)->delete();
+                                Transaction::where('id', $receipt->transaction_id)->delete();
+                                Log::info('Deleted Receipt Voucher Transaction and Journal Entries', [
+                                    'transaction_id' => $receipt->transaction_id,
+                                    'invoice_partial_id' => $partial->id,
+                                ]);
+                            }
+                            $receipt->delete();
+                            Log::info('Deleted InvoiceReceipt', ['invoice_receipt_id' => $receipt->id]);
+                        }
+
+                        // 2. Delete Credits linked to this partial
+                        Credit::where('invoice_partial_id', $partial->id)->delete();
+                        Log::info('Deleted Credits for partial', ['invoice_partial_id' => $partial->id]);
+
+                        // 3. Delete the InvoicePartial itself
+                        $partial->delete();
+                        Log::info('Deleted InvoicePartial', ['invoice_partial_id' => $partial->id]);
+                    }
+
+                    Log::info('Payment type changed, all related records deleted for invoice ID: ' . $invoice->id);
+                } else {
+                    Log::info('Payment type changed, no related invoice partial found for invoice ID: ' . $invoice->id);
+                }
+
+                $oldInvoiceCharge = $invoice->invoice_charge;
+                $oldAmount = $invoice->amount;
+
+                // Reset payment type and invoice charge
+                $invoice->payment_type = null;
+                $invoice->invoice_charge = 0;
+                $invoice->amount = $invoice->sub_amount;
+                $invoice->save();
+
+                Log::info('Invoice reset after payment type change', [
+                    'invoice_id' => $invoice->id,
+                    'old_invoice_charge' => $oldInvoiceCharge,
+                    'old_amount' => $oldAmount,
+                    'new_invoice_charge' => $invoice->invoice_charge,
+                    'new_amount' => $invoice->amount,
+                    'sub_amount' => $invoice->sub_amount,
+                ]);
+
+                $this->recalculateProfitForInvoice($invoice);
+
+                return redirect()->back()->with('success', 'Payment Type changed successfully');
+            });
         } catch (Exception $e) {
-            Log::error('Failed to change payment type');
-            return redirect()->back()->with('error', 'Failed to change Payment Type');
+            Log::error('Failed to change payment type', [
+                'invoice_id' => $request->invoice_id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', 'Failed to change Payment Type: ' . $e->getMessage());
         }
     }
 
@@ -831,7 +875,7 @@ class InvoiceController extends Controller
             'gateway' => 'required',
             'method' => 'nullable|string',
             'external_url' => 'nullable|url',
-            'invoice_charge' => 'nullable|numeric|min:0',
+            'partial_invoice_charge' => 'nullable|numeric|min:0',
             'companyId' => 'required',
         ]);
 
@@ -857,7 +901,7 @@ class InvoiceController extends Controller
             $method = $request->input('method') ?? null;
             $credit = $request->input('credit', false); // Default to false if not provided
             $externalUrl = $request->input('external_url');
-            $invoiceCharge = $request->input('invoice_charge', 0);
+            $partialInvoiceCharge = $request->input('partial_invoice_charge', 0);
             $companyId = $request->input('companyId');
 
             $invoice = Invoice::where('invoice_number', $invoiceNumber)
@@ -880,43 +924,39 @@ class InvoiceController extends Controller
                 $invoice->update(['external_url' => $externalUrl]);
             }
 
-            // Update invoice charge
-            if ($invoiceCharge !== null) {
-                $invoice->invoice_charge = $invoiceCharge;
-                $invoice->amount = $invoice->sub_amount + $invoiceCharge;
-                $invoice->save();
-            }
-
-            $isCash = strcasecmp($type ?? '', 'cash') === 0 || strcasecmp($gateway ?? '', 'cash') === 0;
-
-            // Handle new payment types: cash
-            if ($isCash) {
-                $gateway = 'Cash';
-                $status = 'unpaid';
-            }
-
             $gatewayFee = 0;
-            $gatewayFee = ChargeService::calculate($amount, $companyId, $method, $gateway);
+            $gatewayFee = ChargeService::calculate($amount + $partialInvoiceCharge, $companyId, $method, $gateway);
+
+            Log::info('ChargeService calculation result', [
+                'base_amount' => $amount,
+                'invoice_charge' => $partialInvoiceCharge,
+                'amount_for_fee_calculation' => $amount + $partialInvoiceCharge,
+                'gateway' => $gateway,
+                'method' => $method,
+                'gatewayFee' => $gatewayFee['gatewayFee'] ?? null,
+                'accountingFee' => $gatewayFee['accountingFee'] ?? null,
+                'full_result' => $gatewayFee,
+            ]);
 
             $status = 'unpaid';
 
             try {
                 switch ($gateway) {
-                    case 'Tabby':
-                        $status = 'paid';
-                        break;
                     case 'Credit':
                         $status = 'paid';
                         $credit = true;
                         break;
                     default:
+                        // For Cash, Tabby, Deema - they remain unpaid until approved
                         $status = 'unpaid';
+                        break;
                 }
 
                 $invoicePartial = InvoicePartial::create([
                     'invoice_id' => $invoiceId,
                     'invoice_number' => $invoiceNumber,
                     'client_id' => $clientId,
+                    'invoice_charge' => $partialInvoiceCharge,
                     'service_charge' => $credit ? 0 : ($gatewayFee['gatewayFee'] ?? 0),
                     'gateway_fee' => $credit ? 0 : ($gatewayFee['accountingFee'] ?? 0),
                     'amount' => $amount,
@@ -1023,6 +1063,20 @@ class InvoiceController extends Controller
                     }
                 }
 
+                $totalInvoiceCharge = $invoice->invoicePartials()->sum('invoice_charge');
+
+                $invoice->invoice_charge = $totalInvoiceCharge;
+                $invoice->amount = $invoice->sub_amount + $totalInvoiceCharge;
+                $invoice->save();
+
+                Log::info('Recalculated invoice totals from partials', [
+                    'invoice_id' => $invoice->id,
+                    'sub_amount' => $invoice->sub_amount,
+                    'total_invoice_charge' => $totalInvoiceCharge,
+                    'new_amount' => $invoice->amount,
+                    'partials_count' => $invoice->invoicePartials->count(),
+                ]);
+
                 $invoice->save();
 
                 $transaction = Transaction::where('invoice_id', $invoice->id)
@@ -1096,10 +1150,23 @@ class InvoiceController extends Controller
                     $this->createCreditPaymentCOA($invoice, $appliedPayments, $totalCreditApplied);
                 }
 
-                // STEP 3: For Cash - Create Receipt Voucher
-                if ($isCash) {
+                // Check if gateway requires receipt voucher (is_system_default = false means requires receipt voucher)
+                $requiresReceiptVoucher = $charge && !$charge->is_system_default;
+
+                // STEP 3: For requiresReceiptVoucher - Create Receipt Voucher
+                if ($requiresReceiptVoucher) {
+                    $invoicePartial->refresh();
+
+                    Log::info('[RECEIPT VOUCHER] Invoice Partial values before creating RV', [
+                        'invoice_partial_id' => $invoicePartial->id,
+                        'amount' => $invoicePartial->amount,
+                        'service_charge' => $invoicePartial->service_charge,
+                        'invoice_charge' => $invoicePartial->invoice_charge,
+                        'calculated_total' => $invoicePartial->amount + $invoicePartial->service_charge + $invoicePartial->invoice_charge,
+                    ]);
+
                     $receiptVoucher = new ReceiptVoucherController();
-                    $rvResult = $receiptVoucher->createReceiptVoucher($invoice, $invoicePartial, $request);
+                    $rvResult = $receiptVoucher->createReceiptVoucher($invoice, $invoicePartial, $request, $gateway);
 
                     if (!$rvResult['ok']) {
                         throw new \Exception($rvResult['message'] ?? 'Failed to create receipt voucher');
@@ -1822,7 +1889,7 @@ class InvoiceController extends Controller
                     'description' => "Apply Client Credit from {$voucherNumber}",
                     'debit' => $amountApplied,
                     'credit' => 0,
-                    'balance' => $liabilityAccount->actual_balance ?? 0,
+                    'balance' => $liabilityAccount->actual_balance -= $amountApplied,
                     'name' => $liabilityAccount->name,
                     'type' => 'payable',
                     'currency' => $invoice->currency ?? 'KWD',
@@ -1846,7 +1913,7 @@ class InvoiceController extends Controller
                 'description' => "Invoice {$invoice->invoice_number} paid via Client Credit",
                 'debit' => 0,
                 'credit' => $totalAmount,
-                'balance' => $receivableAccount->actual_balance ?? 0,
+                'balance' => ($receivableAccount->actual_balance ?? 0) - $totalAmount,
                 'name' => $receivableAccount->name,
                 'type' => 'receivable',
                 'currency' => $invoice->currency ?? 'KWD',
@@ -1863,83 +1930,6 @@ class InvoiceController extends Controller
                 'error' => $e->getMessage(),
             ]);
             return null;
-        }
-    }
-
-    /**
-     * Create journal entries for cash and credit payment types
-     */
-    public function createPaymentJournalEntries($invoice, $invoicePartial, $amount, $paymentType)
-    {
-        try {
-            $companyId = $invoice->agent->branch->company_id;
-            $branchId = $invoice->agent->branch_id;
-            $clientName = $invoice->client->full_name;
-
-            // Create transaction for the payment
-            $transaction = Transaction::create([
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'entity_id' => $invoice->client_id,
-                'entity_type' => 'Client',
-                'transaction_type' => 'debit',
-                'amount' => $amount,
-                'description' => ucfirst($paymentType) . ' payment for invoice: ' . $invoice->invoice_number,
-                'invoice_id' => $invoice->id,
-                'reference_type' => 'Payment',
-                'transaction_date' => $invoice->invoice_date,
-            ]);
-
-            // Find required accounts
-            $receivableAccount = Account::where('name', 'Accounts Receivable')
-                ->where('company_id', $companyId)
-                ->first();
-
-            $clientAccount = Account::where('name', 'Clients')
-                ->where('company_id', $companyId)
-                ->where('parent_id', $receivableAccount->id ?? null)
-                ->first();
-
-            if (!$clientAccount) {
-                throw new Exception('Client receivable account not found');
-            }
-
-            if ($paymentType === 'cash') {
-                // For cash payment:
-                // Only debit the client (client owes us money)
-                // Invoice remains unpaid until receipt voucher is processed
-
-                // Debit client receivable (client owes money for cash payment)
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $branchId,
-                    'company_id' => $companyId,
-                    'account_id' => $clientAccount->id,
-                    'invoice_id' => $invoice->id,
-                    'agent_id' => $task->agent_id ?? $invoice->agent_id,
-                    'transaction_date' => now(),
-                    'description' => 'Cash payment obligation for client: ' . $clientName,
-                    'debit' => $amount,
-                    'credit' => 0,
-                    'balance' => $clientAccount->actual_balance + $amount,
-                    'name' => $clientName,
-                    'type' => 'receivable',
-                    'voucher_number' => 'CSH-' . now()->timestamp,
-                    'type_reference_id' => $clientAccount->id,
-                ]);
-
-                // Update account balance
-                $clientAccount->actual_balance += $amount;
-                $clientAccount->save();
-            }
-
-            return ['status' => 'success'];
-        } catch (Exception $e) {
-            Log::error('Error creating payment journal entries: ' . $e->getMessage());
-            return [
-                'status' => 'error',
-                'message' => 'Failed to create payment journal entries: ' . $e->getMessage()
-            ];
         }
     }
 
@@ -2170,7 +2160,7 @@ class InvoiceController extends Controller
                 $gatewayFee = [];
                 try {
                     $gatewayFee = ChargeService::calculate(
-                        $partial->amount,
+                        $partial->amount + ($partial->invoice_charge ?? 0),
                         $companyId,
                         $partial->payment_method ?? null,
                         $partial->payment_gateway
@@ -2185,7 +2175,7 @@ class InvoiceController extends Controller
                 }
                 $partial->service_charge = $gatewayFee['gatewayFee'] ?? 0.00;
                 $partial->save();
-                $partial->final_amount = $partial->amount + $partial->service_charge;
+                $partial->final_amount = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
                 $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
 
                 if ($chargePayer !== 'Company') {
@@ -2193,10 +2183,13 @@ class InvoiceController extends Controller
                     $totalGatewayFee['paid_by'] = $chargePayer;
                     $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
                 }
+            } else {
+                $partial->final_amount = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
             }
         }
 
-        $totalGatewayFee['gatewayFee'] += $invoice->invoice_charge ?? 0;
+        $totalPartialInvoiceCharge = $invoicePartials->sum('invoice_charge');
+        $totalGatewayFee['gatewayFee'] += $totalPartialInvoiceCharge;
 
         $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['gatewayFee'];
         $paidPartials = $invoicePartials->where('status', 'paid');
@@ -2371,51 +2364,28 @@ class InvoiceController extends Controller
 
     public function split(string $invoiceNumber, int $clientId, int $partialId)
     {
-        // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
         $invoicePartial = InvoicePartial::where('id', $partialId)
             ->where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice')
             ->first();
 
-        // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        $invoicePartial->expiry_date = \Carbon\Carbon::parse($invoicePartial->expiry_date);
+        $invoicePartial->expiry_date = Carbon::parse($invoicePartial->expiry_date);
         $invoiceDetails = $invoice->invoiceDetails;
 
-        $gatewayFee = [];
         $canGenerateLink = $invoicePartial->charge ? $invoicePartial->charge->can_generate_link : false;
 
-        if ($invoicePartial->status !== 'paid' && $canGenerateLink) {
-            try {
-                $paymentGateway = $invoicePartial->payment_gateway ?? 'Tap';
-                $paymentMethod = $invoicePartial->payment_method;
-                $companyId = $invoice->agent->branch->company_id;
+        $gatewayFee = [
+            'paid_by' => ($invoicePartial->service_charge > 0) ? 'Client' : 'Company',
+            'gatewayFee' => $invoicePartial->service_charge,
+        ];
 
-                // ✅ One unified call for ALL gateways
-                $gatewayFee = ChargeService::calculate(
-                    $invoicePartial->amount,
-                    $companyId,
-                    $paymentMethod,
-                    $paymentGateway
-                );
-            } catch (\Exception $e) {
-                Log::error('ChargeService exception on split page', [
-                    'message' => $e->getMessage(),
-                    'partial_id' => $partialId
-                ]);
-                $gatewayFee = ['gatewayFee' => 0, 'paid_by' => 'Company'];
-            }
-            $invoicePartial->service_charge = ($gatewayFee['paid_by'] === 'Company') ? 0 : $gatewayFee['gatewayFee'];
-            $invoicePartial->save();
-            $invoicePartial->final_amount = $invoicePartial->amount + $invoicePartial->service_charge;
-        } else {
-            $invoicePartial->final_amount = $invoicePartial->amount;
-            $gatewayFee['paid_by'] = ($invoicePartial->service_charge > 0) ? 'Client' : 'Company';
-        }
+        // Calculate final_amount from stored values
+        $invoicePartial->final_amount = $invoicePartial->amount + $invoicePartial->service_charge + ($invoicePartial->invoice_charge ?? 0);
 
         $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
             ->where('invoice_partial_id', $invoicePartial->id)
@@ -3069,9 +3039,9 @@ class InvoiceController extends Controller
         $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
 
         $journalEntries = JournalEntry::where(function ($q) use ($invoice, $taskIds) {
-                $q->where('invoice_id', $invoice->id)
-                  ->orWhereIn('task_id', $taskIds);
-            })
+            $q->where('invoice_id', $invoice->id)
+                ->orWhereIn('task_id', $taskIds);
+        })
             ->get();
 
         $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
@@ -3523,7 +3493,7 @@ class InvoiceController extends Controller
             'invoice_date' => 'nullable|date',
             'due_date' => 'nullable|date',
             'paid_date' => 'nullable|date_format:Y-m-d\TH:i',
-            'payment_type' => 'nullable|string|in:full,partial,split,credit,cash',
+            'payment_type' => 'nullable|string|in:full,partial,split,credit',
             'status' => 'nullable|string|in:paid,unpaid',
             'client_id' => 'nullable|integer|exists:clients,id',
             'agent_id' => 'nullable|integer|exists:agents,id',

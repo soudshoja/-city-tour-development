@@ -208,7 +208,7 @@
             </div>
         </div>
 
-        @if (in_array($invoice->payment_type, ['full', 'credit', 'cash'], true))
+        @if (in_array($invoice->payment_type, ['full', 'credit'], true))
         <h3 class="text-lg font-bold text-gray-800 mb-4">{{ ucfirst($invoice->payment_type )}} Payment ({{ $invoice->currency }})</h3>
         <table class="min-w-full mb-8 border border-gray-200">
             <thead>
@@ -521,7 +521,7 @@
                 <input type="hidden" name="invoiceNumber" value="{{ $invoice->invoice_number }}">
 
                 <button id="submitButton" type="submit"
-                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                    class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-white">
                     <span id="buttonText">Send Invoice To Client</span>
                     <span id="spinner" class="hidden ml-2">
                         <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -549,7 +549,7 @@
                     @if ($canGenerateLink)
                         <div class="flex items-center gap-2">
                             <button type="submit" id="payNowBtn"
-                                class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-white">
                                 Pay Now
                             </button>
                         </div>
@@ -669,17 +669,15 @@
                                 <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
                                     class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
                                 </a>
-                            @elseif ($partial->payment_gateway === 'Cash')
+                            @elseif ($partial->charge && !$partial->charge->is_system_default)
                                 @if($partial->invoiceReceipt?->transaction?->reference_number)
                                     <a href="{{ route('receipt-voucher.show', ['companyId' => $companyId,
                                         'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 underline" target="_blank">
                                         {{ $partial->invoiceReceipt->transaction->reference_number }}
                                     </a>
                                 @else
-                                    <span class="text-gray-600 italic">Cash (Receipt pending)</span>
+                                    <span class="text-gray-600 italic">{{ $partial->payment_gateway }} (Receipt pending)</span>
                                 @endif
-                            @else
-                                <span class="text-gray-600 italic">Receipt voucher TBA</span>
                             @endif
                         </td>
                         <td class="px-4 py-2 border">
@@ -697,8 +695,12 @@
                             @elseif ($paymentReferenceCredit)
                                 Client Credit by {{ $partial->client->full_name }}
                                 ({{ $paymentReferenceCredit }})
-                            @elseif ($partial->payment_gateway === 'Tabby')
-                                <span class="italic">Paid via receipt voucher</span>
+                            @elseif ($partial->charge && !$partial->charge->is_system_default)
+                                @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                    {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                @else
+                                    <span class="italic">{{ $partial->payment_gateway }} (Receipt pending)</span>
+                                @endif
                             @elseif ($partial->payment?->payment_gateway === 'MyFatoorah')
                                 {{ $partial->payment->myfatoorahPayment->invoice_ref ?? $partial->payment->myfatoorahPayment->payload['Data']['InvoiceReference'] ?? 'N/A' }}
                             @else

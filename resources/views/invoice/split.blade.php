@@ -142,11 +142,8 @@
                              </p>
                          </td>
                          <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
-                         <td class="px-4 py-2 border">{{ number_format($invoicePartial->amount ?? 0, 3) }}</td>
-                         <td class="px-4 py-2 border">
-                             {{ number_format(($detail->quantity ?? 1) * ($invoicePartial->amount ?? 0), 3, '.', ',') }}
-
-                         </td>
+                         <td class="px-4 py-2 border">{{ number_format($detail->supplier_price ?? 0, 3) }}</td>
+                         <td class="px-4 py-2 border">{{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 3, '.', ',') }}</td>
                      </tr>
                      <!--  <input type="hidden" name="selected_items[]" value="{{ $detail->id }}" form="paymentForm"> -->
                  @endforeach
@@ -158,7 +155,7 @@
              <div class="w-1/3 text-sm">
                  <div class="flex justify-between py-2 border-b border-gray-200">
                      <span>Subtotal:</span>
-                     <span>{{ number_format($invoicePartial->status === 'paid' ? $invoicePartial->amount - $invoicePartial->service_charge : $invoicePartial->amount, 3) }}</span>
+                     <span>{{ number_format($invoicePartial->amount, 3) }}</span>
                  </div>
                  @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                      @foreach ($checkUtilizeCredit as $credit)
@@ -194,7 +191,7 @@
                          <input type="hidden" name="client_id" value='{{ $invoicePartial->client->id }}'>
                          <input type="hidden" name="invoiceNumber" value='{{ $invoicePartial->invoice_number }}'>
                          <button type="submit"
-                             class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-black">
+                             class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-black">
                              Send Invoice To Client
                          </button>
                      </form>
@@ -212,7 +209,7 @@
                     @if($canGenerateLink)
                      <div class="flex items-center gap-2">
                          <button type="submit" id="payNowBtn"
-                             class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-black">
+                             class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-black">
                              Pay Now
                          </button>
                      </div>

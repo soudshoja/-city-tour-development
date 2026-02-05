@@ -820,7 +820,8 @@ class InvoiceController extends Controller
 
     public function savePartial(Request $request): JsonResponse
     {
-        Log::info('invoice.partial.payload', $request->all());
+        Log::info('Starting to save payment of the invoice', $request->all());
+        
         $request->validate([
             'invoiceId' => 'required',
             'date' => 'nullable',

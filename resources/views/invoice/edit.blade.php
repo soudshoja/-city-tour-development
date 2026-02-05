@@ -401,7 +401,7 @@
                                 </div>
                             </div>
                         </div>
-                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
+                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full'))
                         <div class="px-4 mt-8 border-t pt-6 flex justify-end">
                             <button type="submit" class="inline-flex items-center justify-center text-base font-semibold bg-blue-600 text-white hover:bg-blue-700 py-3 px-6 rounded-lg shadow-md">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
@@ -527,7 +527,7 @@
 
                                                     <div class="mt-5 mb-5 flex justify-between">
                                                         <span class="text-gray-700">Amount:</span>
-                                                        <span class="font-semibold">{{ $invoice->currency }} {{ number_format($partial->amount, 2) }}</span>
+                                                        <span class="font-semibold">{{ $invoice->currency }} {{ number_format($partial->amount, 3) }}</span>
                                                     </div>
 
                                                     <!-- Gateway Selection -->
@@ -783,7 +783,7 @@
                                                         class="rounded-full flex flex-col items-center justify-center w-full
                                                             px-4 py-2 border border-gray-300 
                                                             bg-green-500 text-white shadow-xl">
-                                                        <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }} KWD has been utilized.</span>
+                                                        <span>Credit {{ number_format(abs($creditUsed->amount), 3) ?? 0 }} KWD has been utilized.</span>
                                                         <span>Current balance of credit for {{ $selectedClient->first_name }}: {{ $balanceCredit }} KWD</span>
                                                     </button>
                                                 </a>
@@ -869,7 +869,7 @@
                                                                         <span class="text-gray-800 text-base">
                                                                             [Yes] Pay the
                                                                             remaining balance
-                                                                            ({{ number_format($balanceCredit - $invoice->amount, 2) }}
+                                                                            ({{ number_format($balanceCredit - $invoice->amount, 3) }}
                                                                             KWD)
                                                                             in the same invoice.
                                                                         </span>
@@ -975,25 +975,6 @@
                                             bg-white text-gray-700 transition gap-2"
                                             :class="isTypeLocked('split') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'">
                                             <span class="font-medium">Split Payment</span>
-                                        </div>
-                                    </label>
-
-                                    <!-- Cash Payment Tab -->
-                                    <label class="rounded-full shadow transition-all duration-200"
-                                        :class="isTypeLocked('cash') ? 'cursor-not-allowed' : 'cursor-pointer'"
-                                        @click="handlePaymentTypeClick('cash', $event)">
-                                        <input type="radio" id="payment_type_cash" name="payment_type" value="cash" 
-                                            hidden class="peer"
-                                            {{ $invoice->payment_type == 'cash' ? 'checked' : '' }}
-                                            :disabled="isTypeLocked('cash')" />
-                                        <div class="rounded-full flex items-center justify-center 
-                                            peer-checked:ring-2 peer-checked:ring-blue-500 
-                                            peer-checked:bg-green-500 peer-checked:text-white
-                                            px-4 py-2 border border-gray-300 
-                                            bg-white text-gray-700 transition gap-2"
-                                            :class="isTypeLocked('cash') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'"
-                                            title="Client owes cash payment. Invoice remains unpaid until receipt voucher is processed by accountant.">
-                                            <span class="font-medium">Cash Payment</span>
                                         </div>
                                     </label>
 
@@ -1109,7 +1090,7 @@
                                                                     ->map(fn($r) => [
                                                                         'id'   => $r->transaction->reference_number, 
                                                                         'name' => $r->transaction->reference_number 
-                                                                                    .' — KWD '.number_format((float)$r->amount, 2),
+                                                                                    .' — KWD '.number_format((float)$r->amount, 3),
                                                                     ])"
                                                                 :placeholder="'Select Receipt Voucher'"
                                                                 :selectedName="old('receipt') ?? ($selectedReceiptRef ?? null)"
@@ -1244,7 +1225,8 @@
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
                                                         <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
                                                             class="form-input" step="0.01" min="0" value="{{ $invoice->invoice_charge }}"
-                                                            placeholder="Enter charge amount">
+                                                            placeholder="Enter charge amount"
+                                                            oninput="document.getElementById('invoice_charge').value = this.value || 0; calculateSubtotal();">
                                                         <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
                                                     </div>
                                                 </div>
@@ -1349,7 +1331,6 @@
                                             </svg>
                                             Copy Link
                                         </button>
-                                        @if($invoice->payment_type !== 'cash')
                                         <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
                                             class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -1363,7 +1344,6 @@
                                             </svg>
                                             View
                                         </a>
-                                        @endif
 
                                         <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to clipboard!</p>
                                     </div>
@@ -1454,7 +1434,7 @@
                             </div>
 
                             <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-2 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col overflow-hidden">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] h-[85vh] flex flex-col overflow-hidden">
                                     <div class="px-4 md:px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
                                         <h3 class="text-xl font-bold">Split Payment Details</h3>
                                     </div>
@@ -1502,6 +1482,7 @@
                                                                 <th class="border-b px-2 py-2 whitespace-nowrap">Amount</th>
                                                                 <th class="border-b px-2 py-2 whitespace-nowrap">Gateway</th>
                                                                 <th class="border-b px-2 py-2 whitespace-nowrap">Method</th>
+                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Invoice Charge</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody id="split-rows">
@@ -1527,7 +1508,7 @@
                             </div>
 
                             <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] h-[85vh] flex flex-col">
                                     <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
                                         <h3 class="text-xl font-bold">Partial Payment Details</h3>
                                     </div>
@@ -1573,6 +1554,7 @@
                                                             <th class="border-b px-4 py-2">Expiry Date</th>
                                                             <th class="border-b px-4 py-2">Amount</th>
                                                             <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                            <th class="border-b px-4 py-2">Invoice Charge</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="split-rows1">
@@ -1891,10 +1873,10 @@
             const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
 
             if (invoiceChargeElement) {
-                invoiceChargeElement.value = invoiceChargeAmount.toFixed(2);
+                invoiceChargeElement.value = invoiceChargeAmount.toFixed(3);
             }
             if (invoiceChargeAmountHidden) {
-                invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(2);
+                invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(3);
             }
 
             // Update displays
@@ -2049,7 +2031,6 @@
                 // Disable other payment options
                 const partialPaymentRadio = document.getElementById('payment_type_partial');
                 const splitPaymentRadio = document.getElementById('payment_type_split');
-                const cashPaymentRadio = document.getElementById('payment_type_cash');
                 const importPaymentRadio = document.getElementById('payment_type_import');
                 const creditPaymentRadio = document.getElementById('payment_type_credit');
 
@@ -2062,11 +2043,6 @@
                     splitPaymentRadio.disabled = true;
                     splitPaymentRadio.parentElement.style.opacity = '0.5';
                     splitPaymentRadio.parentElement.style.pointerEvents = 'none';
-                }
-                if (cashPaymentRadio) {
-                    cashPaymentRadio.disabled = true;
-                    cashPaymentRadio.parentElement.style.opacity = '0.5';
-                    cashPaymentRadio.parentElement.style.pointerEvents = 'none';
                 }
                 if (importPaymentRadio) {
                     importPaymentRadio.disabled = true;
@@ -2086,7 +2062,6 @@
                 // Re-enable other payment options
                 const partialPaymentRadio = document.getElementById('payment_type_partial');
                 const splitPaymentRadio = document.getElementById('payment_type_split');
-                const cashPaymentRadio = document.getElementById('payment_type_cash');
                 const importPaymentRadio = document.getElementById('payment_type_import');
 
                 if (partialPaymentRadio) {
@@ -2098,11 +2073,6 @@
                     splitPaymentRadio.disabled = false;
                     splitPaymentRadio.parentElement.style.opacity = '1';
                     splitPaymentRadio.parentElement.style.pointerEvents = 'auto';
-                }
-                if (cashPaymentRadio) {
-                    cashPaymentRadio.disabled = false;
-                    cashPaymentRadio.parentElement.style.opacity = '1';
-                    cashPaymentRadio.parentElement.style.pointerEvents = 'auto';
                 }
                 if (importPaymentRadio) {
                     importPaymentRadio.disabled = false;
@@ -2171,6 +2141,13 @@
             }
         }
 
+        // Helper function to check if a gateway can charge invoice
+        function canGatewayChargeInvoice(gatewayName) {
+            if (!gatewayName) return false;
+            const gateway = charges.find(c => c.name === gatewayName);
+            return gateway && gateway.can_charge_invoice === true;
+        }
+
         // console.log('invoice', invoice);
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -2184,7 +2161,6 @@
         const paymentTypeFull = document.getElementById("payment_type_full");
         const paymentTypePartial = document.getElementById("payment_type_partial");
         const paymentTypeSplit = document.getElementById("payment_type_split");
-        const paymentTypeCash = document.getElementById("payment_type_cash");
         const paymentTypeImport = document.getElementById('payment_type_import');
         const paymentTypeCredit = document.getElementById('payment_type_credit');
         const isInvoicePaid = "{{ $invoice->status === 'paid' }}"
@@ -2237,7 +2213,7 @@
             const show = (el) => el && (el.style.display = 'block');
             const hide = (el) => el && (el.style.display = 'none');
 
-            if (paymentType === 'full' || paymentType === 'cash') {
+            if (paymentType === 'full') {
                 show(paymentGatewaySection);
                 show(additionalActions);
                 hide(quickActionsHeader);
@@ -2276,21 +2252,7 @@
                     // Check which payment type is selected
                     const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
 
-                    if (selectedPaymentType) {
-                        const paymentTypeValue = selectedPaymentType.value;
-
-                        if (paymentTypeValue === 'cash') {
-                            savePartial('cash');
-                        } else if (paymentTypeValue === 'full') {
-                            savePartial('full');
-                        } else {
-                            // For other payment types, default to full
-                            savePartial('full');
-                        }
-                    } else {
-                        // No payment type selected, default to full
-                        savePartial('full');
-                    }
+                    savePartial('full');
                 });
             }
 
@@ -2514,10 +2476,7 @@
                             <div class="min-w-[100px]">
                                 <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-1 rounded text-sm">
                                     <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
-                                    <option value="Cash">Cash</option>
-                                    @foreach ($invoiceGateways as $gateway)
-                                        <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                                    @endforeach
+                                    ${charges.map(gateway => `<option value="${gateway.name}">${gateway.name}</option>`).join('')}
                                 </select>
                             </div>
                         </td>
@@ -2529,18 +2488,32 @@
                                 <div id="payment_method_text_${i}" class="text-gray-500 p-1 text-sm">No method required</div>
                             </div>
                         </td>
-                    `;
+                        <td class="border-b px-2 py-2">
+                            <div class="min-w-[80px]">
+                                <input type="number" id="invoice_charge_${i}" name="invoice_charge_${i}" 
+                                    class="w-full border-gray-300 rounded-md no-spin text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                    value="0" step="0.001" min="0"
+                                    placeholder="0.000"
+                                    disabled />
+                                <p id="invoice_charge_hint_${i}" class="text-xs text-gray-400 mt-1">Select gateway</p>
+                            </div>
+                        </td>
+                `;
                 tbody.appendChild(row);
 
                 const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
                 const methodContainer = row.querySelector(`#payment_method_container_${i}`);
                 const methodText = row.querySelector(`#payment_method_text_${i}`);
                 const methodSelect = row.querySelector(`#payment_method_${i}`);
+                const invoiceChargeInput = row.querySelector(`#invoice_charge_${i}`);
+                const invoiceChargeHint = row.querySelector(`#invoice_charge_hint_${i}`);
 
                 function updateMethodVisibility() {
-                    const key = gwKey(gatewaySelect.value);
+                    const selectedGateway = gatewaySelect.value;
+                    const key = gwKey(selectedGateway);
                     const methods = methodsByGateway[key] || [];
 
+                    // Handle payment method visibility
                     if (methods.length > 0) {
                         renderMethodOptions(methodSelect, methods);
                         methodContainer.classList.remove('hidden');
@@ -2550,10 +2523,35 @@
                         methodText.classList.remove('hidden');
                     }
 
+                    // Handle invoice charge - FIXED: Use charges.find() like full payment
+                    const canCharge = canGatewayChargeInvoice(selectedGateway);
+                    
+                    if (canCharge) {
+                        invoiceChargeInput.disabled = false;
+                        invoiceChargeInput.classList.remove('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
+                        invoiceChargeInput.classList.add('bg-white');
+                        invoiceChargeHint.textContent = `${selectedGateway} charge`;
+                        invoiceChargeHint.classList.remove('text-gray-400');
+                        invoiceChargeHint.classList.add('text-gray-500');
+                    } else {
+                        invoiceChargeInput.disabled = true;
+                        invoiceChargeInput.value = '0';
+                        invoiceChargeInput.classList.add('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
+                        invoiceChargeInput.classList.remove('bg-white');
+                        
+                        if (!selectedGateway || selectedGateway === 'Credit') {
+                            invoiceChargeHint.textContent = selectedGateway === 'Credit' ? 'Not applicable' : 'Select gateway';
+                        } else {
+                            invoiceChargeHint.textContent = 'Not supported';
+                        }
+                        invoiceChargeHint.classList.add('text-gray-400');
+                        invoiceChargeHint.classList.remove('text-gray-500');
+                    }
+
+                    // Handle credit payment selection
                     if (key === gwKey('credit')) {
                         handleCreditPaymentSelection(i);
                     } else {
-                        // Hide payment selection when switching away from Credit
                         PaymentSelection.hideForRow('split', i);
                     }
                 }
@@ -2608,7 +2606,7 @@
 
                 // disable credit if this row doesn't already use it and amount > remaining
                 opt.disabled = !usesCredit && (amt <= 0 || amt > creditRemaining);
-                opt.textContent = `Credit (${creditRemaining.toFixed(2)})`;
+                opt.textContent = `Credit (${creditRemaining.toFixed(3)})`;
                 opt.style.color = opt.disabled ? '#9ca3af' : '#000';
             }
         }
@@ -2616,7 +2614,7 @@
         function updateRowPartial() { // partial payment
             const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
             const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
+            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(3) : 0;
             const tbody = document.getElementById('split-rows1');
             tbody.innerHTML = '';
 
@@ -2638,13 +2636,9 @@
                     <td class="border-b px-4 py-2 text-left">
                         <select id="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                             <option value="" selected>Select payment gateway</option>
-                            <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(2)})</option>
-                            <option value="Cash">Cash</option>
-                            @foreach ($invoiceGateways as $gateway)
-                                <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                            @endforeach
+                            <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(3)})</option>
+                            ${charges.map(gateway => `<option value="${gateway.name}">${gateway.name}</option>`).join('')}
                         </select>
-                        
 
                         <div id="method_wrapper_${i}" class="mt-2">
                             <label class="block text-sm font-medium mb-1">Payment Method</label>
@@ -2654,20 +2648,33 @@
                             <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
                         </div>
                     </td>
-                    `;
+                    <td class="border-b px-4 py-2">
+                        <div class="min-w-[100px]">
+                            <input type="number" id="invoice_charge1_${i}" name="invoice_charge1_${i}" 
+                                class="w-full border-gray-300 rounded-md no-spin disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                value="0" step="0.001" min="0"
+                                placeholder="0.000"
+                                disabled />
+                            <p id="invoice_charge_hint1_${i}" class="text-xs text-gray-400 mt-1">Select gateway first</p>
+                        </div>
+                    </td>
+                `;
                 tbody.appendChild(row);
 
                 const gatewaySelect = row.querySelector(`#payment_gateway1_${i}`);
                 const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
                 const methodText = row.querySelector(`#payment_method_text1_${i}`);
                 const methodSelect = row.querySelector(`#payment_method1_${i}`);
+                const invoiceChargeInput = row.querySelector(`#invoice_charge1_${i}`);
+                const invoiceChargeHint = row.querySelector(`#invoice_charge_hint1_${i}`);
                 const amountEl = row.querySelector(`#amount_${i}`);
 
                 function updateMethodVisibility() {
-                    const key = gwKey(gatewaySelect.value);
+                    const selectedGateway = gatewaySelect.value;
+                    const key = gwKey(selectedGateway);
                     const methods = methodsByGateway[key] || [];
-                    const isCashOrCredit = key === gwKey('cash') || key === gwKey('credit');
 
+                    // Handle payment method visibility
                     if (methods.length > 0) {
                         renderMethodOptions(methodSelect, methods);
                         methodContainer.classList.remove('hidden');
@@ -2675,6 +2682,31 @@
                     } else {
                         methodContainer.classList.add('hidden');
                         methodText.classList.remove('hidden');
+                    }
+
+                    // Handle invoice charge - FIXED: Use charges.find() like full payment
+                    const canCharge = canGatewayChargeInvoice(selectedGateway);
+                    
+                    if (canCharge) {
+                        invoiceChargeInput.disabled = false;
+                        invoiceChargeInput.classList.remove('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
+                        invoiceChargeInput.classList.add('bg-white');
+                        invoiceChargeHint.textContent = `${selectedGateway} charge`;
+                        invoiceChargeHint.classList.remove('text-gray-400');
+                        invoiceChargeHint.classList.add('text-gray-500');
+                    } else {
+                        invoiceChargeInput.disabled = true;
+                        invoiceChargeInput.value = '0';
+                        invoiceChargeInput.classList.add('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
+                        invoiceChargeInput.classList.remove('bg-white');
+                        
+                        if (!selectedGateway) {
+                            invoiceChargeHint.textContent = 'Select gateway first';
+                        } else {
+                            invoiceChargeHint.textContent = 'Not supported';
+                        }
+                        invoiceChargeHint.classList.add('text-gray-400');
+                        invoiceChargeHint.classList.remove('text-gray-500');
                     }
                 }
 
@@ -2695,7 +2727,7 @@
                             creditUsed[i] = amt;
                             creditRemaining -= amt;
                         } else {
-                            alert(`Not enough credit. Remaining: ${creditRemaining.toFixed(2)}; Row ${i} needs: ${amt.toFixed(2)}.`);
+                            alert(`Not enough credit. Remaining: ${creditRemaining.toFixed(3)}; Row ${i} needs: ${amt.toFixed(3)}.`);
                             gatewaySelect.value = '';
                             PaymentSelection.hideForRow('partial', i);
                         }
@@ -2723,7 +2755,7 @@
                                 creditRemaining -= delta;
                             } else {
                                 const maxPossible = using + creditRemaining;
-                                amountEl.value = maxPossible.toFixed(2);
+                                amountEl.value = maxPossible.toFixed(3);
                                 creditUsed[i] = maxPossible;
                                 creditRemaining = 0;
                             }
@@ -2952,15 +2984,23 @@
             const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
 
             const invoiceChargeElement = document.getElementById('invoice_charge');
-            const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
+            const invoiceChargeInputElement = document.getElementById('invoice_charge_amount_input');
+            const invoiceCharge = invoiceChargeInputElement ? (parseFloat(invoiceChargeInputElement.value) || 0) 
+                : (invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0);
+
+            // Check if invoice charge has been modified from original
+            const originalInvoiceCharge = parseFloat("{{ $invoice->invoice_charge ?? 0 }}") || 0;
+            const invoiceChargeChanged = Math.abs(invoiceCharge - originalInvoiceCharge) > 0.001;
 
             let serviceCharge = 0;
 
-            if (window.invoicePartials && Array.isArray(window.invoicePartials) && window.invoicePartials.length > 0) {
+            // Only use stored partials' service charge if invoice charge hasn't changed
+            if (window.invoicePartials && Array.isArray(window.invoicePartials) && window.invoicePartials.length > 0 && !invoiceChargeChanged) {
                 serviceCharge = window.invoicePartials.reduce((sum, partial) => {
                     return sum + (parseFloat(partial.service_charge) || 0);
                 }, 0);
             } else {
+                // Calculate dynamically when no partials OR when invoice charge changed
                 const selectedGateway = document.getElementById('payment_gateway_option')?.value;
                 const selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
 
@@ -2968,14 +3008,46 @@
                     const selectedCharge = charges.find(charge => charge.name === selectedGateway);
 
                     if (selectedCharge) {
+                        let chargeValue = 0;
+                        let chargeType = 'Flat Rate';
+                        let paidBy = 'Company';
+
                         const gatewayKey = gwKey(selectedGateway);
                         const gatewayMethods = methodsByGateway[gatewayKey] || [];
 
+                        // Priority 1: Payment method level
                         if (gatewayMethods.length > 0 && selectedPaymentMethod) {
                             const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
-                            serviceCharge = method ? (parseFloat(method.fee) || 0) : 0;
-                        } else {
-                            serviceCharge = parseFloat(selectedCharge.fee) || 0;
+                            if (method) {
+                                chargeValue = parseFloat(method.self_charge) || parseFloat(method.service_charge) || parseFloat(method.fee) || 0;
+                                chargeType = method.charge_type || 'Flat Rate';
+                                paidBy = method.paid_by || 'Company';
+                            }
+                        }
+
+                        // Priority 2: Gateway level fallback
+                        if (chargeValue <= 0) {
+                            const selfCharge = parseFloat(selectedCharge.self_charge);
+                            const gatewayAmount = parseFloat(selectedCharge.amount?.toString().replace(',', '')) || 0;
+                            
+                            if (!isNaN(selfCharge) && selfCharge > 0) {
+                                chargeValue = selfCharge;
+                                chargeType = selectedCharge.self_charge_type || 'Flat Rate';
+                            } else {
+                                chargeValue = gatewayAmount;
+                                chargeType = selectedCharge.charge_type || 'Percent';
+                            }
+                            paidBy = selectedCharge.paid_by || 'Company';
+                        }
+
+                        // Only calculate if client pays
+                        if (paidBy === 'Client' && chargeValue > 0) {
+                            if (chargeType === 'Percent') {
+                                const baseAmount = subtotal + invoiceCharge;
+                                serviceCharge = Math.ceil((baseAmount * chargeValue) / 100);
+                            } else {
+                                serviceCharge = chargeValue;
+                            }
                         }
                     }
                 }
@@ -2984,12 +3056,12 @@
             const finalAmount = subtotal + serviceCharge;
             const finalTotal = finalAmount + invoiceCharge;
 
-            document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
+            document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(3)}`;
 
             const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
             const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
             if (serviceChargeDisplayElement) {
-                serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(2)}`;
+                serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(3)}`;
             }
             if (serviceChargeDisplayRow) {
                 serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
@@ -2998,17 +3070,17 @@
             const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
             const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
             if (finalAmountDisplayElement) {
-                finalAmountDisplayElement.textContent = `${finalAmount.toFixed(2)}`;
+                finalAmountDisplayElement.textContent = `${finalAmount.toFixed(3)}`;
             }
             if (finalAmountDisplayRow) {
                 finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
             }
 
-            document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
-            document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
+            document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(3)}`;
+            document.getElementById('subT').textContent = `${finalTotal.toFixed(3)}`;
 
             const subT1Element = document.getElementById('subT1');
-            if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(2)}`;
+            if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(3)}`;
 
             document.getElementById('subTotal').value = subtotal;
 
@@ -3017,10 +3089,10 @@
 
             const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
             const netT = document.getElementById('netT');
-            if (netT) netT.textContent = netTotals.toFixed(2);
+            if (netT) netT.textContent = netTotals.toFixed(3);
 
             const netTotal = document.getElementById('netTotal');
-            if (netTotal) netTotal.value = netTotals.toFixed(2);
+            if (netTotal) netTotal.value = netTotals.toFixed(3);
         }
 
         function renderItems() {
@@ -3038,7 +3110,7 @@
 
             const frag = document.createDocumentFragment();
             let count = 0;
-            const isInvoicePaid = "{{ $invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash') }}";
+            const isInvoicePaid = "{{ $invoice->status === 'paid' && ($invoice->payment_type === 'full') }}";
 
             for (const item of items) {
                 try {
@@ -3061,7 +3133,7 @@
                     };
 
                     const isSaved = item.saved === true;
-                    const canSavePrice = (!invoice.payment_type || invoice.payment_type === 'full' || invoice.payment_type === 'cash');
+                    const canSavePrice = (!invoice.payment_type || invoice.payment_type === 'full');
                     const row = document.createElement('tr');
                     row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
 
@@ -3121,7 +3193,7 @@
                         <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
                         <div class="flex justify-between items-center text-lg">
                         <div>Quantitiy: <strong>${task.quantity}</strong></div>
-                        <div class="font-bold">${(task.quantity * Number(task.total || 0)).toFixed(2)} KWD</div>
+                        <div class="font-bold">${(task.quantity * Number(task.total || 0)).toFixed(3)} KWD</div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <input id="invprice-modal-${task.id}" type="number" name="invprice"
@@ -3522,7 +3594,7 @@
                     invoiceChargeInput.value = invoice.invoice_charge;
                 }
                 if (calculatedChargeInput) {
-                    calculatedChargeInput.value = invoice.invoice_charge.toFixed(2);
+                    calculatedChargeInput.value = invoice.invoice_charge.toFixed(3);
                 }
                 if (invoiceChargeHidden) {
                     invoiceChargeHidden.value = invoice.invoice_charge;
@@ -3883,11 +3955,11 @@
 
             const requests = [];
 
-            if (mode === 'full' || mode === 'cash' || mode === 'credit') {
+            if (mode === 'full' || mode === 'credit') {
                 const date = document.getElementById('duedate').value;
                 const amount = document.getElementById('subTotal').value;
                 const externalUrl = document.getElementById('external_url')?.value;
-                const paymentGateway = mode === 'cash' ? 'Cash' : mode === 'credit' ? 'Credit' : gateway;
+                const paymentGateway = mode === 'credit' ? 'Credit' : gateway;
 
                 requests.push(save(mode, {
                     date,
@@ -3943,6 +4015,9 @@
                     const methodSelect = document.getElementById(`payment_method_${i}`);
                     const method = methodSelect ? methodSelect.value : null;
 
+                    const invoiceChargeInput = document.getElementById(`invoice_charge_${i}`);
+                    const partialInvoiceCharge = parseFloat(invoiceChargeInput ? invoiceChargeInput.value : 0) || 0;
+
                     // Get selected payments if gateway is Credit
                     let paymentAllocations = [];
                     if (gateway === 'Credit') {
@@ -3958,6 +4033,7 @@
                         amount,
                         gateway,
                         method,
+                        partial_invoice_charge: partialInvoiceCharge,
                         payment_allocations: paymentAllocations
                     }));
                 });
@@ -3990,7 +4066,6 @@
 
             } else if (mode === 'partial') {
                 const partialRows = document.querySelectorAll('#split-rows1 tr');
-                console.log('--- Collecting PARTIAL rows ---');
 
                 partialRows.forEach((row, index) => {
                     const i = index + 1;
@@ -4003,6 +4078,8 @@
 
                     const gateway = gatewayEl ? gatewayEl.value : null;
                     const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+                    const invoiceChargeInput = document.getElementById(`invoice_charge1_${i}`);
+                    const partialInvoiceCharge = parseFloat(invoiceChargeInput ? invoiceChargeInput.value : 0) || 0;
                     
                     // Get selected payments if gateway is Credit
                     let paymentAllocations = [];
@@ -4017,6 +4094,7 @@
                         amount,
                         gateway,
                         method,
+                        partial_invoice_charge: partialInvoiceCharge,
                         payment_allocations: paymentAllocations
                     }));
 
@@ -4073,7 +4151,12 @@
             const invoiceNumber = document.getElementById('invoiceNumber').value;
             const companyId = document.getElementById('companyId').value;
 
-            const invoiceCharge = document.getElementById('invoice_charge') ? document.getElementById('invoice_charge').value : 0;
+            let partialInvoiceCharge = 0;
+            if (type === 'full') {
+                partialInvoiceCharge = parseFloat(document.getElementById('invoice_charge')?.value) || 0;
+            } else {
+                partialInvoiceCharge = parseFloat(item.partial_invoice_charge) || 0;
+            }
 
             let payload = {
                 invoiceId,
@@ -4084,7 +4167,7 @@
                 amount: item.amount,
                 gateway: item.gateway,
                 external_url: item.external_url || null,
-                invoice_charge: invoiceCharge,
+                partial_invoice_charge: partialInvoiceCharge,
             };
 
             if (type === 'full' || type === 'credit') {
@@ -4092,9 +4175,7 @@
                 // Include payment method if gateway has methods
                 const key = gwKey(item.gateway);
                 const methods = methodsByGateway[key] || [];
-                payload.method = methods.length > 0 
-                    ? (document.getElementById('payment_method_full')?.value || null)
-                    : null;
+                payload.method = methods.length > 0 ? (document.getElementById('payment_method_full')?.value || null) : null;
             } else if (type === 'partial') {
                 payload.clientId = document.getElementById('receiverId').value;
                 payload.method = item.method;
@@ -4116,9 +4197,6 @@
                     }
                 }
 
-            } else if (type === 'cash') {
-                payload.clientId = document.getElementById('receiverId').value;
-                payload.method = null;
             }
 
             if (type === 'credit') {
@@ -4475,9 +4553,9 @@
                     totalEnteredAmount += parseFloat(input.value || 0);
                 });
 
-                if (Number(totalEnteredAmount.toFixed(2)) !== Number(totalInvoiceAmount.toFixed(2))) {
+                if (Number(totalEnteredAmount.toFixed(3)) !== Number(totalInvoiceAmount.toFixed(3))) {
                     isValid = false;
-                    errorMessage = `Total split payment amounts (${totalEnteredAmount.toFixed(2)} KWD) must equal the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Please adjust the amounts to match exactly.`;
+                    errorMessage = `Total split payment amounts (${totalEnteredAmount.toFixed(3)} KWD) must equal the invoice amount (${totalInvoiceAmount.toFixed(3)} KWD). Please adjust the amounts to match exactly.`;
                 }
 
             } else if (mode === 'partial') {
@@ -4491,10 +4569,10 @@
 
                 if (totalEnteredAmount > totalInvoiceAmount) {
                     isValid = false;
-                    errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) exceed the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot exceed the invoice total.`;
+                    errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(3)} KWD) exceed the invoice amount (${totalInvoiceAmount.toFixed(3)} KWD). Partial payments cannot exceed the invoice total.`;
                 } else if (totalEnteredAmount < totalInvoiceAmount) {
                     isValid = false;
-                    errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) are less than the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot be less than the invoice total.`;
+                    errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(3)} KWD) are less than the invoice amount (${totalInvoiceAmount.toFixed(3)} KWD). Partial payments cannot be less than the invoice total.`;
                 }
             }
 

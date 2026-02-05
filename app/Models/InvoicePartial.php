@@ -14,6 +14,7 @@ class InvoicePartial extends Model
         'invoice_id',
         'invoice_number',
         'client_id',
+        'invoice_charge',
         'service_charge',
         'gateway_fee',
         'amount',

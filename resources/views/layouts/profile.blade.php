@@ -83,10 +83,7 @@
                 <div class="profile-wallet-iata-header">
                     <div class="profile-wallet-header-row">
                         <h5 class="profile-wallet-heading">
-                            <svg class="profile-wallet-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z" />
-                                <circle fill="currentColor" cx="16" cy="12" r="1.5" />
-                            </svg>
+                            <x-icons.wallet class="profile-wallet-heading-icon" />
                             IATA Company Wallet
                         </h5>
 
@@ -95,9 +92,7 @@
                             @click.stop="checkAndLoadWalletData($refs.walletTrigger, true)"
                             class="profile-wallet-reload-btn"
                             title="Reload wallet data">
-                            <svg class="profile-wallet-reload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
-                            </svg>
+                            <x-icons.refresh class="profile-wallet-reload-icon" />
                             Reload
                         </button>
                     </div>
@@ -109,10 +104,7 @@
                 <div class="jazeera-section profile-wallet-jazeera-section">
                     <div class="profile-wallet-header-row">
                         <h5 class="profile-wallet-heading">
-                            <svg class="profile-wallet-jazeera-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z" />
-                                <circle fill="currentColor" cx="16" cy="12" r="1.5" />
-                            </svg>
+                            <x-icons.wallet class="profile-wallet-jazeera-heading-icon" />
                             Jazeera Airways Credit
                         </h5>
                     </div>
@@ -126,54 +118,50 @@
 </div>
 
 <!-- Profile Picture with Dropdown -->
-<div class="profile-avatar-trigger {{$color}}">
-    <div class="profile-avatar-btn">
-        <div class="relative">
-            <div @click="open = !open" class="profile-avatar-click-area">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
-                    <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
-                </svg>
-            </div>
+<div class="profile-avatar-btn {{ $color }}">
+    <div @click="open = !open" class="profile-avatar-click-area">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+            <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+        </svg>
+    </div>
 
-            <div x-cloak x-show="open" @click.away="open = false" class="profile-dropdown">
-                <!-- User Information & Profile -->
-                <a href="{{ route('profile.edit') }}">
-                    <div class="profile-user-info">
-                        <div class="profile-user-avatar">
-                            <svg class="profile-user-avatar-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
-                                <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
-                            </svg>
-                        </div>
+    <div x-cloak x-show="open" @click.away="open = false" class="profile-dropdown">
+        <!-- User Information & Profile -->
+        <a href="{{ route('profile.edit') }}">
+            <div class="profile-user-info">
+                <div class="profile-user-avatar">
+                    <svg class="profile-user-avatar-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                        <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+                    </svg>
+                </div>
 
-                        <div class="profile-user-details">
-                            <h4 class="profile-user-name">{{ Auth::user()->name }}
-                                <span class="profile-user-badge">Pro</span>
-                            </h4>
-                            <p class="profile-user-subtitle">View your profile</p>
-                        </div>
-                    </div>
-                </a>
-
-                <div>
-
-                    <!-- Logout -->
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <a href="{{ route('logout') }}" class="profile-logout-btn"
-                            onclick="event.preventDefault(); this.closest('form').submit();">
-                            <svg class="profile-logout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.023 5.5a9 9 0 1 0 9.953 0M12 2v8" color="currentColor" />
-                            </svg>
-                            Sign Out
-                        </a>
-                    </form>
+                <div class="profile-user-details">
+                    <h4 class="profile-user-name">{{ Auth::user()->name }}
+                        <span class="profile-user-badge">Pro</span>
+                    </h4>
+                    <p class="profile-user-subtitle">View your profile</p>
                 </div>
             </div>
+        </a>
 
+        <div>
+
+            <!-- Logout -->
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <a href="{{ route('logout') }}" class="profile-logout-btn"
+                    onclick="event.preventDefault(); this.closest('form').submit();">
+                    <svg class="profile-logout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.023 5.5a9 9 0 1 0 9.953 0M12 2v8" color="currentColor" />
+                    </svg>
+                    Sign Out
+                </a>
+            </form>
         </div>
     </div>
+
 </div>
 
 
@@ -208,7 +196,7 @@ function iataCompanyWallet(context) {
     const reloadBtn = context.querySelector('.profile-wallet-reload-btn');
 
     if (!iataInfo) {
-        console.error('Could not find .iata-info element in context');
+        // console.error('Could not find .iata-info element in context');
         return;
     }
 
@@ -243,7 +231,7 @@ function iataCompanyWallet(context) {
             return response.json();
         })
         .then(data => {
-            console.log('IATA Company Wallet Data:', data);
+            // console.log('IATA Company Wallet Data:', data);
             if (data.error) {
                 throw new Error(data.error);
             }
@@ -260,7 +248,7 @@ function iataCompanyWallet(context) {
             displayWalletData(walletData, context);
         })
         .catch(error => {
-            console.error('Error fetching IATA Company Wallet:', error);
+            // console.error('Error fetching IATA Company Wallet:', error);
 
             const iataInfo = context.querySelector('.iata-info');
             if (iataInfo) {
@@ -288,7 +276,7 @@ function displayWalletData(data, context) {
     const iataInfo = context.querySelector('.iata-info');
 
     if (!iataInfo) {
-        console.error('Could not find .iata-info element in context');
+        // console.error('Could not find .iata-info element in context');
         return;
     }
 
@@ -377,7 +365,7 @@ function displayWalletData(data, context) {
 }
 
 function reloadJazeeraData() {
-    console.log('Reload Jazeera Airways Credit data');
+    // console.log('Reload Jazeera Airways Credit data');
     creditData = null;
     JazeeraAirwaysCredit();
 }

@@ -2,6 +2,7 @@
 @import "./layout/sidebar.css";
 @import "./layout/navigation.css";
 @import "./layout/profile.css";
+@import "./layout/mobile-drawer.css";
 
 @tailwind base;
 @tailwind components;

@@ -110,16 +110,12 @@
    Profile Avatar & Dropdown Section
    ========================================================================== */
 
-.profile-avatar-trigger {
-    @apply p-0.5 h-12 w-12 rounded-full;
-}
-
 .profile-avatar-btn {
-    @apply relative w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow;
+    @apply relative w-12 h-12 flex items-center justify-center border-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow;
 }
 
 .profile-avatar-click-area {
-    @apply w-full h-full object-cover cursor-pointer;
+    @apply w-full h-full object-cover cursor-pointer flex items-center justify-center;
 }
 
 .profile-dropdown {

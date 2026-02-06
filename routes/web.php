@@ -411,6 +411,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
         Route::match(['get', 'post'], '/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
         Route::match(['get', 'post'], '/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
+
+        Route::group([
+            'prefix' => 'ajax',
+            'as' => 'ajax.',
+        ], function () {
+            Route::get('/dashboard-stats', [ReportController::class, 'getDashboardStats'])->name('dashboard-stats');
+        });
     });
 
     // INVOICE

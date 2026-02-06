@@ -2201,6 +2201,33 @@ class InvoiceController extends Controller
         $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['gatewayFee'];
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
+
+        // Distribute service charge proportionally across invoice details (for display only)
+        $totalServiceCharge = $totalGatewayFee['gatewayFee'];
+        $totalTaskPrice = $invoiceDetails->sum('task_price');
+
+        if ($totalTaskPrice > 0 && $totalServiceCharge > 0) {
+            $distributedSum = 0;
+            $detailCount = $invoiceDetails->count();
+            $index = 0;
+
+            foreach ($invoiceDetails as $detail) {
+                $index++;
+                if ($index === $detailCount) {
+                    // Last item gets the remainder to ensure sum equals total
+                    $detail->distributed_service_charge = round($totalServiceCharge - $distributedSum, 3);
+                } else {
+                    $proportion = $detail->task_price / $totalTaskPrice;
+                    $detail->distributed_service_charge = round($totalServiceCharge * $proportion, 3);
+                    $distributedSum += $detail->distributed_service_charge;
+                }
+            }
+        } else {
+            foreach ($invoiceDetails as $detail) {
+                $detail->distributed_service_charge = 0;
+            }
+        }
+
         $company = $invoice->agent->branch->company;
 
         $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)

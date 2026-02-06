@@ -44,6 +44,6 @@
 
 <style>
     .text-background {
-        background-image: url("{{ asset('images/bgCity.svg') }}");
+        background-image: url("{{ asset('images/bgCity.jpg') }}");
     }
 </style>

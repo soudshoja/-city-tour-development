@@ -9,6 +9,7 @@ use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -3423,5 +3424,76 @@ class ReportController extends Controller
 
         $filename = 'tasks-report-' . now()->format('Y-m-d-His') . '.pdf';
         return $pdf->download($filename);
+    }
+
+    public function getDashboardStats(): JsonResponse
+    {
+        $companyId = getCompanyId(Auth::user());
+
+        $emptyStats = [
+            'payableSupplier' => 0,
+            'totalReceivable' => 0,
+            'totalBank' => 0,
+            'gatewayReceivable' => 0,
+            'profitAgentWise' => 0,
+        ];
+
+        if (!$companyId) {
+            return response()->json($emptyStats);
+        }
+
+        return response()->json([
+            'payableSupplier' => $this->getAccountBalance('Accounts Payable', $companyId, creditPositive: true),
+            'totalReceivable' => $this->getAccountBalance('Accounts Receivable', $companyId),
+            'totalBank' => $this->getAccountBalance('Bank Accounts', $companyId),
+            'gatewayReceivable' => $this->getAccountBalance('Payment Gateway', $companyId),
+            'profitAgentWise' => $this->getProfitAgentSum($companyId),
+        ]);
+    }
+
+    private function getAccountBalance(string $accountName, int $companyId, bool $creditPositive = false): float
+    {
+        $account = Account::where('name', $accountName)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$account) {
+            return 0;
+        }
+
+        $accountIds = $this->getDescendantAccountIds($account->id);
+        $accountIds[] = $account->id;
+
+        $totals = JournalEntry::whereIn('account_id', $accountIds)
+            ->where('company_id', $companyId)
+            ->selectRaw('COALESCE(SUM(debit), 0) as total_debit, COALESCE(SUM(credit), 0) as total_credit')
+            ->first();
+
+        return $creditPositive
+            ? $totals->total_credit - $totals->total_debit
+            : $totals->total_debit - $totals->total_credit;
+    }
+
+    private function getDescendantAccountIds(int $parentId): array
+    {
+        $childIds = Account::where('parent_id', $parentId)->pluck('id')->all();
+
+        $descendantIds = $childIds;
+        foreach ($childIds as $childId) {
+            $descendantIds = array_merge($descendantIds, $this->getDescendantAccountIds($childId));
+        }
+
+        return $descendantIds;
+    }
+
+    private function getProfitAgentSum(int $companyId): float
+    {
+        $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+
+        return (float) DB::table('invoice_details')
+            ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+            ->join('agents', 'invoices.agent_id', '=', 'agents.id')
+            ->whereIn('agents.branch_id', $branchIds)
+            ->sum('invoice_details.markup_price');
     }
 }

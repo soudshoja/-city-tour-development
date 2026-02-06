@@ -1,0 +1,11 @@
+.sidebar {
+    @apply w-28 max-h-160 z-10 hidden md:flex flex-col justify-between items-center gap-6 ;
+}
+
+.sidebar-logo {
+    @apply block lg:hidden mt-4;
+}
+
+.sidebar-profile {
+    @apply flex flex-col justify-center items-center mb-4 gap-2 lg:hidden;
+}

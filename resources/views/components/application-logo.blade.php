@@ -3,7 +3,7 @@
     'width' => '100',
     'height' => '75',
     'class' => '',
-    'alt' => 'City App Logo'
+    'alt' => 'Logo'
 ])
 
 <img 

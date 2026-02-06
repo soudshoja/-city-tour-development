@@ -178,8 +178,9 @@
 
 
 <script>
-// Store the current context element for wallet operations
-let currentWalletContext = null;
+// Prevent duplicate declarations when profile.blade.php is included multiple times
+if (typeof window.profileScriptLoaded === 'undefined') {
+    window.profileScriptLoaded = true;
 
 function checkAndLoadWalletData(context, forceReload = false) {
     // Store context for use in callbacks
@@ -382,97 +383,101 @@ function reloadJazeeraData() {
 }
 
 function JazeeraAirwaysCredit() {
-    const section = document.getElementById('jazeera-section');
-    const creditInfo = document.getElementById('jazeera-info');
+    const sections = document.querySelectorAll('.jazeera-section');
+    const creditInfos = document.querySelectorAll('.jazeera-info');
 
-    // 1️⃣ If data variable itself is missing → hide section entirely (not implemented yet)
     if (typeof data === 'undefined' || data === null) {
-        if (section) section.classList.add('hidden');
+        sections.forEach(section => section.classList.add('hidden'));
         return;
     }
 
-    // 2️⃣ If data exists but is empty → show fallback message
     if (!data.length) {
-        if (section) section.classList.remove('hidden');
-        creditInfo.innerHTML = `
-        <div class="text-center py-4">
-            <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10
-                10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                No Jazeera credit data available
-            </p>
-        </div>
-    `;
+        sections.forEach(section => section.classList.remove('hidden'));
+        creditInfos.forEach(creditInfo => {
+            creditInfo.innerHTML = `
+            <div class="text-center py-4">
+                <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10
+                    10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No Jazeera credit data available
+                </p>
+            </div>
+            `;
+        });
         return;
     }
 
-    // 3️⃣ If valid data exists → show total
-    section.classList.remove('hidden');
     const total = data.reduce((sum, entry) => sum + parseFloat(entry.balance || 0), 0).toFixed(3);
-    creditInfo.innerHTML = `
-    <div class="flex flex-col items-center py-2">
-        <p class="text-lg font-semibold text-sky-700 dark:text-sky-300">${total} KWD</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Total Credit Spent</p>
-    </div>
-`;
+    sections.forEach(section => section.classList.remove('hidden'));
+    creditInfos.forEach(creditInfo => {
+        creditInfo.innerHTML = `
+        <div class="flex flex-col items-center py-2">
+            <p class="text-lg font-semibold text-sky-700 dark:text-sky-300">${total} KWD</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Total Credit Spent</p>
+        </div>
+        `;
+    });
 }
 
 document.addEventListener('DOMContentLoaded', JazeeraAirwaysCredit);
 
-// Optional: API-based display hook
-function displayJazeeraData(data) {
-    const section = document.getElementById('jazeera-section');
-    const jazeeraInfo = document.getElementById('jazeera-info');
+function displayJazeeraData(apiData) {
+    const sections = document.querySelectorAll('.jazeera-section');
+    const jazeeraInfos = document.querySelectorAll('.jazeera-info');
     const {
         records = [], total = 0
-    } = data;
+    } = apiData;
 
-    if (!section || !jazeeraInfo) return;
+    if (!sections.length || !jazeeraInfos.length) return;
 
     if (!records.length) {
-        // keep visible if empty due to API error
-        section.classList.remove('hidden');
-        jazeeraInfo.innerHTML = `
-        <div class="text-center py-4">
-            <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10
-                10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                No Jazeera credit data available
-            </p>
-        </div>
-    `;
+        sections.forEach(section => section.classList.remove('hidden'));
+        jazeeraInfos.forEach(jazeeraInfo => {
+            jazeeraInfo.innerHTML = `
+            <div class="text-center py-4">
+                <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10
+                    10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No Jazeera credit data available
+                </p>
+            </div>
+            `;
+        });
         return;
     }
 
-    // ✅ Show valid data
-    section.classList.remove('hidden');
-    jazeeraInfo.innerHTML = `
-    <div class="space-y-3">
-        <div class="bg-gradient-to-r from-sky-50 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-sky-200 dark:border-sky-800">
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center">
-                    <svg class="w-5 h-5 text-sky-600 dark:text-sky-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87
-                        1.18 6.88L12 17.77l-6.18 3.25L7 14.14
-                        2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                    <span class="text-sm font-semibold text-sky-800 dark:text-sky-200 uppercase tracking-wider">
-                        Total Credit Spent
-                    </span>
+    sections.forEach(section => section.classList.remove('hidden'));
+    jazeeraInfos.forEach(jazeeraInfo => {
+        jazeeraInfo.innerHTML = `
+        <div class="space-y-3">
+            <div class="bg-gradient-to-r from-sky-50 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-sky-200 dark:border-sky-800">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-sky-600 dark:text-sky-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87
+                            1.18 6.88L12 17.77l-6.18 3.25L7 14.14
+                            2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        <span class="text-sm font-semibold text-sky-800 dark:text-sky-200 uppercase tracking-wider">
+                            Total Credit Spent
+                        </span>
+                    </div>
                 </div>
+                <p class="text-2xl font-bold text-sky-900 dark:text-sky-100">
+                    ${parseFloat(total).toFixed(3)} KWD
+                </p>
+                <p class="text-xs text-sky-600 dark:text-sky-400 mt-1">
+                    ${records.length} record${records.length !== 1 ? 's' : ''} • Spent Credit
+                </p>
             </div>
-            <p class="text-2xl font-bold text-sky-900 dark:text-sky-100">
-                ${parseFloat(total).toFixed(3)} KWD
-            </p>
-            <p class="text-xs text-sky-600 dark:text-sky-400 mt-1">
-                ${records.length} record${records.length !== 1 ? 's' : ''} • Spent Credit
-            </p>
         </div>
-    </div>
-`;
+        `;
+    });
+}
+
 }
 </script>

@@ -25,6 +25,7 @@ class AppLayout extends Component
 
         if($user->role_id == Role::ADMIN) {
             $color = 'border-koromiko-300';
+            $companyId = 1;
         } elseif($user->role_id == Role::COMPANY) {
             $color = 'border-blue-500';
             $companyId = $user->company->id;
@@ -47,7 +48,7 @@ class AppLayout extends Component
         // $walletData = $this->getCompanyWallets($user->company);
         // extract($walletData);
 
-        $companyName = Company::find($companyId)?->name ?? env('APP_NAME', 'CityTour');
+        $companyName = $user->role_id !== Role::ADMIN ? Company::find($companyId)->name : env('APP_NAME', 'City Tour');
 
         return view('components.layouts.app', [
             'color' => $color,

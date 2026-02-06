@@ -519,7 +519,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const jazeeraData = @json($jazeeraCredit ?? []);
-            console.log('Jazeera Airways Credit Data:', jazeeraData);
+            // console.log('Jazeera Airways Credit Data:', jazeeraData);
 
             displayJazeeraData({
                 records: jazeeraData,
@@ -543,7 +543,7 @@
                     updateStatElement('stat-gateway-receivable', data.gatewayReceivable);
                 })
                 .catch(error => {
-                    console.error('Failed to load dashboard stats:', error);
+                    // console.error('Failed to load dashboard stats:', error);
                     document.querySelectorAll('.stat-loading').forEach(el => {
                         el.textContent = 'Error';
                     });

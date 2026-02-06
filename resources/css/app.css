@@ -1,7 +1,11 @@
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+@import "./layout/sidebar.css";
+@import "./layout/navigation.css";
+@import "./layout/profile.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 :root {
     --slate-500: rgb(100 116 139 / var(--tw-bg-opacity, 1));
@@ -10143,11 +10147,6 @@ div:has(> :is(.dark .coa-partials)){
     width: max-content;
 }
 
-.Sidebar-Nos {
-    width: 100px;
-    z-index: 10;
-}
-
 .Main {
     width: 100%;
     max-width: 100vw; /* Prevent it from exceeding the viewport width */
@@ -10631,16 +10630,6 @@ menuitem > menu > menuitem.hover > menu > menuitem {
     }
 }
 
-@media (max-width: 768px) {
-    .Sidebar-Nos {
-        display: none;
-    }
-}
-
-@media (max-width: 1024px) and (min-width: 769px) {
-    .Sidebar-Nos {
-    }
-}
 
 @media (max-width: 768px) {
     .smAside > div {

@@ -1,7 +1,7 @@
 <div x-data="{
     mobileDrawerOpen: false,
     activeMenu: null,
-    toggle: false,
+    notification: false,
     open: false,
     iataWallet: false
 }"
@@ -218,13 +218,59 @@
                 @endif
 
                 <div class="mobile-drawer-profile-actions">
-                    <button @click="toggle = !toggle" class="mobile-drawer-action-btn">
-                        <div class="relative">
+                    <div @click="notification = true">
+                        <div class="mobile-drawer-action-btn w-full">
                             <x-icons.notification />
-                            <span class="mobile-drawer-notification-badge"></span>
+                            <span>Notifications</span>
                         </div>
-                        <span>Notifications</span>
-                    </button>
+                        <div
+                            x-show="notification"
+                            x-cloak
+                            class="notification-wrapper">
+                            <div
+                                @click.away="notification = false"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-90"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 transform scale-100"
+                                x-transition:leave-end="opacity-0 transform scale-90"
+                                class="profile-notification-dropdown">
+                                <div class="profile-notification-header">
+                                    <h2 class="profile-notification-title">
+                                        Notifications
+                                    </h2>
+
+                                    <!-- Close button -->
+                                    <button type="button" @click.stop="notification = false" aria-label="Close">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="profile-notification-close-icon">
+                                            <path d="M14.5 9.50002L9.5 14.5M9.49998 9.5L14.5 14.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                            <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div class="profile-notification-list">
+                                    <livewire:notification />
+                                </div>
+
+                                <div class="profile-notification-footer">
+                                    <a
+                                        href="javascript:void(0);"
+                                        wire:click="markAllAsRead"
+                                        class="profile-notification-mark-read">
+                                        Mark all as read
+                                    </a>
+
+                                    <a
+                                        href="{{ route('notifications.index') }}"
+                                        class="profile-notification-view-all">
+                                        View all notifications
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div x-ref="walletTrigger"
                         x-init="$watch('iataWallet', value => { if (value) checkAndLoadWalletData($refs.walletTrigger); })"
@@ -234,10 +280,15 @@
                             <span>Wallet</span>
                         </button>
 
-                        <div x-show="iataWallet" x-cloak @click="iataWallet = false" class="profile-modal-backdrop"></div>
-                        <div x-show="iataWallet" x-cloak
-                            @click.away="iataWallet = false"
-                            class="profile-wallet-dropdown">
+                        <div x-show="iataWallet" x-cloak class="wallet-wrapper">
+                            <div @click.away="iataWallet = false"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-90"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 transform scale-100"
+                                x-transition:leave-end="opacity-0 transform scale-90"
+                                class="profile-wallet-dropdown">
                             <div class="profile-wallet-iata-header">
                                 <div class="profile-wallet-header-row">
                                     <h5 class="profile-wallet-heading">
@@ -260,35 +311,8 @@
                                 </div>
                                 <div class="jazeera-info profile-wallet-info"></div>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <div x-show="toggle" x-cloak @click="toggle = false" class="profile-modal-backdrop"></div>
-                <div x-show="toggle" x-cloak
-                    @click.away="toggle = false"
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 transform scale-90"
-                    x-transition:enter-end="opacity-100 transform scale-100"
-                    x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="opacity-100 transform scale-100"
-                    x-transition:leave-end="opacity-0 transform scale-90"
-                    class="profile-notification-dropdown">
-                    <div class="profile-notification-header">
-                        <h2 class="profile-notification-title">Notifications</h2>
-                        <button type="button" @click.stop="toggle = false" aria-label="Close">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="profile-notification-close-icon">
-                                <path d="M14.5 9.50002L9.5 14.5M9.49998 9.5L14.5 14.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="" stroke-width="1.5" stroke-linecap="round" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="profile-notification-list">
-                        <livewire:notification />
-                    </div>
-                    <div class="profile-notification-footer">
-                        <a href="javascript:void(0);" wire:click="markAllAsRead" class="profile-notification-mark-read">Mark all as read</a>
-                        <a href="{{ route('notifications.index') }}" class="profile-notification-view-all">View all</a>
                     </div>
                 </div>
 

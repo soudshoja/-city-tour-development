@@ -258,6 +258,14 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client Report</a>
             </menuitem>
             @endcan
+            @can('viewPaymentGatewaysReport', 'App\Models\Report')
+            <menuitem>
+            <a href="{{ route('reports.payment-gateways') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow break-words whitespace-normal">
+                Payment Gateways Report
+            </a>
+            </menuitem>
+            @endcan 
         </menu>
         </menuitem>
 

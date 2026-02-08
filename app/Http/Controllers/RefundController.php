@@ -51,17 +51,14 @@ class RefundController extends Controller
         $companyId = getCompanyId($user);
         $refundClients = collect();
 
-        // Get sort parameters
         $sortField = $request->input('sort', 'created_at');
         $sortDirection = $request->input('direction', 'desc');
 
-        // Validate sort field to prevent SQL injection
         $allowedSortFields = ['refund_number', 'created_at', 'client_name'];
         if (!in_array($sortField, $allowedSortFields)) {
             $sortField = 'created_at';
         }
 
-        // Validate direction
         $sortDirection = in_array($sortDirection, ['asc', 'desc']) ? $sortDirection : 'desc';
 
         $refundsQuery = Refund::with(['refundDetails.task.client', 'refundDetails.task.agent', 'originalInvoice', 'invoice']);
@@ -88,21 +85,28 @@ class RefundController extends Controller
             $refundsQuery->where('branch_id', $user->accountant->branch_id);
         }
 
-        // Handle sorting
-        if ($sortField === 'client_name') {
-            // For client_name, we need to sort the collection after fetching
-            $refunds = $refundsQuery->orderBy('created_at', 'desc')->get();
+        $totalRefunds = $refundsQuery->count();
 
-            // Sort the collection by client name
-            $refunds = $refunds->sortBy(function ($refund) {
+        if ($sortField === 'client_name') {
+            $allRefunds = $refundsQuery->orderBy('created_at', 'desc')->get();
+
+            $sorted = $allRefunds->sortBy(function ($refund) {
                 return strtolower($refund->refundDetails->pluck('client.full_name')->first() ?? '');
             }, SORT_REGULAR, $sortDirection === 'desc')->values();
+
+            $page = $request->input('page', 1);
+            $perPage = 20;
+            $refunds = new \Illuminate\Pagination\LengthAwarePaginator(
+                $sorted->forPage($page, $perPage),
+                $sorted->count(),
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
         } else {
-            // Direct column sorting
-            $refunds = $refundsQuery->orderBy($sortField, $sortDirection)->get();
+            $refunds = $refundsQuery->orderBy($sortField, $sortDirection)->paginate(20)->withQueryString();
         }
 
-        $totalRefunds = $refunds->count();
         $totalRefundClients = $refundClients->count();
 
         return view('refunds.index', compact(
@@ -242,7 +246,6 @@ class RefundController extends Controller
         $task->client_name = $task->client->full_name ?? null;
         
         //Refund Calculation
-        
         // Original Task Profit (markup price)
         $originalTaskProfit = floatval($invoiceDetail?->markup_price ?? 0);
         
@@ -552,19 +555,30 @@ class RefundController extends Controller
 
             DB::commit();
 
-             if ($request->expectsJson() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Refund processed successfully!',
-                'refund_number' => $refundNumber,
-                'invoiceNumber' => $invoiceData['invoiceNumber'] ?? null,
-                'invoiceId' => $invoiceData['invoiceId'] ?? null,
-                'redirect' => route('invoice.edit', [
-                    'companyId' => $firstTask->company_id,
-                    'invoiceNumber' => $invoiceData['invoiceNumber'] ?? $refundNumber
-                ])
-            ]);
-        }
+            if ($request->expectsJson() || $request->wantsJson()) {
+                // Paid refunds → no new invoice, redirect to refunds index
+                if (in_array($paymentStatus, ['paid', 'partial refund'])) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Refund processed successfully! Credit issued to client.',
+                        'refund_number' => $refundNumber,
+                        'redirect' => route('refunds.index'),
+                    ]);
+                }
+
+                // Unpaid refunds → new invoice created, redirect to edit it
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Refund processed successfully!',
+                    'refund_number' => $refundNumber,
+                    'invoiceNumber' => $invoiceData['invoiceNumber'] ?? null,
+                    'invoiceId' => $invoiceData['invoiceId'] ?? null,
+                    'redirect' => route('invoice.edit', [
+                        'companyId' => $firstTask->company_id,
+                        'invoiceNumber' => $invoiceData['invoiceNumber'] ?? $refundNumber,
+                    ]),
+                ]);
+            }
             return redirect()->route('refunds.index')->with('success', 'Refund processed successfully!');
         } catch (Throwable $e) {
             DB::rollBack();
@@ -580,6 +594,10 @@ class RefundController extends Controller
         $agent = $task->agent;
         $refundAmount = $overrideAmount ?? $refund->total_nett_refund;
 
+        $refund->update([
+            'method' => 'Credit',
+        ]);
+        
         $transaction = Transaction::create([
             'entity_id' => $task->company_id,
             'entity_type' => 'company',
@@ -1415,7 +1433,7 @@ class RefundController extends Controller
         Refund $refund,
         float $invoicePrice,
     ): JsonResponse {
-        Log::info('[CREATEREFUNDINVOICEUNPAID] reached here with data', [
+        Log::info('[REFUNDINVOICEUNPAID] Starting to create refund invoice', [
             'refund' => $refund,
             'invPrice' => $invoicePrice,
         ]);

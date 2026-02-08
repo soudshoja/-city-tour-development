@@ -118,7 +118,7 @@
                                 <p>{{ $selectedCompany->phone }}</p>
                             </div>
                         </div>
-                         @else
+                        @else
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                             </div>
@@ -147,6 +147,12 @@
                             </div>
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
+                        @if($isRefund ?? false)
+                        <div class="mt-4">
+                            <input id="refundRemarks" type="text" name="refundRemarks" value="{{ $refundRemarks ?? '' }}"
+                                class="w-full form-input" placeholder="Refund Remarks" />
+                        </div>
+                        @endif
                     </div>
                     <div class="space-y-1 text-gray-900 dark:text-gray-400 mt-2">
                         <div class="flex items-center w-full">
@@ -1705,6 +1711,7 @@
                 ? {
                     date: invdate,
                     client_id: clientId,
+                    remarks: document.getElementById('refundRemarks')?.value || null,
                     tasks: items.map(item => {
                         const originalInvoicePrice = Number(item.invprice ?? 0);
                         const originalTaskCost = Number(item.total ?? 0);
@@ -1761,17 +1768,20 @@
 
 
                 if (isRefund) {
-                    // Refund success
                     console.log('Refund processed successfully');
                     isSaved = true;
                     updateButtonState();
                     
-                    // If backend provides a redirect URL, use it
                     if (result.redirect) {
-                        location.href = result.redirect;
+                        const url = new URL(result.redirect, window.location.origin);
+                        const rfNumber = document.getElementById('RefundNumber')?.value;
+                        const rfRemarks = document.getElementById('refundRemarks')?.value;
+                        
+                        if (rfNumber) url.searchParams.set('refund_number', rfNumber);
+                        if (rfRemarks) url.searchParams.set('refund_remarks', rfRemarks);
+                        
+                        location.href = url.toString();
                     }
-                    // Otherwise stay on page or handle as needed
-                    
                 } else {
                     // Invoice success
                     const { invoiceId: newInvoiceId, invoiceNumber: newInvoiceNumber } = result;

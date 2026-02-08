@@ -219,6 +219,19 @@
                             <input id="duedate" type="date" name="duedate" class="w-full form-input"
                                 value={{ $dueDate }} disabled />
                         </div>
+
+                            @if($refund)
+                                 <div class="mt-4 flex items-center">
+                            <label class="w-full text-sm font-semibold">Refund Number:</label>
+                            <input type="text" class="w-full form-input" value="{{ $refund->refund_number }}" disabled />
+                        </div>
+                                @if($refund->remarks)
+                                <div class="mt-4 flex items-center">
+                            <label class="w-full text-sm font-semibold">Refund Remarks:</label>
+                            <input type="text" class="w-full form-input" value="{{ $refund->remarks }}" disabled />
+                        </div>
+                                @endif
+                            @endif
                     </div>
                 </div>
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />

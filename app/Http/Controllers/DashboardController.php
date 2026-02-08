@@ -86,13 +86,6 @@ class DashboardController extends Controller
             return view('dashboard', $serializedData);
         } elseif ($user->role_id == Role::COMPANY) {
             $dashboardData = $this->companyDashboard();
-            $reportController = new ReportController();
-
-            $childAccountsPayable = $reportController->getPayableSupplier();
-            $childAccountReceivable = $reportController->getReceivable();
-            $totalBank = $reportController->getTotalBank();
-            $gatewayReceivable = $reportController->getGatewayReceivable();
-            $profitAgentWise = $reportController->getProfitAgent();
 
             $serializedData = [
                 'paidAmounts' => $dashboardData['paidAmounts'],
@@ -104,11 +97,6 @@ class DashboardController extends Controller
                 'pieChartNumbers' => $dashboardData['branchesSales'],
                 'pieChartLabels' => $dashboardData['branches']->pluck('name'),
                 'pieChartColors' => $this->generateColors($dashboardData['branches']->count()),
-                'payableSupplier' => $childAccountsPayable,
-                'profitAgentWise' => $profitAgentWise['sumProfitAgent'],
-                'totalReceivable' => $childAccountReceivable['balance'],
-                'totalBank' => $totalBank['balance'],
-                'gatewayReceivable' => $gatewayReceivable['balance'],
                 'wallets' => $wallets,
                 'iataWalletName' => $iataWalletName,
                 'iataBalance' => $iataBalance,

@@ -266,7 +266,6 @@
                                             :selectedName="''"
                                             :ajaxUrl="route('system-settings.countries.search')"
                                             placeholder="Search country"
-                                            responseKey="countries"
                                             x-model-id="form.country_id"
                                         />
                                         <p class="hotel-country-add-hint">

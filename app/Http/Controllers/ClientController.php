@@ -1721,4 +1721,69 @@ class ClientController extends Controller
             return redirect()->route('dashboard')->with('error', 'Failed to deny assignment request.');
         }
     }
+
+
+    // AJAX
+    
+    public function searchClient(Request $request)
+    {
+        $searchTerm = $request->input('search', '');
+
+        $clientQuery = Client::query();
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        switch ($user->role_id) {
+            case Role::ADMIN:
+                $clientQuery = $clientQuery->where('company_id', $companyId);
+            break;
+            case Role::COMPANY:
+
+                $clientQuery = $clientQuery->where('company_id', $companyId);
+
+            break;
+            case Role::BRANCH:
+
+                $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
+
+                $agentIds = Agent::whereIn('branch_id', $branchesId)->pluck('id')->toArray();
+                $clientQuery = $clientQuery->whereIn('agent_id', $agentIds);
+
+            break;
+            case Role::AGENT:
+
+                $clientQuery = $user->agent->clientQuery();
+
+            break;
+            case Role::ACCOUNTANT:
+
+                $clientQuery = $clientQuery->where('company_id', $companyId);
+
+            break;
+            default:
+
+            Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: ' . $user->id);
+
+            return response()->json([], 403);
+        }
+
+        if ($searchTerm) {
+            $clientQuery->where(function($query) use ($searchTerm) {
+            $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                  ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
+            });
+        }
+
+        $clients = $clientQuery
+                ->select('id', 'phone')
+                ->selectRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) as name")
+                ->orderBy('first_name', 'asc')
+                ->limit(50)
+                ->get();
+
+        return response()->json($clients);
+    }
 }

@@ -36,7 +36,7 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
             </div>
 
-            <template x-for="option in filtered.slice(0, {{ $maxResults ?? 10 }})" :key="option.id">
+            <template x-for="(option, index) in filtered.slice(0, {{ $maxResults ?? 10 }})" :key="option.id + '-' + index">
                 <div @click="select(option)"
                     class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                     x-html="highlightMatch(option.name)">

@@ -1,0 +1,46 @@
+.sidebar {
+    @apply w-28 max-h-160 z-10 hidden md:flex flex-col justify-between items-center gap-6 ;
+}
+
+.sidebar-logo {
+    @apply block lg:hidden mt-4;
+}
+
+.sidebar-profile {
+    @apply flex flex-col justify-center items-center mb-4 gap-2 lg:hidden;
+}
+
+.sidebar .switch-company-btn-wrapper {
+    @apply flex flex-col items-center relative w-full
+}
+
+.sidebar .switch-company-btn {
+    @apply p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200
+}
+
+.sidebar .switch-company-title {
+    @apply hidden
+}
+
+.sidebar .switch-company-backdrop {
+    @apply hidden;
+}
+
+.sidebar .switch-company-dropdown {
+    @apply absolute left-full ml-3 top-0;
+}
+
+/* Modal style for md screens only */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .sidebar .switch-company-backdrop {
+        @apply fixed inset-0 bg-black/50 z-40 block;
+    }
+
+    .sidebar .switch-company-dropdown {
+        @apply fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50;
+        @apply w-[calc(100vw-2rem)] max-w-sm shadow-2xl;
+        @apply ml-0;
+        left: 50% !important;
+        top: 50% !important;
+    }
+}

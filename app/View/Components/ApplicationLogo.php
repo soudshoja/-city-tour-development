@@ -21,7 +21,7 @@ class ApplicationLogo extends Component
             if (file_exists(public_path('storage/' . $companyLogo))) {
                 $this->companyLogo = asset('storage/' . $companyLogo);
             } else {
-                $this->companyLogo = asset('images/UserPic.svg');
+                $this->companyLogo = asset('images/userPic.svg');
             }
         } else {
             $this->companyLogo = $this->determineCompanyLogo();
@@ -33,7 +33,7 @@ class ApplicationLogo extends Component
      */
     private function determineCompanyLogo(): string
     {
-        $defaultLogo = asset('images/UserPic.svg');
+        $defaultLogo = asset('images/userPic.svg');
         $user = Auth::user();
 
         if (!$user || !$user->role) {

@@ -3,9 +3,9 @@ export function ajaxSearchableDropdown({
     name = '',
     selectedName = '',
     placeholder = 'Select an option',
-    taskId = '',
+    dataId = '',
     ajaxUrl = '',
-    responseKey = 'tasks',
+    // responseKey = 'tasks',
 }) {
     return {
         open: false,
@@ -16,37 +16,26 @@ export function ajaxSearchableDropdown({
         filtered: [],
         loading: false,
         placeholder,
-        taskId,
+        dataId,
         ajaxUrl,
         debounceTimer: null,
         originalId: selectedId,
         originalName: selectedName,
-        responseKey,
-
-        init() {
-            // If there's a selected name but filtered is empty, populate it
-            if (this.selectedName && this.selectedId) {
-                this.filtered = [{
-                    id: this.selectedId,
-                    name: this.selectedName
-                }];
-            }
-        },
 
         debouncedSearch() {
             clearTimeout(this.debounceTimer);
             this.debounceTimer = setTimeout(() => {
-                this.searchTasks();
+                this.searchData();
             }, 300);
         },
 
-        async searchTasks() {
+        async searchData() {
             if (!this.ajaxUrl) return;
 
             this.loading = true;
             try {
                 const url = new URL(this.ajaxUrl, window.location.origin);
-                url.searchParams.append('task_id', this.taskId);
+                url.searchParams.append('id', this.dataId);
                 url.searchParams.append('search', this.search);
 
                 const response = await fetch(url);
@@ -59,10 +48,10 @@ export function ajaxSearchableDropdown({
 
                 const data = await response.json();
 
-                if (data && Array.isArray(data[this.responseKey])) {
-                    this.filtered = data[this.responseKey];
-                } else {
-                    this.filtered = [];
+                this.filtered = [];
+
+                if (data && Array.isArray(data)) {
+                    this.filtered = data; 
                 }
             } catch (error) {
                 console.error('Error fetching tasks:', error);
@@ -93,7 +82,7 @@ export function ajaxSearchableDropdown({
             this.search = '';
 
             // Trigger initial search when opening
-            this.searchTasks();
+            this.searchData();
 
             this.$nextTick(() => {
                 $refs.searchInput.focus();

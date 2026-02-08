@@ -67,6 +67,7 @@ class AgentTest extends TestCase
 
         // Create test company
         $this->company = Company::factory()->create([
+            'id' => 1,
             'name' => 'Test Company',
             'status' => 1,
             'user_id' => $this->companyUser->id
@@ -360,51 +361,6 @@ class AgentTest extends TestCase
         $response->assertSessionHasErrors(['commission']);
     }
 
-    // public function test_can_calculate_monthly_summary_for_commission_agent()
-    // {
-    //     // Use the Both-A agent type created in setUp
-    //     $bothAAgentType = AgentType::where('name', 'Both-A')->first();
-    //     $this->assertNotNull($bothAAgentType, 'Both-A agent type should exist');
-        
-    //     $agent = Agent::factory()->create([
-    //         'user_id' => User::factory()->create(['role_id' => Role::AGENT])->id,
-    //         'branch_id' => $this->branch->id,
-    //         'type_id' => $bothAAgentType->id, // Both-A type
-    //         'commission' => 0.15,
-    //         'salary' => 1000.00
-    //     ]);
-
-    //     // Create test invoice with details
-    //     $client = Client::factory()->create(['agent_id' => $agent->id]);
-
-    //     //create task
-    //     $task = Task::factory()->create([
-    //         'agent_id' => $agent->id,
-    //         'company_id' => $this->branch->company->id,
-    //         'price' => 500.00
-    //     ]);
-
-    //     $invoice = Invoice::factory()->create([
-    //         'agent_id' => $agent->id,
-    //         'client_id' => $client->id,
-    //         'amount' => 1000.00,
-    //         'created_at' => now()
-    //     ]);
-
-    //     // Create invoice detail using factory
-    //     InvoiceDetail::factory()->create([
-    //         'task_id' => $task->id,
-    //         'invoice_id' => $invoice->id,
-    //         'markup_price' => 500.00,
-    //     ]);
-
-    //     $controller = new AgentController();
-    //     $summary = $controller->calculateMonthlySummary($agent, now()->startOfMonth());
-
-    //     $this->assertEquals(1075.00, $summary['commission']); // (500 * 0.15) + 1000 = 75 + 1000 = 1075
-    //     $this->assertEquals(500.00, $summary['profit']);
-    // }
-
     public function test_can_retrieve_agent_tasks()
     {
         $this->actingAs($this->adminUser);
@@ -528,43 +484,13 @@ class AgentTest extends TestCase
         $this->assertEquals($this->agent->id, $monthlyCommission->agent->id);
     }
 
-    // public function test_salary_update_creates_journal_entries()
-    // {
-    //     $this->actingAs($this->adminUser);
-
-    //     $updateData = [
-    //         'name' => $this->agent->name,
-    //         'email' => $this->agent->email,
-    //         'password' => 'password123',
-    //         'salary' => 2000.00 // Updated from 1000.00
-    //     ];
-
-    //     $response = $this->put(route('agents.update', $this->agent->id), $updateData);
-
-    //     $response->assertRedirect();
-    //     $response->assertSessionHas('success', 'Agent updated successfully');
-
-    //     // Check if agent salary was updated
-    //     $this->assertDatabaseHas('agents', [
-    //         'id' => $this->agent->id,
-    //         'salary' => 2000.00
-    //     ]);
-
-    //     // Check if transaction was created
-    //     $this->assertDatabaseHas('transactions', [
-    //         'entity_id' => $this->agent->id,
-    //         'entity_type' => 'agent',
-    //         'amount' => 2000.00,
-    //         'transaction_type' => 'debit',
-    //         'description' => 'Monthly salary adjustment for agent: ' . $this->agent->name
-    //     ]);
-    // }
-
     public function test_agent_index_shows_correct_count()
     {
         // Create additional agents
         Agent::factory()->count(3)->create([
-            'user_id' => User::factory()->create(['role_id' => Role::AGENT])->id,
+            'user_id' => function () {
+                return User::factory()->create(['role_id' => Role::AGENT])->id;
+            },
             'branch_id' => $this->branch->id,
             'type_id' => $this->agentType->id,
         ]);
@@ -574,6 +500,10 @@ class AgentTest extends TestCase
         $response = $this->get(route('agents.index'));
 
         $response->assertStatus(200);
+        $response->assertViewHas('agents');
+
+        $agents = $response->viewData('agents');
+        $this->assertEquals(4, $agents->total()); // 1 from setUp + 3 created
     }
 
     public function test_pagination_works_correctly()

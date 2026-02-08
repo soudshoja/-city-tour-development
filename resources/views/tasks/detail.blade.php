@@ -1580,7 +1580,7 @@
                                                                             :selectedName="$selectedOriginalTask
                                                                             ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
                                                                             : null"
-                                                                            :taskId="$task->id"
+                                                                            :dataId="$task->id"
                                                                             :ajaxUrl="route('tasks.search-original-tasks')"
                                                                             placeholder="Search and select original task" />
                                                                 </div>

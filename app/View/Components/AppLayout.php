@@ -24,22 +24,22 @@ class AppLayout extends Component
         $companyId = null;
 
         if($user->role_id == Role::ADMIN) {
-            $color = 'bg-koromiko-300';
+            $color = 'border-koromiko-300';
             $companyId = 1;
         } elseif($user->role_id == Role::COMPANY) {
-            $color = 'bg-blue-500';
+            $color = 'border-blue-500';
             $companyId = $user->company->id;
         } elseif($user->role_id == Role::BRANCH) {
-            $color = 'bg-brown-500';
+            $color = 'border-brown-500';
             $companyId = $user->branch->company->id;
         } elseif($user->role_id == Role::AGENT) {
-            $color = 'bg-purple-500';
+            $color = 'border-purple-500';
             $companyId = $user->agent->branch->company->id;
         } elseif($user->role_id == Role::ACCOUNTANT) {
-            $color = 'bg-red-500';
+            $color = 'border-red-500';
             $companyId = $user->accountant->branch->company->id;
         } else {
-            $color = 'bg-gray-500';
+            $color = 'border-gray-500';
             $companyId = 1;
         }
 
@@ -48,6 +48,7 @@ class AppLayout extends Component
         // $walletData = $this->getCompanyWallets($user->company);
         // extract($walletData);
 
+        $companyName = $companyId ? Company::find($companyId)->name : env('APP_NAME', 'City Tour');
 
         return view('components.layouts.app', [
             'color' => $color,
@@ -56,6 +57,7 @@ class AppLayout extends Component
             'exchange' => $currencyExchange['exchange'],
             'currencies' => $currencyExchange['currencies'],
             'companyId' => $companyId,
+            'companyName' => $companyName,
         ]);
     }
 

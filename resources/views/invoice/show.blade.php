@@ -348,11 +348,7 @@
                     </td>
                     <td class="px-4 py-2 border"> {{$partial->status}}</td>
                     <td class="px-4 py-2 border">
-                        @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
-                        @else
-                        {{ number_format($partial->amount, 3) }}
-                        @endif
+                        {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}
                     </td>
                 </tr>
                 @endforeach
@@ -458,11 +454,7 @@
                     <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
-                        @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 3) }}
-                        @else
-                        {{ number_format($partial->amount, 3) }}
-                        @endif
+                        {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}
                     </td>
                 </tr>
                 @php
@@ -716,7 +708,7 @@
                             <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         @endif
                         <td class="px-4 py-2 border">
-                            {{ number_format($partial->amount ?? 0, 3) }}
+                            {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}
                         </td>
                     </tr>
                     @endforeach
@@ -749,15 +741,21 @@
         console.log('invoice', invoice);
         console.log('invoicePartials', invoicePartials);
 
-        // Calculate the total paid amount from invoicePartials
+        // Calculate the total paid amount from invoicePartials (including service_charge and invoice_charge)
         let totalPaidAmount = invoicePartials.filter(partial => partial.status === 'paid')
-            .reduce((sum, partial) => sum + parseFloat(partial.amount), 0);
+            .reduce((sum, partial) => {
+                return sum + parseFloat(partial.amount || 0) 
+                        + parseFloat(partial.service_charge || 0) 
+                        + parseFloat(partial.invoice_charge || 0);
+            }, 0);
 
-        let totalPaidServiceCharge = invoicePartials.filter(partial => partial.status === 'paid')
-            .reduce((sum, partial) => sum + parseFloat(partial.service_charge), 0);
-
-        // Calculate balance
-        let balance = invoice.amount - totalPaidAmount + totalPaidServiceCharge;
+        // Calculate balance from unpaid partials for ALL payment types
+        let balance = invoicePartials.filter(partial => partial.status !== 'paid')
+            .reduce((sum, partial) => {
+                return sum + parseFloat(partial.amount || 0) 
+                        + parseFloat(partial.service_charge || 0) 
+                        + parseFloat(partial.invoice_charge || 0);
+            }, 0);
 
         let balanceElement = document.getElementById('balance');
         if (balanceElement) {

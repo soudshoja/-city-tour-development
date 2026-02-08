@@ -287,10 +287,13 @@
                         @endif
                     </td>
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
-                    <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 3) }}</td>
-                    <td class="px-4 py-2 border">
-                        {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 3, '.', ',') }}
-                    </td>
+                    @php
+                        $qty = $detail->quantity ?? 1;
+                        $priceWithServiceCharge = ($detail->task_price ?? 0) + (($detail->distributed_service_charge ?? 0) / ($qty ?: 1));
+                        $totalWithServiceCharge = $priceWithServiceCharge * $qty;
+                    @endphp
+                    <td class="px-4 py-2 border">{{ number_format($priceWithServiceCharge, 3) }}</td>
+                    <td class="px-4 py-2 border">{{ number_format($totalWithServiceCharge, 3) }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -476,15 +479,17 @@
         <!-- Totals Section -->
         <div class="flex justify-end mb-8">
             <div class="w-1/3 text-sm">
+                @php
+                    $subtotalWithServiceCharge = $invoice->sub_amount + ($totalGatewayFee['gatewayFee'] ?? 0);
+                @endphp
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
-                    <span>{{ number_format($invoice->sub_amount, 3) }}</span>
+                    <span>{{ number_format($subtotalWithServiceCharge, 3) }}</span>
                 </div>
                 @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                 @foreach ($checkUtilizeCredit as $credit)
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Client's Credit ({{ $credit->created_at->format('d M Y') }}):</span>
-
                     <span>{{ number_format($credit->amount, 3) }}</span>
                 </div>
                 @endforeach
@@ -495,27 +500,10 @@
                     <span>{{ number_format($invoice->tax, 3) }}</span>
                 </div>
 
-                @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
-                @php
-                $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
-                $paidTotalAmount = $invoice->invoicePartials->sum('amount');
-                @endphp
-                @if ($paidServiceCharge > 0)
-                <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge:</span>
-                    <span>{{ number_format($paidServiceCharge, 3) }}</span>
-                </div>
-                @endif
-                @else
-                <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                    <span>{{ number_format($totalGatewayFee['gatewayFee'], 3) }}</span>
-                </div>
-                @endif
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
-                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 3) }}
+                        {{ number_format($subtotalWithServiceCharge + $invoice->tax - abs($checkUtilizeCredit->sum('amount')), 3) }}
                     </span>
                 </div>
             </div>

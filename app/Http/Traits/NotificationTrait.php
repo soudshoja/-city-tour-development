@@ -30,6 +30,10 @@ trait NotificationTrait
     {
         $user = Auth::user();
 
+        if (!$user) {
+            return collect();
+        }
+
         switch ($user->role_id) {
             case Role::ADMIN:
                 return Notification::all();

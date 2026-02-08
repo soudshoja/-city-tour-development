@@ -1,7 +1,12 @@
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+@import "./layout/sidebar.css";
+@import "./layout/navigation.css";
+@import "./layout/profile.css";
+@import "./layout/mobile-drawer.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 :root {
     --slate-500: rgb(100 116 139 / var(--tw-bg-opacity, 1));
@@ -4802,48 +4807,6 @@ pre {
 .\!bg-none {
     background-image: none !important;
 }
-.bg-\[linear-gradient\(225deg\2c
-    rgba\(239\2c
-    18\2c
-    98\2c
-    1\)_0\%\2c
-    rgba\(67\2c
-    97\2c
-    238\2c
-    1\)_100\%\)\] {
-    background-image: linear-gradient(225deg, #ef1262, #4361ee);
-}
-.bg-\[linear-gradient\(45deg\2c
-    \#fff9f9_0\%\2c
-    rgba\(255\2c
-    255\2c
-    255\2c
-    0\)_25\%\2c
-    rgba\(255\2c
-    255\2c
-    255\2c
-    0\)_75\%\2c
-    _\#fff9f9_100\%\)\] {
-    background-image: linear-gradient(
-        45deg,
-        #fff9f9,
-        #fff0 25%,
-        #fff0 75%,
-        #fff9f9
-    );
-}
-.bg-\[url\(\'\.\.\/images\/knowledge\/pattern\.png\'\)\] {
-    background-image: url(../images/knowledge/pattern.png);
-}
-.bg-\[url\(\'\.\.\/images\/menu-heade\.jpg\'\)\] {
-    background-image: url(../images/menu-heade.jpg);
-}
-.bg-\[url\(\'\.\.\/images\/notification-bg\.png\'\)\] {
-    background-image: url(../images/notification-bg.png);
-}
-.bg-\[url\(\.\.\/images\/auth\/map\.png\)\] {
-    background-image: url(../images/auth/map.png);
-}
 .bg-gradient-to-l {
     background-image: linear-gradient(to left, var(--tw-gradient-stops));
 }
@@ -5743,20 +5706,7 @@ pre {
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
         var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
-.shadow-\[0px_0px_2px_0px_rgba\(145\2c
-    158\2c
-    171\2c
-    0\.20\)\2c
-    0px_12px_24px_-4px_rgba\(145\2c
-    158\2c
-    171\2c
-    0\.12\)\] {
-    --tw-shadow: 0px 0px 2px 0px #919eab33, 0px 12px 24px -4px #919eab1f;
-    --tw-shadow-colored: 0px 0px 2px 0px var(--tw-shadow-color),
-        0px 12px 24px -4px var(--tw-shadow-color);
-    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
-        var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
+
 .shadow-\[1px_2px_12px_0_rgba\(31\2c 45\2c 61\2c 0\.10\)\] {
     --tw-shadow: 1px 2px 12px 0 #1f2d3d1a;
     --tw-shadow-colored: 1px 2px 12px 0 var(--tw-shadow-color);
@@ -6657,19 +6607,7 @@ pre {
     content: var(--tw-content);
     background-color: #888ea84d;
 }
-.before\:bg-\[linear-gradient\(180deg\2c
-    \#4361EE_0\%\2c
-    rgba\(67\2c
-    97\2c
-    238\2c
-    0\)_50\.73\%\)\]:before {
-    content: var(--tw-content);
-    background-image: linear-gradient(180deg, #4361ee, #4361ee00 50.73%);
-}
-.before\:bg-\[url\(\'\.\.\/images\/close\.svg\'\)\]:before {
-    content: var(--tw-content);
-    background-image: url(../images/close.svg);
-}
+
 .before\:bg-center:before {
     content: var(--tw-content);
     background-position: 50%;
@@ -7252,11 +7190,7 @@ pre {
     --tw-bg-opacity: 1;
     background-color: rgb(255 255 255 / var(--tw-bg-opacity));
 }
-.peer:checked
-    ~ .peer-checked\:before\:bg-\[url\(\'\.\.\/images\/checked\.svg\'\)\]:before {
-    content: var(--tw-content);
-    background-image: url(../images/checked.svg);
-}
+
 .peer:focus ~ .peer-focus\:text-primary {
     --tw-text-opacity: 1;
     color: rgb(67 97 238 / var(--tw-text-opacity));
@@ -7528,33 +7462,7 @@ pre {
 :is(.dark .dark\:bg-opacity-\[0\.08\]) {
     --tw-bg-opacity: 0.08;
 }
-:is(
-        .dark
-            .dark\:bg-\[linear-gradient\(52\.22deg\2c
-            \#0E1726_0\%\2c
-            rgba\(14\2c
-            23\2c
-            38\2c
-            0\)_18\.66\%\2c
-            rgba\(14\2c
-            23\2c
-            38\2c
-            0\)_51\.04\%\2c
-            rgba\(14\2c
-            23\2c
-            38\2c
-            0\)_80\.07\%\2c
-            \#0E1726_100\%\)\]
-    ) {
-    background-image: linear-gradient(
-        52.22deg,
-        #0e1726,
-        #0e172600 18.66%,
-        #0e172600 51.04%,
-        #0e172600 80.07%,
-        #0e1726
-    );
-}
+
 :is(.dark .dark\:from-\[rgba\(14\2c 23\2c 38\2c 0\.44\)\]) {
     --tw-gradient-from: #0e172670 var(--tw-gradient-from-position);
     --tw-gradient-to: #0e172600 var(--tw-gradient-to-position);
@@ -9841,6 +9749,38 @@ thead {
 .CuzPostion {
     bottom: 80px;
     right: 50%;
+    transform: translateX(50%);
+}
+
+/* Mobile responsive floating actions - stick to bottom */
+@media (max-width: 767px) {
+    .CuzPostion {
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: none;
+    }
+
+    #floatingActions {
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+        border-radius: 0;
+        width: 100%;
+    }
+
+    #floatingActions > div:first-child {
+        gap: 0.5rem;
+    }
+
+    #floatingActions button {
+        padding: 0.5rem 0.75rem;
+    }
+
+    #floatingActions button span {
+        font-size: 0.75rem;
+    }
 }
 
 /* auth pages */
@@ -10141,11 +10081,6 @@ div:has(> :is(.dark .coa-partials)){
 
 .MaxW {
     width: max-content;
-}
-
-.Sidebar-Nos {
-    width: 100px;
-    z-index: 10;
 }
 
 .Main {
@@ -10631,16 +10566,6 @@ menuitem > menu > menuitem.hover > menu > menuitem {
     }
 }
 
-@media (max-width: 768px) {
-    .Sidebar-Nos {
-        display: none;
-    }
-}
-
-@media (max-width: 1024px) and (min-width: 769px) {
-    .Sidebar-Nos {
-    }
-}
 
 @media (max-width: 768px) {
     .smAside > div {

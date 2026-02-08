@@ -159,23 +159,9 @@ class ProfileController extends Controller
             'whatsapp' => ['nullable', 'url', 'max:255'],
         ]);
 
-        $company = $user->company; // related company
+        $companyid = getCompanyId($user);
 
-        // Get the correct company based on user role
-        switch ($user->role_id) {
-            case Role::COMPANY:
-                $company = $user->company;
-                break;
-            case Role::BRANCH:
-                $company = $user->branch->company;
-                break;
-            case Role::AGENT:
-                $company = $user->agent->branch->company;
-                break;
-            default:
-                $company = null;
-                break;
-        }
+        $company = Company::find($companyid);
 
         // Handle logo upload only if company exists
         if ($company) {

@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Enums\InvoiceStatus;
 use App\Models\Reminder;
+use App\Http\Traits\Lockable;
 use InvalidArgumentException;
 
 class Invoice extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Lockable;
 
     protected $fillable = [
         'invoice_number',
@@ -38,6 +39,14 @@ class Invoice extends Model
         'payment_type',
         'is_client_credit',
         'external_url',
+        'is_locked',
+        'locked_by',
+        'locked_at',
+    ];
+
+    protected $casts = [
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     public static function boot()

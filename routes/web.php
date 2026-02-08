@@ -52,6 +52,7 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserSettingController;
+use App\Http\Controllers\LockManagementController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -89,6 +90,18 @@ Route::middleware(['auth'])->group(function () {
 
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
+
+    Route::group([
+        'prefix' => 'lock-management',
+        'as' => 'lock-management.',
+    ], function () {
+        Route::get('/', [LockManagementController::class, 'index'])->name('index');
+        Route::post('/lock-by-period', [LockManagementController::class, 'lockByPeriod'])->name('lock-by-period');
+        Route::post('/lock-by-month', [LockManagementController::class, 'lockByMonth'])->name('lock-by-month');
+        Route::post('/unlock-by-month', [LockManagementController::class, 'unlockByMonth'])->name('unlock-by-month');
+        Route::post('/bulk-lock', [LockManagementController::class, 'bulkLock'])->name('bulk-lock');
+        Route::post('/bulk-unlock', [LockManagementController::class, 'bulkUnlock'])->name('bulk-unlock');
+    });
 
     // Admin users
     Route::group([
@@ -484,6 +497,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details');
+        Route::post('/{invoice}/lock', [InvoiceController::class, 'lockInvoice'])->name('lock');
+        Route::post('/{invoice}/unlock', [InvoiceController::class, 'unlockInvoice'])->name('unlock');
     });
 
 

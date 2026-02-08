@@ -5504,7 +5504,6 @@ class PaymentController extends Controller
                         ->update([
                             'status' => 'paid',
                             'payment_id' => $payment->id,
-                            'amount' => $finalPaidAmount,
                         ]);
 
                     Log::info('[INVOICE COA] Updated invoice partials to paid', [

@@ -2521,6 +2521,7 @@
                     } else {
                         methodContainer.classList.add('hidden');
                         methodText.classList.remove('hidden');
+                        methodSelect.value = '';
                     }
 
                     // Handle invoice charge - FIXED: Use charges.find() like full payment
@@ -2682,6 +2683,7 @@
                     } else {
                         methodContainer.classList.add('hidden');
                         methodText.classList.remove('hidden');
+                        methodSelect.value = '';
                     }
 
                     // Handle invoice charge - FIXED: Use charges.find() like full payment

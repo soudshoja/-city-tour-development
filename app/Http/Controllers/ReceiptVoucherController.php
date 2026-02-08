@@ -1472,7 +1472,7 @@ class ReceiptVoucherController extends Controller
                 'branch_id'        => $invoice->agent->branch->id,
                 'transaction_type' => 'debit',
                 'amount'           => $amount,
-                'description'      => $gateway . ' payment success: ' . $invoice->invoice_number,
+                'description'      => $gateway . ' payment for Invoice ' . $invoice->invoice_number,
                 'invoice_id'       => $invoice->id,
                 'reference_number' => $ref,
                 'reference_type'   => 'Invoice',

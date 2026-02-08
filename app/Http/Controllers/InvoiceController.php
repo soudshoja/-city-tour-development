@@ -711,7 +711,7 @@ class InvoiceController extends Controller
                 'invoice_id' => $request->invoice_id,
                 'error' => $e->getMessage(),
             ]);
-            return redirect()->back()->with('error', 'Failed to change Payment Type: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to change Payment Type. Please try again later.');
         }
     }
 

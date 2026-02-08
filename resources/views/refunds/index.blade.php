@@ -185,6 +185,11 @@
                     </tbody>
                 </table>
             </div>
+            @if ($refunds->hasPages())
+                <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb;">
+                    {{ $refunds->links() }}
+                </div>
+            @endif
         </div>
 
         <!-- Tab Content: Client Credit -->
@@ -249,6 +254,11 @@
                                 <option value="hotel">Hotel</option>
                                 <option value="visa">Visa</option>
                                 <option value="insurance">Insurance</option>
+                                <option value="car">Car</option>
+                                <option value="tour">Tour</option>
+                                <option value="rail">Rail</option>
+                                <option value="cruise">Cruise</option>
+                                <option value="esim">eSIM</option>
                             </select>
                         </div>
                     </div>
@@ -292,10 +302,10 @@
                         </div>
                     </div>
 
-                    <div class="refund-modal-footer">
-                        <span id="selectedCount" class="refund-modal-footer-count">0 tasks selected</span>
-                        <div class="refund-modal-footer-buttons">
-                            <button type="button" onclick="closeTaskSelectionModal()" class="refund-btn-cancel">Cancel</button>
+                    <div class="refund-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                        <button type="button" onclick="closeTaskSelectionModal()" class="refund-btn-cancel">Cancel</button>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span id="selectedCount" class="refund-modal-footer-count">0 tasks selected</span>
                             <button type="button" id="proceedToRefundBtn" onclick="proceedToRefund()" disabled class="refund-btn-proceed">Proceed to Refund</button>
                         </div>
                     </div>
@@ -435,7 +445,12 @@
                     'flight': 'refund-type-flight',
                     'hotel': 'refund-type-hotel',
                     'visa': 'refund-type-visa',
-                    'insurance': 'refund-type-insurance'
+                    'insurance': 'refund-type-insurance',
+                    'car': 'refund-type-car',
+                    'tour': 'refund-type-tour',
+                    'rail': 'refund-type-rail',
+                    'cruise': 'refund-type-cruise',
+                    'esim': 'refund-type-esim'
                 };
                 const statusColors = {
                     'paid': 'main-badge-green',

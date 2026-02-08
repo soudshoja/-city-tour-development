@@ -27,6 +27,7 @@ use App\Models\InvoicePartial;
 use App\Models\Refund;
 use App\Models\Client;
 use App\Http\Controllers\CoaController;
+use App\Models\Charge;
 use Exception;
 use Illuminate\Support\Str;
 
@@ -3495,5 +3496,439 @@ class ReportController extends Controller
             ->join('agents', 'invoices.agent_id', '=', 'agents.id')
             ->whereIn('agents.branch_id', $branchIds)
             ->sum('invoice_details.markup_price');
+    }
+
+       /**
+     * Payment Gateways Report
+     * Shows all paid invoices with their types (full, partial, split)
+     * and wallet top-ups with payment method sources
+     */
+    public function paymentGateways(Request $request)
+    {
+        Gate::authorize('viewPaymentGatewaysReport', Report::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $startDate = $request->input('start_date') ?? Carbon::now()->startOfMonth()->toDateString();
+        $endDate = $request->input('end_date') ?? Carbon::now()->toDateString();
+        $paymentGateway = $request->input('payment_gateway', '');
+        $clientId = $request->input('client_id', '');
+
+        $systemDefaultGateways = Charge::where('is_system_default', true)
+            ->pluck('name')
+            ->toArray();
+
+        $chargeConfigs = Charge::where('is_system_default', true)
+            ->get()
+            ->keyBy('name');
+
+        $paidInvoicesQuery = Invoice::query()
+            ->with([
+                'client',
+                'agent',
+                'invoicePartials' => function ($q) use ($systemDefaultGateways) {
+                    $q->where('status', 'paid')
+                      ->whereIn('payment_gateway', $systemDefaultGateways)
+                      ->with(['paymentMethod', 'charge']);
+                },
+                'paymentApplications' => function ($q) {
+                    $q->with('payment.paymentMethod');
+                }
+            ])
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->whereHas('invoicePartials', function ($q) use ($systemDefaultGateways) {
+                $q->where('status', 'paid')
+                  ->whereIn('payment_gateway', $systemDefaultGateways);
+            });
+
+        if ($startDate) {
+            $paidInvoicesQuery->whereDate('paid_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $paidInvoicesQuery->whereDate('paid_date', '<=', $endDate);
+        }
+
+        $selectedClient = null;
+
+        if ($clientId) {
+            $paidInvoicesQuery->where('client_id', $clientId);
+            $selectedClient = Client::find($clientId);
+        }
+
+        if ($paymentGateway) {
+            $paidInvoicesQuery->whereHas('invoicePartials', function ($q) use ($paymentGateway) {
+                $q->where('payment_gateway', $paymentGateway);
+            });
+        }
+
+        $paidInvoicesQuery->orderBy('paid_date', 'desc');
+
+        $allPaidInvoices = $paidInvoicesQuery->get();
+
+        $transformInvoice = function ($invoice) use ($chargeConfigs) {
+            $totalPartialsPaid = $invoice->invoicePartials->sum('amount');
+
+            if ($totalPartialsPaid > 0 && $totalPartialsPaid < $invoice->amount) {
+                $invoice->invoice_type = 'Partial';
+            } elseif ($invoice->invoicePartials->count() > 1 && $totalPartialsPaid == $invoice->amount) {
+                $invoice->invoice_type = 'Split';
+            } else {
+                $invoice->invoice_type = 'Full';
+            }
+
+            $paymentMethods = [];
+            foreach ($invoice->invoicePartials as $partial) {
+                if ($partial->payment_method) {
+                    $paymentMethods[] = $partial->payment_method;
+                }
+            }
+            $invoice->payment_methods = $paymentMethods;
+
+            return $invoice;
+        };
+
+        $allPaidInvoices->transform($transformInvoice);
+
+        $walletTopUpsQuery = Payment::query()
+            ->whereNull('invoice_id')
+            ->where('status', 'completed')
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->whereIn('payment_gateway', $systemDefaultGateways)
+            ->with('paymentMethod', 'client', 'agent');
+
+        if ($startDate) {
+            $walletTopUpsQuery->whereDate('payment_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $walletTopUpsQuery->whereDate('payment_date', '<=', $endDate);
+        }
+
+        if ($paymentGateway) {
+            $walletTopUpsQuery->where('payment_gateway', $paymentGateway);
+        }
+
+        $walletTopUps = $walletTopUpsQuery->orderBy('payment_date', 'desc')->get();
+
+        $combinedData = collect();
+
+        foreach ($allPaidInvoices as $invoice) {
+            if (!empty($invoice->payment_methods) && count($invoice->payment_methods) > 0) {
+                $combinedData->push([
+                    'type' => 'invoice',
+                    'data' => $invoice,
+                    'date' => $invoice->paid_date,
+                    'amount' => $invoice->amount,
+                ]);
+            }
+        }
+
+        foreach ($walletTopUps as $payment) {
+            $combinedData->push([
+                'type' => 'payment',
+                'data' => $payment,
+                'date' => $payment->payment_date,
+                'amount' => $payment->amount,
+            ]);
+        }
+
+        $combinedData = $combinedData->sortByDesc('date')->values();
+
+        $perPage = 25;
+        $currentPage = $request->input('page', 1);
+        $totalItems = $combinedData->count();
+        $offset = ($currentPage - 1) * $perPage;
+        $paginatedItems = $combinedData->slice($offset, $perPage)->values();
+
+        $paginatedData = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paginatedItems,
+            $totalItems,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $invoiceGateways = InvoicePartial::query()
+            ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->whereIn('payment_gateway', $systemDefaultGateways)
+            ->distinct()
+            ->pluck('payment_gateway')
+            ->filter();
+
+        $paymentGatewaysFromPayments = Payment::query()
+            ->whereNull('invoice_id')
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->whereIn('payment_gateway', $systemDefaultGateways)
+            ->distinct()
+            ->pluck('payment_gateway')
+            ->filter();
+
+        $paymentGateways = $invoiceGateways->merge($paymentGatewaysFromPayments)->unique()->sort()->values();
+
+        $gatewaySummary = $this->calculateGatewaySummary($allPaidInvoices, $walletTopUps, $chargeConfigs);
+
+        return view('reports.payment-gateways', [
+            'paginatedData' => $paginatedData,
+            'allInvoices' => $allPaidInvoices,
+            'walletTopUps' => $walletTopUps,
+            'paymentGateways' => $paymentGateways,
+            'systemDefaultGateways' => $systemDefaultGateways,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'selectedPaymentGateway' => $paymentGateway,
+            'selectedClient' => $selectedClient,
+            'gatewaySummary' => $gatewaySummary,
+            'chargeConfigs' => $chargeConfigs,
+        ]);
+    }
+
+    /**
+     * Calculate gateway summary statistics for the report
+     */
+    private function calculateGatewaySummary($paidInvoices, $walletTopUps, $chargeConfigs)
+    {
+        $summary = [];
+
+        foreach ($paidInvoices as $invoice) {
+            foreach ($invoice->invoicePartials as $partial) {
+                $gateway = $partial->payment_gateway ?? 'Unknown';
+
+                if (!isset($summary[$gateway])) {
+                    $summary[$gateway] = [
+                        'gateway' => $gateway,
+                        'transactions' => 0,
+                        'gross_amount' => 0,
+                        'total_charges' => 0,
+                        'net_to_receive' => 0,
+                    ];
+                }
+
+                $amount = $partial->amount ?? 0;
+                $charges = $partial->gateway_fee ?? 0;
+
+                $summary[$gateway]['transactions']++;
+                $summary[$gateway]['gross_amount'] += $amount;
+                $summary[$gateway]['total_charges'] += $charges;
+                $summary[$gateway]['net_to_receive'] += ($amount - $charges);
+            }
+        }
+
+        foreach ($walletTopUps as $payment) {
+            $gateway = $payment->payment_gateway ?? 'Unknown';
+
+            if (!isset($summary[$gateway])) {
+                $summary[$gateway] = [
+                    'gateway' => $gateway,
+                    'transactions' => 0,
+                    'gross_amount' => 0,
+                    'total_charges' => 0,
+                    'net_to_receive' => 0,
+                ];
+            }
+
+            $amount = $payment->amount ?? 0;
+            $charges = $payment->gateway_fee ?? 0;
+
+            $summary[$gateway]['transactions']++;
+            $summary[$gateway]['gross_amount'] += $amount;
+            $summary[$gateway]['total_charges'] += $charges;
+            $summary[$gateway]['net_to_receive'] += ($amount - $charges);
+        }
+
+        foreach ($summary as $gateway => &$data) {
+            if ($data['gross_amount'] > 0) {
+                $data['avg_charge_percent'] = ($data['total_charges'] / $data['gross_amount']) * 100;
+            } else {
+                $data['avg_charge_percent'] = 0;
+            }
+        }
+
+        $totals = [
+            'gateway' => 'TOTAL',
+            'transactions' => array_sum(array_column($summary, 'transactions')),
+            'gross_amount' => array_sum(array_column($summary, 'gross_amount')),
+            'total_charges' => array_sum(array_column($summary, 'total_charges')),
+            'net_to_receive' => array_sum(array_column($summary, 'net_to_receive')),
+            'avg_charge_percent' => 0,
+        ];
+
+        if ($totals['gross_amount'] > 0) {
+            $totals['avg_charge_percent'] = ($totals['total_charges'] / $totals['gross_amount']) * 100;
+        }
+
+        return [
+            'gateways' => $summary,
+            'totals' => $totals,
+        ];
+    }
+
+    /**
+     * Payment Gateways Report PDF Export
+     */
+    public function paymentGatewaysReportPdf(Request $request)
+    {
+        Gate::authorize('viewPaymentGatewaysReport', Report::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $company = Company::find($companyId);
+
+        $startDate = $request->input('start_date') ?? Carbon::now()->startOfMonth()->toDateString();
+        $endDate = $request->input('end_date') ?? Carbon::now()->toDateString();
+        $paymentGateway = $request->input('payment_gateway', '');
+        $clientId = $request->input('client_id', '');
+
+        $systemDefaultGateways = Charge::where('is_system_default', true)
+            ->pluck('name')
+            ->toArray();
+
+        $chargeConfigs = Charge::where('is_system_default', true)
+            ->get()
+            ->keyBy('name');
+
+        $paidInvoicesQuery = Invoice::query()
+            ->with([
+                'client',
+                'agent',
+                'invoicePartials' => function ($q) use ($systemDefaultGateways) {
+                    $q->where('status', 'paid')
+                      ->whereIn('payment_gateway', $systemDefaultGateways)
+                      ->with(['paymentMethod', 'charge']);
+                },
+                'paymentApplications' => function ($q) {
+                    $q->with('payment.paymentMethod');
+                }
+            ])
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->whereHas('invoicePartials', function ($q) use ($systemDefaultGateways) {
+                $q->where('status', 'paid')
+                  ->whereIn('payment_gateway', $systemDefaultGateways);
+            });
+
+        if ($startDate) {
+            $paidInvoicesQuery->whereDate('paid_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $paidInvoicesQuery->whereDate('paid_date', '<=', $endDate);
+        }
+
+        $selectedClient = null;
+        
+        if ($clientId) {
+            $paidInvoicesQuery->where('client_id', $clientId);
+            $selectedClient = Client::find($clientId);
+        }
+
+        if ($paymentGateway) {
+            $paidInvoicesQuery->whereHas('invoicePartials', function ($q) use ($paymentGateway) {
+                $q->where('payment_gateway', $paymentGateway);
+            });
+        }
+
+        $paidInvoicesQuery->orderBy('paid_date', 'desc');
+        $paidInvoices = $paidInvoicesQuery->get();
+
+        $paidInvoices->transform(function ($invoice) use ($chargeConfigs) {
+            $totalPartialsPaid = $invoice->invoicePartials->sum('amount');
+
+            if ($totalPartialsPaid > 0 && $totalPartialsPaid < $invoice->amount) {
+                $invoice->invoice_type = 'Partial';
+            } elseif ($invoice->invoicePartials->count() > 1 && $totalPartialsPaid == $invoice->amount) {
+                $invoice->invoice_type = 'Split';
+            } else {
+                $invoice->invoice_type = 'Full';
+            }
+
+            $paymentMethods = [];
+            foreach ($invoice->invoicePartials as $partial) {
+                if ($partial->payment_method) {
+                    $paymentMethods[] = $partial->payment_method;
+                }
+            }
+            $invoice->payment_methods = $paymentMethods;
+
+            return $invoice;
+        });
+
+        $walletTopUpsQuery = Payment::query()
+            ->whereNull('invoice_id')
+            ->where('status', 'completed')
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->whereIn('payment_gateway', $systemDefaultGateways)
+            ->with('paymentMethod', 'client', 'agent');
+
+        if ($startDate) {
+            $walletTopUpsQuery->whereDate('payment_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $walletTopUpsQuery->whereDate('payment_date', '<=', $endDate);
+        }
+
+        if ($paymentGateway) {
+            $walletTopUpsQuery->where('payment_gateway', $paymentGateway);
+        }
+
+        $walletTopUps = $walletTopUpsQuery->orderBy('payment_date', 'desc')->get();
+
+        $gatewaySummary = $this->calculateGatewaySummary($paidInvoices, $walletTopUps, $chargeConfigs);
+
+        $grandTotals = [
+            'amount' => 0,
+            'charges' => 0,
+            'net_to_receive' => 0,
+        ];
+
+        foreach ($paidInvoices as $invoice) {
+            $invoiceAmount = $invoice->amount;
+            $totalCharges = $invoice->invoicePartials->sum('gateway_fee') ?? 0;
+            $grandTotals['amount'] += $invoiceAmount;
+            $grandTotals['charges'] += $totalCharges;
+            $grandTotals['net_to_receive'] += ($invoiceAmount - $totalCharges);
+        }
+
+        foreach ($walletTopUps as $payment) {
+            $paymentAmount = $payment->amount;
+            $gatewayCharges = $payment->gateway_fee ?? 0;
+            $grandTotals['amount'] += $paymentAmount;
+            $grandTotals['charges'] += $gatewayCharges;
+            $grandTotals['net_to_receive'] += ($paymentAmount - $gatewayCharges);
+        }
+
+        $pdf = PDF::loadView('reports.pdf.payment-gateways', [
+            'paidInvoices' => $paidInvoices,
+            'walletTopUps' => $walletTopUps,
+            'gatewaySummary' => $gatewaySummary,
+            'grandTotals' => $grandTotals,
+            'chargeConfigs' => $chargeConfigs,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'selectedPaymentGateway' => $paymentGateway,
+            'selectedClient' => $selectedClient,
+            'company' => $company,
+            'systemDefaultGateways' => $systemDefaultGateways,
+        ]);
+
+        $pdf->setPaper('A4', 'landscape');
+
+        $filename = 'payment-gateways-report';
+        if ($startDate && $endDate) {
+            $filename .= '-' . $startDate . '-to-' . $endDate;
+        } elseif ($startDate) {
+            $filename .= '-from-' . $startDate;
+        } elseif ($endDate) {
+            $filename .= '-until-' . $endDate;
+        }
+        $filename .= '.pdf';
+
+        return $pdf->download($filename);
     }
 }

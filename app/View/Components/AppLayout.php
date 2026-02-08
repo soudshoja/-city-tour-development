@@ -48,7 +48,7 @@ class AppLayout extends Component
         // $walletData = $this->getCompanyWallets($user->company);
         // extract($walletData);
 
-        $companyName = $user->role_id !== Role::ADMIN ? Company::find($companyId)->name : env('APP_NAME', 'City Tour');
+        $companyName = $companyId ? Company::find($companyId)->name : env('APP_NAME', 'City Tour');
 
         return view('components.layouts.app', [
             'color' => $color,

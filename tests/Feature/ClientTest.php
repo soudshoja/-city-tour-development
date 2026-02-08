@@ -53,9 +53,10 @@ class ClientTest extends TestCase
 
         // Create test company with company user as owner
         $this->company = Company::factory()->create([
+            'id' => 1,
             'name' => 'Test Company',
             'status' => 1,
-            'user_id' => $this->companyUser->id  // Company owned by company user
+            'user_id' => $this->companyUser->id
         ]);
         session(['company_id' => $this->company->id]);
 
@@ -147,33 +148,62 @@ class ClientTest extends TestCase
         $response->assertRedirect('/login');
     }
 
-    public function test_admin_sees_all_clients()
+    public function test_admin_sees_only_scoped_company_clients()
     {
-        // Create clients for different agents
-        $anotherAgentUser = User::factory()->create([
+        // Create another agent in the SAME company (admin's scoped company)
+        $sameCompanyAgentUser = User::factory()->create([
             'role_id' => Role::AGENT,
-            'name' => 'Another Agent User',
-            'email' => 'another.agent@test.com'
+            'name' => 'Same Company Agent User',
+            'email' => 'same.company.agent@test.com'
         ]);
 
-        $anotherAgent = Agent::factory()->create([
+        $sameCompanyAgent = Agent::factory()->create([
             'branch_id' => $this->branch->id,
-            'name' => 'Another Agent',
-            'user_id' => $anotherAgentUser->id,
+            'name' => 'Same Company Agent',
+            'user_id' => $sameCompanyAgentUser->id,
             'account_id' => 1,
             'type_id' => 1
         ]);
 
         Client::factory()->count(2)->create([
-            'agent_id' => $anotherAgent->id
+            'agent_id' => $sameCompanyAgent->id
+        ]);
+
+        // Create a DIFFERENT company with its own clients
+        $otherCompanyUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $otherCompany = Company::factory()->create(['user_id' => $otherCompanyUser->id]);
+
+        $otherBranchUser = User::factory()->create(['role_id' => Role::BRANCH]);
+        $otherBranch = Branch::factory()->create([
+            'company_id' => $otherCompany->id,
+            'user_id' => $otherBranchUser->id
+        ]);
+
+        $otherAgentUser = User::factory()->create(['role_id' => Role::AGENT]);
+        $otherAgent = Agent::factory()->create([
+            'branch_id' => $otherBranch->id,
+            'user_id' => $otherAgentUser->id,
+            'account_id' => 1,
+            'type_id' => 1
+        ]);
+
+        Client::factory()->count(3)->create([
+            'agent_id' => $otherAgent->id
         ]);
 
         $response = $this->actingAs($this->adminUser)->get(route('clients.index'));
 
         $clients = $response->viewData('clients');
-        // With pagination, need to check total() method
-        $this->assertGreaterThanOrEqual(5, $clients->total()); // At least 5 clients total
         $this->assertInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class, $clients);
+
+        // Admin should only see clients from company ID 1 (5 total: 3 from setUp + 2 from same company)
+        // NOT the 3 clients from the other company
+        $this->assertEquals(5, $clients->total());
+
+        // Verify all clients belong to the admin's scoped company
+        foreach ($clients->items() as $client) {
+            $this->assertEquals($this->company->id, $client->agent->branch->company_id);
+        }
     }
 
     public function test_company_user_sees_only_company_clients()
@@ -301,22 +331,6 @@ class ClientTest extends TestCase
         $response->assertSee('Show Test Client');
     }
 
-    // public function test_client_edit_page_displays_correctly()
-    // {
-    //     $client = Client::factory()->create([
-    //         'agent_id' => $this->agent->id,
-    //         'first_name' => 'Edit Test Client'
-    //     ]);
-
-    //     $response = $this->actingAs($this->adminUser)
-    //                      ->get(route('clients.edit', $client->id));
-
-    //     $response->assertStatus(200);
-    //     $response->assertViewIs('clients.edit');
-    //     $response->assertViewHas(['client', 'agents']);
-    //     $response->assertSee('Edit Test Client');
-    // }
-
     public function test_client_update_with_valid_data()
     {
         $client = Client::factory()->create([
@@ -344,38 +358,6 @@ class ClientTest extends TestCase
             'email' => 'updated@test.com'
         ]);
     }
-
-    // public function test_client_change_agent()
-    // {
-    //     $newAgentUser = User::factory()->create([
-    //         'role_id' => Role::AGENT,
-    //         'name' => 'New Agent User',
-    //         'email' => 'new.agent@test.com'
-    //     ]);
-
-    //     $newAgent = Agent::factory()->create([
-    //         'branch_id' => $this->branch->id,
-    //         'name' => 'New Agent',
-    //         'user_id' => $newAgentUser->id,
-    //         'account_id' => 1,
-    //         'type_id' => 1
-    //     ]);
-
-    //     $client = Client::factory()->create([
-    //         'agent_id' => $this->agent->id
-    //     ]);
-
-    //     $response = $this->actingAs($this->adminUser)
-    //                      ->put(route('clients.change-agent', $client->id), [
-    //                          'agent_id' => $newAgent->id
-    //                      ]);
-
-    //     $response->assertRedirect();
-    //     $response->assertSessionHas('success');
-
-    //     $client->refresh();
-    //     $this->assertEquals($newAgent->id, $client->agent_id);
-    // }
 
     public function test_pagination_works_correctly()
     {

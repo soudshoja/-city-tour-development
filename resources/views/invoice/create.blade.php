@@ -160,11 +160,15 @@
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
+                        
+                        @if($isRefund ?? false)
                         <div class="flex items-center w-full">
                             <label for="RefundNumber" class="w-full text-sm font-semibold">Refund Number</label>
-                            <input id="RefundNumber" type="text" name="RefundNumber" value="{{ $refundNumber }}"
+                            <input id="RefundNumber" type="text" name="RefundNumber" value="{{ $refundNumber ?? ''}}"
                                 class="w-full form-input" placeholder="Refund Number" />
                         </div>
+                        @endif
+
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}" />

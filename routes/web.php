@@ -291,6 +291,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/import', [CoaController::class, 'importAccounts'])->name('import');
         Route::post('/delegate-price', [CoaController::class, 'delegatePriceAmadeus'])->name('delegate-price');
         Route::delete('/{id}', [CoaController::class, 'deleteTransaction'])->name('deleteTransaction');
+        Route::get('/opening-balances', [CoaController::class, 'openingBalances'])->name('opening-balances');
+        Route::post('/opening-balances', [CoaController::class, 'saveOpeningBalances'])->name('opening-balances.save');
     });
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');

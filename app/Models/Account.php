@@ -13,20 +13,22 @@ class Account extends Model
        'serial_number',
        'account_type',
        'report_type',
-       'name', 
-       'level', 
+       'name',
+       'level',
        'actual_balance',
-       'budget_balance',    
-       'variance', 
-       'parent_id', 
+       'opening_balance',
+       'opening_balance_date',
+       'budget_balance',
+       'variance',
+       'parent_id',
        'root_id',
-       'company_id', 
+       'company_id',
        'branch_id',
        'agent_id',
        'client_id',
        'supplier_id',
        'supplier_company_id',
-       'reference_id', 
+       'reference_id',
        'account_type_id',
        'code',
        'currency',
@@ -34,6 +36,11 @@ class Account extends Model
        'disabled',
        'balance_must_be',
        'supplier_company_id',
+    ];
+
+    protected $casts = [
+        'opening_balance' => 'decimal:3',
+        'opening_balance_date' => 'date',
     ];
 
     public const REPORT_TYPES = [

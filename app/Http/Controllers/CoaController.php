@@ -288,13 +288,16 @@ class CoaController extends Controller
             $account->debit = (string)$debit;
             $account->credit = (string)$credit;
 
+            $openingBalance = (float) ($account->opening_balance ?? 0);
+
             if ($debitCreditType == 'normal') {
-                $account->balance = bcsub($debit, $credit, 2);
+                $movementBalance = bcsub($debit, $credit, 2);
             } else {
-                $account->balance = bcsub($credit, $debit, 2);
+                $movementBalance = bcsub($credit, $debit, 2);
             }
 
-            $account->journalEntries = $journalEntries; // Attach journal entries to the account
+            $account->balance = bcadd($openingBalance, $movementBalance, 2);
+            $account->journalEntries = $journalEntries;
             $account->ledger = true;
         }
 
@@ -1173,6 +1176,94 @@ class CoaController extends Controller
                 'status' => 'error',
                 'message' => 'Failed to delete transaction: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function openingBalances(Request $request)
+    {
+        Gate::authorize('viewAny', CoaCategory::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->route('dashboard')->with('error', 'Please select a company first.');
+        }
+
+        $accounts = Account::where('company_id', $companyId)
+            ->whereDoesntHave('children')
+            ->where('level', '>', 1)
+            ->orderBy('root_id')
+            ->orderBy('code')
+            ->orderBy('name')
+            ->get()
+            ->groupBy(function ($account) {
+                return $account->root?->name ?? 'Other';
+            });
+
+        $company = Company::find($companyId);
+        $openingBalanceDate = $company->opening_balance_date ?? null;
+
+        return view('coa.opening-balances', [
+            'accounts' => $accounts,
+            'openingBalanceDate' => $openingBalanceDate,
+        ]);
+    }
+
+    public function saveOpeningBalances(Request $request)
+    {
+        Gate::authorize('viewAny', CoaCategory::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $request->validate([
+            'opening_balance_date' => 'required|date',
+            'balances' => 'required|array',
+            'balances.*' => 'nullable|numeric',
+        ]);
+
+        $openingBalanceDate = $request->input('opening_balance_date');
+        $balances = $request->input('balances', []);
+
+        DB::beginTransaction();
+
+        try {
+            $updatedCount = 0;
+
+            foreach ($balances as $accountId => $balance) {
+                if ($balance === null || $balance === '') {
+                    continue;
+                }
+
+                $account = Account::where('id', $accountId)
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if ($account) {
+                    $account->update([
+                        'opening_balance' => (float) $balance,
+                        'opening_balance_date' => $openingBalanceDate,
+                    ]);
+                    $updatedCount++;
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "{$updatedCount} account(s) opening balance updated successfully.");
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error saving opening balances', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to save opening balances. Please try again.');
         }
     }
 }

@@ -440,7 +440,7 @@
 
                         @if ($invoice->refund && $invoice->status !== 'paid')
                             <a data-tooltip="View/Edit refund"
-                                href="{{ route('refunds.edit', [$invoice->refund->id]) }}"
+                                href="{{ route('invoice.edit', ['companyId' => $companyId, $invoice->invoice_number]) }}"
                                 class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 hover:shadow-sm transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path d="M3 10h7m-7 4h4m6-4v8m4-8v8M7 4h10l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>

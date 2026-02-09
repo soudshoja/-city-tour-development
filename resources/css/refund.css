@@ -283,6 +283,31 @@
     color: #c2410c;
 }
 
+.refund-type-car {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.refund-type-tour {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.refund-type-rail {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
+.refund-type-cruise {
+    background-color: #cffafe;
+    color: #155e75;
+}
+
+.refund-type-esim {
+    background-color: #fae8ff;
+    color: #86198f;
+}
+
 .refund-btn-cancel {
     padding: 0.5rem 1rem;
     background-color: #e5e7eb;

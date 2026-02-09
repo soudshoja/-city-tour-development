@@ -33,6 +33,7 @@ use App\Models\User;
 use App\Models\Credit;
 use App\Models\InvoiceReceipt;
 use App\Models\Setting;
+use App\Models\Refund;
 use App\Services\ChargeService;
 use App\Services\PaymentApplicationService;
 use Illuminate\Support\Facades\Log;
@@ -393,7 +394,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function edit(int $companyId, string $invoiceNumber)
+    public function edit(Request $request, int $companyId, string $invoiceNumber)
     {
         $user = Auth::user();
         $companyId = getCompanyId($user);
@@ -544,6 +545,26 @@ class InvoiceController extends Controller
         // Get available payments for client credit with payment selection
         $availablePayments = Credit::getAvailablePaymentsForClient($invoice->client_id);
 
+        $refund = null;
+        $refundNumber = $request->query('refund_number');
+        if ($refundNumber) {
+            $refund = Refund::with('refundDetails')
+            ->where('refund_number', $refundNumber)
+            ->first();
+
+            if ($refund) {
+                $refundDetailsMap = $refund->refundDetails->keyBy('task_id');
+
+                $selectedTasks = $selectedTasks->map(function ($task) use ($refundDetailsMap) {
+                    if ($refundDetailsMap->has($task->id)) {
+                        $task->total = $refundDetailsMap[$task->id]->original_task_cost;
+                    } 
+
+                    return $task;
+                });
+            }
+        }
+
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -573,6 +594,7 @@ class InvoiceController extends Controller
             'unpaidPartial',
             'companyIdForPartials',
             'availablePayments',
+            'refund',
         ));
     }
 
@@ -864,7 +886,8 @@ class InvoiceController extends Controller
 
     public function savePartial(Request $request): JsonResponse
     {
-        Log::info('invoice.partial.payload', $request->all());
+        Log::info('Starting to save payment of the invoice', $request->all());
+        
         $request->validate([
             'invoiceId' => 'required',
             'date' => 'nullable',

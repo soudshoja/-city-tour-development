@@ -26,19 +26,6 @@
                 </a>
             </menuitem>
             @endcan
-            @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::ACCOUNTANT]))
-            <menuitem>
-                <a href="{{ route('lock-management.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.89 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
-                        </svg>
-                        Lock Management
-                    </div>
-                </a>
-            </menuitem>
-            @endif
         </menu>
         </menuitem>
 
@@ -88,6 +75,11 @@
             @can('viewCompanySummary', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
+            </menuitem>
+            @endcan
+            @can('manage locks', 'App\Models\User')
+            <menuitem><a href="{{ route('lock-management.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Lock Management</a>
             </menuitem>
             @endcan
         </menu>

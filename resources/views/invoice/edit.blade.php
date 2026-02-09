@@ -159,6 +159,21 @@
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
+    @if($isLocked)
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-red-500 shrink-0">
+                <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
+            </svg>
+            <div>
+                <p class="font-semibold text-red-700">This invoice is locked</p>
+                <p class="text-sm text-red-600">
+                    Locked by {{ $invoice->lockedByUser?->name ?? 'System' }} 
+                    on {{ $invoice->locked_at ? \Carbon\Carbon::parse($invoice->locked_at)->format('d M Y H:i') : '' }}.
+                    You can only view this invoice.
+                </p>
+            </div>
+        </div>
+    @endif
     <div id="invoiceModalComponent">
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
@@ -203,12 +218,14 @@
                             @method('PUT')
                             <div class="flex items-center">
                                 <label class="w-full text-sm font-semibold">Invoice Date:</label>
+                                @if(!$isLocked)
                                 <button type="submit" class=" rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Save">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                         class="w-5 h-5 text-blue-600">
                                         <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" />
                                     </svg>
                                 </button>
+                                @endif
                                 <input id="invdate" type="date" name="invdate" class="form-input w-full"
                                     value="{{ $invoice->invoice_date }}" />
                             </div>
@@ -455,14 +472,16 @@
                                         </span>
                                     </div>
 
-                                    @if ($invoice->status === 'unpaid')
-                                    <span x-show="paymentType && hasInvoicePartials" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="showModalType = true">
-                                        (Change Type)
-                                    </span>
-                                    @elseif ($invoice->status === 'partial')
-                                    <span x-show="paymentType" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="openGatewayModal()">
-                                        (Change Gateway)
-                                    </span>
+                                    @if(!$isLocked)
+                                        @if ($invoice->status === 'unpaid')
+                                        <span x-show="paymentType && hasInvoicePartials" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="showModalType = true">
+                                            (Change Type)
+                                        </span>
+                                        @elseif ($invoice->status === 'partial')
+                                        <span x-show="paymentType" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="openGatewayModal()">
+                                            (Change Gateway)
+                                        </span>
+                                        @endif
                                     @endif
                                 </h2>
 
@@ -1164,6 +1183,7 @@
                                                 <div class="mt-4">
                                                     <div class="flex items-center justify-between">
                                                         <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                                        @if(!$isLocked)
                                                         <span 
                                                             x-show="paymentType !== ''" 
                                                             class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
@@ -1171,9 +1191,11 @@
                                                         >
                                                             (Change)
                                                         </span>
+                                                        @endif
                                                     </div>
                                                     <select id="payment_gateway_option" name="payment_gateway_option"
-                                                        class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
+                                                        class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway"
+                                                        @if($isLocked) disabled style="appearance: none; background-image: none; opacity: 0.7; pointer-events: none;" @endif>
                                                         <option value="">Choose a Payment Gateway</option>
                                                         @foreach ($paymentGateways as $gateway)
                                                         <option value="{{ $gateway->name }}" {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
@@ -1196,8 +1218,8 @@
                                                                 <label for="payment-method-{{ strtolower($gateway->name) }}" class="block text-sm font-medium text-gray-700">Payment Method</label>
                                                                 <select name="payment_method" id="payment_method_full"
                                                                     class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                                                                    x-model="selectedMethod"
-                                                                    @change="calculateSubtotal()">
+                                                                    x-model="selectedMethod" @change="calculateSubtotal()"
+                                                                    @if($isLocked) disabled style="appearance: none; background-image: none; opacity: 0.7; pointer-events: none;" @endif>
                                                                     @if($companyMethods->count() > 1)
                                                                     <option value="">Select Payment Method</option>
                                                                     @endif
@@ -2179,6 +2201,8 @@
         const isInvoicePaid = "{{ $invoice->status === 'paid' }}"
         const hasPaymentType = "{{ !empty($invoice->payment_type) }}";
 
+        const isInvoiceLocked = @json($isLocked ?? false);
+
         clientButton.disabled = true;
         agentButton.disabled = true;
 
@@ -2292,6 +2316,10 @@
             setupPaymentTypesAndTasks();
             setupImportModal();
             setupSendEmailModal();
+
+            if (isInvoiceLocked) {
+                lockInvoicePage();
+            }
 
             // Run initial checks
             checkInvoiceId();
@@ -3165,7 +3193,7 @@
                                         value="${item.task_price}" 
                                         oninput="updateItemPrice(${item.id});" 
                                     />
-                                    ${!isInvoicePaid && isSaved ? `
+                                    ${!isInvoicePaid && isSaved && !isInvoiceLocked ? `
                                         <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${task.id})">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-600">
                                                 <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
@@ -5222,6 +5250,58 @@
                 applyBtn.disabled = false;
                 applyBtn.textContent = originalText;
             }
+        }
+    
+        function lockInvoicePage() {
+            // 1. Disable ALL inputs, selects, textareas
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.style.cursor = 'not-allowed';
+            });
+
+            // 3. Hide action buttons completely
+            ['openTaskModalButton', 'update-invoice-btn', 'applyPaymentsBtn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            // 4. Disable payment type radio buttons
+            document.querySelectorAll('input[name="payment_type"]').forEach(radio => {
+                radio.disabled = true;
+                if (radio.parentElement) {
+                    radio.parentElement.style.opacity = '0.5';
+                    radio.parentElement.style.pointerEvents = 'none';
+                }
+            });
+
+            // Block clicks on entire payment type grid (credit, full, partial, split, import)
+            const paymentGrid = document.querySelector('#paymentMethod .grid');
+            if (paymentGrid) paymentGrid.style.pointerEvents = 'none';
+
+            // 5. Disable task price inputs & hide action cells
+            document.querySelectorAll('[id^="invprice-table-"]').forEach(input => {
+                input.disabled = true;
+            });
+            document.querySelectorAll('.action-cell').forEach(cell => {
+                cell.style.display = 'none';
+            });
+
+            // 6. Block form submissions
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                });
+            });
+
+            // 7. Override save functions
+            const blockedFns = ['savePartial', 'save', 'updateInvoice', 'updateGateway', 'saveSingleTask', 'removeTaskFromInvoice', 'saveTaskPrice', 'applySelectedPayments'];
+            blockedFns.forEach(fn => {
+                window[fn] = function() { return false; };
+            });
+
+            console.log('🔒 Invoice is locked — all editing disabled.');
         }
     </script>
 

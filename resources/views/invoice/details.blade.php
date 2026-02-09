@@ -51,13 +51,15 @@
                         <p><span class="font-semibold text-gray-600 dark:text-slate-300">Due Date:</span> {{ \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') }}</p>
                         <p><span class="font-semibold text-gray-600 dark:text-slate-300">Paid Date:</span> {{ \Carbon\Carbon::parse($invoice->paid_date)->format('d M Y') }}</p>
                         @php
-                        $status = strtolower($invoice->status ?? '');
-                        $classes = [
-                        'paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
-                        'unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 shadow-sm',
-                        'partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
-                        'paid by refund' => 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
-                        ][$status] ?? 'bg-gray-100 text-gray-800 dark:bg-slate-800/70 dark:text-slate-200 shadow-sm';
+                            $status = strtolower($invoice->status ?? '');
+                            $classes = [
+                                'paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
+                                'refunded' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
+                                'unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 shadow-sm',
+                                'partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                                'paid by refund' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                                'partial refund' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                            ][$status] ?? 'bg-gray-100 text-gray-800 dark:bg-slate-800/70 dark:text-slate-200 shadow-sm';
                         @endphp
                         <span class="mt-2 inline-block px-3.5 py-1 rounded-full text-base font-semibold {{ $classes }}">
                             {{ ucfirst($invoice->status) }}

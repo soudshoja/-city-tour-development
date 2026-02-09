@@ -308,7 +308,7 @@ const PaymentSelection = (function() {
                     if (currentRow) {
                         const newRow = document.createElement('tr');
                         newRow.id = `payment-selection-row-${rowId}`;
-                        newRow.innerHTML = `<td colspan="7" class="px-4 py-2 bg-blue-50">${container.outerHTML}</td>`;
+                        newRow.innerHTML = `<td colspan="8" class="px-4 py-2 bg-blue-50">${container.outerHTML}</td>`;
                         currentRow.parentNode.insertBefore(newRow, currentRow.nextSibling);
                         
                         container = document.getElementById(`payment-selection-${rowId}`);

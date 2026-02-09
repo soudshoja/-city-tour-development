@@ -104,6 +104,8 @@ class InvoiceController extends Controller
             'invoiceDetails.task.supplier',
             'client',
             'lockedByUser',
+            'client',
+            'lockedByUser',
         ])->whereIn('agent_id', $agentIds)
             ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
 

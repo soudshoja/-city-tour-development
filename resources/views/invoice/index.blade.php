@@ -151,7 +151,8 @@
                             @endif
 
                             @if($invoice->is_locked)
-                                <span class="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-600 font-medium flex items-center gap-1">
+                                <span data-tooltip="Locked by {{ $invoice->lockedByUser?->name ?? 'Unknown' }} on {{ $invoice->locked_at?->format('d M Y H:i') }}"
+                                    class="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-600 font-medium flex items-center gap-1 cursor-help">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
                                     </svg>
@@ -200,7 +201,7 @@
                             <div><span class="font-medium">Created:</span> {{ $invoice->created_at->format('d M Y H:i') }}</div>
                             <div>
                                 <span class="font-medium">Invoice Date:</span>
-                                @if ($invoice->status === 'paid')
+                                @if ($invoice->status === 'paid' && !$invoice->is_locked)
                                     <button type="button" class="text-blue-600 hover:underline"
                                         data-number="{{ $invoice->invoice_number }}"
                                         data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}"
@@ -309,7 +310,7 @@
                             
                             <div class="text-gray-500">Invoice Amount:</div>
                             <div class="font-medium text-gray-800">
-                                @if ($invoice->status === 'paid' && $invoice->payment_type === 'full' && !$invoice->refund)
+                                @if ($invoice->status === 'paid' && $invoice->payment_type === 'full' && !$invoice->refund && !$invoice->is_locked)
                                     <button type="button" class="text-blue-600 hover:underline"
                                         data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
                                         {{ number_format($invoice->amount, 3) }} {{ $invoice->currency }}
@@ -330,17 +331,6 @@
                     </div>
 
                     <div class="md:col-span-2 xl:col-span-2 flex items-center justify-start xl:justify-center gap-1 flex-wrap">
-                        {{-- Lock Status Indicator --}}
-                        @if($invoice->is_locked)
-                            <span data-tooltip="Locked by {{ $invoice->lockedByUser?->name ?? 'Unknown' }} on {{ $invoice->locked_at?->format('d M Y H:i') }}" 
-                                class="p-2 rounded-lg bg-red-50 text-red-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3zm0 10c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/>
-                                </svg>
-                            </span>
-                        @endif
-
-                        {{-- Lock/Unlock Button --}}
                         @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::ACCOUNTANT]))
                             @if($invoice->is_locked)
                                 <form action="{{ route('invoice.unlock', $invoice->id) }}" method="POST" class="inline-block">
@@ -503,14 +493,14 @@
                                     </svg>
                                 </span>
                             @else
-                                <a data-tooltip="Edit invoice"
-                                    href="{{ route('invoice.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
-                                    class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm transition-all">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="m4.144 16.735.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281 5.1 5.1 0 0 1 2.346 1.372 5.1 5.1 0 0 1 1.384 2.346 1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184"/>
-                                    </svg>
-                                </a>
-                            @endif
+                            <a data-tooltip="Edit invoice"
+                                href="{{ route('invoice.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="m4.144 16.735.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281 5.1 5.1 0 0 1 2.346 1.372 5.1 5.1 0 0 1 1.384 2.346 1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184"/>
+                                </svg>
+                            </a>
+                        @endif
                         @endif
 
                         @if(auth()->check())
@@ -543,6 +533,14 @@
                         @endif
                     </div>
                 </div>
+            </div>
+            @empty
+            <div class="p-8 text-center text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="text-lg font-medium">No invoices found</p>
+                <p class="text-sm">Create a new invoice to get started</p>
             </div>
             @endforelse
         </div>

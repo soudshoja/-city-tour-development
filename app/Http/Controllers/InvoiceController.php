@@ -568,7 +568,10 @@ class InvoiceController extends Controller
             }
         }
 
+        $isLocked = $invoice->is_locked && !$user->hasPermission('manage locks');
+
         return view('invoice.edit', compact(
+            'isLocked',
             'clients',
             'invoice',
             'agents',
@@ -5351,10 +5354,7 @@ class InvoiceController extends Controller
     public function lockInvoice(Invoice $invoice)
     {
         $user = auth()->user();
-        
-        if (!in_array($user->role_id, [Role::ADMIN, Role::ACCOUNTANT])) {
-            return redirect()->back()->with('error', 'Only accountants can lock invoices.');
-        }
+        Gate::authorize('manage', User::class);
 
         if ($invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is already locked.');
@@ -5374,10 +5374,7 @@ class InvoiceController extends Controller
     public function unlockInvoice(Invoice $invoice)
     {
         $user = auth()->user();
-        
-        if (!in_array($user->role_id, [Role::ADMIN, Role::ACCOUNTANT])) {
-            return redirect()->back()->with('error', 'Only accountants can unlock invoices.');
-        }
+        Gate::authorize('manage', User::class);
 
         if (!$invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is not locked.');

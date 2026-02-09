@@ -904,7 +904,6 @@ class ReceiptVoucherController extends Controller
             }
 
             // Find the correct partial using invoice_partial_id from InvoiceReceipt
-            // Or fallback to finding Cash partial that's unpaid
             $invoicePartial = null;
 
             if ($invoiceReceipt->invoice_partial_id) {
@@ -915,14 +914,18 @@ class ReceiptVoucherController extends Controller
             }
 
             if (!$invoicePartial) {
-                // Fallback: Find the Cash partial that's still unpaid for this invoice
+                // Fallback: Find any unpaid partial that requires receipt voucher for this invoice
                 $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)
-                    ->where('payment_gateway', 'Cash')
                     ->where('status', 'unpaid')
+                    ->whereHas('charge', function ($q) {
+                        // Find partials where the gateway is NOT a system default (requires receipt voucher)
+                        $q->where('is_system_default', false);
+                    })
                     ->first();
 
-                Log::info('[APPROVE] Found partial via Cash + unpaid fallback', [
+                Log::info('[APPROVE] Found partial via requires_receipt_voucher fallback', [
                     'invoice_partial_id' => $invoicePartial?->id,
+                    'payment_gateway' => $invoicePartial?->payment_gateway,
                 ]);
             }
 
@@ -945,17 +948,14 @@ class ReceiptVoucherController extends Controller
                 return redirect()->back()->with('error', 'Invoice partial not found for cash payment');
             }
 
+            // Get the payment gateway name for descriptions
+            $paymentGateway = $invoicePartial->payment_gateway ?? 'Cash';
+
             $client = Client::find($invoice->client_id);
             if (!$client) {
                 Log::error('Client not found', ['client_id' => $invoice->client_id]);
                 return ['status' => 'error', 'message' => 'Client not found'];
             }
-
-            $clientName = $client->name ?? trim(implode(' ', array_filter([
-                $client->first_name ?? null,
-                $client->middle_name ?? null,
-                $client->last_name ?? null,
-            ])));
 
             if ($invoice) {
                 try {
@@ -969,6 +969,7 @@ class ReceiptVoucherController extends Controller
                     ]);
                     Log::info('[APPROVE] Marked invoice partial as paid', [
                         'invoice_partial_id' => $invoicePartial->id,
+                        'payment_gateway' => $paymentGateway,
                     ]);
 
                     // Step 2: Mark receipt as approved
@@ -1034,19 +1035,16 @@ class ReceiptVoucherController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id,
                         'transaction_date' => $transaction->transaction_date,
-                        'description' => 'Client Pays Cash via (Assets): ' . $receiptVoucherCash->name,
-                        'debit' => $invoicePartial->amount,
+                        'description'  => 'Client Pays via ' . $paymentGateway . ' (Assets): ' . $receiptVoucherCash->name,
+                        'debit' => $invoiceReceipt->amount,
                         'credit' => 0,
-                        'balance' => $receiptVoucherCash->actual_balance + $invoicePartial->amount,
-                        'name' => $clientName,
+                        'balance' => $receiptVoucherCash->actual_balance + $invoiceReceipt->amount,
+                        'name' => $client->full_name,
                         'type' => 'cash',
                         'voucher_number' => null,
                         'receipt_reference_number' => $transaction->reference_number,
                         'type_reference_id' => $receiptVoucherCash->id,
                     ]);
-
-                    $receiptVoucherCash->actual_balance += $invoicePartial->amount;
-                    $receiptVoucherCash->save();
 
                     // ENTRY 2: CREDIT Accounts Receivable (Invoice debt cleared)
                     // Assets > Accounts Receivable > Clients
@@ -1070,7 +1068,6 @@ class ReceiptVoucherController extends Controller
                     $totalPaidAmount = InvoicePartial::where('invoice_id', $invoiceId)
                         ->where('status', 'paid')
                         ->sum('amount');
-                    $remainingBalance = $invoice->amount - $totalPaidAmount;
 
                     JournalEntry::create([
                         'task_id' => $invoiceDetail->task_id,
@@ -1081,11 +1078,11 @@ class ReceiptVoucherController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id,
                         'transaction_date' => $transaction->transaction_date,
-                        'description' => 'Client Pays Invoice via (Receivable): ' . $clientsReceivable->name,
+                        'description' => 'Client Pays Invoice via ' . $paymentGateway . ' (Receivable): ' . $clientsReceivable->name,
                         'debit' => 0,
-                        'credit' => $invoicePartial->amount,
-                        'balance' => $remainingBalance,
-                        'name' => $clientName,
+                        'credit' => $invoiceReceipt->amount,
+                        'balance' => $invoice->amount - $totalPaidAmount,
+                        'name' => $client->full_name,
                         'type' => 'receivable',
                         'voucher_number' => null,
                         'receipt_reference_number' => $transaction->reference_number,
@@ -1094,7 +1091,7 @@ class ReceiptVoucherController extends Controller
 
                     Log::info('[CASH INVOICE PAYMENT] Journal entries created successfully', [
                         'invoice_number' => $invoice->invoice_number,
-                        'amount' => $invoicePartial->amount,
+                        'amount' => $invoiceReceipt->amount,
                         'journal_entries' => [
                             'debit_cash' => $receiptVoucherCash->name,
                             'credit_receivable' => $clientsReceivable->name,
@@ -1451,12 +1448,17 @@ class ReceiptVoucherController extends Controller
     /**
      * Create Receipt Voucher ONLY (no partial, no COA)
      * Called from savePartial() after partial is already created
+     * 
+     * @param Invoice $invoice
+     * @param InvoicePartial $invoicePartial
+     * @param Request $request
+     * @param string $gateway Payment gateway name (Cash, Tabby, Deema)
      */
-    public function createReceiptVoucher(Invoice $invoice, InvoicePartial $invoicePartial, Request $request): array
+    public function createReceiptVoucher(Invoice $invoice, InvoicePartial $invoicePartial, Request $request, string $gateway = 'Cash'): array
     {
         $client = $invoice->client;
         $clientName = $client->name ?? $client->full_name;
-        $amount = $invoicePartial->amount;
+        $amount = $invoicePartial->amount + $invoicePartial->service_charge + $invoicePartial->invoice_charge;
         $ref = 'RV-' . Str::upper(Str::random(10));
 
         try {
@@ -1470,7 +1472,7 @@ class ReceiptVoucherController extends Controller
                 'branch_id'        => $invoice->agent->branch->id,
                 'transaction_type' => 'debit',
                 'amount'           => $amount,
-                'description'      => 'Cash payment success: ' . $invoice->invoice_number,
+                'description'      => $gateway . ' payment for Invoice ' . $invoice->invoice_number,
                 'invoice_id'       => $invoice->id,
                 'reference_number' => $ref,
                 'reference_type'   => 'Invoice',
@@ -1495,7 +1497,8 @@ class ReceiptVoucherController extends Controller
 
             DB::commit();
 
-            Log::info('[RECEIPT VOUCHER] Created receipt voucher only', [
+            Log::info('[RECEIPT VOUCHER] Created receipt voucher', [
+                'gateway' => $gateway,
                 'invoice_id' => $invoice->id,
                 'invoice_partial_id' => $invoicePartial->id,
                 'transaction_id' => $transaction->id,
@@ -1510,6 +1513,7 @@ class ReceiptVoucherController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('[RECEIPT VOUCHER] Failed to create', [
+                'gateway' => $gateway,
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),
             ]);

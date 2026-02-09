@@ -118,7 +118,7 @@
                                 <p>{{ $selectedCompany->phone }}</p>
                             </div>
                         </div>
-                         @else
+                        @else
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                             </div>
@@ -147,12 +147,23 @@
                             </div>
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
+                        @if($isRefund ?? false)
+                        <div class="mt-4">
+                            <input id="refundRemarks" type="text" name="refundRemarks" value="{{ $refundRemarks ?? '' }}"
+                                class="w-full form-input" placeholder="Refund Remarks" />
+                        </div>
+                        @endif
                     </div>
                     <div class="space-y-1 text-gray-900 dark:text-gray-400 mt-2">
                         <div class="flex items-center w-full">
                             <label for="invoiceNumber" class="w-full text-sm font-semibold">Invoice Number</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
                                 class="w-full form-input" placeholder="Invoice Number" />
+                        </div>
+                        <div class="flex items-center w-full">
+                            <label for="RefundNumber" class="w-full text-sm font-semibold">Refund Number</label>
+                            <input id="RefundNumber" type="text" name="RefundNumber" value="{{ $refundNumber }}"
+                                class="w-full form-input" placeholder="Refund Number" />
                         </div>
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
@@ -349,7 +360,13 @@
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            <span id="button-text">Save</span>
+                            <span id="button-text">
+                                @if($isRefund ?? false)
+                                    Process Refund
+                                @else
+                                    Generate Invoice
+                                @endif
+                            </span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
@@ -672,10 +689,12 @@
         let allTasks = [];
         let filteredTasks = [];
         const itemsBody = document.getElementById('items-body');
-        const appUrl = @json($appUrl);
+        const appUrl = @json($appUrl ?? null);
         let toggle = false;
         let selectedPaymentLink = null;
         let netTotal = 0;
+        const isRefund = @json($isRefund ?? false);
+        const refundNumber = @json($refundNumber ?? null);
 
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -948,8 +967,8 @@
                                         id="invprice-modal-${item.id}"
                                         class="invoice-price-${item.id}"
                                         type="number"
-                                        name="invprice",
-                                        placeholder="Enter Invoice Price",
+                                        name="invprice"
+                                        placeholder="Enter Invoice Price"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'invprice-modal')"
                                         value="${item.invprice ?? ''}"
@@ -957,16 +976,16 @@
                                     <input
                                         id="remark-${item.id}"
                                         type="text"
-                                        name="remark",
-                                        placeholder="Enter Remark",
+                                        name="remark"
+                                        placeholder="Enter Remark"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'remark')"
                                     >
                                     <input
                                         id="note-${item.id}"
                                         type="text"
-                                        name="note",
-                                        placeholder="Enter Note",
+                                        name="note"
+                                        placeholder="Enter Note"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'note')"
                                     >
@@ -1327,7 +1346,6 @@
             selectTab.classList.add('hidden');
         });
 
-
         function selectTask(task) {
             items.push({
                 ...task,
@@ -1603,12 +1621,15 @@
             document.body.appendChild(alert);
         }
 
-        // Generate invoice
+        // Generate invoice for task or refund
         async function generateInvoice() {
             isSaving = true;
             updateButtonState();
 
-            const invoiceUrl = "{{ route('invoice.store') }}";
+            const invoiceUrl = isRefund
+                ? "{{ route('refunds.store') }}"
+                : "{{ route('invoice.store') }}";
+
             const csrfToken = "{{ csrf_token() }}";
 
             const currencyElement = document.getElementById('currency');
@@ -1620,66 +1641,114 @@
             const agentIdElement = document.getElementById('agentId');
             const selectedBranch = document.getElementById('selectedBranch');
 
-            const currency = currencyElement ? currencyElement.value : null;
-            const invoiceNumber = invoiceNumberElement ? invoiceNumberElement.value : null;
-            const invdate = invdateElement ? invdateElement.value : null;
-            const duedate = duedateElement ? duedateElement.value : null;
-            const subTotal = subTotalElement ? subTotalElement.value : null;
-            const firstTask = (Array.isArray(items) && items.length) ? items[0] : null;
-            let clientId = clientIdElement?.value || firstTask?.client_id || firstTask?.client?.id || null;
-            if (clientIdElement && !clientIdElement.value && clientId) clientIdElement.value = clientId;
-            const agentId = agentIdElement ? agentIdElement.value : null;
-            const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
+            const currency = currencyElement?.value ?? null;
+            const invoiceNumber = invoiceNumberElement?.value ?? null;
+            const invdate = invdateElement?.value ?? null;
+            const duedate = duedateElement?.value ?? null;
+            const subTotal = subTotalElement?.value ?? null;
+
+            const firstTask = Array.isArray(items) && items.length ? items[0] : null;
+
+            let clientId =
+                clientIdElement?.value ||
+                firstTask?.client_id ||
+                firstTask?.client?.id ||
+                null;
+
+            if (clientIdElement && !clientIdElement.value && clientId) {
+                clientIdElement.value = clientId;
+            }
+
+            const agentId = agentIdElement?.value ?? null;
+            const selectedBranchValue = selectedBranch?.value ?? null;
             const tasks = items;
 
-            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', Array.isArray(items) ? items.length : 0);
+            console.log('DEBUG -> isRefund:', isRefund);
+            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', items.length);
 
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
 
+
             let errorMessages = [];
             const companyId = "{{ $companyId ?? '' }}";
 
-            // Validate all inputs and add specific messages
-            if (!currency) errorMessages.push("Currency is missing.");
-            if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
-            if (!invdate) errorMessages.push("Invoice date is missing.");
-            // if (!duedate) errorMessages.push("Due date is missing.");
-            if (!subTotal) errorMessages.push("Subtotal is missing.");
-            if (!clientId) errorMessages.push("Client ID is missing.");
-            if (!agentId) errorMessages.push("Agent ID is missing.");
+            if (!invdate) errorMessages.push("Invoice/Refund date is missing.");
             if (!items.length) errorMessages.push("No tasks have been selected.");
-            if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
 
-            // Check if there are any errors
+            // Invoice-specific validation
+            if (!isRefund) {
+                if (!currency) errorMessages.push("Currency is missing.");
+                if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
+                if (!subTotal) errorMessages.push("Subtotal is missing.");
+                if (!clientId) errorMessages.push("Client ID is missing.");
+                if (!agentId) errorMessages.push("Agent ID is missing.");
+                if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
+            }
+
             if (errorMessages.length > 0) {
-                // Create the error notification element
                 let errorNotification = document.createElement('div');
                 errorNotification.className =
                     "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
                 errorNotification.innerHTML = `
-                        <ul>
-                            ${errorMessages.map(message => `<li>${message}</li>`).join('')}
-                        </ul>
-                        <button type="button" class="close text-white ml-2" aria-label="Close"
-                            onclick="this.parentElement.style.display='none';">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    `;
-
-                // Append the error notification to the body
+                    <ul>
+                        ${errorMessages.map(message => `<li>${message}</li>`).join('')}
+                    </ul>
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                `;
                 document.body.appendChild(errorNotification);
-
-                // Reset button state or perform any cleanup
                 resetButtonState();
                 return;
             }
 
-            // Proceed with the form submission or further processing
             console.log("All required data is provided. Proceeding...");
 
+
+            const payload = isRefund
+                ? {
+                    date: invdate,
+                    client_id: clientId,
+                    remarks: document.getElementById('refundRemarks')?.value || null,
+                    tasks: items.map(item => {
+                        const originalInvoicePrice = Number(item.invprice ?? 0);
+                        const originalTaskCost = Number(item.total ?? 0);
+                        const originalTaskProfit = originalInvoicePrice - originalTaskCost;
+                        const refundFee = Number(item.refund_fee_to_client ?? originalInvoicePrice);
+                        const supplierCharge = Number(item.supplier_charge ?? 0);
+
+                        return {
+                            task_id: item.id,
+                            original_invoice_price: originalInvoicePrice,
+                            original_task_cost: originalTaskCost,
+                            original_task_profit: originalTaskProfit,
+                            refund_fee_to_client: refundFee,
+                            supplier_charge: supplierCharge,
+                            new_task_profit: originalTaskProfit - supplierCharge,
+                            total_refund_to_client: refundFee,
+                            remarks: item.remark ?? null,
+                            payment_gateway_option: item.payment_gateway_option ?? null,
+                            payment_method: item.payment_method ?? null,
+                        };
+                    }),
+                }
+                : {
+                    clientId,
+                    agentId,
+                    tasks,
+                    subTotal,
+                    invoiceNumber,
+                    currency,
+                    invdate,
+                    duedate,
+                };
+
+            console.log('REQUEST URL:', invoiceUrl);
+            console.log('REQUEST PAYLOAD:', payload);
+
             try {
-                console.log('invoiceUrl: ', invoiceUrl);
                 const response = await fetch(invoiceUrl, {
                     method: 'POST',
                     headers: {
@@ -1687,66 +1756,74 @@
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                     },
-                    body: JSON.stringify({
-                        clientId,
-                        agentId,
-                        tasks,
-                        subTotal,
-                        invoiceNumber,
-                        currency,
-                        invdate,
-                        duedate
-
-                    })
+                    body: JSON.stringify(payload),
                 });
 
                 if (!response.ok) {
-                    throw new Error("Failed to generate");
+                    throw new Error(`Failed to ${isRefund ? 'process refund' : 'generate invoice'}`);
                 }
 
                 const result = await response.json();
-                const {
-                    invoiceId: newInvoiceId,
-                    invoiceNumber: newInvoiceNumber
-                } = result;
+                console.log('RESPONSE:', result);
 
-                // Only update invoice number if this is a new invoice (no invoiceId before)
-                if (!invoiceId) {
-                    document.getElementById('invoiceNumber').value = newInvoiceNumber;
+
+                if (isRefund) {
+                    console.log('Refund processed successfully');
+                    isSaved = true;
+                    updateButtonState();
+                    
+                    if (result.redirect) {
+                        const url = new URL(result.redirect, window.location.origin);
+                        const rfNumber = document.getElementById('RefundNumber')?.value;
+                        const rfRemarks = document.getElementById('refundRemarks')?.value;
+                        
+                        if (rfNumber) url.searchParams.set('refund_number', rfNumber);
+                        if (rfRemarks) url.searchParams.set('refund_remarks', rfRemarks);
+                        
+                        location.href = url.toString();
+                    }
+                } else {
+                    // Invoice success
+                    const { invoiceId: newInvoiceId, invoiceNumber: newInvoiceNumber } = result;
+
+                    // Update hidden fields
+                    if (!invoiceId) {
+                        document.getElementById('invoiceNumber').value = newInvoiceNumber;
+                    }
+                    document.getElementById('invoiceId').value = newInvoiceId;
+
+                    isSaved = true;
+                    updateButtonState();
+
+                    setTimeout(() => {
+                        checkInvoiceId();
+                    }, 100);
+
+                    // Redirect to invoice edit page
+                    location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}"
+                        .replace(':companyId', companyId)
+                        .replace(':invoiceNumber', invoiceNumber || newInvoiceNumber);
                 }
-                document.getElementById('invoiceId').value = newInvoiceId;
-                const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
-
-                isSaved = true;
-                updateButtonState();
-
-                setTimeout(() => {
-                    checkInvoiceId();
-                }, 100);
-
-                location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(
-                    ":invoiceNumber", invoiceNumber
-                )
 
             } catch (error) {
-                console.error(error);
+                console.error('=== ERROR ===');
+                console.error('Error:', error);
+
                 let alert = document.createElement('div');
-                alert.innerHTML = ` 
-                        <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                            Error Generating Invoice
-                            <button type="button" class="close text-white ml-2" aria-label="Close"
-                                onclick="this.parentElement.style.display='none';">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        `
+                alert.innerHTML = `
+                    <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                        ${isRefund ? 'Error Processing Refund' : 'Error Generating Invoice'}
+                        <button type="button" class="close text-white ml-2" aria-label="Close"
+                            onclick="this.parentElement.style.display='none';">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                `;
                 document.body.appendChild(alert);
 
                 resetButtonState();
-            } finally {
-                // Reset button states
             }
-        };
+        }
 
         function resetButtonState() {
             isSaving = false;
@@ -1851,8 +1928,7 @@
                 noAgentsFound.classList.toggle('hidden', anyVisible);
             });
         });
-    </script>
-    <script>
+   
         document.getElementById('select-supplier-task')?.addEventListener('change', function() {
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);

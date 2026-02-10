@@ -1,8 +1,8 @@
-# City Tour Application - Project Overview
+# Soud Laravel Application - Project Overview
 
 ## Project Summary
 
-City Tour is a comprehensive Laravel 11-based travel agency management system that provides multi-tenant functionality for managing travel operations, agents, clients, and bookings. It features a full-featured accounting system with multiple payment gateways, AI-powered document processing, and chat capabilities.
+Soud Laravel is a comprehensive Laravel 11-based travel agency management system that provides multi-tenant functionality for managing travel operations, agents, clients, and bookings. It features a full-featured accounting system with multiple payment gateways, AI-powered document processing, and chat capabilities.
 
 ## Technology Stack
 

@@ -1,0 +1,49 @@
+{
+  "summary": {
+    "total_documents": 100,
+    "success_count": 98,
+    "failure_count": 2,
+    "success_rate_percent": 98
+  },
+  "throughput": {
+    "duration_seconds": 12.45,
+    "docs_per_second": 8.03,
+    "docs_per_minute": 482
+  },
+  "latency": {
+    "min_ms": 45.2,
+    "max_ms": 892.1,
+    "avg_ms": 124.5,
+    "p50_ms": 118.3,
+    "p95_ms": 287.6,
+    "p99_ms": 645.8
+  },
+  "errors": {
+    "count": 2,
+    "breakdown": {
+      "503: Service unavailable": 2
+    }
+  },
+  "document_types": {
+    "pdf": {
+      "total": 25,
+      "success": 25,
+      "failure": 0
+    },
+    "image": {
+      "total": 24,
+      "success": 24,
+      "failure": 0
+    },
+    "email": {
+      "total": 26,
+      "success": 25,
+      "failure": 1
+    },
+    "air": {
+      "total": 25,
+      "success": 24,
+      "failure": 1
+    }
+  }
+}

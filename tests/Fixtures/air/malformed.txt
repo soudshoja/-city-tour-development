@@ -1,0 +1,7 @@
+INVALID AIR FILE CONTENT
+This file does not follow the AIR format specification
+Random text without proper segments
+H-001;MISSING;FIELDS;;WITHOUT;PROPER;STRUCTURE;;
+No closing ENDX tag
+Missing mandatory fields like PNR or ticket reference
+This should trigger an error during parsing

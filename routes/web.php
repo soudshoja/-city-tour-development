@@ -839,6 +839,8 @@ Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');
 Route::get('/docs/n8n-processing', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'index'])->name('docs.n8n-processing');
+Route::get('/docs/n8n-complete', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'complete'])->name('docs.n8n-complete');
+Route::get('/docs/n8n-testing', [\App\Http\Controllers\N8nTestingDocumentationController::class, 'index'])->name('docs.n8n-testing');
 Route::get('/docs/postman/download', function () {
     $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
     if (!file_exists($filePath)) {

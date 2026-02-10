@@ -1,0 +1,33 @@
+{
+    "document_type": "flight_booking",
+    "extraction_status": "success",
+    "extracted_data": {
+        "booking_reference": "QR987654",
+        "passenger_name": "Sarah Smith",
+        "email": "sarah.smith@email.com",
+        "phone": "+44-20-7946-0958",
+        "booking_date": "2025-02-08",
+        "status": "confirmed",
+        "flights": [
+            {
+                "airline": "QR",
+                "flight_number": "QR0084",
+                "departure_airport": "LHR",
+                "arrival_airport": "DOH",
+                "departure_time": "2025-04-01 21:55:00",
+                "arrival_time": "2025-04-02 08:30:00",
+                "seat": "28B",
+                "class": "business"
+            }
+        ],
+        "total_price": 3850.50,
+        "currency": "GBP",
+        "price_breakdown": {
+            "base_fare": 2500.00,
+            "taxes_and_fees": 1350.50
+        },
+        "payment_status": "paid"
+    },
+    "confidence_score": 0.99,
+    "processing_time_ms": 1820
+}

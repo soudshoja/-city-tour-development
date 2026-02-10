@@ -1,0 +1,39 @@
+{
+    "email_type": "booking_confirmation",
+    "from": "bookings@airline.com",
+    "to": "customer@example.com",
+    "subject": "Your Booking Confirmation - PNR: ABC123XYZ",
+    "date": "2025-02-10T10:30:00Z",
+    "body": "Dear Mr. Johnson,\n\nThank you for your booking with us. Your reservation has been confirmed.\n\nBooking Reference: ABC123XYZ\nPassenger Name: Michael Johnson\nEmail: michael.johnson@example.com\nPhone: +1-212-555-1234\n\nFlight Details:\nOutbound:\n- Airline: BA\n- Flight Number: BA112\n- Departure: London Heathrow (LHR) on March 20, 2025 at 10:30 AM\n- Arrival: New York JFK on March 20, 2025 at 1:45 PM (local time)\n- Seat: 1A (Business Class)\n\nReturn:\n- Airline: BA\n- Flight Number: BA115\n- Departure: New York JFK on March 27, 2025 at 6:00 PM\n- Arrival: London Heathrow (LHR) on March 28, 2025 at 6:30 AM (local time)\n- Seat: 1A (Business Class)\n\nTotal Price: GBP 4,250.00\n\nPlease visit our website to manage your booking.\n\nBest regards,\nBookings Team",
+    "html_content": "<html><body><p>Dear Mr. Johnson,</p><p>Thank you for your booking...</p></body></html>",
+    "extracted_data": {
+        "booking_reference": "ABC123XYZ",
+        "passenger_name": "Michael Johnson",
+        "email": "michael.johnson@example.com",
+        "phone": "+1-212-555-1234",
+        "outbound_flight": {
+            "airline_code": "BA",
+            "flight_number": "BA112",
+            "departure_airport": "LHR",
+            "arrival_airport": "JFK",
+            "departure_date_time": "2025-03-20 10:30:00",
+            "arrival_date_time": "2025-03-20 13:45:00",
+            "seat": "1A",
+            "cabin_class": "Business"
+        },
+        "return_flight": {
+            "airline_code": "BA",
+            "flight_number": "BA115",
+            "departure_airport": "JFK",
+            "arrival_airport": "LHR",
+            "departure_date_time": "2025-03-27 18:00:00",
+            "arrival_date_time": "2025-03-28 06:30:00",
+            "seat": "1A",
+            "cabin_class": "Business"
+        },
+        "total_price": 4250.00,
+        "currency": "GBP"
+    },
+    "confidence_score": 0.96,
+    "processing_time_ms": 2100
+}

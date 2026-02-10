@@ -1,0 +1,40 @@
+{
+    "document_type": "invoice",
+    "extraction_status": "success",
+    "extracted_data": {
+        "invoice_number": "INV-2025-001234",
+        "vendor_name": "Travel Services Ltd",
+        "vendor_address": "123 Business Street, London, UK",
+        "vendor_tax_id": "GB123456789",
+        "invoice_date": "2025-02-10",
+        "due_date": "2025-03-10",
+        "bill_to": {
+            "company_name": "City Travelers Co",
+            "address": "456 Commerce Ave, Kuwait",
+            "tax_id": "KW987654321"
+        },
+        "line_items": [
+            {
+                "description": "Flight Commission - GF Flights Jan 2025",
+                "quantity": 1,
+                "unit_price": 5000.00,
+                "amount": 5000.00
+            },
+            {
+                "description": "Service Fee",
+                "quantity": 1,
+                "unit_price": 500.00,
+                "amount": 500.00
+            }
+        ],
+        "subtotal": 5500.00,
+        "tax_rate": 15,
+        "tax_amount": 825.00,
+        "total_amount": 6325.00,
+        "currency": "USD",
+        "payment_terms": "Net 30",
+        "payment_status": "pending"
+    },
+    "confidence_score": 0.97,
+    "processing_time_ms": 3200
+}

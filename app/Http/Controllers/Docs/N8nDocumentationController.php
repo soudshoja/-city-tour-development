@@ -46,4 +46,14 @@ class N8nDocumentationController extends Controller
     {
         return view('docs.n8n-hub');
     }
+
+    /**
+     * Display the N8n user guide (admin + developer).
+     *
+     * @return \Illuminate\View\View
+     */
+    public function userGuide(): View
+    {
+        return view('docs.n8n-user-guide');
+    }
 }

@@ -5354,7 +5354,7 @@ class InvoiceController extends Controller
     public function lockInvoice(Invoice $invoice)
     {
         $user = auth()->user();
-        Gate::authorize('manage', User::class);
+        Gate::authorize('manage locks');
 
         if ($invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is already locked.');
@@ -5374,7 +5374,7 @@ class InvoiceController extends Controller
     public function unlockInvoice(Invoice $invoice)
     {
         $user = auth()->user();
-        Gate::authorize('manage', User::class);
+        Gate::authorize('manage locks');
 
         if (!$invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is not locked.');

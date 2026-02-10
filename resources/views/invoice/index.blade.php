@@ -348,7 +348,7 @@
                                     @csrf
                                     <button type="submit" data-tooltip="Lock invoice"
                                         class="p-2 rounded-lg bg-gray-50 text-gray-400 hover:bg-gray-100 hover:shadow-sm transition-all"
-                                        onclick="return confirm('Lock this invoice? It will become read-only for agents and companies.')">
+                                        onclick="return confirm('Lock this invoice? It will become read-only for users without lock management permission.')">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>

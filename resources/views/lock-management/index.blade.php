@@ -1,272 +1,327 @@
 <x-app-layout>
-    <div class="flex justify-between items-center gap-5 my-3">
-        <div class="flex items-center gap-5">
-            <h2 class="text-2xl md:text-3xl font-bold">Lock Management</h2>
-            <div data-tooltip="Financial record locking"
-                class="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
+    @push('styles')
+        @vite(['resources/css/lock-management/index.css'])
+    @endpush
+
+    <div class="lock-header">
+        <div class="lock-header-left">
+            <h2 class="lock-title">Lock Management</h2>
+            <div data-tooltip="Financial record locking" class="lock-title-icon DarkBGcolor">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white">
                     <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3zm0 10c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/>
                 </svg>
             </div>
         </div>
-        <div class="flex items-center gap-3" x-data="{ showBulkLock: false }">
-            <button @click="showBulkLock = true" data-tooltip-left="Bulk lock by date"
-                class="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-red-500 hover:bg-red-600 rounded-full shadow-sm cursor-pointer transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
+        <div class="lock-header-right">
+            <div data-tooltip-left="Reload" class="lock-reload-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                    <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
                 </svg>
-            </button>
+            </div>
+            <div x-data="{ showBulkLock: false }">
+                <button @click="showBulkLock = true" data-tooltip-left="Bulk lock by date" class="lock-bulk-btn btn-success">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
+                </button>
 
-            {{-- Bulk Lock Modal --}}
-            <div x-cloak x-show="showBulkLock" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                <div @click.away="showBulkLock = false" class="bg-white rounded-xl w-full max-w-lg shadow-xl">
-                    <div class="p-4 border-b flex items-center justify-between">
-                        <div>
-                            <h3 class="font-semibold text-gray-800">Bulk Lock by Date</h3>
-                            <p class="text-sm text-gray-500 mt-0.5">Lock all records on or before a specific date.</p>
+                {{-- Bulk Lock Modal --}}
+                <div x-cloak x-show="showBulkLock" class="lock-modal-overlay">
+                    <div class="lock-modal-backdrop" @click="showBulkLock = false"></div>
+                    <div class="lock-modal-container">
+                        <div class="lock-modal">
+                            <form action="{{ route('lock-management.lock-by-period') }}" method="POST" x-data="{ hasInvoices: true }"
+                                onsubmit="return confirm('Are you sure? This will lock ALL matching records in the selected date range.')">
+                                @csrf
+
+                                <div class="lock-modal-header">
+                                    <div>
+                                        <h3>Bulk Lock by Date</h3>
+                                        <p class="lock-modal-subtitle">Lock all records within the selected date range</p>
+                                    </div>
+                                    <button type="button" @click="showBulkLock = false" class="lock-modal-close">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div class="lock-modal-body">
+                                    <div class="lock-form-section">
+                                        <h4 class="lock-section-title blue">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            Lock Period
+                                        </h4>
+                                        <div class="lock-form-grid">
+                                            <div class="lock-form-group">
+                                                <label class="lock-form-label">From date <span class="required">*</span></label>
+                                                <input type="date" name="lock_from_date" required class="lock-form-input">
+                                            </div>
+                                            <div class="lock-form-group">
+                                                <label class="lock-form-label">To date <span class="required">*</span></label>
+                                                <input type="date" name="lock_to_date" required
+                                                    value="{{ now()->subMonth()->endOfMonth()->format('Y-m-d') }}"
+                                                    class="lock-form-input">
+                                            </div>
+                                        </div>
+                                        <p class="lock-form-hint">Tip: To close last month, set from the start to the end of that month.</p>
+                                    </div>
+
+                                    <div class="lock-form-section">
+                                        <h4 class="lock-section-title green">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            Record Types
+                                        </h4>
+                                        <label class="lock-form-label">Record types to lock <span class="required">*</span></label>
+                                        <div class="lock-checkbox-grid">
+                                            @foreach($recordTypes as $key => $config)
+                                                <label class="lock-checkbox-card">
+                                                    <input type="checkbox" name="record_types[]" value="{{ $key }}" checked
+                                                        class="lock-checkbox"
+                                                        @if($key === 'invoices') x-model="hasInvoices" @endif>
+                                                    <span>{{ $config['label'] }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    <div x-show="hasInvoices" x-cloak class="lock-form-section">
+                                        <h4 class="lock-section-title purple">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                            </svg>
+                                            Status Filter
+                                        </h4>
+                                        <label class="lock-form-label">Invoice status filter:</label>
+                                        <div class="lock-status-filters">
+                                            @foreach(['paid', 'unpaid', 'partial'] as $status)
+                                                <label class="lock-status-item">
+                                                    <input type="checkbox" name="lock_status[]" value="{{ $status }}" {{ $status === 'paid' ? 'checked' : '' }}
+                                                        class="lock-checkbox">
+                                                    <span>{{ ucfirst($status) }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="lock-modal-footer">
+                                    <button type="button" @click="showBulkLock = false" class="lock-btn secondary">Cancel</button>
+                                    <button type="submit" class="lock-btn danger">
+                                        <svg fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Lock Records
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <button type="button" @click="showBulkLock = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
                     </div>
-                    <form action="{{ route('lock-management.lock-by-period') }}" method="POST"
-                        x-data="{ hasInvoices: true }"
-                        onsubmit="return confirm('Are you sure? This will lock ALL matching records before the selected date.')">
-                        @csrf
-                        <div class="p-5 space-y-5">
-                            {{-- Date --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Lock all records on or before *</label>
-                                <input type="date" name="lock_before_date" required
-                                    value="{{ old('lock_before_date', now()->subMonth()->endOfMonth()->format('Y-m-d')) }}"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <p class="text-xs text-gray-400 mt-1">Tip: Set to end of last month to close the previous period.</p>
-                            </div>
-
-                            {{-- Record Types --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Record types to lock *</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    @foreach($recordTypes as $key => $config)
-                                        <label class="flex items-center gap-2 p-2.5 rounded-lg border bg-white cursor-pointer hover:bg-gray-50 transition-colors">
-                                            <input type="checkbox" name="record_types[]" value="{{ $key }}" checked
-                                                class="form-checkbox h-4 w-4 text-blue-600 rounded"
-                                                @if($key === 'invoices') x-model="hasInvoices" @endif>
-                                            <span class="text-sm text-gray-700">{{ $config['label'] }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            {{-- Invoice Status Filter --}}
-                            <div x-show="hasInvoices" x-cloak>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Invoice status filter:</label>
-                                <div class="flex flex-wrap gap-3">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" name="lock_status[]" value="paid" checked class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                                        <span class="text-sm text-gray-700">Paid</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" name="lock_status[]" value="unpaid" class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                                        <span class="text-sm text-gray-700">Unpaid</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" name="lock_status[]" value="partial" class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                                        <span class="text-sm text-gray-700">Partial</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 rounded-b-xl">
-                            <button type="button" @click="showBulkLock = false" class="px-4 py-2 text-sm rounded-lg border hover:bg-gray-100">Cancel</button>
-                            <button type="submit" class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.89 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
-                                </svg>
-                                Lock Records
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Overview Stats --}}
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+    {{-- Stats Cards --}}
+    <div class="lock-stats-grid lock-stats-cols-{{ count($stats) > 4 ? 5 : count($stats) }}">
         @foreach($stats as $key => $stat)
-            <div class="rounded-lg p-4 shadow-sm bg-{{ $stat['color'] }}-50 border border-{{ $stat['color'] }}-200">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-{{ $stat['color'] }}-600 uppercase tracking-wide">{{ $stat['label'] }}</span>
+            <div class="lock-stat-card lock-stat-{{ $stat['color'] }}">
+                <div class="lock-stat-header">
+                    <span class="lock-stat-label">{{ $stat['label'] }}</span>
                     @if($stat['percentage'] == 100)
-                        <span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">✓ Closed</span>
+                        <span class="lock-badge-closed">✓ Closed</span>
                     @endif
                 </div>
-                <div class="text-2xl font-bold text-{{ $stat['color'] }}-700">{{ number_format($stat['total']) }}</div>
-                <div class="flex items-center gap-3 mt-1 text-xs">
-                    <span class="text-red-600">🔒 {{ $stat['locked'] }}</span>
-                    <span class="text-green-600">🔓 {{ $stat['unlocked'] }}</span>
+                <div class="lock-stat-total">{{ number_format($stat['total']) }}</div>
+                <div class="lock-stat-counts">
+                    <span class="lock-stat-locked">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                        </svg>
+                        {{ $stat['locked'] }}
+                    </span>
+                    <span class="lock-stat-unlocked">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"/>
+                        </svg>
+                        {{ $stat['unlocked'] }}
+                    </span>
                 </div>
-                <div class="mt-2 w-full bg-gray-200 rounded-full h-1.5">
-                    <div class="bg-{{ $stat['color'] }}-500 h-1.5 rounded-full transition-all" style="width: {{ $stat['percentage'] }}%"></div>
+                <div class="lock-progress-bar">
+                    <div class="lock-progress-fill lock-progress-{{ $stat['color'] }}" style="width: {{ $stat['percentage'] }}%"></div>
                 </div>
-                <div class="text-right text-xs text-gray-400 mt-0.5">{{ $stat['percentage'] }}% locked</div>
+                <div class="lock-stat-percentage">{{ $stat['percentage'] }}% locked</div>
             </div>
         @endforeach
     </div>
 
+    {{-- Monthly Panel --}}
     <div class="panel rounded-lg">
-        <div class="mb-4">
-            <h2 class="text-lg font-semibold text-gray-800">Monthly Period Closing</h2>
-            <p class="text-sm text-gray-500 mt-1">Lock or unlock all financial records for a specific month. Use the <strong>Bulk Lock</strong> button above to lock by date range.</p>
+        <div class="lock-panel-header">
+            <h2>Monthly Period Closing</h2>
+            <p>Lock or unlock records per section for each month.</p>
         </div>
 
-        <div class="space-y-3">
-            @forelse($monthlySummary as $monthKey => $month)
+        <div class="lock-months-list">
+            @forelse($paginatedMonths as $monthKey => $month)
                 @php
-                    $monthDate = \Carbon\Carbon::parse($monthKey . '-01');
+                    $monthDate = \Carbon\Carbon::parse($month['month'] . '-01');
                     $isFullyLocked = $month['unlocked'] == 0 && $month['total'] > 0;
                     $isPartiallyLocked = $month['locked'] > 0 && $month['unlocked'] > 0;
                     $percentage = $month['total'] > 0 ? round(($month['locked'] / $month['total']) * 100) : 0;
                 @endphp
-                <div x-data="{ expanded: false }" 
-                        class="border rounded-lg {{ $isFullyLocked ? 'border-green-200 bg-green-50/30' : ($isPartiallyLocked ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200 bg-white') }}">
-                    
-                    {{-- Month Header --}}
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 cursor-pointer" @click="expanded = !expanded">
-                        <div class="flex items-center gap-4 min-w-0">
-                            <div class="flex-shrink-0 w-14 h-14 rounded-lg flex flex-col items-center justify-center {{ $isFullyLocked ? 'bg-green-100 text-green-700' : ($isPartiallyLocked ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700') }}">
-                                <span class="text-xs font-medium uppercase">{{ $monthDate->format('M') }}</span>
-                                <span class="text-lg font-bold leading-none">{{ $monthDate->format('Y') }}</span>
+                <div x-data="{ expanded: false }"
+                     class="lock-month-card {{ $isFullyLocked ? 'lock-month-fully' : ($isPartiallyLocked ? 'lock-month-partial' : '') }}">
+
+                    <div class="lock-month-header" @click="expanded = !expanded">
+                        <div class="lock-month-info">
+                            <div class="lock-month-icon {{ $isFullyLocked ? 'fully' : ($isPartiallyLocked ? 'partial' : 'default') }}">
+                                <span class="lock-month-abbr">{{ $monthDate->format('M') }}</span>
+                                <span class="lock-month-year">{{ $monthDate->format('Y') }}</span>
                             </div>
-                            <div class="min-w-0">
-                                <h4 class="font-semibold text-gray-800">{{ $monthDate->format('F Y') }}</h4>
-                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
-                                    <span>{{ $month['total'] }} total records</span>
-                                    <span class="text-red-600 font-medium">{{ $month['locked'] }} locked</span>
-                                    <span class="text-gray-400">{{ $month['unlocked'] }} unlocked</span>
+                            <div class="lock-month-details">
+                                <h4>{{ $monthDate->format('F Y') }}</h4>
+                                <div class="lock-month-stats">
+                                    <span>{{ $month['total'] }} total</span>
+                                    @if($month['locked'] > 0)
+                                        <span class="lock-count-locked">{{ $month['locked'] }} locked</span>
+                                    @endif
+                                    @if($month['unlocked'] > 0)
+                                        <span class="lock-count-unlocked">{{ $month['unlocked'] }} unlocked</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-4">
-                            <div class="flex-shrink-0 w-32 hidden md:block">
-                                <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <div class="lock-month-actions">
+                            <div class="lock-month-progress">
+                                <div class="lock-month-progress-labels">
                                     <span>Locked</span>
-                                    <span class="font-medium">{{ $percentage }}%</span>
+                                    <span>{{ $percentage }}%</span>
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="{{ $isFullyLocked ? 'bg-green-500' : ($isPartiallyLocked ? 'bg-amber-500' : 'bg-gray-300') }} h-2 rounded-full transition-all" style="width: {{ $percentage }}%"></div>
+                                <div class="lock-progress-bar">
+                                    <div class="lock-progress-fill {{ $isFullyLocked ? 'lock-progress-green' : ($isPartiallyLocked ? 'lock-progress-amber' : 'lock-progress-gray') }}" style="width: {{ $percentage }}%"></div>
                                 </div>
                             </div>
 
                             @if($isFullyLocked)
-                                <span class="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg bg-green-100 text-green-700">
-                                    ✓ Closed
-                                </span>
+                                <span class="lock-badge-closed">✓ Closed</span>
                             @endif
 
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="lock-chevron" :class="expanded ? 'lock-chevron-open' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
                     </div>
 
-                    {{-- Expanded Details --}}
-                    <div x-show="expanded" x-cloak x-collapse class="border-t px-4 pb-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-                            @foreach($month['types'] as $typeKey => $typeData)
-                                <div class="flex items-center justify-between p-3 rounded-lg bg-white border">
-                                    <div>
-                                        <span class="text-sm font-medium text-gray-700">{{ $typeData['label'] }}</span>
-                                        <div class="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                    <div x-show="expanded" x-cloak x-collapse class="lock-month-body">
+                        @foreach($month['types'] as $typeKey => $typeData)
+                            @php
+                                $typeFullyLocked = $typeData['unlocked'] == 0 && $typeData['total'] > 0;
+                                $typePercentage = $typeData['total'] > 0 ? round(($typeData['locked'] / $typeData['total']) * 100) : 0;
+                            @endphp
+                            <div class="lock-type-row {{ !$loop->last ? 'lock-type-border' : '' }}" x-data="{ showUnlock: false }">
+                                <div class="lock-type-content">
+                                    <div class="lock-type-info">
+                                        <span class="lock-type-badge lock-type-{{ $typeData['color'] }}">{{ $typeData['label'] }}</span>
+                                        <div class="lock-type-stats">
                                             <span>{{ $typeData['total'] }} total</span>
-                                            <span class="text-red-500">{{ $typeData['locked'] }} locked</span>
-                                            <span class="text-green-500">{{ $typeData['unlocked'] }} open</span>
+                                            @if($typeData['locked'] > 0)
+                                                <span class="lock-count-locked">{{ $typeData['locked'] }} locked</span>
+                                            @endif
+                                            @if($typeData['unlocked'] > 0)
+                                                <span class="lock-count-open">{{ $typeData['unlocked'] }} open</span>
+                                            @endif
                                         </div>
+                                        @if($typeFullyLocked)
+                                            <span class="lock-type-check">✓</span>
+                                        @endif
                                     </div>
-                                    @if($typeData['unlocked'] == 0 && $typeData['total'] > 0)
-                                        <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓</span>
-                                    @elseif($typeData['unlocked'] > 0)
-                                        <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{{ $typeData['unlocked'] }} open</span>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
 
-                        {{-- Month Actions --}}
-                        <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t">
-                            @if($month['unlocked'] > 0)
-                                <form action="{{ route('lock-management.lock-by-month') }}" method="POST"
-                                    onsubmit="return confirm('Lock ALL {{ $month['unlocked'] }} unlocked records for {{ $monthDate->format('F Y') }}?')">
-                                    @csrf
-                                    <input type="hidden" name="month" value="{{ $monthKey }}">
-                                    @foreach(array_keys($month['types']) as $tk)
-                                        <input type="hidden" name="record_types[]" value="{{ $tk }}">
-                                    @endforeach
-                                    <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
-                                        </svg>
-                                        Lock All ({{ $month['unlocked'] }})
-                                    </button>
-                                </form>
-                            @endif
-
-                            @if($month['locked'] > 0)
-                                <div x-data="{ showUnlock: false }">
-                                    <button @click="showUnlock = true" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
-                                        </svg>
-                                        Unlock ({{ $month['locked'] }})
-                                    </button>
-
-                                    <div x-cloak x-show="showUnlock" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                                        <div @click.away="showUnlock = false" class="bg-white rounded-xl w-full max-w-md shadow-xl">
-                                            <div class="p-4 border-b">
-                                                <h3 class="font-semibold text-gray-800">Unlock {{ $monthDate->format('F Y') }}</h3>
-                                                <p class="text-sm text-gray-500 mt-1">This will unlock {{ $month['locked'] }} record(s) across all types.</p>
-                                            </div>
-                                            <form action="{{ route('lock-management.unlock-by-month') }}" method="POST">
+                                    <div class="lock-type-actions">
+                                        @if($typeData['unlocked'] > 0)
+                                            <form action="{{ route('lock-management.lock-by-month') }}" method="POST"
+                                                onsubmit="return confirm('Lock {{ $typeData['unlocked'] }} {{ $typeData['label'] }} for {{ $monthDate->format('F Y') }}?')">
                                                 @csrf
-                                                <input type="hidden" name="month" value="{{ $monthKey }}">
-                                                @foreach(array_keys($month['types']) as $tk)
-                                                    <input type="hidden" name="record_types[]" value="{{ $tk }}">
-                                                @endforeach
-                                                <div class="p-4">
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason for unlocking *</label>
-                                                    <textarea name="reason" rows="3" required placeholder="e.g., Need to correct entries for reconciliation..."
-                                                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                                                </div>
-                                                <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 rounded-b-xl">
-                                                    <button type="button" @click="showUnlock = false" class="px-4 py-2 text-sm rounded-lg border hover:bg-gray-100">Cancel</button>
-                                                    <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-amber-600 text-white hover:bg-amber-700">Unlock</button>
-                                                </div>
+                                                <input type="hidden" name="month" value="{{ $month['month'] }}">
+                                                <input type="hidden" name="record_type" value="{{ $typeKey }}">
+                                                <button type="submit" class="lock-btn danger small">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
+                                                    </svg>
+                                                    Lock ({{ $typeData['unlocked'] }})
+                                                </button>
                                             </form>
-                                        </div>
+                                        @endif
+
+                                        @if($typeData['locked'] > 0)
+                                            <button @click="showUnlock = true" class="lock-btn warning small">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                                                </svg>
+                                                Unlock ({{ $typeData['locked'] }})
+                                            </button>
+
+                                            {{-- Unlock Modal --}}
+                                            <div x-cloak x-show="showUnlock" class="lock-modal-overlay">
+                                                <div class="lock-modal-backdrop" @click="showUnlock = false"></div>
+                                                <div class="lock-modal-container">
+                                                    <div class="lock-modal lock-modal-sm">
+                                                        <div class="lock-modal-header">
+                                                            <div>
+                                                                <h3>Unlock {{ $typeData['label'] }} — {{ $monthDate->format('F Y') }}</h3>
+                                                                <p class="lock-modal-subtitle">This will unlock {{ $typeData['locked'] }} {{ strtolower($typeData['label']) }}.</p>
+                                                            </div>
+                                                            <button type="button" @click="showUnlock = false" class="lock-modal-close">
+                                                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                        <form action="{{ route('lock-management.unlock-by-month') }}" method="POST">
+                                                            @csrf
+                                                            <input type="hidden" name="month" value="{{ $month['month'] }}">
+                                                            <input type="hidden" name="record_type" value="{{ $typeKey }}">
+                                                            <div class="lock-modal-body">
+                                                                <label class="lock-form-label">Reason for unlocking <span class="required">*</span></label>
+                                                                <textarea name="reason" rows="3" required placeholder="e.g., Need to correct entries for reconciliation..."
+                                                                    class="lock-form-textarea"></textarea>
+                                                            </div>
+                                                            <div class="lock-modal-footer">
+                                                                <button type="button" @click="showUnlock = false" class="lock-btn secondary">Cancel</button>
+                                                                <button type="submit" class="lock-btn warning">Unlock</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
-                            @endif
-                        </div>
+
+                                <div class="lock-progress-bar lock-progress-thin">
+                                    <div class="lock-progress-fill {{ $typeFullyLocked ? 'lock-progress-green' : 'lock-progress-' . $typeData['color'] }}" style="width: {{ $typePercentage }}%"></div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             @empty
-                <div class="text-center py-8 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="lock-empty">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
-                    <p class="text-lg font-medium">No records found</p>
-                    <p class="text-sm">Financial records will appear here once created.</p>
+                    <p class="lock-empty-title">No records found</p>
+                    <p>Financial records will appear here once created.</p>
                 </div>
             @endforelse
         </div>
-    </div>
 
-    @if(session('success'))
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                alert('{{ session('success') }}');
-            });
-        </script>
-    @endif
+        <x-pagination :data="$paginatedMonths" />
+    </div>
 </x-app-layout>

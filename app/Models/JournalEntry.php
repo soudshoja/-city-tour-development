@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Log;
+use App\Http\Traits\Lockable;
 
 class JournalEntry extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Lockable;
 
     protected $fillable = [
         'transaction_id',
@@ -40,6 +41,14 @@ class JournalEntry extends Model
         'original_currency',
         'original_amount',
         'receipt_reference_number',
+        'is_locked',
+        'locked_by',
+        'locked_at',
+    ];
+
+    protected $casts = [
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     public const ADDITIONAL_INVOICE_CHARGE = 'Additional Invoice Charge';

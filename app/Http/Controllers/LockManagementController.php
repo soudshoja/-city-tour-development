@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Invoice;
 use App\Models\Payment;
-use App\Models\Credit;
 use App\Models\JournalEntry;
 use App\Models\Role;
 use App\Models\Company;
@@ -15,12 +14,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
 
 class LockManagementController extends Controller
 {
     /**
-     * Record type configuration — single source of truth
+     * Record type configuration — single source of truth.
+     * Each model MUST use the Lockable trait and define getLockCascadeMap().
+     * Cascade is handled automatically by the trait.
      */
     private function getRecordTypes(): array
     {
@@ -51,30 +53,6 @@ class LockManagementController extends Controller
             //     'has_status' => false,
             //     'detail_route' => null,
             // ],
-            // 'credits' => [
-            //     'label' => 'Credits',
-            //     'model' => Credit::class,
-            //     'date_column' => 'created_at',
-            //     'number_column' => 'id',
-            //     'scope_column' => 'company_id',
-            //     'scope_type' => 'company',
-            //     'icon' => 'credit',
-            //     'color' => 'purple',
-            //     'has_status' => false,
-            //     'detail_route' => null,
-            // ],
-            // 'journal_entries' => [
-            //     'label' => 'Journal Entries',
-            //     'model' => JournalEntry::class,
-            //     'date_column' => 'transaction_date',
-            //     'number_column' => 'voucher_number',
-            //     'scope_column' => 'company_id',
-            //     'scope_type' => 'company',
-            //     'icon' => 'journal',
-            //     'color' => 'indigo',
-            //     'has_status' => false,
-            //     'detail_route' => null,
-            // ],
         ];
     }
 
@@ -96,7 +74,7 @@ class LockManagementController extends Controller
 
     public function index(Request $request)
     {
-        Gate::authorize('manage', User::class);
+        Gate::authorize('manage locks');
         $user = Auth::user();
 
         $companyId = getCompanyId($user);
@@ -166,29 +144,42 @@ class LockManagementController extends Controller
             }
         }
 
-        // Sort by month descending, limit to 12
+        // Sort by month descending
         krsort($monthlySummary);
-        $monthlySummary = array_slice($monthlySummary, 0, 12, true);
+
+        // Paginate — 10 months per page
+        $page = $request->input('page', 1);
+        $perPage = 10;
+        $allMonths = collect($monthlySummary);
+        $paginatedMonths = new LengthAwarePaginator(
+            $allMonths->forPage($page, $perPage),
+            $allMonths->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('lock-management.index', compact(
             'company',
             'companyId',
             'stats',
-            'monthlySummary',
+            'paginatedMonths',
             'recordTypes',
         ));
     }
 
     /**
-     * Lock by period — supports multiple record types
+     * Lock by period — supports multiple record types (Bulk Lock modal).
+     * Cascade is handled automatically by each model's Lockable trait.
      */
     public function lockByPeriod(Request $request)
     {
-        Gate::authorize('manage', User::class);
+        Gate::authorize('manage locks');
         $user = Auth::user();
 
         $request->validate([
-            'lock_before_date' => 'required|date',
+            'lock_from_date' => 'required|date',
+            'lock_to_date' => 'required|date|after_or_equal:lock_from_date',
             'record_types' => 'required|array|min:1',
             'record_types.*' => 'string',
             'lock_status' => 'nullable|array',
@@ -197,7 +188,8 @@ class LockManagementController extends Controller
 
         $companyId = getCompanyId($user);
         $agentIds = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->pluck('id')->toArray();
-        $lockBeforeDate = Carbon::parse($request->lock_before_date)->endOfDay();
+        $lockFromDate = Carbon::parse($request->lock_from_date)->startOfDay();
+        $lockToDate = Carbon::parse($request->lock_to_date)->endOfDay();
         $allTypes = $this->getRecordTypes();
         $results = [];
 
@@ -207,19 +199,13 @@ class LockManagementController extends Controller
             $config = $allTypes[$typeKey];
             $query = $this->scopedQuery($config, $companyId, $agentIds)
                 ->where('is_locked', false)
-                ->where($config['date_column'], '<=', $lockBeforeDate);
+                ->whereBetween($config['date_column'], [$lockFromDate, $lockToDate]);
 
-            // Apply status filter only for models that have status
             if (!empty($config['has_status']) && $request->has('lock_status')) {
                 $query->whereIn($config['status_column'], $request->lock_status);
             }
 
-            $count = $query->update([
-                'is_locked' => true,
-                'locked_by' => $user->id,
-                'locked_at' => now(),
-            ]);
-
+            $count = $config['model']::bulkLock($query, $user->id);
             $results[$typeKey] = $count;
         }
 
@@ -232,7 +218,8 @@ class LockManagementController extends Controller
         Log::info('Period lock applied', [
             'locked_by' => $user->id,
             'company_id' => $companyId,
-            'lock_before_date' => $lockBeforeDate,
+            'lock_from_date' => $lockFromDate,
+            'lock_to_date' => $lockToDate,
             'results' => $results,
         ]);
 
@@ -240,16 +227,17 @@ class LockManagementController extends Controller
     }
 
     /**
-     * Lock all records for a specific month
+     * Lock records for a specific month + specific record type.
+     * Cascade handled by Lockable trait.
      */
     public function lockByMonth(Request $request)
     {
-        Gate::authorize('manage', User::class);
+        Gate::authorize('manage locks');
         $user = Auth::user();
 
         $request->validate([
             'month' => 'required|date_format:Y-m',
-            'record_types' => 'nullable|array',
+            'record_type' => 'required|string',
         ]);
 
         $companyId = getCompanyId($user);
@@ -258,49 +246,44 @@ class LockManagementController extends Controller
         $endOfMonth = Carbon::parse($request->month . '-01')->endOfMonth();
 
         $allTypes = $this->getRecordTypes();
-        $targetTypes = $request->input('record_types', array_keys($allTypes));
-        $results = [];
+        $typeKey = $request->record_type;
 
-        foreach ($targetTypes as $typeKey) {
-            if (!isset($allTypes[$typeKey])) continue;
-            $config = $allTypes[$typeKey];
-
-            $count = $this->scopedQuery($config, $companyId, $agentIds)
-                ->where('is_locked', false)
-                ->whereBetween($config['date_column'], [$startOfMonth, $endOfMonth])
-                ->update([
-                    'is_locked' => true,
-                    'locked_by' => $user->id,
-                    'locked_at' => now(),
-                ]);
-
-            $results[$typeKey] = $count;
+        if (!isset($allTypes[$typeKey])) {
+            return redirect()->back()->with('error', 'Invalid record type.');
         }
 
-        $totalLocked = array_sum($results);
+        $config = $allTypes[$typeKey];
+        $query = $this->scopedQuery($config, $companyId, $agentIds)
+            ->where('is_locked', false)
+            ->whereBetween($config['date_column'], [$startOfMonth, $endOfMonth]);
 
-        Log::info('Month lock applied', [
+        // Uses Lockable::bulkLock() — cascades automatically
+        $count = $config['model']::bulkLock($query, $user->id);
+
+        Log::info('Month type lock applied', [
             'locked_by' => $user->id,
             'company_id' => $companyId,
             'month' => $request->month,
-            'results' => $results,
+            'record_type' => $typeKey,
+            'count' => $count,
         ]);
 
-        return redirect()->back()->with('success', "{$totalLocked} record(s) locked for " . $startOfMonth->format('F Y') . ".");
+        return redirect()->back()->with('success', "{$count} {$config['label']} locked for " . $startOfMonth->format('F Y') . ".");
     }
 
     /**
-     * Unlock all records for a specific month
+     * Unlock records for a specific month + specific record type.
+     * Cascade handled by Lockable trait.
      */
     public function unlockByMonth(Request $request)
     {
-        Gate::authorize('manage', User::class);
+        Gate::authorize('manage locks');
         $user = Auth::user();
 
         $request->validate([
             'month' => 'required|date_format:Y-m',
+            'record_type' => 'required|string',
             'reason' => 'required|string|max:255',
-            'record_types' => 'nullable|array',
         ]);
 
         $companyId = getCompanyId($user);
@@ -309,35 +292,29 @@ class LockManagementController extends Controller
         $endOfMonth = Carbon::parse($request->month . '-01')->endOfMonth();
 
         $allTypes = $this->getRecordTypes();
-        $targetTypes = $request->input('record_types', array_keys($allTypes));
-        $results = [];
+        $typeKey = $request->record_type;
 
-        foreach ($targetTypes as $typeKey) {
-            if (!isset($allTypes[$typeKey])) continue;
-            $config = $allTypes[$typeKey];
-
-            $count = $this->scopedQuery($config, $companyId, $agentIds)
-                ->where('is_locked', true)
-                ->whereBetween($config['date_column'], [$startOfMonth, $endOfMonth])
-                ->update([
-                    'is_locked' => false,
-                    'locked_by' => null,
-                    'locked_at' => null,
-                ]);
-
-            $results[$typeKey] = $count;
+        if (!isset($allTypes[$typeKey])) {
+            return redirect()->back()->with('error', 'Invalid record type.');
         }
 
-        $totalUnlocked = array_sum($results);
+        $config = $allTypes[$typeKey];
+        $query = $this->scopedQuery($config, $companyId, $agentIds)
+            ->where('is_locked', true)
+            ->whereBetween($config['date_column'], [$startOfMonth, $endOfMonth]);
 
-        Log::info('Month unlock applied', [
+        // Uses Lockable::bulkUnlock() — cascades automatically
+        $count = $config['model']::bulkUnlock($query);
+
+        Log::info('Month type unlock applied', [
             'unlocked_by' => $user->id,
             'company_id' => $companyId,
             'month' => $request->month,
+            'record_type' => $typeKey,
             'reason' => $request->reason,
-            'results' => $results,
+            'count' => $count,
         ]);
 
-        return redirect()->back()->with('success', "{$totalUnlocked} record(s) unlocked for " . $startOfMonth->format('F Y') . ".");
+        return redirect()->back()->with('success', "{$count} {$config['label']} unlocked for " . $startOfMonth->format('F Y') . ".");
     }
 }

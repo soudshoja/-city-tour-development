@@ -100,7 +100,7 @@ If your code is deployed on **development.citycommerce.group**, update the remot
 ssh user@development.citycommerce.group
 
 # Navigate to project
-cd /var/www/city-tour  # or your path
+cd /var/www/soud-laravel  # or your path
 
 # Update git remote
 git remote set-url origin git@github.com:soudshoja/-city-tour-development.git
@@ -135,7 +135,7 @@ sudo systemctl restart nginx       # or apache2
 **1. Clone Repository:**
 ```bash
 git clone git@github.com:soudshoja/-city-tour-development.git
-cd -city-tour-development
+cd soud-laravel
 ```
 
 **2. Setup Environment:**

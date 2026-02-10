@@ -30,6 +30,7 @@ use App\Http\Controllers\CoaController;
 use App\Models\Charge;
 use Exception;
 use Illuminate\Support\Str;
+use App\Services\TrialBalanceService;
 
 class ReportController extends Controller
 {
@@ -3931,4 +3932,199 @@ class ReportController extends Controller
 
         return $pdf->download($filename);
     }
+
+    /**
+     * Display the Trial Balance report.
+     */
+    public function trialBalance(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->input('date_to', now()->toDateString());
+        $branchId = $request->input('branch_id', '');
+        $showZero = $request->boolean('show_zero', false);
+
+        $service = new TrialBalanceService();
+        $trialBalance = $service->generate(
+            $companyId,
+            Carbon::parse($dateFrom),
+            Carbon::parse($dateTo),
+            [
+                'branch_id' => $branchId,
+                'show_zero' => $showZero,
+            ]
+        );
+
+        $company = Company::find($companyId);
+        $branches = Branch::where('company_id', $companyId)->get();
+
+        // Get unbalanced transactions
+        $unbalancedTransactions = $service->findUnbalancedTransactions(
+            $companyId,
+            Carbon::parse($dateFrom),
+            Carbon::parse($dateTo)
+        );
+
+        return view('reports.trial-balance', [
+            'trialBalance' => $trialBalance,
+            'company' => $company,
+            'branches' => $branches,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'branchId' => $branchId,
+            'showZero' => $showZero,
+            'unbalancedTransactions' => $unbalancedTransactions,
+            'filters' => [
+                'branch_id' => $branchId,
+                'show_zero' => $showZero,
+            ],
+        ]);
+    }
+
+    /**
+     * Export Trial Balance as PDF.
+     */
+    public function trialBalancePdf(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->input('date_to', now()->toDateString());
+        $showZero = $request->boolean('show_zero', false);
+
+        $service = new TrialBalanceService();
+        $trialBalance = $service->generate(
+            $companyId,
+            Carbon::parse($dateFrom),
+            Carbon::parse($dateTo),
+            [
+                'branch_id' => $request->input('branch_id'),
+                'show_zero' => $showZero,
+            ]
+        );
+
+        $company = Company::find($companyId);
+        $unbalancedTransactions = $service->findUnbalancedTransactions(
+            $companyId,
+            Carbon::parse($dateFrom),
+            Carbon::parse($dateTo)
+        );
+
+        $pdf = Pdf::loadView('reports.pdf.trial-balance', [
+            'trialBalance' => $trialBalance,
+            'company' => $company,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'unbalancedTransactions' => $unbalancedTransactions,
+        ]);
+
+        $pdf->setPaper('A4', 'landscape');
+
+        $filename = 'trial-balance-' . $dateFrom . '-to-' . $dateTo . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Export Trial Balance as CSV.
+     */
+    public function trialBalanceExport(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!$companyId) {
+            return redirect()->back()->with('error', 'Please select a company first.');
+        }
+
+        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->input('date_to', now()->toDateString());
+        $showZero = $request->boolean('show_zero', false);
+
+        $service = new TrialBalanceService();
+        $trialBalance = $service->generate(
+            $companyId,
+            Carbon::parse($dateFrom),
+            Carbon::parse($dateTo),
+            [
+                'branch_id' => $request->input('branch_id'),
+                'show_zero' => $showZero,
+            ]
+        );
+
+        $company = Company::find($companyId);
+        $accounts = $trialBalance['accounts'];
+        $totals = $trialBalance['totals'];
+
+        // Create CSV
+        $csv = "Trial Balance Report\n";
+        $csv .= "Company: " . $company->name . "\n";
+        $csv .= "Period: " . $dateFrom . " to " . $dateTo . "\n";
+        $csv .= "Generated: " . now()->format('Y-m-d H:i:s') . "\n\n";
+
+        $csv .= "Code,Account Name,Root Type,Debit,Credit\n";
+
+        foreach ($accounts as $account) {
+            $csv .= '"' . $account->code . '","' . addslashes($account->name) . '","' . $account->root_name . '","' . number_format($account->total_debit, 3) . '","' . number_format($account->total_credit, 3) . "\"\n";
+        }
+
+        $csv .= "\n";
+        $csv .= "TOTALS,," . number_format($totals['debit'], 3) . "," . number_format($totals['credit'], 3) . "\n";
+        $csv .= "Difference,," . number_format($totals['difference'], 3) . "\n";
+        $csv .= "Status," . ($totals['is_balanced'] ? 'BALANCED' : 'OUT OF BALANCE') . "\n";
+
+        $filename = 'trial-balance-' . $dateFrom . '-to-' . $dateTo . '.csv';
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    }
+
+    /**
+     * Get unbalanced transactions (AJAX).
+     */
+    public function trialBalanceValidation(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$companyId) {
+            return response()->json(['error' => 'Company not selected'], 400);
+        }
+
+        $service = new TrialBalanceService();
+        $unbalanced = $service->findUnbalancedTransactions($companyId);
+
+        return response()->json([
+            'count' => $unbalanced->count(),
+            'transactions' => $unbalanced,
+        ]);
+    }
 }
+

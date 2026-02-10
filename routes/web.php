@@ -427,6 +427,12 @@ Route::middleware(['auth'])->group(function () {
         Route::match(['get', 'post'], '/payment-gateways', [ReportController::class, 'paymentGateways'])->name('payment-gateways');
         Route::get('/payment-gateways/pdf', [ReportController::class, 'paymentGatewaysReportPdf'])->name('payment-gateways.pdf');
 
+        // Trial Balance
+        Route::get('/trial-balance', [ReportController::class, 'trialBalance'])->name('trial-balance');
+        Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf'])->name('trial-balance.pdf');
+        Route::get('/trial-balance/export', [ReportController::class, 'trialBalanceExport'])->name('trial-balance.export');
+        Route::get('/trial-balance/validation', [ReportController::class, 'trialBalanceValidation'])->name('trial-balance.validation');
+
         Route::group([
             'prefix' => 'ajax',
             'as' => 'ajax.',

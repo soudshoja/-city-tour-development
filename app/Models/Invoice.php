@@ -62,6 +62,19 @@ class Invoice extends Model
         });
     }
 
+    /**
+     * When an invoice is locked, also lock:
+     * - All transactions where invoice_id = this invoice
+     * - All journal entries where invoice_id = this invoice
+     */
+    public static function getLockCascadeMap(): array
+    {
+        return [
+            [Transaction::class,  'invoice_id'],
+            [JournalEntry::class, 'invoice_id'],
+        ];
+    }
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');

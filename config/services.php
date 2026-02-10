@@ -108,6 +108,7 @@ return [
 
     'n8n' => [
         'webhook_url' => env('N8N_WEBHOOK_URL'),
+        'webhook_secret' => env('N8N_WEBHOOK_SECRET', 'default-secret'),
     ],
 
     'iata' => [

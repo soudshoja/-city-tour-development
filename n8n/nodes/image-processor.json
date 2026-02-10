@@ -1,0 +1,65 @@
+{
+  "name": "Image OCR Pipeline",
+  "description": "Extracts text from images using Gutenberg OCR server",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://gutenberg-server:8080/ocr",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ {\n  \"image_url\": \"file:///var/www/storage/app/\" + $json.file_path,\n  \"language\": \"en\",\n  \"output_format\": \"text\"\n} }}",
+        "options": {
+          "timeout": 90000,
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "name": "Extract Image with Gutenberg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 450],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gutenberg OCR response\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  try {\n    const response = item.json;\n    \n    // Validate OCR result\n    if (!response || !response.text || response.text.trim().length === 0) {\n      throw new Error('ERR_INSUFFICIENT_DATA: Gutenberg extracted no text from image');\n    }\n    \n    // Build normalized output\n    results.push({\n      json: {\n        document_id: $('Extract Image with Gutenberg').first().json.document_id,\n        document_type: 'image',\n        extracted_text: response.text.trim(),\n        extraction_method: 'gutenberg-ocr',\n        confidence_score: response.confidence || null,\n        file_path: $('Extract Image with Gutenberg').first().json.file_path,\n        company_id: $('Extract Image with Gutenberg').first().json.company_id,\n        supplier_id: $('Extract Image with Gutenberg').first().json.supplier_id,\n        callback_url: $('Extract Image with Gutenberg').first().json.callback_url,\n        text_length: response.text.trim().length,\n        processing_timestamp: new Date().toISOString()\n      }\n    });\n  } catch (error) {\n    // Handle extraction errors\n    results.push({\n      json: {\n        document_id: $('Extract Image with Gutenberg').first().json.document_id,\n        document_type: 'image',\n        extraction_status: 'error',\n        error_code: error.message.includes('ERR_') ? error.message.split(':')[0] : 'ERR_EXTRACTION_FAILED',\n        error_message: error.message,\n        file_path: $('Extract Image with Gutenberg').first().json.file_path,\n        company_id: $('Extract Image with Gutenberg').first().json.company_id,\n        supplier_id: $('Extract Image with Gutenberg').first().json.supplier_id,\n        callback_url: $('Extract Image with Gutenberg').first().json.callback_url\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Gutenberg Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 450]
+    }
+  ],
+  "connections": {
+    "Extract Image with Gutenberg": {
+      "main": [
+        [
+          {
+            "node": "Parse Gutenberg Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "meta": {
+    "description": "Image OCR extraction using Gutenberg server. Sends image file path to Gutenberg for OCR processing.",
+    "requirements": {
+      "gutenberg_server": "http://gutenberg-server:8080",
+      "docker_volume": "/var/www/storage/app mounted to Gutenberg container"
+    }
+  }
+}

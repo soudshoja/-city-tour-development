@@ -1,7 +1,7 @@
-# Claude Code Project Instructions - City Tour Development
+# Claude Code Project Instructions - Soud Laravel
 
 ## This Project
-City Tour Development - Laravel 11 travel agency management platform with AI-powered document processing, multi-tenant architecture, and comprehensive accounting system.
+Soud Laravel - Laravel 11 travel agency management platform with AI-powered document processing, multi-tenant architecture, and comprehensive accounting system.
 
 ## Key Information
 - **Repository**: `git@github.com:soudshoja/-city-tour-development.git` (private)
@@ -241,7 +241,7 @@ cat storage/logs/air_processing.log
 ### Production Deployment
 ```bash
 # On server (development.citycommerce.group)
-cd /path/to/city-tour
+cd /path/to/soud-laravel
 
 # Pull latest code
 git pull origin main
@@ -268,7 +268,7 @@ sudo systemctl restart nginx
 ### Automated Processing
 ```bash
 # Add to crontab for automated processing
-* * * * * cd /path/to/city-tour && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /path/to/soud-laravel && php artisan schedule:run >> /dev/null 2>&1
 
 # In app/Console/Kernel.php:
 $schedule->command('app:process-files --batch')->everyFiveMinutes();

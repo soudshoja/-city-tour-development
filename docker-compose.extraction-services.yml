@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # Apache Tika Server for PDF text extraction
+  tika-server:
+    image: apache/tika:latest
+    container_name: soud-laravel-tika
+    ports:
+      - "9998:9998"
+    command: ["-h", "0.0.0.0"]
+    networks:
+      - n8n-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/tika"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Gutenberg OCR Server for image text extraction
+  gutenberg-server:
+    image: tesseract/tesseract:latest
+    container_name: soud-laravel-gutenberg
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount Laravel storage for file access
+      - ./storage/app:/var/www/storage/app:ro
+      # Tesseract language data
+      - gutenberg-tessdata:/usr/share/tesseract-ocr/4.00/tessdata
+    environment:
+      - TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata
+      - OMP_THREAD_LIMIT=8
+    networks:
+      - n8n-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Wrapper script to run Tesseract as HTTP server
+    command: >
+      sh -c "
+        apt-get update &&
+        apt-get install -y python3 python3-pip curl &&
+        pip3 install flask pillow pytesseract &&
+        python3 -c '
+from flask import Flask, request, jsonify
+import pytesseract
+from PIL import Image
+import os
+
+app = Flask(__name__)
+
+@app.route(\"/health\", methods=[\"GET\"])
+def health():
+    return jsonify({\"status\": \"ok\"}), 200
+
+@app.route(\"/ocr\", methods=[\"POST\"])
+def ocr():
+    data = request.json
+    image_url = data.get(\"image_url\", \"\")
+    language = data.get(\"language\", \"eng\")
+
+    # Handle file:// URLs
+    if image_url.startswith(\"file://\"):
+        image_path = image_url[7:]
+    else:
+        return jsonify({\"error\": \"Only file:// URLs supported\"}), 400
+
+    if not os.path.exists(image_path):
+        return jsonify({\"error\": \"File not found\"}), 404
+
+    try:
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img, lang=language)
+        confidence = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+        avg_confidence = sum([int(c) for c in confidence[\"conf\"] if c != \"-1\"]) / len([c for c in confidence[\"conf\"] if c != \"-1\"]) if confidence[\"conf\"] else 0
+
+        return jsonify({
+            \"text\": text,
+            \"confidence\": avg_confidence,
+            \"language\": language
+        }), 200
+    except Exception as e:
+        return jsonify({\"error\": str(e)}), 500
+
+if __name__ == \"__main__\":
+    app.run(host=\"0.0.0.0\", port=8080)
+        ' &&
+        python3 server.py
+      "
+
+networks:
+  n8n-network:
+    name: n8n-network
+    driver: bridge
+
+volumes:
+  gutenberg-tessdata:
+    name: gutenberg-tessdata

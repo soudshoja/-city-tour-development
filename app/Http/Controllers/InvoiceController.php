@@ -568,7 +568,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $isLocked = $invoice->is_locked && !$user->hasPermission('manage locks');
+        $isLocked = $invoice->is_locked && !Gate::allows('manage locks');
 
         return view('invoice.edit', compact(
             'isLocked',

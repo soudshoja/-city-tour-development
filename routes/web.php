@@ -838,6 +838,7 @@ Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhoo
 Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');
+Route::get('/docs/n8n', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'hub'])->name('docs.n8n-hub');
 Route::get('/docs/n8n-processing', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'index'])->name('docs.n8n-processing');
 Route::get('/docs/n8n-complete', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'complete'])->name('docs.n8n-complete');
 Route::get('/docs/n8n-changelog', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'changelog'])->name('docs.n8n-changelog');

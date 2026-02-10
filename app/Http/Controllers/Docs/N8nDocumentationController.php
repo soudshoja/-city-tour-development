@@ -36,4 +36,14 @@ class N8nDocumentationController extends Controller
     {
         return view('docs.n8n-changelog');
     }
+
+    /**
+     * Display the N8n documentation hub (main index).
+     *
+     * @return \Illuminate\View\View
+     */
+    public function hub(): View
+    {
+        return view('docs.n8n-hub');
+    }
 }

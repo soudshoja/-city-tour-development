@@ -26,4 +26,14 @@ class N8nDocumentationController extends Controller
     {
         return view('docs.n8n-complete-documentation');
     }
+
+    /**
+     * Display the N8n integration changelog.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function changelog(): View
+    {
+        return view('docs.n8n-changelog');
+    }
 }

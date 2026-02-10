@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('document_errors')) {
+            return;
+        }
+
         Schema::create('document_errors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('document_processing_log_id')
@@ -24,7 +28,7 @@ return new class extends Migration
                 'system'
             ])->comment('Error category for retry strategy');
 
-            $table->string('error_code', 50)->index()->comment('ERR_* code from registry');
+            $table->string('error_code', 50)->comment('ERR_* code from registry');
             $table->text('error_message');
             $table->text('stack_trace')->nullable();
             $table->json('input_context')->nullable()->comment('Request data at time of error');

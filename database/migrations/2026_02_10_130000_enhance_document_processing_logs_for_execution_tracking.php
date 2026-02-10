@@ -13,25 +13,61 @@ return new class extends Migration
     {
         Schema::table('document_processing_logs', function (Blueprint $table) {
             // ERR-01: N8n Execution Logging
-            $table->timestamp('started_at')->nullable()->after('status');
-            $table->timestamp('completed_at')->nullable()->after('started_at');
-            $table->unsignedInteger('duration_ms')->nullable()->after('completed_at');
-            $table->json('input_payload')->nullable()->after('duration_ms')->comment('Request payload sent to N8n');
-            $table->json('output_data')->nullable()->after('input_payload')->comment('Full response from N8n');
+            if (!Schema::hasColumn('document_processing_logs', 'started_at')) {
+                $table->timestamp('started_at')->nullable()->after('status');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'completed_at')) {
+                $table->timestamp('completed_at')->nullable()->after('started_at');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'duration_ms')) {
+                $table->unsignedInteger('duration_ms')->nullable()->after('completed_at');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'input_payload')) {
+                $table->json('input_payload')->nullable()->after('duration_ms')->comment('Request payload sent to N8n');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'output_data')) {
+                $table->json('output_data')->nullable()->after('input_payload')->comment('Full response from N8n');
+            }
 
             // ERR-03: Failed Document Marking
-            $table->boolean('needs_review')->default(false)->after('status');
-            $table->timestamp('reviewed_at')->nullable()->after('needs_review');
-            $table->unsignedBigInteger('reviewed_by')->nullable()->after('reviewed_at');
-            $table->text('review_notes')->nullable()->after('reviewed_by');
+            if (!Schema::hasColumn('document_processing_logs', 'needs_review')) {
+                $table->boolean('needs_review')->default(false)->after('status');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'reviewed_at')) {
+                $table->timestamp('reviewed_at')->nullable()->after('needs_review');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'reviewed_by')) {
+                $table->unsignedBigInteger('reviewed_by')->nullable()->after('reviewed_at');
+            }
+            if (!Schema::hasColumn('document_processing_logs', 'review_notes')) {
+                $table->text('review_notes')->nullable()->after('reviewed_by');
+            }
 
-            // Add foreign key for reviewer
-            $table->foreign('reviewed_by')->references('id')->on('users')->onDelete('set null');
+            // Add foreign key for reviewer - only if column exists and FK doesn't
+            if (Schema::hasColumn('document_processing_logs', 'reviewed_by')) {
+                try {
+                    $table->foreign('reviewed_by')->references('id')->on('users')->onDelete('set null');
+                } catch (\Exception $e) {
+                    // Foreign key might already exist, continue
+                }
+            }
 
-            // Add indexes for filtering and performance
-            $table->index('needs_review');
-            $table->index('started_at');
-            $table->index('completed_at');
+            // Add indexes for filtering and performance - wrapped in try-catch
+            try {
+                $table->index('needs_review');
+            } catch (\Exception $e) {
+                // Index might already exist
+            }
+            try {
+                $table->index('started_at');
+            } catch (\Exception $e) {
+                // Index might already exist
+            }
+            try {
+                $table->index('completed_at');
+            } catch (\Exception $e) {
+                // Index might already exist
+            }
         });
     }
 

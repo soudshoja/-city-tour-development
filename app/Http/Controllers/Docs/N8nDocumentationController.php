@@ -16,4 +16,14 @@ class N8nDocumentationController extends Controller
     {
         return view('docs.n8n-processing');
     }
+
+    /**
+     * Display the complete N8n documentation (all phases).
+     *
+     * @return \Illuminate\View\View
+     */
+    public function complete(): View
+    {
+        return view('docs.n8n-complete-documentation');
+    }
 }

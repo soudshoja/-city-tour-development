@@ -1,0 +1,40 @@
+{
+    "email_type": "supplier_notification",
+    "from": "noreply@gulfair.com",
+    "to": "accounts@citytravelers.com",
+    "subject": "Monthly Settlement Report - February 2025",
+    "date": "2025-02-28T15:45:00Z",
+    "body": "Dear Partner,\n\nPlease find attached the monthly settlement report for February 2025.\n\nSupplier: Gulf Air (GF)\nSettlement Period: Feb 1 - Feb 28, 2025\nTotal Bookings: 156\nTotal Amount: KWD 45,850.00\nCommissions Earned: KWD 4,585.00\nPayment Due: March 15, 2025\n\nBreakdown:\n- Business Class: 45 pax, KWD 28,500.00\n- Economy Class: 111 pax, KWD 17,350.00\n\nRefer to attached Excel file for detailed transaction list.\n\nPlease confirm receipt.\n\nRegards,\nSettlements Team\nGulf Air",
+    "attachments": [
+        {
+            "filename": "GF_Settlement_Feb2025.xlsx",
+            "mime_type": "application/vnd.ms-excel",
+            "size_bytes": 156320
+        }
+    ],
+    "extracted_data": {
+        "supplier_name": "Gulf Air",
+        "supplier_code": "GF",
+        "settlement_period_start": "2025-02-01",
+        "settlement_period_end": "2025-02-28",
+        "total_bookings": 156,
+        "total_amount": 45850.00,
+        "commissions": 4585.00,
+        "currency": "KWD",
+        "payment_due_date": "2025-03-15",
+        "breakdown": [
+            {
+                "cabin_class": "Business",
+                "passenger_count": 45,
+                "amount": 28500.00
+            },
+            {
+                "cabin_class": "Economy",
+                "passenger_count": 111,
+                "amount": 17350.00
+            }
+        ]
+    },
+    "confidence_score": 0.94,
+    "processing_time_ms": 1780
+}

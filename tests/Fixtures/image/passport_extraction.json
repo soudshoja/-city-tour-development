@@ -1,0 +1,24 @@
+{
+    "document_type": "passport",
+    "extraction_status": "success",
+    "extracted_data": {
+        "document_type_code": "P",
+        "country_code": "AE",
+        "passport_number": "A12345678",
+        "last_name": "AL MANSOURI",
+        "first_name": "AHMED",
+        "nationality": "AE",
+        "date_of_birth": "1985-06-15",
+        "gender": "M",
+        "place_of_birth": "Dubai",
+        "issue_date": "2020-01-20",
+        "expiry_date": "2030-01-19",
+        "issuing_authority": "General Directorate of Residency and Foreigners Affairs",
+        "mrz_line_1": "P<AEAL MANSOURI<<AHMED<<<<<<<<<<<<<<<<<<<<<<<<<",
+        "mrz_line_2": "A123456789AE8506152M3001197<<<<<<<<<<<<<<<<<<<",
+        "validation_status": "valid",
+        "is_expired": false
+    },
+    "confidence_score": 0.99,
+    "processing_time_ms": 890
+}

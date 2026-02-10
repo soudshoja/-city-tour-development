@@ -1,0 +1,43 @@
+{
+    "document_type": "flight_booking",
+    "extraction_status": "success",
+    "extracted_data": {
+        "booking_reference": "ABC123XYZ",
+        "passenger_name": "John Doe",
+        "email": "john.doe@example.com",
+        "phone": "+1-800-555-0123",
+        "booking_date": "2025-02-10",
+        "status": "confirmed",
+        "flights": [
+            {
+                "airline": "AA",
+                "flight_number": "AA100",
+                "departure_airport": "JFK",
+                "arrival_airport": "LAX",
+                "departure_time": "2025-03-15 14:30:00",
+                "arrival_time": "2025-03-15 17:45:00",
+                "seat": "12A",
+                "class": "economy"
+            },
+            {
+                "airline": "AA",
+                "flight_number": "AA250",
+                "departure_airport": "LAX",
+                "arrival_airport": "JFK",
+                "departure_time": "2025-03-22 10:15:00",
+                "arrival_time": "2025-03-23 06:30:00",
+                "seat": "12A",
+                "class": "economy"
+            }
+        ],
+        "total_price": 1250.00,
+        "currency": "USD",
+        "price_breakdown": {
+            "base_fare": 850.00,
+            "taxes_and_fees": 400.00
+        },
+        "payment_status": "paid"
+    },
+    "confidence_score": 0.98,
+    "processing_time_ms": 2450
+}

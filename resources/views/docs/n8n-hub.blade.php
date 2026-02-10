@@ -321,6 +321,32 @@
                     </div>
                 </a>
 
+                <!-- Card 9: User Guide -->
+                <a href="/docs/n8n-user-guide" class="doc-card block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:border-emerald-500 dark:hover:border-emerald-500">
+                    <div class="h-1 bg-emerald-500"></div>
+                    <div class="p-6">
+                        <div class="flex items-start space-x-4 mb-4">
+                            <div class="card-icon flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex-shrink-0">
+                                <i class="fas fa-book-open text-xl text-emerald-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">User Guide</h3>
+                                <div class="flex gap-1.5 mt-1">
+                                    <span class="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-medium">Admin</span>
+                                    <span class="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">Developer</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 leading-relaxed">
+                            Complete step-by-step guide with Mermaid diagrams for admins and developers - setup, workflows, errors, and troubleshooting.
+                        </p>
+                        <div class="flex items-center text-primary-600 dark:text-primary-400 text-sm font-medium">
+                            <span>View Guide</span>
+                            <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                        </div>
+                    </div>
+                </a>
+
             </div>
         </section>
 

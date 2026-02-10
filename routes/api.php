@@ -18,6 +18,8 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\APIController;
 use App\Services\MagicHolidayService;
 use App\Http\Webhooks\TaskWebhook;
+use App\Http\Controllers\Api\DocumentProcessingController;
+use App\Http\Controllers\Api\Webhooks\N8nCallbackController;
 
 Route::post('/login2', [MobileController::class, 'login2']);
 Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -151,6 +153,14 @@ Route::group([
 Route::post('/find-agent', [TaskController::class, 'findAgent']);
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
 Route::post('/task/webhook', [TaskWebhook::class, 'webhook'])->name('task.webhook');
+
+// Document Processing API (Phase 2 Wave 1)
+Route::post('/documents/process', [DocumentProcessingController::class, 'store'])
+    ->name('api.documents.process');
+
+// N8n Webhook Callback
+Route::post('/webhooks/n8n/extraction', [N8nCallbackController::class, 'handle'])
+    ->name('api.webhooks.n8n.callback');
 
 // Payment API routes for lazy-loaded content
 Route::middleware('auth:sanctum')->group(function () {

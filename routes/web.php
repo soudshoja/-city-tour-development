@@ -838,6 +838,7 @@ Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhoo
 Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');
+Route::get('/docs/n8n-processing', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'index'])->name('docs.n8n-processing');
 Route::get('/docs/postman/download', function () {
     $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
     if (!file_exists($filePath)) {
@@ -894,4 +895,32 @@ Route::group([
 });
 
 Route::get('/hesabe/get-payment/{token}', [PaymentController::class, 'getHesabePayment'])->name('hesabe.get-payment');
+
+// Manual Intervention Dashboard (Phase 2 Wave 3 + Phase 4 Group B)
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    // Manual Intervention
+    Route::get('/manual-intervention', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'index'])
+        ->name('manual-intervention.index');
+    Route::get('/manual-intervention/{log}', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'show'])
+        ->name('manual-intervention.show');
+    Route::get('/manual-intervention/{log}/timeline', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'timeline'])
+        ->name('manual-intervention.timeline');
+    Route::post('/manual-intervention/{log}/retry', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'retry'])
+        ->name('manual-intervention.retry');
+    Route::post('/manual-intervention/{log}/resolve', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'resolve'])
+        ->name('manual-intervention.resolve');
+    Route::post('/manual-intervention/{log}/escalate', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'escalate'])
+        ->name('manual-intervention.escalate');
+    Route::post('/manual-intervention/bulk-retry', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'bulkRetry'])
+        ->name('manual-intervention.bulk-retry');
+    Route::get('/manual-intervention-export/csv', [\App\Http\Controllers\Admin\ManualInterventionController::class, 'exportCsv'])
+        ->name('manual-intervention.export-csv');
+
+    // Error Dashboard (ERR-05)
+    Route::get('/error-dashboard', [\App\Http\Controllers\Admin\ErrorDashboardController::class, 'index'])
+        ->name('error-dashboard.index');
+    Route::get('/error-dashboard/metrics', [\App\Http\Controllers\Admin\ErrorDashboardController::class, 'metrics'])
+        ->name('error-dashboard.metrics');
+});
+
 require __DIR__ . '/auth.php';

@@ -1,0 +1,24 @@
+{
+  "name": "AIR File Fallback Pipeline",
+  "description": "Defers AIR file processing to Laravel AirFileParser (Phase 2 limitation)",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// AIR processing deferred to Laravel AirFileParser\n// N8n sends callback immediately with \"pending_air_processing\" status\n// Laravel will trigger AirFileParser skill when it receives this status\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  results.push({\n    json: {\n      document_id: item.json.document_id,\n      document_type: 'air',\n      extraction_status: 'deferred',\n      extraction_method: 'laravel-airfileparser-fallback',\n      message: 'AIR file processing deferred to Laravel AirFileParser (N8n Phase 2 limitation)',\n      file_path: item.json.file_path,\n      company_id: item.json.company_id,\n      supplier_id: item.json.supplier_id,\n      callback_url: item.json.callback_url,\n      processing_timestamp: new Date().toISOString(),\n      deferred_reason: 'AIR format requires Laravel AirFileParser skill - not available in N8n Phase 2'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "AIR Fallback Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 200]
+    }
+  ],
+  "connections": {},
+  "meta": {
+    "description": "AIR file processing fallback. Returns deferred status to Laravel, which then triggers AirFileParser skill.",
+    "requirements": {
+      "laravel_skill": "AirFileParser skill must be available in Laravel",
+      "callback_handler": "Laravel callback handler must recognize extraction_status='deferred'"
+    },
+    "phase3_upgrade": "Phase 3 will implement native AIR parsing in N8n using AirFileParser logic"
+  }
+}

@@ -99,8 +99,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/lock-by-period', [LockManagementController::class, 'lockByPeriod'])->name('lock-by-period');
         Route::post('/lock-by-month', [LockManagementController::class, 'lockByMonth'])->name('lock-by-month');
         Route::post('/unlock-by-month', [LockManagementController::class, 'unlockByMonth'])->name('unlock-by-month');
-        Route::post('/bulk-lock', [LockManagementController::class, 'bulkLock'])->name('bulk-lock');
-        Route::post('/bulk-unlock', [LockManagementController::class, 'bulkUnlock'])->name('bulk-unlock');
     });
 
     // Admin users

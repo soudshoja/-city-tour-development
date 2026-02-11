@@ -323,7 +323,7 @@
                     </div>
 
                     <div class="md:col-span-2 xl:col-span-2 flex items-center justify-start xl:justify-center gap-1 flex-wrap">
-                        @can('manage locks')
+                        @can('manageLocks', 'App\Models\User')
                             @if($invoice->is_locked)
                                 <form action="{{ route('invoice.unlock', $invoice->id) }}" method="POST" class="inline-block">
                                     @csrf

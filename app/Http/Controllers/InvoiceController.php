@@ -104,8 +104,6 @@ class InvoiceController extends Controller
             'invoiceDetails.task.supplier',
             'client',
             'lockedByUser',
-            'client',
-            'lockedByUser',
         ])->whereIn('agent_id', $agentIds)
             ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
 
@@ -568,7 +566,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $isLocked = $invoice->is_locked && !Gate::allows('manage locks');
+        $isLocked = $invoice->is_locked && !Gate::allows('manageLocks', User::class);
 
         return view('invoice.edit', compact(
             'isLocked',
@@ -5354,7 +5352,7 @@ class InvoiceController extends Controller
     public function lockInvoice(Invoice $invoice)
     {
         $user = auth()->user();
-        Gate::authorize('manage locks');
+        Gate::authorize('manageLocks', User::class);
 
         if ($invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is already locked.');
@@ -5374,7 +5372,7 @@ class InvoiceController extends Controller
     public function unlockInvoice(Invoice $invoice)
     {
         $user = auth()->user();
-        Gate::authorize('manage locks');
+        Gate::authorize('manageLocks', User::class);
 
         if (!$invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is not locked.');

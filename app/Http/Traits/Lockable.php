@@ -2,9 +2,9 @@
 
 namespace App\Http\Traits;
 
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Lockable Trait — adds lock/unlock with automatic cascade.
@@ -48,7 +48,7 @@ trait Lockable
 
     /**
      * Check if current user can modify this record.
-     * Returns true if: not locked, OR user is Admin/Accountant.
+     * Returns true if: not locked
      */
     public function canModify(): bool
     {
@@ -58,10 +58,7 @@ trait Lockable
 
         $user = auth()->user();
 
-        return $user && (
-            in_array($user->role_id, [Role::ADMIN, Role::ACCOUNTANT])
-            || (method_exists($user, 'hasPermission') && $user->hasPermission('manage locks'))
-        );
+        return $user && Gate::authorize('manageLocks', User::class);
     }
 
     // ─── Lock / Unlock (single record + cascade) ────────────

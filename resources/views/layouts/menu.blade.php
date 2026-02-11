@@ -77,7 +77,7 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
             </menuitem>
             @endcan
-            @can('manage locks', 'App\Models\User')
+            @can('manageLocks', 'App\Models\User')
             <menuitem><a href="{{ route('lock-management.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Lock Management</a>
             </menuitem>

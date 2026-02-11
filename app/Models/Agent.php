@@ -25,6 +25,8 @@ class Agent extends Model
         'commission',
         'salary',
         'target',
+        'profit_account_id',
+        'loss_account_id',
     ];
 
     public function branch()
@@ -69,6 +71,16 @@ class Agent extends Model
     public function refundClients()
     {
         return $this->hasMany(RefundClient::class);
+    }
+
+    public function profitAccount()
+    {
+        return $this->belongsTo(Account::class, 'profit_account_id');
+    }
+
+    public function lossAccount()
+    {
+        return $this->belongsTo(Account::class, 'loss_account_id');
     }
 
     /**

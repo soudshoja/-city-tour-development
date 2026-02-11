@@ -8,6 +8,7 @@ use App\Http\Traits\NotificationTrait;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentCharge;
+use App\Models\AgentLoss;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Branch;
@@ -551,8 +552,8 @@ class InvoiceController extends Controller
         $refundNumber = $request->query('refund_number');
         if ($refundNumber) {
             $refund = Refund::with('refundDetails')
-            ->where('refund_number', $refundNumber)
-            ->first();
+                ->where('refund_number', $refundNumber)
+                ->first();
 
             if ($refund) {
                 $refundDetailsMap = $refund->refundDetails->keyBy('task_id');
@@ -560,7 +561,7 @@ class InvoiceController extends Controller
                 $selectedTasks = $selectedTasks->map(function ($task) use ($refundDetailsMap) {
                     if ($refundDetailsMap->has($task->id)) {
                         $task->total = $refundDetailsMap[$task->id]->original_task_cost;
-                    } 
+                    }
 
                     return $task;
                 });
@@ -900,7 +901,7 @@ class InvoiceController extends Controller
     public function savePartial(Request $request): JsonResponse
     {
         Log::info('Starting to save payment of the invoice', $request->all());
-        
+
         $request->validate([
             'invoiceId' => 'required',
             'date' => 'nullable',
@@ -1467,8 +1468,6 @@ class InvoiceController extends Controller
                 ->first();
 
             if (!$detailsAccount) {
-                Log::info("Booking revenue account '{$bookingAccountName}' not found. Creating it now...");
-
                 $directIncomeParent = Account::where('name', 'like', '%Direct Income%')
                     ->where('company_id', $task->company_id)
                     ->first();
@@ -1498,8 +1497,6 @@ class InvoiceController extends Controller
                     'variance' => 0.00,
                     'currency' => $task->currency ?? 'KWD',
                 ]);
-
-                Log::info("Auto-created new booking revenue account '{$bookingAccountName}' ({$detailsAccount->code}) for company {$task->company_id}");
             }
 
             JournalEntry::create([
@@ -1530,10 +1527,9 @@ class InvoiceController extends Controller
             ]);
         }
 
-        // ENTRY 3 & 4: Profit (ALL types) + Commission (types 2, 3, 4 only)
+        // ENTRY 3 & 4: Profit/Loss + Commission
         try {
             $agent = $task->agent;
-
             if (!$agent) {
                 Log::error('Agent not found for task', ['task_id' => $task->id]);
                 return response()->json([
@@ -1543,8 +1539,6 @@ class InvoiceController extends Controller
             }
 
             $companyId = $task->company_id ?? $agent->branch?->company_id;
-
-            // ── Profit calculation for ALL agent types ──
             $selling = (float) ($task->invoiceDetail->task_price ?? 0);
             $supplier = (float) ($task->total ?? 0);
             $markup = $selling - $supplier;
@@ -1553,67 +1547,169 @@ class InvoiceController extends Controller
             $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $companyId);
             $taskCount = $invoice->invoiceDetails->count();
             $gatewayChargePerTask = $taskCount > 0 ? round($totalAccountingFee / $taskCount, 3) : 0;
-            // $supplierSurcharge = $this->getSupplierSurchargeForTask($task, $companyId);
-            $totalExtraCharge = $gatewayChargePerTask; // + $supplierSurcharge;
-            $agentChargeDeduction = $settings->calculateAgentChargeDeduction($totalExtraCharge);
+            $agentChargeDeduction = $settings->calculateAgentChargeDeduction($gatewayChargePerTask);
+
+            $lossAmount = 0;
+            $agentLoss = 0;
+            $companyLoss = 0;
+            $commission = 0;
+            $profit = 0;
 
             $profit = round($markup - $agentChargeDeduction, 3);
 
-            // ── Commission ONLY for types 2, 3, 4 ──
-            $commission = 0;
-            if (in_array($agent->type_id, [2, 3, 4])) {
+            // Commission only if profit > 0 and agent type is 2,3,4
+            if (in_array($agent->type_id, [2, 3, 4]) && $profit > 0) {
                 $rate = (float) ($agent->commission ?? 0.15);
                 $commission = round($profit * $rate, 3);
+            } else {
+                $commission = 0;
             }
 
-            // ── Save profit + commission for ALL agent types ──
-            $invoiceDetail = InvoiceDetail::find($task->invoiceDetail->id ?? null);
-            if ($invoiceDetail) {
-                $invoiceDetail->profit = $profit;
-                $invoiceDetail->commission = $commission;
-                $invoiceDetail->save();
+            // Agent Loss Entry
+            if ($markup < 0) {
+                $lossAmount = abs($markup);
+                $lossSettings = AgentLoss::getForAgent($agent->id, $companyId);
+                $distribution = $lossSettings->calculateLossDistribution($lossAmount);
+
+                $agentLoss = $distribution['agent_loss'];
+                $companyLoss = $distribution['company_loss'];
+                $profit = -$lossAmount;
+
+                if ($agentLoss > 0 && $agent->loss_account_id) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $agent->branch_id ?? null,
+                        'company_id' => $companyId,
+                        'account_id' => $agent->loss_account_id,
+                        'task_id' => $task->id ?? null,
+                        'agent_id' => $agent->id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => $invoice->invoice_date,
+                        'description' => 'Agent Loss: ' . $agent->name,
+                        'debit' => $agentLoss,
+                        'credit' => 0,
+                        'balance' => 0,
+                        'name' => optional(Account::find($agent->loss_account_id))->name ?? 'Agent Loss',
+                        'type' => 'receivable',
+                        'currency' => $task->currency ?? 'KWD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $agentLoss,
+                    ]);
+                }
+
+                // ── Journal Entry: DR Company Loss Account (if company bears any loss) ──
+                if ($companyLoss > 0) {
+                    $companyLossAccount = Account::where('name', 'Company Loss on Sales')
+                        ->where('company_id', $companyId)
+                        ->first();
+
+                    if ($companyLossAccount) {
+                        JournalEntry::create([
+                            'transaction_id' => $transactionId,
+                            'branch_id' => $agent->branch_id ?? null,
+                            'company_id' => $companyId,
+                            'account_id' => $companyLossAccount->id,
+                            'task_id' => $task->id ?? null,
+                            'agent_id' => $agent->id,
+                            'invoice_id' => $invoiceId,
+                            'invoice_detail_id' => $invoiceDetailId,
+                            'transaction_date' => $invoice->invoice_date,
+                            'description' => 'Company Loss on Sales | Task: ' . ($task->reference ?? ''),
+                            'debit' => $companyLoss,
+                            'credit' => 0,
+                            'balance' => 0,
+                            'name' => $companyLossAccount->name,
+                            'type' => 'expense',
+                            'currency' => $task->currency ?? 'KWD',
+                            'exchange_rate' => $task->exchange_rate ?? 1.00,
+                            'amount' => $companyLoss,
+                        ]);
+                    } else {
+                        Log::warning('Company Loss on Sales account not found', [
+                            'company_id' => $companyId,
+                            'company_loss' => $companyLoss,
+                        ]);
+                    }
+                }
+
+                // ── Journal Entry: CR Loss Provision (full loss amount) ──
+                $provisionAccount = Account::where('company_id', $companyId)
+                    ->where('name', 'like', '%Loss Provision%')
+                    ->where('is_group', 0)
+                    ->first();
+
+                if ($provisionAccount) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $agent->branch_id ?? null,
+                        'company_id' => $companyId,
+                        'account_id' => $provisionAccount->id,
+                        'task_id' => $task->id ?? null,
+                        'agent_id' => $agent->id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => $invoice->invoice_date,
+                        'description' => 'Loss Provision | Task: ' . ($task->reference ?? ''),
+                        'debit' => 0,
+                        'credit' => $lossAmount,
+                        'balance' => 0,
+                        'name' => $provisionAccount->name,
+                        'type' => 'payable',
+                        'currency' => $task->currency ?? 'KWD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $lossAmount,
+                    ]);
+                }
             }
 
-            Log::info('Profit & commission calculated', [
-                'agent_id' => $agent->id,
-                'agent_type' => $agent->type_id,
-                'markup' => $markup,
-                'gateway_charge' => $gatewayChargePerTask,
-                // 'supplier_surcharge' => $supplierSurcharge,
-                'charge_bearer' => $settings->charge_bearer,
-                'agent_deduction' => $agentChargeDeduction,
-                'profit' => $profit,
-                'commission_rate' => $agent->commission ?? 0.15,
-                'commission' => $commission,
-            ]);
+            // Agent Profit Entry
+            if ($agent->profit_account_id && $profit != 0) {
+                $absProfit = abs($profit);
 
-            // ── COA entries only when commission != 0 ──
-            if ($commission != 0) {
+                JournalEntry::create([
+                    'transaction_id' => $transactionId,
+                    'branch_id' => $agent->branch_id ?? null,
+                    'company_id' => $companyId,
+                    'account_id' => $agent->profit_account_id,
+                    'task_id' => $task->id ?? null,
+                    'agent_id' => $agent->id,
+                    'invoice_id' => $invoiceId,
+                    'invoice_detail_id' => $invoiceDetailId,
+                    'transaction_date' => $invoice->invoice_date,
+                    'description' => 'Profit for Agent: ' . $agent->name,
+                    'debit'  => $profit < 0 ? $absProfit : 0,
+                    'credit' => $profit > 0 ? $absProfit : 0,
+                    'balance' => 0,
+                    'name' => optional(Account::find($agent->profit_account_id))->name ?? 'Agent Profit',
+                    'type' => 'receivable',
+                    'currency' => $task->currency ?? 'KWD',
+                    'exchange_rate' => $task->exchange_rate ?? 1.00,
+                    'amount' => $profit,
+                ]);
+            }
+
+            // Agent Commission Entries
+            if ($commission > 0) {
                 $commissionExpenseAccount = Account::where('name', 'like', 'Commissions Expense (Agents)%')
                     ->where('company_id', $companyId)
                     ->first();
 
-                $commissionLiabilityAccount = Account::where('name', 'like', 'Commissions (Agents)%')
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                $absCommission = abs($commission);
-
                 if ($commissionExpenseAccount) {
                     JournalEntry::create([
                         'transaction_id' => $transactionId,
-                        'branch_id' => $task->agent->branch_id ?? null,
+                        'branch_id' => $agent->branch_id ?? null,
                         'company_id' => $companyId,
                         'account_id' => $commissionExpenseAccount->id,
                         'task_id' => $task->id ?? null,
-                        'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                        'agent_id' => $agent->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
                         'transaction_date' => $invoice->invoice_date,
-                        'description' => 'Agents Commissions for (Expenses): ' . $agent->name,
-                        'debit'  => $commission > 0 ? $absCommission : 0,
-                        'credit' => $commission < 0 ? $absCommission : 0,
-                        'balance' => $commissionExpenseAccount->balance ?? 0,
+                        'description' => 'Agents Commissions (Expense): ' . $agent->name,
+                        'debit' => $commission,
+                        'credit' => 0,
+                        'balance' => 0,
                         'name' => $commissionExpenseAccount->name,
                         'type' => 'receivable',
                         'currency' => $task->currency ?? 'KWD',
@@ -1622,20 +1718,25 @@ class InvoiceController extends Controller
                     ]);
                 }
 
+                $commissionLiabilityAccount = Account::where('name', 'like', 'Commissions (Agents)%')
+                    ->where('company_id', $companyId)
+                    ->where('account_type', 'liability')
+                    ->first();
+
                 if ($commissionLiabilityAccount) {
                     JournalEntry::create([
                         'transaction_id' => $transactionId,
-                        'branch_id' => $task->agent->branch_id ?? null,
+                        'branch_id' => $agent->branch_id ?? null,
                         'company_id' => $companyId,
                         'account_id' => $commissionLiabilityAccount->id,
                         'task_id' => $task->id ?? null,
-                        'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                        'agent_id' => $agent->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
                         'transaction_date' => $invoice->invoice_date,
-                        'description' => 'Agents Commissions for (Liabilities): ' . $agent->name,
-                        'debit'  => $commission < 0 ? $absCommission : 0,
-                        'credit' => $commission > 0 ? $absCommission : 0,
+                        'description' => 'Agents Commissions (Liability): ' . $agent->name,
+                        'debit' => 0,
+                        'credit' => $commission,
                         'balance' => $commissionLiabilityAccount->balance ?? 0,
                         'name' => $commissionLiabilityAccount->name,
                         'type' => 'payable',
@@ -1645,6 +1746,24 @@ class InvoiceController extends Controller
                     ]);
                 }
             }
+
+            $invoiceDetail = InvoiceDetail::find($task->invoiceDetail->id ?? null);
+            if ($invoiceDetail) {
+                $invoiceDetail->profit = $profit;
+                $invoiceDetail->commission = $commission;
+                $invoiceDetail->save();
+            }
+
+            Log::info('Profit/Commission/Loss calculated', [
+                'agent_id' => $agent->id,
+                'agent_type' => $agent->type_id,
+                'markup' => $markup,
+                'profit' => $profit,
+                'commission' => $commission,
+                'loss_amount' => $lossAmount,
+                'agent_loss' => $agentLoss,
+                'company_loss' => $companyLoss,
+            ]);
         } catch (\Exception $e) {
             Log::error('Profit/Commission Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
             return response()->json([
@@ -1709,7 +1828,7 @@ class InvoiceController extends Controller
 
             $oldCommission = (float) $detail->commission;
             $commission = 0;
-            if (in_array($agent->type_id, [2, 3, 4])) {
+            if (in_array($agent->type_id, [2, 3, 4]) && $profit > 0) {
                 $rate = (float) ($agent->commission ?? 0.15);
                 $commission = round($profit * $rate, 3);
             }
@@ -2767,7 +2886,7 @@ class InvoiceController extends Controller
 
                 // Commission ONLY for types 2, 3, 4
                 $commission = 0;
-                if (in_array($agent->type_id, [2, 3, 4])) {
+                if (in_array($agent->type_id, [2, 3, 4]) && $profit > 0) {
                     $rate = (float) ($agent->commission ?? 0.15);
                     $commission = round($profit * $rate, 3);
                 }
@@ -3983,7 +4102,7 @@ class InvoiceController extends Controller
 
                         // Commission ONLY for types 2, 3, 4
                         $commission = 0;
-                        if (in_array($agent->type_id, [2, 3, 4])) {
+                        if (in_array($agent->type_id, [2, 3, 4]) && $profit > 0) {
                             $rate = (float) ($agent->commission ?? 0.15);
                             $commission = round($profit * $rate, 3);
                         }
@@ -4035,7 +4154,7 @@ class InvoiceController extends Controller
                         $newCredit = 0;
                         $invoiceChargeCommission = 0;
 
-                        if (in_array($agent->type_id, [2, 3, 4])) {
+                        if (in_array($agent->type_id, [2, 3, 4]) && $profit > 0) {
                             $invoiceChargeCommission = ($invoice->invoice_charge ?? 0) * ($agent->commission ?? 0.15);
                         }
 

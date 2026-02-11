@@ -1,4 +1,7 @@
 <x-app-layout>
+    @push('styles')
+        @vite(['resources/css/settings/main.css', 'resources/css/settings/agent-loss.css'])
+    @endpush
     <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
         <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Dashboard</a>
         <span class="text-gray-400">&gt;</span>
@@ -90,6 +93,16 @@
                         </svg>
                         Agent Charges
                     </button>
+
+                    <button
+                        @click="saveTab('agent-loss')" :class="activeTab === 'agent-loss' 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                        </svg>
+                        Agent Loss
+                    </button>
                 </nav>
             </div>
 
@@ -105,16 +118,17 @@
                 <div x-show="activeTab === 'terms'" x-cloak>
                     @include('settings.partial.terms_condition')
                 </div>
-
                 <div x-show="activeTab === 'charges'" x-cloak x-ref="chargesTab">
                     @include('settings.partial.charges')
                 </div>
-
                 <div x-show="activeTab === 'payment-methods'" x-cloak>
                     @include('settings.partial.payment_methods')
                 </div>
                 <div x-show="activeTab === 'agent-charges'" x-cloak>
                     @include('settings.partial.agent_charges')
+                </div>
+                <div x-show="activeTab === 'agent-loss'" x-cloak>
+                    @include('settings.partial.agent_loss')
                 </div>
             </div>
         </div>
@@ -140,6 +154,10 @@
             } else if ("{{ $activeTab }}" === 'agent-charges') {
                 window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('agent-charges-tab-loaded'));
+                });
+            } else if ("{{ $activeTab }}" === 'agent-loss') {
+                window.Alpine && Alpine.nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('agent-loss-tab-loaded'));
                 });
             }
         });
@@ -180,6 +198,8 @@
                         window.dispatchEvent(new CustomEvent('payment-methods-tab-loaded'));
                     } else if (tab === 'agent-charges') {
                         window.dispatchEvent(new CustomEvent('agent-charges-tab-loaded'));
+                    } else if (tab === 'agent-loss') {
+                        window.dispatchEvent(new CustomEvent('agent-loss-tab-loaded'));
                     }
                 },
 

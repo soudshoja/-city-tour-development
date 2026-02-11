@@ -32,6 +32,7 @@ use App\Models\SupplierCompany;
 use App\Models\User;
 use App\Models\Credit;
 use App\Models\InvoiceReceipt;
+use App\Models\PaymentApplication;
 use App\Models\Setting;
 use App\Models\Refund;
 use App\Services\ChargeService;
@@ -3035,7 +3036,26 @@ class InvoiceController extends Controller
 
         if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
+        DB::beginTransaction();
         try {
+            $creditPartials = InvoicePartial::where('invoice_id', $invoice->id)
+                ->where('payment_gateway', 'Credit')
+                ->get();
+
+            if ($creditPartials->isNotEmpty()) {
+                PaymentApplication::where('invoice_id', $invoice->id)->delete();
+
+                Credit::where('invoice_id', $invoice->id)
+                    ->where('type', Credit::INVOICE)
+                    ->delete();
+
+                Log::info('Soft-deleted PaymentApplications and Credits for invoice', [
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'credit_partials_count' => $creditPartials->count(),
+                ]);
+            }
+
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
             InvoicePartial::where('invoice_id', $invoice->id)->delete();
             JournalEntry::where('invoice_id', $invoice->id)->delete();
@@ -3043,8 +3063,11 @@ class InvoiceController extends Controller
 
             $invoice->delete();
 
+            DB::commit();
+
             return redirect()->route('invoices.index')->with('status', 'Invoice deleted successfully!');
         } catch (Exception $error) {
+            DB::rollBack();
             logger('Failed to delete invoice: ' . $error->getMessage());
             return redirect()->back()->with('error', 'Failed to delete invoice!');
         }

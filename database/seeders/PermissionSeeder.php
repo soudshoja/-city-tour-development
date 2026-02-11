@@ -94,5 +94,6 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'update auto billing', 'group' => 'auto billing']);
         Permission::firstOrCreate(['name' => 'delete auto billing', 'group' => 'auto billing']);
         Permission::firstOrCreate(['name' => 'view payment gateways report', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'manage locks', 'group' => 'lock management']);
     }
 }

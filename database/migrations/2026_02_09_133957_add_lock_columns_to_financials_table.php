@@ -11,12 +11,10 @@ return new class extends Migration
         $tables = ['invoices', 'transactions', 'journal_entries'];
 
         foreach ($tables as $table) {
-            Schema::table($table, function (Blueprint $t) use ($table) {
-                if (!Schema::hasColumn($table, 'is_locked')) {
-                    $t->boolean('is_locked')->default(false)->index();
-                    $t->foreignId('locked_by')->nullable()->constrained('users')->nullOnDelete();
-                    $t->timestamp('locked_at')->nullable();
-                }
+            Schema::table($table, function (Blueprint $t) {
+                $t->boolean('is_locked')->default(false)->index();
+                $t->foreignId('locked_by')->nullable()->constrained('users')->nullOnDelete();
+                $t->timestamp('locked_at')->nullable();
             });
         }
     }

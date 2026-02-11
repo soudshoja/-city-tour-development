@@ -4,9 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Invoice;
-use App\Models\Payment;
-use App\Models\JournalEntry;
-use App\Models\Role;
 use App\Models\Company;
 use App\Models\Agent;
 use Illuminate\Http\Request;
@@ -74,7 +71,7 @@ class LockManagementController extends Controller
 
     public function index(Request $request)
     {
-        Gate::authorize('manage locks');
+        Gate::authorize('manageLocks', User::class);
         $user = Auth::user();
 
         $companyId = getCompanyId($user);
@@ -174,7 +171,7 @@ class LockManagementController extends Controller
      */
     public function lockByPeriod(Request $request)
     {
-        Gate::authorize('manage locks');
+        Gate::authorize('manageLocks', User::class);
         $user = Auth::user();
 
         $request->validate([
@@ -232,7 +229,7 @@ class LockManagementController extends Controller
      */
     public function lockByMonth(Request $request)
     {
-        Gate::authorize('manage locks');
+        Gate::authorize('manageLocks', User::class);
         $user = Auth::user();
 
         $request->validate([
@@ -277,7 +274,7 @@ class LockManagementController extends Controller
      */
     public function unlockByMonth(Request $request)
     {
-        Gate::authorize('manage locks');
+        Gate::authorize('manageLocks', User::class);
         $user = Auth::user();
 
         $request->validate([

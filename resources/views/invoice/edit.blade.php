@@ -205,7 +205,6 @@
                         </div>
                     </div>
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
-
                         <div class="flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Number:</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}" class="w-full form-input" placeholder="Invoice Number" />
@@ -237,18 +236,18 @@
                                 value={{ $dueDate }} disabled />
                         </div>
 
-                            @if($refund)
-                                 <div class="mt-4 flex items-center">
+                        @if($refund)
+                        <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Refund Number:</label>
                             <input type="text" class="w-full form-input" value="{{ $refund->refund_number }}" disabled />
                         </div>
-                                @if($refund->remarks)
-                                <div class="mt-4 flex items-center">
+                        @if($refund->remarks)
+                        <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Refund Remarks:</label>
                             <input type="text" class="w-full form-input" value="{{ $refund->remarks }}" disabled />
                         </div>
-                                @endif
-                            @endif
+                        @endif
+                        @endif
                     </div>
                 </div>
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
@@ -5253,19 +5252,20 @@
         }
     
         function lockInvoicePage() {
-            // 1. Disable ALL inputs, selects, textareas
+            // 1. Disable ALL inputs EXCEPT inside quick actions & share sections
             document.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.closest('#email-actions') || el.closest('#additional-actions')) return;
                 el.disabled = true;
                 el.style.cursor = 'not-allowed';
             });
 
-            // 3. Hide action buttons completely
+            // 2. Hide action buttons completely
             ['openTaskModalButton', 'update-invoice-btn', 'applyPaymentsBtn'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
 
-            // 4. Disable payment type radio buttons
+            // 3. Disable payment type radio buttons
             document.querySelectorAll('input[name="payment_type"]').forEach(radio => {
                 radio.disabled = true;
                 if (radio.parentElement) {
@@ -5274,11 +5274,11 @@
                 }
             });
 
-            // Block clicks on entire payment type grid (credit, full, partial, split, import)
+            // Block clicks on entire payment type grid
             const paymentGrid = document.querySelector('#paymentMethod .grid');
             if (paymentGrid) paymentGrid.style.pointerEvents = 'none';
 
-            // 5. Disable task price inputs & hide action cells
+            // 4. Disable task price inputs & hide action cells
             document.querySelectorAll('[id^="invprice-table-"]').forEach(input => {
                 input.disabled = true;
             });
@@ -5286,8 +5286,9 @@
                 cell.style.display = 'none';
             });
 
-            // 6. Block form submissions
+            // 5. Block form submissions
             document.querySelectorAll('form').forEach(form => {
+                if (form.closest('#email-actions') || form.closest('#additional-actions')) return;
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -5295,7 +5296,7 @@
                 });
             });
 
-            // 7. Override save functions
+            // 6. Override save functions
             const blockedFns = ['savePartial', 'save', 'updateInvoice', 'updateGateway', 'saveSingleTask', 'removeTaskFromInvoice', 'saveTaskPrice', 'applySelectedPayments'];
             blockedFns.forEach(fn => {
                 window[fn] = function() { return false; };

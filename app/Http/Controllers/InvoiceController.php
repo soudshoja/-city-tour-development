@@ -102,7 +102,8 @@ class InvoiceController extends Controller
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
-            'client'
+            'client',
+            'lockedByUser',
         ])->whereIn('agent_id', $agentIds)
             ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
 
@@ -565,7 +566,10 @@ class InvoiceController extends Controller
             }
         }
 
+        $isLocked = $invoice->is_locked && !Gate::allows('manageLocks', User::class);
+
         return view('invoice.edit', compact(
+            'isLocked',
             'clients',
             'invoice',
             'agents',
@@ -671,6 +675,8 @@ class InvoiceController extends Controller
                     return redirect()->back()->with('error', 'Invoice not found');
                 }
 
+                if ($blocked = $this->checkLocked($invoice)) return $blocked;
+
                 $invoicePartials = InvoicePartial::where('invoice_id', $request->invoice_id)->get();
 
                 if ($invoicePartials->isNotEmpty()) {
@@ -760,6 +766,10 @@ class InvoiceController extends Controller
             ], 404);
         }
 
+        $invoice = $invoicePartial->invoice;
+        if ($invoice && ($blocked = $this->checkLocked($invoice))) return $blocked;
+
+
         $charge = Charge::where('name', $request->gateway)->first();
         if (!$charge) {
             Log::warning('Charge not found');
@@ -831,6 +841,8 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::where('invoice_number', $validated['invoiceNumber'])->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
         $companyId = $invoice->agent->branch->company_id;
+
+        if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
         $gatewayFee = 0;
 
@@ -939,6 +951,8 @@ class InvoiceController extends Controller
                 'companyId'     => $companyId,
                 'invoice'       => $invoice ? $invoice->toArray() : null,
             ]);
+
+            if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
             $charge = Charge::where('name', $gateway)->first();
 
@@ -1237,6 +1251,8 @@ class InvoiceController extends Controller
                     'message' => 'Invoice partial not found!',
                 ]);
             }
+
+            if ($invoicePartial?->invoice && ($blocked = $this->checkLocked($invoicePartial->invoice))) return $blocked;
 
             // Delete the invoice partial
             $invoicePartial->delete();
@@ -2541,6 +2557,8 @@ class InvoiceController extends Controller
             return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
         }
 
+        if ($invoiceDetail?->invoice && ($blocked = $this->checkLocked($invoiceDetail->invoice))) return $blocked;
+
         $agent = $invoiceDetail->task->agent;
 
         $oldPrice = $invoiceDetail->task_price;
@@ -2643,6 +2661,8 @@ class InvoiceController extends Controller
                 ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
                 ->where('invoice_number', $invoiceNumber)
                 ->firstOrFail();
+
+            if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
             $transactionToReverse = $invoice->transactions()
                 ->where('description', 'LIKE', 'Invoice reversal for%')
@@ -2829,12 +2849,12 @@ class InvoiceController extends Controller
         $branchId = $agent ? $agent->branch_id : null;
 
         try {
-            // 🔹 Find the existing invoice
             $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
-
             if (!$invoice) {
                 return response()->json(['error' => 'Invoice not found.'], 404);
             }
+
+            if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
             // 🔹 Delete related records before updating
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
@@ -2952,6 +2972,8 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::findOrFail($request->invoice_id);
 
+        if ($blocked = $this->checkLocked($invoice)) return $blocked;
+
         if ($invoice->status === 'paid' || !empty($invoice->payment_type)) {
             return response()->json(['message' => 'Cannot add tasks to a paid or processing invoice.'], 403);
         }
@@ -2987,6 +3009,8 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::findOrFail($request->invoice_id);
 
+        if ($blocked = $this->checkLocked($invoice)) return $blocked;
+
         if ($invoice->status === 'paid' || !empty($invoice->payment_type)) {
             return response()->json(['message' => 'Cannot remove tasks from a paid or processing invoice.'], 403);
         }
@@ -3008,6 +3032,8 @@ class InvoiceController extends Controller
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
+
+        if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
         try {
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
@@ -3526,6 +3552,8 @@ class InvoiceController extends Controller
         $isPaid = $request->input('is_paid', true);
 
         $invoice = Invoice::find($request->invoice_id);
+
+        if ($blocked = $this->checkLocked($invoice)) return $blocked;
 
         $success = [];
         $error = [];
@@ -5298,5 +5326,66 @@ class InvoiceController extends Controller
             }),
             'total_paid' => $applications->sum('amount'),
         ]);
+    }
+
+    /**
+     * Check if invoice is locked and block modification
+     * Returns redirect response if locked, null if OK to proceed
+     */
+    private function checkLocked(Invoice $invoice, ?string $redirectBack = null)
+    {
+        if ($invoice->isLocked() && !$invoice->canModify()) {
+            $lockedBy = $invoice->lockedByUser?->name ?? 'Unknown';
+            $lockedAt = $invoice->locked_at?->format('d M Y H:i') ?? '';
+            $message = "This invoice is locked by {$lockedBy} on {$lockedAt}. Contact your accountant to unlock it.";
+            
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 403);
+            }
+            
+            return redirect()->back()->with('error', $message);
+        }
+        
+        return null;
+    }
+
+    public function lockInvoice(Invoice $invoice)
+    {
+        $user = auth()->user();
+        Gate::authorize('manageLocks', User::class);
+
+        if ($invoice->isLocked()) {
+            return redirect()->back()->with('error', 'Invoice is already locked.');
+        }
+
+        $invoice->lock();
+
+        Log::info('Invoice locked', [
+            'invoice_id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'locked_by' => $user->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Invoice ' . $invoice->invoice_number . ' has been locked.');
+    }
+
+    public function unlockInvoice(Invoice $invoice)
+    {
+        $user = auth()->user();
+        Gate::authorize('manageLocks', User::class);
+
+        if (!$invoice->isLocked()) {
+            return redirect()->back()->with('error', 'Invoice is not locked.');
+        }
+
+        $invoice->unlock();
+
+        Log::info('Invoice unlocked', [
+            'invoice_id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'unlocked_by' => $user->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Invoice ' . $invoice->invoice_number . ' has been unlocked.');
     }
 }

@@ -149,6 +149,16 @@
                             @else
                                 <span class="px-2 py-0.5 text-xs md:text-sm rounded-full bg-red-100 text-red-700 font-medium">{{ ucfirst($invoice->status) }}</span>
                             @endif
+
+                            @if($invoice->is_locked)
+                                <span data-tooltip="Locked by {{ $invoice->lockedByUser?->name ?? 'Unknown' }} on {{ $invoice->locked_at?->format('d M Y H:i') }}"
+                                    class="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-600 font-medium flex items-center gap-1 cursor-help">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C9.24 2 7 4.24 7 7v3H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3z"/>
+                                    </svg>
+                                    Locked
+                                </span>
+                            @endif
                         </div>
 
                         <div class="flex items-center gap-2 flex-wrap">
@@ -191,7 +201,7 @@
                             <div><span class="font-medium">Created:</span> {{ $invoice->created_at->format('d M Y H:i') }}</div>
                             <div>
                                 <span class="font-medium">Invoice Date:</span>
-                                @if ($invoice->status === 'paid')
+                                @if ($invoice->status === 'paid' && !$invoice->is_locked)
                                     <button type="button" class="text-blue-600 hover:underline"
                                         data-number="{{ $invoice->invoice_number }}"
                                         data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}"
@@ -214,13 +224,9 @@
                                 </svg>
                                 <span class="font-medium">Client</span>
                             </div>
-                            @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::AGENT]))
-                                <a href="{{ route('clients.show', $invoice->client->id) }}" class="text-sm md:text-base text-blue-600 hover:underline font-medium" target="_blank">
-                                    {{ $invoice->client->full_name }}
-                                </a>
-                            @else
-                                <span class="text-sm md:text-base font-medium text-gray-800">{{ $invoice->client->full_name }}</span>
-                            @endif
+                            <a href="{{ route('clients.show', $invoice->client->id) }}" class="text-sm md:text-base text-blue-600 hover:underline font-medium" target="_blank">
+                                {{ $invoice->client->full_name }}
+                            </a>
                         </div>
                         <div>
                             <div class="flex items-center gap-1 text-gray-500 mb-1 text-xs md:text-sm">
@@ -232,13 +238,9 @@
                                 </svg>
                                 <span class="font-medium">Agent</span>
                             </div>
-                            @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::AGENT]))
-                                <a href="{{ route('agents.show', $invoice->agent->id) }}" class="text-sm md:text-base text-blue-600 hover:underline font-medium" target="_blank">
-                                    {{ $invoice->agent->name }}
-                                </a>
-                            @else
-                                <span class="text-sm md:text-base font-medium text-gray-800">{{ $invoice->agent->name }}</span>
-                            @endif
+                            <a href="{{ route('agents.show', $invoice->agent->id) }}" class="text-sm md:text-base text-blue-600 hover:underline font-medium" target="_blank">
+                                {{ $invoice->agent->name }}
+                            </a>
                         </div>
                     </div>
 
@@ -300,7 +302,7 @@
                             
                             <div class="text-gray-500">Invoice Amount:</div>
                             <div class="font-medium text-gray-800">
-                                @if ($invoice->status === 'paid' && $invoice->payment_type === 'full' && !$invoice->refund)
+                                @if ($invoice->status === 'paid' && $invoice->payment_type === 'full' && !$invoice->refund && !$invoice->is_locked)
                                     <button type="button" class="text-blue-600 hover:underline"
                                         data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
                                         {{ number_format($invoice->amount, 3) }} {{ $invoice->currency }}
@@ -321,6 +323,33 @@
                     </div>
 
                     <div class="md:col-span-2 xl:col-span-2 flex items-center justify-start xl:justify-center gap-1 flex-wrap">
+                        @can('manageLocks', 'App\Models\User')
+                            @if($invoice->is_locked)
+                                <form action="{{ route('invoice.unlock', $invoice->id) }}" method="POST" class="inline-block">
+                                    @csrf
+                                    <button type="submit" data-tooltip="Unlock invoice"
+                                        class="p-2 rounded-lg bg-yellow-50 text-yellow-600 hover:bg-yellow-100 hover:shadow-sm transition-all"
+                                        onclick="return confirm('Are you sure you want to unlock this invoice?')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M7 10V7a5 5 0 0 1 9.33-2.5M5 10h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @else
+                                <form action="{{ route('invoice.lock', $invoice->id) }}" method="POST" class="inline-block">
+                                    @csrf
+                                    <button type="submit" data-tooltip="Lock invoice"
+                                        class="p-2 rounded-lg bg-gray-50 text-gray-400 hover:bg-gray-100 hover:shadow-sm transition-all"
+                                        onclick="return confirm('Lock this invoice? It will become read-only for users without lock management permission.')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @endif
+                        @endcan
+
                         <a data-tooltip="View invoice" target="_blank"
                             href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                             class="p-2 rounded-lg {{ $invoice->payment_type ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:shadow-sm' : 'bg-gray-50 text-gray-400 cursor-not-allowed' }} transition-all"
@@ -440,13 +469,15 @@
 
                         @if ($invoice->refund && $invoice->status !== 'paid')
                             <a data-tooltip="View/Edit refund"
-                                href="{{ route('invoice.edit', ['companyId' => $companyId, $invoice->invoice_number]) }}"
+                                href="{{ route('refunds.edit', [$invoice->refund->id]) }}"
                                 class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 hover:shadow-sm transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path d="M3 10h7m-7 4h4m6-4v8m4-8v8M7 4h10l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                                 </svg>
                             </a>
-                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true))
+                        @endif
+
+                        @if (in_array($invoice->status, ['unpaid', 'partial'], true))
                             <a data-tooltip="Edit invoice"
                                 href="{{ route('invoice.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                 class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm transition-all">
@@ -456,19 +487,17 @@
                             </a>
                         @endif
 
-                        @if(auth()->check())
-                            <button type="button" data-tooltip="Send email" 
-                                data-invoice-number="{{ $invoice->invoice_number }}"
-                                data-company-id="{{ $companyId }}" 
-                                data-agent-email="{{ $invoice->agent->email ?? '' }}"
-                                data-client-email="{{ $invoice->client->email ?? '' }}" 
-                                onclick="openQuickEmailModal(this)" 
-                                class="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:shadow-sm transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                </svg>
-                            </button>
-                        @endif
+                        <button type="button" data-tooltip="Send email" 
+                            data-invoice-number="{{ $invoice->invoice_number }}"
+                            data-company-id="{{ $companyId }}" 
+                            data-agent-email="{{ $invoice->agent->email ?? '' }}"
+                            data-client-email="{{ $invoice->client->email ?? '' }}" 
+                            onclick="openQuickEmailModal(this)" 
+                            class="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:shadow-sm transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                        </button>
 
                         @if (in_array(Auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::ACCOUNTANT, \App\Models\Role::COMPANY]))
                             <form action="{{ route('invoice.delete', $invoice->id) }}" method="POST" class="inline-block">

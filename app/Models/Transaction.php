@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Http\Traits\Lockable;
 
 class Transaction extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Lockable;
 
     protected $fillable = [
         'company_id',
@@ -28,10 +29,15 @@ class Transaction extends Model
         'remarks_internal',
         'remarks_fl',
         'transaction_date',
+        'is_locked',
+        'locked_by',
+        'locked_at',
     ];
 
     protected $casts = [
         'transaction_date' => 'datetime',
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     protected static function booted()

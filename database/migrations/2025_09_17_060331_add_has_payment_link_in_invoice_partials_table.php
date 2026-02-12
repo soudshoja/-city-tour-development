@@ -13,21 +13,6 @@ return new class extends Migration
             $table->boolean('has_payment_link')->default(false)->after('payment_id');
         });
 
-        $invoicePartials = InvoicePartial::all();
-
-        $paymengGatewayHasLink = [
-            'Tap',
-            'MyFatoorah',
-            'Hesabe'
-        ];
-
-        foreach ($invoicePartials as $invoicePartial) {
-            if (in_array($invoicePartial->payment_gateway, $paymengGatewayHasLink)) {
-                $invoicePartial->has_payment_link = true;
-                $invoicePartial->save();
-            }
-        }
-
     }
 
     public function down(): void

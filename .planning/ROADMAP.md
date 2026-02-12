@@ -29,10 +29,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. System identifies unknown clients and flags them for manual review without blocking upload
   4. Agent downloads error report as Excel file showing all validation failures
   5. Upload session is tracked with filename, date, agent, and stored file for audit
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 01-01: TBD during phase planning
+- [ ] 01-01-PLAN.md -- Database foundation (migrations, models, template export, controller skeleton, route)
+- [ ] 01-02-PLAN.md -- Validation service with TDD (BulkUploadValidationService: headers, rows, clients, tasks, suppliers)
+- [ ] 01-03-PLAN.md -- Upload endpoint + Excel parsing + validation orchestration (file upload, parse, validate, store)
+- [ ] 01-04-PLAN.md -- Error report Excel export (downloadable validation error report with color coding)
 
 ### Phase 2: UI & Preview Workflow
 **Goal**: Agent sees exactly what invoices will be created before committing to database
@@ -84,11 +87,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation & Validation | 0/TBD | Not started | - |
+| 1. Data Foundation & Validation | 0/4 | Not started | - |
 | 2. UI & Preview Workflow | 0/TBD | Not started | - |
 | 3. Background Invoice Creation | 0/TBD | Not started | - |
 | 4. PDF Generation & Email Delivery | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12*
-*Last updated: 2026-02-12 after initial creation*
+*Last updated: 2026-02-12 after Phase 1 planning complete (4 plans)*

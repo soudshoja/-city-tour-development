@@ -16,38 +16,38 @@ class CoaSeeder extends Seeder
         $accounts = [
             // Top-Level (Level 1)
             ['code' => '1000', 'name' => 'Assets',     'level' => 1, 'parent' => null, 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2000', 'name' => 'Liabilities','level' => 1, 'parent' => null, 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '2000', 'name' => 'Liabilities', 'level' => 1, 'parent' => null, 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '3000', 'name' => 'Equity',     'level' => 1, 'parent' => null, 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '4000', 'name' => 'Income',     'level' => 1, 'parent' => null, 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5000', 'name' => 'Expenses',   'level' => 1, 'parent' => null, 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-        
+
             // Assets (Level 2 and deeper)
             ['code' => '1100', 'name' => 'Cash In Hand', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1110', 'name' => 'Petty Cash', 'level' => 3, 'parent' => 'Cash In Hand', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1120', 'name' => 'Receipt Voucher Cash', 'level' => 3, 'parent' => 'Cash In Hand', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            
+
             ['code' => '1200', 'name' => 'Bank Accounts', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1201', 'name' => 'Kuwait International Bank', 'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1204', 'name' => 'Ahli United Bank Kuwait', 'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '1300', 'name'  => 'Payment Gateway', 'level' => 2, 'parent' => 'Assets','account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-           
+            ['code' => '1300', 'name'  => 'Payment Gateway', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+
             ['code' => '1350', 'name' => 'Accounts Receivable', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '1351', 'name' => 'Clients','level' => 3, 'parent' => 'Accounts Receivable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
-            ['code' => '1400', 'name' => 'Supplier Advances/Prepayments','level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1351', 'name' => 'Clients', 'level' => 3, 'parent' => 'Accounts Receivable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+
+            ['code' => '1400', 'name' => 'Supplier Advances/Prepayments', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1410', 'name' => 'Prepaid Flights', 'level' => 3, 'parent' => 'Supplier Advances/Prepayments', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1420', 'name' => 'Prepaid Hotels', 'level' => 3, 'parent' => 'Supplier Advances/Prepayments', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '1500', 'name' => 'Stock Assets', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1510', 'name' => 'Stock In Hand', 'level' => 3, 'parent' => 'Stock Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '1600', 'name' => 'Tax Assets', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '1700', 'name' => 'Loans and Advances (Assets)', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1710', 'name' => 'Employee Advances', 'level' => 3, 'parent' => 'Loans and Advances (Assets)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1720', 'name' => 'Securities and Deposits', 'level' => 3, 'parent' => 'Loans and Advances (Assets)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1721', 'name' => 'Earnest Money', 'level' => 4, 'parent' => 'Securities and Deposits', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '1800', 'name' => 'Fixed Assets', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1810', 'name' => 'Capital Equipments', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1820', 'name' => 'Electronic Equipments', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -58,12 +58,12 @@ class CoaSeeder extends Seeder
             ['code' => '1870', 'name' => 'Softwares', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1880', 'name' => 'Accumulated Depreciation', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1890', 'name' => 'CWIP Account (Construction Work in Progress)', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '1900', 'name' => 'Investments', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '1950', 'name' => 'Temporary Accounts', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1951', 'name' => 'Temporary Opening', 'level' => 3, 'parent' => 'Temporary Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             // Liabilities (Level 2 and deeper)
             ['code' => '2100', 'name' => 'Accounts Payable', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2110', 'name' => 'Creditors', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -82,21 +82,21 @@ class CoaSeeder extends Seeder
             ['code' => '2200', 'name' => 'Accrued Expenses', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2210', 'name' => 'Commissions (Agents)', 'level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2220', 'name' => 'Expenses (General)', 'level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2230', 'name' => 'Loss Provision on Sales', 'level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+            ['code' => '2230', 'name' => 'Agent Profit Payable', 'level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+
             ['code' => '2300', 'name' => 'Stock Liabilities', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2310', 'name' => 'Stock Received But Not Billed','level' => 3, 'parent' => 'Stock Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2320', 'name' => 'Asset Received But Not Billed','level' => 3, 'parent' => 'Stock Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+            ['code' => '2310', 'name' => 'Stock Received But Not Billed', 'level' => 3, 'parent' => 'Stock Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '2320', 'name' => 'Asset Received But Not Billed', 'level' => 3, 'parent' => 'Stock Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+
             ['code' => '2400', 'name' => 'Duties and Taxes', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2410', 'name' => 'TDS Payable', 'level' => 3, 'parent' => 'Duties and Taxes', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2420', 'name' => 'GST Payable', 'level' => 3, 'parent' => 'Duties and Taxes', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '2500', 'name' => 'Loans (Liabilities)', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2510', 'name' => 'Secured Loans', 'level' => 3, 'parent' => 'Loans (Liabilities)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2520', 'name' => 'Unsecured Loans', 'level' => 3, 'parent' => 'Loans (Liabilities)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2530', 'name' => 'Bank Overdraft Account', 'level' => 3, 'parent' => 'Loans (Liabilities)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             ['code' => '2600', 'name' => 'Refund Payable', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2610', 'name' => 'Clients', 'level' => 3, 'parent' => 'Refund Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
@@ -104,13 +104,13 @@ class CoaSeeder extends Seeder
             ['code' => '2630', 'name' => 'Client', 'level' => 3, 'parent' => 'Advances', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2631', 'name' => 'Cash', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2632', 'name' => 'Payment Gateway', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             // Equity (Level 2)
             ['code' => '3100', 'name' => 'Capital Stock', 'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '3200', 'name' => 'Dividends Paid', 'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '3300', 'name' => 'Opening Balance Equity', 'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '3400', 'name' => 'Retained Earnings', 'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-        
+
             // Income (Level 2 and deeper)
             ['code' => '4100', 'name' => 'Direct Income', 'level' => 2, 'parent' => 'Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4110', 'name' => 'Flight Booking Revenue', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
@@ -119,9 +119,10 @@ class CoaSeeder extends Seeder
             ['code' => '4130', 'name' => 'Gateway Fee Recovery', 'level' => 4, 'parent' => 'Commission & Service Fee Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4140', 'name' => 'Sales', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4150', 'name' => 'Services (other)', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-        
+            ['code' => '4170', 'name' => 'Loss Recovery Income', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+
             ['code' => '4200', 'name' => 'Indirect Income', 'level' => 2, 'parent' => 'Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-        
+
             // Expenses (Level 2 and deeper)
             ['code' => '5100', 'name' => 'Direct Expenses (Cost of Sales)', 'level' => 2, 'parent' => 'Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5110', 'name' => 'Flights Cost', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
@@ -142,12 +143,14 @@ class CoaSeeder extends Seeder
             ['code' => '5142', 'name' => 'MyFatoorah Charges', 'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5143', 'name' => 'Hesabe Charges', 'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5160', 'name' => 'Agent Salaries', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '5122', 'name' => 'Agent Bonus', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '5123', 'name' => 'Fee Loss Provision', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
 
             ['code' => '5150', 'name' => 'Stock Expenses', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5151', 'name' => 'Cost of Goods Sold', 'level' => 4, 'parent' => 'Stock Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5152', 'name' => 'Expenses Included in Asset Valuation', 'level' => 4, 'parent' => 'Stock Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5159', 'name' => 'Stock Adjustment', 'level' => 4, 'parent' => 'Stock Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-        
+
             ['code' => '5200', 'name' => 'Indirect Expenses (Operating Expenses)', 'level' => 2, 'parent' => 'Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5201', 'name' => 'Administrative Expenses', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5202', 'name' => 'Commission on Sales', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
@@ -169,7 +172,7 @@ class CoaSeeder extends Seeder
             ['code' => '5218', 'name' => 'Write Off', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5219', 'name' => 'Exchange Gain/Loss', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5220', 'name' => 'Gain/Loss on Asset Disposal', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
-            ['code' => '5222', 'name' => 'Company Loss on Sales', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '5221', 'name' => 'Company Loss on Sales', 'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
 
             ['code' => '5300', 'name' => 'Refund Clearing / Payable Allocation', 'level' => 2, 'parent' => 'Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
         ];
@@ -177,7 +180,7 @@ class CoaSeeder extends Seeder
         $parentMap = [];
         foreach ($accounts as $account) {
             $parentId = $account['parent'] && isset($parentMap[$account['parent']]) ? $parentMap[$account['parent']]->id : null;
-    
+
             // Determine root_id
             $rootId = $parentId ? $parentMap[$account['parent']]->root_id ?? $parentMap[$account['parent']]->id : null;
 
@@ -187,7 +190,7 @@ class CoaSeeder extends Seeder
                 'company_id' => $companyId,
                 'parent_id' => $parentId,
                 'root_id' => $rootId,
-            ],[
+            ], [
                 'serial_number' => null,
                 'account_type' => $account['account_type'],
                 'report_type' => $account['report_type'],
@@ -206,5 +209,4 @@ class CoaSeeder extends Seeder
             $parentMap[$account['name']] = $newAccount;
         }
     }
-    
 }

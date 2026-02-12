@@ -1462,8 +1462,6 @@ class ReceiptVoucherController extends Controller
         $ref = 'RV-' . Str::upper(Str::random(10));
 
         try {
-            DB::beginTransaction();
-
             // Create Receipt Voucher Transaction
             $transaction = Transaction::create([
                 'entity_id'        => $invoice->agent->branch->company->id,
@@ -1492,10 +1490,8 @@ class ReceiptVoucherController extends Controller
             ]);
 
             if (!$invoiceReceipt) {
-                Log::error('Failed to create Invoice Receipt');
+                throw new \Exception('Failed to create Invoice Receipt');
             }
-
-            DB::commit();
 
             Log::info('[RECEIPT VOUCHER] Created receipt voucher', [
                 'gateway' => $gateway,
@@ -1511,17 +1507,13 @@ class ReceiptVoucherController extends Controller
                 'reference' => $ref,
             ];
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error('[RECEIPT VOUCHER] Failed to create', [
                 'gateway' => $gateway,
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return [
-                'ok' => false,
-                'message' => $e->getMessage(),
-            ];
+            throw $e;
         }
     }
 

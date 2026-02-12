@@ -1603,35 +1603,51 @@
                             </div>
 
                             <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] h-[85vh] flex flex-col">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out">
+                                    
+                                    <!-- Header with Badge -->
                                     <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
-                                        <h3 class="text-xl font-bold">Partial Payment Details</h3>
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-xl font-bold">Partial Payment Details</h3>
+                                            <span id="installment-badge" class="hidden inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
+                                                <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                                                <span class="text-sm font-semibold text-blue-700">
+                                                    <span id="installment-count">0</span> Installments
+                                                </span>
+                                            </span>
+                                        </div>
                                     </div>
+                                    
+                                    <!-- Body -->
                                     <div class="bg-gray-100 p-6 flex-1 overflow-y-auto">
                                         <div id="partial-payment-container" class="space-y-5">
-                                            <div class="grid grid-cols-3 gap-4 mb-5">
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1">Client Name</label>
-                                                    <span id="receiverName1">AHMED</span>
+                                            <div class="flex items-start gap-5 mb-5">
+                                                <div class="flex-1 flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Number</label>
+                                                        <span class="text-sm font-semibold text-gray-900">{{ $invoiceNumber }}</span>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Total</label>
+                                                        <span id="subT1" class="text-sm font-semibold text-gray-900">0.00</span>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client Name</label>
+                                                        <span id="receiverName1" class="text-sm font-semibold text-gray-900">AHMED</span>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client's Credit</label>
+                                                        <span class="text-sm font-semibold text-green-600">{{ $balanceCredit }} KWD</span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
-                                                    <span id="subT1">0.00</span>
-                                                </div>
-                                                <div>
-                                                    <label class="mb-0 w-1/3 mr-2 ">Client's Credit</label>
-                                                    <span>{{ $balanceCredit }} KWD</span>
-                                                </div>
-                                            </div>
-
-                                            <div x-data="{ paymentGateway: '' }" x-init="$nextTick(() => { const el = document.querySelector('select[id^=payment_gateway1_]'); if (!el) return; paymentGateway = el.value;el.addEventListener('change', e => paymentGateway = e.target.value); })"
-                                                class="grid grid-cols-3 gap-4 mb-5">
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
-                                                    <select id="split-into1" class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                        onchange="updateRowPartial()">
-                                                        <option value="" disabled selected>Select a value</option>
-                                                        <!-- <option value="1">1</option> -->
+                                                <div class="w-36 shrink-0"
+                                                    x-data="{ paymentGateway: '' }"
+                                                    x-init="$nextTick(() => { const el = document.querySelector('select[id^=payment_gateway1_]'); if (!el) return; paymentGateway = el.value; el.addEventListener('change', e => paymentGateway = e.target.value); })">
+                                                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1" for="split-into1">Split into *</label>
+                                                    <select id="split-into1"
+                                                            class="w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                            onchange="updateRowPartial()">
+                                                        <option value="" disabled selected>Installments</option>
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
                                                         <option value="4">4</option>
@@ -1640,36 +1656,24 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
-                                            <div class="overflow-x-auto">
-                                                <table class="min-w-full bg-white border border-gray-300 text-center">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="border-b px-4 py-2">S.No</th>
-                                                            <th class="border-b px-4 py-2">Expiry Date</th>
-                                                            <th class="border-b px-4 py-2">Amount</th>
-                                                            <th class="border-b px-4 py-2">Payment Gateway</th>
-                                                            <th class="border-b px-4 py-2">Invoice Charge</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="split-rows1">
-                                                        <!-- Dynamic rows will be generated here -->
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <div class="flex">
-                                                <button id="partialbutton" onclick="savePartial('partial')" type="button"
-                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-full shadow">
-                                                    <span id="button-icon-partial" class="mr-2"></span>
-                                                    <span id="button-text-partial">Save Partial Payment</span>
-                                                </button>
+                                            <div id="partial-breakdown-section" 
+                                                style="display: none; opacity: 0; transform: translateY(-8px); transition: opacity 0.2s ease-out, transform 0.2s ease-out;">
+                                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                                <div id="split-rows1" class="space-y-3">
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-end">
-                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                    
+                                    <!-- Footer -->
+                                    <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-between">
+                                        <button onclick="hideModal()" class="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow">Cancel</button>
+                                        <button id="partialbutton" onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-lg shadow">
+                                            <span id="button-icon-partial" class="mr-2"></span>
+                                            <span id="button-text-partial">Save Partial Payment</span>
+                                        </button>
                                     </div>
+                                    
                                 </div>
                             </div>
 
@@ -2717,103 +2721,234 @@
             }
         }
 
-        function updateRowPartial() { // partial payment
+        function updateRowPartial() {
+            const section = document.getElementById('partial-breakdown-section');
             const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+            const badge = document.getElementById('installment-badge');
+            const countSpan = document.getElementById('installment-count');
+
+            if (splitInto1 > 0) {
+                // Show badge and update count
+                badge.classList.remove('hidden');
+                countSpan.textContent = splitInto1;
+                
+                section.style.display = 'block';
+                requestAnimationFrame(() => {
+                    section.style.opacity = '1';
+                    section.style.transform = 'translateY(0)';
+                });
+            } else {
+                // Hide badge
+                badge.classList.add('hidden');
+                
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(-8px)';
+                setTimeout(() => { section.style.display = 'none'; }, 200);
+                return;
+            }
+
             const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(3) : 0;
-            const tbody = document.getElementById('split-rows1');
-            tbody.innerHTML = '';
+            const container = document.getElementById('split-rows1');
+            container.innerHTML = '';
 
             // reset credit pool for a fresh split layout
             creditRemaining = partialCredit;
             for (const k in creditUsed) delete creditUsed[k];
 
             for (let i = 1; i <= splitInto1; i++) {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="border-b px-4 py-2">${i}</td>
-                    <td class="border-b px-4 py-2">
-                        <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}"
-                        onblur="checkInputAmount('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
-                    </td>
-                    <td class="border-b px-4 py-2 text-left">
-                        <select id="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                            <option value="" selected>Select payment gateway</option>
-                            <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(3)})</option>
-                            ${charges.map(gateway => `<option value="${gateway.name}">${gateway.name}</option>`).join('')}
-                        </select>
-
-                        <div id="method_wrapper_${i}" class="mt-2">
-                            <label class="block text-sm font-medium mb-1">Payment Method</label>
-                            <div id="payment_method_container1_${i}" class="hidden">
-                                <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm"></select>
+                const card = document.createElement('div');
+                card.className = 'bg-white border border-gray-200 rounded-lg p-5 hover:shadow-sm transition-shadow';
+                card.innerHTML = `
+                    <div class="flex gap-4">
+                        <!-- Main Card (Left Side) -->
+                        <div class="flex-1">
+                            <!-- Card Header -->
+                            <div class="flex items-center justify-between mb-5">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-md font-semibold text-blue-700">
+                                        Installment ${i}
+                                    </span>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                    <span id="card_amount_badge_${i}">${parseFloat(perRowAmount1).toFixed(3)} KWD</span>
+                                </span>
                             </div>
-                            <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
-                        </div>
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <div class="min-w-[100px]">
-                            <input type="number" id="invoice_charge1_${i}" name="invoice_charge1_${i}" 
-                                class="w-full border-gray-300 rounded-md no-spin disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" 
-                                value="0" step="0.001" min="0"
-                                placeholder="0.000"
-                                disabled />
-                            <p id="invoice_charge_hint1_${i}" class="text-xs text-gray-400 mt-1">Select gateway first</p>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(row);
 
-                const gatewaySelect = row.querySelector(`#payment_gateway1_${i}`);
-                const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
-                const methodText = row.querySelector(`#payment_method_text1_${i}`);
-                const methodSelect = row.querySelector(`#payment_method1_${i}`);
-                const invoiceChargeInput = row.querySelector(`#invoice_charge1_${i}`);
-                const invoiceChargeHint = row.querySelector(`#invoice_charge_hint1_${i}`);
-                const amountEl = row.querySelector(`#amount_${i}`);
+                            <!-- Row 1: Date & Amount -->
+                            <div class="flex justify-between gap-4 mb-4">
+                                <div class="w-5/12">
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Expiry Date</label>
+                                    <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" 
+                                        class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div class="w-5/12">
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Amount (KWD)</label>
+                                    <input type="number" id="amount_${i}" name="amount_${i}" value="${perRowAmount1}"
+                                        class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        onblur="checkInputAmount('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Gateway & Method -->
+                            <div class="flex justify-between gap-4 mb-4">
+                                <div class="w-5/12 relative">
+                                    <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                        Payment Gateway
+                                        <span id="charge_tooltip_${i}" class="hidden relative cursor-help"
+                                            onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                            onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                            <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="12" y1="16" x2="12" y2="12"/>
+                                                <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                            </svg>
+                                            <span class="tooltip-box opacity-0 invisible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                                <span id="charge_tooltip_text_${i}">Invoice charge not supported</span>
+                                                <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <select id="payment_gateway1_${i}" class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="" selected>Select gateway</option>
+                                        <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(3)})</option>
+                                        ${charges.map(gateway => `<option value="${gateway.name}">${gateway.name}</option>`).join('')}
+                                    </select>
+                                    <span id="no_method_tooltip_${i}" class="hidden absolute -right-6 bottom-2 cursor-help"
+                                        onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                        onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <line x1="12" y1="16" x2="12" y2="12"/>
+                                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                        </svg>
+                                        <span class="tooltip-box opacity-0 invisible absolute bottom-full right-0 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                            No specific method required for this gateway
+                                            <span class="absolute top-full right-2 border-4 border-transparent border-t-gray-800"></span>
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="w-5/12" id="method_wrapper_${i}">
+                                    <div id="payment_method_container1_${i}" class="hidden">
+                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Payment Method</label>
+                                        <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm"></select>
+                                    </div>
+                                    <p id="payment_method_text1_${i}" class="hidden">No specific method required</p>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: Invoice Charge (hidden by default) -->
+                            <div id="invoice_charge_wrapper_${i}" class="hidden mb-2">
+                                <div class="w-5/12">
+                                    <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                        Invoice Charge
+                                        <span class="relative cursor-help"
+                                            onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                            onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                            <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="12" y1="16" x2="12" y2="12"/>
+                                                <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                            </svg>
+                                            <span class="tooltip-box opacity-0 invisible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                                <span id="invoice_charge_tooltip_text_${i}">Gateway charge</span>
+                                                <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="invoice_charge1_${i}" name="invoice_charge1_${i}" 
+                                        class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                                        value="0" step="0.001" min="0" placeholder="0.000" />
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="invoice_charge1_${i}_fallback" name="invoice_charge1_${i}" value="0" />
+                        </div>
+
+                        <!-- Credit Panel (Right Side) - Hidden by default -->
+                        <div id="credit_panel_${i}" class="hidden w-96 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                                    Credit Selection
+                                </h4>
+                                <span class="text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                                    Available: ${creditRemaining.toFixed(3)} KWD
+                                </span>
+                            </div>
+                            
+                            <p class="text-xs text-gray-600 mb-3">Select which payment(s) to use for this installment</p>
+                            
+                            <div id="credit_vouchers_${i}" class="space-y-2 max-h-64 overflow-y-auto mb-4"></div>
+                            
+                            <div id="credit_summary_${i}" class="pt-3 mt-3 border-t border-blue-200">
+                                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>Selected:</span>
+                                    <strong class="text-gray-900" id="credit_selected_${i}">0.000 KWD</strong>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-600">
+                                    <span>Required:</span>
+                                    <strong class="text-blue-700" id="credit_required_${i}">${parseFloat(perRowAmount1).toFixed(3)} KWD</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                const gatewaySelect = card.querySelector(`#payment_gateway1_${i}`);
+                const methodContainer = card.querySelector(`#payment_method_container1_${i}`);
+                const methodText = card.querySelector(`#payment_method_text1_${i}`);
+                const methodSelect = card.querySelector(`#payment_method1_${i}`);
+                const invoiceChargeInput = card.querySelector(`#invoice_charge1_${i}`);
+                const invoiceChargeHint = card.querySelector(`#invoice_charge_hint1_${i}`);
+                const amountEl = card.querySelector(`#amount_${i}`);
 
                 function updateMethodVisibility() {
                     const selectedGateway = gatewaySelect.value;
                     const key = gwKey(selectedGateway);
                     const methods = methodsByGateway[key] || [];
+                    const noMethodTooltip = card.querySelector(`#no_method_tooltip_${i}`);
 
-                    // Handle payment method visibility
                     if (methods.length > 0) {
                         renderMethodOptions(methodSelect, methods);
                         methodContainer.classList.remove('hidden');
-                        methodText.classList.add('hidden');
+                        noMethodTooltip.classList.add('hidden');
                     } else {
                         methodContainer.classList.add('hidden');
-                        methodText.classList.remove('hidden');
                         methodSelect.value = '';
+                        noMethodTooltip.classList.remove('hidden');
                     }
 
-                    // Handle invoice charge - FIXED: Use charges.find() like full payment
+                    // Keep the <p> always hidden — tooltip replaces it
+                    methodText.classList.add('hidden');
+
+                    const chargeWrapper = card.querySelector(`#invoice_charge_wrapper_${i}`);
+                    const chargeInput = card.querySelector(`#invoice_charge1_${i}`);
+                    const chargeTooltip = card.querySelector(`#charge_tooltip_${i}`);
+                    const chargeTooltipText = card.querySelector(`#charge_tooltip_text_${i}`);
+                    const invoiceChargeTooltipText = card.querySelector(`#invoice_charge_tooltip_text_${i}`); // NEW
                     const canCharge = canGatewayChargeInvoice(selectedGateway);
-                    
+
                     if (canCharge) {
-                        invoiceChargeInput.disabled = false;
-                        invoiceChargeInput.classList.remove('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
-                        invoiceChargeInput.classList.add('bg-white');
-                        invoiceChargeHint.textContent = `${selectedGateway} charge`;
-                        invoiceChargeHint.classList.remove('text-gray-400');
-                        invoiceChargeHint.classList.add('text-gray-500');
-                    } else {
-                        invoiceChargeInput.disabled = true;
-                        invoiceChargeInput.value = '0';
-                        invoiceChargeInput.classList.add('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
-                        invoiceChargeInput.classList.remove('bg-white');
+                        chargeWrapper.classList.remove('hidden');
+                        chargeTooltip.classList.add('hidden');
+                        chargeInput.value = chargeInput.value || '0';
                         
-                        if (!selectedGateway) {
-                            invoiceChargeHint.textContent = 'Select gateway first';
-                        } else {
-                            invoiceChargeHint.textContent = 'Not supported';
+                        // Update tooltip text dynamically (NEW)
+                        if (invoiceChargeTooltipText) {
+                            invoiceChargeTooltipText.textContent = `${selectedGateway} charge`;
                         }
-                        invoiceChargeHint.classList.add('text-gray-400');
-                        invoiceChargeHint.classList.remove('text-gray-500');
+                    } else {
+                        chargeWrapper.classList.add('hidden');
+                        chargeInput.value = '0';
+                        if (selectedGateway) {
+                            chargeTooltip.classList.remove('hidden');
+                            chargeTooltipText.textContent = `Invoice charge not supported for ${selectedGateway}`;
+                        } else {
+                            chargeTooltip.classList.add('hidden');
+                        }
                     }
                 }
 
@@ -2821,11 +2956,18 @@
                     const key = gwKey(gatewaySelect.value);
                     const amt = Number(amountEl.value || 0);
                     const prevUsed = Number(creditUsed[i] || 0);
+                    const creditPanel = card.querySelector(`#credit_panel_${i}`);
 
                     if (key === gwKey('credit')) {
-                        // Show payment selection UI for this row
-                        handleCreditPaymentSelectionPartial(i);
+                        // Show credit panel with slide-in animation
+                        creditPanel.classList.remove('hidden');
+                        requestAnimationFrame(() => {
+                            creditPanel.style.opacity = '1';
+                            creditPanel.style.transform = 'translateX(0)';
+                        });
                         
+                        handleCreditPaymentSelectionPartial(i);
+
                         if (prevUsed > 0) {
                             creditRemaining += prevUsed;
                             creditUsed[i] = 0;
@@ -2837,11 +2979,16 @@
                             alert(`Not enough credit. Remaining: ${creditRemaining.toFixed(3)}; Row ${i} needs: ${amt.toFixed(3)}.`);
                             gatewaySelect.value = '';
                             PaymentSelection.hideForRow('partial', i);
+                            creditPanel.classList.add('hidden');
                         }
                     } else {
-                        // Hide payment selection if switching away from Credit
-                        PaymentSelection.hideForRow('partial', i);
+                        // Hide credit panel with fade-out
+                        creditPanel.style.opacity = '0';
+                        creditPanel.style.transform = 'translateX(10px)';
+                        setTimeout(() => creditPanel.classList.add('hidden'), 300);
                         
+                        PaymentSelection.hideForRow('partial', i);
+
                         if (prevUsed > 0) {
                             creditRemaining += prevUsed;
                             creditUsed[i] = 0;
@@ -2850,8 +2997,11 @@
                     updateMethodVisibility();
                     updateCreditUI(splitInto1);
                 };
-
                 const onAmountInput = () => {
+                    // Update badge
+                    const badge = card.querySelector(`#card_amount_badge_${i}`);
+                    if (badge) badge.textContent = `${parseFloat(amountEl.value || 0).toFixed(3)} KWD`;
+
                     const using = Number(creditUsed[i] || 0);
                     if (using > 0) {
                         const newAmt = Number(amountEl.value || 0);
@@ -2878,6 +3028,7 @@
                 gatewaySelect.addEventListener('change', onGatewayChange);
                 amountEl.addEventListener('input', onAmountInput);
             }
+
             updateCreditUI(splitInto1);
         }
 

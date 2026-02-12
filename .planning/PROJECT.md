@@ -8,6 +8,18 @@ A multi-tenant Laravel 11 platform for travel agencies to manage bookings, invoi
 
 **Agents can invoice clients accurately from any source (AIR files, PDFs, Excel uploads) with automated payment tracking and accounting integration.**
 
+## Current Milestone: v1.0 Bulk Invoice Upload
+
+**Goal:** Enable agents to create multiple invoices efficiently from Excel uploads with validation, preview, and automated workflows.
+
+**Target features:**
+- Bulk invoice upload with Excel template
+- Comprehensive validation (tasks, clients, data integrity)
+- Automatic invoice grouping by client and date
+- Preview and approval workflow
+- PDF generation and email delivery
+- Upload history and error reporting
+
 ## Requirements
 
 ### Validated

@@ -92,13 +92,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | Pending |
+| UPLOAD-01 | Phase 1 | Pending |
+| UPLOAD-02 | Phase 1 | Pending |
+| UPLOAD-03 | Phase 1 | Pending |
+| UPLOAD-04 | Phase 1 | Pending |
+| UPLOAD-05 | Phase 1 | Pending |
+| UPLOAD-06 | Phase 1 | Pending |
+| MATCH-01 | Phase 1 | Pending |
+| MATCH-02 | Phase 1 | Pending |
+| MATCH-03 | Phase 1 | Pending |
+| MATCH-04 | Phase 1 | Pending |
+| MATCH-05 | Phase 1 | Pending |
+| INVOICE-01 | Phase 2 | Pending |
+| INVOICE-02 | Phase 2 | Pending |
+| INVOICE-03 | Phase 2 | Pending |
+| INVOICE-04 | Phase 3 | Pending |
+| INVOICE-05 | Phase 4 | Pending |
+| INVOICE-06 | Phase 3 | Pending |
+| DELIVER-01 | Phase 4 | Pending |
+| DELIVER-02 | Phase 4 | Pending |
+| DELIVER-03 | Phase 2 | Pending |
+| AUDIT-01 | Phase 1 | Pending |
+| AUDIT-02 | Phase 2 | Pending |
+| AUDIT-03 | Phase 3 | Pending |
+| AUDIT-04 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 23 total
-- Mapped to phases: 0 (roadmap not created yet)
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23 (100% coverage)
+- Phase 1: 13 requirements
+- Phase 2: 5 requirements
+- Phase 3: 3 requirements
+- Phase 4: 3 requirements
 
 ---
 *Requirements defined: 2026-02-12*
-*Last updated: 2026-02-12 after initial definition*
+*Last updated: 2026-02-12 after roadmap creation*

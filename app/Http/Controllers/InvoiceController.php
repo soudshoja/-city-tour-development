@@ -551,8 +551,8 @@ class InvoiceController extends Controller
         $refundNumber = $request->query('refund_number');
         if ($refundNumber) {
             $refund = Refund::with('refundDetails')
-            ->where('refund_number', $refundNumber)
-            ->first();
+                ->where('refund_number', $refundNumber)
+                ->first();
 
             if ($refund) {
                 $refundDetailsMap = $refund->refundDetails->keyBy('task_id');
@@ -560,7 +560,7 @@ class InvoiceController extends Controller
                 $selectedTasks = $selectedTasks->map(function ($task) use ($refundDetailsMap) {
                     if ($refundDetailsMap->has($task->id)) {
                         $task->total = $refundDetailsMap[$task->id]->original_task_cost;
-                    } 
+                    }
 
                     return $task;
                 });
@@ -900,7 +900,7 @@ class InvoiceController extends Controller
     public function savePartial(Request $request): JsonResponse
     {
         Log::info('Starting to save payment of the invoice', $request->all());
-        
+
         $request->validate([
             'invoiceId' => 'required',
             'date' => 'nullable',
@@ -945,6 +945,7 @@ class InvoiceController extends Controller
                     $q->where('id', $companyId);
                 })
                 ->with('agent.branch.company', 'client', 'invoiceDetails.task')
+                ->lockForUpdate()
                 ->first();
 
             Log::info('Invoice query result', [
@@ -957,12 +958,6 @@ class InvoiceController extends Controller
 
             $charge = Charge::where('name', $gateway)->first();
 
-            // Update invoice with external URL only if the gateway supports URLs
-            if ($externalUrl && $charge && $charge->has_url) {
-                $invoice->update(['external_url' => $externalUrl]);
-            }
-
-            $gatewayFee = 0;
             $gatewayFee = ChargeService::calculate($amount + $partialInvoiceCharge, $companyId, $method, $gateway);
 
             Log::info('ChargeService calculation result', [
@@ -978,255 +973,223 @@ class InvoiceController extends Controller
 
             $status = 'unpaid';
 
-            try {
-                switch ($gateway) {
-                    case 'Credit':
-                        $status = 'paid';
-                        $credit = true;
-                        break;
-                    default:
-                        // For Cash, Tabby, Deema - they remain unpaid until approved
-                        $status = 'unpaid';
-                        break;
-                }
-
-                $invoicePartial = InvoicePartial::create([
-                    'invoice_id' => $invoiceId,
-                    'invoice_number' => $invoiceNumber,
-                    'client_id' => $clientId,
-                    'invoice_charge' => $partialInvoiceCharge,
-                    'service_charge' => $credit ? 0 : ($gatewayFee['gatewayFee'] ?? 0),
-                    'gateway_fee' => $credit ? 0 : ($gatewayFee['accountingFee'] ?? 0),
-                    'amount' => $amount,
-                    'status' => $status,
-                    'expiry_date' => $date,
-                    'type' => $type,
-                    'payment_gateway' => $gateway,
-                    'payment_method' => $method,
-                    'charge_id' => Charge::where('name', $gateway)->value('id'),
-                ]);
-
-                $appliedPayments = []; // Track applied payments for COA
-
-                if ($credit) {
-                    $paymentAllocations = $request->input('payment_allocations', []);
-
-                    if (!empty($paymentAllocations)) {
-                        // Use PaymentApplicationService to link to specific payments
-                        try {
-                            $paymentService = app(PaymentApplicationService::class);
-                            $result = $paymentService->linkPaymentsToInvoicePartial(
-                                $invoice,
-                                $invoicePartial,
-                                $paymentAllocations
-                            );
-
-                            // Collect applied payments for COA creation
-                            if ($result['success'] && !empty($result['applied_payments'])) {
-                                $appliedPayments = $result['applied_payments'];
-                            }
-
-                            Log::info('Payment allocations applied via PaymentApplicationService', [
-                                'invoice_id' => $invoice->id,
-                                'invoice_partial_id' => $invoicePartial->id,
-                                'allocations' => $paymentAllocations,
-                                'applied_payments' => $appliedPayments,
-                            ]);
-                        } catch (Exception $e) {
-                            Log::error('Failed to apply payment allocations: ' . $e->getMessage());
-                            throw new \Exception('Failed to apply payment allocations: ' . $e->getMessage());
-                        }
-                    } else {
-                        // Fallback: create credit record without linking to specific payment (legacy behavior)
-                        try {
-                            $creditRecord = Credit::create([
-                                'company_id'  => $invoice->agent?->branch?->company_id,
-                                'branch_id'   => $invoice->agent?->branch_id,
-                                'client_id'   => $invoice->client_id,
-                                'invoice_id'  => $invoice->id,
-                                'invoice_partial_id'  => $invoicePartial->id,
-                                'type'        => Credit::INVOICE,
-                                'description' => 'Payment for ' . $invoice->invoice_number,
-                                'amount'      => -$amount,
-                                'gateway_fee' => 0, // Legacy credit usage — no source payment linked
-                            ]);
-
-                            // Build applied payments for COA (legacy - no specific voucher)
-                            $appliedPayments[] = [
-                                'credit_id' => $creditRecord->id,
-                                'payment_id' => null,
-                                'refund_id' => null,
-                                'voucher_number' => 'Client Credit',
-                                'amount_applied' => $amount,
-                                'invoice_partial_id' => $invoicePartial->id,
-                            ];
-                        } catch (Exception $e) {
-                            Log::error('Failed to create Credit: ' . $e->getMessage());
-                            throw new \Exception('Failed to create credit record: ' . $e->getMessage());
-                        }
-                    }
-                }
-
-                $invoice->payment_type = $type;
-
-                // Auto-payment logic: if charge has is_auto_paid = true, automatically mark as paid
-                if ($charge && $charge->is_auto_paid) {
-                    $invoice->status = 'paid';
-                    $invoice->paid_date = now();
-                } else {
-                    $invoicePartial->status = $credit ? 'paid' : 'unpaid';
-                    if ($credit) {
-                        $invoice->paid_date = now();
-                    }
-                }
-
-                $invoice->is_client_credit = $type === 'credit' ? true : false;
-                $hasUnpaid = $invoice->invoicePartials()->where('status', 'unpaid')->exists();
-                $invoice->status = $hasUnpaid ? 'unpaid' : 'paid';
-
-                if (in_array($type, ['partial', 'split'])) {
-                    $hasPaid = $invoice->invoicePartials()->where('status', 'paid')->exists();
-
-                    if ($hasPaid && $hasUnpaid) {
-                        $invoice->status = 'partial';
-                        Log::info('Invoice marked as PARTIAL due to split payments', [
-                            'invoice_id' => $invoice->id,
-                            'has_paid'   => $hasPaid,
-                            'has_unpaid' => $hasUnpaid,
-                        ]);
-                    } elseif ($hasPaid && !$hasUnpaid) {
-                        $invoice->status = 'paid';
-                    } else {
-                        $invoice->status = 'unpaid';
-                    }
-                }
-
-                $totalInvoiceCharge = $invoice->invoicePartials()->sum('invoice_charge');
-
-                $invoice->invoice_charge = $totalInvoiceCharge;
-                $invoice->amount = $invoice->sub_amount + $totalInvoiceCharge;
-                $invoice->save();
-
-                Log::info('Recalculated invoice totals from partials', [
-                    'invoice_id' => $invoice->id,
-                    'sub_amount' => $invoice->sub_amount,
-                    'total_invoice_charge' => $totalInvoiceCharge,
-                    'new_amount' => $invoice->amount,
-                    'partials_count' => $invoice->invoicePartials->count(),
-                ]);
-
-                $invoice->save();
-
-                $transaction = Transaction::where('invoice_id', $invoice->id)
-                    ->where('reference_type', 'Invoice')
-                    ->first();
-
-                if (!$transaction) {
-                    $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
-                    $tasks = Task::with(['invoiceDetail' => function ($q) use ($invoice) {
-                        $q->where('invoice_id', $invoice->id);
-                    }, 'agent'])
-                        ->whereIn('id', $tasksId)
-                        ->get();
-
-                    if ($tasks->isEmpty()) {
-                        throw new \Exception('No tasks found for this invoice to create a transaction.');
-                    }
-
-                    $transaction = Transaction::create([
-                        'company_id' => $tasks[0]->company_id,
-                        'branch_id' => $tasks[0]->agent->branch_id,
-                        'entity_id' => $tasks[0]->company_id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'credit',
-                        'amount' =>  $invoice->amount,
-                        'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Invoice',
-                        'transaction_date' => $invoice->invoice_date,
-                    ]);
-
-                    foreach ($tasks as $task) {
-                        $invoiceDetail = $task->invoiceDetail ?: $invoice->invoiceDetails->firstWhere('task_id', $task->id);
-                        Log::info('Preparing to add journal entry', [
-                            'task_id' => $task->id ?? null,
-                            'invoice_id' => $invoice->id,
-                            'invoice_detail_id' => $invoiceDetail->id ?? null,
-                            'transaction_id' => $transaction->id ?? null,
-                            'client_name' => $invoice->client->full_name ?? null,
-                            'task' => $task,
-                        ]);
-
-                        $response = $this->addJournalEntry(
-                            $task,
-                            $invoice->id,
-                            $invoiceDetail->id,
-                            $transaction->id,
-                            $invoice->client->full_name,
-                        );
-                        $response = json_decode($response->getContent(), true);
-
-                        Log::info('Journal entry response', ['response' => $response]);
-
-                        if (!$response['success']) {
-                            throw new Exception('Failed to create journal entry: ' . ($response['message'] ?? 'Unknown error'));
-                        }
-                    }
-                } else {
-                    Log::info('Reusing existing transaction for invoice', [
-                        'invoice_id' => $invoice->id,
-                        'transaction_id' => $transaction->id,
-                    ]);
-
-                    // Recalculate profit with updated gateway fees from new partial
-                    $this->recalculateProfitForInvoice($invoice);
-                }
-
-                // STEP 2: CREDIT PAYMENT COA
-                if ($credit && !empty($appliedPayments)) {
-                    $totalCreditApplied = array_sum(array_column($appliedPayments, 'amount_applied'));
-                    $this->createCreditPaymentCOA($invoice, $appliedPayments, $totalCreditApplied);
-                }
-
-                // Check if gateway requires receipt voucher (is_system_default = false means requires receipt voucher)
-                $requiresReceiptVoucher = $charge && !$charge->is_system_default;
-
-                // STEP 3: For requiresReceiptVoucher - Create Receipt Voucher
-                if ($requiresReceiptVoucher) {
-                    $invoicePartial->refresh();
-
-                    Log::info('[RECEIPT VOUCHER] Invoice Partial values before creating RV', [
-                        'invoice_partial_id' => $invoicePartial->id,
-                        'amount' => $invoicePartial->amount,
-                        'service_charge' => $invoicePartial->service_charge,
-                        'invoice_charge' => $invoicePartial->invoice_charge,
-                        'calculated_total' => $invoicePartial->amount + $invoicePartial->service_charge + $invoicePartial->invoice_charge,
-                    ]);
-
-                    $receiptVoucher = new ReceiptVoucherController();
-                    $rvResult = $receiptVoucher->createReceiptVoucher($invoice, $invoicePartial, $request, $gateway);
-
-                    if (!$rvResult['ok']) {
-                        throw new \Exception($rvResult['message'] ?? 'Failed to create receipt voucher');
-                    }
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Invoice Partial created successfully!',
-                    'invoiceId' => $invoice->id,
-                ]);
-            } catch (Exception $e) {
-                if (isset($invoice)) {
-                    $invoice->payment_type = null;
-                    $invoice->status = 'unpaid';
-                    $invoice->is_client_credit = false;
-                    $invoice->save();
-                }
-
-                Log::error('Failed to create Invoice Partial or Transaction/Journal Entries: ' . $e->getMessage());
-                throw new \Exception('Failed to create Invoice Partial or Transaction/Journal Entries: ' . $e->getMessage());
+            switch ($gateway) {
+                case 'Credit':
+                    $status = 'paid';
+                    $credit = true;
+                    break;
+                default:
+                    $status = 'unpaid';
+                    break;
             }
+
+            $invoicePartial = InvoicePartial::create([
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'client_id' => $clientId,
+                'invoice_charge' => $partialInvoiceCharge,
+                'service_charge' => $credit ? 0 : ($gatewayFee['gatewayFee'] ?? 0),
+                'gateway_fee' => $credit ? 0 : ($gatewayFee['accountingFee'] ?? 0),
+                'amount' => $amount,
+                'status' => $status,
+                'expiry_date' => $date,
+                'type' => $type,
+                'payment_gateway' => $gateway,
+                'payment_method' => $method,
+                'charge_id' => Charge::where('name', $gateway)->value('id'),
+            ]);
+
+            $appliedPayments = []; // Track applied payments for COA
+
+            if ($credit) {
+                $paymentAllocations = $request->input('payment_allocations', []);
+
+                if (!empty($paymentAllocations)) {
+                    // Use PaymentApplicationService to link to specific payments
+                    $paymentService = app(PaymentApplicationService::class);
+                    $result = $paymentService->linkPaymentsToInvoicePartial(
+                        $invoice,
+                        $invoicePartial,
+                        $paymentAllocations
+                    );
+
+                    // Collect applied payments for COA creation
+                    if ($result['success'] && !empty($result['applied_payments'])) {
+                        $appliedPayments = $result['applied_payments'];
+                    }
+
+                    Log::info('Payment allocations applied via PaymentApplicationService', [
+                        'invoice_id' => $invoice->id,
+                        'invoice_partial_id' => $invoicePartial->id,
+                        'allocations' => $paymentAllocations,
+                        'applied_payments' => $appliedPayments,
+                    ]);
+                } else {
+                    // Fallback: create credit record without linking to specific payment (legacy behavior)
+                    $creditRecord = Credit::create([
+                        'company_id'  => $invoice->agent?->branch?->company_id,
+                        'branch_id'   => $invoice->agent?->branch_id,
+                        'client_id'   => $invoice->client_id,
+                        'invoice_id'  => $invoice->id,
+                        'invoice_partial_id'  => $invoicePartial->id,
+                        'type'        => Credit::INVOICE,
+                        'description' => 'Payment for ' . $invoice->invoice_number,
+                        'amount'      => -$amount,
+                        'gateway_fee' => 0, // Legacy credit usage — no source payment linked
+                    ]);
+
+                    // Build applied payments for COA (legacy - no specific voucher)
+                    $appliedPayments[] = [
+                        'credit_id' => $creditRecord->id,
+                        'payment_id' => null,
+                        'refund_id' => null,
+                        'voucher_number' => 'Client Credit',
+                        'amount_applied' => $amount,
+                        'invoice_partial_id' => $invoicePartial->id,
+                    ];
+                }
+            }
+
+            $invoice->payment_type = $type;
+            $invoice->is_client_credit = $type === 'credit' ? true : false;
+
+            if ($externalUrl && $charge && $charge->has_url) {
+                $invoice->external_url = $externalUrl;
+            }
+
+            // Auto-payment logic: if charge has is_auto_paid = true, automatically mark as paid
+            if ($charge && $charge->is_auto_paid) {
+                $invoice->status = 'paid';
+                $invoice->paid_date = now();
+            } else {
+                $invoicePartial->status = $credit ? 'paid' : 'unpaid';
+                if ($credit) {
+                    $invoice->paid_date = now();
+                }
+            }
+
+            $hasUnpaid = $invoice->invoicePartials()->where('status', 'unpaid')->exists();
+
+            if (in_array($type, ['partial', 'split'])) {
+                $hasPaid = $invoice->invoicePartials()->where('status', 'paid')->exists();
+
+                if ($hasPaid && $hasUnpaid) {
+                    $invoice->status = 'partial';
+                } elseif ($hasPaid && !$hasUnpaid) {
+                    $invoice->status = 'paid';
+                } else {
+                    $invoice->status = 'unpaid';
+                }
+            } else {
+                $invoice->status = $hasUnpaid ? 'unpaid' : 'paid';
+            }
+
+            $totalInvoiceCharge = $invoice->invoicePartials()->sum('invoice_charge');
+            $invoice->invoice_charge = $totalInvoiceCharge;
+            $invoice->amount = $invoice->sub_amount + $totalInvoiceCharge;
+
+            Log::info('Recalculated invoice totals from partials', [
+                'invoice_id' => $invoice->id,
+                'sub_amount' => $invoice->sub_amount,
+                'total_invoice_charge' => $totalInvoiceCharge,
+                'new_amount' => $invoice->amount,
+                'partials_count' => $invoice->invoicePartials->count(),
+            ]);
+
+
+            $invoice->save();
+
+            $transaction = Transaction::where('invoice_id', $invoice->id)
+                ->where('reference_type', 'Invoice')
+                ->first();
+
+            if (!$transaction) {
+                $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
+                $tasks = Task::with(['invoiceDetail' => function ($q) use ($invoice) {
+                    $q->where('invoice_id', $invoice->id);
+                }, 'agent'])
+                    ->whereIn('id', $tasksId)
+                    ->get();
+
+                if ($tasks->isEmpty()) {
+                    throw new \Exception('No tasks found for this invoice to create a transaction.');
+                }
+
+                $transaction = Transaction::create([
+                    'company_id' => $tasks[0]->company_id,
+                    'branch_id' => $tasks[0]->agent->branch_id,
+                    'entity_id' => $tasks[0]->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' =>  $invoice->amount,
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
+                    'invoice_id' => $invoice->id,
+                    'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
+                ]);
+
+                foreach ($tasks as $task) {
+                    $invoiceDetail = $task->invoiceDetail ?: $invoice->invoiceDetails->firstWhere('task_id', $task->id);
+
+                    $response = $this->addJournalEntry(
+                        $task,
+                        $invoice->id,
+                        $invoiceDetail->id,
+                        $transaction->id,
+                        $invoice->client->full_name,
+                    );
+                    $response = json_decode($response->getContent(), true);
+
+                    Log::info('Journal entry response', ['response' => $response]);
+
+                    if (!$response['success']) {
+                        throw new Exception('Failed to create journal entry: ' . ($response['message'] ?? 'Unknown error'));
+                    }
+                }
+            } else {
+                Log::info('Reusing existing transaction for invoice', [
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $transaction->id,
+                ]);
+
+                // Recalculate profit with updated gateway fees from new partial
+                $this->recalculateProfitForInvoice($invoice);
+            }
+
+            // STEP 2: CREDIT PAYMENT COA
+            if ($credit && !empty($appliedPayments)) {
+                $totalCreditApplied = array_sum(array_column($appliedPayments, 'amount_applied'));
+                $this->createCreditPaymentCOA($invoice, $appliedPayments, $totalCreditApplied);
+            }
+
+            // Check if gateway requires receipt voucher (is_system_default = false means requires receipt voucher)
+            $requiresReceiptVoucher = $charge && !$charge->is_system_default;
+
+            // STEP 3: For requiresReceiptVoucher - Create Receipt Voucher
+            if ($requiresReceiptVoucher) {
+                $invoicePartial->refresh();
+
+                Log::info('[RECEIPT VOUCHER] Invoice Partial values before creating RV', [
+                    'invoice_partial_id' => $invoicePartial->id,
+                    'amount' => $invoicePartial->amount,
+                    'service_charge' => $invoicePartial->service_charge,
+                    'invoice_charge' => $invoicePartial->invoice_charge,
+                    'calculated_total' => $invoicePartial->amount + $invoicePartial->service_charge + $invoicePartial->invoice_charge,
+                ]);
+
+                $receiptVoucher = new ReceiptVoucherController();
+                $rvResult = $receiptVoucher->createReceiptVoucher($invoice, $invoicePartial, $request, $gateway);
+
+                if (!$rvResult['ok']) {
+                    throw new \Exception($rvResult['message'] ?? 'Failed to create receipt voucher');
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice Partial created successfully!',
+                'invoiceId' => $invoice->id,
+            ]);
         });
     }
 
@@ -5361,14 +5324,14 @@ class InvoiceController extends Controller
             $lockedBy = $invoice->lockedByUser?->name ?? 'Unknown';
             $lockedAt = $invoice->locked_at?->format('d M Y H:i') ?? '';
             $message = "This invoice is locked by {$lockedBy} on {$lockedAt}. Contact your accountant to unlock it.";
-            
+
             if (request()->expectsJson()) {
                 return response()->json(['success' => false, 'message' => $message], 403);
             }
-            
+
             return redirect()->back()->with('error', $message);
         }
-        
+
         return null;
     }
 

@@ -483,6 +483,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/upload', [BulkInvoiceController::class, 'upload'])->name('upload');
         Route::get('/{id}/error-report', [BulkInvoiceController::class, 'downloadErrorReport'])->name('error-report');
         Route::get('/{id}/preview', [BulkInvoiceController::class, 'preview'])->name('preview');
+        Route::post('/{id}/approve', [BulkInvoiceController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [BulkInvoiceController::class, 'reject'])->name('reject');
+        Route::get('/{id}/success', [BulkInvoiceController::class, 'success'])->name('success');
     });
 
     // REFUND

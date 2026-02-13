@@ -284,4 +284,96 @@ class BulkInvoiceController extends Controller
 
         return view('bulk-invoice.preview', compact('bulkUpload', 'invoiceGroups', 'flaggedRows', 'clientCount'));
     }
+
+    /**
+     * Approve bulk upload and mark it for processing.
+     *
+     * Uses conditional update to prevent race conditions (double-click, concurrent requests).
+     * Only updates if status is still 'validated'.
+     *
+     * @param  int  $id  The bulk upload ID
+     */
+    public function approve(int $id): RedirectResponse
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        // Conditional update to prevent race conditions
+        $updated = BulkUpload::where('id', $id)
+            ->where('company_id', $companyId)
+            ->where('status', 'validated')
+            ->update(['status' => 'processing']);
+
+        if ($updated === 0) {
+            return redirect()->back()->withErrors(['error' => 'Upload already processed or no longer in validated status.']);
+        }
+
+        // Load the BulkUpload for redirect
+        $bulkUpload = BulkUpload::findOrFail($id);
+
+        return redirect()->route('bulk-invoices.success', $id)->with('message', 'Invoices approved for creation.');
+    }
+
+    /**
+     * Reject bulk upload and mark it as discarded.
+     *
+     * Uses conditional update to prevent race conditions.
+     *
+     * @param  int  $id  The bulk upload ID
+     */
+    public function reject(int $id): RedirectResponse
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        // Conditional update to prevent race conditions
+        $updated = BulkUpload::where('id', $id)
+            ->where('company_id', $companyId)
+            ->where('status', 'validated')
+            ->update(['status' => 'rejected']);
+
+        if ($updated === 0) {
+            return redirect()->back()->withErrors(['error' => 'Upload already processed or no longer in validated status.']);
+        }
+
+        return redirect()->route('dashboard')->with('message', 'Upload rejected and discarded.');
+    }
+
+    /**
+     * Show success page after bulk upload approval.
+     *
+     * Displays upload summary with invoice/client counts.
+     * Invoice collection will be populated in Phase 3.
+     *
+     * @param  int  $id  The bulk upload ID
+     */
+    public function success(int $id): View
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        // Load BulkUpload scoped by company_id
+        $bulkUpload = BulkUpload::where('id', $id)
+            ->where('company_id', $companyId)
+            ->firstOrFail();
+
+        // Load valid rows for counting
+        $validRows = $bulkUpload->rows()->where('status', 'valid')->with('client')->get();
+
+        // Group by composite key to count invoices (same logic as preview)
+        $invoiceGroups = $validRows->groupBy(function ($row) {
+            $clientId = $row->client_id;
+            $invoiceDate = $row->raw_data['invoice_date'] ?? date('Y-m-d');
+
+            return "{$clientId}_{$invoiceDate}";
+        });
+
+        $invoiceCount = $invoiceGroups->count();
+        $clientCount = $validRows->pluck('client_id')->unique()->count();
+
+        // Placeholder for Phase 3 - actual invoices will be created then
+        $invoices = collect([]);
+
+        return view('bulk-invoice.success', compact('bulkUpload', 'invoiceCount', 'clientCount', 'invoices'));
+    }
 }

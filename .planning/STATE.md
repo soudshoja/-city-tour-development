@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Current Position
 
 Phase: 4 of 4 (PDF Generation & Email Delivery)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-13 — Completed plan 04-01 (Email Infrastructure for Bulk Invoices)
+Plan: 2 of 2 in current phase
+Status: Complete
+Last activity: 2026-02-13 — Completed plan 04-02 (Integration with CreateBulkInvoicesJob)
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 9.1 minutes
+- Total plans completed: 9
+- Average duration: 8.0 minutes
 - Total execution time: 1.2 hours
 
 **By Phase:**
@@ -30,17 +30,17 @@ Progress: [█████████░] 88%
 | 01-data-foundation-validation | 3 | 16 min | 5.3 min |
 | 02-ui-preview-workflow | 2 | 3 min | 1.5 min |
 | 03-background-invoice-creation | 2 | 51 min | 25.5 min |
-| 04-pdf-generation-email-delivery | 1 | 1 min | 1 min |
+| 04-pdf-generation-email-delivery | 2 | 3 min | 1.5 min |
 
 **Recent Plans:**
 
 | Phase-Plan | Duration | Tasks | Files | Completed |
 |------------|----------|-------|-------|-----------|
+| 04-02 | 2 min | 2 | 2 | 2026-02-13 |
 | 04-01 | 1 min | 2 | 3 | 2026-02-13 |
 | 03-02 | 49 min | 2 | 2 | 2026-02-13 |
 | 03-01 | 2 min | 2 | 3 | 2026-02-13 |
 | 02-02 | 1 min | 3 | 4 | 2026-02-13 |
-| 02-01 | 2 min | 2 | 3 | 2026-02-13 |
 
 ## Accumulated Context
 
@@ -92,6 +92,8 @@ Recent decisions affecting current work:
 - [Phase 04-01]: Serialize only bulkUploadId (not Eloquent model) in job constructor - prevents serialization issues in queue
 - [Phase 04-01]: No ShouldQueue on Mailable class - SendInvoiceEmailsJob handles queueing for clear separation
 - [Phase 04-01]: Email failure does not update BulkUpload status - invoices already created, email is just notification
+- [Phase 04-02]: Dispatch email job AFTER transaction (not inside) - PDF generation is CPU-intensive and must not hold DB locks
+- [Phase 04-02]: Separate 'emails' queue for email workers - allows independent scaling from invoice creation workers
 
 ### Pending Todos
 
@@ -104,6 +106,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 04-01-PLAN.md (Email Infrastructure for Bulk Invoices)
-Resume file: .planning/phases/04-pdf-generation-email-delivery/04-01-SUMMARY.md
-Next: Plan 04-02 (Integration with CreateBulkInvoicesJob)
+Stopped at: Completed 04-02-PLAN.md (Integration with CreateBulkInvoicesJob)
+Resume file: .planning/phases/04-pdf-generation-email-delivery/04-02-SUMMARY.md
+Next: All phases complete - ready for production deployment

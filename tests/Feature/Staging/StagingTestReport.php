@@ -24,7 +24,7 @@ class StagingTestReport extends TestCase
 {
     use RefreshDatabase;
 
-    protected $skipPermissionSeeder = true;
+    protected bool $skipPermissionSeeder = true;
 
     protected array $testResults = [];
     protected int $startTime;

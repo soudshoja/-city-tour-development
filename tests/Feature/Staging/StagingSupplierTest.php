@@ -24,7 +24,7 @@ class StagingSupplierTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected $skipPermissionSeeder = true;
+    protected bool $skipPermissionSeeder = true;
 
     /**
      * Standard supplier IDs used in the system

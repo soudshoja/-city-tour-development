@@ -10,29 +10,30 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Current Position
 
 Phase: 1 of 4 (Data Foundation & Validation)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-13 — Completed plan 01-02 (Bulk Upload Validation Service)
+Last activity: 2026-02-13 — Completed plan 01-03 (File Upload & Validation)
 
-Progress: [████░░░░░░] 50%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 5 minutes
-- Total execution time: 0.15 hours
+- Total plans completed: 3
+- Average duration: 4 minutes
+- Total execution time: 0.22 hours
 
 **By Phase:**
 
 | Phase | Plans | Total Time | Avg/Plan |
 |-------|-------|------------|----------|
-| 01-data-foundation-validation | 2 | 9 min | 4.5 min |
+| 01-data-foundation-validation | 3 | 16 min | 5.3 min |
 
 **Recent Plans:**
 
 | Phase-Plan | Duration | Tasks | Files | Completed |
 |------------|----------|-------|-------|-----------|
+| 01-03 | 3 min | 2 | 4 | 2026-02-13 |
 | 01-02 | 7 min | 1 | 8 | 2026-02-13 |
 | 01-01 | 2 min | 2 | 7 | 2026-02-13 |
 
@@ -59,6 +60,12 @@ Recent decisions affecting current work:
 - Unknown client flagging confirmed — Matches PROJECT.md decision, flags with 'unknown_client' not error
 - Case-insensitive supplier lookup — Handles user input variation in capitalization
 
+**From Plan 01-03:**
+- Excel::toArray() pattern for parsing — Simpler than ToCollection for validation-first workflow
+- Bulk insert BulkUploadRow records — Performance optimization for 50+ row uploads
+- Multi-tenant file storage — Files stored at bulk-uploads/{company_id}/ for isolation
+- Fail fast on header validation — Return 422 immediately, don't process rows if headers wrong
+
 ### Pending Todos
 
 None yet.
@@ -70,6 +77,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed phase 01 plan 01-02 (Bulk Upload Validation Service)
-Resume file: .planning/phases/01-data-foundation-validation/01-02-SUMMARY.md
-Next plan: 01-03 (File Upload & Validation)
+Stopped at: Completed phase 01 plan 01-03 (File Upload & Validation)
+Resume file: .planning/phases/01-data-foundation-validation/01-03-SUMMARY.md
+Next plan: 01-04 (Flagged Client Preview)

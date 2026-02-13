@@ -32,6 +32,7 @@ class BulkUpload extends Model
         'error_rows',
         'flagged_rows',
         'error_summary',
+        'invoice_ids',
     ];
 
     /**
@@ -41,6 +42,7 @@ class BulkUpload extends Model
      */
     protected $casts = [
         'error_summary' => 'array',
+        'invoice_ids' => 'array',
         'status' => 'string',
         'total_rows' => 'integer',
         'valid_rows' => 'integer',

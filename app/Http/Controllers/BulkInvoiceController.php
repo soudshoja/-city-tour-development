@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -66,9 +67,9 @@ class BulkInvoiceController extends Controller
      * 3. Validate headers
      * 4. Validate all rows
      * 5. Create BulkUpload and BulkUploadRow records
-     * 6. Return JSON validation summary
+     * 6. Redirect to preview page
      */
-    public function upload(BulkInvoiceUploadRequest $request): JsonResponse
+    public function upload(BulkInvoiceUploadRequest $request): JsonResponse|RedirectResponse
     {
         try {
             // Get context
@@ -163,19 +164,9 @@ class BulkInvoiceController extends Controller
 
             BulkUploadRow::insert($rowRecords);
 
-            // Return JSON response
-            return response()->json([
-                'upload_id' => $bulkUpload->id,
-                'status' => $bulkUpload->status,
-                'summary' => [
-                    'total_rows' => $results['total'],
-                    'valid_rows' => $results['valid'],
-                    'error_rows' => $results['errors'],
-                    'flagged_rows' => $results['flagged'],
-                ],
-                'has_errors' => $results['errors'] > 0,
-                'has_flagged' => $results['flagged'] > 0,
-            ]);
+            // Redirect to preview page on successful validation
+            return redirect()->route('bulk-invoices.preview', $bulkUpload->id)
+                ->with('message', "Upload validated: {$results['valid']} valid rows, {$results['errors']} errors, {$results['flagged']} flagged.");
         } catch (\Exception $e) {
             Log::error('Bulk upload failed: '.$e->getMessage(), [
                 'user_id' => Auth::id(),
@@ -255,5 +246,42 @@ class BulkInvoiceController extends Controller
 
             return redirect()->back()->withErrors(['error' => 'Failed to generate error report. Please try again.']);
         }
+    }
+
+    /**
+     * Preview the invoices to be created from a validated bulk upload.
+     *
+     * Displays grouped invoice cards by client and date, plus flagged rows section.
+     *
+     * @param  int  $id  The bulk upload ID
+     */
+    public function preview(int $id): View
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        // Load BulkUpload scoped by company_id AND status='validated' with eager loading
+        $bulkUpload = BulkUpload::where('id', $id)
+            ->where('company_id', $companyId)
+            ->where('status', 'validated')
+            ->with(['rows.client', 'rows.supplier'])
+            ->firstOrFail();
+
+        // Separate valid rows from flagged rows
+        $validRows = $bulkUpload->rows->where('status', 'valid');
+        $flaggedRows = $bulkUpload->rows->where('status', 'flagged');
+
+        // Group valid rows by composite key (client_id + invoice_date)
+        $invoiceGroups = $validRows->groupBy(function ($row) {
+            $clientId = $row->client_id;
+            $invoiceDate = $row->raw_data['invoice_date'] ?? date('Y-m-d');
+
+            return "{$clientId}_{$invoiceDate}";
+        });
+
+        // Count unique clients
+        $clientCount = $validRows->pluck('client_id')->unique()->count();
+
+        return view('bulk-invoice.preview', compact('bulkUpload', 'invoiceGroups', 'flaggedRows', 'clientCount'));
     }
 }

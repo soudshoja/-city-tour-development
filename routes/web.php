@@ -482,6 +482,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/template', [BulkInvoiceController::class, 'downloadTemplate'])->name('template');
         Route::post('/upload', [BulkInvoiceController::class, 'upload'])->name('upload');
         Route::get('/{id}/error-report', [BulkInvoiceController::class, 'downloadErrorReport'])->name('error-report');
+        Route::get('/{id}/preview', [BulkInvoiceController::class, 'preview'])->name('preview');
     });
 
     // REFUND

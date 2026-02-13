@@ -9,6 +9,15 @@
             </div>
         @endif
 
+        {{-- Error messages --}}
+        @if($errors->any())
+            <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded mb-4">
+                @foreach($errors->all() as $error)
+                    <p>{{ $error }}</p>
+                @endforeach
+            </div>
+        @endif
+
         {{-- Section 1: Upload Summary Banner --}}
         <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
             <h3 class="font-semibold text-lg mb-3">Upload Summary</h3>
@@ -152,22 +161,57 @@
             </div>
         @endif
 
-        {{-- Section 4: Action Buttons (placeholder for Plan 02-02) --}}
-        <div class="flex gap-4 mt-6 justify-end">
-            <button
-                disabled
-                class="bg-green-600 text-white px-6 py-2 rounded opacity-50 cursor-not-allowed"
-                title="Will be activated in Plan 02-02">
-                Approve All ({{ count($invoiceGroups) }} invoice(s))
-            </button>
-            <button
-                disabled
-                class="bg-gray-200 text-gray-600 px-6 py-2 rounded opacity-50 cursor-not-allowed"
-                title="Will be activated in Plan 02-02">
+        {{-- Section 4: Action Buttons with Alpine.js Modals --}}
+        <div x-data="{ showApproveModal: false, showRejectModal: false }" class="flex gap-4 mt-6 justify-end">
+            @if($invoiceGroups->count() > 0)
+                <button @click="showApproveModal = true" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded">
+                    Approve All ({{ count($invoiceGroups) }} invoices)
+                </button>
+            @endif
+            <button @click="showRejectModal = true" class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-6 py-2 rounded">
                 Reject Upload
             </button>
-        </div>
 
-        {{-- Approve/Reject modals will be added in Plan 02-02 --}}
+            <!-- Approve Confirmation Modal -->
+            <div x-show="showApproveModal" x-cloak
+                 @keydown.escape.window="showApproveModal = false"
+                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div @click.outside="showApproveModal = false"
+                     class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">Confirm Invoice Creation</h3>
+                    <p class="mb-2">This will create <strong>{{ count($invoiceGroups) }} invoices</strong> for <strong>{{ $clientCount }} clients</strong> from <strong>{{ $bulkUpload->valid_rows }} tasks</strong>.</p>
+                    <p class="text-sm text-gray-600">This action cannot be undone.</p>
+                    @if($flaggedRows->isNotEmpty())
+                        <p class="text-sm text-yellow-700 mt-2">Note: {{ $flaggedRows->count() }} flagged row(s) will NOT be included.</p>
+                    @endif
+                    <div class="mt-6 flex gap-3 justify-end">
+                        <button @click="showApproveModal = false" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">Cancel</button>
+                        <form method="POST" action="{{ route('bulk-invoices.approve', $bulkUpload->id) }}">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold">Confirm Approval</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reject Confirmation Modal -->
+            <div x-show="showRejectModal" x-cloak
+                 @keydown.escape.window="showRejectModal = false"
+                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div @click.outside="showRejectModal = false"
+                     class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">Confirm Rejection</h3>
+                    <p class="mb-2">This will discard the upload. No invoices will be created.</p>
+                    <p class="text-sm text-gray-600">File: {{ $bulkUpload->original_filename }}</p>
+                    <div class="mt-6 flex gap-3 justify-end">
+                        <button @click="showRejectModal = false" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">Cancel</button>
+                        <form method="POST" action="{{ route('bulk-invoices.reject', $bulkUpload->id) }}">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold">Reject Upload</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </x-app-layout>

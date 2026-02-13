@@ -10,29 +10,30 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Current Position
 
 Phase: 1 of 4 (Data Foundation & Validation)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-13 — Completed plan 01-01 (Database Foundation & Template Download)
+Last activity: 2026-02-13 — Completed plan 01-02 (Bulk Upload Validation Service)
 
-Progress: [██░░░░░░░░] 25%
+Progress: [████░░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 2 minutes
-- Total execution time: 0.03 hours
+- Total plans completed: 2
+- Average duration: 5 minutes
+- Total execution time: 0.15 hours
 
 **By Phase:**
 
 | Phase | Plans | Total Time | Avg/Plan |
 |-------|-------|------------|----------|
-| 01-data-foundation-validation | 1 | 2 min | 2 min |
+| 01-data-foundation-validation | 2 | 9 min | 4.5 min |
 
 **Recent Plans:**
 
 | Phase-Plan | Duration | Tasks | Files | Completed |
 |------------|----------|-------|-------|-----------|
+| 01-02 | 7 min | 1 | 8 | 2026-02-13 |
 | 01-01 | 2 min | 2 | 7 | 2026-02-13 |
 
 ## Accumulated Context
@@ -53,6 +54,11 @@ Recent decisions affecting current work:
 - Soft deletes on bulk_uploads only — Parent audit trail needed, rows cascade with parent
 - Cascade delete strategy — bulk_uploads → rows CASCADE, tasks/clients/suppliers → rows SET NULL for audit
 
+**From Plan 01-02:**
+- PostgreSQL fallback for testing — MySQL not running, PostgreSQL driver available, test infrastructure more resilient
+- Unknown client flagging confirmed — Matches PROJECT.md decision, flags with 'unknown_client' not error
+- Case-insensitive supplier lookup — Handles user input variation in capitalization
+
 ### Pending Todos
 
 None yet.
@@ -64,6 +70,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed phase 01 plan 01-01 (Database Foundation & Template Download)
-Resume file: .planning/phases/01-data-foundation-validation/01-01-SUMMARY.md
-Next plan: 01-02 (File Upload & Validation)
+Stopped at: Completed phase 01 plan 01-02 (Bulk Upload Validation Service)
+Resume file: .planning/phases/01-data-foundation-validation/01-02-SUMMARY.md
+Next plan: 01-03 (File Upload & Validation)

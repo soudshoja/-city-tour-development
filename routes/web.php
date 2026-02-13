@@ -480,6 +480,7 @@ Route::middleware(['auth'])->group(function () {
         'middleware' => ['auth'],
     ], function () {
         Route::get('/template', [BulkInvoiceController::class, 'downloadTemplate'])->name('template');
+        Route::post('/upload', [BulkInvoiceController::class, 'upload'])->name('upload');
         Route::get('/{id}/error-report', [BulkInvoiceController::class, 'downloadErrorReport'])->name('error-report');
     });
 

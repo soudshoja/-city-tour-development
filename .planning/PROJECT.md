@@ -8,53 +8,61 @@ A multi-tenant Laravel 11 platform for travel agencies to manage bookings, invoi
 
 **Agents can invoice clients accurately from any source (AIR files, PDFs, Excel uploads) with automated payment tracking and accounting integration.**
 
-## Current Milestone: v1.0 Bulk Invoice Upload
+## Current State
 
-**Goal:** Enable agents to create multiple invoices efficiently from Excel uploads with validation, preview, and automated workflows.
+**v1.0 Bulk Invoice Upload** — ✅ SHIPPED 2026-02-13
 
-**Target features:**
-- Bulk invoice upload with Excel template
-- Comprehensive validation (tasks, clients, data integrity)
-- Automatic invoice grouping by client and date
-- Preview and approval workflow
-- PDF generation and email delivery
-- Upload history and error reporting
+Delivered complete bulk invoice creation system from Excel uploads:
+- Excel template download with pre-filled client list
+- Row-level validation (tasks, clients, suppliers, data types)
+- Preview workflow with grouped invoice cards
+- Approval/rejection with Alpine.js modals
+- Background invoice creation in atomic transaction
+- PDF generation and email delivery to accountant + agent
+- Error reporting with downloadable Excel reports
+- Full upload history and audit trail
+
+**Tech:** 10 plans executed, 4 phases, ~25 tasks. See `.planning/milestones/v1.0-ROADMAP.md` for details.
 
 ## Requirements
 
 ### Validated
 
-<!-- Shipped and confirmed valuable from existing system -->
+<!-- Shipped and confirmed valuable -->
 
-- ✓ Multi-tenant architecture (company → branch → agent hierarchy) — existing
-- ✓ Task management for 12 service types (flight, hotel, visa, insurance, tour, cruise, car, rail, esim, event, lounge, ferry) — existing
-- ✓ Client, agent, supplier management with relationships — existing
-- ✓ Invoice creation from tasks (manual selection via UI) — existing
-- ✓ Invoice number auto-generation (INV-YYYY-XXXXX format, per-company sequence) — existing
-- ✓ Payment gateway integration (MyFatoorah, Tap, Hesabe, uPayment, Knet) — existing
-- ✓ Partial payment tracking (invoice_partials, payment_applications, credits) — existing
-- ✓ Double-entry bookkeeping (accounts, journal entries, general ledger) — existing
-- ✓ AI document processing (AIR files, PDFs, passport images via OpenAI/OpenWebUI) — existing
-- ✓ Email attachment processing and task creation — existing
-- ✓ Excel import for clients, agents, companies, tasks (Maatwebsite/Laravel-Excel) — existing
-- ✓ WhatsApp Business API integration for client communication — existing
-- ✓ Travel API integration (TBO Holidays, Magic Holiday) — existing
-- ✓ GraphQL API via Lighthouse — existing
+**Existing Platform (pre-v1.0):**
+- ✓ Multi-tenant architecture (company → branch → agent hierarchy)
+- ✓ Task management for 12 service types (flight, hotel, visa, insurance, tour, cruise, car, rail, esim, event, lounge, ferry)
+- ✓ Client, agent, supplier management with relationships
+- ✓ Invoice creation from tasks (manual selection via UI)
+- ✓ Invoice number auto-generation (INV-YYYY-XXXXX format, per-company sequence)
+- ✓ Payment gateway integration (MyFatoorah, Tap, Hesabe, uPayment, Knet)
+- ✓ Partial payment tracking (invoice_partials, payment_applications, credits)
+- ✓ Double-entry bookkeeping (accounts, journal entries, general ledger)
+- ✓ AI document processing (AIR files, PDFs, passport images via OpenAI/OpenWebUI)
+- ✓ Email attachment processing and task creation
+- ✓ Excel import for clients, agents, companies, tasks (Maatwebsite/Laravel-Excel)
+- ✓ WhatsApp Business API integration for client communication
+- ✓ Travel API integration (TBO Holidays, Magic Holiday)
+- ✓ GraphQL API via Lighthouse
+
+**v1.0 Bulk Invoice Upload (2026-02-13):**
+- ✓ Bulk invoice upload from Excel — Agents upload Excel file with tasks, system creates invoices with validation
+- ✓ Excel row validation — Required fields, supplier existence, enum values (task type, status)
+- ✓ Client matching by mobile — Find client by `(company_id, phone)`, flag unknown clients for manual review
+- ✓ Group tasks into invoices by client — All tasks for same client + date → one invoice
+- ✓ Preview before commit — Summary of invoices to be created, approve/reject workflow
+- ✓ Invoice PDF generation — Auto-generate printable PDF invoices after upload
+- ✓ Email invoice to accountant + agent — Send created invoices to company accountant and uploading agent
+- ✓ Upload history tracking — Excel file creates which invoices, full audit trail
+- ✓ Error reporting — Clear error messages with row numbers and field names, downloadable Excel reports
+- ✓ Manual review queue — Flagged rows (unknown clients) marked for agent review
 
 ### Active
 
-<!-- Current scope. Building toward these. -->
+<!-- Current scope. Next milestone requirements go here. -->
 
-- [ ] **Bulk invoice upload from Excel** — Agents upload Excel file with tasks, system creates invoices with validation
-- [ ] **Excel row validation** — Check required fields, validate suppliers exist, validate enum values (task type, status)
-- [ ] **Client matching by mobile** — Find client by `(company_id, phone)`, flag unknown clients for manual review
-- [ ] **Group tasks into invoices by client** — All tasks for same client mobile → one invoice per client
-- [ ] **Preview before commit** — Show summary of invoices to be created, allow agent to approve/reject
-- [ ] **Invoice PDF generation** — Auto-generate printable PDF invoices after upload
-- [ ] **Email invoice to accountant + agent** — Send each created invoice to company accountant and the agent who uploaded
-- [ ] **Upload history tracking** — Track which Excel file created which invoices, audit trail
-- [ ] **Error reporting** — Show clear error messages for validation failures (missing supplier, invalid enum, empty fields)
-- [ ] **Manual review queue** — Flagged rows (unknown clients) go to review queue for agent to fix
+(No active requirements — ready for next milestone planning)
 
 ### Out of Scope
 
@@ -99,11 +107,13 @@ A multi-tenant Laravel 11 platform for travel agencies to manage bookings, invoi
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| One invoice per client (not per row) | Matches existing manual invoice creation pattern, reduces invoice clutter | — Pending |
-| Flag unknown clients instead of auto-create | Prevents duplicate/incorrect client creation, matches existing validation approach | — Pending |
-| Full validation before preview | Fail fast with clear errors, better UX than partial imports | — Pending |
-| Email to accountant + agent (not WhatsApp) | Professional invoice delivery, avoid client notification spam until invoice is reviewed | — Pending |
-| Leverage existing InvoiceController logic | Reuse proven invoice creation, maintain consistency with manual invoices | — Pending |
+| One invoice per client + date grouping | Matches existing manual invoice creation pattern, reduces invoice clutter | ✓ Good (v1.0) |
+| Flag unknown clients instead of auto-create | Prevents duplicate/incorrect client creation, maintains data quality | ✓ Good (v1.0) |
+| Full validation before preview | Fail fast with clear errors, better UX than partial imports | ✓ Good (v1.0) |
+| Email to accountant + agent (not WhatsApp) | Professional invoice delivery, avoid client notification spam | ✓ Good (v1.0) |
+| Separate queue job for email delivery | Prevents PDF generation from holding database locks during invoice creation | ✓ Good (v1.0) |
+| afterCommit() on job dispatch | Ensures database status committed before background jobs start | ✓ Good (v1.0) |
+| In-memory PDF generation | Uses Laravel 11 Attachment::fromData(), no temp file cleanup needed | ✓ Good (v1.0) |
 
 ---
-*Last updated: 2026-02-12 after initialization*
+*Last updated: 2026-02-13 after v1.0 milestone completion*

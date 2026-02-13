@@ -31,13 +31,13 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INVOICE-02**: Agent can preview grouped invoices before creation
 - [ ] **INVOICE-03**: Agent can approve all invoices or reject entire upload
 - [ ] **INVOICE-04**: System creates all approved invoices in single database transaction
-- [ ] **INVOICE-05**: System generates PDF for each created invoice
+- [x] **INVOICE-05**: System generates PDF for each created invoice
 - [ ] **INVOICE-06**: System uses existing invoice_sequence table to prevent duplicate invoice numbers
 
 ### Delivery & Communication
 
-- [ ] **DELIVER-01**: System emails generated invoice PDFs to company accountant
-- [ ] **DELIVER-02**: System emails generated invoice PDFs to uploading agent
+- [x] **DELIVER-01**: System emails generated invoice PDFs to company accountant
+- [x] **DELIVER-02**: System emails generated invoice PDFs to uploading agent
 - [ ] **DELIVER-03**: Agent sees success page with summary of created invoices and download links
 
 ### History & Audit
@@ -107,10 +107,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INVOICE-02 | Phase 2 | Pending |
 | INVOICE-03 | Phase 2 | Pending |
 | INVOICE-04 | Phase 3 | Pending |
-| INVOICE-05 | Phase 4 | Pending |
+| INVOICE-05 | Phase 4 | Complete |
 | INVOICE-06 | Phase 3 | Pending |
-| DELIVER-01 | Phase 4 | Pending |
-| DELIVER-02 | Phase 4 | Pending |
+| DELIVER-01 | Phase 4 | Complete |
+| DELIVER-02 | Phase 4 | Complete |
 | DELIVER-03 | Phase 2 | Pending |
 | AUDIT-01 | Phase 1 | Pending |
 | AUDIT-02 | Phase 2 | Pending |

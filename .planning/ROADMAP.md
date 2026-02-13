@@ -46,10 +46,11 @@ Plans:
   2. Agent can approve all invoices or reject entire upload from preview page
   3. Preview clearly shows which tasks belong to which invoice grouped by client and date
   4. Agent sees success page after approval with invoice summary and download links
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 02-01: TBD during phase planning
+- [ ] 02-01-PLAN.md -- Preview page with invoice grouping (controller preview method, route, Blade template with grouped invoice cards and flagged rows)
+- [ ] 02-02-PLAN.md -- Approve/reject actions and success page (controller approve/reject/success methods, Alpine.js modals, success page with summary)
 
 ### Phase 3: Background Invoice Creation
 **Goal**: System creates all approved invoices atomically without race conditions or duplicate invoice numbers
@@ -88,10 +89,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation & Validation | 0/4 | Not started | - |
-| 2. UI & Preview Workflow | 0/TBD | Not started | - |
+| 2. UI & Preview Workflow | 0/2 | Not started | - |
 | 3. Background Invoice Creation | 0/TBD | Not started | - |
 | 4. PDF Generation & Email Delivery | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12*
-*Last updated: 2026-02-12 after Phase 1 planning complete (4 plans)*
+*Last updated: 2026-02-13 after Phase 2 planning complete (2 plans)*

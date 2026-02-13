@@ -9,6 +9,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\BulkInvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\RoleController;
@@ -484,6 +485,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details');
     });
 
+    // Bulk Invoice Upload Routes
+    Route::group([
+        'prefix' => 'bulk-invoices',
+        'as' => 'bulk-invoices.',
+        'middleware' => ['auth'],
+    ], function () {
+        Route::get('/template', [BulkInvoiceController::class, 'downloadTemplate'])->name('template');
+    });
 
     // REFUND
     Route::group([

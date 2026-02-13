@@ -26,7 +26,7 @@ class ErrorScenarioTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected $skipPermissionSeeder = true;
+    protected bool $skipPermissionSeeder = true;
 
     /**
      * TEST 1: Malformed JSON payload

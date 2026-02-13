@@ -176,6 +176,16 @@ class CreateBulkInvoicesJob implements ShouldQueue
                 'invoice_ids' => $invoiceIds,
             ]);
         });
+
+        // Dispatch email job AFTER transaction commits successfully
+        // PDF generation is CPU-intensive and must not hold DB locks
+        SendInvoiceEmailsJob::dispatch($this->bulkUploadId)
+            ->onQueue('emails')
+            ->afterCommit();
+
+        Log::info('Dispatched email notification job', [
+            'bulk_upload_id' => $this->bulkUploadId,
+        ]);
     }
 
     /**

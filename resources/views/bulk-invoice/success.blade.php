@@ -75,6 +75,7 @@
             {{-- Completed state: all invoices created --}}
             <div class="bg-green-50 border border-green-200 p-4 rounded mb-6">
                 <p class="text-green-900 font-semibold">All invoices have been created successfully.</p>
+                <p class="text-sm text-green-700 mt-1">Invoice PDFs are being emailed to the company accountant and uploading agent.</p>
             </div>
         @endif
 
@@ -91,6 +92,7 @@
                         </div>
                         <div class="flex gap-2">
                             <a href="{{ route('invoice.show', [$invoice->company_id, $invoice->invoice_number]) }}" class="text-blue-600 hover:underline text-sm">View</a>
+                            <a href="{{ route('invoice.pdf', [$invoice->company_id, $invoice->invoice_number]) }}" class="text-green-600 hover:underline text-sm">Download PDF</a>
                         </div>
                     </li>
                 @endforeach

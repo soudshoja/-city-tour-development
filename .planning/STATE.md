@@ -5,34 +5,36 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** Agents can invoice clients accurately from any source (AIR files, PDFs, Excel uploads) with automated payment tracking and accounting integration.
-**Current focus:** Phase 1 - Data Foundation & Validation
+**Current focus:** Phase 2 - UI & Preview Workflow
 
 ## Current Position
 
-Phase: 1 of 4 (Data Foundation & Validation)
-Plan: 3 of 4 in current phase
+Phase: 2 of 4 (UI & Preview Workflow)
+Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-02-13 — Completed plan 01-03 (File Upload & Validation)
+Last activity: 2026-02-13 — Completed plan 02-01 (Preview Page with Invoice Grouping)
 
-Progress: [███████░░░] 75%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 4 minutes
-- Total execution time: 0.22 hours
+- Total plans completed: 4
+- Average duration: 3.75 minutes
+- Total execution time: 0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total Time | Avg/Plan |
 |-------|-------|------------|----------|
 | 01-data-foundation-validation | 3 | 16 min | 5.3 min |
+| 02-ui-preview-workflow | 1 | 2 min | 2 min |
 
 **Recent Plans:**
 
 | Phase-Plan | Duration | Tasks | Files | Completed |
 |------------|----------|-------|-------|-----------|
+| 02-01 | 2 min | 2 | 3 | 2026-02-13 |
 | 01-03 | 3 min | 2 | 4 | 2026-02-13 |
 | 01-02 | 7 min | 1 | 8 | 2026-02-13 |
 | 01-01 | 2 min | 2 | 7 | 2026-02-13 |
@@ -66,6 +68,11 @@ Recent decisions affecting current work:
 - Multi-tenant file storage — Files stored at bulk-uploads/{company_id}/ for isolation
 - Fail fast on header validation — Return 422 immediately, don't process rows if headers wrong
 
+**From Plan 02-01:**
+- Composite key grouping over nested groupBy — Simpler Blade iteration, flatter structure
+- Redirect to preview vs JSON response — Better UX flow, immediate visual feedback
+- Disabled buttons for future features — Visual feedback without incomplete functionality
+
 ### Pending Todos
 
 None yet.
@@ -77,6 +84,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed phase 01 plan 01-03 (File Upload & Validation)
-Resume file: .planning/phases/01-data-foundation-validation/01-03-SUMMARY.md
-Next plan: 01-04 (Flagged Client Preview)
+Stopped at: Completed phase 02 plan 02-01 (Preview Page with Invoice Grouping)
+Resume file: .planning/phases/02-ui-preview-workflow/02-01-SUMMARY.md
+Next plan: 02-02 (Approve/Reject Actions and Success Page)

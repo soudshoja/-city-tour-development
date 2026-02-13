@@ -6,8 +6,10 @@ use App\Exports\BulkInvoiceTemplateExport;
 use App\Exports\BulkUploadErrorReportExport;
 use App\Http\Requests\BulkInvoiceUploadRequest;
 use App\Imports\BulkInvoiceImport;
+use App\Jobs\CreateBulkInvoicesJob;
 use App\Models\BulkUpload;
 use App\Models\BulkUploadRow;
+use App\Models\Invoice;
 use App\Services\BulkUploadValidationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -308,10 +310,14 @@ class BulkInvoiceController extends Controller
             return redirect()->back()->withErrors(['error' => 'Upload already processed or no longer in validated status.']);
         }
 
-        // Load the BulkUpload for redirect
-        $bulkUpload = BulkUpload::findOrFail($id);
+        // Dispatch job AFTER status update committed (afterCommit prevents job
+        // from running before 'processing' status is visible in database)
+        CreateBulkInvoicesJob::dispatch($id)
+            ->onQueue('invoices')
+            ->afterCommit();
 
-        return redirect()->route('bulk-invoices.success', $id)->with('message', 'Invoices approved for creation.');
+        return redirect()->route('bulk-invoices.success', $id)
+            ->with('message', 'Invoices are being created in the background.');
     }
 
     /**
@@ -343,7 +349,7 @@ class BulkInvoiceController extends Controller
      * Show success page after bulk upload approval.
      *
      * Displays upload summary with invoice/client counts.
-     * Invoice collection will be populated in Phase 3.
+     * Loads actual created invoices when processing is complete.
      *
      * @param  int  $id  The bulk upload ID
      */
@@ -371,9 +377,16 @@ class BulkInvoiceController extends Controller
         $invoiceCount = $invoiceGroups->count();
         $clientCount = $validRows->pluck('client_id')->unique()->count();
 
-        // Placeholder for Phase 3 - actual invoices will be created then
+        // Load actual invoices if processing is complete
         $invoices = collect([]);
+        if ($bulkUpload->status === 'completed' && ! empty($bulkUpload->invoice_ids)) {
+            $invoices = Invoice::whereIn('id', $bulkUpload->invoice_ids)
+                ->with('client')
+                ->get();
+        }
 
-        return view('bulk-invoice.success', compact('bulkUpload', 'invoiceCount', 'clientCount', 'invoices'));
+        return view('bulk-invoice.success', compact(
+            'bulkUpload', 'invoiceCount', 'clientCount', 'invoices'
+        ));
     }
 }

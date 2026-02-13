@@ -9,18 +9,18 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 ## Current Position
 
-Phase: 3 of 4 (Background Invoice Creation)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed plan 03-02 (Dispatch Job and Success Page Update)
+Phase: 4 of 4 (PDF Generation & Email Delivery)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-13 — Completed plan 04-01 (Email Infrastructure for Bulk Invoices)
 
-Progress: [█████████░] 100%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 10.4 minutes
+- Total plans completed: 8
+- Average duration: 9.1 minutes
 - Total execution time: 1.2 hours
 
 **By Phase:**
@@ -30,16 +30,17 @@ Progress: [█████████░] 100%
 | 01-data-foundation-validation | 3 | 16 min | 5.3 min |
 | 02-ui-preview-workflow | 2 | 3 min | 1.5 min |
 | 03-background-invoice-creation | 2 | 51 min | 25.5 min |
+| 04-pdf-generation-email-delivery | 1 | 1 min | 1 min |
 
 **Recent Plans:**
 
 | Phase-Plan | Duration | Tasks | Files | Completed |
 |------------|----------|-------|-------|-----------|
+| 04-01 | 1 min | 2 | 3 | 2026-02-13 |
 | 03-02 | 49 min | 2 | 2 | 2026-02-13 |
 | 03-01 | 2 min | 2 | 3 | 2026-02-13 |
 | 02-02 | 1 min | 3 | 4 | 2026-02-13 |
 | 02-01 | 2 min | 2 | 3 | 2026-02-13 |
-| 01-03 | 3 min | 2 | 4 | 2026-02-13 |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Recent decisions affecting current work:
 - Verification uses syntax/static checks only — PHP linting and Pint formatting instead of database-dependent tinker/migrate checks
 - [Phase 03]: afterCommit() prevents job from running before status commit — Ensures 'processing' status is visible in database before job starts
 - [Phase 03]: Three-state success page (processing/failed/completed) — Better UX than single static message
+- [Phase 04-01]: Serialize only bulkUploadId (not Eloquent model) in job constructor - prevents serialization issues in queue
+- [Phase 04-01]: No ShouldQueue on Mailable class - SendInvoiceEmailsJob handles queueing for clear separation
+- [Phase 04-01]: Email failure does not update BulkUpload status - invoices already created, email is just notification
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed phase 03 plan 03-02 (Dispatch Job and Success Page Update) — Phase 03 complete
-Resume file: .planning/phases/03-background-invoice-creation/03-02-SUMMARY.md
-Next: Phase 04 (Email Notifications & Integration)
+Stopped at: Completed 04-01-PLAN.md (Email Infrastructure for Bulk Invoices)
+Resume file: .planning/phases/04-pdf-generation-email-delivery/04-01-SUMMARY.md
+Next: Plan 04-02 (Integration with CreateBulkInvoicesJob)

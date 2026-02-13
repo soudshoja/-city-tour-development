@@ -62,10 +62,11 @@ Plans:
   3. System prevents tasks from being invoiced twice across multiple uploads
   4. Failed invoice creations log detailed error information for debugging
   5. Upload record links to all created invoice IDs for audit trail
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 03-01: TBD during phase planning
+- [ ] 03-01-PLAN.md -- Migration, model update, and CreateBulkInvoicesJob queue job (atomic transaction, lockForUpdate sequence, duplicate task guard)
+- [ ] 03-02-PLAN.md -- Controller integration and success page update (dispatch job from approve, show real invoices on success page)
 
 ### Phase 4: PDF Generation & Email Delivery
 **Goal**: Created invoices automatically deliver to accountant and uploading agent as PDF attachments
@@ -90,9 +91,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Data Foundation & Validation | 0/4 | Not started | - |
 | 2. UI & Preview Workflow | 2/2 | Complete | 2026-02-13 |
-| 3. Background Invoice Creation | 0/TBD | Not started | - |
+| 3. Background Invoice Creation | 0/2 | Not started | - |
 | 4. PDF Generation & Email Delivery | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12*
-*Last updated: 2026-02-13 after Phase 2 execution complete*
+*Last updated: 2026-02-13 after Phase 3 planning complete*

@@ -9,18 +9,18 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 ## Current Position
 
-Phase: 2 of 4 (UI & Preview Workflow)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed plan 02-02 (Approve/Reject Actions and Success Page)
+Phase: 3 of 4 (Background Invoice Creation)
+Plan: 1 of 2 in current phase
+Status: Plan complete
+Last activity: 2026-02-13 — Completed plan 03-01 (Background Invoice Creation Job)
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 3.2 minutes
+- Total plans completed: 6
+- Average duration: 3.0 minutes
 - Total execution time: 0.3 hours
 
 **By Phase:**
@@ -29,15 +29,16 @@ Progress: [████████░░] 83%
 |-------|-------|------------|----------|
 | 01-data-foundation-validation | 3 | 16 min | 5.3 min |
 | 02-ui-preview-workflow | 2 | 3 min | 1.5 min |
+| 03-background-invoice-creation | 1 | 2 min | 2.0 min |
 
 **Recent Plans:**
 
 | Phase-Plan | Duration | Tasks | Files | Completed |
 |------------|----------|-------|-------|-----------|
+| 03-01 | 2 min | 2 | 3 | 2026-02-13 |
 | 02-02 | 1 min | 3 | 4 | 2026-02-13 |
 | 02-01 | 2 min | 2 | 3 | 2026-02-13 |
 | 01-03 | 3 min | 2 | 4 | 2026-02-13 |
-| 01-02 | 7 min | 1 | 8 | 2026-02-13 |
 
 ## Accumulated Context
 
@@ -79,6 +80,12 @@ Recent decisions affecting current work:
 - Empty invoices collection on success page — Phase 3 creates actual Invoice records
 - Reject redirects to dashboard — Flash message sufficient, no dedicated reject page needed
 
+**From Plan 03-01:**
+- lockForUpdate on InvoiceSequence instead of no locking — Prevents race conditions when multiple jobs generate invoice numbers concurrently
+- Duplicate task check throws exception causing full rollback — Ensures atomicity - if ANY task is already invoiced, NO invoices are created from this upload
+- Migration execution deferred to production deployment — No local database server available, migrations will run during deployment after all phases complete
+- Verification uses syntax/static checks only — PHP linting and Pint formatting instead of database-dependent tinker/migrate checks
+
 ### Pending Todos
 
 None yet.
@@ -90,6 +97,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed phase 02 plan 02-02 (Approve/Reject Actions and Success Page) — Phase 02 complete
-Resume file: .planning/phases/02-ui-preview-workflow/02-02-SUMMARY.md
-Next phase: 03-invoice-generation
+Stopped at: Completed phase 03 plan 03-01 (Background Invoice Creation Job)
+Resume file: .planning/phases/03-background-invoice-creation/03-01-SUMMARY.md
+Next: 03-02 (Dispatch Job and Success Page Update)

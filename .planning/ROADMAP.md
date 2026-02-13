@@ -77,23 +77,24 @@ Plans:
   2. Company accountant receives email with all invoice PDFs attached
   3. Uploading agent receives email copy with all invoice PDFs attached
   4. Emails queue for delivery to prevent blocking invoice creation
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 04-01: TBD during phase planning
+- [ ] 04-01-PLAN.md -- Email infrastructure (BulkInvoicesMail mailable with PDF attachments, email Blade template, SendInvoiceEmailsJob queue job)
+- [ ] 04-02-PLAN.md -- Wiring and success page (dispatch email job from CreateBulkInvoicesJob, add PDF download links to success page)
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation & Validation | 0/4 | Not started | - |
 | 2. UI & Preview Workflow | 2/2 | Complete | 2026-02-13 |
 | 3. Background Invoice Creation | 2/2 | Complete | 2026-02-13 |
-| 4. PDF Generation & Email Delivery | 0/TBD | Not started | - |
+| 4. PDF Generation & Email Delivery | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12*
-*Last updated: 2026-02-13 after Phase 3 execution complete*
+*Last updated: 2026-02-13 after Phase 4 planning complete*

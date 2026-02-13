@@ -50,21 +50,44 @@
             </div>
         </div>
 
-        {{-- Section 3: Invoice Processing Status --}}
-        <div class="bg-blue-50 border border-blue-200 p-4 rounded mb-6">
-            <p class="text-blue-900 font-semibold mb-2">Invoices are being prepared. This page will show download links once processing is complete.</p>
-            <p class="text-sm text-blue-700">Note: (Invoice creation will be implemented in Phase 3)</p>
-        </div>
+        {{-- Section 3: Status-aware processing message --}}
+        @if($bulkUpload->status === 'processing')
+            {{-- Processing state: job is still running --}}
+            <div class="bg-blue-50 border border-blue-200 p-4 rounded mb-6">
+                <div class="flex items-center gap-3">
+                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <p class="text-blue-900 font-semibold">Invoices are being created in the background. Refresh this page to check progress.</p>
+                </div>
+            </div>
+        @elseif($bulkUpload->status === 'failed')
+            {{-- Failed state: job permanently failed --}}
+            <div class="bg-red-50 border border-red-200 p-4 rounded mb-6">
+                <p class="text-red-900 font-semibold mb-2">Invoice creation failed.</p>
+                @if(is_array($bulkUpload->error_summary) && isset($bulkUpload->error_summary['job_failure']))
+                    <p class="text-sm text-red-700">Error: {{ $bulkUpload->error_summary['job_failure'] }}</p>
+                @endif
+                <p class="text-sm text-red-600 mt-2">Please contact support or try uploading again.</p>
+            </div>
+        @elseif($bulkUpload->status === 'completed')
+            {{-- Completed state: all invoices created --}}
+            <div class="bg-green-50 border border-green-200 p-4 rounded mb-6">
+                <p class="text-green-900 font-semibold">All invoices have been created successfully.</p>
+            </div>
+        @endif
 
-        {{-- Section 4: Invoices List (placeholder for Phase 3) --}}
+        {{-- Section 4: Invoice list (real data when completed) --}}
         @if($invoices->isNotEmpty())
-            <h3 class="font-semibold mb-3 text-lg">Created Invoices</h3>
+            <h3 class="font-semibold mb-3 text-lg">Created Invoices ({{ $invoices->count() }})</h3>
             <ul class="space-y-2">
                 @foreach($invoices as $invoice)
                     <li class="border rounded p-3 flex justify-between items-center">
                         <div>
                             <p class="font-semibold">{{ $invoice->invoice_number }}</p>
-                            <p class="text-sm text-gray-600">{{ $invoice->client->name ?? '' }}</p>
+                            <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'Unknown Client' }}</p>
+                            <p class="text-xs text-gray-400">{{ $invoice->invoice_date }} &middot; {{ $invoice->currency }} {{ number_format($invoice->amount, 3) }}</p>
                         </div>
                         <div class="flex gap-2">
                             <a href="{{ route('invoice.show', [$invoice->company_id, $invoice->invoice_number]) }}" class="text-blue-600 hover:underline text-sm">View</a>

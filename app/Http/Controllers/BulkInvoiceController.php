@@ -30,6 +30,14 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BulkInvoiceController extends Controller
 {
     /**
+     * Show the bulk invoice upload form.
+     */
+    public function index()
+    {
+        return view('bulk-invoice.upload');
+    }
+
+    /**
      * @var BulkUploadValidationService
      */
     protected $validationService;

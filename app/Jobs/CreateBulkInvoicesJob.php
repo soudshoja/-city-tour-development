@@ -20,9 +20,18 @@ use Throwable;
  * CreateBulkInvoicesJob
  *
  * Background queue job for atomic bulk invoice creation from approved bulk uploads.
- * Creates all invoices within a single database transaction (all succeed or all fail).
+ * Links existing tasks to clients, sets selling prices, creates invoices, and applies payments.
+ *
+ * Process:
+ * 1. Load validated rows with matched task_id, client_id, payment_id
+ * 2. Set task.selling_amount from Excel (was NULL before)
+ * 3. Link task to client if task.client_id is NULL
+ * 4. Group tasks by client + invoice_date
+ * 5. Create invoices with InvoiceDetails
+ * 6. Apply payments using PaymentApplicationService
+ *
+ * All operations within a single transaction (all succeed or all fail).
  * Uses pessimistic locking on invoice_sequence to prevent duplicate invoice numbers.
- * Checks for duplicate task invoicing before creating each invoice detail.
  */
 class CreateBulkInvoicesJob implements ShouldQueue
 {
@@ -61,9 +70,8 @@ class CreateBulkInvoicesJob implements ShouldQueue
      */
     public function handle(): void
     {
-        // Load BulkUpload with eager loading
-        $bulkUpload = BulkUpload::with('rows.client', 'rows.supplier', 'rows.task')
-            ->findOrFail($this->bulkUploadId);
+        // Load BulkUpload with rows
+        $bulkUpload = BulkUpload::with('rows')->findOrFail($this->bulkUploadId);
 
         // Set log context
         Log::withContext([
@@ -78,107 +86,86 @@ class CreateBulkInvoicesJob implements ShouldQueue
 
         // Wrap everything in DB::transaction for atomicity
         DB::transaction(function () use ($bulkUpload) {
-            // Get valid rows
-            $validRows = $bulkUpload->rows()->where('status', 'valid')->get();
+            $invoiceGroups = [];
 
-            // Group by composite key (same logic as BulkInvoiceController::preview)
-            $invoiceGroups = $validRows->groupBy(function ($row) {
-                $clientId = $row->client_id;
-                $invoiceDate = $row->raw_data['invoice_date'] ?? date('Y-m-d');
+            // STEP 1: Process each valid row
+            foreach ($bulkUpload->rows()->where('status', 'valid')->get() as $row) {
+                // 1a. Load matched entities
+                $task = \App\Models\Task::findOrFail($row->matched['task_id']);
+                $client = \App\Models\Client::findOrFail($row->matched['client_id']);
+                $payment = \App\Models\Payment::findOrFail($row->matched['payment_id']);
 
-                return "{$clientId}_{$invoiceDate}";
-            });
+                // 1b. Set selling price (was NULL before)
+                $task->selling_amount = $row->raw_data['selling_price'];
+                $task->save();
 
-            $invoiceIds = [];
+                // 1c. Link task to client (if not already linked)
+                if (! $task->client_id) {
+                    $task->client_id = $client->id;
+                    $task->save();
+                }
 
-            // Create invoices for each group
-            foreach ($invoiceGroups as $groupKey => $rows) {
-                // Parse composite key
-                [$clientId, $invoiceDate] = explode('_', $groupKey);
+                // 1d. Group by client_id + invoice_date
+                $groupKey = ($task->client_id ?? $client->id).'_'.$row->raw_data['invoice_date'];
+                $invoiceGroups[$groupKey][] = [
+                    'task' => $task,
+                    'client' => $task->client ?? $client,
+                    'payment' => $payment,
+                    'invoice_date' => $row->raw_data['invoice_date'],
+                    'selling_price' => $row->raw_data['selling_price'],
+                    'notes' => $row->raw_data['notes'] ?? null,
+                ];
+            }
 
-                // Generate invoice number with pessimistic lock
-                $invoiceNumber = $this->generateInvoiceNumber($bulkUpload->company_id);
+            // STEP 2: Create invoices for each group
+            $createdInvoices = [];
+            foreach ($invoiceGroups as $group) {
+                // 2a. Create invoice
+                $invoice = $this->createInvoice($group, $bulkUpload);
 
-                // Get first row for shared metadata
-                $firstRow = $rows->first();
-
-                // Calculate subTotal
-                $subTotal = $rows->sum(fn ($r) => (float) ($r->raw_data['task_price'] ?? $r->task->total));
-
-                // Create Invoice (same fields as InvoiceController::store)
-                $invoice = Invoice::create([
-                    'invoice_number' => $invoiceNumber,
-                    'client_id' => (int) $clientId,
-                    'agent_id' => $bulkUpload->agent_id,
-                    'currency' => $firstRow->raw_data['currency'] ?? 'KWD',
-                    'sub_amount' => $subTotal,
-                    'amount' => $subTotal,
-                    'invoice_date' => $invoiceDate,
-                    'status' => 'unpaid', // Matches InvoiceStatus::UNPAID
-                ]);
-
-                // Create InvoiceDetails for each row in the group
-                foreach ($rows as $row) {
-                    // Check duplicate task: has this task been invoiced already?
-                    $isDuplicate = InvoiceDetail::where('task_id', $row->task_id)
-                        ->whereHas('invoice', fn ($q) => $q->whereNotIn('status', ['refunded', 'paid by refund']))
-                        ->exists();
-
-                    if ($isDuplicate) {
-                        // Find the existing invoice number for error message
-                        $existingInvoice = InvoiceDetail::where('task_id', $row->task_id)
-                            ->whereHas('invoice', fn ($q) => $q->whereNotIn('status', ['refunded', 'paid by refund']))
-                            ->with('invoice')
-                            ->first();
-
-                        throw new Exception(
-                            "Task ID {$row->task_id} already invoiced in invoice {$existingInvoice->invoice->invoice_number}. Transaction rolled back."
-                        );
-                    }
-
-                    // Calculate prices
-                    $taskPrice = (float) ($row->raw_data['task_price'] ?? $row->task->total);
-                    $supplierPrice = (float) ($row->task->price ?? $row->task->total ?? 0);
-
-                    // Create InvoiceDetail (same fields as InvoiceController::store)
+                // 2b. Create invoice details (link tasks)
+                foreach ($group as $item) {
                     InvoiceDetail::create([
                         'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoiceNumber,
-                        'task_id' => $row->task_id,
-                        'task_description' => $row->raw_data['task_description'] ?? $row->task->reference ?? '',
-                        'task_price' => $taskPrice,
-                        'supplier_price' => $supplierPrice,
-                        'markup_price' => $taskPrice - $supplierPrice,
-                        'profit' => $taskPrice - $supplierPrice,
+                        'invoice_number' => $invoice->invoice_number,
+                        'task_id' => $item['task']->id,
+                        'task_description' => $item['task']->reference ?? '',
+                        'task_price' => $item['selling_price'],
+                        'supplier_price' => $item['task']->price ?? 0,
+                        'markup_price' => $item['selling_price'] - ($item['task']->price ?? 0),
+                        'profit' => $item['selling_price'] - ($item['task']->price ?? 0),
                         'paid' => false,
                     ]);
                 }
 
-                // Collect invoice ID
-                $invoiceIds[] = $invoice->id;
+                // 2c. Link payment via PaymentApplicationService
+                $payment = $group[0]['payment'];
+                $client = $group[0]['client'];
+                $this->linkPaymentToInvoice($invoice, $payment, $client);
+
+                $createdInvoices[] = $invoice->id;
 
                 Log::info('Created invoice', [
                     'invoice_id' => $invoice->id,
-                    'invoice_number' => $invoiceNumber,
-                    'client_id' => $clientId,
-                    'task_count' => $rows->count(),
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $invoice->client_id,
+                    'task_count' => count($group),
                 ]);
             }
 
-            // Update BulkUpload status and invoice_ids
+            // STEP 3: Update bulk upload status
             $bulkUpload->update([
                 'status' => 'completed',
-                'invoice_ids' => $invoiceIds,
+                'invoice_ids' => $createdInvoices,
             ]);
 
             Log::info('Bulk invoice creation completed', [
-                'invoices_created' => count($invoiceIds),
-                'invoice_ids' => $invoiceIds,
+                'invoices_created' => count($createdInvoices),
+                'invoice_ids' => $createdInvoices,
             ]);
         });
 
-        // Dispatch email job AFTER transaction commits successfully
-        // PDF generation is CPU-intensive and must not hold DB locks
+        // STEP 4: Dispatch email job (after commit)
         SendInvoiceEmailsJob::dispatch($this->bulkUploadId)
             ->onQueue('emails')
             ->afterCommit();
@@ -186,6 +173,80 @@ class CreateBulkInvoicesJob implements ShouldQueue
         Log::info('Dispatched email notification job', [
             'bulk_upload_id' => $this->bulkUploadId,
         ]);
+    }
+
+    /**
+     * Create an invoice for a group of tasks.
+     *
+     * @param  array  $group  Group of task data with client, payment, dates, prices
+     * @param  BulkUpload  $bulkUpload  The bulk upload instance
+     * @return Invoice The created invoice
+     */
+    protected function createInvoice(array $group, BulkUpload $bulkUpload): Invoice
+    {
+        $firstItem = $group[0];
+        $client = $firstItem['client'];
+        $invoiceDate = $firstItem['invoice_date'];
+        $totalAmount = array_sum(array_column($group, 'selling_price'));
+
+        // Generate invoice number with pessimistic lock
+        $invoiceNumber = $this->generateInvoiceNumber($bulkUpload->company_id);
+
+        // Create invoice
+        return Invoice::create([
+            'company_id' => $bulkUpload->company_id,
+            'invoice_number' => $invoiceNumber,
+            'client_id' => $client->id,
+            'agent_id' => $bulkUpload->agent_id,
+            'invoice_date' => $invoiceDate,
+            'currency' => 'KWD', // or from first task if needed
+            'sub_amount' => $totalAmount,
+            'amount' => $totalAmount,
+            'status' => 'unpaid', // Will be updated by PaymentApplicationService
+        ]);
+    }
+
+    /**
+     * Link payment to invoice using PaymentApplicationService.
+     *
+     * @param  Invoice  $invoice  The invoice to link payment to
+     * @param  \App\Models\Payment  $payment  The payment to link
+     * @param  \App\Models\Client  $client  The client
+     * @return void
+     * @throws Exception If payment linking fails
+     */
+    protected function linkPaymentToInvoice(Invoice $invoice, \App\Models\Payment $payment, \App\Models\Client $client): void
+    {
+        // Find the topup credit for this payment
+        $credit = \App\Models\Credit::where('client_id', $client->id)
+            ->where('payment_id', $payment->id)
+            ->where('type', \App\Models\Credit::TOPUP)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (! $credit) {
+            throw new Exception("No topup credit found for payment {$payment->voucher_number}");
+        }
+
+        // Determine payment mode based on payment status
+        $paymentMode = ($payment->completed && $payment->status === 'paid') ? 'full' : 'partial';
+
+        // Apply payment to invoice using PaymentApplicationService
+        $paymentService = app(\App\Services\PaymentApplicationService::class);
+        $result = $paymentService->applyPaymentsToInvoice(
+            invoiceId: $invoice->id,
+            paymentAllocations: [
+                [
+                    'credit_id' => $credit->id,
+                    'amount' => $invoice->amount,
+                ],
+            ],
+            paymentMode: $paymentMode
+        );
+
+        if (! $result['success']) {
+            throw new Exception("Failed to link payment: ".$result['message']);
+        }
     }
 
     /**

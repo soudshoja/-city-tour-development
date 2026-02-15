@@ -122,13 +122,22 @@ class BulkInvoiceController extends Controller
             $user = Auth::user();
             $companyId = getCompanyId($user);
 
+            Log::info('[BULK UPLOAD] Upload started', [
+                'user_id' => $user->id,
+                'user_role' => $user->role_id,
+                'company_id' => $companyId,
+                'file_name' => $request->file('file')->getClientOriginalName(),
+            ]);
+
             // Get agent_id based on user role
             if ($user->role_id == \App\Models\Role::AGENT) {
                 // Agent user - use their own agent_id
                 $agentId = $user->agent?->id;
+                Log::info('[BULK UPLOAD] Using agent user', ['agent_id' => $agentId]);
             } else {
                 // Company/Branch/Accountant/Admin - get from request (agent selector)
                 $agentId = $request->input('agent_id');
+                Log::info('[BULK UPLOAD] Using selected agent', ['agent_id' => $agentId]);
 
                 // Validate agent_id is provided
                 if (! $agentId) {

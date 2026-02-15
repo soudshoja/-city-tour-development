@@ -169,7 +169,7 @@ class BulkUploadValidationService
 
             // Filter by status if provided
             if (! empty($row['task_status'])) {
-                $taskQuery->where('task_status', $row['task_status']);
+                $taskQuery->where('status', $row['task_status']);
             }
 
             $task = $taskQuery->first();

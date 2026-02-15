@@ -32,13 +32,12 @@ class BulkInvoiceTemplateSheet implements FromArray, ShouldAutoSize, WithHeading
     public function headings(): array
     {
         return [
-            'task_id',
-            'client_mobile',
-            'supplier_name',
-            'task_type',
-            'task_status',
             'invoice_date',
-            'currency',
+            'client_mobile',
+            'task_reference',
+            'task_status',
+            'selling_price',
+            'payment_reference',
             'notes',
         ];
     }

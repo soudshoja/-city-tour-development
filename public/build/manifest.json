@@ -32,7 +32,7 @@
     "src": "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-khuz6fuy.css",
+    "file": "assets/app-B1u0pRz3.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "names": [
@@ -40,11 +40,19 @@
     ]
   },
   "resources/css/guest.css": {
-    "file": "assets/guest-mUgmT5oa.css",
+    "file": "assets/guest-fwsvNS0s.css",
     "src": "resources/css/guest.css",
     "isEntry": true,
     "names": [
       "guest.css"
+    ]
+  },
+  "resources/css/lock-management/index.css": {
+    "file": "assets/index-BqIoXsS5.css",
+    "src": "resources/css/lock-management/index.css",
+    "isEntry": true,
+    "names": [
+      "index.css"
     ]
   },
   "resources/css/refund.css": {
@@ -53,6 +61,22 @@
     "isEntry": true,
     "names": [
       "refund.css"
+    ]
+  },
+  "resources/css/settings/agent-loss.css": {
+    "file": "assets/agent-loss-D5LDBvVu.css",
+    "src": "resources/css/settings/agent-loss.css",
+    "isEntry": true,
+    "names": [
+      "agent-loss.css"
+    ]
+  },
+  "resources/css/settings/main.css": {
+    "file": "assets/main-CaKOCMxJ.css",
+    "src": "resources/css/settings/main.css",
+    "isEntry": true,
+    "names": [
+      "main.css"
     ]
   },
   "resources/css/system-setting/hotel.css": {

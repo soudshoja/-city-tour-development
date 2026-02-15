@@ -203,7 +203,10 @@ class BulkUploadValidationService
         if (empty($row['payment_reference'])) {
             $errors[] = "Row {$rowNumber}: payment_reference is required";
         } else {
-            $paymentQuery = Payment::where('company_id', $companyId);
+            // Payment doesn't have company_id, use agent relationship
+            $paymentQuery = Payment::whereHas('agent.branch', function($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            });
 
             // Try finding by ID if numeric
             if (is_numeric($row['payment_reference'])) {

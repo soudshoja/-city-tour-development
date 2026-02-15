@@ -123,6 +123,12 @@ class BulkUploadValidationService
         ];
         $flagReason = null;
 
+        // Log the row being validated
+        \Log::info("[BULK UPLOAD] Validating row {$rowNumber}", [
+            'company_id' => $companyId,
+            'row_data' => $row,
+        ]);
+
         // 1. Validate invoice_date (required)
         if (empty($row['invoice_date'])) {
             $errors[] = "Row {$rowNumber}: invoice_date is required";
@@ -143,8 +149,18 @@ class BulkUploadValidationService
                 ->first();
 
             if (! $client) {
+                \Log::warning("[BULK UPLOAD] Client not found", [
+                    'row' => $rowNumber,
+                    'client_mobile' => $row['client_mobile'],
+                    'company_id' => $companyId,
+                ]);
                 $errors[] = "Row {$rowNumber}: client_mobile \"{$row['client_mobile']}\" not found in your company";
             } else {
+                \Log::info("[BULK UPLOAD] Client found", [
+                    'row' => $rowNumber,
+                    'client_id' => $client->id,
+                    'client_name' => $client->name ?? 'N/A',
+                ]);
                 $matched['client_id'] = $client->id;
             }
         }
@@ -158,6 +174,12 @@ class BulkUploadValidationService
             // Try finding by ID if numeric
             if (is_numeric($row['task_reference'])) {
                 $taskQuery->where('id', $row['task_reference']);
+                \Log::info("[BULK UPLOAD] Searching task by ID", [
+                    'row' => $rowNumber,
+                    'task_id' => $row['task_reference'],
+                    'company_id' => $companyId,
+                    'status_filter' => $row['task_status'] ?? 'none',
+                ]);
             } else {
                 // Try finding by PNR or booking_reference
                 $taskQuery->where(function($q) use ($row) {
@@ -165,6 +187,12 @@ class BulkUploadValidationService
                       ->orWhere('booking_reference', $row['task_reference'])
                       ->orWhere('confirmation_code', $row['task_reference']);
                 });
+                \Log::info("[BULK UPLOAD] Searching task by reference", [
+                    'row' => $rowNumber,
+                    'reference' => $row['task_reference'],
+                    'company_id' => $companyId,
+                    'status_filter' => $row['task_status'] ?? 'none',
+                ]);
             }
 
             // Filter by status if provided
@@ -172,12 +200,33 @@ class BulkUploadValidationService
                 $taskQuery->where('status', $row['task_status']);
             }
 
+            // Log the SQL query
+            $sql = $taskQuery->toSql();
+            $bindings = $taskQuery->getBindings();
+            \Log::info("[BULK UPLOAD] Task query", [
+                'row' => $rowNumber,
+                'sql' => $sql,
+                'bindings' => $bindings,
+            ]);
+
             $task = $taskQuery->first();
 
             if (! $task) {
+                \Log::warning("[BULK UPLOAD] Task not found", [
+                    'row' => $rowNumber,
+                    'task_reference' => $row['task_reference'],
+                    'task_status' => $row['task_status'] ?? null,
+                    'company_id' => $companyId,
+                ]);
                 $errors[] = "Row {$rowNumber}: task_reference \"{$row['task_reference']}\" not found" .
                     (! empty($row['task_status']) ? " with status \"{$row['task_status']}\"" : "");
             } else {
+                \Log::info("[BULK UPLOAD] Task found", [
+                    'row' => $rowNumber,
+                    'task_id' => $task->id,
+                    'task_reference' => $task->reference,
+                    'task_status' => $task->status,
+                ]);
                 $matched['task_id'] = $task->id;
             }
         }
@@ -222,8 +271,18 @@ class BulkUploadValidationService
             $payment = $paymentQuery->first();
 
             if (! $payment) {
+                \Log::warning("[BULK UPLOAD] Payment not found", [
+                    'row' => $rowNumber,
+                    'payment_reference' => $row['payment_reference'],
+                    'company_id' => $companyId,
+                ]);
                 $errors[] = "Row {$rowNumber}: payment_reference \"{$row['payment_reference']}\" not found";
             } else {
+                \Log::info("[BULK UPLOAD] Payment found", [
+                    'row' => $rowNumber,
+                    'payment_id' => $payment->id,
+                    'voucher_number' => $payment->voucher_number ?? 'N/A',
+                ]);
                 $matched['payment_id'] = $payment->id;
             }
         }
@@ -235,6 +294,14 @@ class BulkUploadValidationService
         } elseif ($flagReason !== null) {
             $status = 'flagged';
         }
+
+        \Log::info("[BULK UPLOAD] Row validation result", [
+            'row' => $rowNumber,
+            'status' => $status,
+            'errors_count' => count($errors),
+            'errors' => $errors,
+            'matched' => $matched,
+        ]);
 
         return [
             'status' => $status,

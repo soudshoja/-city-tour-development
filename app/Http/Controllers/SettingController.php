@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Models\UserSetting;
 use App\Models\Agent;
 use App\Models\AgentCharge;
+use App\Models\AgentLoss;
 use Database\Seeders\SettingSeeder;
 use Exception;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class SettingController extends Controller
     public function saveTab(Request $request)
     {
         $request->validate([
-            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges',
+            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss',
         ]);
 
         session(['settings_active_tab' => $request->tab]);
@@ -432,6 +433,268 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to delete agent charge setting', [
+                'error' => $e->getMessage(),
+                'id' => $id,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete setting.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Get agent loss settings for the company.
+     */
+    public function getAgentLoss(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($companyId === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No company selected.',
+            ], 400);
+        }
+
+        try {
+            $agents = Agent::whereHas('branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            })
+                ->with([
+                    'branch:id,name',
+                    'lossAccount:id,name,code'
+                ])
+                ->select('id', 'name', 'email', 'branch_id', 'type_id', 'commission', 'loss_account_id')
+                ->get();
+
+            $settings = AgentLoss::where('company_id', $companyId)
+                ->get()
+                ->keyBy('agent_id')
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'agents' => $agents,
+                'settings' => $settings,
+                'bearerOptions' => AgentLoss::getBearerOptions(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching agent loss settings', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch agent loss settings.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Store or update agent loss setting.
+     */
+    public function storeAgentLoss(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'agent_id' => 'required|exists:agents,id',
+            'company_id' => 'required|exists:companies,id',
+            'loss_bearer' => 'required|in:company,agent,split',
+            'agent_percentage' => 'required_if:loss_bearer,split|numeric|min:0|max:100',
+            'company_percentage' => 'nullable|numeric|min:0|max:100',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Auto-set percentages based on bearer
+        if ($validated['loss_bearer'] === 'company') {
+            $validated['agent_percentage'] = 0;
+            $validated['company_percentage'] = 100;
+        } elseif ($validated['loss_bearer'] === 'agent') {
+            $validated['agent_percentage'] = 100;
+            $validated['company_percentage'] = 0;
+        } else {
+            // Split - validate percentages sum to 100
+            $validated['company_percentage'] = 100 - ($validated['agent_percentage'] ?? 0);
+
+            if (abs(($validated['agent_percentage'] + $validated['company_percentage']) - 100) > 0.01) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Percentages must sum to 100%',
+                ], 422);
+            }
+        }
+
+        try {
+            $setting = AgentLoss::updateOrCreate(
+                [
+                    'agent_id' => $validated['agent_id'],
+                    'company_id' => $validated['company_id'],
+                ],
+                [
+                    'loss_bearer' => $validated['loss_bearer'],
+                    'agent_percentage' => $validated['agent_percentage'],
+                    'company_percentage' => $validated['company_percentage'],
+                    'notes' => $validated['notes'] ?? null,
+                    'updated_by' => $user->id,
+                ]
+            );
+
+            if ($setting->wasRecentlyCreated) {
+                $setting->created_by = $user->id;
+                $setting->save();
+            }
+
+            Log::info('AgentLoss saved', [
+                'setting_id' => $setting->id,
+                'agent_id' => $setting->agent_id,
+                'bearer' => $setting->loss_bearer,
+                'user_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Setting saved successfully.',
+                'setting' => $setting->toArray(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to save agent loss setting', [
+                'error' => $e->getMessage(),
+                'agent_id' => $validated['agent_id'],
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save setting: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk update agent loss settings.
+     */
+    public function bulkUpdateAgentLoss(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'company_id' => 'required|exists:companies,id',
+            'agent_ids' => 'required|array|min:1',
+            'agent_ids.*' => 'exists:agents,id',
+            'loss_bearer' => 'required|in:company,agent,split',
+            'agent_percentage' => 'required_if:loss_bearer,split|numeric|min:0|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        if ($validated['loss_bearer'] === 'company') {
+            $agentPct = 0;
+            $companyPct = 100;
+        } elseif ($validated['loss_bearer'] === 'agent') {
+            $agentPct = 100;
+            $companyPct = 0;
+        } else {
+            $agentPct = $validated['agent_percentage'] ?? 0;
+            $companyPct = 100 - $agentPct;
+        }
+
+        try {
+            $updated = 0;
+            foreach ($validated['agent_ids'] as $agentId) {
+                $setting = AgentLoss::updateOrCreate(
+                    [
+                        'agent_id' => $agentId,
+                        'company_id' => $validated['company_id'],
+                    ],
+                    [
+                        'loss_bearer' => $validated['loss_bearer'],
+                        'agent_percentage' => $agentPct,
+                        'company_percentage' => $companyPct,
+                        'notes' => $validated['notes'] ?? null,
+                        'updated_by' => $user->id,
+                    ]
+                );
+                $updated++;
+
+                if ($setting->wasRecentlyCreated) {
+                    $setting->created_by = $user->id;
+                    $setting->save();
+                }
+            }
+
+            Log::info('Bulk agent loss settings updated', [
+                'count' => $updated,
+                'bearer' => $validated['loss_bearer'],
+                'user_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Updated settings for {$updated} agents.",
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Bulk update failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update settings: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete agent loss setting (reset to default).
+     */
+    public function deleteAgentLoss(int $id)
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        try {
+            $setting = AgentLoss::findOrFail($id);
+
+            // Verify company access
+            $companyId = getCompanyId($user);
+            if ($user->role_id != Role::ADMIN && $setting->company_id != $companyId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access.',
+                ], 403);
+            }
+
+            $setting->delete();
+
+            Log::info('AgentLoss deleted', [
+                'setting_id' => $id,
+                'agent_id' => $setting->agent_id,
+                'user_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Setting deleted. Agent will use default (company bears all).',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to delete agent loss setting', [
                 'error' => $e->getMessage(),
                 'id' => $id,
             ]);

@@ -88,6 +88,8 @@ class AgentTest extends TestCase
             'commission',
             'salary',
             'target',
+            'profit_account_id',
+            'loss_account_id'
         ];
 
         $this->assertEquals($fillableAttributes, $this->agent->getFillable());

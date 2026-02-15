@@ -222,7 +222,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update-multi', [TaskController::class, 'updateMulti'])->name('updateMulti');
         Route::get('/{task}/details', [TaskController::class, 'getTaskDetails'])->name('getDetails');
         Route::post('/{task}/update-details', [TaskController::class, 'updateTaskDetails'])->name('updateDetails');
-
     });
 
     // SUPPLIERS
@@ -614,7 +613,7 @@ Route::middleware(['auth'])->group(function () {
         Route::group([
             'prefix' => 'ajax',
             'as' => 'ajax.',
-        ], function() {
+        ], function () {
             Route::get('/search', [ClientController::class, 'searchClient'])->name('search');
         });
     });
@@ -711,6 +710,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-charges', [SettingController::class, 'storeAgentCharge'])->name('agent-charges.store');
         Route::post('/agent-charges/bulk-update', [SettingController::class, 'bulkUpdateAgentCharges'])->name('agent-charges.bulk-update');
         Route::delete('/agent-charges/{id}', [SettingController::class, 'deleteAgentCharge'])->name('agent-charges.delete');
+        Route::get('/agent-loss', [SettingController::class, 'getAgentLoss'])->name('agent-loss');
+        Route::post('/agent-loss', [SettingController::class, 'storeAgentLoss'])->name('agent-loss.store');
+        Route::post('/agent-loss/bulk-update', [SettingController::class, 'bulkUpdateAgentLoss'])->name('agent-loss.bulk-update');
+        Route::delete('/agent-loss/{id}', [SettingController::class, 'deleteAgentLoss'])->name('agent-loss.delete');
     });
 
     Route::group([
@@ -751,12 +754,10 @@ Route::middleware(['auth'])->group(function () {
         Route::group([
             'prefix' => 'ajax',
             'as' => 'ajax.',
-        ], function() {
+        ], function () {
             Route::get('/search', [HotelController::class, 'searchHotel'])->name('search');
         });
-
     });
-
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {

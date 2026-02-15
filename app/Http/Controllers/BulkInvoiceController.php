@@ -34,7 +34,43 @@ class BulkInvoiceController extends Controller
      */
     public function index()
     {
-        return view('bulk-invoice.upload');
+        $user = Auth::user();
+        $isAgent = $user->role_id == \App\Models\Role::AGENT;
+        $agents = [];
+
+        // Get available agents based on user role
+        if (!$isAgent) {
+            if ($user->role_id == \App\Models\Role::COMPANY) {
+                $agents = \App\Models\Agent::whereHas('branch', function($q) use ($user) {
+                    $q->where('company_id', $user->company->id);
+                })->with('user')->get();
+            } elseif ($user->role_id == \App\Models\Role::BRANCH) {
+                $agents = \App\Models\Agent::where('branch_id', $user->branch->id)
+                    ->with('user')->get();
+            } elseif ($user->role_id == \App\Models\Role::ACCOUNTANT) {
+                $agents = \App\Models\Agent::where('branch_id', $user->accountant->branch->id)
+                    ->with('user')->get();
+            } elseif ($user->role_id == \App\Models\Role::ADMIN) {
+                $companyId = session('company_id', 1);
+                $agents = \App\Models\Agent::whereHas('branch', function($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })->with('user')->get();
+            }
+        }
+
+        // Format agents for searchable dropdown
+        $agentsForDropdown = $agents->map(function($agent) {
+            return [
+                'id' => $agent->id,
+                'name' => ($agent->user->name ?? 'Agent #'.$agent->id) .
+                         ($agent->branch ? ' (' . ($agent->branch->name ?? 'Branch #'.$agent->branch_id) . ')' : '')
+            ];
+        });
+
+        return view('bulk-invoice.upload', [
+            'isAgent' => $isAgent,
+            'agents' => $agentsForDropdown,
+        ]);
     }
 
     /**

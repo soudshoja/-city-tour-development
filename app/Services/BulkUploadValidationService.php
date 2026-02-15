@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\InvoiceDetail;
-use App\Models\Supplier;
+use App\Models\Payment;
 use App\Models\Task;
 use Carbon\Carbon;
 
@@ -20,13 +20,12 @@ class BulkUploadValidationService
      * Expected headers in Excel template
      */
     private const EXPECTED_HEADERS = [
-        'task_id',
-        'client_mobile',
-        'supplier_name',
-        'task_type',
-        'task_status',
         'invoice_date',
-        'currency',
+        'client_mobile',
+        'task_reference',
+        'task_status',
+        'selling_price',
+        'payment_reference',
         'notes',
     ];
 
@@ -34,10 +33,12 @@ class BulkUploadValidationService
      * Required headers that must be present
      */
     private const REQUIRED_HEADERS = [
-        'task_id',
+        'invoice_date',
         'client_mobile',
-        'supplier_name',
-        'task_type',
+        'task_reference',
+        'task_status',
+        'selling_price',
+        'payment_reference',
     ];
 
     /**
@@ -118,29 +119,18 @@ class BulkUploadValidationService
         $matched = [
             'client_id' => null,
             'task_id' => null,
-            'supplier_id' => null,
+            'payment_id' => null,
         ];
         $flagReason = null;
 
-        // 1. Validate task_id (required)
-        if (empty($row['task_id'])) {
-            $errors[] = "Row {$rowNumber}: task_id is required";
+        // 1. Validate invoice_date (required)
+        if (empty($row['invoice_date'])) {
+            $errors[] = "Row {$rowNumber}: invoice_date is required";
         } else {
-            // Check task exists and belongs to company
-            $task = Task::where('id', $row['task_id'])
-                ->where('company_id', $companyId)
-                ->first();
-
-            if (! $task) {
-                $errors[] = "Row {$rowNumber}: task_id {$row['task_id']} does not exist or does not belong to your company";
-            } else {
-                $matched['task_id'] = $task->id;
-
-                // Check task not already invoiced
-                $alreadyInvoiced = InvoiceDetail::where('task_id', $task->id)->exists();
-                if ($alreadyInvoiced) {
-                    $errors[] = "Row {$rowNumber}: task_id {$task->id} is already invoiced";
-                }
+            try {
+                Carbon::parse($row['invoice_date']);
+            } catch (\Exception $e) {
+                $errors[] = "Row {$rowNumber}: invoice_date \"{$row['invoice_date']}\" is not a valid date format";
             }
         }
 
@@ -153,53 +143,86 @@ class BulkUploadValidationService
                 ->first();
 
             if (! $client) {
-                // Unknown client -> flag, not error
-                $flagReason = 'unknown_client';
+                $errors[] = "Row {$rowNumber}: client_mobile \"{$row['client_mobile']}\" not found in your company";
             } else {
                 $matched['client_id'] = $client->id;
             }
         }
 
-        // 3. Validate supplier_name (required) - case-insensitive lookup
-        if (empty($row['supplier_name'])) {
-            $errors[] = "Row {$rowNumber}: supplier_name is required";
+        // 3. Validate task_reference (required) - find by ID, PNR, or booking_reference
+        if (empty($row['task_reference'])) {
+            $errors[] = "Row {$rowNumber}: task_reference is required";
         } else {
-            $supplier = Supplier::whereRaw('LOWER(name) = ?', [strtolower($row['supplier_name'])])->first();
+            $taskQuery = Task::where('company_id', $companyId);
 
-            if (! $supplier) {
-                $errors[] = "Row {$rowNumber}: supplier '{$row['supplier_name']}' not found";
+            // Try finding by ID if numeric
+            if (is_numeric($row['task_reference'])) {
+                $taskQuery->where('id', $row['task_reference']);
             } else {
-                $matched['supplier_id'] = $supplier->id;
+                // Try finding by PNR or booking_reference
+                $taskQuery->where(function($q) use ($row) {
+                    $q->where('pnr', $row['task_reference'])
+                      ->orWhere('booking_reference', $row['task_reference'])
+                      ->orWhere('confirmation_code', $row['task_reference']);
+                });
+            }
+
+            // Filter by status if provided
+            if (! empty($row['task_status'])) {
+                $taskQuery->where('task_status', $row['task_status']);
+            }
+
+            $task = $taskQuery->first();
+
+            if (! $task) {
+                $errors[] = "Row {$rowNumber}: task_reference \"{$row['task_reference']}\" not found" .
+                    (! empty($row['task_status']) ? " with status \"{$row['task_status']}\"" : "");
+            } else {
+                $matched['task_id'] = $task->id;
             }
         }
 
-        // 4. Validate task_type (required enum)
-        if (empty($row['task_type'])) {
-            $errors[] = "Row {$rowNumber}: task_type is required";
-        } elseif (! in_array($row['task_type'], self::VALID_TASK_TYPES, true)) {
-            $validTypes = implode(', ', self::VALID_TASK_TYPES);
-            $errors[] = "Row {$rowNumber}: task_type \"{$row['task_type']}\" is invalid. Must be one of: {$validTypes}";
-        }
-
-        // 5. Validate task_status (optional enum)
-        if (! empty($row['task_status']) && ! in_array($row['task_status'], self::VALID_TASK_STATUSES, true)) {
+        // 4. Validate task_status (required enum)
+        if (empty($row['task_status'])) {
+            $errors[] = "Row {$rowNumber}: task_status is required";
+        } elseif (! in_array($row['task_status'], self::VALID_TASK_STATUSES, true)) {
             $validStatuses = implode(', ', self::VALID_TASK_STATUSES);
             $errors[] = "Row {$rowNumber}: task_status \"{$row['task_status']}\" is invalid. Must be one of: {$validStatuses}";
         }
 
-        // 6. Validate invoice_date (optional - must be valid date if provided)
-        if (! empty($row['invoice_date'])) {
-            try {
-                Carbon::parse($row['invoice_date']);
-            } catch (\Exception $e) {
-                $errors[] = "Row {$rowNumber}: invoice_date \"{$row['invoice_date']}\" is not a valid date format";
-            }
+        // 5. Validate selling_price (required numeric)
+        if (empty($row['selling_price']) && $row['selling_price'] !== '0') {
+            $errors[] = "Row {$rowNumber}: selling_price is required";
+        } elseif (! is_numeric($row['selling_price'])) {
+            $errors[] = "Row {$rowNumber}: selling_price \"{$row['selling_price']}\" must be a number";
+        } elseif ((float)$row['selling_price'] < 0) {
+            $errors[] = "Row {$rowNumber}: selling_price must be >= 0";
         }
 
-        // 7. Validate currency (optional - must be 3-letter code if provided)
-        if (! empty($row['currency']) && ! in_array($row['currency'], self::VALID_CURRENCIES, true)) {
-            $validCurrencies = implode(', ', self::VALID_CURRENCIES);
-            $errors[] = "Row {$rowNumber}: currency \"{$row['currency']}\" is invalid. Must be one of: {$validCurrencies}";
+        // 6. Validate payment_reference (required) - find by voucher_number or payment_reference
+        if (empty($row['payment_reference'])) {
+            $errors[] = "Row {$rowNumber}: payment_reference is required";
+        } else {
+            $paymentQuery = Payment::where('company_id', $companyId);
+
+            // Try finding by ID if numeric
+            if (is_numeric($row['payment_reference'])) {
+                $paymentQuery->where('id', $row['payment_reference']);
+            } else {
+                // Try finding by voucher_number or payment_reference
+                $paymentQuery->where(function($q) use ($row) {
+                    $q->where('voucher_number', $row['payment_reference'])
+                      ->orWhere('payment_reference', $row['payment_reference']);
+                });
+            }
+
+            $payment = $paymentQuery->first();
+
+            if (! $payment) {
+                $errors[] = "Row {$rowNumber}: payment_reference \"{$row['payment_reference']}\" not found";
+            } else {
+                $matched['payment_id'] = $payment->id;
+            }
         }
 
         // Determine status

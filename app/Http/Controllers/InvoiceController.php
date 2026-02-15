@@ -1630,6 +1630,13 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoiceId,
                     ]);
                 }
+            } elseif ( $distribution['agent_loss'] > 0 && !$agent->loss_account_id) {
+                Log::warning('Agent loss could not be recorded due to missing loss account configuration.', [
+                    'invoice_id' => $invoiceId,
+                    'agent_id' => $agent->id ?? null,
+                    'transaction_id' => $transactionId ?? null,
+                    'agent_loss' => $distribution['agent_loss'],
+                ]);
             }
 
             // Company's portion - supplier loss

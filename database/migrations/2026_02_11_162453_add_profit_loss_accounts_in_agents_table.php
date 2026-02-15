@@ -207,8 +207,10 @@ return new class extends Migration
     public function down(): void
     {
         $ids = DB::table('agents')
-            ->whereNotNull('profit_account_id')
-            ->orWhereNotNull('loss_account_id')
+            ->where(function ($query) {
+                $query->whereNotNull('profit_account_id')
+                      ->orWhereNotNull('loss_account_id');
+            })
             ->get()
             ->flatMap(fn($a) => [$a->profit_account_id, $a->loss_account_id])
             ->filter()

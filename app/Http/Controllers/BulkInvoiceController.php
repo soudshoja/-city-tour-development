@@ -87,6 +87,13 @@ class BulkInvoiceController extends Controller
             $companyId = getCompanyId($user);
             $agentId = $user->agent?->id;
 
+            // Validate that user is an agent
+            if (! $agentId) {
+                return response()->json([
+                    'error' => 'Only agents can create bulk invoices. Please ensure you are logged in as an agent.',
+                ], 403);
+            }
+
             // Get uploaded file
             $file = $request->file('file');
 

@@ -2,17 +2,20 @@
 
 namespace App\Exports;
 
-use App\Models\Client;
-use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * BulkInvoiceTemplateExport
  *
- * Generates a multi-sheet Excel template for bulk invoice uploads.
- * Sheet 1: Upload template with column headers
- * Sheet 2: Client list for reference
+ * Generates Excel template for bulk invoice uploads.
+ * Links existing tasks to clients and creates invoices with payments.
  */
-class BulkInvoiceTemplateExport implements WithMultipleSheets
+class BulkInvoiceTemplateExport implements FromArray, ShouldAutoSize, WithHeadings, WithStyles
 {
     /**
      * @var int
@@ -30,13 +33,46 @@ class BulkInvoiceTemplateExport implements WithMultipleSheets
     }
 
     /**
-     * Return an array of sheets.
+     * Return empty data array for template.
      */
-    public function sheets(): array
+    public function array(): array
+    {
+        // Return empty rows as this is a template
+        return [];
+    }
+
+    /**
+     * Return column headings.
+     */
+    public function headings(): array
     {
         return [
-            new BulkInvoiceTemplateSheet,
-            new ClientListSheet($this->companyId),
+            'invoice_date',
+            'client_mobile',
+            'task_reference',
+            'task_status',
+            'selling_price',
+            'payment_reference',
+            'notes',
+        ];
+    }
+
+    /**
+     * Apply styles to the sheet.
+     */
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            1 => [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => 'FFFFFF'],
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '4472C4'],
+                ],
+            ],
         ];
     }
 }

@@ -37,52 +37,15 @@
                     @csrf
 
                     <!-- Agent Selection (for non-agent users) -->
-                    @php
-                        $user = Auth::user();
-                        $isAgent = $user->role_id == \App\Models\Role::AGENT;
-
-                        if (!$isAgent) {
-                            // Get available agents based on user role
-                            if ($user->role_id == \App\Models\Role::COMPANY) {
-                                $agents = \App\Models\Agent::whereHas('branch', function($q) use ($user) {
-                                    $q->where('company_id', $user->company->id);
-                                })->with('user')->get();
-                            } elseif ($user->role_id == \App\Models\Role::BRANCH) {
-                                $agents = \App\Models\Agent::where('branch_id', $user->branch->id)
-                                    ->with('user')->get();
-                            } elseif ($user->role_id == \App\Models\Role::ACCOUNTANT) {
-                                $agents = \App\Models\Agent::where('branch_id', $user->accountant->branch->id)
-                                    ->with('user')->get();
-                            } elseif ($user->role_id == \App\Models\Role::ADMIN) {
-                                $companyId = session('company_id', 1);
-                                $agents = \App\Models\Agent::whereHas('branch', function($q) use ($companyId) {
-                                    $q->where('company_id', $companyId);
-                                })->with('user')->get();
-                            } else {
-                                $agents = collect();
-                            }
-                        }
-                    @endphp
-
                     @if(!$isAgent)
                     <div>
-                        <label for="agent_id" class="block text-sm font-medium text-gray-700 mb-2">
-                            Select Agent *
-                        </label>
-                        <select id="agent_id"
-                                name="agent_id"
-                                required
-                                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3">
-                            <option value="">-- Select an agent --</option>
-                            @foreach($agents as $agent)
-                                <option value="{{ $agent->id }}">
-                                    {{ $agent->user->name ?? 'Agent #'.$agent->id }}
-                                    @if($agent->branch)
-                                        ({{ $agent->branch->name ?? 'Branch #'.$agent->branch_id }})
-                                    @endif
-                                </option>
-                            @endforeach
-                        </select>
+                        <x-searchable-dropdown
+                            label="Select Agent *"
+                            name="agent_id"
+                            :items="json_encode($agents)"
+                            placeholder="Select which agent these invoices should be created for"
+                            :maxResults="10"
+                        />
                         <p class="mt-2 text-sm text-gray-500">Select which agent these invoices should be created for</p>
 
                         @error('agent_id')

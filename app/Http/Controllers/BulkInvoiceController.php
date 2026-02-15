@@ -85,13 +85,29 @@ class BulkInvoiceController extends Controller
             // Get context
             $user = Auth::user();
             $companyId = getCompanyId($user);
-            $agentId = $user->agent?->id;
 
-            // Validate that user is an agent
-            if (! $agentId) {
-                return response()->json([
-                    'error' => 'Only agents can create bulk invoices. Please ensure you are logged in as an agent.',
-                ], 403);
+            // Get agent_id based on user role
+            if ($user->role_id == \App\Models\Role::AGENT) {
+                // Agent user - use their own agent_id
+                $agentId = $user->agent?->id;
+            } else {
+                // Company/Branch/Accountant/Admin - get from request (agent selector)
+                $agentId = $request->input('agent_id');
+
+                // Validate agent_id is provided
+                if (! $agentId) {
+                    return response()->json([
+                        'error' => 'Please select an agent to create invoices for.',
+                    ], 422);
+                }
+
+                // Validate agent belongs to user's scope
+                $agent = \App\Models\Agent::find($agentId);
+                if (! $agent || $agent->branch->company_id != $companyId) {
+                    return response()->json([
+                        'error' => 'Invalid agent selection.',
+                    ], 422);
+                }
             }
 
             // Get uploaded file

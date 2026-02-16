@@ -85,8 +85,9 @@ class PaymentMethodController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'service_charge' => 'required',
-            'self_charge' => 'required',
+            'service_charge' => 'required|numeric',
+            'self_charge' => 'required|numeric|gte:service_charge',
+            'extra_charge' => 'nullable|numeric|min:0',
             'charge_type' => 'required',
             'paid_by' => 'required',
             'description' => 'nullable',
@@ -101,6 +102,7 @@ class PaymentMethodController extends Controller
             $paymentMethod->update([
                 'service_charge' => $request->get('service_charge'),
                 'self_charge' => $request->get('self_charge'),
+                'extra_charge' => $request->get('extra_charge') ?? 0,
                 'charge_type' => $request->get('charge_type'),
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
@@ -109,7 +111,7 @@ class PaymentMethodController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Child Method charge successfully updated!');
+            return redirect()->back()->with('success', 'Payment method updated successfully!');
         } catch (Exception $e) {
             DB::rollback();
             return redirect()->back()->withInput()->with('error', $e->getMessage());

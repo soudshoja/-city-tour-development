@@ -91,9 +91,9 @@ class CreateBulkInvoicesJob implements ShouldQueue
             // STEP 1: Process each valid row
             foreach ($bulkUpload->rows()->where('status', 'valid')->get() as $row) {
                 // 1a. Load matched entities
-                $task = \App\Models\Task::findOrFail($row->matched['task_id']);
-                $client = \App\Models\Client::findOrFail($row->matched['client_id']);
-                $payment = \App\Models\Payment::findOrFail($row->matched['payment_id']);
+                $task = \App\Models\Task::findOrFail($row->task_id);
+                $client = \App\Models\Client::findOrFail($row->client_id);
+                $payment = \App\Models\Payment::findOrFail($row->payment_id);
 
                 // 1b. Set selling price (was NULL before)
                 $task->selling_amount = $row->raw_data['selling_price'];

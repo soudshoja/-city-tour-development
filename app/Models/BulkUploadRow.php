@@ -26,6 +26,7 @@ class BulkUploadRow extends Model
         'task_id',
         'client_id',
         'supplier_id',
+        'payment_id',
         'raw_data',
         'errors',
         'flag_reason',
@@ -73,5 +74,13 @@ class BulkUploadRow extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Get the payment associated with this row.
+     */
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class);
     }
 }

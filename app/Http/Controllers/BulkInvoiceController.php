@@ -342,7 +342,7 @@ class BulkInvoiceController extends Controller
         $bulkUpload = BulkUpload::where('id', $id)
             ->where('company_id', $companyId)
             ->where('status', 'validated')
-            ->with(['rows.client', 'rows.supplier'])
+            ->with(['rows.client'])
             ->firstOrFail();
 
         // Separate valid rows from flagged rows

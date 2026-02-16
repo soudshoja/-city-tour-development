@@ -59,9 +59,25 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    <p class="text-blue-900 font-semibold">Invoices are being created in the background. Refresh this page to check progress.</p>
+                    <p class="text-blue-900 font-semibold">Invoices are being created in the background. Page will auto-refresh in <span id="countdown">5</span> seconds...</p>
                 </div>
             </div>
+
+            {{-- Auto-refresh script when processing --}}
+            <script>
+                let countdown = 5;
+                const countdownEl = document.getElementById('countdown');
+
+                const interval = setInterval(() => {
+                    countdown--;
+                    countdownEl.textContent = countdown;
+
+                    if (countdown <= 0) {
+                        clearInterval(interval);
+                        window.location.reload();
+                    }
+                }, 1000);
+            </script>
         @elseif($bulkUpload->status === 'failed')
             {{-- Failed state: job permanently failed --}}
             <div class="bg-red-50 border border-red-200 p-4 rounded mb-6">
@@ -87,7 +103,7 @@
                     <li class="border rounded p-3 flex justify-between items-center">
                         <div>
                             <p class="font-semibold">{{ $invoice->invoice_number }}</p>
-                            <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'Unknown Client' }}</p>
+                            <p class="text-sm text-gray-600">{{ $invoice->client->full_name ?? 'Unknown Client' }}</p>
                             <p class="text-xs text-gray-400">{{ $invoice->invoice_date }} &middot; {{ $invoice->currency }} {{ number_format($invoice->amount, 3) }}</p>
                         </div>
                         <div class="flex gap-2">

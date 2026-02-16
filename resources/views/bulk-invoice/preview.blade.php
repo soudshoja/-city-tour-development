@@ -66,7 +66,7 @@
                 @foreach($invoiceGroups as $groupKey => $rows)
                     @php
                         $firstRow = $rows->first();
-                        $clientName = $firstRow->client->name ?? 'Unknown';
+                        $clientName = $firstRow->client->full_name ?? 'Unknown';
                         $clientPhone = $firstRow->client->phone ?? '';
                         $invoiceDate = $firstRow->raw_data['invoice_date'] ?? date('Y-m-d');
                         $taskCount = $rows->count();
@@ -93,24 +93,40 @@
                                 <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
                                         <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Row #</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task ID</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task Type</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Supplier</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Status</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Currency</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task Reference</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task Status</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Selling Price</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Payment Reference</th>
                                         <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     @foreach($rows as $row)
+                                        @php
+                                            $task = \App\Models\Task::find($row->matched['task_id'] ?? null);
+                                            $payment = \App\Models\Payment::find($row->matched['payment_id'] ?? null);
+                                        @endphp
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-3 py-2">{{ $row->row_number }}</td>
-                                            <td class="px-3 py-2">{{ $row->raw_data['task_id'] ?? '-' }}</td>
-                                            <td class="px-3 py-2">{{ $row->raw_data['task_type'] ?? '-' }}</td>
-                                            <td class="px-3 py-2">{{ $row->supplier->name ?? $row->raw_data['supplier_name'] ?? '-' }}</td>
-                                            <td class="px-3 py-2">{{ $row->raw_data['task_status'] ?? '-' }}</td>
-                                            <td class="px-3 py-2">{{ $row->raw_data['currency'] ?? 'KWD' }}</td>
-                                            <td class="px-3 py-2">{{ $row->raw_data['notes'] ?? '-' }}</td>
+                                            <td class="px-3 py-2">
+                                                <div>{{ $row->raw_data['task_reference'] ?? '-' }}</div>
+                                                @if($task)
+                                                    <div class="text-xs text-gray-500">ID: {{ $task->id }} | Type: {{ ucfirst($task->type) }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <span class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+                                                    {{ ucfirst($row->raw_data['task_status'] ?? '-') }}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-2 font-semibold">{{ number_format($row->raw_data['selling_price'] ?? 0, 3) }} KWD</td>
+                                            <td class="px-3 py-2">
+                                                <div>{{ $row->raw_data['payment_reference'] ?? '-' }}</div>
+                                                @if($payment)
+                                                    <div class="text-xs text-gray-500">{{ $payment->voucher_number ?? 'N/A' }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $row->raw_data['notes'] ?? '-' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -137,9 +153,9 @@
                                 <tr>
                                     <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Row #</th>
                                     <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Client Mobile</th>
-                                    <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task ID</th>
-                                    <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task Type</th>
-                                    <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Supplier</th>
+                                    <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task Reference</th>
+                                    <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Task Status</th>
+                                    <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Selling Price</th>
                                     <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700">Flag Reason</th>
                                 </tr>
                             </thead>
@@ -148,9 +164,9 @@
                                     <tr class="hover:bg-yellow-50">
                                         <td class="px-3 py-2">{{ $row->row_number }}</td>
                                         <td class="px-3 py-2">{{ $row->raw_data['client_mobile'] ?? '-' }}</td>
-                                        <td class="px-3 py-2">{{ $row->raw_data['task_id'] ?? '-' }}</td>
-                                        <td class="px-3 py-2">{{ $row->raw_data['task_type'] ?? '-' }}</td>
-                                        <td class="px-3 py-2">{{ $row->raw_data['supplier_name'] ?? '-' }}</td>
+                                        <td class="px-3 py-2">{{ $row->raw_data['task_reference'] ?? '-' }}</td>
+                                        <td class="px-3 py-2">{{ $row->raw_data['task_status'] ?? '-' }}</td>
+                                        <td class="px-3 py-2">{{ number_format($row->raw_data['selling_price'] ?? 0, 3) }} KWD</td>
                                         <td class="px-3 py-2 text-yellow-700 font-medium">{{ $row->flag_reason }}</td>
                                     </tr>
                                 @endforeach

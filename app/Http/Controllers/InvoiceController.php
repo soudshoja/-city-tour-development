@@ -1488,7 +1488,7 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
                     'transaction_date' => $invoice->invoice_date,
-                    'description' => 'Invoice for ' . $clientName,
+                    'description' => 'Invoice created for (Assets): ' . $clientName,
                     'debit' => $selling,
                     'credit' => 0,
                     'balance' => $clientAccount->balance ?? 0,
@@ -1556,7 +1556,7 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoiceId,
                 'invoice_detail_id' => $invoiceDetailId,
                 'transaction_date' => $invoice->invoice_date,
-                'description' => 'Revenue for ' . $task->reference,
+                'description' => 'Invoice created for (Income): ' . $task->reference,
                 'debit' => 0,
                 'credit' => $selling,
                 'balance' => $detailsAccount->balance ?? 0,
@@ -6424,7 +6424,7 @@ class InvoiceController extends Controller
 
     public function lockInvoice(Invoice $invoice)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         Gate::authorize('manageLocks', User::class);
 
         if ($invoice->isLocked()) {
@@ -6444,7 +6444,7 @@ class InvoiceController extends Controller
 
     public function unlockInvoice(Invoice $invoice)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         Gate::authorize('manageLocks', User::class);
 
         if (!$invoice->isLocked()) {

@@ -11,6 +11,9 @@ export default defineConfig({
                 //task
                 "resources/css/task/index.css",
 
+                //components
+                "resources/css/component/ajax-searchable.css",
+
                 "resources/css/refund.css",
                 "resources/css/settings/main.css",
                 "resources/css/settings/agent-loss.css",

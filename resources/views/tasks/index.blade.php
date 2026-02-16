@@ -88,7 +88,10 @@
                                         name="hotel_id"
                                         dataId=""
                                         ajaxUrl="{{ route('hotel.ajax.search') }}"
-                                        placeholder="Select Hotel" />
+                                        placeholder="Select Hotel"
+                                        :columns="['name', 'city', 'state', 'address']"
+                                        displayColumn="name"
+                                        mode="modal" />
                                 </template>
                                 <template id="template-client-dropdown">
                                     <x-ajax-searchable-dropdown

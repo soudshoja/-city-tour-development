@@ -422,8 +422,11 @@
                                 $isCredit = (stripos($partial->payment_gateway ?? '', 'credit') !== false);
                                 
                                 // Check if this credit payment has PaymentApplication records (new audit trail system)
-                                $paymentApps = $partial->paymentApplications()->with('payment')->get();
+                                $paymentApps = $partial->paymentApplications()->with(['payment', 'credit.refund'])->get();
                                 $hasPaymentApplications = $paymentApps->isNotEmpty();
+
+                                $topupApps = $paymentApps->filter(fn($app) => $app->payment_id !== null);
+                                $refundApps = $paymentApps->filter(fn($app) => $app->payment_id === null && $app->credit?->refund_id !== null);
                             @endphp
                             <tr>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-200">
@@ -434,17 +437,35 @@
                                 </td>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-300">
                                     @if($hasPaymentApplications)
-                                        @foreach($paymentApps as $app)
+                                        @foreach($topupApps as $app)
                                             @if($app->payment)
                                                 <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $app->payment->voucher_number]) }}"
                                                     class="text-blue-500 hover:text-blue-700" target="_blank">{{ $app->payment->voucher_number }}</a>
                                                 <span class="text-xs text-gray-500">({{ number_format($app->amount, 3) }})</span>
-                                                @if(!$loop->last)<br>@endif
+                                                @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
                                             @endif
+                                        @endforeach
+                                        @foreach($refundApps as $app)
+                                            @if($app->credit?->refund)
+                                                <a href="{{ route('refunds.show', ['companyId' => $company->id, 'refundNumber' => $app->credit->refund->refund_number]) }}"
+                                                    class="text-blue-500 hover:text-blue-700" target="_blank">{{ $app->credit->refund->refund_number }}</a>
+                                                <span class="text-xs text-gray-500">({{ number_format($app->amount, 3) }})</span>
+                                            @else
+                                                <span class="text-gray-600 italic">TBA</span>
+                                            @endif
+                                            @if(!$loop->last)<br>@endif
                                         @endforeach
                                     @elseif($voucher)
                                         <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $voucher]) }}"
                                             class="text-blue-500 hover:text-blue-700" target="_blank">{{ $voucher }}</a>
+                                    @elseif($partial->charge && !$partial->charge->is_system_default)
+                                        @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                            <a href="{{ route('receipt-voucher.show', ['companyId' => $company->id, 'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 hover:text-blue-700" target="_blank">
+                                                {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                            </a>
+                                        @else
+                                            <span class="text-gray-600 italic">TBA</span>
+                                        @endif
                                     @else
                                         {{ $isCredit ? 'Client Credit' : 'TBA' }}
                                     @endif

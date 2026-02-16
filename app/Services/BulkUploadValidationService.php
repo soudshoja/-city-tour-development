@@ -181,12 +181,8 @@ class BulkUploadValidationService
                     'status_filter' => $row['task_status'] ?? 'none',
                 ]);
             } else {
-                // Try finding by PNR or booking_reference
-                $taskQuery->where(function($q) use ($row) {
-                    $q->where('pnr', $row['task_reference'])
-                      ->orWhere('booking_reference', $row['task_reference'])
-                      ->orWhere('confirmation_code', $row['task_reference']);
-                });
+                // Try finding by reference
+                $taskQuery->where('reference', $row['task_reference']);
                 \Log::info("[BULK UPLOAD] Searching task by reference", [
                     'row' => $rowNumber,
                     'reference' => $row['task_reference'],

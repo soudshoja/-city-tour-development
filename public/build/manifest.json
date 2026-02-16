@@ -32,15 +32,23 @@
     "src": "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-B1u0pRz3.css",
+    "file": "assets/app-kjLnTWOL.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "names": [
       "app.css"
     ]
   },
+  "resources/css/component/ajax-searchable.css": {
+    "file": "assets/ajax-searchable-CLu4ObYG.css",
+    "src": "resources/css/component/ajax-searchable.css",
+    "isEntry": true,
+    "names": [
+      "ajax-searchable.css"
+    ]
+  },
   "resources/css/guest.css": {
-    "file": "assets/guest-fwsvNS0s.css",
+    "file": "assets/guest-DSdgMDR1.css",
     "src": "resources/css/guest.css",
     "isEntry": true,
     "names": [
@@ -104,7 +112,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DQiuw7fc.js",
+    "file": "assets/app-OPfIHqbf.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true

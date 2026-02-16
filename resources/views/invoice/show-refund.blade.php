@@ -114,14 +114,18 @@
             // Make sure relationships are loaded
             $refund->loadMissing('refundDetails.task.originalTask', 'originalInvoice.invoiceDetails');
 
-            // Collect all original task IDs for the refunded tasks
+            // Collect the source task IDs (originalTask if refund status, otherwise the task itself)
             $refundedTaskIds = $refund->refundDetails
-                ->map(fn($detail) => $detail->task?->originalTask?->id)
+                ->map(function ($detail) {
+                    $task = $detail->task;
+                    $isRefundStatus = strtolower($task->status ?? '') === 'refund';
+                    return $isRefundStatus ? ($task->originalTask?->id) : $task->id;
+                })
                 ->filter()
                 ->unique()
                 ->toArray();
 
-            // Calculate the total task price for those original tasks
+            // Calculate the total task price for those tasks from the original invoice
             $refundedTaskTotal = $refund->originalInvoice
                 ? $refund->originalInvoice->invoiceDetails
                     ->whereIn('task_id', $refundedTaskIds)
@@ -134,9 +138,36 @@
                 <thead class="bg-gray-100 text-gray-700 uppercase">
                     <tr>
                         <th class="p-2 border">Original Invoice</th>
-                        <th class="p-2 border">Original Amount</th>
-                        <th class="p-2 border">Original Refund</th>
-                        <th class="p-2 border">Refund Charges</th>
+                        <th class="p-2 border">
+                            <span class="inline-flex items-center gap-1">
+                                Original Amount
+                                <span data-tooltip="The total amount of the original invoice" class="cursor-help text-gray-400 font-normal normal-case">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+                                </span>
+                            </span>
+                        </th>
+                        <th class="p-2 border">
+                            <span class="inline-flex items-center gap-1">
+                                Original Refund
+                                <span data-tooltip="The selling price of the refunded tasks from the original invoice" class="cursor-help text-gray-400 font-normal normal-case">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+                                </span>
+                            </span>
+                        </th>
+                        <th class="p-2 border">
+                            <span class="inline-flex items-center gap-1">
+                                Refund Charges
+                                <span data-tooltip="The fee charged to process the refund for the selected tasks" class="cursor-help text-gray-400 font-normal normal-case">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+                                </span>
+                            </span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -155,7 +186,9 @@
             @foreach ($refund->refundDetails as $detail)
                 @php
                     $task = $detail->task;
-                    $originalDetail = $detail->refund->originalInvoice ? $detail->refund->originalInvoice->invoiceDetails->firstWhere('task_id', $task->originalTask?->id ?? $task->id) : null;
+                    $isRefundStatus = strtolower($task->status ?? '') === 'refund';
+                    $sourceTaskId = $isRefundStatus ? ($task->originalTask?->id ?? $task->id) : $task->id;
+                    $originalDetail = $detail->refund->originalInvoice ? $detail->refund->originalInvoice->invoiceDetails->firstWhere('task_id', $sourceTaskId) : null;
                 @endphp
                 <div class="mb-3 p-5 border border-gray-200 rounded-lg shadow-sm bg-gray-50 hover:bg-gray-100 transition">
                     <div class="flex justify-between items-center">
@@ -245,9 +278,13 @@
         </div>
 
         @php
-            // find all refunded tasks
+            // find all refunded tasks (use originalTask if refund status, otherwise the task itself)
             $refundedTaskIds = $refund->refundDetails
-                ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
+                ->map(function ($d) {
+                    $task = $d->task;
+                    $isRefundStatus = strtolower($task->status ?? '') === 'refund';
+                    return $isRefundStatus ? ($task->originalTask?->id ?? $d->task_id) : $d->task_id;
+                })
                 ->filter()
                 ->toArray();
 
@@ -262,8 +299,8 @@
                         <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
                             <th class="px-4 py-2 border">Item Description</th>
                             <th class="px-4 py-2 border text-center">Quantity</th>
-                            <th class="px-4 py-2 border text-right">Price (KWD)</th>
-                            <th class="px-4 py-2 border text-right">Total (KWD)</th>
+                            <th class="px-4 py-2 border text-center">Price (KWD)</th>
+                            <th class="px-4 py-2 border text-center">Total (KWD)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -271,10 +308,10 @@
                             @php $task = $detail->task; @endphp
                             <tr class="text-sm text-gray-700">
                                 <td class="px-4 py-2 border align-top">
-                                    <div class="font-semibold text-gray-900">{{ ucfirst($task->type ?? 'N/A') }}</div>
+                                        Reference: {{ $task->reference }} <br>
+                                        Task Type: {{ ucfirst($task->type ?? 'N/A') }} <br>
 
                                     @if ($task->type === 'flight')
-                                        @if(!empty($task->reference)) Reference: {{ $task->reference }} <br> @endif
                                         @if(!empty($task->gds_reference)) GDS Ref: {{ $task->gds_reference }} <br> @endif
                                         Passenger: {{ $task->passenger_name ?? 'N/A' }} <br>
                                         Route:
@@ -304,8 +341,8 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 border text-center">1</td>
-                                <td class="px-4 py-2 border text-right">{{ number_format($detail->task_price ?? 0, 3) }}</td>
-                                <td class="px-4 py-2 border text-right">
+                                <td class="px-4 py-2 border text-center">{{ number_format($detail->task_price ?? 0, 3) }}</td>
+                                <td class="px-4 py-2 border text-center">
                                     {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 3) }}
                                 </td>
                             </tr>
@@ -357,61 +394,18 @@
             // Show when subtotal differs from refund charges (meaning adjustment was applied)
             $adjustmentApplied = abs($invoice->sub_amount - $refund->total_nett_refund) > 0.001;
         @endphp
-        <div class="flex flex-col md:flex-row justify-between items-end gap-6 border-t pt-6 mt-8 mb-10">
-            <div class="flex gap-2 justify-end md:justify-start w-full md:w-auto">
-                @if ($invoice->status !== 'paid')
-                    <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
-                        @csrf
-                        <input type="hidden" name="client_id" id="clientid" value="{{ $invoice->client->id }}">
-                        <input type="hidden" name="invoiceNumber" value="{{ $invoice->invoice_number }}">
-
-                        <button id="submitButton" type="submit"
-                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                            <span id="buttonText">Send Invoice To Client</span>
-                            <span id="spinner" class="hidden ml-2">
-                                <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 0-8-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                                </svg>
-                            </span>
-                        </button>
-                    </form>
-                    <form id="paymentForm" action="{{ route('payment.create', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
-                        method="POST">
-                        @csrf
-
-                        <input type="hidden" name="total_amount" value="{{ $totalGatewayFee['finalAmount'] ?? $invoice->amount }}">
-                        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-                        <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
-                        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-                        <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
-                        <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
-                        <input type="hidden" name="invoice_partial_id" value="{{ $invoice->invoicePartials->first()->id }}">
-
-                        <button type="submit"
-                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                            Pay Now
-                        </button>
-                        <div id="loadingSpinner" class="hidden mt-2">
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            Processing...
-                        </div>
-                    </form>
-                @else
-                    <p class="text-green-600 font-bold text-lg">PAID</p>
-                @endif
-            </div>
-            <div class="w-full md:w-1/3 text-sm text-black">
+        <div class="flex justify-end mb-8">
+            <div class="w-1/3 text-sm">
                 @if ($invoice->refund && $invoice->refund->originalInvoice)
                     <div class="flex justify-between py-2 border-b border-gray-200">
                         <span>Original Invoice:</span>
                         <span>{{ number_format($invoice->refund->originalInvoice->amount, 3) }}</span>
                     </div>
                 @endif
-                <div class="flex justify-between py-2 border-b border-gray-200">
+                <!-- <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Refund Charges:</span>
                     <span>{{ number_format($refund->total_nett_refund ?? 0, 3) }}</span>
-                </div>
+                </div> -->
                 @if ($adjustmentApplied && $unrefundedTasks->isNotEmpty())
                     @if ($paymentBalance > 0)
                         {{-- Overpayment: client has credit, reduce amount owed --}}
@@ -427,41 +421,76 @@
                         </div>
                     @endif
                 @endif
+                @php
+                    $subtotalWithServiceCharge = $invoice->sub_amount + ($totalGatewayFee['gatewayFee'] ?? 0);
+                @endphp
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
-                    <span>{{ number_format($invoice->sub_amount, 3) }}</span>
+                    <span>{{ number_format($subtotalWithServiceCharge, 3) }}</span>
                 </div>
-                <!-- <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Tax ({{ $invoice->tax }}%):</span>
-                    <span>{{ number_format($invoice->tax, 3) }}</span>
-                </div> -->
 
-                @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
-                    @php
-                        $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
-                    @endphp
-                    @if ($paidServiceCharge > 0)
-                        <div class="flex justify-between py-2 border-b border-gray-200">
-                            <span>Service Charge:</span>
-                            <span>{{ number_format($paidServiceCharge, 3) }}</span>
-                        </div>
-                    @endif
-                @else
-                    @if(isset($totalGatewayFee['paid_by']) && $totalGatewayFee['paid_by'] !== 'Company' && $totalGatewayFee['gatewayFee'] > 0)
-                        <div class="flex justify-between py-2 border-b border-gray-200">
-                            <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                            <span>{{ number_format($totalGatewayFee['gatewayFee'], 3) }}</span>
-                        </div>
-                    @endif
-                @endif
-
-                <div class="flex justify-between py-2 font-bold text-gray-800 text-base md:text-lg">
+                <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
                         {{ number_format($totalGatewayFee['finalAmount'] ?? $invoice->amount, 3) }}
                     </span>
                 </div>
             </div>
+        </div>
+
+        <div class="mb-8 inline-flex gap-2">
+            @if ($invoice->status !== 'paid')
+                @if (auth()->check())
+                    <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
+                        @csrf
+                        <input type="hidden" name="client_id" id="clientid" value="{{ $invoice->client->id }}">
+                        <input type="hidden" name="invoiceNumber" value="{{ $invoice->invoice_number }}">
+
+                        <button id="submitButton" type="submit"
+                            class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-white">
+                            <span id="buttonText">Send Invoice To Client</span>
+                            <span id="spinner" class="hidden ml-2">
+                                <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 0-8-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                </svg>
+                            </span>
+                        </button>
+                    </form>
+                @endif
+                @if ($canGenerateLink)
+                    <form id="paymentForm" action="{{ route('payment.create', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                        method="POST">
+                        @csrf
+
+                        <input type="hidden" name="total_amount" value="{{ $totalGatewayFee['finalAmount'] ?? $invoice->amount }}">
+                        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
+                        <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
+                        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
+                        <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
+                        <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
+                        <input type="hidden" name="invoice_partial_id" value="{{ $invoice->invoicePartials->first()->id }}">
+
+                        <button type="submit"
+                            class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-white">
+                            Pay Now
+                        </button>
+                        <div id="loadingSpinner" class="hidden mt-2">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Processing...
+                        </div>
+                    </form>
+                @else
+                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment.
+                        Please contact your agent for assistance.
+                    </div>
+                @endif
+            @else
+                <div class="flex items-center gap-2">
+                    <p><span class="text-green-600 font-bold">PAID</span></p>
+                </div>
+            @endif
         </div>
 
         <div class="flex justify-between items-center">
@@ -477,7 +506,7 @@
         </div>
     </div>
 
-    @if ($invoice->status === 'paid')
+    @if ($invoice->status !== 'unpaid')
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
         <div class="invoice">
             <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
@@ -496,25 +525,90 @@
                 </thead>
                 <tbody>
                     @foreach ($paidPartials as $partial)
+                    @php
+                        // Check if this credit payment has PaymentApplication records (new audit trail system)
+                        $paymentApps = $partial->paymentApplications()->with(['payment', 'credit.refund'])->get();
+                        $hasPaymentApplications = $paymentApps->isNotEmpty();
+
+                        $topupApps = $paymentApps->filter(fn($app) => $app->payment_id !== null);
+                        $refundApps = $paymentApps->filter(fn($app) => $app->payment_id === null && $app->credit?->refund_id !== null);
+
+                        // Old way: get credit utilization amount
+                        $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
+                    @endphp
                     <tr class="text-sm text-gray-700">
                         <td class="px-4 py-2 border">
-                            <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
-                                class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
-                            </a>
+                            @if($hasPaymentApplications)
+                                @foreach($topupApps as $app)
+                                    @if($app->payment)
+                                        <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $app->payment->voucher_number]) }}"
+                                            class="text-blue-500 underline" target="_blank">{{ $app->payment->voucher_number }}</a>
+                                        @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
+                                    @endif
+                                @endforeach
+                                @foreach($refundApps as $app)
+                                    @if($app->credit?->refund)
+                                        <a href="{{ route('refunds.show', ['companyId' => $companyId, 'refundNumber' => $app->credit->refund->refund_number]) }}"
+                                            class="text-blue-500 underline" target="_blank">
+                                            {{ $app->credit->refund->refund_number }}
+                                        </a>
+                                    @else
+                                        <span class="text-gray-700">Refund Credit</span>
+                                    @endif
+                                    @if(!$loop->last)<br>@endif
+                                @endforeach
+                            @elseif(optional($partial->payment)->voucher_number)
+                                <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
+                                    class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
+                                </a>
+                            @elseif ($partial->charge && !$partial->charge->is_system_default)
+                                @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                    <a href="{{ route('receipt-voucher.show', ['companyId' => $companyId,
+                                        'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 underline" target="_blank">
+                                        {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-600 italic">{{ $partial->payment_gateway }} (Receipt pending)</span>
+                                @endif
+                            @endif
                         </td>
                         <td class="px-4 py-2 border">
-                            @if ($partial->payment->payment_gateway === 'MyFatoorah')
+                            @if ($hasPaymentApplications)
+                                @foreach($topupApps as $app)
+                                    @if($app->payment)
+                                        {{ $app->payment->voucher_number }} ({{ number_format($app->amount, 3) }})
+                                        @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
+                                    @endif
+                                @endforeach
+                                @foreach($refundApps as $app)
+                                    {{ $app->credit?->refund?->refund_number ?? 'RF-' . $app->credit?->refund_id }} ({{ number_format($app->amount, 3) }})
+                                    @if(!$loop->last)<br>@endif
+                                @endforeach
+                            @elseif ($paymentReferenceCredit)
+                                Client Credit by {{ $partial->client->full_name }}
+                                ({{ $paymentReferenceCredit }})
+                            @elseif ($partial->charge && !$partial->charge->is_system_default)
+                                @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                    {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                @else
+                                    <span class="italic">{{ $partial->payment_gateway }} (Receipt pending)</span>
+                                @endif
+                            @elseif ($partial->payment?->payment_gateway === 'MyFatoorah')
                                 {{ $partial->payment->myfatoorahPayment->invoice_ref ?? $partial->payment->myfatoorahPayment->payload['Data']['InvoiceReference'] ?? 'N/A' }}
                             @else
-                                {{ $partial->payment->payment_reference ?? 'N/A' }}
+                                {{ $partial->payment?->payment_reference ?? 'N/A' }}
                             @endif
                         </td>
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
-                        <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                        @if ($hasPaymentApplications || $paymentReferenceCredit)
+                            <td class="px-4 py-2 border">Client Credit</td>
+                        @else
+                            <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                        @endif
                         <td class="px-4 py-2 border">
-                            {{ number_format($partial->amount ?? 0, 3) }}
+                            {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}
                         </td>
                     </tr>
                     @endforeach
@@ -537,19 +631,18 @@
         </div>
     </div>
     @endif
+
     <script>
         let invoice = @json($invoice);
         let invoicePartials = @json($invoicePartials);
 
-        // Calculate the total paid amount from invoicePartials
-        let totalPaidAmount = invoicePartials.filter(partial => partial.status === 'paid')
-            .reduce((sum, partial) => sum + parseFloat(partial.amount), 0);
-
-        let totalPaidServiceCharge = invoicePartials.filter(partial => partial.status === 'paid')
-            .reduce((sum, partial) => sum + parseFloat(partial.service_charge), 0);
-
-        // Calculate balance
-        let balance = invoice.amount - totalPaidAmount + totalPaidServiceCharge;
+        // Calculate balance from unpaid partials (same as show.blade.php)
+        let balance = invoicePartials.filter(partial => partial.status !== 'paid')
+            .reduce((sum, partial) => {
+                return sum + parseFloat(partial.amount || 0)
+                        + parseFloat(partial.service_charge || 0)
+                        + parseFloat(partial.invoice_charge || 0);
+            }, 0);
 
         let balanceElement = document.getElementById('balance');
         if (balanceElement) {

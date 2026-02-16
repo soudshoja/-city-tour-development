@@ -140,12 +140,10 @@
                                 </svg>
                             </button>
 
-                            @if (in_array($invoice->status, ['paid', 'refunded']))
+                            @if (in_array($invoice->status, ['paid', 'refunded', 'paid by refund']))
                                 <span class="px-2 py-0.5 text-xs md:text-sm rounded-full bg-green-100 text-green-700 font-medium">{{ ucfirst($invoice->status) }}</span>
-                            @elseif ($invoice->status === 'paid by refund')
-                                <span class="px-2 py-0.5 text-xs md:text-sm rounded-full bg-green-100 text-green-700 font-medium">Settled</span>
-                            @elseif ($invoice->status === 'partial')
-                                <span class="px-2 py-0.5 text-xs md:text-sm rounded-full bg-yellow-100 text-yellow-700 font-medium">Partial</span>
+                            @elseif (in_array($invoice->status, ['partial', 'partial refund']))
+                                <span class="px-2 py-0.5 text-xs md:text-sm rounded-full bg-yellow-100 text-yellow-700 font-medium">{{ ucfirst($invoice->status) }}</span>
                             @else
                                 <span class="px-2 py-0.5 text-xs md:text-sm rounded-full bg-red-100 text-red-700 font-medium">{{ ucfirst($invoice->status) }}</span>
                             @endif

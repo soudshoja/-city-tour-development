@@ -232,6 +232,7 @@ class BulkInvoiceController extends Controller
                     'task_id' => $rowResult['matched']['task_id'] ?? null,
                     'client_id' => $rowResult['matched']['client_id'] ?? null,
                     'supplier_id' => $rowResult['matched']['supplier_id'] ?? null,
+                    'payment_id' => $rowResult['matched']['payment_id'] ?? null,
                     'raw_data' => json_encode($rows[$index]),
                     'errors' => ! empty($rowResult['errors']) ? json_encode($rowResult['errors']) : null,
                     'flag_reason' => $rowResult['flag_reason'] ?? null,

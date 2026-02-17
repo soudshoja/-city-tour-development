@@ -1723,7 +1723,7 @@
                                                         <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ ucfirst($task->type) }} Details</h3>
 
                                                         @if($task->type === 'hotel' && $task->hotelDetails)
-                                                        @include('tasks.partial.hotel-details-form', ['task' => $task, 'hotels' => $hotels])
+                                                        @include('tasks.partial.hotel-details-form', ['task' => $task])
                                                         @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
                                                         @include('tasks.partial.flight-details-form', ['task' => $task])
                                                         @elseif($task->type === 'insurance' && $task->insuranceDetails)

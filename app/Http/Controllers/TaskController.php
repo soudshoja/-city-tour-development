@@ -5500,13 +5500,6 @@ class TaskController extends Controller
             ->toArray();
 
 
-        $hotels = Hotel::orderBy('name', 'asc')->get(['id', 'name'])->map(function($hotel) {
-            return [
-                'id' => $hotel->id,
-                'name' => $hotel->name
-            ];
-        });
-
         $airports = Airport::orderBy('iata_code', 'asc')->get(['id', 'iata_code', 'name'])->map(function($airport) {
             return [
                 'id' => $airport->id,
@@ -5521,7 +5514,7 @@ class TaskController extends Controller
             ];
         });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels', 'airports', 'airlines', 'hasInvoicedTasks'));
+        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'airports', 'airlines', 'hasInvoicedTasks'));
     }
 
     public function bulkUpdate(Request $request)

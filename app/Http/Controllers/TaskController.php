@@ -149,7 +149,7 @@ class TaskController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
+        $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info', 'supplier'];
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
         $sortBy = $request->query('sortBy', 'created_at');
@@ -159,7 +159,19 @@ class TaskController extends Controller
             $sortBy = 'created_at';
         }
 
-        $query = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
+        $query = Task::with([
+            'agent.branch',
+            'client',
+            'invoiceDetail.invoice',
+            'refundDetail',
+            'originalTask',
+            'linkedTask',
+            'supplier:id,name',
+            'flightDetails:id,task_id,departure_time,arrival_time,airport_from,airport_to,ticket_number',
+            'hotelDetails:id,task_id,check_in,check_out,hotel_id',
+            'hotelDetails.hotel:id,name',
+            'paymentMethod:id,name',
+        ]);
         $suppliers = Supplier::with('companies');
 
         if ($user->role_id == Role::ADMIN) {

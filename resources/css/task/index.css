@@ -492,3 +492,67 @@ input[type="date"] {
         display: block;
     }
 }
+
+/* ==================== Grouped Table Cells ==================== */
+.task-group-cell {
+    @apply p-3 text-sm align-top;
+}
+
+.task-group-cell .group-item {
+    @apply flex items-start gap-1.5 py-0.5;
+}
+
+.task-group-cell .group-label {
+    @apply text-[11px] font-semibold text-gray-400 uppercase tracking-wide shrink-0 min-w-[60px];
+}
+
+.task-group-cell .group-value {
+    @apply text-[13px] font-medium text-gray-800 dark:text-gray-200 break-words;
+}
+
+.task-group-cell .group-value-primary {
+    @apply text-[13px] font-bold text-gray-900 dark:text-gray-100;
+}
+
+.task-group-cell .group-divider {
+    @apply border-t border-gray-100 dark:border-gray-700 my-1;
+}
+
+.task-group-cell .group-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
+}
+
+/* Status badge colors */
+.badge-issued { @apply bg-green-100 text-green-700; }
+.badge-confirmed { @apply bg-blue-100 text-blue-700; }
+.badge-refund { @apply bg-red-100 text-red-700; }
+.badge-reissued { @apply bg-purple-100 text-purple-700; }
+.badge-void { @apply bg-gray-200 text-gray-500; }
+.badge-ticketed { @apply bg-teal-100 text-teal-700; }
+.badge-emd { @apply bg-yellow-100 text-yellow-700; }
+.badge-default { @apply bg-gray-100 text-gray-600; }
+
+/* Type indicator pill */
+.type-pill {
+    @apply inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider;
+}
+.type-flight { @apply bg-sky-100 text-sky-700; }
+.type-hotel { @apply bg-amber-100 text-amber-700; }
+.type-visa { @apply bg-violet-100 text-violet-700; }
+.type-insurance { @apply bg-emerald-100 text-emerald-700; }
+.type-default { @apply bg-gray-100 text-gray-600; }
+
+/* Payment method pill */
+.payment-pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600;
+}
+
+/* Ensure grouped header cells align properly */
+.grouped-th {
+    @apply text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3;
+}
+
+/* Auto-hide group column when all children are hidden */
+[data-group-column].group-all-hidden {
+    display: none !important;
+}

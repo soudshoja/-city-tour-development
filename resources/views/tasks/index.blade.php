@@ -221,51 +221,10 @@
                     </div>
                     <hr class="border-gray-300 mb-2" />
                     <div class="space-y-2">
+                        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">Reference Group</p>
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                             <label for="col-reference" class="text-sm text-gray-700">Reference</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                            <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                            <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                            <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                            <label for="col-price" class="text-sm text-gray-700">Price</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                            <label for="col-status" class="text-sm text-gray-700">Status</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                            <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                            <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issued Date</label>
-                        </div>
-                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                            <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
-                        </div>
-                        @endif
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                            <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                            <label for="col-info" class="text-sm text-gray-700">Info</label>
                         </div>
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="col-type" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
@@ -279,13 +238,52 @@
                             <input type="checkbox" id="col-amadeus-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                             <label for="col-amadeus-reference" class="text-sm text-gray-700">Amadeus Reference</label>
                         </div>
+
+                        <hr class="border-gray-200 my-1" />
+                        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">Customer</p>
                         <div class="flex items-center gap-2">
-                            <input type="checkbox" id="col-created-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                            <label for="col-created-by" class="text-sm text-gray-700">Created By</label>
+                            <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
                         </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
+                        </div>
+
+                        <hr class="border-gray-200 my-1" />
+                        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">Task Info</p>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-info" class="text-sm text-gray-700">Info (Flight/Hotel)</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-status" class="text-sm text-gray-700">Status</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issued Date</label>
+                        </div>
+                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
+                        </div>
+                        @endif
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="col-issued-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                             <label for="col-issued-by" class="text-sm text-gray-700">Issued By</label>
+                        </div>
+
+                        <hr class="border-gray-200 my-1" />
+                        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">Agent</p>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
                         </div>
                         @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                         <div class="flex items-center gap-2">
@@ -294,9 +292,33 @@
                         </div>
                         @endif
                         <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-created-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-created-by" class="text-sm text-gray-700">Created By</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
+                        </div>
+
+                        <hr class="border-gray-200 my-1" />
+                        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">Financial</p>
+                        @can('viewPrice', 'App\Models\Task')
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                            <label for="col-price" class="text-sm text-gray-700">Price</label>
+                        </div>
+                        @endcan
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="col-payment-method" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                            <label for="col-payment-method" class="text-sm text-gray-700">Payment Method</label>
+                        </div>
+                        <div class="flex items-center gap-2">
                             <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                             <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
                         </div>
+
+                        <hr class="border-gray-200 my-1" />
+                        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">Other</p>
                         @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="col-file-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
@@ -322,11 +344,11 @@
                     <div class="flex gap-3">
                         <button id="editActiveFilters"
                             class="text-sm font-medium text-green-600 hover:bg-green-100 px-3 py-1 rounded-lg transition-all">
-                            ✏️ Modify
+                            Modify
                         </button>
                         <button id="clearAllActiveFilters"
                             class="text-sm font-medium text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg transition-all">
-                            🗑️ Clear All
+                            Clear All
                         </button>
                     </div>
                 </div>
@@ -610,141 +632,88 @@
                             <table class="table-hover whitespace-nowrap dataTable-table">
                                 <thead>
                                     <tr>
-                                        <th data-column="actions">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</span>
+                                        {{-- Actions --}}
+                                        <th data-column="actions" class="grouped-th">
+                                            Actions
                                         </th>
-                                        <th data-column="reference">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
+
+                                        {{-- Reference Group --}}
+                                        <th data-group-column="reference-group" class="grouped-th">
+                                            Reference
                                         </th>
-                                        <th data-column="bill-to">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
+
+                                        {{-- Customer Details --}}
+                                        <th data-group-column="customer-group" class="grouped-th">
+                                            Customer
                                         </th>
-                                        <th data-column="passenger-name">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
+
+                                        {{-- Task Info --}}
+                                        <th data-group-column="taskinfo-group" class="grouped-th">
+                                            Task Info
                                         </th>
-                                        <th data-column="agent-name">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
+
+                                        {{-- Agent --}}
+                                        <th data-group-column="agent-group" class="grouped-th">
+                                            Agent
                                         </th>
-                                        @can('viewPrice', 'App\Models\Task')
-                                        <th data-column="price">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
+
+                                        {{-- Financial --}}
+                                        <th data-group-column="financial-group" class="grouped-th">
+                                            Financial
                                         </th>
-                                        @endcan
-                                        <th data-column="status">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</span>
-                                        </th>
-                                        <th data-column="supplier">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
-                                        </th>
-                                        <th data-column="supplier-pay-date" class="column-hidden">
-                                            <a href="{{ request()->fullUrlWithQuery([
-                                                        'sortBy' => 'supplier_pay_date',
-                                                        'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-                                                    ]) }}"
-                                                class="inline-flex w-full items-center justify-center gap-2 text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-                                                Issued Date
-                                                @if(request('sortBy') !== 'supplier_pay_date')
-                                                <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
-                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                                    <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
-                                                </svg>
-                                                @else
-                                                <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
-                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                    @if(request('sortOrder', 'desc') === 'asc')
-                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
-                                                    @else
-                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
-                                                    @endif
-                                                </svg>
-                                                @endif
-                                            </a>
-                                        </th>
-                                        <th data-column="created-at" class="column-hidden">
-                                            <a href="{{ request()->fullUrlWithQuery([
-                                                            'sortBy' => 'created_at',
-                                                            'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-                                                        ]) }}"
-                                                class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-                                                Created Date
-                                                @if(request('sortBy') !== 'created_at')
-                                                <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
-                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                                    <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
-                                                </svg>
-                                                @else
-                                                <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
-                                                    fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                    @if(request('sortOrder') === 'asc')
-                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
-                                                    @else
-                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
-                                                    @endif
-                                                </svg>
-                                                @endif
-                                            </a>
-                                        </th>
-                                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <th data-column="cancellation-deadline" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Cancellation Deadline</span>
+
+                                        {{-- File --}}
+                                        @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                        <th data-group-column="file-group" class="grouped-th">
+                                            File
                                         </th>
                                         @endif
-                                        <th data-column="info">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
-                                        </th>
-                                        <th data-column="type" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</span>
-                                        </th>
-                                        <th data-column="gds-reference" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</span>
-                                        </th>
-                                        <th data-column="amadeus-reference" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</span>
-                                        </th>
-                                        <th data-column="created-by" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</span>
-                                        </th>
-                                        <th data-column="issued-by" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</span>
-                                        </th>
-                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <th data-column="branch-name" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</span>
-                                        </th>
-                                        @endif
-                                        <th data-column="invoice" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</span>
-                                        </th>
-                                        <th data-column="file-name" class="column-hidden">
-                                            <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">File Name</span>
-                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="myTableBody">
                                     @if ($tasks->isEmpty())
                                     <tr>
-                                        <td colspan="17" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
+                                        <td colspan="7" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
                                     </tr>
                                     @else
                                     @foreach ($tasks as $key => $task)
                                     @php
-                                    $canSelectForInvoice = !$task->invoiceDetail && $task->enabled && $task->agent_id && $task->status !== 'refund';
-                                    $canSelectForRefund = ($task->status === 'refund' && $task->originalTask && $task->originalTask->invoiceDetail && !$task->refundDetail)
-                                    || ($task->invoiceDetail
-                                    && !$task->refundDetail
-                                    && $task->agent_id
-                                    && $task->enabled
-                                    && in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund']));
-                                    $isSelectable = $canSelectForInvoice || $canSelectForRefund;
+                                        $canSelectForInvoice = !$task->invoiceDetail && $task->enabled && $task->agent_id && $task->status !== 'refund';
+                                        $canSelectForRefund = ($task->status === 'refund' && $task->originalTask && $task->originalTask->invoiceDetail && !$task->refundDetail)
+                                            || ($task->invoiceDetail
+                                            && !$task->refundDetail
+                                            && $task->agent_id
+                                            && $task->enabled
+                                            && in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund']));
+                                        $isSelectable = $canSelectForInvoice || $canSelectForRefund;
+
+                                        $statusClass = match($task->status) {
+                                            'issued' => 'badge-issued',
+                                            'confirmed' => 'badge-confirmed',
+                                            'refund' => 'badge-refund',
+                                            'reissued' => 'badge-reissued',
+                                            'void' => 'badge-void',
+                                            'ticketed' => 'badge-ticketed',
+                                            'emd' => 'badge-emd',
+                                            default => 'badge-default',
+                                        };
+
+                                        $typeClass = match($task->type) {
+                                            'flight' => 'type-flight',
+                                            'hotel' => 'type-hotel',
+                                            'visa' => 'type-visa',
+                                            'insurance' => 'type-insurance',
+                                            default => 'type-default',
+                                        };
                                     @endphp
-                                    <tr class="taskRow task-row cursor-pointer"
+                                    <tr class="taskRow task-row cursor-pointer border-b border-gray-100"
                                         @click="toggleTaskSelection({{ $task->id }})"
                                         x-show="{{ $key }} < shown" x-cloak
                                         :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
                                         data-agent-id="{{ $task->agent_id }}"
                                         data-status="{{ $task->status }}"
                                         data-task-id="{{ $task->id }}"
-                                        data-task-reference="{{ $task->reference}}"
+                                        data-task-reference="{{ $task->reference }}"
                                         data-enabled="{{ $task->enabled ? 'true' : 'false' }}"
                                         data-invoice-detail="{{ $task->invoiceDetail ? 'true' : 'false' }}"
                                         data-invoice-status="{{ $task->invoiceDetail?->invoice?->status ?? '' }}"
@@ -757,33 +726,26 @@
                                             <div class="flex items-center justify-center h-full min-h-[40px]">
                                                 @if (!$isSelectable)
                                                 @php
-                                                $reasons = [];
-
-                                                // For refund tasks
-                                                if ($task->status === 'refund') {
-                                                if (!$task->originalTask) $reasons[] = 'No original task linked';
-                                                elseif (!$task->originalTask->invoiceDetail) $reasons[] = 'Original task not invoiced';
-                                                if (!$task->is_complete) $reasons[] = 'Refund not complete';
-                                                }
-
-                                                // For uninvoiced tasks
-                                                if (!$task->invoiceDetail && $task->status !== 'refund') {
-                                                if (!$task->enabled) $reasons[] = 'Task is disabled';
-                                                if (!$task->agent_id) $reasons[] = 'No agent assigned';
-                                                }
-
-                                                // For invoiced tasks (can't be refunded)
-                                                if ($task->invoiceDetail) {
-                                                if ($task->refundDetail) $reasons[] = 'Refund already processed';
-                                                if (!$task->agent_id) $reasons[] = 'No agent assigned';
-                                                if (!$task->enabled) $reasons[] = 'Task is disabled';
-                                                if (!in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund'])) {
-                                                $invoiceStatus = $task->invoiceDetail?->invoice?->status ?? 'unknown';
-                                                $reasons[] = "Invoice status is '{$invoiceStatus}'";
-                                                }
-                                                }
-
-                                                $tooltipText = implode(', ', $reasons);
+                                                    $reasons = [];
+                                                    if ($task->status === 'refund') {
+                                                        if (!$task->originalTask) $reasons[] = 'No original task linked';
+                                                        elseif (!$task->originalTask->invoiceDetail) $reasons[] = 'Original task not invoiced';
+                                                        if (!$task->is_complete) $reasons[] = 'Refund not complete';
+                                                    }
+                                                    if (!$task->invoiceDetail && $task->status !== 'refund') {
+                                                        if (!$task->enabled) $reasons[] = 'Task is disabled';
+                                                        if (!$task->agent_id) $reasons[] = 'No agent assigned';
+                                                    }
+                                                    if ($task->invoiceDetail) {
+                                                        if ($task->refundDetail) $reasons[] = 'Refund already processed';
+                                                        if (!$task->agent_id) $reasons[] = 'No agent assigned';
+                                                        if (!$task->enabled) $reasons[] = 'Task is disabled';
+                                                        if (!in_array($task->invoiceDetail?->invoice?->status, ['paid', 'unpaid', 'partial', 'partial refund'])) {
+                                                            $invoiceStatus = $task->invoiceDetail?->invoice?->status ?? 'unknown';
+                                                            $reasons[] = "Invoice status is '{$invoiceStatus}'";
+                                                        }
+                                                    }
+                                                    $tooltipText = implode(', ', $reasons);
                                                 @endphp
                                                 <div class="relative group cursor-default">
                                                     <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
@@ -795,9 +757,9 @@
                                                 </div>
                                                 @endif
                                                 @php
-                                                $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
-                                                ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
-                                                ->exists();
+                                                    $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                                        ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                                        ->exists();
                                                 @endphp
                                                 <div class="flex items-center justify-center h-full mr-2">
                                                     <label class="switch m-0" @click.stop
@@ -837,174 +799,207 @@
                                                 @endcan
                                             </div>
                                         </td>
-                                        <td data-column="reference" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->reference }}
+
+                                        <td data-group-column="reference-group" class="task-group-cell whitespace-normal min-w-[160px]">
+                                            <div data-column="reference" class="group-item">
+                                                <span class="group-value-primary">{{ $task->reference }}</span>
+                                            </div>
+                                            <div data-column="type" class="group-item mt-1">
+                                                <span class="type-pill {{ $typeClass }}">{{ $task->type ?? 'N/A' }}</span>
+                                            </div>
+                                            <div data-column="gds-reference" class="group-item">
+                                                <span class="group-label">GDS</span>
+                                                <span class="group-value truncate max-w-[120px]">{{ $task->gds_reference ?? '-' }}</span>
+                                            </div>
+                                            <div data-column="amadeus-reference" class="group-item">
+                                                <span class="group-label">Airline</span>
+                                                <span class="group-value truncate max-w-[120px]">{{ $task->airline_reference ?? '-' }}</span>
+                                            </div>
                                         </td>
-                                        <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
-                                            @if ($task->client)
-                                            <p>{{ $task->client->full_name }}</p>
-                                            <p>{{ $task->client->phone ?? 'No phone' }}</p>
-                                            @else
-                                            <p class="{{ $task->client ?? 'no-client relative' }}">
-                                                <button
-                                                    @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
-                                                    {{ $task->client !== null ? 'disabled' : '' }}>
-                                                    {{ $task->client->full_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
-                                                </button>
-                                            </p>
+
+                                        <td data-group-column="customer-group" class="task-group-cell whitespace-normal min-w-[180px]">
+                                            <div data-column="bill-to">
+                                                @if ($task->client)
+                                                    <div class="group-value-primary">{{ $task->client->full_name }}</div>
+                                                    <div class="text-[11px] text-gray-500">{{$task->client->country_code}} {{ $task->client->phone ?? 'No phone' }}</div>
+                                                @else
+                                                    <div class="{{ $task->client ?? 'no-client relative' }}">
+                                                        <button
+                                                            @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
+                                                            {{ $task->client !== null ? 'disabled' : '' }}
+                                                            class="text-red-500 hover:text-red-700 font-medium text-[13px]">
+                                                            {{ $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                        </button>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div data-column="passenger-name" class="mt-1 flex items-baseline gap-1">
+                                                <span class="group-label shrink-0">PAX</span>
+                                                <span class="group-value truncate max-w-[160px]" title="{{ $task->passenger_name ?? '' }}">{{ $task->passenger_name ?? 'Not Set' }}</span>
+                                            </div>
+                                        </td>
+
+                                        <td data-group-column="taskinfo-group" class="task-group-cell whitespace-normal min-w-[220px]">
+                                            <div data-column="info" class="mb-1">
+                                                @if ($task->type === 'flight')
+                                                    @php
+                                                        $flight = $task->flightDetails;
+                                                        $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
+                                                    @endphp
+                                                    @if ($isFlightDataEmpty)
+                                                        <div class="text-gray-400 text-xs italic">Flight info not available</div>
+                                                    @else
+                                                        <div class="flex items-center gap-2 text-xs">
+                                                            <div class="text-center">
+                                                                <div class="font-bold text-sm">{{ $flight ? \Carbon\Carbon::parse($flight->departure_time)->format('H:i') : 'N/A' }}</div>
+                                                                <div class="text-gray-500">{{ $flight->airport_from ?? 'N/A' }}</div>
+                                                            </div>
+                                                            <div class="text-blue-500 text-sm">✈</div>
+                                                            <div class="text-center">
+                                                                <div class="font-bold text-sm">{{ $flight ? \Carbon\Carbon::parse($flight->arrival_time)->format('H:i') : 'N/A' }}</div>
+                                                                <div class="text-gray-500">{{ $flight->airport_to ?? 'N/A' }}</div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                @elseif ($task->type === 'hotel')
+                                                    @php
+                                                        $hotelDetails = $task->hotelDetails;
+                                                        $hotel = $hotelDetails?->hotel;
+                                                        $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
+                                                    @endphp
+                                                    @if ($isHotelDataEmpty)
+                                                        <div class="text-gray-400 text-xs italic">Hotel info not available</div>
+                                                    @else
+                                                        <div class="flex items-start gap-1.5 text-xs">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                            </svg>
+                                                            <div>
+                                                                <div class="font-semibold text-gray-800 truncate max-w-[170px]" title="{{ $hotelDetails->hotel->name ?? '-' }}">{{ $hotelDetails->hotel->name ?? 'N/A' }}</div>
+                                                                <div class="text-gray-500">{{ $hotelDetails->check_in ?? 'N/A' }} - {{ $hotelDetails->check_out ?? 'N/A' }}</div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                @else
+                                                    <div class="text-xs text-gray-600 whitespace-pre-line break-words leading-tight max-w-[200px]">
+                                                        {{ \Illuminate\Support\Str::limit($task->additional_info ?? '-', 80) }}
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            <div class="group-divider"></div>
+
+                                            <div data-column="status" class="group-item">
+                                                <span class="group-label">Status</span>
+                                                <span class="group-badge {{ $statusClass }}"
+                                                    @if ($task->status === 'reissued' && $task->originalTask) title="Reissued from {{ $task->originalTask->flightDetails->ticket_number ?? '' }}" @endif>
+                                                    {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
+                                                </span>
+                                            </div>
+
+                                            <div data-column="supplier" class="group-item">
+                                                <span class="group-label">Supplier</span>
+                                                <span class="group-value">{{ $task->supplier->name ?? '-' }}</span>
+                                            </div>
+
+                                            <div data-column="supplier-pay-date" class="group-item">
+                                                <span class="group-label">Issued</span>
+                                                <span class="group-value">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</span>
+                                            </div>
+
+                                            @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                            <div data-column="cancellation-deadline" class="group-item">
+                                                <span class="group-label">Cancel by</span>
+                                                <span class="group-value {{ $task->cancellation_deadline && \Carbon\Carbon::parse($task->cancellation_deadline)->isPast() ? 'text-red-500' : '' }}">
+                                                    {{ $task->cancellation_deadline ? \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y') : '-' }}
+                                                </span>
+                                            </div>
                                             @endif
+
+                                            <div data-column="issued-by" class="group-item">
+                                                <span class="group-label">Issued by</span>
+                                                <span class="group-value">{{ $task->issued_by ?? '-' }}</span>
+                                            </div>
                                         </td>
-                                        <td data-column="passenger-name" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            <div class="relative group max-w-[180px] mx-auto">
-                                                <div class="truncate cursor-default">
-                                                    {{ $task->passenger_name ?? 'Not Set' }}
-                                                </div>
-                                                @if ($task->passenger_name)
-                                                <div class="absolute z-10 hidden group-hover:block bg-gray-500 text-white text-xs rounded py-1 px-2 left-1/2 -translate-x-1/2 mt-1 shadow-lg">
-                                                    {{ $task->passenger_name }}
-                                                </div>
+
+                                        <td data-group-column="agent-group" class="task-group-cell whitespace-normal min-w-[150px]">
+                                            <div data-column="agent-name">
+                                                <div class="group-value-primary">{{ $task->agent->name ?? 'Not Set' }}</div>
+                                            </div>
+                                            @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                            <div data-column="branch-name" class="group-item">
+                                                <span class="group-label">Branch</span>
+                                                <span class="group-value">{{ $task->agent->branch->name ?? '-' }}</span>
+                                            </div>
+                                            @endif
+                                            <div data-column="created-by" class="group-item">
+                                                <span class="group-label">Created by</span>
+                                                <span class="group-value">{{ $task->created_by ?? '-' }}</span>
+                                            </div>
+                                            <div data-column="created-at" class="group-item">
+                                                <span class="group-label">Created</span>
+                                                <span class="group-value">{{ $task->created_at ? $task->created_at->format('d-m-Y H:i') : '-' }}</span>
+                                            </div>
+                                        </td>
+
+                                        <td data-group-column="financial-group" class="task-group-cell whitespace-normal min-w-[150px]">
+                                            @can('viewPrice', 'App\Models\Task')
+                                            <div data-column="price">
+                                                <div class="group-value-primary text-lg">{{ $task->total ?? '-' }}</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">{{ $task->exchange_currency ?? 'KWD' }}</div>
+                                            </div>
+                                            @endcan
+
+                                            <div data-column="payment-method" class="group-item mt-1">
+                                                <span class="group-label">Payment</span>
+                                                @if($task->paymentMethod)
+                                                    <span class="payment-pill">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                                        </svg>
+                                                        {{ $task->paymentMethod->name }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-gray-400 text-xs">-</span>
+                                                @endif
+                                            </div>
+
+                                            <div data-column="invoice" class="group-item mt-1">
+                                                <span class="group-label">Invoice</span>
+                                                @if ($task->invoiceDetail)
+                                                    <a target="_blank" @click.stop
+                                                        href="{{ route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}"
+                                                        class="inline-flex items-center gap-1">
+                                                        <span data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
+                                                            class="badge whitespace-nowrap px-2 py-0.5 rounded text-xs font-medium badge-outline-success">
+                                                            {{ $task->invoiceDetail->invoice_number }}
+                                                        </span>
+                                                    </a>
+                                                @else
+                                                    <span class="badge whitespace-nowrap px-2 py-0.5 rounded text-xs font-medium badge-outline-danger">
+                                                        Not Yet
+                                                    </span>
                                                 @endif
                                             </div>
                                         </td>
-                                        <td data-column="agent-name" class="p-3 text-sm text-center font-semibold text-gray-500">
-                                            {{ $task->agent->name ?? 'Not Set' }}
-                                        </td>
-                                        @can('viewPrice', 'App\Models\Task')
-                                        <td data-column="price" class="p-3 text-sm text-center font-semibold DarkBTextcolor dark:text-gray-300">
-                                            {{ $task->total ?? '-' }}
-                                        </td>
-                                        @endcan
-                                        <td data-column="status" class="text-center">
-                                            <span
-                                                class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
-                                                @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
-                                                {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
-                                            </span>
-                                        </td>
-                                        <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->supplier->name }}
-                                        </td>
-                                        <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : 'Not Set' }}
-                                        </td>
-                                        <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->created_at }}
-                                        </td>
-                                        @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <td data-column="cancellation-deadline" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y') : 'Not Set' }}
-                                        </td>
-                                        @endif
-                                        <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                            @if ($task->type === 'flight')
-                                            @php
-                                            $flight = $task->flightDetails;
-                                            $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
-                                            @endphp
-                                            @if ($isFlightDataEmpty)
-                                            <div class="text-gray-500 text-sm">Flight info not available</div>
-                                            @else
-                                            <div class="flex justify-between items-center gap-4 text-center text-sm">
-                                                <div class="flex flex-col items-center">
-                                                    <span class="font-bold text-base">
-                                                        {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : 'N/A'}}
-                                                    </span>
-                                                    <span class="text-gray-600 text-sm">
-                                                        {{ $task->flightDetails->airport_from ?? 'N/A' }}
-                                                    </span>
-                                                </div>
-                                                <div class="text-blue-700 text-lg"> ✈ </div>
-                                                <div class="flex flex-col items-center">
-                                                    <span class="font-bold text-base">
-                                                        {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : 'N/A'}}
-                                                    </span>
-                                                    <span class="text-gray-600 text-sm">
-                                                        {{ $task->flightDetails->airport_to ?? 'N/A' }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            @endif
-                                            @elseif ($task->type === 'hotel')
-                                            @php
-                                            $hotelDetails = $task->hotelDetails;
-                                            $hotel = $hotelDetails?->hotel;
-                                            $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
-                                            @endphp
-                                            @if ($isHotelDataEmpty)
-                                            <div class="text-gray-500 text-sm">Hotel info not available</div>
-                                            @else
-                                            <div class="flex items-start gap-2 text-sm text-left">
-                                                <div class="pt-1">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                    </svg>
-                                                </div>
-                                                <div class="flex flex-col">
-                                                    <div class="relative max-w-[180px]" data-tooltip-left="{{ $task->hotelDetails->hotel->name ?? '-' }}">
-                                                        <div class="truncate">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</div>
-                                                    </div>
-                                                    <div class="text-sm text-gray-500 whitespace-nowrap">
-                                                        {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            @endif
-                                            @else
-                                            <div class="text-sm text-gray-700 whitespace-pre-line break-words leading-tight">
-                                                {{ $task->additional_info ?? '-' }}
-                                            </div>
-                                            @endif
-                                        </td>
-                                        <td data-column="type" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->type }}
-                                        </td>
-                                        <td data-column="gds-reference" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->gds_reference ?? 'Not Available' }}
-                                        </td>
-                                        <td data-column="amadeus-reference" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->airline_reference ?? 'Not Available' }}
-                                        </td>
-                                        <td data-column="created-by" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->created_by ?? 'Not Set' }}
-                                        </td>
-                                        <td data-column="issued-by" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $task->issued_by ?? 'Not Set' }}
-                                        </td>
-                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <td data-column="branch-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-500">
-                                            {{ $task->agent->branch->name ?? 'Not Set' }}
-                                        </td>
-                                        @endif
-                                        <td data-column="invoice" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            @if ($task->invoiceDetail)
-                                            <a target="_blank"
-                                                href="{{ route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}">
-                                                <span
-                                                    data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
-                                                    class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
-                                                    {{ $task->invoiceDetail->invoice_number }}
-                                                </span>
-                                            </a>
-                                            @else
-                                            <span
-                                                class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
-                                                Not Yet
-                                            </span>
-                                            @endif
-                                        </td>
+
                                         @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <td data-column="file-name" class="column-hidden flex p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                            @if(!empty($task->file_name))
-                                            <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
-                                            <div @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
-                                                data-tooltip-left="Copy filename">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                </svg>
+                                        <td data-group-column="file-group" class="task-group-cell whitespace-normal">
+                                            <div data-column="file-name">
+                                                @if(!empty($task->file_name))
+                                                    <div class="flex items-center gap-1">
+                                                        <span class="group-value truncate max-w-[120px]">{{ basename($task->file_name) }}</span>
+                                                        <button @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')"
+                                                            class="text-gray-400 hover:text-blue-500 transition-colors" title="Copy filename">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                @else
+                                                    <span class="text-gray-400 text-xs">No Files</span>
+                                                @endif
                                             </div>
-                                            @else
-                                            <p>No Files</p>
-                                            @endif
                                         </td>
                                         @endif
                                     </tr>
@@ -1677,6 +1672,27 @@
         // console.log("Default columns from backend:", defaultColumns);
         // console.log("Visible columns being applied:", visibleColumns);
 
+        // Map each group column to its child data-column names
+        const groupMap = {
+            'reference-group': ['reference', 'type', 'gds-reference', 'amadeus-reference'],
+            'customer-group': ['bill-to', 'passenger-name'],
+            'taskinfo-group': ['info', 'supplier', 'status', 'supplier-pay-date', 'cancellation-deadline', 'issued-by'],
+            'agent-group': ['agent-name', 'branch-name', 'created-by', 'created-at'],
+            'financial-group': ['price', 'payment-method', 'invoice'],
+            'file-group': ['file-name']
+        };
+
+        function updateGroupVisibility() {
+            Object.entries(groupMap).forEach(([groupName, children]) => {
+                const allHidden = children.every(col => {
+                    const el = document.querySelector(`[data-column="${col}"]`);
+                    return !el || el.classList.contains('column-hidden');
+                });
+                document.querySelectorAll(`[data-group-column="${groupName}"]`)
+                    .forEach(el => el.classList.toggle('group-all-hidden', allHidden));
+            });
+        }
+
         function updateColumnVisibility() {
             const checkboxes = document.querySelectorAll('.column-checkbox');
             checkboxes.forEach(checkbox => {
@@ -1690,6 +1706,7 @@
                         column.classList.toggle('column-hidden', !isVisible);
                     });
             });
+            updateGroupVisibility();
         }
 
         updateColumnVisibility();
@@ -1745,6 +1762,7 @@
                     columns.forEach(column => {
                         column.classList.toggle('column-hidden', !checkbox.checked);
                     });
+                    updateGroupVisibility();
                     saveColumnPreferences();
                 }
             });
@@ -1764,6 +1782,7 @@
                     columns.forEach(column => column.classList.add('column-hidden'));
                 }
             });
+            updateGroupVisibility();
             saveColumnPreferences();
         });
 
@@ -3661,6 +3680,5 @@
         params.delete('status[]');
         window.location = `{{ route('tasks.index') }}`;
     });
-    // Render on page load
-    renderActiveFilters();
+    // Render olFilters();
 </script>

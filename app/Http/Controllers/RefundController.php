@@ -559,12 +559,13 @@ class RefundController extends Controller
                 ]);
             }
 
+            $invoiceData = null;
+
             if (in_array($paymentStatus, ['paid', 'partial refund'])) {
                 $this->handlePaidRefund($refund);
             } elseif ($paymentStatus === 'unpaid') {
                 $invoice = $refund->originalInvoice;
 
-                // ← Changed: Get task IDs directly (no originalTask)
                 $refundedTaskIds = $refund->refundDetails
                     ->map(
                         fn($d) => strtolower($d->task?->status) === 'refund'
@@ -578,12 +579,17 @@ class RefundController extends Controller
                     ->when(!empty($refundedTaskIds), fn($q) => $q->whereNotIn('task_id', $refundedTaskIds))
                     ->sum('task_price');
 
-                $totalToCollect = $refund->total_nett_refund + $remainingTaskTotal;
+                // Deduct any payments already made (edge case: partial payments on an "unpaid" invoice)
+                $totalPaid = $invoice->invoicePartials()->where('status', 'paid')->sum('amount');
+                $availableCredit = max(0.0, $totalPaid - $refund->total_refund_amount);
+                $totalToCollect = max(0.0, $refund->total_refund_amount + $remainingTaskTotal - $availableCredit);
 
                 Log::info("Unpaid refund invoice calculation", [
                     'refund_id' => $refund->id,
-                    'refund_charge' => $refund->total_nett_refund,
+                    'refund_charge' => $refund->total_refund_amount,
                     'remaining_unrefunded_tasks' => $remainingTaskTotal,
+                    'total_paid' => $totalPaid,
+                    'available_credit' => $availableCredit,
                     'total_to_collect' => $totalToCollect,
                 ]);
                 $unpaidInvoiceResponse = $this->handleUnpaidInvoice($refund, $request, $totalToCollect);
@@ -592,14 +598,14 @@ class RefundController extends Controller
                 $refund->unsetRelation('refundDetails');
                 $refund->load(['refundDetails.task.agent', 'refundDetails.task.client', 'originalInvoice.invoicePartials', 'originalInvoice.invoiceDetails']);
                 Log::info("Refund {$refund->refund_number} reloaded refundDetails with tasks: " . $refund->refundDetails->pluck('task_id')->join(', '));
-                $this->handlePartialRefund($refund);
+                $invoiceData = $this->handlePartialRefund($refund);
             }
 
             DB::commit();
 
             if ($request->expectsJson() || $request->wantsJson()) {
-                // Paid refunds → no new invoice, redirect to refunds index
-                if (in_array($paymentStatus, ['paid', 'partial refund'])) {
+                // Paid refunds or partial refunds with no new invoice → redirect to refunds index
+                if (in_array($paymentStatus, ['paid', 'partial refund']) || $invoiceData === null) {
                     return response()->json([
                         'success' => true,
                         'message' => 'Refund processed successfully! Credit issued to client.',
@@ -608,16 +614,16 @@ class RefundController extends Controller
                     ]);
                 }
 
-                // Unpaid refunds → new invoice created, redirect to edit it
+                // New refund invoice created — redirect to edit page so agent sets payment type
                 return response()->json([
                     'success' => true,
                     'message' => 'Refund processed successfully!',
                     'refund_number' => $refundNumber,
-                    'invoiceNumber' => $invoiceData['invoiceNumber'] ?? null,
-                    'invoiceId' => $invoiceData['invoiceId'] ?? null,
+                    'invoiceNumber' => $invoiceData['invoiceNumber'],
+                    'invoiceId' => $invoiceData['invoiceId'],
                     'redirect' => route('invoice.edit', [
                         'companyId' => $firstTask->company_id,
-                        'invoiceNumber' => $invoiceData['invoiceNumber'] ?? $refundNumber,
+                        'invoiceNumber' => $invoiceData['invoiceNumber'],
                     ]),
                 ]);
             }
@@ -847,13 +853,13 @@ class RefundController extends Controller
         return $unpaidInvoiceResponse;
     }
 
-    private function handlePartialRefund(Refund $refund)
+    private function handlePartialRefund(Refund $refund): ?array
     {
         Log::info("Refund {$refund->refund_number} refundDetails tasks loaded: " . $refund->refundDetails->pluck('task_id')->join(', '));
 
         $invoice = $refund->originalInvoice;
         $totalPaid = $invoice->invoicePartials()->where('status', 'paid')->sum('amount');
-        $refundCharge = $refund->total_nett_refund;
+        $refundCharge = $refund->total_refund_amount;
 
         $refundedTaskIds = $refund->refundDetails->map(fn($detail) => $detail->task?->originalTask?->id ?? $detail->task_id)->filter()->toArray();
         Log::info("Refund {$refund->refund_number} refundDetails original task IDs: " . implode(', ', $refundedTaskIds));
@@ -867,46 +873,51 @@ class RefundController extends Controller
 
         Log::info("Partial refund for {$invoice->invoice_number}: Paid={$totalPaid}, Charge={$refundCharge}, RemainingTasks={$remainingTaskTotal}");
 
-        // Case 1 — Paid < Refund Charge
+        // Case 1 — Paid < Refund Charge: agent still owes the shortfall plus all remaining tasks
         if ($totalPaid < $refundCharge) {
-            $this->handleUnpaidInvoice($refund, request());
-            Log::info("Refund {$refund->refund_number} handled as unpaid (collect balance).");
-            return;
+            $amountOwed = $remainingTaskTotal + ($refundCharge - $totalPaid);
+            $response = $this->handleUnpaidInvoice($refund, request(), $amountOwed);
+            Log::info("Refund {$refund->refund_number} handled as unpaid (collect balance). AmountOwed={$amountOwed}");
+            return $response->getData(true);
         }
 
         // Case 2 — Paid > Refund Charge
         if ($totalPaid > $refundCharge) {
             $availableAfterRefund = $totalPaid - $refundCharge;
 
-            // Sub-case A: still need to collect because unpaid tasks > available balance
+            // Sub-case A: credit available doesn't cover remaining tasks — collect the shortfall
             if ($availableAfterRefund < $remainingTaskTotal) {
                 $amountOwed = $remainingTaskTotal - $availableAfterRefund;
 
                 $this->handleRefundCOA($refund, $amountOwed, $refundCharge);
-                $this->createRefundInvoicePartial(
-                    $refund,
-                    $amountOwed,
-                    request()->input('payment_gateway_option'),
-                    request()->input('payment_method'),
-                );
+                $response = $this->createRefundInvoicePartial($refund, $amountOwed);
 
-                Log::info("Refund {$refund->refund_number} requires collection of {$amountOwed}. Paid-RefundCharge={$availableAfterRefund} < RemainingTasks={$remainingTaskTotal}");
-                return;
+                Log::info("Refund {$refund->refund_number} requires collection of {$amountOwed}. AvailableCredit={$availableAfterRefund}, RemainingTasks={$remainingTaskTotal}");
+                return $response->getData(true);
             }
 
-            // Sub-case B: have excess — credit to client
+            // Sub-case B: excess credit after covering remaining tasks — refund to client
             $creditAmount = $availableAfterRefund - $remainingTaskTotal;
 
             $invoice->update(['status' => InvoiceStatus::REFUNDED->value]);
+            $refund->update(['total_nett_refund' => $creditAmount]);
             $this->handlePaidRefund($refund, $creditAmount);
 
             Log::info("Refund {$refund->refund_number} credited {$creditAmount} to client after refunding invoice.");
-            return;
+            return null;
         }
 
-        // Case 4 — Equal
+        // Case 3 — Paid == Refund Charge exactly: remaining tasks still owe their full amount
+        if ($remainingTaskTotal > 0) {
+            $response = $this->handleUnpaidInvoice($refund, request(), $remainingTaskTotal);
+            Log::info("Refund {$refund->refund_number} balanced on refund charge; collecting remaining tasks={$remainingTaskTotal}.");
+            return $response->getData(true);
+        }
+
+        // Case 4 — Everything balanced perfectly
         $refund->update(['status' => 'completed']);
         Log::info("Refund {$refund->refund_number} completed, balanced perfectly.");
+        return null;
     }
 
     private function handleRefundCOA(Refund $refund, float $amountOwed, float $refundCharge)
@@ -1506,21 +1517,17 @@ class RefundController extends Controller
                 'paid_date' => null,
                 'due_date' => Carbon::parse($refund->refund_date)->addDays(3)->toDateString(),
                 'label' => 'refund',
-                'payment_type' => 'full'
+                'payment_type' => null,
             ]);
 
             foreach ($refund->refundDetails as $detail) {
                 $task = $detail->task;
 
-                if ($isTrueUnpaid) {
-                    $taskPrice = $detail->total_refund_to_client;
-                    $supplierPrice = $detail->total_refund_to_client;
-                    $markupPrice = 0;
-                } else {
-                    $taskPrice = $detail->total_refund_to_client;
-                    $supplierPrice = $detail->refund_fee_to_client;
-                    $markupPrice = $detail->new_task_profit;
-                }
+                // Use original invoice detail prices (marked-up client price and supplier cost)
+                $originalInvoiceDetail = $task->originalTask?->invoiceDetail;
+                $taskPrice = $originalInvoiceDetail?->task_price ?? $detail->total_refund_to_client;
+                $supplierPrice = $originalInvoiceDetail?->supplier_price ?? $detail->refund_fee_to_client;
+                $markupPrice = $originalInvoiceDetail?->markup_price ?? $detail->new_task_profit;
 
                 InvoiceDetail::create([
                     'invoice_id' => $invoice->id,
@@ -1534,6 +1541,35 @@ class RefundController extends Controller
                     'markup_price' => $markupPrice,
                     'created_by' => $user->id,
                 ]);
+            }
+
+            // Add non-refunded tasks from the original invoice so they appear on the new invoice edit page
+            if ($refund->originalInvoice) {
+                $refundedOriginalTaskIds = $refund->refundDetails
+                    ->map(fn($d) => strtolower($d->task?->status) === 'refund'
+                        ? $d->task->original_task_id
+                        : $d->task_id)
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                $remainingOriginalDetails = $refund->originalInvoice->invoiceDetails()
+                    ->when(!empty($refundedOriginalTaskIds), fn($q) => $q->whereNotIn('task_id', $refundedOriginalTaskIds))
+                    ->get();
+
+                foreach ($remainingOriginalDetails as $remainingDetail) {
+                    InvoiceDetail::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoiceNumber,
+                        'task_id' => $remainingDetail->task_id,
+                        'task_description' => $remainingDetail->task_description,
+                        'task_remark' => 'Carried over from invoice ' . $refund->originalInvoice->invoice_number,
+                        'task_price' => $remainingDetail->task_price,
+                        'supplier_price' => $remainingDetail->supplier_price,
+                        'markup_price' => $remainingDetail->markup_price,
+                        'created_by' => $user->id,
+                    ]);
+                }
             }
 
             $refund->update(['refund_invoice_id' => $invoice->id]);
@@ -1918,8 +1954,6 @@ class RefundController extends Controller
     public function createRefundInvoicePartial(
         Refund $refund,
         float $invoicePrice,
-        string $paymentGateway,
-        ?string $paymentMethod = null,
     ): JsonResponse {
         $user = Auth::user();
 
@@ -1946,11 +1980,17 @@ class RefundController extends Controller
                 'paid_date' => null,
                 'due_date' => Carbon::parse($refund->refund_date)->addDays(3)->toDateString(),
                 'label' => 'refund',
-                'payment_type' => 'full'
+                'payment_type' => null,
             ]);
 
             foreach ($refund->refundDetails as $detail) {
                 $task = $detail->task;
+
+                // Use original invoice detail prices (marked-up client price and supplier cost)
+                $originalInvoiceDetail = $task->originalTask?->invoiceDetail;
+                $taskPrice = $originalInvoiceDetail?->task_price ?? $detail->total_refund_to_client;
+                $supplierPrice = $originalInvoiceDetail?->supplier_price ?? $detail->refund_fee_to_client;
+                $markupPrice = $originalInvoiceDetail?->markup_price ?? $detail->new_task_profit;
 
                 InvoiceDetail::create([
                     'invoice_id' => $invoice->id,
@@ -1958,31 +1998,46 @@ class RefundController extends Controller
                     'task_id' => $task->id,
                     'task_description' => $task->reference,
                     'task_remark' => 'Partial refund adjustment for invoice ' . $refund->originalInvoice?->invoice_number,
-                    'task_price' => 0,
-                    'supplier_price' => 0,
-                    'markup_price' => 0,
+                    'task_price' => $taskPrice,
+                    'supplier_price' => $supplierPrice,
+                    'markup_price' => $markupPrice,
                     'created_by' => $user->id,
                 ]);
+            }
+
+            // Add non-refunded tasks from the original invoice so they appear on the new invoice edit page
+            if ($refund->originalInvoice) {
+                $refundedOriginalTaskIds = $refund->refundDetails
+                    ->map(fn($d) => strtolower($d->task?->status) === 'refund'
+                        ? $d->task->original_task_id
+                        : $d->task_id)
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                $remainingOriginalDetails = $refund->originalInvoice->invoiceDetails()
+                    ->when(!empty($refundedOriginalTaskIds), fn($q) => $q->whereNotIn('task_id', $refundedOriginalTaskIds))
+                    ->get();
+
+                foreach ($remainingOriginalDetails as $remainingDetail) {
+                    InvoiceDetail::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoiceNumber,
+                        'task_id' => $remainingDetail->task_id,
+                        'task_description' => $remainingDetail->task_description,
+                        'task_remark' => 'Carried over from invoice ' . $refund->originalInvoice->invoice_number,
+                        'task_price' => $remainingDetail->task_price,
+                        'supplier_price' => $remainingDetail->supplier_price,
+                        'markup_price' => $remainingDetail->markup_price,
+                        'created_by' => $user->id,
+                    ]);
+                }
             }
 
             $refund->update(['refund_invoice_id' => $invoice->id]);
             if ($refund->originalInvoice) {
                 $refund->originalInvoice->update(['status' => InvoiceStatus::PAID_BY_REFUND->value]);
             }
-
-            InvoicePartial::create([
-                'invoice_id' => $invoice->id,
-                'invoice_number' => $invoiceNumber,
-                'client_id' => $firstTask->client_id,
-                'service_charge' => 0.00,
-                'amount' => $invoicePrice,
-                'status' => 'unpaid',
-                'expiry_date' => Carbon::parse($refund->refund_date)->addDays(3)->toDateString(),
-                'type' => 'full',
-                'payment_gateway' => $paymentGateway,
-                'payment_method' => $paymentMethod,
-                'charge_id' => Charge::where('name', $paymentGateway)->value('id'),
-            ]);
 
             $transaction = Transaction::create([
                 'company_id' => $companyId,

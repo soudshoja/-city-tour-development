@@ -378,7 +378,7 @@
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100" @if ($invoice->refund) style="display:none" @endif>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -392,14 +392,75 @@
                             <div class="mb-6 sm:mb-0">
                                 <button id="openTaskModalButton" type="button"
                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
+                                     city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow"
+                                    @if ($invoice->refund) style="display:none" @endif>
                                     <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                         <path fill="currentColor"
                                             d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
                                     </svg> Add Task
                                 </button>
                             </div>
-                            <div class="sm:w-2/5 flex justify-end">
+                            <div class="sm:w-2/5 flex justify-end flex-col items-end">
+                                @php
+                                    $isRefundInvoiceEdit = $invoice->refund;
+                                    $refundBreakdown = null;
+                                    if ($isRefundInvoiceEdit) {
+                                        $refundObjEdit = \App\Models\Refund::where('refund_invoice_id', $invoice->id)
+                                            ->with(['refundDetails.task.originalTask', 'originalInvoice.invoiceDetails', 'originalInvoice.invoicePartials'])
+                                            ->first();
+                                        if ($refundObjEdit && $refundObjEdit->originalInvoice) {
+                                            $origInv = $refundObjEdit->originalInvoice;
+                                            $paidParts = $origInv->invoicePartials->where('status', 'paid');
+                                            $rPaidTotal = $paidParts->sum('amount') + $paidParts->sum('service_charge') + $paidParts->sum('invoice_charge');
+                                            $rNonRefundable = $paidParts->sum('service_charge') + $paidParts->sum('invoice_charge');
+                                            $rRefundedIds = $refundObjEdit->refundDetails
+                                                ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
+                                                ->filter()->unique()->toArray();
+                                            $rRemainingTotal = $origInv->invoiceDetails
+                                                ->when(!empty($rRefundedIds), fn($c) => $c->whereNotIn('task_id', $rRefundedIds))
+                                                ->sum('task_price');
+                                            $refundBreakdown = [
+                                                'paidTotal'       => $rPaidTotal,
+                                                'remainingTasks'  => $rRemainingTotal,
+                                                'nonRefundable'   => $rNonRefundable,
+                                                'cancellationFee' => $refundObjEdit->total_refund_amount,
+                                                'amountToCollect' => $invoice->amount,
+                                            ];
+                                        }
+                                    }
+                                @endphp
+
+                                @if ($isRefundInvoiceEdit && $refundBreakdown)
+                                <div class="mb-3 w-full p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs">
+                                    <p class="font-semibold text-blue-800 mb-1">Refund Balance Calculation</p>
+                                    <div class="space-y-0.5">
+                                        <div class="flex justify-between text-gray-600">
+                                            <span>Total Paid (original invoice):</span>
+                                            <span>{{ number_format($refundBreakdown['paidTotal'], 3) }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-red-600">
+                                            <span>Remaining Task Costs:</span>
+                                            <span>-{{ number_format($refundBreakdown['remainingTasks'], 3) }}</span>
+                                        </div>
+                                        @if ($refundBreakdown['nonRefundable'] > 0)
+                                        <div class="flex justify-between text-red-600">
+                                            <span>Non-refundable Charges:</span>
+                                            <span>-{{ number_format($refundBreakdown['nonRefundable'], 3) }}</span>
+                                        </div>
+                                        @endif
+                                        <div class="flex justify-between text-red-600">
+                                            <span>Cancellation Fee:</span>
+                                            <span>-{{ number_format($refundBreakdown['cancellationFee'], 3) }}</span>
+                                        </div>
+                                        <div class="flex justify-between font-bold border-t border-blue-300 pt-1 text-green-700">
+                                            <span>Amount to Collect:</span>
+                                            <span>{{ number_format($refundBreakdown['amountToCollect'], 3) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+
+                                {{-- Standard totals always rendered so JS can reference these elements --}}
                                 <div class="mt-4 flex flex-col items-end font-semibold space-y-1">
                                     <div class="flex items-center pb-1 font-medium">
                                         <div class="mr-2">Total Net:</div>
@@ -1884,6 +1945,10 @@
         const partialCredit = Number(@json(\App\Models\Credit::getTotalCreditsByClient($invoice->client_id)) || 0);
         let creditRemaining = partialCredit;
         const creditUsed = {};
+
+        // Refund invoice: use the pre-calculated invoice.amount instead of sum of task prices
+        const isRefundInvoice = @json((bool) $invoice->refund);
+        const refundInvoiceAmount = @json((float) $invoice->amount);
         const invoiceAmount = parseFloat("{{ $invoice->amount }}") || 0;
         let currentPaymentMode = 'full';
         const paymentMethods = Array.isArray(@json($paymentMethods)) ? @json($paymentMethods) : [];
@@ -3023,7 +3088,10 @@
 
         window.invoicePartials = @json($invoice->invoicePartials ?? []);
         function calculateSubtotal() {
-            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
+            // For refund invoices, the billable amount is pre-calculated — don't use task price sum
+            const subtotal = isRefundInvoice
+                ? refundInvoiceAmount
+                : items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
 
             const invoiceChargeElement = document.getElementById('invoice_charge');
             const invoiceChargeInputElement = document.getElementById('invoice_charge_amount_input');
@@ -3193,7 +3261,7 @@
                                         oninput="updateItemPrice(${item.id});" 
                                     />
                                     ${!isInvoicePaid && isSaved && !isInvoiceLocked ? `
-                                        <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${task.id})">
+                                        <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${task.id})" style="${isRefundInvoice ? 'display:none' : ''}">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-600">
                                                 <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
                                             </svg>
@@ -3206,7 +3274,7 @@
                             <td><p>${task.branchName}</p></td>
                             <td><p>${task.supplierName}</p></td>
                             <td><p>${task.typeCap}</p></td>
-                            <td class="action-cell text-center">
+                            <td class="action-cell text-center" style="${isRefundInvoice ? 'display:none' : ''}">
                                 <div class="inline-flex space-x-2">
                                     ${!isSaved ? `
                                         <button onclick="saveSingleTask(${item.id})" type="button" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
@@ -3217,7 +3285,7 @@
                                             </svg>
                                         </button>
                                     ` : ''}
-                                    <button onclick="removeTaskFromInvoice(${item.id} )" type="button" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item">
+                                    <button onclick="removeTaskFromInvoice(${item.id} )" type="button" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item" style="${isRefundInvoice ? 'display:none' : ''}">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>

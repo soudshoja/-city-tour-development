@@ -1425,6 +1425,10 @@ class InvoiceController extends Controller
         $agentFeeDeduction = $chargeSettings->calculateAgentChargeDeduction($accountingFeePerTask);
         $companyFeeDeduction = $accountingFeePerTask - $agentFeeDeduction;
 
+        // Client pays = Margin + (API + Extra) 
+        // Agent bears = - (API + Extra)
+        // Margin = invoice sell - task price
+
         // Profit calculation (AccountingFee = API charge + Extra charge, no markup/rounding)
         // Company pays + Company bears → Margin
         // Company pays + Agent bears   → Margin - (API + Extra)

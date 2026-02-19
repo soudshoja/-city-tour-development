@@ -246,7 +246,7 @@
 
                     <div class="md:col-span-1 xl:col-span-2">
                         <div class="flex flex-wrap gap-1.5">
-                            @forelse ($gateways as $gatewayName => $partials)
+                            @forelse ($invoice->invoicePartials as $partial)
                                 @php
                                     $gatewayColors = [
                                         'Cash' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -256,21 +256,18 @@
                                         'MyFatoorah' => 'bg-orange-50 text-orange-700 border-orange-200',
                                         'Tap' => 'bg-cyan-50 text-cyan-700 border-cyan-200',
                                     ];
+                                    $gatewayName = $partial->payment_gateway ?? 'Unknown';
                                     $colorClass = $gatewayColors[$gatewayName] ?? 'bg-gray-50 text-gray-700 border-gray-200';
-                                    $gatewayTotal = $partials->sum(fn($p) => $p->amount + $p->service_charge + ($p->invoice_charge ?? 0));
-                                    $gatewayPaid = $partials->where('status', 'paid')->count();
-                                    $gatewayUnpaid = $partials->where('status', 'unpaid')->count();
+                                    $partialTotal = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
                                 @endphp
                                 <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded border {{ $colorClass }} text-xs md:text-sm">
                                     <span class="font-medium">{{ $gatewayName }}</span>
-                                    @if($gatewayPaid > 0 && $gatewayUnpaid === 0)
+                                    @if($partial->status === 'paid')
                                         <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                                    @elseif($gatewayUnpaid > 0 && $gatewayPaid === 0)
-                                        <span class="w-2 h-2 rounded-full bg-red-500"></span>
                                     @else
-                                        <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                        <span class="w-2 h-2 rounded-full bg-red-500"></span>
                                     @endif
-                                    <span class="font-semibold">{{ number_format($gatewayTotal, 3) }}</span>
+                                    <span class="font-semibold">{{ number_format($partialTotal, 3) }}</span>
                                 </div>
                             @empty
                                 <span class="text-xs md:text-sm text-gray-400 italic">No gateway selected</span>

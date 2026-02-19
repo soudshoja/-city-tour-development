@@ -5669,7 +5669,7 @@ class PaymentController extends Controller
 
                 // Recalculate profit after each payment (deduct gateway fees progressively)
                 $invoiceController = app(InvoiceController::class);
-                $invoiceController->recalculateProfitForInvoice($invoice);
+                $invoiceController->recalculateInvoiceCOA($invoice);
 
                 return [
                     'success' => true,

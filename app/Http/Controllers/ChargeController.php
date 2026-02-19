@@ -186,7 +186,8 @@ class ChargeController extends Controller
             'charge_type' => 'required',
             'paid_by' => 'required',
             'amount' => 'required|numeric',
-            'self_charge' => 'nullable|numeric',
+            'self_charge' => 'required|numeric|gte:amount',
+            'extra_charge' => 'nullable|numeric|min:0',
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
             'can_charge_invoice' => 'nullable|boolean',
@@ -270,6 +271,7 @@ class ChargeController extends Controller
                 'type' => $request->get('type'),
                 'amount' => $request->get('amount'),
                 'self_charge' => $request->get('self_charge'),
+                'extra_charge' => $request->get('extra_charge') ?? 0,
                 'acc_fee_id' => $PaymentGatewayExpenses,
                 'acc_bank_id' => $request->get('acc_bank_id'),
                 'acc_fee_bank_id' => $newAccountBankFee->id,
@@ -355,21 +357,19 @@ class ChargeController extends Controller
 
         if (Gate::allows('updateAll', $charge)) {
             $request->validate([
-                'name' => 'required|string|max:255',
                 'description' => 'nullable|string|max:255',
                 'paid_by' => 'required',
                 'charge_type' => 'required',
-                'amount' => 'required|numeric',
-                'extra_charge' => 'nullable|numeric',
-                'self_charge' => 'nullable|numeric',
-                'api_key'     => 'nullable|string',
+                'amount' => 'required|numeric|min:0',
+                'self_charge' => 'required|numeric|gte:amount',
+                'extra_charge' => 'nullable|numeric|min:0',
+                'api_key' => 'nullable|string',
             ]);
 
             try {
                 DB::beginTransaction();
 
                 $charge->update([
-                    'name' => $request->get('name'),
                     'amount' => $request->get('amount'),
                     'extra_charge' => $request->get('extra_charge') ?? 0,
                     'self_charge' => $request->get('self_charge'),
@@ -379,6 +379,13 @@ class ChargeController extends Controller
                 ]);
 
                 DB::commit();
+
+                // Check if coming from settings page
+                if ($request->has('from_settings')) {
+                    return redirect()->route('settings.index')
+                        ->with('success', 'Gateway charges updated successfully!')
+                        ->with('settings_active_tab', 'charges');
+                }
 
                 return redirect()->back()->with('success', 'Charges updated successfully!');
             } catch (Exception $e) {
@@ -387,12 +394,12 @@ class ChargeController extends Controller
             }
         } elseif (Gate::allows('updateLimited', $charge)) {
             $request->validate([
-                'api_key'     => 'nullable|string',
-                'amount' => 'nullable|numeric',
+                'api_key' => 'nullable|string',
+                'amount' => 'required|numeric|min:0',
+                'self_charge' => 'required|numeric|gte:amount',
+                'extra_charge' => 'nullable|numeric|min:0',
                 'paid_by' => 'required',
                 'charge_type' => 'required',
-                'self_charge' => 'nullable|numeric',
-                'extra_charge' => 'nullable|numeric',
                 'description' => 'nullable|string|max:255',
             ]);
 
@@ -400,7 +407,7 @@ class ChargeController extends Controller
                 DB::beginTransaction();
 
                 $charge->update([
-                    'api_key'     => $request->get('api_key'),
+                    'api_key' => $request->get('api_key'),
                     'amount' => $request->get('amount'),
                     'paid_by' => $request->get('paid_by'),
                     'charge_type' => $request->get('charge_type'),
@@ -410,6 +417,13 @@ class ChargeController extends Controller
                 ]);
 
                 DB::commit();
+
+                // Check if coming from settings page
+                if ($request->has('from_settings')) {
+                    return redirect()->route('settings.index')
+                        ->with('success', 'Gateway charges updated successfully!')
+                        ->with('settings_active_tab', 'charges');
+                }
 
                 return redirect()->back()->with('success', 'Gateway charges updated successfully!');
             } catch (Exception $e) {
@@ -495,6 +509,12 @@ class ChargeController extends Controller
             } catch (Exception $e) {
                 Log::error('Failed to update charge credentials', ['error' => $e->getMessage()]);
                 return redirect()->back()->withInput()->with('error', 'Something went wrong while updating credentials.');
+            }
+
+            if ($request->has('from_settings')) {
+                return redirect()->route('settings.index')
+                    ->with('success', 'Gateway settings updated successfully!')
+                    ->with('settings_active_tab', 'charges');
             }
 
             return redirect()->back()->with('success', 'Gateway credentials updated.');

@@ -810,57 +810,15 @@
                                                         <span class="slider round {{ $isInvoicedAndPaid ? 'opacity-50 cursor-not-allowed' : '' }}"></span>
                                                     </label>
                                                 </div>
-                                                <div x-data="{ open: false, editOpen: false, adminAmountOpen: false }"
-                                                    @keydown.escape.window="open = false; editOpen = false; adminAmountOpen = false"
-                                                    class="relative flex items-center justify-center h-full">
-                                                    <button @click.stop="open = !open" x-ref="button"
-                                                        class="p-2 rounded-full bg-gray-100 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none flex items-center justify-center">
+                                                <div class="relative flex items-center justify-center h-full">
+                                                    <button @click.stop="$store.actionMenu.toggleMenu({{ $task->id }}, $event.currentTarget)" x-ref="button"
+                                                        class="task-menu-btn">
                                                         <svg class="w-5 h-5 text-gray-700 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
                                                             <circle cx="5" cy="12" r="2" />
                                                             <circle cx="12" cy="12" r="2" />
                                                             <circle cx="19" cy="12" r="2" />
                                                         </svg>
                                                     </button>
-                                                    <template x-teleport="body">
-                                                        <div x-show="open" @click.away="open = false" x-anchor.bottom-start.offset.5="$refs.button"
-                                                            x-cloak class="absolute z-[9999] w-32 rounded-md bg-white shadow-lg border border-gray-200">
-                                                            <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
-                                                                @if($isInvoicedAndPaid == false)
-                                                                <li>
-                                                                    <a href="{{ route('tasks.detail', ['tasks' => $task->id]) }}" target="_blank"
-                                                                        class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                                                        <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
-                                                                            <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-                                                                        </svg>
-                                                                        Edit Task
-                                                                    </a>
-                                                                </li>
-                                                                @endif
-                                                                <li>
-                                                                    <a href="javascript:void(0);"
-                                                                        class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                                                        @click.prevent="$dispatch('view-task', { id: {{ $task->id }} }); open = false;">
-                                                                        <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
-                                                                            <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-                                                                        </svg>
-                                                                        View Task
-                                                                    </a>
-                                                                </li>
-                                                                @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
-                                                                <li>
-                                                                    <a href="javascript:void(0);" @click.stop="$store.financialModal.openModal({{ $task->id }}, '{{ $task->price }}', '{{ $task->tax }}', '{{ $task->surcharge }}', '{{ $isInvoicedAndPaid ? 'true' : 'false' }}); open = false;"
-                                                                        class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                                                        <svg class="w-7 h-7 mr-2 text-amber-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                                            <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z" />
-                                                                        </svg>
-                                                                        Edit Task Financials
-                                                                    </a>
-                                                                </li>
-                                                                @endif
-                                                                @include('tasks.partial.confirm-issue', ['task' => $task])
-                                                            </ul>
-                                                        </div>
-                                                    </template>
                                                 </div>
                                                 @can('destroy', App\Models\Task::class)
                                                 <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="ml-1">
@@ -1350,6 +1308,242 @@
     </div>
 
     @include('tasks.partial.view-task-modal')
+
+    {{-- GLOBAL DOM--}}
+    <div class="task-action-menu"
+        x-data x-show="$store.actionMenu.open" x-cloak
+        @click.away="$store.actionMenu.closeMenu()"
+        @keydown.escape.window="$store.actionMenu.closeMenu()"
+        :style="'top: ' + $store.actionMenu.position.top + 'px; left: ' + $store.actionMenu.position.left + 'px;'">
+        <ul class="task-action-menu-list">
+            <li>
+                <a href="javascript:void(0);" class="task-action-menu-item"
+                    @click.prevent="$dispatch('view-task', { id: $store.actionMenu.data?.taskId }); $store.actionMenu.closeMenu();">
+                    <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                    </svg>
+                    View Task
+                </a>
+            </li>
+
+            <template x-if="$store.actionMenu.data?.canEdit">
+                <li>
+                    <a :href="$store.actionMenu.data.editUrl" target="_blank" class="task-action-menu-item">
+                        <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                        </svg>
+                        Edit Task
+                    </a>
+                </li>
+
+            </template>
+            <template x-if="$store.actionMenu.data?.canEditFinancials">
+                <li>
+                    <a href="javascript:void(0);"
+                        @click.stop="$store.editFinancial.openFinancial($store.actionMenu.data.taskId, $store.actionMenu.data.price, $store.actionMenu.data.tax, $store.actionMenu.data.surcharge, $store.actionMenu.data.isInvoicedAndPaid); $store.actionMenu.closeMenu();"
+                        class="task-action-menu-item">
+                        <svg class="w-7 h-7 mr-2 text-amber-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z" />
+                        </svg>
+                        Edit Task Financials
+                    </a>
+                </li>
+            </template>
+            <template x-if="$store.actionMenu.data?.showSwitchInvoice">
+                <li>
+                    <button
+                        @click="$store.switchInvoice.openSwitch($store.actionMenu.data.taskId); $store.actionMenu.closeMenu();"
+                        class="task-action-menu-item-full">
+                        <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7 8L3 12L7 16M17 8L21 12L17 16M14 4L10 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <span>Switch Invoice Task</span>
+                    </button>
+                </li>
+            </template>
+        </ul>
+    </div>
+
+    @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+    <div x-data x-show="$store.editFinancial.open" x-cloak class="financial-modal-overlay"
+        @keydown.escape.window="$store.editFinancial.closeFinancial()">
+        <form :action="$store.editFinancial.formAction" method="POST" class="financial-modal-form"
+            @click.away="$store.editFinancial.closeFinancial()">
+            @csrf
+            @method('PUT')
+            <button type="button" @click="$store.editFinancial.closeFinancial()" class="financial-modal-close">&times;</button>
+            <div class="financial-modal-header">
+                <h2 class="financial-modal-title">Edit Task Financials</h2>
+                <p class="financial-modal-description">
+                    Update <strong>Price</strong>, <strong>Tax</strong>, and <strong>Surcharge</strong>.
+                    The <strong>Total</strong> recalculates automatically. This action update the task and its related COA records.
+                    <span x-show="$store.editFinancial.isInvoicedAndPaid">
+                        It will also recalculate commission for the <strong>paid</strong> invoice.
+                    </span>
+                </p>
+            </div>
+            <div class="financial-modal-fields">
+                <div>
+                    <label class="form-label">Price</label>
+                    <input name="price" x-model="$store.editFinancial.price" class="financial-input">
+                </div>
+                <div>
+                    <label class="form-label">Tax</label>
+                    <input name="tax" x-model="$store.editFinancial.tax" class="financial-input">
+                </div>
+                <div>
+                    <label class="form-label">Surcharge</label>
+                    <input name="surcharge" x-model="$store.editFinancial.surcharge" class="financial-input">
+                </div>
+                <div>
+                    <label class="form-label">Total</label>
+                    <input required readonly name="total" :value="$store.editFinancial.total" class="financial-input-readonly">
+                </div>
+                <div>
+                    <label class="form-label">Remarks *</label>
+                    <textarea required name="remarks" rows="3" class="financial-textarea"
+                        placeholder="Enter reason for adjustment (required)"></textarea>
+                </div>
+            </div>
+            <div class="financial-modal-footer">
+                <button type="button" @click="$store.editFinancial.closeFinancial()" class="financial-cancel-btn">Cancel</button>
+                <button type="submit" class="financial-submit-btn">Apply Adjustment</button>
+            </div>
+        </form>
+    </div>
+    @endif
+
+    <div x-data>
+        <template x-if="$store.switchInvoice.open && $store.switchInvoice.data">
+            <div x-show="$store.switchInvoice.open" x-cloak
+                x-transition.opacity.duration.200ms
+                @click="$store.switchInvoice.closeSwitch()"
+                @keydown.escape.window="$store.switchInvoice.closeSwitch()"
+                class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div @click.stop x-transition:enter="ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    class="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+
+                    <div class="mb-5 flex items-center gap-3">
+                        <div class="flex size-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                            <svg class="size-5 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 8L3 12L7 16M17 8L21 12L17 16M14 4L10 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Switch Invoice Task</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Reference: <span x-text="$store.switchInvoice.data.taskReference"></span></p>
+                        </div>
+                    </div>
+
+                    <div class="mb-5 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+                        <p class="text-sm text-blue-800 dark:text-blue-300">
+                            <strong>What happened:</strong> An invoice was created when this booking was in <span class="font-semibold">"Confirm"</span> status.
+                            Now, the ticket has been <span class="font-semibold">"Issued"</span> and registered as a new task in the system.
+                        </p>
+                    </div>
+
+                    <div class="mb-5 space-y-3">
+                        <a :href="$store.switchInvoice.data.invoiceUrl" target="_blank" rel="noopener noreferrer"
+                            class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors block cursor-pointer">
+                            <div class="mb-2 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg class="size-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                    </svg>
+                                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Invoice</span>
+                                </div>
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                                    :class="$store.switchInvoice.data.isPaid ? 'bg-green-100 text-green-700 dark:bg-green-800/50 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-800/50 dark:text-yellow-300'"
+                                    x-text="$store.switchInvoice.data.invoiceStatus.charAt(0).toUpperCase() + $store.switchInvoice.data.invoiceStatus.slice(1)"></span>
+                            </div>
+                            <p class="text-base font-semibold text-gray-900 dark:text-white" x-text="$store.switchInvoice.data.invoiceNumber"></p>
+                        </a>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800/50 dark:bg-red-900/20">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <span class="text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400">Currently Linked</span>
+                                    <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-800/50 dark:text-red-300"
+                                        x-text="$store.switchInvoice.data.originalTaskStatus.charAt(0).toUpperCase() + $store.switchInvoice.data.originalTaskStatus.slice(1)"></span>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">Task #<span x-text="$store.switchInvoice.data.originalTaskId"></span></p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="$store.switchInvoice.data.originalTaskReference"></p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cost: <span class="font-medium" x-text="parseFloat($store.switchInvoice.data.oldSupplierCost).toFixed(3) + ' ' + $store.switchInvoice.data.currency"></span></p>
+                            </div>
+
+                            <div class="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800/50 dark:bg-green-900/20">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <span class="text-xs font-medium uppercase tracking-wide text-green-600 dark:text-green-400">Switch To</span>
+                                    <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-800/50 dark:text-green-300"
+                                        x-text="$store.switchInvoice.data.taskStatus.charAt(0).toUpperCase() + $store.switchInvoice.data.taskStatus.slice(1)"></span>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">Task #<span x-text="$store.switchInvoice.data.taskId"></span></p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="$store.switchInvoice.data.taskReference"></p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cost: <span class="font-medium" x-text="parseFloat($store.switchInvoice.data.newSupplierCost).toFixed(3) + ' ' + $store.switchInvoice.data.currency"></span></p>
+                            </div>
+                        </div>
+
+                        <template x-if="$store.switchInvoice.data.isPaid && $store.switchInvoice.data.hasPriceChange">
+                            <div class="rounded-lg border p-3"
+                                :class="$store.switchInvoice.data.isLoss ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50'">
+                                <p class="text-xs font-medium uppercase tracking-wide mb-2"
+                                    :class="$store.switchInvoice.data.isLoss ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">Profit Impact</p>
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Selling Price</p>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white" x-text="parseFloat($store.switchInvoice.data.taskPrice).toFixed(3)"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Old Profit</p>
+                                        <p class="text-sm font-semibold" :class="$store.switchInvoice.data.oldProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+                                            x-text="parseFloat($store.switchInvoice.data.oldProfit).toFixed(3)"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">New Profit</p>
+                                        <p class="text-sm font-semibold" :class="$store.switchInvoice.data.newProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+                                            x-text="parseFloat($store.switchInvoice.data.newProfit).toFixed(3)"></p>
+                                    </div>
+                                </div>
+                                <template x-if="$store.switchInvoice.data.isLoss">
+                                    <div class="mt-3 flex items-center gap-2 rounded-lg bg-red-100 p-2 dark:bg-red-800/50">
+                                        <svg class="size-5 text-red-600 dark:text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <p class="text-xs font-medium text-red-700 dark:text-red-300">Warning: This will result in a LOSS of <span x-text="Math.abs($store.switchInvoice.data.newProfit).toFixed(3) + ' ' + $store.switchInvoice.data.currency"></span></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                    <p class="mb-5 text-sm text-gray-700 dark:text-gray-300">
+                        Do you want to switch the invoice to use the <strong class="text-green-600 dark:text-green-400">Issued</strong> task instead of the <strong class="text-red-600 dark:text-red-400">Confirm</strong> task?
+                    </p>
+
+                    <div class="flex items-center justify-end gap-3">
+                        <button @click="$store.switchInvoice.closeSwitch()" type="button"
+                            class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                            Cancel
+                        </button>
+                        <form :action="$store.switchInvoice.data.formAction" method="POST" class="inline-block">
+                            @csrf
+                            <button type="submit"
+                                class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                                :class="$store.switchInvoice.data.isPaid && $store.switchInvoice.data.hasPriceChange && $store.switchInvoice.data.isLoss ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'">
+                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                </svg>
+                                <span x-text="$store.switchInvoice.data.isPaid && $store.switchInvoice.data.hasPriceChange && $store.switchInvoice.data.isLoss ? 'Switch Anyway' : 'Switch Invoice'"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
 </x-app-layout>
 
 <script>
@@ -1370,6 +1564,92 @@
             },
             closeAll() {
                 this.openId = null;
+            }
+        });
+
+        Alpine.store('actionMenu', {
+            open: false,
+            data: null,
+            allData: @json($actionData ?? []),
+            buttonEvent: null,
+            position: {
+                top: 0,
+                left: 0
+            },
+
+            toggleMenu(taskId, buttonEvent) {
+                if(this.open && this.data?.taskId === taskId) {
+                    this.closeMenu();
+                    return;
+                }
+
+                this.data = this.allData[taskId] || null;
+                this.buttonEvent = buttonEvent;
+
+                if (this.data) {
+                    const rect = buttonEvent.getBoundingClientRect();
+
+                    this.position = {
+                        top: rect.bottom + window.scrollY + 5,
+                        left: rect.left + window.scrollX
+                    };
+
+                    this.open = true;
+                }
+            },
+
+            closeMenu() {
+                this.open = false,
+                    this.data = null,
+                    this.buttonEvent = null;
+            }
+        });
+
+
+        Alpine.store('editFinancial', {
+            open: false,
+            taskId: null,
+            price: 0,
+            tax: 0,
+            surcharge: 0,
+            isInvoicedAndPaid: false,
+
+            openFinancial(taskId, price, tax, surcharge, isInvoicedAndPaid) {
+                this.taskId = taskId;
+                this.price = price || 0;
+                this.tax = tax || 0;
+                this.surcharge = surcharge || 0;
+                this.isInvoicedAndPaid = isInvoicedAndPaid;
+                this.open = true;
+            },
+            closeFinancial() {
+                this.open = false;
+            },
+            get total() {
+                const p = parseFloat((this.price || '').toString().replace(/,/g, '')) || 0;
+                const t = parseFloat((this.tax || '').toString().replace(/,/g, '')) || 0;
+                const s = parseFloat((this.surcharge || '').toString().replace(/,/g, '')) || 0;
+                return (p + t + s).toFixed(3);
+            },
+            get formAction() {
+                return `/tasks/${this.taskId}/update-financial`;
+            }
+        });
+
+        Alpine.store('switchInvoice', {
+            open: false,
+            data: null,
+            allData: @json($switchInvoiceData ?? []),
+
+            openSwitch(taskId) {
+                this.data = this.allData[taskId] || null;
+                if (this.data) {
+                    this.open = true;
+                }
+            },
+            closeSwitch() {
+                this.open = false;
+                this.data = null;
             }
         });
     });
@@ -2936,46 +3216,6 @@
 
     let filterRows = [];
 
-    // function renderFilterRows() {
-    //     const container = document.getElementById('filterContainer');
-    //     container.innerHTML = '';
-    //     filterRows.forEach((row, idx) => {
-    //         const col = filterConfig.columns[row.column];
-    //         let inputHtml = '';
-    //         if (col.type === 'text') {
-    //             inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
-    //         } else if (col.type === 'select') {
-    //             inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
-    //                 `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
-    //             ).join('')}</select>`;
-    //         } else if (col.type === 'searchable') {
-    //             inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
-    //                 <datalist id="datalist-${row.column}-${idx}">
-    //                     ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
-    //                 </datalist>`;
-    //         } else if (col.type === 'date') {
-    //             inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
-    //         } else if (col.type === 'date-range') {
-    //             const [start, end] = (row.value || '').split(' to ');
-    //             inputHtml = `
-    //                 <input type="date" class="value-input" value="${start || ''}" data-idx="${idx}" data-part="start">
-    //                 to
-    //                 <input type="date" class="value-input" value="${end || ''}" data-idx="${idx}" data-part="end">
-    //             `;
-    //         }
-    //         container.innerHTML += `
-    //             <div class="filter-row">
-    //                 <select class="column-select" data-idx="${idx}">
-    //                     ${Object.entries(filterConfig.columns).map(([key, c]) =>
-    //                         `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
-    //                     ).join('')}
-    //                 </select>
-    //                 ${inputHtml}
-    //                 <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
-    //             </div>
-    //         `;
-    //     });
-    // }
     function renderActiveFilters() {
         const filters = getActiveFiltersFromURL();
         const container = document.getElementById('activeFiltersContainer');
@@ -2996,7 +3236,7 @@
             list.appendChild(tag);
         });
     }
-    // Open modal
+
     document.getElementById('toggleFilters').onclick = () => {
         // Load existing filters from URL if filterRows is empty
         if (filterRows.length === 0) {
@@ -3066,11 +3306,11 @@
         document.getElementById('filterModal').classList.add('active');
         renderFilterRows();
     };
-    // Close modal
+
     document.getElementById('closeFilterModal').onclick = () => {
         document.getElementById('filterModal').classList.remove('active');
     };
-    // Add filter row
+
     document.getElementById('addFilterRow').onclick = () => {
         filterRows.push({
             column: Object.keys(filterConfig.columns)[0],
@@ -3145,7 +3385,7 @@
         renderFilterRows();
         document.getElementById('filterModal').classList.add('active');
     });
-    // Remove row or update value
+
     document.getElementById('filterContainer').addEventListener('input', function(e) {
         const idx = +e.target.dataset.idx;
         const row = filterRows[idx];
@@ -3204,7 +3444,7 @@
             window.location = `{{ route('tasks.index') }}?${params.toString()}`;
         }
     });
-    // Apply filters
+
     document.getElementById('applyFilters').onclick = () => {
         const params = new URLSearchParams(window.location.search);
         // Remove old filter params
@@ -3365,7 +3605,7 @@
             // Optionally set default dates or other options
         });
     });
-    // Remove individual filter
+
     document.getElementById('activeFiltersList').addEventListener('click', function(e) {
         if (e.target.classList.contains('remove-tag')) {
             const key = e.target.getAttribute('data-key');

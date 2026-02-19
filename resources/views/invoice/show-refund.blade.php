@@ -53,12 +53,84 @@
 </head>
 
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100">
-    @if ($invoice->status === 'paid')
-    <div
-        class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
-        <div class="flex items-center justify-between text-white">
-            <p class="text-3xl">PAID</p>
-            <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
+    @if (session('status'))
+    <div class="bg-green-100 text-green-700 p-4 rounded mb-4">
+        {{ session('status') }}
+    </div>
+    @endif
+
+    @if (session('error'))
+    <div class="bg-red-100 text-red-700 p-4 rounded mb-4">
+        {{ session('error') }}
+    </div>
+    @endif
+
+    @if (in_array($invoice->status, ['paid', 'paid by refund', 'refunded', 'partial refund']))
+        @php
+            $bannerConfig = match($invoice->status) {
+                'paid' => [
+                    'gradient' => 'from-[#1b3f20] to-[#1d832a]',
+                    'title' => 'PAID',
+                    'message' => 'This invoice has been fully paid',
+                ],
+                'paid by refund' => [
+                    'gradient' => 'from-[#1b3f20] to-[#1d832a]',
+                    'title' => 'PAID BY REFUND',
+                    'message' => 'This invoice has been settled through an adjustment from a refund invoice',
+                ],
+                'refunded' => [
+                    'gradient' => 'from-[#1b3f20] to-[#1d832a]',
+                    'title' => 'FULLY REFUNDED',
+                    'message' => 'All items in this invoice have been refunded to the client',
+                ],
+                'partial refund' => [
+                    'gradient' => 'from-[#0369a1] to-[#0ea5e9]',
+                    'title' => 'PARTIAL REFUND',
+                    'message' => 'Some items in this invoice have been refunded. Remaining items are still valid.',
+                ],
+                default => [
+                    'gradient' => 'from-gray-600 to-gray-700',
+                    'title' => strtoupper($invoice->status),
+                    'message' => '',
+                ],
+            };
+        @endphp
+
+        <div class="max-w-4xl mx-auto bg-gradient-to-r {{ $bannerConfig['gradient'] }} p-6 my-2 text-white rounded-lg">
+            <p class="text-3xl font-bold">{{ $bannerConfig['title'] }}</p>
+            <p class="text-sm mt-1">{{ $bannerConfig['message'] }}</p>
+            
+            @if ($invoice->status === 'partial refund')
+                @php
+                    $refunds = \App\Models\Refund::where('invoice_id', $invoice->id)->get();
+                    $refundedTasksCount = \App\Models\RefundDetail::whereHas('refund', fn($q) => $q->where('invoice_id', $invoice->id))->count();
+                @endphp
+                @if ($refunds->count() > 0)
+                    <div class="mt-3 pt-3 border-t border-white/30 text-sm">
+                        <p>{{ $refundedTasksCount }} item(s) refunded • Ref: {{ $refunds->pluck('refund_number')->join(', ') }}</p>
+                    </div>
+                @endif
+            @endif
+            
+            @if ($invoice->status === 'refunded')
+                @php
+                    $refunds = \App\Models\Refund::where('invoice_id', $invoice->id)->get();
+                @endphp
+                @if ($refunds->count() > 0)
+                    <div class="mt-3 pt-3 border-t border-white/30 text-sm">
+                        <p>Refund Reference: {{ $refunds->pluck('refund_number')->join(', ') }}</p>
+                    </div>
+                @endif
+            @endif
+        </div>
+    @elseif ($invoice->status === 'partial')
+    <div class="max-w-4xl mx-auto rounded-lg border border-yellow-300 bg-yellow-100 p-6 flex items-center rounded-lg">
+        <div class="flex items-center gap-2 text-yellow-800">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zM9 5h2v5H9V5zm0 6h2v2H9v-2z" clip-rule="evenodd" />
+            </svg>
+            <div class="font-semibold">Invoice is partially paid.</div>
+            <div class="text-sm">Some installments are paid, some are pending. You can continue below.</div>
         </div>
     </div>
     @endif
@@ -352,33 +424,47 @@
             </div>
         @endif
 
-        {{-- @if ($refund->originalInvoice?->invoicePartials->isNotEmpty())
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-2">Payments History from Original Invoice</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Payment Date</th>
-                        <th>Gateway</th>
-                        <th>Status</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($refund->originalInvoice->invoicePartials as $partial)
-                        <tr class="text-sm">
-                            <td>
-                                {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
-                            </td>
-                            <td>{{ $partial->payment_gateway }}</td>
-                            <td>{{ ucfirst($partial->status) }}</td>
-                            <td>{{ number_format($partial->amount, 3) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        @endif --}}
+        {{-- Partial / Split payment table (split adds a Client column) --}}
+        @if (in_array($invoice->payment_type, ['split', 'partial'], true) && $invoicePartials->isNotEmpty())
+        <h3 class="text-lg font-bold text-gray-800 mb-4 mt-4">
+            {{ $invoice->payment_type === 'split' ? 'Split' : 'Partial' }} Payment ({{ $invoice->currency }})
+        </h3>
+        <table class="min-w-full mb-8 border border-gray-200">
+            <thead>
+                <tr class="bg-gray-200 text-gray-600 text-sm font-bold normal-case">
+                    <th class="px-4 py-2 border normal-case">Payment Gateway</th>
+                    <th class="px-4 py-2 border normal-case">Link</th>
+                    @if ($invoice->payment_type === 'split')
+                    <th class="px-4 py-2 border normal-case">Client</th>
+                    @endif
+                    <th class="px-4 py-2 border normal-case">Expiry Date</th>
+                    <th class="px-4 py-2 border normal-case">Status</th>
+                    <th class="px-4 py-2 border normal-case">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($invoicePartials as $partial)
+                <tr class="text-sm text-gray-700 text-center">
+                    <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A' }}</td>
+                    <td class="px-4 py-2 border">
+                        <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
+                            class="text-blue-500 underline" target="_blank">
+                            View Details
+                        </a>
+                    </td>
+                    @if ($invoice->payment_type === 'split')
+                    <td class="px-4 py-2 border">{{ $partial->client->full_name }}</td>
+                    @endif
+                    <td class="px-4 py-2 border">{{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') }}</td>
+                    <td class="px-4 py-2 border">{{ $partial->status }}</td>
+                    <td class="px-4 py-2 border">
+                        {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
 
         @php
             $originalInvoice = $refund->originalInvoice;
@@ -458,33 +544,37 @@
                         </button>
                     </form>
                 @endif
-                @if ($canGenerateLink)
-                    <form id="paymentForm" action="{{ route('payment.create', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
-                        method="POST">
-                        @csrf
 
-                        <input type="hidden" name="total_amount" value="{{ $totalGatewayFee['finalAmount'] ?? $invoice->amount }}">
-                        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-                        <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
-                        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-                        <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
-                        <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
-                        <input type="hidden" name="invoice_partial_id" value="{{ $invoice->invoicePartials->first()->id }}">
+                {{-- Pay Now only applies to full payment — split/partial each have their own View Details links above --}}
+                @if (!in_array($invoice->payment_type, ['split', 'partial'], true))
+                    @if ($canGenerateLink && $invoice->invoicePartials->isNotEmpty())
+                        <form id="paymentForm" action="{{ route('payment.create', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                            method="POST">
+                            @csrf
 
-                        <button type="submit"
-                            class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-white">
-                            Pay Now
-                        </button>
-                        <div id="loadingSpinner" class="hidden mt-2">
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            Processing...
+                            <input type="hidden" name="total_amount" value="{{ $totalGatewayFee['finalAmount'] ?? $invoice->amount }}">
+                            <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
+                            <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
+                            <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
+                            <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
+                            <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
+                            <input type="hidden" name="invoice_partial_id" value="{{ $invoice->invoicePartials->first()->id }}">
+
+                            <button type="submit"
+                                class="rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-gray-400 hover:shadow-xl hover:text-white">
+                                Pay Now
+                            </button>
+                            <div id="loadingSpinner" class="hidden mt-2">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Processing...
+                            </div>
+                        </form>
+                    @elseif ($invoice->invoicePartials->isNotEmpty())
+                        <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                            This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment.
+                            Please contact your agent for assistance.
                         </div>
-                    </form>
-                @else
-                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment.
-                        Please contact your agent for assistance.
-                    </div>
+                    @endif
                 @endif
             @else
                 <div class="flex items-center gap-2">

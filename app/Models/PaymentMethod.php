@@ -24,6 +24,7 @@ class PaymentMethod extends Model
         'currency',
         'service_charge',
         'self_charge',
+        'extra_charge',
         'paid_by',
         'charge_type',
         'description',

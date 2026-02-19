@@ -29,15 +29,14 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Gateway Name</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Paid By</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Self Charge</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Charge Type</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Charges</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <template x-if="charges.length === 0">
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="5" class="px-4 py-8 text-center text-gray-500">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                                 </svg>
@@ -62,20 +61,40 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-600" x-text="charge.paid_by"></td>
-                                <td class="px-4 py-3 text-sm text-gray-600" x-text="parseFloat(charge.self_charge || 0).toFixed(2)"></td>
-                                <td class="px-4 py-3 text-sm text-gray-600" x-text="charge.charge_type"></td>
+                                <td class="px-4 py-3">
+                                    <!-- Show charges only if no payment methods -->
+                                    <template x-if="!charge.methods || charge.methods.length === 0">
+                                        <div class="text-xs space-y-0.5">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-gray-500 w-20">Contract:</span>
+                                                <span class="font-medium text-gray-800" x-text="parseFloat(charge.amount || 0).toFixed(2) + (charge.charge_type === 'Percent' ? '%' : ' KWD')"></span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-gray-500 w-20">Back Office:</span>
+                                                <span class="font-medium text-gray-800" x-text="parseFloat(charge.self_charge || 0).toFixed(2) + (charge.charge_type === 'Percent' ? '%' : ' KWD')"></span>
+                                            </div>
+                                            <template x-if="charge.extra_charge && parseFloat(charge.extra_charge) > 0">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-gray-500 w-20">Extra:</span>
+                                                    <span class="font-medium text-gray-800" x-text="parseFloat(charge.extra_charge).toFixed(3) + ' KWD'"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <template x-if="charge.methods && charge.methods.length > 0">
+                                        <span class="text-xs text-gray-500 italic">See payment methods below</span>
+                                    </template>
+                                </td>
                                 <td class="px-4 py-3">
                                     <span :class="charge.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="charge.is_active ? 'Active' : 'Inactive'"></span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <button @click.stop="openEditCredsModal(charge)" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="API Settings">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
+                                    <button @click.stop="openSettingsModal(charge)" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Settings">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                             <!-- Child Methods Rows -->
@@ -84,8 +103,24 @@
                                     <tr class="bg-white hover:bg-gray-50">
                                         <td class="px-4 py-3 pl-10 text-sm text-gray-600" x-text="method.english_name"></td>
                                         <td class="px-4 py-3 text-sm text-gray-600" x-text="method.paid_by"></td>
-                                        <td class="px-4 py-3 text-sm text-gray-600" x-text="parseFloat(method.self_charge || 0).toFixed(2)"></td>
-                                        <td class="px-4 py-3 text-sm text-gray-600" x-text="method.charge_type"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-xs space-y-0.5">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-gray-500 w-20">Contract:</span>
+                                                    <span class="font-medium text-gray-800" x-text="parseFloat(method.service_charge || 0).toFixed(2) + (method.charge_type === 'Percent' ? '%' : ' KWD')"></span>
+                                                </div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-gray-500 w-20">Back Office:</span>
+                                                    <span class="font-medium text-gray-800" x-text="parseFloat(method.self_charge || 0).toFixed(2) + (method.charge_type === 'Percent' ? '%' : ' KWD')"></span>
+                                                </div>
+                                                <template x-if="method.extra_charge && parseFloat(method.extra_charge) > 0">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span class="text-gray-500 w-20">Extra:</span>
+                                                        <span class="font-medium text-gray-800" x-text="parseFloat(method.extra_charge).toFixed(3) + ' KWD'"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </td>
                                         <td class="px-4 py-3">
                                             <span :class="(charge.is_active && method.is_active) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="(charge.is_active && method.is_active) ? 'Active' : 'Inactive'"></span>
                                         </td>
@@ -102,7 +137,7 @@
                             <!-- No methods message -->
                             <template x-if="expandedCharge === charge.id && (!charge.methods || charge.methods.length === 0)">
                                 <tr class="bg-white">
-                                    <td colspan="6" class="px-4 py-3 pl-10 text-sm text-gray-400 italic">
+                                    <td colspan="5" class="px-4 py-3 pl-10 text-sm text-gray-400 italic">
                                         No payment methods for this gateway
                                     </td>
                                 </tr>
@@ -140,13 +175,48 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                                <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                    Contract Charge
+                                    <div class="group relative">
+                                        <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                                            Actual gateway fee (API charge)
+                                        </div>
+                                    </div>
+                                </label>
                                 <input type="number" name="amount" step="0.01" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" required>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Self Charge</label>
-                                <input type="number" name="self_charge" step="0.01" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional">
+                                <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                    Back Office Charge
+                                    <div class="group relative">
+                                        <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                                            What you charge client (Contract + Markup). Must be ≥ Contract Charge
+                                        </div>
+                                    </div>
+                                </label>
+                                <input type="number" name="self_charge" step="0.01" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" required>
                             </div>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                Extra Charge (Flat Rate)
+                                <div class="group relative">
+                                    <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                                        Additional flat fee (in KWD) added to charges
+                                    </div>
+                                </div>
+                            </label>
+                            <input type="number" name="extra_charge" step="0.001" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD (Optional)">
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -225,73 +295,204 @@
         </div>
     </div>
 
-    <!-- Edit Credentials Modal -->
-    <div x-cloak x-show="showEditCredsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
-        <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" @click.away="showEditCredsModal = false">
+    <!-- Settings Modal (Dynamic based on payment methods) -->
+    <div x-cloak x-show="showSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+        <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col overflow-visible" @click.away="showSettingsModal = false">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-800">Gateway API Settings</h2>
+                    <h2 class="text-lg font-bold text-gray-800">Gateway Settings</h2>
                     <p class="text-sm text-gray-500" x-text="editingCharge?.name"></p>
                 </div>
-                <button @click="showEditCredsModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                <button @click="showSettingsModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
 
-            <div class="overflow-y-auto flex-1 px-6 py-4">
-                <form :action="'{{ url('charges') }}/' + editingCharge?.id + '/credentials'" method="POST">
-                    @csrf
-                    @method('PUT')
+            <div class="overflow-y-auto overflow-x-visible flex-1 px-6 py-4">
+                <!-- Form for gateways WITHOUT payment methods (full editing) -->
+                <template x-if="!editingCharge?.methods || editingCharge.methods.length === 0">
+                    <form :action="`{{ route('charges.update', ['id' => '__ID__']) }}`.replace('__ID__', editingCharge?.id)" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="from_settings" value="1">
 
-                    <div class="space-y-4">
-                        <div x-show="editingCharge?.is_system_default">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                            <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                        Contract Charge
+                                        <div class="group relative inline-block">
+                                            <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
+                                                Actual gateway fee (API charge)
+                                            </div>
+                                        </div>
+                                    </label>
+                                    <input type="number" name="amount" step="0.01" :value="editingCharge?.amount" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                </div>
+                                <div>
+                                    <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                        Back Office Charge
+                                        <div class="group relative inline-block">
+                                            <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
+                                                What you charge client (Contract + Markup). Must be ≥ Contract Charge
+                                            </div>
+                                        </div>
+                                    </label>
+                                    <input type="number" name="self_charge" step="0.01" :value="editingCharge?.self_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                    Extra Charge (Flat Rate)
+                                    <div class="group relative inline-block">
+                                        <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
+                                            Additional flat fee (in KWD) added to charges
+                                        </div>
+                                    </div>
+                                </label>
+                                <input type="number" name="extra_charge" step="0.001" :value="editingCharge?.extra_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Paid By</label>
+                                    <select name="paid_by" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.paid_by">
+                                        <option value="Company">Company</option>
+                                        <option value="Client">Client</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Charge Type</label>
+                                    <select name="charge_type" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.charge_type">
+                                        <option value="Flat Rate">Flat Rate</option>
+                                        <option value="Percent">Percent</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <input type="text" name="description" :value="editingCharge?.description" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description">
+                            </div>
+
+                            <hr class="border-gray-200">
+
+                            <!-- API Configuration -->
+                            <div x-show="editingCharge?.is_system_default">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
+                            </div>
+
+                            <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700">Active</p>
+                                        <p class="text-xs text-gray-400">Enable or disable this gateway</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active">
+                                        <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between border-t border-gray-200 pt-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
+                                        <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice">
+                                        <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
+                                <div class="flex items-center justify-between border-t border-gray-200 pt-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
+                                        <p class="text-xs text-gray-400">Allow payment link generation</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer" :checked="editingCharge?.can_generate_link">
+                                        <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                @endif
+                            </div>
                         </div>
 
-                        <div class="bg-gray-50 rounded-lg p-4 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm font-medium text-gray-700">Active</p>
-                                    <p class="text-xs text-gray-400">Enable or disable this gateway</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active">
-                                    <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                            <div class="flex items-center justify-between border-t border-gray-200 pt-3">
-                                <div>
-                                    <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
-                                    <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice">
-                                    <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                            @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
-                            <div class="flex items-center justify-between border-t border-gray-200 pt-3">
-                                <div>
-                                    <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
-                                    <p class="text-xs text-gray-400">Allow payment link generation</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer" :checked="editingCharge?.can_generate_link">
-                                    <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                            @endif
+                        <div class="flex items-center justify-end gap-3 mt-6">
+                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
                         </div>
-                    </div>
+                    </form>
+                </template>
 
-                    <div class="flex items-center justify-end gap-3 mt-6">
-                        <button type="button" @click="showEditCredsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
-                    </div>
-                </form>
+                <!-- Form for gateways WITH payment methods (API settings ONLY) -->
+                <template x-if="editingCharge?.methods && editingCharge.methods.length > 0">
+                    <form :action="`{{ route('charges.credentials.update', ['id' => '__ID__']) }}`.replace('__ID__', editingCharge?.id)" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="from_settings" value="1">
+
+                        <div class="space-y-4">
+                            <div x-show="editingCharge?.is_system_default">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
+                            </div>
+
+                            <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700">Active</p>
+                                        <p class="text-xs text-gray-400">Enable or disable this gateway</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active">
+                                        <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between border-t border-gray-200 pt-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
+                                        <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice">
+                                        <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
+                                <div class="flex items-center justify-between border-t border-gray-200 pt-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
+                                        <p class="text-xs text-gray-400">Allow payment link generation</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer" :checked="editingCharge?.can_generate_link">
+                                        <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 mt-6">
+                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                        </div>
+                    </form>
+                </template>
             </div>
         </div>
     </div>
@@ -312,7 +513,7 @@
             </div>
 
             <div class="overflow-y-auto flex-1 px-6 py-4">
-                <form :action="'{{ url('payment-method') }}/' + editingMethod?.id" method="POST">
+                <form :action="`{{ route('payment-method.update', ['id' => '__ID__']) }}`.replace('__ID__', editingMethod?.id)" method="POST">
                     @csrf
                     @method('PUT')
 
@@ -330,13 +531,48 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Self Charge</label>
-                                <input type="number" name="self_charge" step="0.01" :value="editingMethod?.self_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Service Charge</label>
+                                <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                    Contract Charge
+                                    <div class="group relative">
+                                        <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                                            Actual gateway fee (API charge)
+                                        </div>
+                                    </div>
+                                </label>
                                 <input type="number" name="service_charge" step="0.01" :value="editingMethod?.service_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             </div>
+                            <div>
+                                <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                    Back Office Charge
+                                    <div class="group relative">
+                                        <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                                            What you charge client (Contract + Markup). Must be ≥ Contract Charge
+                                        </div>
+                                    </div>
+                                </label>
+                                <input type="number" name="self_charge" step="0.01" :value="editingMethod?.self_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                                Extra Charge (Flat Rate)
+                                <div class="group relative">
+                                    <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                                        Additional flat fee (in KWD) added to charges
+                                    </div>
+                                </div>
+                            </label>
+                            <input type="number" name="extra_charge" step="0.001" :value="editingMethod?.extra_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD">
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -392,23 +628,12 @@
             chargeLoading: false,
             expandedCharge: null,
             showCreateModal: false,
-            showEditCredsModal: false,
+            showSettingsModal: false,
             showEditMethodModal: false,
             companyId: "{{ $companyId }}",
-            editingCharge: {
-                api_key: '',
-                secret_key: '',
-                name: ''
-            },
-            editingMethod: {
-                paid_by: 'Client',
-                charge_type: 'Percent',
-                self_charge: 0,
-                is_active: true
-            },
-            editingMethodCharge: {
-                name: ''
-            },
+            editingCharge: {},
+            editingMethod: {},
+            editingMethodCharge: {},
 
             init() {
                 window.addEventListener('charges-tab-loaded', () => {
@@ -448,17 +673,13 @@
                 this.expandedCharge = this.expandedCharge === chargeId ? null : chargeId;
             },
 
-            openEditCredsModal(charge) {
-                this.editingCharge = {
-                    ...charge
-                };
-                this.showEditCredsModal = true;
+            openSettingsModal(charge) {
+                this.editingCharge = { ...charge };
+                this.showSettingsModal = true;
             },
 
             openEditMethodModal(method, charge) {
-                this.editingMethod = {
-                    ...method
-                };
+                this.editingMethod = { ...method };
                 this.editingMethodCharge = charge;
                 this.showEditMethodModal = true;
             }

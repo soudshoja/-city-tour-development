@@ -284,6 +284,20 @@
                             <br>Document Reference: {{ $detail->task->insuranceDetails->document_reference ?? 'N/A' }}
                             <br>Paid Leaves: {{ $detail->task->insuranceDetails->paid_leaves ?? 'N/A' }}
                         </p>
+                        @else
+                        <p>
+                            @if(!empty($detail->task->reference))
+                                Reference: {{ $detail->task->reference }}<br>
+                            @endif
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}<br>
+                            Task Type: {{ ucfirst($detail->task->type ?? 'N/A') }}
+                            @if(!empty($detail->task->passenger_name))
+                                <br>Passenger Name: {{ $detail->task->passenger_name }}
+                            @endif
+                            @if(!empty($detail->task_remark))
+                                <br>{{ $detail->task_remark }}
+                            @endif
+                        </p>
                         @endif
                     </td>
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>

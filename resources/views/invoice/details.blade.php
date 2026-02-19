@@ -370,6 +370,10 @@
                                 <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->sub_amount, 3) }} KWD</dd>
                             </div>
                             <div class="flex justify-between">
+                                <dt class="text-gray-600 dark:text-slate-400">Invoice Charges:</dt>
+                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoicePartials->sum('invoice_charge') ?? 0, 3) }} KWD</dd>
+                            </div>
+                            <div class="flex justify-between">
                                 <dt class="text-gray-600 dark:text-slate-400">Service Charges:</dt>
                                 <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoicePartials->sum('service_charge') ?? 0, 3) }} KWD</dd>
                             </div>
@@ -412,6 +416,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Reference</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Amount</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Service Charge</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Invoice Charge</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Total</th>
                             </tr>
                         </thead>
@@ -471,13 +476,16 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">
-                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount : $partial->amount - $partial->service_charge, 3) }} KWD
+                                    {{ number_format($partial->amount, 3) }} KWD
                                 </td>
                                 <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
                                     {{ number_format($partial->service_charge ?? 0, 3) }} KWD
                                 </td>
                                 <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
-                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount + $partial->service_charge : $partial->amount, 3) }} KWD
+                                    {{ number_format($partial->invoice_charge ?? 0, 3) }} KWD
+                                </td>
+                                <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
+                                    {{ number_format($partial->amount + $partial->invoice_charge + $partial->service_charge, 3) }} KWD
                                 </td>
                             </tr>
                             @endforeach
@@ -485,8 +493,12 @@
                     </table>
                 </div>
                 <p class="mt-3 text-xs text-gray-600 dark:text-slate-400">
-                    Paid {{ number_format($invoice->invoicePartials->filter(fn($p) => strtolower($p->status ?? '') === 'paid')->sum('amount'), 3) }} KWD
-                    of {{ number_format($invoice->amount + $partials->sum('service_charge'), 3) }} KWD
+                    @php
+                        $paidPartials = $invoice->invoicePartials->filter(fn($p) => strtolower($p->status ?? '') === 'paid');
+                        $paidTotal = $paidPartials->sum('amount') + $paidPartials->sum('service_charge') + $paidPartials->sum('invoice_charge');
+                        $grandTotal = $invoice->amount + $partials->sum('service_charge');
+                    @endphp
+                    Paid {{ number_format($paidTotal, 3) }} KWD of {{ number_format($grandTotal, 3) }} KWD
                 </p>
                 @endif
             </section>

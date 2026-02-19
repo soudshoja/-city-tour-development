@@ -553,6 +553,59 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
         $importedTask = Cache::get('imported_task');
 
+        $switchInvoiceData = $tasks->filter(function ($task) {
+            return $task->originalTask?->status === 'confirmed'
+                && $task->status === 'issued'
+                && $task->originalTask->invoiceDetail;
+        })->mapWithKeys(function ($task) {
+            $invoice = $task->originalTask->invoiceDetail->invoice;
+            $invoiceDetail = $task->originalTask->invoiceDetail;
+            $oldSupplierCost = $task->originalTask->total ?? 0;
+            $newSupplierCost = $task->total ?? 0;
+            $taskPrice = $invoiceDetail->task_price ?? 0;
+            $oldProfit = $taskPrice - $oldSupplierCost;
+            $newProfit = $taskPrice - $newSupplierCost;
+
+            return [$task->id => [
+                'taskId' => $task->id,
+                'taskReference' => $task->reference,
+                'taskStatus' => $task->status,
+                'originalTaskId' => $task->originalTask->id,
+                'originalTaskReference' => $task->originalTask->reference,
+                'originalTaskStatus' => $task->originalTask->status,
+                'invoiceNumber' => $invoice->invoice_number,
+                'invoiceStatus' => $invoice->status,
+                'invoiceUrl' => route('invoice.details', [$invoice->agent->branch->company_id, $invoice->invoice_number]),
+                'currency' => $invoice->currency ?? 'KWD',
+                'isPaid' => $invoice->status === 'paid',
+                'oldSupplierCost' => $oldSupplierCost,
+                'newSupplierCost' => $newSupplierCost,
+                'taskPrice' => $taskPrice,
+                'oldProfit' => $oldProfit,
+                'newProfit' => $newProfit,
+                'profitDifference' => $newProfit - $oldProfit,
+                'isLoss' => $newProfit < 0,
+                'hasPriceChange' => $oldSupplierCost != $newSupplierCost,
+                'formAction' => route('tasks.switchInvoice', $task),
+            ]];
+        });
+
+        $isAdmin = Auth::user()->role_id == Role::ADMIN;
+        $actionData = $tasks->mapWithKeys(function ($task) use ($isAdmin, $switchInvoiceData) {
+            $isInvoicedAndPaid = $task->invoiceDetail?->invoice?->status === 'paid';
+            return [$task->id => [
+                'taskId' => $task->id,
+                'editUrl' => route('tasks.detail', ['tasks' => $task->id]),
+                'canEdit' => !$isInvoicedAndPaid,
+                'canEditFinancials' => $isAdmin,
+                'price' => $task->price ?? 0,
+                'tax' => $task->tax ?? 0,
+                'surcharge' => $task->surcharge ?? 0,
+                'isInvoicedAndPaid' => $isInvoicedAndPaid,
+                'showSwitchInvoice' => isset($switchInvoiceData[$task->id]),
+            ]];
+        });
+
         return view('tasks.index', compact(
             'tasks',
             'taskCount',
@@ -566,7 +619,9 @@ class TaskController extends Controller
             'allTypes',
             'defaultColumns',
             'currencies',
-            'listOfCreditors'
+            'listOfCreditors',
+            'switchInvoiceData',
+            'actionData'
         ));
     }
 

@@ -3136,7 +3136,7 @@ class InvoiceController extends Controller
             ->get();
 
         if ($invoice->refund) {
-            return view('invoice.show-refund', compact('invoice', 'invoicePartials', 'companyId', 'totalGatewayFee', 'paidPartials'));
+            return view('invoice.show-refund', compact('invoice', 'invoicePartials', 'companyId', 'totalGatewayFee', 'paidPartials', 'canGenerateLink'));
         }
 
         return view('invoice.show', compact(

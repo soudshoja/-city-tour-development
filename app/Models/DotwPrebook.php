@@ -31,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Carbon\Carbon $created_at Allocation created timestamp
  * @property \Carbon\Carbon $updated_at Last update timestamp
  * @property \Carbon\Carbon|null $expired_at When allocation expired (3 minutes after creation)
+ * @property int|null $company_id Company that created this prebook (for BLOCK-08 constraint)
+ * @property string|null $resayil_message_id WhatsApp user proxy — one active prebook per (company, resayil_message_id)
  */
 class DotwPrebook extends Model
 {
@@ -52,6 +54,8 @@ class DotwPrebook extends Model
         'customer_reference',
         'booking_details',
         'expired_at',
+        'company_id',
+        'resayil_message_id',
     ];
 
     protected $casts = [
@@ -60,6 +64,7 @@ class DotwPrebook extends Model
         'exchange_rate' => 'float',
         'is_refundable' => 'boolean',
         'booking_details' => 'array',
+        'company_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'expired_at' => 'datetime',
@@ -67,8 +72,6 @@ class DotwPrebook extends Model
 
     /**
      * Relationship: Pre-booking has many rooms
-     *
-     * @return HasMany
      */
     public function rooms(): HasMany
     {
@@ -90,6 +93,7 @@ class DotwPrebook extends Model
 
         // If no expiry set, calculate from created_at
         $expiryMinutes = config('dotw.allocation_expiry_minutes', 3);
+
         return now()->diffInMinutes($this->created_at) < $expiryMinutes;
     }
 
@@ -98,8 +102,6 @@ class DotwPrebook extends Model
      *
      * Sets expired_at to current time + allocation_expiry_minutes
      * Called when allocation is first created
-     *
-     * @return void
      */
     public function setExpiry(): void
     {
@@ -112,8 +114,6 @@ class DotwPrebook extends Model
      * Mark allocation as expired
      *
      * Called when allocation is used or times out
-     *
-     * @return void
      */
     public function markExpired(): void
     {
@@ -150,5 +150,18 @@ class DotwPrebook extends Model
     public static function cleanupExpired(): int
     {
         return static::where('expired_at', '<', now()->subHours(1))->delete();
+    }
+
+    /**
+     * Scope: all active (non-expired) prebooks for a given company+WhatsApp user pair.
+     *
+     * Used by DotwBlockRates resolver to enforce BLOCK-08: only one active prebook
+     * per (company_id, resayil_message_id) at any time.
+     */
+    public static function activeForUser(int $companyId, string $resayilMessageId): \Illuminate\Database\Eloquent\Builder
+    {
+        return static::where('company_id', $companyId)
+            ->where('resayil_message_id', $resayilMessageId)
+            ->where('expired_at', '>', now());
     }
 }

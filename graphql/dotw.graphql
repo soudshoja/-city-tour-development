@@ -84,3 +84,18 @@ enum DotwErrorAction {
     "No specific action — informational error."
     NONE
 }
+
+"Shared response envelope for all DOTW GraphQL operations. Every DOTW query and mutation returns a type that includes these fields, ensuring N8N workflows and Resayil can always parse responses predictably regardless of operation."
+type DotwResponseEnvelope {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "True when the response was served from cache rather than a live DOTW API call."
+    cached: Boolean!
+}

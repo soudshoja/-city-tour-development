@@ -4,49 +4,49 @@
 
 Enable travel agents to search, browse, and book hotels via real-time DOTW API rates through a GraphQL API consumed by N8N workflows and Resayil WhatsApp integration. Per-company credential management, 2.5-minute search caching, rate blocking with 3-minute allocation expiry, and pre-booking confirmation workflow — all with full audit trail linking operations to WhatsApp conversations.
 
-**Phases:** 8 (Phase 5 through Phase 12, continuing from v1.0 Bulk Invoice Upload)
+**Phases:** 8 (Phase 1 through Phase 8 — standalone DOTW module, independent numbering)
 **Requirements:** 54 v1 requirements, 100% mapped
-**Depth:** Standard
+**Milestone:** DOTW v1.0 B2B (separate from soud-laravel v1.0 Bulk Invoice Upload)
 
 ---
 
 ## Execution Waves
 
-### Wave 1 — Foundation (Phases run in parallel)
+### Wave 1 — Foundation (All 3 run in parallel)
 
-- **Phase 5**: Credential Management & Markup Foundation
-- **Phase 6**: Message Tracking & Audit Infrastructure
-- **Phase 7**: Cache Service & GraphQL Response Architecture
+- **Phase 1**: Credential Management & Markup Foundation
+- **Phase 2**: Message Tracking & Audit Infrastructure
+- **Phase 3**: Cache Service & GraphQL Response Architecture
 
-### Wave 2 — Core Search & Rate Operations (After Wave 1 complete)
+### Wave 2 — Core Features (After Wave 1 complete, both run in parallel)
 
-- **Phase 8**: Hotel Search GraphQL
-- **Phase 9**: Rate Browsing & Rate Blocking
+- **Phase 4**: Hotel Search GraphQL
+- **Phase 5**: Rate Browsing & Rate Blocking
 
-### Wave 3 — Booking, Hardening & Packaging (After Wave 2 complete)
+### Wave 3 — Booking, Hardening & Packaging (After Wave 2 complete, all 3 run in parallel)
 
-- **Phase 10**: Pre-Booking & Confirmation Workflow
-- **Phase 11**: Error Hardening & Circuit Breaker
-- **Phase 12**: Modular Architecture & B2B Packaging
+- **Phase 6**: Pre-Booking & Confirmation Workflow
+- **Phase 7**: Error Hardening & Circuit Breaker
+- **Phase 8**: Modular Architecture & B2B Packaging
 
 ---
 
 ## Phases
 
-- [ ] **Phase 5: Credential Management & Markup Foundation** - Per-company DOTW credential storage with encryption, 20% markup foundation, multi-company isolation
-- [ ] **Phase 6: Message Tracking & Audit Infrastructure** - Resayil WhatsApp message_id and quote_id logging, full request/response audit trail
-- [ ] **Phase 7: Cache Service & GraphQL Response Architecture** - 2.5-minute search result caching, unified GraphQL response wrapper, trace IDs
-- [ ] **Phase 8: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration
-- [ ] **Phase 9: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, blockRates mutation with 3-minute allocation prebook tracking
-- [ ] **Phase 10: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging
-- [ ] **Phase 11: Error Hardening & Circuit Breaker** - Circuit breaker pattern, resilience handling, error logging to dotw channel
-- [ ] **Phase 12: Modular Architecture & B2B Packaging** - Service modularity, composable GraphQL schema, deployment README, B2B extensibility verification
+- [ ] **Phase 1: Credential Management & Markup Foundation** - Per-company DOTW credential storage with encryption, 20% markup foundation, multi-company isolation
+- [ ] **Phase 2: Message Tracking & Audit Infrastructure** - Resayil WhatsApp message_id and quote_id logging, full request/response audit trail
+- [ ] **Phase 3: Cache Service & GraphQL Response Architecture** - 2.5-minute search result caching, unified GraphQL response wrapper, trace IDs
+- [ ] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration
+- [ ] **Phase 5: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, blockRates mutation with 3-minute allocation prebook tracking
+- [ ] **Phase 6: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging
+- [ ] **Phase 7: Error Hardening & Circuit Breaker** - Circuit breaker pattern, resilience handling, error logging to dotw channel
+- [ ] **Phase 8: Modular Architecture & B2B Packaging** - Service modularity, composable GraphQL schema, deployment README, B2B extensibility verification
 
 ---
 
 ## Phase Details
 
-### Phase 5: Credential Management & Markup Foundation
+### Phase 1: Credential Management & Markup Foundation
 
 **Wave:** 1
 **Depends on:** Nothing — Wave 1 start
@@ -66,10 +66,10 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ---
 
-### Phase 6: Message Tracking & Audit Infrastructure
+### Phase 2: Message Tracking & Audit Infrastructure
 
 **Wave:** 1
-**Depends on:** Nothing — Wave 1 start (parallel with Phase 5)
+**Depends on:** Nothing — Wave 1 start (parallel with Phase 1)
 **Goal:** Every DOTW GraphQL operation is linked to the originating Resayil WhatsApp message and logged with full request/response for debugging — without ever persisting credentials or sensitive details.
 
 **Requirements:** MSG-01, MSG-02, MSG-03, MSG-04, MSG-05
@@ -85,10 +85,10 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ---
 
-### Phase 7: Cache Service & GraphQL Response Architecture
+### Phase 3: Cache Service & GraphQL Response Architecture
 
 **Wave:** 1
-**Depends on:** Nothing — Wave 1 start (parallel with Phases 5 & 6)
+**Depends on:** Nothing — Wave 1 start (parallel with Phases 1 & 2)
 **Goal:** Search results are cached per-company for 2.5 minutes using a deterministic cache key, and all GraphQL operations return a consistent response envelope with trace IDs, timing headers, and structured error shapes.
 
 **Requirements:** CACHE-01, CACHE-02, CACHE-03, CACHE-04, CACHE-05, GQLR-01, GQLR-02, GQLR-03, GQLR-04, GQLR-05, GQLR-06, GQLR-07, GQLR-08
@@ -106,17 +106,17 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ---
 
-### Phase 8: Hotel Search GraphQL
+### Phase 4: Hotel Search GraphQL
 
 **Wave:** 2
-**Depends on:** Phase 5 (credentials), Phase 6 (audit logs), Phase 7 (cache + response envelope)
+**Depends on:** Phase 1 (credentials), Phase 2 (audit logs), Phase 3 (cache + response envelope)
 **Goal:** Agents can search hotels by destination, dates, and room configuration through the GraphQL API, with full DOTW filter support, cached results, and an audit trail entry per search.
 
 **Requirements:** SEARCH-01, SEARCH-02, SEARCH-03, SEARCH-04, SEARCH-05, SEARCH-06, SEARCH-07, SEARCH-08, B2B-01, B2B-02, B2B-03
 
 **Success Criteria:**
 1. A `searchHotels` GraphQL query accepts destination (city code or name), check-in date, check-out date, room configuration (number of rooms, adults per room, children with ages), and optional currency.
-2. Filters covering DOTW's full vocabulary are supported in the query: rating (star), price range, property type, meal plan type, amenities, and cancellation policy type — not just a subset.
+2. Filters covering DOTW's full vocabulary are supported: rating, price range, property type, meal plan type, amenities, and cancellation policy type — not just a subset.
 3. Response lists hotels with cheapest rate per meal plan per room type — each hotel includes hotel_code, name, city, star rating, location, image_url, and rates grouped by room type.
 4. Multiple room types can be requested in a single search (e.g., 1 double + 1 twin) and results accommodate the configuration.
 5. Room detail fields include all DOTW API fields — nothing is summarized away that DOTW returns.
@@ -126,10 +126,10 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ---
 
-### Phase 9: Rate Browsing & Rate Blocking
+### Phase 5: Rate Browsing & Rate Blocking
 
 **Wave:** 2
-**Depends on:** Phase 5 (credentials), Phase 6 (audit logs), Phase 7 (response envelope), Phase 8 (hotel selection flow)
+**Depends on:** Phase 1 (credentials), Phase 2 (audit logs), Phase 3 (response envelope), Phase 4 (hotel selection flow)
 **Goal:** Agents can retrieve detailed room rates for a specific hotel and lock in a rate for 3 minutes via blocking, with transparent markup applied and a prebook record created for booking reference.
 
 **Requirements:** RATE-01, RATE-02, RATE-03, RATE-04, RATE-05, RATE-06, RATE-07, RATE-08, BLOCK-01, BLOCK-02, BLOCK-03, BLOCK-04, BLOCK-05, BLOCK-06, BLOCK-07, BLOCK-08, MARKUP-03, MARKUP-04, MARKUP-05
@@ -148,10 +148,10 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ---
 
-### Phase 10: Pre-Booking & Confirmation Workflow
+### Phase 6: Pre-Booking & Confirmation Workflow
 
 **Wave:** 3
-**Depends on:** Phase 9 (blocked rates with prebook_key)
+**Depends on:** Phase 5 (blocked rates with prebook_key)
 **Goal:** Agents can complete a hotel booking by submitting passenger details against a valid prebook_key, receiving a DOTW confirmation code and itinerary — with clear errors when the prebook has expired or required fields are missing.
 
 **Requirements:** BOOK-01, BOOK-02, BOOK-03, BOOK-04, BOOK-05, BOOK-06, BOOK-07, BOOK-08, ERROR-03, ERROR-04
@@ -169,28 +169,28 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ---
 
-### Phase 11: Error Hardening & Circuit Breaker
+### Phase 7: Error Hardening & Circuit Breaker
 
 **Wave:** 3
-**Depends on:** Phase 7 (response envelope + error shapes), Phase 8 (search for fallback), Phase 10 (full operation surface complete)
+**Depends on:** Phase 3 (response envelope + error shapes), Phase 4 (search for fallback), Phase 6 (full operation surface complete)
 **Goal:** The DOTW integration degrades gracefully under failure conditions — invalid credentials surface a clear configuration error, API timeouts give actionable messages, repeated failures trigger a circuit breaker that returns cached results or a friendly retry prompt.
 
 **Requirements:** ERROR-01, ERROR-02, ERROR-07, ERROR-08
 
 **Success Criteria:**
-1. Calling any DOTW operation with no company credentials configured returns a 401-equivalent response: "DOTW credentials not configured for this company" — not a stack trace or generic 500.
-2. A DOTW API call exceeding 25 seconds returns "Search taking too long, please try again" — the response includes `action: retry` for N8N workflow handling.
+1. Calling any DOTW operation with no company credentials configured returns: "DOTW credentials not configured for this company" — not a stack trace or generic 500.
+2. A DOTW API call exceeding 25 seconds returns "Search taking too long, please try again" — response includes `action: retry` for N8N workflow handling.
 3. All errors are logged to the `dotw` Laravel logging channel; log entries never include DOTW credentials or full response bodies.
-4. After 5 DOTW API failures within 1 minute, the circuit breaker activates: subsequent search requests return cached results if available, or return "Try again in 30 seconds" with `action: retry_in_30_seconds` — no further DOTW API calls are made during the open circuit window.
+4. After 5 DOTW API failures within 1 minute, the circuit breaker activates: subsequent search requests return cached results if available, or return "Try again in 30 seconds" with `action: retry_in_30_seconds` — no further DOTW API calls during the open circuit window.
 
 **Plans:** TBD
 
 ---
 
-### Phase 12: Modular Architecture & B2B Packaging
+### Phase 8: Modular Architecture & B2B Packaging
 
 **Wave:** 3
-**Depends on:** Phase 5 (service exists), Phase 7 (GraphQL schema established), Phase 10 (all operations implemented)
+**Depends on:** Phase 1 (service exists), Phase 3 (GraphQL schema established), Phase 6 (all operations implemented)
 **Goal:** The entire DOTW module can be copied to a production subdomain with config changes and migrations only — no tight coupling to the invoice/task system, with a README that documents every deployment step and environment variable.
 
 **Requirements:** MOD-01, MOD-02, MOD-03, MOD-04, MOD-05, MOD-06, MOD-07, MOD-08, B2B-05
@@ -210,16 +210,16 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ## Progress Table
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 5. Credential Management & Markup Foundation | 0/? | Not started | - |
-| 6. Message Tracking & Audit Infrastructure | 0/? | Not started | - |
-| 7. Cache Service & GraphQL Response Architecture | 0/? | Not started | - |
-| 8. Hotel Search GraphQL | 0/? | Not started | - |
-| 9. Rate Browsing & Rate Blocking | 0/? | Not started | - |
-| 10. Pre-Booking & Confirmation Workflow | 0/? | Not started | - |
-| 11. Error Hardening & Circuit Breaker | 0/? | Not started | - |
-| 12. Modular Architecture & B2B Packaging | 0/? | Not started | - |
+| Phase | Name | Wave | Requirements | Status |
+|-------|------|------|-------------|--------|
+| 1 | Credential Management & Markup Foundation | Wave 1 | CRED-01..05, MARKUP-01/02, ERROR-05, B2B-04 | Not started |
+| 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Not started |
+| 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Not started |
+| 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Not started |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Not started |
+| 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
+| 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |
+| 8 | Modular Architecture & B2B Packaging | Wave 3 | MOD-01..08, B2B-05 | Not started |
 
 ---
 
@@ -227,86 +227,87 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CRED-01 | Phase 5 | Pending |
-| CRED-02 | Phase 5 | Pending |
-| CRED-03 | Phase 5 | Pending |
-| CRED-04 | Phase 5 | Pending |
-| CRED-05 | Phase 5 | Pending |
-| MARKUP-01 | Phase 5 | Pending |
-| MARKUP-02 | Phase 5 | Pending |
-| ERROR-05 | Phase 5 | Pending |
-| B2B-04 | Phase 5 | Pending |
-| MSG-01 | Phase 6 | Pending |
-| MSG-02 | Phase 6 | Pending |
-| MSG-03 | Phase 6 | Pending |
-| MSG-04 | Phase 6 | Pending |
-| MSG-05 | Phase 6 | Pending |
-| CACHE-01 | Phase 7 | Pending |
-| CACHE-02 | Phase 7 | Pending |
-| CACHE-03 | Phase 7 | Pending |
-| CACHE-04 | Phase 7 | Pending |
-| CACHE-05 | Phase 7 | Pending |
-| GQLR-01 | Phase 7 | Pending |
-| GQLR-02 | Phase 7 | Pending |
-| GQLR-03 | Phase 7 | Pending |
-| GQLR-04 | Phase 7 | Pending |
-| GQLR-05 | Phase 7 | Pending |
-| GQLR-06 | Phase 7 | Pending |
-| GQLR-07 | Phase 7 | Pending |
-| GQLR-08 | Phase 7 | Pending |
-| SEARCH-01 | Phase 8 | Pending |
-| SEARCH-02 | Phase 8 | Pending |
-| SEARCH-03 | Phase 8 | Pending |
-| SEARCH-04 | Phase 8 | Pending |
-| SEARCH-05 | Phase 8 | Pending |
-| SEARCH-06 | Phase 8 | Pending |
-| SEARCH-07 | Phase 8 | Pending |
-| SEARCH-08 | Phase 8 | Pending |
-| B2B-01 | Phase 8 | Pending |
-| B2B-02 | Phase 8 | Pending |
-| B2B-03 | Phase 8 | Pending |
-| RATE-01 | Phase 9 | Pending |
-| RATE-02 | Phase 9 | Pending |
-| RATE-03 | Phase 9 | Pending |
-| RATE-04 | Phase 9 | Pending |
-| RATE-05 | Phase 9 | Pending |
-| RATE-06 | Phase 9 | Pending |
-| RATE-07 | Phase 9 | Pending |
-| RATE-08 | Phase 9 | Pending |
-| BLOCK-01 | Phase 9 | Pending |
-| BLOCK-02 | Phase 9 | Pending |
-| BLOCK-03 | Phase 9 | Pending |
-| BLOCK-04 | Phase 9 | Pending |
-| BLOCK-05 | Phase 9 | Pending |
-| BLOCK-06 | Phase 9 | Pending |
-| BLOCK-07 | Phase 9 | Pending |
-| BLOCK-08 | Phase 9 | Pending |
-| MARKUP-03 | Phase 9 | Pending |
-| MARKUP-04 | Phase 9 | Pending |
-| MARKUP-05 | Phase 9 | Pending |
-| BOOK-01 | Phase 10 | Pending |
-| BOOK-02 | Phase 10 | Pending |
-| BOOK-03 | Phase 10 | Pending |
-| BOOK-04 | Phase 10 | Pending |
-| BOOK-05 | Phase 10 | Pending |
-| BOOK-06 | Phase 10 | Pending |
-| BOOK-07 | Phase 10 | Pending |
-| BOOK-08 | Phase 10 | Pending |
-| ERROR-03 | Phase 10 | Pending |
-| ERROR-04 | Phase 10 | Pending |
-| ERROR-01 | Phase 11 | Pending |
-| ERROR-02 | Phase 11 | Pending |
-| ERROR-07 | Phase 11 | Pending |
-| ERROR-08 | Phase 11 | Pending |
-| MOD-01 | Phase 12 | Pending |
-| MOD-02 | Phase 12 | Pending |
-| MOD-03 | Phase 12 | Pending |
-| MOD-04 | Phase 12 | Pending |
-| MOD-05 | Phase 12 | Pending |
-| MOD-06 | Phase 12 | Pending |
-| MOD-07 | Phase 12 | Pending |
-| MOD-08 | Phase 12 | Pending |
-| B2B-05 | Phase 12 | Pending |
+| CRED-01 | Phase 1 | Pending |
+| CRED-02 | Phase 1 | Pending |
+| CRED-03 | Phase 1 | Pending |
+| CRED-04 | Phase 1 | Pending |
+| CRED-05 | Phase 1 | Pending |
+| MARKUP-01 | Phase 1 | Pending |
+| MARKUP-02 | Phase 1 | Pending |
+| ERROR-05 | Phase 1 | Pending |
+| B2B-04 | Phase 1 | Pending |
+| MSG-01 | Phase 2 | Pending |
+| MSG-02 | Phase 2 | Pending |
+| MSG-03 | Phase 2 | Pending |
+| MSG-04 | Phase 2 | Pending |
+| MSG-05 | Phase 2 | Pending |
+| CACHE-01 | Phase 3 | Pending |
+| CACHE-02 | Phase 3 | Pending |
+| CACHE-03 | Phase 3 | Pending |
+| CACHE-04 | Phase 3 | Pending |
+| CACHE-05 | Phase 3 | Pending |
+| GQLR-01 | Phase 3 | Pending |
+| GQLR-02 | Phase 3 | Pending |
+| GQLR-03 | Phase 3 | Pending |
+| GQLR-04 | Phase 3 | Pending |
+| GQLR-05 | Phase 3 | Pending |
+| GQLR-06 | Phase 3 | Pending |
+| GQLR-07 | Phase 3 | Pending |
+| GQLR-08 | Phase 3 | Pending |
+| SEARCH-01 | Phase 4 | Pending |
+| SEARCH-02 | Phase 4 | Pending |
+| SEARCH-03 | Phase 4 | Pending |
+| SEARCH-04 | Phase 4 | Pending |
+| SEARCH-05 | Phase 4 | Pending |
+| SEARCH-06 | Phase 4 | Pending |
+| SEARCH-07 | Phase 4 | Pending |
+| SEARCH-08 | Phase 4 | Pending |
+| B2B-01 | Phase 4 | Pending |
+| B2B-02 | Phase 4 | Pending |
+| B2B-03 | Phase 4 | Pending |
+| RATE-01 | Phase 5 | Pending |
+| RATE-02 | Phase 5 | Pending |
+| RATE-03 | Phase 5 | Pending |
+| RATE-04 | Phase 5 | Pending |
+| RATE-05 | Phase 5 | Pending |
+| RATE-06 | Phase 5 | Pending |
+| RATE-07 | Phase 5 | Pending |
+| RATE-08 | Phase 5 | Pending |
+| BLOCK-01 | Phase 5 | Pending |
+| BLOCK-02 | Phase 5 | Pending |
+| BLOCK-03 | Phase 5 | Pending |
+| BLOCK-04 | Phase 5 | Pending |
+| BLOCK-05 | Phase 5 | Pending |
+| BLOCK-06 | Phase 5 | Pending |
+| BLOCK-07 | Phase 5 | Pending |
+| BLOCK-08 | Phase 5 | Pending |
+| MARKUP-03 | Phase 5 | Pending |
+| MARKUP-04 | Phase 5 | Pending |
+| MARKUP-05 | Phase 5 | Pending |
+| BOOK-01 | Phase 6 | Pending |
+| BOOK-02 | Phase 6 | Pending |
+| BOOK-03 | Phase 6 | Pending |
+| BOOK-04 | Phase 6 | Pending |
+| BOOK-05 | Phase 6 | Pending |
+| BOOK-06 | Phase 6 | Pending |
+| BOOK-07 | Phase 6 | Pending |
+| BOOK-08 | Phase 6 | Pending |
+| ERROR-03 | Phase 6 | Pending |
+| ERROR-04 | Phase 6 | Pending |
+| ERROR-06 | Phase 6 | Pending |
+| ERROR-01 | Phase 7 | Pending |
+| ERROR-02 | Phase 7 | Pending |
+| ERROR-07 | Phase 7 | Pending |
+| ERROR-08 | Phase 7 | Pending |
+| MOD-01 | Phase 8 | Pending |
+| MOD-02 | Phase 8 | Pending |
+| MOD-03 | Phase 8 | Pending |
+| MOD-04 | Phase 8 | Pending |
+| MOD-05 | Phase 8 | Pending |
+| MOD-06 | Phase 8 | Pending |
+| MOD-07 | Phase 8 | Pending |
+| MOD-08 | Phase 8 | Pending |
+| B2B-05 | Phase 8 | Pending |
 
 **Coverage:**
 - Total requirements: 54
@@ -317,4 +318,4 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 *Roadmap created: 2026-02-21*
 *Milestone: DOTW v1.0 B2B*
-*Phases: 5-12 (continuing from v1.0 Bulk Invoice Upload, phases 1-4)*
+*Phases: 1-8 (standalone, independent of soud-laravel v1.0 Bulk Invoice Upload)*

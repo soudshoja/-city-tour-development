@@ -117,7 +117,7 @@ Progress: █████████████ 8 of 8 phases complete
 
 ### Pending Todos
 
-None yet.
+1. **DOTW Hub Documentation milestone** (docs) — 5 docs + web viewer live at /docs/dotw. Matches n8n-hub design. `.planning/todos/pending/2026-02-21-dotw-hub-documentation-milestone.md`
 
 ### Blockers/Concerns
 

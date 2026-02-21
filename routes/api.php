@@ -20,6 +20,7 @@ use App\Services\MagicHolidayService;
 use App\Http\Webhooks\TaskWebhook;
 use App\Http\Controllers\Api\DocumentProcessingController;
 use App\Http\Controllers\Api\Webhooks\N8nCallbackController;
+use App\Http\Controllers\Admin\DotwCredentialController;
 
 Route::post('/login2', [MobileController::class, 'login2']);
 Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -182,6 +183,12 @@ Route::group([
 ], function(){
     Route::get('/latest', [CurrencyExchangeController::class, 'getLatestRates'])->name('latest');
     Route::post('/convert', [CurrencyExchangeController::class, 'convertCurrency'])->name('convert');
+});
+
+// DOTW v1.0 B2B — Admin credential management
+Route::prefix('admin/companies/{companyId}')->group(function () {
+    Route::post('/dotw-credentials', [DotwCredentialController::class, 'store']);
+    Route::get('/dotw-credentials', [DotwCredentialController::class, 'show']);
 });
 
 require __DIR__ . '/auth.php';

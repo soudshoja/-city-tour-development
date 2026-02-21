@@ -4,7 +4,18 @@
       "Bash(for class in \"recent-submenu\" \"sidebar\" \"sticky-column\" \"sticky-header\" \"toggle-sidebar\")",
       "Bash(do echo \"=== $class ===\")",
       "Bash(done)",
-      "Bash(for class in \"btn-danger\" \"btn-dark\" \"btn-info\" \"btn-lg\" \"btn-outline-danger\" \"btn-outline-dark\" \"btn-outline-info\" \"btn-outline-primary\" \"btn-outline-secondary\" \"btn-outline-success\" \"btn-outline-warning\")"
+      "Bash(for class in \"btn-danger\" \"btn-dark\" \"btn-info\" \"btn-lg\" \"btn-outline-danger\" \"btn-outline-dark\" \"btn-outline-info\" \"btn-outline-primary\" \"btn-outline-secondary\" \"btn-outline-success\" \"btn-outline-warning\")",
+      "Skill(gsd:progress)",
+      "Bash(node:*)",
+      "Skill(gsd:plan-phase)",
+      "Bash(tail:*)",
+      "Bash(git add:*)",
+      "Bash(git:*)",
+      "Skill(gsd:execute-phase)",
+      "mcp__claude_ai_n8n__search_workflows",
+      "mcp__claude_ai_n8n__get_workflow_details",
+      "Skill(gsd:quick)",
+      "Bash(git push:*)"
     ]
   }
 }

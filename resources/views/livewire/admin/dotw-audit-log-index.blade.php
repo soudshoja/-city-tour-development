@@ -1,5 +1,4 @@
-<x-app-layout>
-    <div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-4 py-8">
 
         {{-- Page Header --}}
         <div class="mb-6">
@@ -170,4 +169,4 @@
         </div>
 
     </div>
-</x-app-layout>
+</div>

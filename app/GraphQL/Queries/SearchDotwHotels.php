@@ -45,10 +45,11 @@ class SearchDotwHotels
      *
      * @param mixed $_ Parent resolver value (unused)
      * @param array $args GraphQL query arguments with 'input' field
+     * @param \Nuwave\Lighthouse\Support\Contracts\GraphQLContext $context GraphQL context (wraps HTTP request)
      *
      * @return array Search results with hotels, prebookings, and metadata
      */
-    public function __invoke($_, array $args)
+    public function __invoke($_, array $args, $context = null)
     {
         $input = $args['input'] ?? [];
 
@@ -174,8 +175,14 @@ class SearchDotwHotels
                 }
             }
 
+            // Extract Resayil IDs from HTTP request attributes (set by ResayilContextMiddleware)
+            $request = $context?->request();
+            $resayilMessageId = $request?->attributes->get('resayil_message_id');
+            $resayilQuoteId   = $request?->attributes->get('resayil_quote_id');
+            $companyId        = auth()->user()?->company_id ?? null;
+
             // Execute search
-            $searchResults = $this->dotwService->searchHotels($searchParams);
+            $searchResults = $this->dotwService->searchHotels($searchParams, $resayilMessageId, $resayilQuoteId, $companyId);
 
             if (empty($searchResults)) {
                 return [

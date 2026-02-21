@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Exceptions\DotwTimeoutException;
 use App\Models\CompanyDotwCredential;
-use App\Services\DotwAuditService;
 use Exception;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
@@ -124,7 +125,7 @@ class DotwService
             ? config('dotw.endpoints.development')
             : config('dotw.endpoints.production');
 
-        $this->timeout = config('dotw.request.timeout', 120);
+        $this->timeout = config('dotw.request.timeout', 25);
         $this->logger = Log::channel(config('dotw.log_channel', 'dotw'));
         $this->companyId = $companyId;
 
@@ -150,7 +151,7 @@ class DotwService
             $this->markupPercent = (float) config('dotw.b2c_markup_percentage', 20);
         }
 
-        $this->auditService = $auditService ?? new DotwAuditService();
+        $this->auditService = $auditService ?? new DotwAuditService;
 
         $this->logger->debug('DOTW Service initialized', [
             'endpoint' => $this->baseUrl,
@@ -197,8 +198,8 @@ class DotwService
      *                         - resultsPerPage: Results per page (default 20)
      *                         - page: Page number (default 1)
      * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
-     * @param  string|null  $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
-     * @param  int|null     $companyId         Company context override (null = use constructor companyId)
+     * @param  string|null  $resayilQuoteId  Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null  $companyId  Company context override (null = use constructor companyId)
      * @return array Parsed response with hotels array
      *
      * @throws Exception If request fails or validation returns error
@@ -260,10 +261,10 @@ class DotwService
      *                         - productId: Hotel ID
      *                         - rooms: Array with room details
      *                         - roomTypeSelected: Only when blocking (includes allocationDetails from first call)
-     * @param  bool        $blocking          Whether to perform rate blocking
-     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
-     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
-     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
+     * @param  bool  $blocking  Whether to perform rate blocking
+     * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null  $resayilQuoteId  Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null  $companyId  Company context override (null = use constructor companyId)
      * @return array Parsed response with rooms and allocationDetails
      *
      * @throws Exception If request fails or rate not available
@@ -339,9 +340,9 @@ class DotwService
      *                         - sendCommunicationTo: Guest email
      *                         - customerReference: Your booking reference
      *                         - rooms: Array with room booking details (includes allocationDetails)
-     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
-     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
-     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
+     * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null  $resayilQuoteId  Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null  $companyId  Company context override (null = use constructor companyId)
      * @return array Confirmation response with booking reference
      *
      * @throws Exception If confirmation fails
@@ -397,10 +398,10 @@ class DotwService
      *
      * Must follow with bookitinerary() to complete the booking
      *
-     * @param  array       $params            Same structure as confirmBooking
-     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
-     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
-     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
+     * @param  array  $params  Same structure as confirmBooking
+     * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null  $resayilQuoteId  Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null  $companyId  Company context override (null = use constructor companyId)
      * @return array Response with itinerary code for later confirmation
      *
      * @throws Exception If save fails
@@ -453,10 +454,10 @@ class DotwService
      * Used to complete Non-Refundable bookings after saveBooking
      * Converts saved itinerary to confirmed booking
      *
-     * @param  string      $bookingCode       Itinerary code from saveBooking response
-     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
-     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
-     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
+     * @param  string  $bookingCode  Itinerary code from saveBooking response
+     * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null  $resayilQuoteId  Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null  $companyId  Company context override (null = use constructor companyId)
      * @return array Confirmation response
      *
      * @throws Exception If confirmation fails
@@ -1246,6 +1247,16 @@ class DotwService
             }
 
             return $simpleXml;
+        } catch (ConnectionException $e) {
+            $this->logger->error('DOTW API timeout', [
+                'timeout_seconds' => $this->timeout,
+                'company_id' => $this->companyId,
+            ]);
+            throw new DotwTimeoutException(
+                "DOTW API timeout after {$this->timeout}s",
+                0,
+                $e
+            );
         } catch (Exception $e) {
             $this->logger->error('DOTW API request failed', [
                 'error' => $e->getMessage(),

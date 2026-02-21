@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
+use App\Exceptions\DotwTimeoutException;
 use App\Services\DotwService;
 use RuntimeException;
 
@@ -87,6 +88,13 @@ class DotwGetRoomRates
                 $resayilMessageId,
                 $resayilQuoteId,
                 $companyId
+            );
+        } catch (DotwTimeoutException $e) {
+            return $this->errorResponse(
+                'API_TIMEOUT',
+                'Search taking too long, please try again',
+                'RETRY',
+                $e->getMessage()
             );
         } catch (RuntimeException $e) {
             // CRED-05: missing or invalid credentials

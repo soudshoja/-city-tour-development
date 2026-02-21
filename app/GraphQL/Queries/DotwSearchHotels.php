@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
+use App\Exceptions\DotwTimeoutException;
 use App\Services\DotwCacheService;
 use App\Services\DotwService;
 use RuntimeException;
@@ -113,6 +114,13 @@ class DotwSearchHotels
                     $companyId
                 );
             });
+        } catch (DotwTimeoutException $e) {
+            return $this->errorResponse(
+                'API_TIMEOUT',
+                'Search taking too long, please try again',
+                'RETRY',
+                $e->getMessage()
+            );
         } catch (RuntimeException $e) {
             // Credential errors thrown by DotwService constructor (CRED-05)
             return $this->errorResponse(

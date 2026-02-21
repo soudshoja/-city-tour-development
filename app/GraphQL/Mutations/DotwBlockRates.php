@@ -84,7 +84,7 @@ class DotwBlockRates
             return $this->errorResponse(
                 'VALIDATION_ERROR',
                 'allocationDetails token is required for rate blocking.',
-                'RESUBMIT'
+                'RETRY'
             );
         }
 

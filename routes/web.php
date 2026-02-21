@@ -926,4 +926,13 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->name('error-dashboard.metrics');
 });
 
+// DOTW Audit Log Viewer (Phase 2 Plan 3)
+Route::middleware(['auth', 'dotw_audit_access'])
+    ->prefix('admin/dotw')
+    ->name('admin.dotw.')
+    ->group(function () {
+        Route::get('audit-logs', \App\Http\Livewire\Admin\DotwAuditLogIndex::class)
+            ->name('audit-logs');
+    });
+
 require __DIR__.'/auth.php';

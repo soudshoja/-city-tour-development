@@ -46,14 +46,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 5. Rate Browsing GraphQL
 
-- [ ] **RATE-01**: GraphQL `getRoomRates` query accepts hotel_code, check-in, check-out, room config, resayil_message_id header
-- [ ] **RATE-02**: Returns all room types for hotel with all meal plans and rates (detailed breakdown)
-- [ ] **RATE-03**: Each rate includes: total_fare, tax, total_price, cancellation_policy (refundable/non-refundable with fees)
-- [ ] **RATE-04**: Response includes `allocationDetails` token (opaque string, required for blocking and confirmation)
-- [ ] **RATE-05**: Shows original_currency, exchange_rate, and final_currency (with 20% B2C markup applied)
-- [ ] **RATE-06**: Each rate tagged with rate_basis code (1331=BB, 1332=HB, 1333=FB, 1334=AI, 1335=ALL, 1336=RO)
-- [ ] **RATE-07**: Includes refundability status and cancellation deadline
-- [ ] **RATE-08**: Logs operation to `dotw_audit_logs` with hotel_code, rates returned count
+- [x] **RATE-01**: GraphQL `getRoomRates` query accepts hotel_code, check-in, check-out, room config, resayil_message_id header
+- [x] **RATE-02**: Returns all room types for hotel with all meal plans and rates (detailed breakdown)
+- [x] **RATE-03**: Each rate includes: total_fare, tax, total_price, cancellation_policy (refundable/non-refundable with fees)
+- [x] **RATE-04**: Response includes `allocationDetails` token (opaque string, required for blocking and confirmation)
+- [x] **RATE-05**: Shows original_currency, exchange_rate, and final_currency (with 20% B2C markup applied)
+- [x] **RATE-06**: Each rate tagged with rate_basis code (1331=BB, 1332=HB, 1333=FB, 1334=AI, 1335=ALL, 1336=RO)
+- [x] **RATE-07**: Includes refundability status and cancellation deadline
+- [x] **RATE-08**: Logs operation to `dotw_audit_logs` with hotel_code, rates returned count
 
 ### 6. Rate Blocking GraphQL
 
@@ -92,9 +92,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **MARKUP-01**: Default 20% B2C markup applied to all fares in search/rate/block responses
 - [x] **MARKUP-02**: Admin can set custom markup percentage per company (stored in `company_dotw_credentials`)
-- [ ] **MARKUP-03**: Markup calculation transparent in responses: {original_fare: 100, markup_percent: 20, markup_amount: 20, final_fare: 120}
-- [ ] **MARKUP-04**: Markup applied consistently across all operations (same hotel+rate always shows same markup)
-- [ ] **MARKUP-05**: Markup shown in WhatsApp messages (e.g., "100 KD → 120 KD after markup")
+- [x] **MARKUP-03**: Markup calculation transparent in responses: {original_fare: 100, markup_percent: 20, markup_amount: 20, final_fare: 120}
+- [x] **MARKUP-04**: Markup applied consistently across all operations (same hotel+rate always shows same markup)
+- [x] **MARKUP-05**: Markup shown in WhatsApp messages (e.g., "100 KD → 120 KD after markup")
 
 ### 10. Error Handling & Resilience
 
@@ -220,14 +220,14 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | B2B-01 | Phase 4 | Complete |
 | B2B-02 | Phase 4 | Complete |
 | B2B-03 | Phase 4 | Complete |
-| RATE-01 | Phase 1 | Pending |
-| RATE-02 | Phase 1 | Pending |
-| RATE-03 | Phase 1 | Pending |
-| RATE-04 | Phase 1 | Pending |
-| RATE-05 | Phase 1 | Pending |
-| RATE-06 | Phase 1 | Pending |
-| RATE-07 | Phase 1 | Pending |
-| RATE-08 | Phase 1 | Pending |
+| RATE-01 | Phase 1 | Complete |
+| RATE-02 | Phase 1 | Complete |
+| RATE-03 | Phase 1 | Complete |
+| RATE-04 | Phase 1 | Complete |
+| RATE-05 | Phase 1 | Complete |
+| RATE-06 | Phase 1 | Complete |
+| RATE-07 | Phase 1 | Complete |
+| RATE-08 | Phase 1 | Complete |
 | BLOCK-01 | Phase 1 | Pending |
 | BLOCK-02 | Phase 1 | Pending |
 | BLOCK-03 | Phase 1 | Pending |
@@ -236,9 +236,9 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | BLOCK-06 | Phase 1 | Pending |
 | BLOCK-07 | Phase 1 | Pending |
 | BLOCK-08 | Phase 1 | Pending |
-| MARKUP-03 | Phase 1 | Pending |
-| MARKUP-04 | Phase 1 | Pending |
-| MARKUP-05 | Phase 1 | Pending |
+| MARKUP-03 | Phase 1 | Complete |
+| MARKUP-04 | Phase 1 | Complete |
+| MARKUP-05 | Phase 1 | Complete |
 | BOOK-01 | Phase 2 | Pending |
 | BOOK-02 | Phase 2 | Pending |
 | BOOK-03 | Phase 2 | Pending |

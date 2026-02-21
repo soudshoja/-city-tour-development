@@ -40,7 +40,7 @@ Progress: ○ 0 of 8 phases complete
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
-| 5 | Rate Browsing & Rate Blocking | Wave 2 | In Progress (Plan 01 of 03 complete) |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | In Progress (Plans 01 and 02 of 03 complete) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | Not started |
@@ -96,6 +96,8 @@ Progress: ○ 0 of 8 phases complete
 - RateDetail.original_currency is String! (empty string sentinel when DOTW omits) per RATE-05
 - RateDetail.exchange_rate is Float (nullable) — null when DOTW performs no conversion per RATE-05
 - activeForUser() scope uses where('expired_at', '>', now()) — matches compound index column order for query plan optimization
+- DotwGetRoomRates instantiates DotwService once in __invoke and passes it to formatRooms() — avoids second DB credential lookup, mirrors formatHotels() pattern in DotwSearchHotels
+- is_refundable defaults to true when parseRooms() does not include nonRefundable key — safe conservative default for rate browse
 
 ### Pending Todos
 
@@ -108,8 +110,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-01-PLAN.md — data layer and GraphQL contracts for Phase 5 Rate Browsing & Rate Blocking (migration, DotwPrebook model, 10 new dotw.graphql types)
-Next: Execute Phase 5 Plans 02 and 03 — DotwGetRoomRates resolver and DotwBlockRates resolver (resolver classes declared in schema, data layer ready)
+Stopped at: Completed 05-02-PLAN.md — DotwGetRoomRates resolver for getRoomRates GraphQL query (RATE-01 through RATE-08, MARKUP-03/04/05)
+Next: Execute Phase 5 Plan 03 — DotwBlockRates mutation resolver (blockRates mutation declared in schema, DotwPrebook.activeForUser() ready for BLOCK-08)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

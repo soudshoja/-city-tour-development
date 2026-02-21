@@ -158,7 +158,7 @@ Plans:
 7. A new `blockRates` call from the same (company, WhatsApp user) automatically expires the previous prebook — only one active prebook exists per user.
 8. All getRoomRates and blockRates operations log to `dotw_audit_logs`; blockRates log includes the prebook_key and allocation expiry.
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 05-01-PLAN.md — Data layer + schema: dotw_prebooks migration (company_id, resayil_message_id), DotwPrebook model update (activeForUser scope), graphql/dotw.graphql Phase 5 types (10 new types + getRoomRates + blockRates) (complete 2026-02-21)
@@ -235,7 +235,7 @@ Plans:
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Complete (3/3 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
 | 4 | 3/3 | Complete   | 2026-02-21 | Planned (2 plans) |
-| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | In Progress (1/3 plans) |
+| 5 | 2/3 | In Progress|  | In Progress (1/3 plans) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | MOD-01..08, B2B-05 | Not started |

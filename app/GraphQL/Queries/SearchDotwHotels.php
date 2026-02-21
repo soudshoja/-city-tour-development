@@ -217,7 +217,7 @@ class SearchDotwHotels
                         ],
                     ];
 
-                    $browseRooms = $this->dotwService->getRooms($browseParams, false);
+                    $browseRooms = $this->dotwService->getRooms($browseParams, false, $resayilMessageId, $resayilQuoteId, $companyId);
 
                     if (empty($browseRooms)) {
                         continue; // Skip hotel if no rooms available
@@ -251,7 +251,7 @@ class SearchDotwHotels
                         ],
                     ];
 
-                    $blockedRooms = $this->dotwService->getRooms($blockingParams, true);
+                    $blockedRooms = $this->dotwService->getRooms($blockingParams, true, $resayilMessageId, $resayilQuoteId, $companyId);
 
                     // Create hotel entry with blocked rate
                     $basePrice = $firstDetail['price'];

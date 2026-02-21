@@ -184,7 +184,11 @@ Plans:
 6. When DOTW returns "hotel sold out," the response includes the error and 3 similar alternatives with availability.
 7. Every booking attempt (success or failure) logs to `dotw_audit_logs` with confirmation_code (if obtained) and booking_status.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Data layer + schema: dotw_bookings migration, DotwBooking model, graphql/dotw.graphql Phase 6 types (PassengerInput, CreatePreBookingInput, BookingItinerary, CreatePreBookingData, CreatePreBookingResponse + createPreBooking mutation)
+- [ ] 06-02-PLAN.md — DotwCreatePreBooking resolver (createPreBooking mutation: prebook expiry check, passenger validation, confirmBooking call, DB::transaction booking creation, supplementary audit log, alternative hotel suggestion on failure)
 
 ---
 
@@ -234,9 +238,9 @@ Plans:
 | 1 | Credential Management & Markup Foundation | Wave 1 | CRED-01..05, MARKUP-01..02, ERROR-05, B2B-04 | Complete (2/2 plans) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Complete (3/3 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
-| 4 | 3/3 | Complete   | 2026-02-21 | Planned (2 plans) |
-| 5 | Rate Browsing & Rate Blocking | Complete    | 2026-02-21 | Complete (3/3 plans) |
-| 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
+| 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Complete (3/3 plans) |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Complete (3/3 plans) |
+| 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Planned (2 plans) |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | MOD-01..08, B2B-05 | Not started |
 
@@ -303,17 +307,17 @@ Plans:
 | MARKUP-03 | Phase 5 | Complete — RateMarkup type applied in both DotwGetRoomRates and DotwBlockRates resolvers (Plans 02+03) |
 | MARKUP-04 | Phase 5 | Complete — applyMarkup() called in both getRoomRates and blockRates (Plans 02+03) |
 | MARKUP-05 | Phase 5 | Complete — marked-up final_fare stored in dotw_prebooks and returned in BlockRatesData (Plan 03) |
-| BOOK-01 | Phase 6 | Pending |
-| BOOK-02 | Phase 6 | Pending |
-| BOOK-03 | Phase 6 | Pending |
-| BOOK-04 | Phase 6 | Pending |
-| BOOK-05 | Phase 6 | Pending |
-| BOOK-06 | Phase 6 | Pending |
-| BOOK-07 | Phase 6 | Pending |
-| BOOK-08 | Phase 6 | Pending |
-| ERROR-03 | Phase 6 | Pending |
-| ERROR-04 | Phase 6 | Pending |
-| ERROR-06 | Phase 6 | Pending |
+| BOOK-01 | Phase 6 | Planned — Plan 06-01 (PassengerInput + CreatePreBookingInput schema types) |
+| BOOK-02 | Phase 6 | Planned — Plan 06-02 (validatePassengers: count check, field-level errors, email validation) |
+| BOOK-03 | Phase 6 | Planned — Plan 06-02 (DotwPrebook::isValid() check before any DOTW call) |
+| BOOK-04 | Phase 6 | Planned — Plan 06-02 (DotwService::confirmBooking() call with reconstructed params) |
+| BOOK-05 | Phase 6 | Planned — Plan 06-02 (success response with booking_confirmation_code + itinerary_details) |
+| BOOK-06 | Phase 6 | Planned — Plan 06-01 (dotw_bookings migration + DotwBooking model), Plan 06-02 (DB::transaction create) |
+| BOOK-07 | Phase 6 | Planned — Plan 06-02 (supplementary audit log with confirmation_code + booking_status) |
+| BOOK-08 | Phase 6 | Planned — Plan 06-02 (RATE_UNAVAILABLE error + 3 alternatives from searchHotels) |
+| ERROR-03 | Phase 6 | Planned — Plan 06-02 (ALLOCATION_EXPIRED error before DOTW call) |
+| ERROR-04 | Phase 6 | Planned — Plan 06-02 (rate unavailable + 3 alternative hotels) |
+| ERROR-06 | Phase 6 | Planned — Plan 06-02 (hotel sold out handled same as ERROR-04 in RuntimeException catch) |
 | ERROR-01 | Phase 7 | Pending |
 | ERROR-02 | Phase 7 | Pending |
 | ERROR-07 | Phase 7 | Pending |
@@ -340,5 +344,6 @@ Plans:
 *Phase 4 planned: 2026-02-21 — 2 plans created*
 *Phase 5 planned: 2026-02-21 — 3 plans created*
 *Phase 5 executed: 2026-02-21 — all 3 plans complete (data layer, getRoomRates resolver, blockRates resolver)*
+*Phase 6 planned: 2026-02-21 — 2 plans created (data layer + schema, DotwCreatePreBooking resolver)*
 *Milestone: DOTW v1.0 B2B*
 *Phases: 1-8 (standalone, independent of soud-laravel v1.0 Bulk Invoice Upload)*

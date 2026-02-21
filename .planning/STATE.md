@@ -37,7 +37,7 @@ Progress: ○ 0 of 8 phases complete
 | Phase | Name | Wave | Status |
 |-------|------|------|--------|
 | 1 | Credential Management & Markup Foundation | Wave 1 | Complete (Plans 01 and 02 of 02 complete) |
-| 2 | Message Tracking & Audit Infrastructure | Wave 1 | In Progress (Plan 01 of 02 complete) |
+| 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01 and 02 of 02 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
@@ -72,6 +72,10 @@ Progress: ○ 0 of 8 phases complete
 - No FK on company_id in dotw_audit_logs — DOTW module is standalone per MOD-06, audit logs survive company changes
 - Fail-silent logging pattern in DotwAuditService — audit failure never breaks DOTW search/booking operations
 - UPDATED_AT = null on DotwAuditLog — audit logs are append-only, immutable after creation
+- Standard Laravel HTTP middleware used for ResayilContextMiddleware (not Lighthouse-specific interface) — route.middleware in lighthouse.php is sufficient for Lighthouse 6.x
+- request->attributes used as Resayil ID carrier in GraphQL context — request-scoped, zero overhead, no global state
+- bookItinerary wrapped bookingCode in array for DotwAuditService::log() request param — consistent with other methods
+- companyId ?? $this->companyId fallback on DotwService operations — resolver can override constructor company context per-request
 
 ### Pending Todos
 
@@ -84,8 +88,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 01-02-PLAN.md — Admin credential API (StoreDotwCredentialRequest, DotwCredentialController, routes)
-Next: Phase 1 complete — continue with Wave 1 remaining phases (2 and 3)
+Stopped at: Completed 02-02-PLAN.md — Lighthouse middleware and DotwService audit wiring (ResayilContextMiddleware, 4-operation audit chain, SearchDotwHotels resolver wired)
+Next: Phase 2 complete — Phase 3 is the only remaining Wave 1 phase (Cache Service & GraphQL Response Architecture — Plan 03 of 03 remaining)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

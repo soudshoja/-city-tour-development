@@ -131,7 +131,7 @@ Plans:
 5. Room detail fields include all DOTW API fields — nothing is summarized away that DOTW returns.
 6. Each search logs a row to `dotw_audit_logs` with the resayil_message_id, destination, and filters used; the GraphQL response reflects `cached: true/false` correctly.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 04-01-PLAN.md — GraphQL schema extension (14 new types/inputs) + DotwGetCities resolver (city name→code lookup)
@@ -228,7 +228,7 @@ Plans:
 | 1 | Credential Management & Markup Foundation | Wave 1 | CRED-01..05, MARKUP-01..02, ERROR-05, B2B-04 | Complete (2/2 plans) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Complete (3/3 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
-| 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Planned (2 plans) |
+| 4 | 1/2 | In Progress|  | Planned (2 plans) |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Not started |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |

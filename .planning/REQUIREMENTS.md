@@ -35,10 +35,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 4. Hotel Search GraphQL
 
-- [ ] **SEARCH-01**: GraphQL `searchHotels` query accepts destination (city code/name), check-in date, check-out date, resayil_message_id header
-- [ ] **SEARCH-02**: Query accepts room configuration (number of rooms, adults per room, children per room with ages)
-- [ ] **SEARCH-03**: Query accepts currency (defaults to company currency if not specified)
-- [ ] **SEARCH-04**: Query supports full DOTW filter vocabulary: rating, price range, property type, meal plan type, amenities, cancellation policies
+- [x] **SEARCH-01**: GraphQL `searchHotels` query accepts destination (city code/name), check-in date, check-out date, resayil_message_id header
+- [x] **SEARCH-02**: Query accepts room configuration (number of rooms, adults per room, children per room with ages)
+- [x] **SEARCH-03**: Query accepts currency (defaults to company currency if not specified)
+- [x] **SEARCH-04**: Query supports full DOTW filter vocabulary: rating, price range, property type, meal plan type, amenities, cancellation policies
 - [ ] **SEARCH-05**: Returns hotels with cheapest rate per meal plan per room type (DOTW searchhotels response)
 - [ ] **SEARCH-06**: Response includes hotel code, name, city, rating, location, image_url, cheapest rates grouped by room type
 - [ ] **SEARCH-07**: Logs search to `dotw_audit_logs` with resayil_message_id, destination, filters used
@@ -120,8 +120,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 12. B2B Flexibility & Extensibility
 
-- [ ] **B2B-01**: GraphQL supports multiple room types in single search (agents can explore complex itineraries)
-- [ ] **B2B-02**: Filter support matches full DOTW V4 vocabulary (not hardcoded to common filters)
+- [x] **B2B-01**: GraphQL supports multiple room types in single search (agents can explore complex itineraries)
+- [x] **B2B-02**: Filter support matches full DOTW V4 vocabulary (not hardcoded to common filters)
 - [ ] **B2B-03**: Room details include all DOTW fields (not summarized, allows detailed negotiation)
 - [x] **B2B-04**: Multi-company credential isolation (credentials never leak between companies)
 - [ ] **B2B-05**: API designed for external B2B partners (N8N/Resayil is primary consumer, but extensible)
@@ -209,16 +209,16 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | GQLR-06 | Phase 3 | Complete |
 | GQLR-07 | Phase 3 | Complete |
 | GQLR-08 | Phase 3 | Complete |
-| SEARCH-01 | Phase 4 | Pending |
-| SEARCH-02 | Phase 4 | Pending |
-| SEARCH-03 | Phase 4 | Pending |
-| SEARCH-04 | Phase 4 | Pending |
+| SEARCH-01 | Phase 4 | Complete |
+| SEARCH-02 | Phase 4 | Complete |
+| SEARCH-03 | Phase 4 | Complete |
+| SEARCH-04 | Phase 4 | Complete |
 | SEARCH-05 | Phase 4 | Pending |
 | SEARCH-06 | Phase 4 | Pending |
 | SEARCH-07 | Phase 4 | Pending |
 | SEARCH-08 | Phase 4 | Pending |
-| B2B-01 | Phase 4 | Pending |
-| B2B-02 | Phase 4 | Pending |
+| B2B-01 | Phase 4 | Complete |
+| B2B-02 | Phase 4 | Complete |
 | B2B-03 | Phase 4 | Pending |
 | RATE-01 | Phase 1 | Pending |
 | RATE-02 | Phase 1 | Pending |

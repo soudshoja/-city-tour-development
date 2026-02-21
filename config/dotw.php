@@ -116,4 +116,21 @@ return [
     |
     */
     'log_channel' => 'dotw',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Search Result Cache
+    |--------------------------------------------------------------------------
+    |
+    | TTL for hotel search results in seconds.
+    | Default: 150 seconds (2.5 minutes) — reduces DOTW API calls during
+    | multi-question WhatsApp conversations.
+    |
+    | Prefix applied to all DOTW cache keys.
+    |
+    */
+    'cache' => [
+        'ttl' => env('DOTW_CACHE_TTL', 150),
+        'prefix' => env('DOTW_CACHE_PREFIX', 'dotw_search'),
+    ],
 ];

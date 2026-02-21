@@ -123,6 +123,12 @@ None yet.
 
 None yet.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Sanctum API token support for DOTW per-company n8n integration with admin UI | 2026-02-21 | feebb1dd | [1-sanctum-api-token-support-for-dotw-per-c](.planning/quick/1-sanctum-api-token-support-for-dotw-per-c/) |
+
 ## Session Continuity
 
 Last session: 2026-02-21

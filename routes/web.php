@@ -931,7 +931,7 @@ Route::middleware(['auth', 'dotw_audit_access'])
     ->prefix('admin/dotw')
     ->name('admin.dotw.')
     ->group(function () {
-        Route::get('audit-logs', \App\Http\Livewire\Admin\DotwAuditLogIndex::class)
+        Route::get('audit-logs', fn () => view('admin.dotw.audit-logs'))
             ->name('audit-logs');
     });
 
@@ -940,7 +940,7 @@ Route::middleware(['auth'])
     ->prefix('admin/dotw')
     ->name('admin.dotw.')
     ->group(function () {
-        Route::get('api-tokens', \App\Http\Livewire\Admin\DotwApiTokenIndex::class)
+        Route::get('api-tokens', fn () => view('admin.dotw.api-tokens'))
             ->name('api-tokens');
     });
 

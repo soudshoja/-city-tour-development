@@ -6,6 +6,7 @@ namespace App\GraphQL\Queries;
 
 use App\Exceptions\DotwTimeoutException;
 use App\Services\DotwCacheService;
+use App\Services\DotwCircuitBreakerService;
 use App\Services\DotwService;
 use RuntimeException;
 
@@ -34,9 +35,11 @@ class DotwSearchHotels
 {
     /**
      * Cache service for per-company search result caching.
+     * Circuit breaker service for DOTW API failure rate-limiting (ERROR-08).
      */
     public function __construct(
         private readonly DotwCacheService $cache,
+        private readonly DotwCircuitBreakerService $circuitBreaker,
     ) {}
 
     /**
@@ -87,6 +90,33 @@ class DotwSearchHotels
         $cacheKey = $this->cache->buildKey($companyId, $destination, $checkin, $checkout, $rooms);
         $wasCached = $this->cache->isCached($cacheKey); // MUST be called BEFORE remember()
 
+        // Circuit breaker guard (ERROR-08) — MUST run before cache->remember()
+        if ($this->circuitBreaker->isOpen($companyId)) {
+            $cachedHotels = $this->cache->get($cacheKey);
+            if ($cachedHotels !== null) {
+                // Serve cached result — circuit is open but cache hit available
+                $formattedHotels = $this->formatHotels($cachedHotels, $companyId);
+
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'cached' => true,
+                    'data' => [
+                        'hotels' => $formattedHotels,
+                        'total_count' => count($formattedHotels),
+                    ],
+                    'meta' => $this->buildMeta($companyId),
+                ];
+            }
+
+            // Circuit open, no cache — return CIRCUIT_BREAKER_OPEN error
+            return $this->errorResponse(
+                'CIRCUIT_BREAKER_OPEN',
+                'Try again in 30 seconds',
+                'RETRY_IN_30_SECONDS'
+            );
+        }
+
         try {
             $hotels = $this->cache->remember($cacheKey, function () use (
                 $companyId, $checkin, $checkout, $currency, $rooms, $filters,
@@ -115,6 +145,9 @@ class DotwSearchHotels
                 );
             });
         } catch (DotwTimeoutException $e) {
+            // Timeouts count toward circuit breaker threshold (ERROR-08)
+            $this->circuitBreaker->recordFailure($companyId);
+
             return $this->errorResponse(
                 'API_TIMEOUT',
                 'Search taking too long, please try again',
@@ -123,6 +156,7 @@ class DotwSearchHotels
             );
         } catch (RuntimeException $e) {
             // Credential errors thrown by DotwService constructor (CRED-05)
+            // NOT counted toward circuit breaker — misconfig is not a transient API failure
             return $this->errorResponse(
                 'CREDENTIALS_NOT_CONFIGURED',
                 'DOTW credentials not configured for this company.',
@@ -130,6 +164,9 @@ class DotwSearchHotels
                 $e->getMessage()
             );
         } catch (\Exception $e) {
+            // Generic API failures count toward circuit breaker threshold (ERROR-08)
+            $this->circuitBreaker->recordFailure($companyId);
+
             return $this->errorResponse(
                 'API_ERROR',
                 'Hotel search failed. Please try again.',
@@ -137,6 +174,9 @@ class DotwSearchHotels
                 $e->getMessage()
             );
         }
+
+        // Successful API call — reset circuit breaker failure counter (ERROR-08)
+        $this->circuitBreaker->recordSuccess($companyId);
 
         // Format hotels — apply per-company markup to each rate, build SearchHotelsResponse shape
         $formattedHotels = $this->formatHotels($hotels, $companyId);

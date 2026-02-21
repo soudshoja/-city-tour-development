@@ -107,6 +107,23 @@ class DotwCacheService
     }
 
     /**
+     * Retrieve a cached value directly without affecting the TTL.
+     *
+     * Used by the circuit breaker fallback path to read cached search results
+     * when the DOTW API is unavailable. Returns null if the key does not exist.
+     *
+     * @param  string  $key  The cache key (from buildKey()).
+     * @return array|null The cached result, or null on cache miss.
+     */
+    public function get(string $key): ?array
+    {
+        /** @var array|null $result */
+        $result = Cache::get($key);
+
+        return is_array($result) ? $result : null;
+    }
+
+    /**
      * Remove a specific entry from the cache.
      *
      * Use this to invalidate stale search results, e.g. after a booking

@@ -526,3 +526,152 @@ type BlockRatesData {
     "Cancellation rules applicable to the locked rate."
     cancellation_rules: [CancellationRule!]!
 }
+
+# ============================================================
+# Phase 6: Pre-Booking & Confirmation Workflow
+# ============================================================
+
+"""
+Passenger details for DOTW hotel booking confirmation.
+Salutation codes: 1=Mr, 2=Mrs, 3=Ms, 4=Dr, 5=Prof.
+"""
+input PassengerInput {
+    "Salutation code: 1=Mr, 2=Mrs, 3=Ms, 4=Dr, 5=Prof."
+    salutation: Int!
+
+    "Passenger first name."
+    firstName: String!
+
+    "Passenger last name / family name."
+    lastName: String!
+
+    "ISO 3166-1 alpha-2 nationality code (e.g. KW, AE, GB)."
+    nationality: String!
+
+    "ISO 3166-1 alpha-2 country of residence code."
+    residenceCountry: String!
+
+    "Guest email address for booking confirmation communication."
+    email: String!
+}
+
+"""
+Input for createPreBooking mutation.
+Converts a locked prebook (from blockRates) into a confirmed DOTW booking.
+"""
+input CreatePreBookingInput {
+    "UUID prebook key from blockRates response. Identifies the locked rate."
+    prebook_key: String!
+
+    "Check-in date in YYYY-MM-DD format. Must match the dates used in blockRates."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format. Must match the dates used in blockRates."
+    checkout: String!
+
+    """
+    Passenger details. One entry per adult per room.
+    Count must match total adults in the room configuration used in blockRates.
+    First passenger is treated as lead guest for email communication.
+    """
+    passengers: [PassengerInput!]!
+
+    """
+    Room configuration. Reuses SearchHotelRoomInput from Phase 4.
+    Required to reconstruct room occupancy (adultsCode, children) for DOTW confirmBooking call.
+    Must match the room configuration used in the original blockRates call.
+    """
+    rooms: [SearchHotelRoomInput!]!
+
+    """
+    Optional city/destination code for alternative hotel suggestions.
+    Used when rate is no longer available (ERROR-04) — enables searching 3 nearby alternatives.
+    Same city code as the original searchHotels call. Omit if alternatives are not needed.
+    """
+    destination: String
+}
+
+"Hotel booking itinerary details returned on successful DOTW confirmation."
+type BookingItinerary {
+    "DOTW hotel identifier."
+    hotel_code: String!
+
+    "Hotel name from prebook context."
+    hotel_name: String!
+
+    "Check-in date (YYYY-MM-DD)."
+    checkin: String!
+
+    "Check-out date (YYYY-MM-DD)."
+    checkout: String!
+
+    "Room type code."
+    room_type: String!
+
+    "Rate basis name (e.g. Bed and Breakfast, Half Board)."
+    rate_basis: String!
+
+    "Total fare with markup applied (customer-facing price)."
+    total_fare: Float!
+
+    "Currency code (e.g. KWD, USD)."
+    currency: String!
+
+    "Whether the booking is refundable."
+    is_refundable: Boolean!
+
+    "Lead passenger full name (salutation + firstName + lastName)."
+    lead_guest_name: String!
+
+    "UUID customer reference generated for DOTW. Use for booking amendments or disputes."
+    customer_reference: String!
+
+    "Secondary DOTW confirmation number if provided. Empty string when not returned."
+    confirmation_number: String!
+}
+
+"Data payload on successful createPreBooking response."
+type CreatePreBookingData {
+    "DOTW booking confirmation code (bookingCode from confirmBooking response)."
+    booking_confirmation_code: String!
+
+    "Booking status (e.g. confirmed)."
+    booking_status: String!
+
+    "Booking itinerary details for WhatsApp display."
+    itinerary_details: BookingItinerary!
+
+    """
+    Alternative hotels suggested when rate was unavailable (ERROR-04/ERROR-06).
+    Empty array on successful booking. Up to 3 results from searchHotels with same destination.
+    """
+    alternatives: [HotelSearchResult!]!
+}
+
+"Response envelope for createPreBooking mutation."
+type CreatePreBookingResponse {
+    "True when booking was confirmed successfully."
+    success: Boolean!
+
+    "Structured error when booking failed."
+    error: DotwError
+
+    "Request metadata: trace_id, company_id, timestamp."
+    meta: DotwMeta!
+
+    "Always false — booking is a side-effecting mutation, never cached."
+    cached: Boolean!
+
+    "Booking data on success. Null on failure."
+    data: CreatePreBookingData
+}
+
+extend type Mutation {
+    """
+    Confirm a hotel booking using a locked prebook_key from blockRates.
+    Validates passenger details, calls DOTW confirmBooking, creates dotw_bookings record.
+    Returns confirmation code and itinerary on success, or specific error with alternatives on failure.
+    """
+    createPreBooking(input: CreatePreBookingInput! @spread): CreatePreBookingResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwCreatePreBooking")
+}

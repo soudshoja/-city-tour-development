@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
+use App\Models\CompanyDotwCredential;
 use App\Services\DotwCacheService;
 use App\Services\DotwService;
 use RuntimeException;
@@ -78,7 +79,7 @@ class DotwSearchHotels
         $destination = trim($input['destination'] ?? '');
         $checkin = trim($input['checkin'] ?? '');
         $checkout = trim($input['checkout'] ?? '');
-        $currency = trim($input['currency'] ?? 'USD');
+        $currency = trim($input['currency'] ?? '') ?: (CompanyDotwCredential::where('company_id', $companyId)->value('currency') ?? 'USD');
         $rooms = $this->buildRoomsFromInput($input['rooms'] ?? []);
         $filters = $this->buildFilters($destination, $input['filters'] ?? []);
 

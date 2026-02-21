@@ -926,22 +926,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->name('error-dashboard.metrics');
 });
 
-// DOTW Audit Log Viewer (Phase 2 Plan 3)
+// DOTW Admin (unified tabbed page) — Phase 2 Plan 3 + Quick-2
 Route::middleware(['auth', 'dotw_audit_access'])
     ->prefix('admin/dotw')
     ->name('admin.dotw.')
     ->group(function () {
-        Route::get('audit-logs', fn () => view('admin.dotw.audit-logs'))
-            ->name('audit-logs');
-    });
-
-// DOTW API Token Manager — Super Admin only (403 enforced in DotwApiTokenIndex::mount())
-Route::middleware(['auth'])
-    ->prefix('admin/dotw')
-    ->name('admin.dotw.')
-    ->group(function () {
-        Route::get('api-tokens', fn () => view('admin.dotw.api-tokens'))
-            ->name('api-tokens');
+        Route::get('/', fn () => view('admin.dotw.index'))->name('index');
+        Route::redirect('audit-logs', '/admin/dotw', 301)->name('audit-logs');
+        Route::redirect('api-tokens', '/admin/dotw', 301)->name('api-tokens');
     });
 
 require __DIR__.'/auth.php';

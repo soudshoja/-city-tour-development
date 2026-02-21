@@ -85,7 +85,7 @@ Plans:
 4. Inspecting any audit log row reveals no DOTW credentials (dotw_username, dotw_password) and no sensitive passenger details in plaintext.
 5. All four operation types (search, rates, block, book) produce audit log entries with correct operation_type label.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 02-01-PLAN.md — Data layer: dotw_audit_logs migration, DotwAuditLog model, DotwAuditService with sanitization
@@ -222,7 +222,7 @@ Plans:
 | Phase | Name | Wave | Requirements | Status |
 |-------|------|------|-------------|--------|
 | 1 | 1/2 | In Progress|  | Planning complete |
-| 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Planning complete (2 plans) |
+| 2 | 1/3 | In Progress|  | Planning complete (2 plans) |
 | 3 | 2/2 | Complete   | 2026-02-21 | Not started |
 | 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Not started |

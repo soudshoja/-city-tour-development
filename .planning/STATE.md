@@ -37,7 +37,7 @@ Progress: ○ 0 of 8 phases complete
 | Phase | Name | Wave | Status |
 |-------|------|------|--------|
 | 1 | Credential Management & Markup Foundation | Wave 1 | In Progress (Plan 01 of 02 complete) |
-| 2 | Message Tracking & Audit Infrastructure | Wave 1 | Not started |
+| 2 | Message Tracking & Audit Infrastructure | Wave 1 | In Progress (Plan 01 of 02 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
@@ -66,6 +66,9 @@ Progress: ○ 0 of 8 phases complete
 - DateInterval used for Cache TTL (not integer seconds) in DotwCacheService — type-safe and self-documenting
 - remember() does not inject 'cached' flag into results — callers use isCached() before remember() to detect hits
 - company_id embedded directly in cache key string — simpler than namespacing, works across all Laravel cache drivers
+- No FK on company_id in dotw_audit_logs — DOTW module is standalone per MOD-06, audit logs survive company changes
+- Fail-silent logging pattern in DotwAuditService — audit failure never breaks DOTW search/booking operations
+- UPDATED_AT = null on DotwAuditLog — audit logs are append-only, immutable after creation
 
 ### Pending Todos
 
@@ -78,8 +81,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 03-01-PLAN.md — DotwCacheService with deterministic per-company cache key generation
-Next: Execute Phase 3 Plan 03 (remaining plan in Phase 3)
+Stopped at: Completed 02-01-PLAN.md — DOTW audit infrastructure (migration, DotwAuditLog model, DotwAuditService)
+Next: Execute Phase 2 Plan 02 (DotwService wiring and Lighthouse middleware integration)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

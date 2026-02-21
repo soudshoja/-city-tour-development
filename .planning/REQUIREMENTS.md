@@ -19,11 +19,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 2. Message Tracking & Audit Trail
 
-- [ ] **MSG-01**: Database migration creates `dotw_audit_logs` table (company_id, resayil_message_id, resayil_quote_id, operation_type, request_payload, response_payload, created_at)
+- [x] **MSG-01**: Database migration creates `dotw_audit_logs` table (company_id, resayil_message_id, resayil_quote_id, operation_type, request_payload, response_payload, created_at)
 - [ ] **MSG-02**: Every GraphQL operation logs Resayil message_id + quote_id (passed in GraphQL headers)
-- [ ] **MSG-03**: Audit log captures entire request/response for debugging (DOTW bookings linked to WhatsApp conversations)
-- [ ] **MSG-04**: All DOTW operations (search, rates, block, book) link to originating WhatsApp message for conversation context
-- [ ] **MSG-05**: Audit logs never contain encrypted credentials or sensitive passenger details
+- [x] **MSG-03**: Audit log captures entire request/response for debugging (DOTW bookings linked to WhatsApp conversations)
+- [x] **MSG-04**: All DOTW operations (search, rates, block, book) link to originating WhatsApp message for conversation context
+- [x] **MSG-05**: Audit logs never contain encrypted credentials or sensitive passenger details
 
 ### 3. Search Result Caching
 
@@ -191,11 +191,11 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | MARKUP-02 | Phase 1 | Complete |
 | ERROR-05 | Phase 1 | Pending |
 | B2B-04 | Phase 1 | Complete |
-| MSG-01 | Phase 2 | Pending |
+| MSG-01 | Phase 2 | Complete |
 | MSG-02 | Phase 2 | Pending |
-| MSG-03 | Phase 2 | Pending |
-| MSG-04 | Phase 2 | Pending |
-| MSG-05 | Phase 2 | Pending |
+| MSG-03 | Phase 2 | Complete |
+| MSG-04 | Phase 2 | Complete |
+| MSG-05 | Phase 2 | Complete |
 | CACHE-01 | Phase 3 | Complete |
 | CACHE-02 | Phase 3 | Complete |
 | CACHE-03 | Phase 3 | Complete |

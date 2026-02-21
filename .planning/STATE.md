@@ -1,111 +1,188 @@
-# Project State
+# Project State - DOTW v1.0 B2B
+
+**Milestone:** DOTW v1.0 B2B Hotel Booking Integration
+**Updated:** 2026-02-21
+**Status:** Ready for planning and execution
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-12)
+**Core Value:** Per-company DOTW credentials with Resayil WhatsApp message tracking enable B2B hotel booking API integrations through comprehensive, cacheable GraphQL operations.
 
-**Core value:** Agents can invoice clients accurately from any source (AIR files, PDFs, Excel uploads) with automated payment tracking and accounting integration.
-**Current focus:** Phase 2 - UI & Preview Workflow
+**Live Domain:** (Production subdomain - TBD after planning)
+**Development Domain:** soud-laravel (localhost)
 
-## Current Position
+## Milestone Structure
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements for DOTW v1.0 B2B
-Last activity: 2026-02-21 — Started milestone DOTW v1.0 B2B
+**Phases:** 5-12 (8 phases, continuing from v1.0 Bulk Invoice Upload)
+**Total Requirements:** 54 v1 requirements
+**Requirement Coverage:** 100% (all 54 mapped to exactly one phase)
 
-Progress: ○ Gathering requirements
+### Completed Milestones
+
+- ✅ **v1.0 Bulk Invoice Upload** (2026-02-13) — 4 phases, 10 plans, ~25 tasks
+  - Excel template + validation
+  - Preview workflow
+  - Atomic invoice creation
+  - PDF generation + email delivery
+  - Error reporting and audit trail
+
+## Current Roadmap
+
+### Phases 5-12 Overview
+
+| Phase | Name | Goal | Requirements | Status |
+|-------|------|------|--------------|--------|
+| 5 | Credential Management & Database Setup | Per-company DOTW credential storage with encryption and 20% markup foundation | 9 | Not started |
+| 6 | Message Tracking & Audit Infrastructure | Resayil WhatsApp message tracking with comprehensive audit logs | 7 | Not started |
+| 7 | Hotel Search API & Caching | GraphQL search endpoint with 2.5-minute result caching per destination/dates/rooms | 23 | Not started |
+| 8 | Rate Browsing & Rate Blocking | Room rates display and 3-minute allocation blocking with prebook tracking | 19 | Not started |
+| 9 | Pre-Booking & Confirmation Workflow | Passenger validation and DOTW booking confirmation with confirmation tracking | 12 | Not started |
+| 10 | GraphQL Response Architecture & Error Handling | Unified response structure, error codes, circuit breaker, and resilience patterns | 13 | Not started |
+| 11 | Modular Architecture & B2B Extensibility | Service modularity, composable schema, deployment documentation | 13 | Not started |
+| 12 | Integration Testing & Deployment | End-to-end testing, N8N workflow validation, production deployment | All 54 | Not started |
+
+## Parallel Execution Strategy
+
+### Wave 1: Foundation Infrastructure (Start Immediately)
+
+**Phases 5 & 6 can execute in parallel**
+
+- **Phase 5: Credential Management & Database Setup**
+  - Estimated effort: 8 tasks (3-4 days)
+  - No dependencies
+  - Deliverables: Database migration, admin API endpoint, encryption layer, error handling
+  - Owner: Claude
+
+- **Phase 6: Message Tracking & Audit Infrastructure**
+  - Estimated effort: 5 tasks (2-3 days)
+  - No dependencies
+  - Deliverables: Database migration, audit logging middleware, context extraction
+  - Owner: Claude
+
+**Rationale:** Both are foundational database/infrastructure work. No code dependencies. Can develop independently.
+
+---
+
+### Wave 2: Search Feature + Response Architecture (After Wave 1)
+
+**Phase 7 depends on Phases 5 & 6 complete**
+**Phase 10 can parallelize with Phase 7**
+**Phase 11 can start early to inform code structure**
+
+- **Phase 7: Hotel Search API & Caching**
+  - Estimated effort: 10 tasks (5-6 days)
+  - Dependencies: Phase 5 (credentials), Phase 6 (audit logs)
+  - Deliverables: GraphQL searchHotels query, caching layer, DOTW integration, error handling
+  - Owner: Claude
+
+- **Phase 10: GraphQL Response Architecture & Error Handling**
+  - Estimated effort: 6 tasks (3-4 days)
+  - Dependencies: Can parallelize with Phase 7 (response wrapper applies to all)
+  - Deliverables: Response wrapper class, error codes, circuit breaker, logging
+  - Owner: Claude
+
+- **Phase 11: Modular Architecture & B2B Extensibility**
+  - Estimated effort: 5 tasks (2-3 days)
+  - Dependencies: Phases 5-10 code structure (can start early to inform design)
+  - Deliverables: Service extraction, config file, GraphQL schema modularity, README
+  - Owner: Claude
+
+---
+
+### Wave 3: Rate Operations (After Phase 7)
+
+**Phase 8 depends on Phase 7 complete**
+
+- **Phase 8: Rate Browsing & Rate Blocking**
+  - Estimated effort: 9 tasks (5-6 days)
+  - Dependencies: Phase 7 (hotel selection from search)
+  - Deliverables: GraphQL getRoomRates query, blockRates mutation, prebook tracking, 3-minute expiry
+  - Owner: Claude
+
+---
+
+### Wave 4: Booking Confirmation (After Phase 8)
+
+**Phase 9 depends on Phase 8 complete**
+
+- **Phase 9: Pre-Booking & Confirmation Workflow**
+  - Estimated effort: 8 tasks (4-5 days)
+  - Dependencies: Phase 8 (blocked rates)
+  - Deliverables: GraphQL createPreBooking mutation, passenger validation, booking confirmation, error handling
+  - Owner: Claude
+
+---
+
+### Wave 5: Integration Testing & Deployment (Final)
+
+**Phase 12 depends on Phases 5-11 complete**
+
+- **Phase 12: Integration Testing & Deployment**
+  - Estimated effort: 8 tasks (4-5 days)
+  - Dependencies: All phases complete
+  - Deliverables: End-to-end tests, N8N templates, load testing, deployment verification
+  - Owner: Claude
+
+---
+
+## Execution Timeline (Parallel-Optimized)
+
+```
+Start → Wave 1 (Days 1-3)
+        ├─ Phase 5: Credentials (3-4 days)
+        └─ Phase 6: Message Tracking (2-3 days)
+        ↓
+        Wave 2 (Days 4-10)
+        ├─ Phase 7: Search (5-6 days)
+        ├─ Phase 10: Response Architecture (3-4 days, parallel with Phase 7)
+        └─ Phase 11: Modularity (2-3 days, starts in Wave 2)
+        ↓
+        Wave 3 (Days 11-16)
+        └─ Phase 8: Rate Blocking (5-6 days)
+        ↓
+        Wave 4 (Days 17-21)
+        └─ Phase 9: Pre-Booking (4-5 days)
+        ↓
+        Wave 5 (Days 22-26)
+        └─ Phase 12: Integration & Deployment (4-5 days)
+
+Total Estimated: 26 days of sequential phases
+With parallelization: 19-21 days wall-clock time (3-4 days saved)
+```
+
+---
+
+## Coverage Summary
+
+**Total:** 54/54 requirements mapped (100% coverage)
+
+---
+
+## Technology Stack
+
+- **Backend:** Laravel 11, PHP 8.2+
+- **GraphQL:** Lighthouse
+- **Database:** MySQL (laravel_testing)
+- **Encryption:** Laravel encryption
+- **Caching:** Laravel cache (Redis or file-based)
+- **Logging:** Laravel logging channel ('dotw')
+
+---
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 9
-- Average duration: 8.0 minutes
-- Total execution time: 1.2 hours
+- Total tasks completed: 0/59
+- Requirements completed: 0/54
+- Phases completed: 0/8
 
-**By Phase:**
+---
 
-| Phase | Plans | Total Time | Avg/Plan |
-|-------|-------|------------|----------|
-| 01-data-foundation-validation | 3 | 16 min | 5.3 min |
-| 02-ui-preview-workflow | 2 | 3 min | 1.5 min |
-| 03-background-invoice-creation | 2 | 51 min | 25.5 min |
-| 04-pdf-generation-email-delivery | 2 | 3 min | 1.5 min |
+## Current Focus
 
-**Recent Plans:**
+**Status:** Ready for planning phase 1 (Phase 5)
 
-| Phase-Plan | Duration | Tasks | Files | Completed |
-|------------|----------|-------|-------|-----------|
-| 04-02 | 2 min | 2 | 2 | 2026-02-13 |
-| 04-01 | 1 min | 2 | 3 | 2026-02-13 |
-| 03-02 | 49 min | 2 | 2 | 2026-02-13 |
-| 03-01 | 2 min | 2 | 3 | 2026-02-13 |
-| 02-02 | 1 min | 3 | 4 | 2026-02-13 |
+**Next:** Execute `/gsd:plan-phase 5`
 
-## Accumulated Context
+---
 
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- One invoice per client (not per row) — Matches existing manual invoice creation pattern
-- Flag unknown clients instead of auto-create — Prevents duplicate/incorrect client creation
-- Full validation before preview — Fail fast with clear errors, better UX than partial imports
-- Email to accountant + agent (not WhatsApp) — Professional invoice delivery
-- Leverage existing InvoiceController logic — Reuse proven invoice creation
-
-**From Plan 01-01:**
-- Multi-sheet Excel export pattern — Separate template from client reference for better UX
-- Soft deletes on bulk_uploads only — Parent audit trail needed, rows cascade with parent
-- Cascade delete strategy — bulk_uploads → rows CASCADE, tasks/clients/suppliers → rows SET NULL for audit
-
-**From Plan 01-02:**
-- PostgreSQL fallback for testing — MySQL not running, PostgreSQL driver available, test infrastructure more resilient
-- Unknown client flagging confirmed — Matches PROJECT.md decision, flags with 'unknown_client' not error
-- Case-insensitive supplier lookup — Handles user input variation in capitalization
-
-**From Plan 01-03:**
-- Excel::toArray() pattern for parsing — Simpler than ToCollection for validation-first workflow
-- Bulk insert BulkUploadRow records — Performance optimization for 50+ row uploads
-- Multi-tenant file storage — Files stored at bulk-uploads/{company_id}/ for isolation
-- Fail fast on header validation — Return 422 immediately, don't process rows if headers wrong
-
-**From Plan 02-01:**
-- Composite key grouping over nested groupBy — Simpler Blade iteration, flatter structure
-- Redirect to preview vs JSON response — Better UX flow, immediate visual feedback
-- Disabled buttons for future features — Visual feedback without incomplete functionality
-
-**From Plan 02-02:**
-- Conditional update with status guard prevents race conditions — WHERE status='validated' prevents double-click, concurrent requests
-- Alpine.js modals over separate confirmation pages — Better UX, keeps context visible, ESC key support
-- Empty invoices collection on success page — Phase 3 creates actual Invoice records
-- Reject redirects to dashboard — Flash message sufficient, no dedicated reject page needed
-
-**From Plan 03-01:**
-- lockForUpdate on InvoiceSequence instead of no locking — Prevents race conditions when multiple jobs generate invoice numbers concurrently
-- Duplicate task check throws exception causing full rollback — Ensures atomicity - if ANY task is already invoiced, NO invoices are created from this upload
-- Migration execution deferred to production deployment — No local database server available, migrations will run during deployment after all phases complete
-- Verification uses syntax/static checks only — PHP linting and Pint formatting instead of database-dependent tinker/migrate checks
-- [Phase 03]: afterCommit() prevents job from running before status commit — Ensures 'processing' status is visible in database before job starts
-- [Phase 03]: Three-state success page (processing/failed/completed) — Better UX than single static message
-- [Phase 04-01]: Serialize only bulkUploadId (not Eloquent model) in job constructor - prevents serialization issues in queue
-- [Phase 04-01]: No ShouldQueue on Mailable class - SendInvoiceEmailsJob handles queueing for clear separation
-- [Phase 04-01]: Email failure does not update BulkUpload status - invoices already created, email is just notification
-- [Phase 04-02]: Dispatch email job AFTER transaction (not inside) - PDF generation is CPU-intensive and must not hold DB locks
-- [Phase 04-02]: Separate 'emails' queue for email workers - allows independent scaling from invoice creation workers
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-None yet.
-
-## Session Continuity
-
-Last session: 2026-02-13
-Stopped at: Completed 04-02-PLAN.md (Integration with CreateBulkInvoicesJob)
-Resume file: .planning/phases/04-pdf-generation-email-delivery/04-02-SUMMARY.md
-Next: All phases complete - ready for production deployment
+*State updated: 2026-02-21*

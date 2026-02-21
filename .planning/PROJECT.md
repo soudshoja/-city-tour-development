@@ -77,11 +77,13 @@ Delivered complete bulk invoice creation system from Excel uploads:
 
 **DOTW v1.0 B2B Features (in planning):**
 - Per-company DOTW credential management (username, password, company_code)
-- Hotel search with live rates and filters
-- Rate browsing (room types, meal plans, cancellation policies)
+- Hotel search with live rates and DOTW filters (destination, rating, price, property type, amenities)
+- Rate browsing (room types, meal plans, cancellation policies, refundability)
 - Rate blocking (3-minute allocation expiry, dotw_prebooks tracking)
-- Pre-booking and confirmation workflow
-- GraphQL API (searchHotels, getRoomRates, createPreBooking, confirmBooking)
+- Pre-booking workflow (passenger details, confirmation)
+- Comprehensive GraphQL API (searchHotels, getRoomRates, blockRates, createPreBooking)
+  - Full DOTW filter support for flexible B2B integrations
+  - All operations require company authentication context
 - B2C markup application (20% default, configurable per company)
 
 ### Out of Scope

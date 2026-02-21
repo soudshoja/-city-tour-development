@@ -99,7 +99,7 @@
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
                         class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <img src="https://www.pratra.com/assets/img/page/api-sub-dotw-webbeds.png"
+                        <img src="https://www.webbeds.com/wp-content/uploads/2018/11/dotw-wb.jpg"
                              alt="DOTW"
                              class="h-5 w-5 object-contain">
                         DOTW / Hotel API
@@ -134,7 +134,7 @@
 
                 @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
                 <div x-show="activeTab === 'dotw'" x-cloak>
-                    @livewire('admin.dotw-admin-index')
+                    @livewire(\App\Http\Livewire\Admin\DotwAdminIndex::class)
                 </div>
                 @endif
             </div>

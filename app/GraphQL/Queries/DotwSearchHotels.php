@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
-use App\Models\CompanyDotwCredential;
 use App\Services\DotwCacheService;
 use App\Services\DotwService;
 use RuntimeException;
@@ -79,7 +78,7 @@ class DotwSearchHotels
         $destination = trim($input['destination'] ?? '');
         $checkin = trim($input['checkin'] ?? '');
         $checkout = trim($input['checkout'] ?? '');
-        $currency = trim($input['currency'] ?? '') ?: (CompanyDotwCredential::where('company_id', $companyId)->value('currency') ?? 'USD');
+        $currency = trim($input['currency'] ?? '') ?: null; // null = omit from DOTW call; DOTW account default applies
         $rooms = $this->buildRoomsFromInput($input['rooms'] ?? []);
         $filters = $this->buildFilters($destination, $input['filters'] ?? []);
 
@@ -98,10 +97,12 @@ class DotwSearchHotels
                 $searchParams = [
                     'fromDate' => $checkin,
                     'toDate' => $checkout,
-                    'currency' => $currency,
                     'rooms' => $rooms,
                     'filters' => $filters,
                 ];
+                if ($currency !== null) {
+                    $searchParams['currency'] = $currency;
+                }
 
                 // DotwService::searchHotels() handles audit logging internally (MSG-07/SEARCH-07).
                 // Do NOT call DotwAuditService here — that would double-log the operation.

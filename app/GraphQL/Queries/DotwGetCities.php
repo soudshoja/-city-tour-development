@@ -43,7 +43,7 @@ class DotwGetCities
 
         if (strlen($countryCode) !== 2) {
             return $this->errorResponse(
-                'INVALID_INPUT',
+                'VALIDATION_ERROR',
                 'country_code must be a 2-letter ISO 3166-1 alpha-2 code (e.g. AE, KW, GB).',
                 'RETRY'
             );

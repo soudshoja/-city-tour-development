@@ -92,7 +92,7 @@
                 <div class="relative">
                     <div data-tooltip="DOTW Hotel API"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                        <img src="https://www.pratra.com/assets/img/page/api-sub-dotw-webbeds.png"
+                        <img src="https://www.webbeds.com/wp-content/uploads/2018/11/dotw-wb.jpg"
                              alt="DOTW Hotel API"
                              class="h-6 w-6 object-contain">
                     </div>

@@ -40,7 +40,7 @@ Progress: ○ 0 of 8 phases complete
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
-| 5 | Rate Browsing & Rate Blocking | Wave 2 | In Progress (Plans 01 and 02 of 03 complete) |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | Not started |
@@ -98,6 +98,8 @@ Progress: ○ 0 of 8 phases complete
 - activeForUser() scope uses where('expired_at', '>', now()) — matches compound index column order for query plan optimization
 - DotwGetRoomRates instantiates DotwService once in __invoke and passes it to formatRooms() — avoids second DB credential lookup, mirrors formatHotels() pattern in DotwSearchHotels
 - is_refundable defaults to true when parseRooms() does not include nonRefundable key — safe conservative default for rate browse
+- DotwAuditService::log() positional args: (string operationType, array request, array response, ?string resayilMessageId, ?string resayilQuoteId, ?int companyId) — plan template used single-array pattern which was corrected to match the real signature
+- Two-phase audit in blockRates: Phase A (DotwService::getRooms internal log, no prebook_key), Phase B (supplementary post-transaction DotwAuditService::log with prebook_key and allocation_expiry per BLOCK-07)
 
 ### Pending Todos
 
@@ -110,8 +112,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-02-PLAN.md — DotwGetRoomRates resolver for getRoomRates GraphQL query (RATE-01 through RATE-08, MARKUP-03/04/05)
-Next: Execute Phase 5 Plan 03 — DotwBlockRates mutation resolver (blockRates mutation declared in schema, DotwPrebook.activeForUser() ready for BLOCK-08)
+Stopped at: Completed 05-03-PLAN.md — DotwBlockRates mutation resolver for blockRates GraphQL mutation (BLOCK-01 through BLOCK-08, SEARCH-06). Phase 5 complete.
+Next: Execute Wave 3 phases in parallel — Phase 6 (Pre-Booking & Confirmation Workflow), Phase 7 (Error Hardening & Circuit Breaker), Phase 8 (Modular Architecture & B2B Packaging)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

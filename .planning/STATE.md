@@ -129,11 +129,12 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 1 | Sanctum API token support for DOTW per-company n8n integration with admin UI | 2026-02-21 | feebb1dd | [1-sanctum-api-token-support-for-dotw-per-c](.planning/quick/1-sanctum-api-token-support-for-dotw-per-c/) |
 | 2 | Unified DOTW admin page at /admin/dotw — tabbed credentials form, audit logs, API tokens | 2026-02-21 | 5368b85a | [2-unified-dotw-admin-page-at-admin-dotw-wi](.planning/quick/2-unified-dotw-admin-page-at-admin-dotw-wi/) |
+| 3 | DOTW / Hotel API tab added to /settings page; sidebar icon replaced with Pratra DOTW logo | 2026-02-21 | 96a8391a | [3-move-dotw-unified-page-to-project-settin](.planning/quick/3-move-dotw-unified-page-to-project-settin/) |
 
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed quick-2 — Unified DOTW admin page at /admin/dotw (tabbed UI: credentials, audit logs, API tokens)
+Stopped at: Completed quick-3 — DOTW / Hotel API tab in /settings + Pratra logo in sidebar
 Next: Execute Phase 8 (Modular Architecture & B2B Packaging) — final Wave 3 phase, DOTW v1.0 B2B completion
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)

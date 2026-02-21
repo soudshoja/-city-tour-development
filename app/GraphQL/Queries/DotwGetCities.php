@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
+use App\Exceptions\DotwTimeoutException;
 use App\Services\DotwService;
 use Exception;
+use RuntimeException;
 
 /**
  * Resolver for the getCities GraphQL query.
@@ -68,16 +70,21 @@ class DotwGetCities
                     'total_count' => count($cities),
                 ],
             ];
+        } catch (DotwTimeoutException $e) {
+            return $this->errorResponse(
+                'API_TIMEOUT',
+                'Search taking too long, please try again',
+                'RETRY',
+                $e->getMessage()
+            );
+        } catch (RuntimeException $e) {
+            return $this->errorResponse(
+                'CREDENTIALS_NOT_CONFIGURED',
+                'DOTW credentials not configured for this company.',
+                'RECONFIGURE_CREDENTIALS',
+                $e->getMessage()
+            );
         } catch (Exception $e) {
-            // Credential errors from DotwService constructor throw RuntimeException
-            if (str_contains($e->getMessage(), 'credentials') || str_contains($e->getMessage(), 'CREDENTIALS')) {
-                return $this->errorResponse(
-                    'CREDENTIALS_NOT_CONFIGURED',
-                    'DOTW credentials not configured for this company.',
-                    'RECONFIGURE_CREDENTIALS'
-                );
-            }
-
             return $this->errorResponse(
                 'API_ERROR',
                 'Failed to retrieve city list. Please try again.',

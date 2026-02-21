@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Mutations;
 
+use App\Exceptions\DotwTimeoutException;
 use App\Models\DotwPrebook;
 use App\Services\DotwAuditService;
 use App\Services\DotwService;
@@ -114,6 +115,13 @@ class DotwBlockRates
                 $resayilMessageId,
                 $resayilQuoteId,
                 $companyId
+            );
+        } catch (DotwTimeoutException $e) {
+            return $this->errorResponse(
+                'API_TIMEOUT',
+                'Search taking too long, please try again',
+                'RETRY',
+                $e->getMessage()
             );
         } catch (RuntimeException $e) {
             return $this->errorResponse(

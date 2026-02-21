@@ -59,7 +59,8 @@ return [
     |
     */
     'request' => [
-        'timeout' => env('DOTW_TIMEOUT', 120),
+        // Maximum seconds to wait for a DOTW API response. DOTW SLA: 25 seconds (ERROR-02).
+        'timeout' => env('DOTW_TIMEOUT', 25),
         'connect_timeout' => env('DOTW_CONNECT_TIMEOUT', 30),
         'source' => 1,
         'product' => 'hotel',

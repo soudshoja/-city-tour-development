@@ -37,7 +37,7 @@ Progress: ○ 0 of 8 phases complete
 | Phase | Name | Wave | Status |
 |-------|------|------|--------|
 | 1 | Credential Management & Markup Foundation | Wave 1 | Complete (Plans 01 and 02 of 02 complete) |
-| 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01 and 02 of 02 complete) |
+| 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
@@ -76,6 +76,10 @@ Progress: ○ 0 of 8 phases complete
 - request->attributes used as Resayil ID carrier in GraphQL context — request-scoped, zero overhead, no global state
 - bookItinerary wrapped bookingCode in array for DotwAuditService::log() request param — consistent with other methods
 - companyId ?? $this->companyId fallback on DotwService operations — resolver can override constructor company context per-request
+- App\Http\Livewire\Admin namespace for DotwAuditLogIndex — separate from existing App\Livewire to group DOTW admin components
+- isSuperAdmin() method in Livewire component — DRY role check used for both query scoping and blade conditionals
+- Sidebar WhatsApp AI button uses @if(in_array(...)) pattern — consistent with existing Admin company switcher check in sidebar
+- dotw_audit_access middleware alias registered in bootstrap/app.php — allows Role::ADMIN and Role::COMPANY, 403 for all others
 
 ### Pending Todos
 
@@ -88,8 +92,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 02-02-PLAN.md — Lighthouse middleware and DotwService audit wiring (ResayilContextMiddleware, 4-operation audit chain, SearchDotwHotels resolver wired)
-Next: Phase 2 complete — Phase 3 is the only remaining Wave 1 phase (Cache Service & GraphQL Response Architecture — Plan 03 of 03 remaining)
+Stopped at: Completed 02-03-PLAN.md — WhatsApp AI sidebar button, DotwAuditAccess middleware, DotwAuditLogIndex Livewire component, and role-aware Blade audit log viewer
+Next: Phase 2 fully complete — Phase 3 is the only remaining Wave 1 phase (Cache Service & GraphQL Response Architecture — Plan 03 of 03 remaining)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

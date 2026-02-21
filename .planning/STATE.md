@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 Phase: MILESTONE COMPLETE — All 8 phases executed and verified
 Plan: —
 Status: Complete — DOTW v1.0 B2B milestone all 8 phases done, milestone audit passed
-Last activity: 2026-02-21 — Phase 8 Modular Architecture & B2B Packaging executed (2/2 plans) + milestone audit passed
+Last activity: 2026-02-22 — Production deployment complete. Fixed Livewire full-page component layout scope bug (500 on audit-logs). All DOTW migrations live. DOTW credential setup pending (no UI yet).
 
 Progress: █████████████ 8 of 8 phases complete
 
@@ -128,11 +128,12 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 1 | Sanctum API token support for DOTW per-company n8n integration with admin UI | 2026-02-21 | feebb1dd | [1-sanctum-api-token-support-for-dotw-per-c](.planning/quick/1-sanctum-api-token-support-for-dotw-per-c/) |
+| 2 | Unified DOTW admin page at /admin/dotw — tabbed credentials form, audit logs, API tokens | 2026-02-21 | 5368b85a | [2-unified-dotw-admin-page-at-admin-dotw-wi](.planning/quick/2-unified-dotw-admin-page-at-admin-dotw-wi/) |
 
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed Phase 7 — Error Hardening & Circuit Breaker (ERROR-01, ERROR-02, ERROR-07, ERROR-08). Phase 7 complete (3/3 plans).
+Stopped at: Completed quick-2 — Unified DOTW admin page at /admin/dotw (tabbed UI: credentials, audit logs, API tokens)
 Next: Execute Phase 8 (Modular Architecture & B2B Packaging) — final Wave 3 phase, DOTW v1.0 B2B completion
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)

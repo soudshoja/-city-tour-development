@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 ## Current Position
 
-Phase: Wave 3 — Phases 6, 7, 8 not yet planned
+Phase: Wave 3 — Phase 6 complete, Phases 7 and 8 pending
 Plan: —
-Status: Ready — Wave 2 complete (Phases 4 + 5 executed and verified), plan Phase 6 next
-Last activity: 2026-02-21 — Phase 5 Rate Browsing & Rate Blocking executed and verified (3/3 plans)
+Status: Ready — Wave 3 in progress, Phase 6 complete (2/2 plans), Phases 7 + 8 next
+Last activity: 2026-02-21 — Phase 6 Pre-Booking & Confirmation Workflow executed (2/2 plans)
 
-Progress: ████████░░ 5 of 8 phases complete
+Progress: ██████████░░ 6 of 8 phases complete
 
 ## Wave Structure (DOTW v1.0 B2B)
 
@@ -41,7 +41,7 @@ Progress: ████████░░ 5 of 8 phases complete
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
-| 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
+| 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Complete (Plans 01 and 02 of 02 complete) |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | Not started |
 
@@ -100,6 +100,11 @@ Progress: ████████░░ 5 of 8 phases complete
 - is_refundable defaults to true when parseRooms() does not include nonRefundable key — safe conservative default for rate browse
 - DotwAuditService::log() positional args: (string operationType, array request, array response, ?string resayilMessageId, ?string resayilQuoteId, ?int companyId) — plan template used single-array pattern which was corrected to match the real signature
 - Two-phase audit in blockRates: Phase A (DotwService::getRooms internal log, no prebook_key), Phase B (supplementary post-transaction DotwAuditService::log with prebook_key and allocation_expiry per BLOCK-07)
+- Two-phase audit in createPreBooking: Phase A (DotwService::confirmBooking internal log, raw params + confirmation), Phase B (supplementary resolver log with prebook_key + confirmation_code per BOOK-07)
+- formatAlternatives() helper pattern: DotwService::searchHotels() returns raw array — must be mapped to HotelSearchResult schema shape with markup applied via DotwService::applyMarkup()
+- UPDATED_AT = null on DotwBooking — booking records are append-only after creation (same as DotwAuditLog)
+- No FK on company_id in dotw_bookings — consistent MOD-06 standalone module design across all DOTW tables
+- createPreBooking requires checkin/checkout in input — DotwPrebook does not store these dates (Pitfall 1 from research — resolved by accepting from caller)
 
 ### Pending Todos
 
@@ -112,8 +117,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-03-PLAN.md — DotwBlockRates mutation resolver for blockRates GraphQL mutation (BLOCK-01 through BLOCK-08, SEARCH-06). Phase 5 complete.
-Next: Execute Wave 3 phases in parallel — Phase 6 (Pre-Booking & Confirmation Workflow), Phase 7 (Error Hardening & Circuit Breaker), Phase 8 (Modular Architecture & B2B Packaging)
+Stopped at: Completed Phase 6 — DotwCreatePreBooking mutation resolver (BOOK-01..08, ERROR-03, ERROR-04). Phase 6 complete (2/2 plans).
+Next: Execute Phase 7 (Error Hardening & Circuit Breaker) and Phase 8 (Modular Architecture & B2B Packaging) — Wave 3 completion
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

@@ -43,8 +43,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('dotw_prebooks', function (Blueprint $table) {
-            $table->dropIndex('dotw_prebooks_company_user_expiry_idx');
-            $table->dropColumn(['company_id', 'resayil_message_id']);
+            if (Schema::hasColumn('dotw_prebooks', 'company_id')) {
+                $table->dropIndex('dotw_prebooks_company_user_expiry_idx');
+                $table->dropColumn(['company_id', 'resayil_message_id']);
+            }
         });
     }
 };

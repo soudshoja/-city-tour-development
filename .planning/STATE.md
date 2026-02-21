@@ -36,9 +36,9 @@ Progress: ○ 0 of 8 phases complete
 
 | Phase | Name | Wave | Status |
 |-------|------|------|--------|
-| 1 | Credential Management & Markup Foundation | Wave 1 | Not started |
+| 1 | Credential Management & Markup Foundation | Wave 1 | In Progress (Plan 01 of 02 complete) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | Not started |
-| 3 | Cache Service & GraphQL Response Architecture | Wave 1 | Not started |
+| 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plan 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
@@ -57,6 +57,9 @@ Progress: ○ 0 of 8 phases complete
 - Modular design — can be copied to production subdomain with only config changes + migrations
 - N8N GraphQL integration (GQL-01..08) moved to DOTW V2 B2C milestone
 - GQLR-01..08 (response structure) placed in Phase 3 — must exist before Search, Rates, Booking are built
+- DotwTraceMiddleware registered as Lighthouse route middleware for universal X-Trace-ID and X-Request-Time-Ms header injection
+- trace_id bound in service container as 'dotw.trace_id' for resolver access without global state
+- dotw.graphql standalone schema imported via #import directive — DotwMeta, DotwError, DotwErrorCode, DotwErrorAction types established
 
 ### Pending Todos
 
@@ -69,8 +72,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Roadmap created, all files committed
-Next: `/gsd:plan-phase 1` — or run Wave 1 phases 1, 2, and 3 in parallel
+Stopped at: Completed 03-02-PLAN.md — DOTW response envelope schema (dotw.graphql) and DotwTraceMiddleware
+Next: Execute Phase 3 Plan 03 (remaining plan in Phase 3)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

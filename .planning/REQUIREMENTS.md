@@ -79,14 +79,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 8. GraphQL Response Structure & Error Handling
 
-- [ ] **GQLR-01**: All GraphQL responses return: success (boolean), data (if successful), error (if failed), timestamp, trace_id (for debugging)
-- [ ] **GQLR-02**: Structured error responses with: error_code, error_message (user-friendly for N8N), error_details (technical), action (retry/cancel/reconfigure)
-- [ ] **GQLR-03**: GraphQL schema self-documented (descriptions on all fields, input types, enums)
-- [ ] **GQLR-04**: All operations support synchronous call (user waits for response in WhatsApp conversation)
-- [ ] **GQLR-05**: Response includes company context in meta (company_id, request_id)
-- [ ] **GQLR-06**: Response headers include X-Trace-ID, X-Request-Time-Ms for debugging
-- [ ] **GQLR-07**: Error responses include action hints for N8N workflow (e.g., "retry_in_30_seconds", "reconfigure_credentials")
-- [ ] **GQLR-08**: All responses consistent format regardless of operation (searchHotels, getRoomRates, blockRates, createPreBooking)
+- [x] **GQLR-01**: All GraphQL responses return: success (boolean), data (if successful), error (if failed), timestamp, trace_id (for debugging)
+- [x] **GQLR-02**: Structured error responses with: error_code, error_message (user-friendly for N8N), error_details (technical), action (retry/cancel/reconfigure)
+- [x] **GQLR-03**: GraphQL schema self-documented (descriptions on all fields, input types, enums)
+- [x] **GQLR-04**: All operations support synchronous call (user waits for response in WhatsApp conversation)
+- [x] **GQLR-05**: Response includes company context in meta (company_id, request_id)
+- [x] **GQLR-06**: Response headers include X-Trace-ID, X-Request-Time-Ms for debugging
+- [x] **GQLR-07**: Error responses include action hints for N8N workflow (e.g., "retry_in_30_seconds", "reconfigure_credentials")
+- [x] **GQLR-08**: All responses consistent format regardless of operation (searchHotels, getRoomRates, blockRates, createPreBooking)
 
 ### 9. B2C Markup & Pricing
 
@@ -201,14 +201,14 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | CACHE-03 | Phase 3 | Pending |
 | CACHE-04 | Phase 3 | Pending |
 | CACHE-05 | Phase 3 | Pending |
-| GQLR-01 | Phase 3 | Pending |
-| GQLR-02 | Phase 3 | Pending |
-| GQLR-03 | Phase 3 | Pending |
-| GQLR-04 | Phase 3 | Pending |
-| GQLR-05 | Phase 3 | Pending |
-| GQLR-06 | Phase 3 | Pending |
-| GQLR-07 | Phase 3 | Pending |
-| GQLR-08 | Phase 3 | Pending |
+| GQLR-01 | Phase 3 | Complete |
+| GQLR-02 | Phase 3 | Complete |
+| GQLR-03 | Phase 3 | Complete |
+| GQLR-04 | Phase 3 | Complete |
+| GQLR-05 | Phase 3 | Complete |
+| GQLR-06 | Phase 3 | Complete |
+| GQLR-07 | Phase 3 | Complete |
+| GQLR-08 | Phase 3 | Complete |
 | SEARCH-01 | Phase 4 | Pending |
 | SEARCH-02 | Phase 4 | Pending |
 | SEARCH-03 | Phase 4 | Pending |

@@ -12,7 +12,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### 1. Credential Management
 
 - [x] **CRED-01**: Database migration creates `company_dotw_credentials` table (company_id, dotw_username, dotw_password encrypted, dotw_company_code, created_at, updated_at)
-- [ ] **CRED-02**: Admin UI/API allows storing/updating per-company DOTW credentials securely
+- [x] **CRED-02**: Admin UI/API allows storing/updating per-company DOTW credentials securely
 - [x] **CRED-03**: Credentials encrypted at rest using Laravel encryption (never logged in plaintext)
 - [x] **CRED-04**: DotwService resolves correct company credentials based on authenticated company context
 - [x] **CRED-05**: Missing credentials returns helpful error directing admin to configure
@@ -102,7 +102,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **ERROR-02**: DOTW API timeout (> 25 sec) → "Search taking too long, please try again" (N8N can retry)
 - [ ] **ERROR-03**: Allocation expired → "Rate offer expired, please search again" (clear, actionable)
 - [ ] **ERROR-04**: Rate no longer available → "This hotel/rate no longer available, similar options:" + suggest 3 alternatives
-- [ ] **ERROR-05**: Missing passenger field → "Please provide passenger {field_name}" (specific error per missing field)
+- [x] **ERROR-05**: Missing passenger field → "Please provide passenger {field_name}" (specific error per missing field)
 - [ ] **ERROR-06**: Hotel sold out → "Hotel full, showing 3 similar alternatives with availability"
 - [ ] **ERROR-07**: All errors logged to 'dotw' channel (no credentials, no full responses)
 - [ ] **ERROR-08**: Circuit breaker: If DOTW API fails 5x in 1 minute, return cached results (if available) or friendly "Try again in 30 seconds"
@@ -183,13 +183,13 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CRED-01 | Phase 1 | Complete |
-| CRED-02 | Phase 1 | Pending |
+| CRED-02 | Phase 1 | Complete |
 | CRED-03 | Phase 1 | Complete |
 | CRED-04 | Phase 1 | Complete |
 | CRED-05 | Phase 1 | Complete |
 | MARKUP-01 | Phase 1 | Complete |
 | MARKUP-02 | Phase 1 | Complete |
-| ERROR-05 | Phase 1 | Pending |
+| ERROR-05 | Phase 1 | Complete |
 | B2B-04 | Phase 1 | Complete |
 | MSG-01 | Phase 2 | Complete |
 | MSG-02 | Phase 2 | Pending |

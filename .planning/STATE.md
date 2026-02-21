@@ -36,7 +36,7 @@ Progress: ○ 0 of 8 phases complete
 
 | Phase | Name | Wave | Status |
 |-------|------|------|--------|
-| 1 | Credential Management & Markup Foundation | Wave 1 | In Progress (Plan 01 of 02 complete) |
+| 1 | Credential Management & Markup Foundation | Wave 1 | Complete (Plans 01 and 02 of 02 complete) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | In Progress (Plan 01 of 02 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Not started |
@@ -63,6 +63,9 @@ Progress: ○ 0 of 8 phases complete
 - Nullable ?int $companyId constructor parameter maintains backward compat with existing DotwService callers
 - Crypt::encrypt/Crypt::decrypt used explicitly in model accessors (not $casts) for encryption visibility
 - $hidden array on CompanyDotwCredential prevents credential blob leakage in API responses/logs
+- updateOrCreate(['company_id']) used in DotwCredentialController.store() — upsert semantics, no duplicate rows on re-submit
+- Response payloads explicitly constructed in DotwCredentialController — credentials excluded at both model layer ($hidden) and response layer (not in array)
+- findOrFail() used for company existence check — auto 404 before credential logic, no manual check needed
 - DateInterval used for Cache TTL (not integer seconds) in DotwCacheService — type-safe and self-documenting
 - remember() does not inject 'cached' flag into results — callers use isCached() before remember() to detect hits
 - company_id embedded directly in cache key string — simpler than namespacing, works across all Laravel cache drivers
@@ -81,8 +84,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 02-01-PLAN.md — DOTW audit infrastructure (migration, DotwAuditLog model, DotwAuditService)
-Next: Execute Phase 2 Plan 02 (DotwService wiring and Lighthouse middleware integration)
+Stopped at: Completed 01-02-PLAN.md — Admin credential API (StoreDotwCredentialRequest, DotwCredentialController, routes)
+Next: Phase 1 complete — continue with Wave 1 remaining phases (2 and 3)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

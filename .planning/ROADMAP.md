@@ -33,7 +33,7 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 
 ## Phases
 
-- [ ] **Phase 1: Credential Management & Markup Foundation** - Per-company DOTW credential storage with encryption, 20% markup foundation, multi-company isolation
+- [x] **Phase 1: Credential Management & Markup Foundation** - Per-company DOTW credential storage with encryption, 20% markup foundation, multi-company isolation (completed 2026-02-21)
 - [ ] **Phase 2: Message Tracking & Audit Infrastructure** - Resayil WhatsApp message_id and quote_id logging, full request/response audit trail
 - [x] **Phase 3: Cache Service & GraphQL Response Architecture** - 2.5-minute search result caching, unified GraphQL response wrapper, trace IDs (completed 2026-02-21)
 - [ ] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration
@@ -62,11 +62,11 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 5. Credentials from Company A are never accessible when operating in Company B context — isolation verified by attempting cross-company access.
 6. Default 20% B2C markup is stored and applies automatically; admin can override markup percentage per company.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
-- [ ] 01-01-PLAN.md — DB migration + CompanyDotwCredential model + DotwService refactor (DB-based credential resolution)
-- [ ] 01-02-PLAN.md — Admin API endpoints (POST/GET /api/admin/companies/{id}/dotw-credentials) with field-level validation
+- [x] 01-01-PLAN.md — DB migration + CompanyDotwCredential model + DotwService refactor (DB-based credential resolution)
+- [x] 01-02-PLAN.md — Admin API endpoints (POST/GET /api/admin/companies/{id}/dotw-credentials) with field-level validation
 
 ---
 

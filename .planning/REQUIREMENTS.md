@@ -77,16 +77,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **BOOK-07**: Logs to `dotw_audit_logs` with confirmation_code, booking_status
 - [ ] **BOOK-08**: On failure: Returns specific error (rate no longer available, hotel sold out, DOTW system error) with helpful message for N8N
 
-### 8. N8N GraphQL Integration
+### 8. GraphQL Response Structure & Error Handling
 
-- [ ] **GQL-01**: GraphQL endpoint accepts company authentication (Bearer token or X-Company-ID header)
-- [ ] **GQL-02**: All operations require: X-Company-ID header (matches authenticated company), X-Resayil-Message-ID header (WhatsApp message_id), optional X-Resayil-Quote-ID header (for quoted messages)
-- [ ] **GQL-03**: Responses include: success boolean, data (if successful), error (if failed), timestamp, trace_id (for debugging)
-- [ ] **GQL-04**: All operations return structured errors with: error_code, error_message (user-friendly), error_details (technical), action (e.g., "retry", "cancel", "reconfigure")
-- [ ] **GQL-05**: GraphQL schema self-documented (descriptions on all fields, input types, enums)
-- [ ] **GQL-06**: Rate limiting: 100 requests/minute per company (returns 429 with retry_after header)
-- [ ] **GQL-07**: Timeout: 30 second maximum response time (DOTW API timeout 25 sec, buffer 5 sec)
-- [ ] **GQL-08**: N8N can call all operations synchronously (user waits for response in WhatsApp conversation)
+- [ ] **GQLR-01**: All GraphQL responses return: success (boolean), data (if successful), error (if failed), timestamp, trace_id (for debugging)
+- [ ] **GQLR-02**: Structured error responses with: error_code, error_message (user-friendly for N8N), error_details (technical), action (retry/cancel/reconfigure)
+- [ ] **GQLR-03**: GraphQL schema self-documented (descriptions on all fields, input types, enums)
+- [ ] **GQLR-04**: All operations support synchronous call (user waits for response in WhatsApp conversation)
+- [ ] **GQLR-05**: Response includes company context in meta (company_id, request_id)
+- [ ] **GQLR-06**: Response headers include X-Trace-ID, X-Request-Time-Ms for debugging
+- [ ] **GQLR-07**: Error responses include action hints for N8N workflow (e.g., "retry_in_30_seconds", "reconfigure_credentials")
+- [ ] **GQLR-08**: All responses consistent format regardless of operation (searchHotels, getRoomRates, blockRates, createPreBooking)
 
 ### 9. B2C Markup & Pricing
 
@@ -129,6 +129,19 @@ Requirements for initial release. Each maps to roadmap phases.
 ## v2 Requirements
 
 Deferred to future release. Not in current roadmap.
+
+### DOTW V2 B2C — N8N GraphQL Integration
+
+Complete GraphQL API with full N8N + Resayil integration for production WhatsApp booking workflows.
+
+- **GQL-01**: GraphQL endpoint accepts company authentication (Bearer token or X-Company-ID header)
+- **GQL-02**: All operations require: X-Company-ID header (matches authenticated company), X-Resayil-Message-ID header (WhatsApp message_id), optional X-Resayil-Quote-ID header (for quoted messages)
+- **GQL-03**: N8N workflows can call searchHotels, getRoomRates, blockRates, createPreBooking mutations
+- **GQL-04**: Rate limiting: 100 requests/minute per company (returns 429 with retry_after header)
+- **GQL-05**: Timeout enforcement: 30 second maximum response time (DOTW API 25 sec, buffer 5 sec)
+- **GQL-06**: Webhook callbacks for async operations (e.g., booking confirmation callback to Resayil)
+- **GQL-07**: GraphQL subscription support for real-time allocation countdown (WebSocket)
+- **GQL-08**: N8N node templates pre-built (searchHotels, getRoomRates, blockRates, createPreBooking)
 
 ### Task & Invoice Integration
 
@@ -222,8 +235,8 @@ Deferred to future release. Not in current roadmap.
 | B2B-04 | Phase 1 | Pending |
 
 **Coverage:**
-- v1 requirements: 48 total
-- Mapped to phases: 48 (pending phase creation)
+- v1 requirements: 54 total
+- Mapped to phases: (pending phase creation)
 - Unmapped: 0 ✓
 
 ---

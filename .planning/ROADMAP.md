@@ -85,7 +85,12 @@ Plans:
 4. Inspecting any audit log row reveals no DOTW credentials (dotw_username, dotw_password) and no sensitive passenger details in plaintext.
 5. All four operation types (search, rates, block, book) produce audit log entries with correct operation_type label.
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Data layer: dotw_audit_logs migration, DotwAuditLog model, DotwAuditService with sanitization
+- [ ] 02-02-PLAN.md — Integration layer: ResayilContextMiddleware, DotwService instrumentation, SearchDotwHotels resolver wiring
+- [ ] 02-03-PLAN.md — Admin UI: WhatsApp AI sidebar button + DOTW audit log viewer (Super Admin: all columns; Company Admin: columns 3-8, own company only)
 
 ---
 
@@ -217,7 +222,7 @@ Plans:
 | Phase | Name | Wave | Requirements | Status |
 |-------|------|------|-------------|--------|
 | 1 | Credential Management & Markup Foundation | Wave 1 | CRED-01..05, MARKUP-01/02, ERROR-05, B2B-04 | Planning complete |
-| 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Not started |
+| 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Planning complete (2 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Not started |
 | 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Not started |
@@ -316,10 +321,11 @@ Plans:
 **Coverage:**
 - Total requirements: 54
 - Mapped: 54
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 
 *Roadmap created: 2026-02-21*
+*Phase 2 planned: 2026-02-21 — 2 plans created*
 *Milestone: DOTW v1.0 B2B*
 *Phases: 1-8 (standalone, independent of soud-laravel v1.0 Bulk Invoice Upload)*

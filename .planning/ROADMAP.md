@@ -131,11 +131,12 @@ Plans:
 5. Room detail fields include all DOTW API fields — nothing is summarized away that DOTW returns.
 6. Each search logs a row to `dotw_audit_logs` with the resayil_message_id, destination, and filters used; the GraphQL response reflects `cached: true/false` correctly.
 
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans (2 complete + 1 gap closure)
 
 Plans:
 - [ ] 04-01-PLAN.md — GraphQL schema extension (14 new types/inputs) + DotwGetCities resolver (city name→code lookup)
 - [ ] 04-02-PLAN.md — DotwSearchHotels resolver (main searchHotels B2B implementation with cache, markup, error handling)
+- [ ] 04-03-PLAN.md — Gap closure: SEARCH-06 requirement tracking correction + SEARCH-03 company currency lookup (currency column + model + resolver fix)
 
 ---
 

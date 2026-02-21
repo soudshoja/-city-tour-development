@@ -37,7 +37,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **SEARCH-01**: GraphQL `searchHotels` query accepts destination (city code/name), check-in date, check-out date, resayil_message_id header
 - [x] **SEARCH-02**: Query accepts room configuration (number of rooms, adults per room, children per room with ages)
-- [x] **SEARCH-03**: Query accepts currency (defaults to company-configured currency stored in company_dotw_credentials.currency, fallback USD) — *Phase 4 gap closure adds currency column to credentials and resolves it in DotwSearchHotels*
+- [x] **SEARCH-03**: Query accepts optional currency; when omitted, the param is excluded from the DOTW API call and DOTW account default currency applies — no per-company override stored
 - [x] **SEARCH-04**: Query supports full DOTW filter vocabulary: rating, price range, property type, meal plan type, amenities, cancellation policies
 - [x] **SEARCH-05**: Returns hotels with cheapest rate per meal plan per room type (DOTW searchhotels response)
 - [ ] **SEARCH-06**: Response includes hotel code, name, city, rating, location, image_url, cheapest rates grouped by room type — *hotel_code and cheapest rates satisfied in Phase 4; name, city, rating, location, image_url deferred to Phase 5 getRoomRates (DOTW searchhotels command does not return hotel metadata)*

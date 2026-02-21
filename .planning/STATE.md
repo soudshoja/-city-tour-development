@@ -60,6 +60,9 @@ Progress: ○ 0 of 8 phases complete
 - DotwTraceMiddleware registered as Lighthouse route middleware for universal X-Trace-ID and X-Request-Time-Ms header injection
 - trace_id bound in service container as 'dotw.trace_id' for resolver access without global state
 - dotw.graphql standalone schema imported via #import directive — DotwMeta, DotwError, DotwErrorCode, DotwErrorAction types established
+- Nullable ?int $companyId constructor parameter maintains backward compat with existing DotwService callers
+- Crypt::encrypt/Crypt::decrypt used explicitly in model accessors (not $casts) for encryption visibility
+- $hidden array on CompanyDotwCredential prevents credential blob leakage in API responses/logs
 
 ### Pending Todos
 
@@ -72,8 +75,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 03-02-PLAN.md — DOTW response envelope schema (dotw.graphql) and DotwTraceMiddleware
-Next: Execute Phase 3 Plan 03 (remaining plan in Phase 3)
+Stopped at: Completed 01-01-PLAN.md — per-company DOTW credential storage (migration, model, DotwService refactor)
+Next: Execute Phase 1 Plan 02 (remaining plan in Phase 1)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

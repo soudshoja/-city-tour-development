@@ -62,7 +62,7 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 5. Credentials from Company A are never accessible when operating in Company B context — isolation verified by attempting cross-company access.
 6. Default 20% B2C markup is stored and applies automatically; admin can override markup percentage per company.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — DB migration + CompanyDotwCredential model + DotwService refactor (DB-based credential resolution)
@@ -221,7 +221,7 @@ Plans:
 
 | Phase | Name | Wave | Requirements | Status |
 |-------|------|------|-------------|--------|
-| 1 | Credential Management & Markup Foundation | Wave 1 | CRED-01..05, MARKUP-01/02, ERROR-05, B2B-04 | Planning complete |
+| 1 | 1/2 | In Progress|  | Planning complete |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Planning complete (2 plans) |
 | 3 | 1/2 | In Progress|  | Not started |
 | 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Not started |

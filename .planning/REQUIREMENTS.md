@@ -11,11 +11,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 1. Credential Management
 
-- [ ] **CRED-01**: Database migration creates `company_dotw_credentials` table (company_id, dotw_username, dotw_password encrypted, dotw_company_code, created_at, updated_at)
+- [x] **CRED-01**: Database migration creates `company_dotw_credentials` table (company_id, dotw_username, dotw_password encrypted, dotw_company_code, created_at, updated_at)
 - [ ] **CRED-02**: Admin UI/API allows storing/updating per-company DOTW credentials securely
-- [ ] **CRED-03**: Credentials encrypted at rest using Laravel encryption (never logged in plaintext)
-- [ ] **CRED-04**: DotwService resolves correct company credentials based on authenticated company context
-- [ ] **CRED-05**: Missing credentials returns helpful error directing admin to configure
+- [x] **CRED-03**: Credentials encrypted at rest using Laravel encryption (never logged in plaintext)
+- [x] **CRED-04**: DotwService resolves correct company credentials based on authenticated company context
+- [x] **CRED-05**: Missing credentials returns helpful error directing admin to configure
 
 ### 2. Message Tracking & Audit Trail
 
@@ -90,8 +90,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 9. B2C Markup & Pricing
 
-- [ ] **MARKUP-01**: Default 20% B2C markup applied to all fares in search/rate/block responses
-- [ ] **MARKUP-02**: Admin can set custom markup percentage per company (stored in `company_dotw_credentials`)
+- [x] **MARKUP-01**: Default 20% B2C markup applied to all fares in search/rate/block responses
+- [x] **MARKUP-02**: Admin can set custom markup percentage per company (stored in `company_dotw_credentials`)
 - [ ] **MARKUP-03**: Markup calculation transparent in responses: {original_fare: 100, markup_percent: 20, markup_amount: 20, final_fare: 120}
 - [ ] **MARKUP-04**: Markup applied consistently across all operations (same hotel+rate always shows same markup)
 - [ ] **MARKUP-05**: Markup shown in WhatsApp messages (e.g., "100 KD → 120 KD after markup")
@@ -123,7 +123,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **B2B-01**: GraphQL supports multiple room types in single search (agents can explore complex itineraries)
 - [ ] **B2B-02**: Filter support matches full DOTW V4 vocabulary (not hardcoded to common filters)
 - [ ] **B2B-03**: Room details include all DOTW fields (not summarized, allows detailed negotiation)
-- [ ] **B2B-04**: Multi-company credential isolation (credentials never leak between companies)
+- [x] **B2B-04**: Multi-company credential isolation (credentials never leak between companies)
 - [ ] **B2B-05**: API designed for external B2B partners (N8N/Resayil is primary consumer, but extensible)
 
 ## v2 Requirements
@@ -182,15 +182,15 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CRED-01 | Phase 1 | Pending |
+| CRED-01 | Phase 1 | Complete |
 | CRED-02 | Phase 1 | Pending |
-| CRED-03 | Phase 1 | Pending |
-| CRED-04 | Phase 1 | Pending |
-| CRED-05 | Phase 1 | Pending |
-| MARKUP-01 | Phase 1 | Pending |
-| MARKUP-02 | Phase 1 | Pending |
+| CRED-03 | Phase 1 | Complete |
+| CRED-04 | Phase 1 | Complete |
+| CRED-05 | Phase 1 | Complete |
+| MARKUP-01 | Phase 1 | Complete |
+| MARKUP-02 | Phase 1 | Complete |
 | ERROR-05 | Phase 1 | Pending |
-| B2B-04 | Phase 1 | Pending |
+| B2B-04 | Phase 1 | Complete |
 | MSG-01 | Phase 2 | Pending |
 | MSG-02 | Phase 2 | Pending |
 | MSG-03 | Phase 2 | Pending |

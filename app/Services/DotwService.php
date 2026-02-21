@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CompanyDotwCredential;
+use App\Services\DotwAuditService;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -73,6 +74,11 @@ class DotwService
     private ?int $companyId;
 
     /**
+     * Audit service instance for writing to dotw_audit_logs
+     */
+    private DotwAuditService $auditService;
+
+    /**
      * Rate basis code constants
      */
     public const RATE_BASIS_ALL = 1;
@@ -104,11 +110,13 @@ class DotwService
      *
      * @param  int|null  $companyId  Company ID for B2B credential resolution,
      *                               or null for legacy env-based credentials.
+     * @param  DotwAuditService|null  $auditService  Audit service instance, or null to
+     *                                               create a default instance (backward compat).
      *
      * @throws \RuntimeException When company_id is provided but no active
      *                           credential row exists for that company.
      */
-    public function __construct(?int $companyId = null)
+    public function __construct(?int $companyId = null, ?DotwAuditService $auditService = null)
     {
         $isDev = config('dotw.dev_mode', true);
 
@@ -141,6 +149,8 @@ class DotwService
             $this->companyCode = config('dotw.company_code', '');
             $this->markupPercent = (float) config('dotw.b2c_markup_percentage', 20);
         }
+
+        $this->auditService = $auditService ?? new DotwAuditService();
 
         $this->logger->debug('DOTW Service initialized', [
             'endpoint' => $this->baseUrl,
@@ -186,11 +196,14 @@ class DotwService
      *                         - filters: Optional filter conditions (rating, price, chain, etc.)
      *                         - resultsPerPage: Results per page (default 20)
      *                         - page: Page number (default 1)
+     * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null  $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null     $companyId         Company context override (null = use constructor companyId)
      * @return array Parsed response with hotels array
      *
      * @throws Exception If request fails or validation returns error
      */
-    public function searchHotels(array $params): array
+    public function searchHotels(array $params, ?string $resayilMessageId = null, ?string $resayilQuoteId = null, ?int $companyId = null): array
     {
         $this->logger->info('DOTW searchHotels request initiated', [
             'from_date' => $params['fromDate'] ?? null,
@@ -217,6 +230,15 @@ class DotwService
 
         $hotels = $this->parseHotels($response);
 
+        $this->auditService->log(
+            DotwAuditService::OP_SEARCH,
+            $params,
+            $hotels,
+            $resayilMessageId,
+            $resayilQuoteId,
+            $companyId ?? $this->companyId
+        );
+
         $this->logger->info('DOTW searchHotels successful', [
             'hotel_count' => count($hotels),
         ]);
@@ -238,12 +260,15 @@ class DotwService
      *                         - productId: Hotel ID
      *                         - rooms: Array with room details
      *                         - roomTypeSelected: Only when blocking (includes allocationDetails from first call)
-     * @param  bool  $blocking  Whether to perform rate blocking
+     * @param  bool        $blocking          Whether to perform rate blocking
+     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
      * @return array Parsed response with rooms and allocationDetails
      *
      * @throws Exception If request fails or rate not available
      */
-    public function getRooms(array $params, bool $blocking = false): array
+    public function getRooms(array $params, bool $blocking = false, ?string $resayilMessageId = null, ?string $resayilQuoteId = null, ?int $companyId = null): array
     {
         $blockingText = $blocking ? 'with blocking' : 'without blocking';
 
@@ -279,6 +304,19 @@ class DotwService
 
         $rooms = $this->parseRooms($response);
 
+        $operationType = $blocking
+            ? DotwAuditService::OP_BLOCK
+            : DotwAuditService::OP_RATES;
+
+        $this->auditService->log(
+            $operationType,
+            $params,
+            $rooms,
+            $resayilMessageId,
+            $resayilQuoteId,
+            $companyId ?? $this->companyId
+        );
+
         $this->logger->info('DOTW getRooms successful', [
             'room_count' => count($rooms ?? []),
             'blocking' => $blocking,
@@ -301,11 +339,14 @@ class DotwService
      *                         - sendCommunicationTo: Guest email
      *                         - customerReference: Your booking reference
      *                         - rooms: Array with room booking details (includes allocationDetails)
+     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
      * @return array Confirmation response with booking reference
      *
      * @throws Exception If confirmation fails
      */
-    public function confirmBooking(array $params): array
+    public function confirmBooking(array $params, ?string $resayilMessageId = null, ?string $resayilQuoteId = null, ?int $companyId = null): array
     {
         $this->logger->info('DOTW confirmBooking request initiated', [
             'hotel_id' => $params['productId'] ?? null,
@@ -332,6 +373,15 @@ class DotwService
 
         $confirmation = $this->parseConfirmation($response);
 
+        $this->auditService->log(
+            DotwAuditService::OP_BOOK,
+            $params,
+            $confirmation,
+            $resayilMessageId,
+            $resayilQuoteId,
+            $companyId ?? $this->companyId
+        );
+
         $this->logger->info('DOTW confirmBooking successful', [
             'confirmation' => $confirmation,
         ]);
@@ -347,12 +397,15 @@ class DotwService
      *
      * Must follow with bookitinerary() to complete the booking
      *
-     * @param  array  $params  Same structure as confirmBooking
+     * @param  array       $params            Same structure as confirmBooking
+     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
      * @return array Response with itinerary code for later confirmation
      *
      * @throws Exception If save fails
      */
-    public function saveBooking(array $params): array
+    public function saveBooking(array $params, ?string $resayilMessageId = null, ?string $resayilQuoteId = null, ?int $companyId = null): array
     {
         $this->logger->info('DOTW saveBooking request initiated', [
             'hotel_id' => $params['productId'] ?? null,
@@ -378,6 +431,15 @@ class DotwService
 
         $itinerary = $this->parseItinerary($response);
 
+        $this->auditService->log(
+            DotwAuditService::OP_BOOK,
+            $params,
+            $itinerary,
+            $resayilMessageId,
+            $resayilQuoteId,
+            $companyId ?? $this->companyId
+        );
+
         $this->logger->info('DOTW saveBooking successful', [
             'itinerary' => $itinerary,
         ]);
@@ -391,12 +453,15 @@ class DotwService
      * Used to complete Non-Refundable bookings after saveBooking
      * Converts saved itinerary to confirmed booking
      *
-     * @param  string  $bookingCode  Itinerary code from saveBooking response
+     * @param  string      $bookingCode       Itinerary code from saveBooking response
+     * @param  string|null $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
+     * @param  string|null $resayilQuoteId    Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
+     * @param  int|null    $companyId         Company context override (null = use constructor companyId)
      * @return array Confirmation response
      *
      * @throws Exception If confirmation fails
      */
-    public function bookItinerary(string $bookingCode): array
+    public function bookItinerary(string $bookingCode, ?string $resayilMessageId = null, ?string $resayilQuoteId = null, ?int $companyId = null): array
     {
         $this->logger->info('DOTW bookItinerary request initiated', [
             'booking_code' => $bookingCode,
@@ -421,6 +486,15 @@ class DotwService
         }
 
         $confirmation = $this->parseConfirmation($response);
+
+        $this->auditService->log(
+            DotwAuditService::OP_BOOK,
+            ['bookingCode' => $bookingCode],
+            $confirmation,
+            $resayilMessageId,
+            $resayilQuoteId,
+            $companyId ?? $this->companyId
+        );
 
         $this->logger->info('DOTW bookItinerary successful', [
             'booking_code' => $bookingCode,

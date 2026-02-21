@@ -99,3 +99,173 @@ type DotwResponseEnvelope {
     "True when the response was served from cache rather than a live DOTW API call."
     cached: Boolean!
 }
+
+extend type Query {
+    "List cities served by DOTW for a given country. Use city codes returned here as the destination input to searchHotels."
+    getCities(
+        "ISO 3166-1 alpha-2 country code (e.g. AE for United Arab Emirates, KW for Kuwait)."
+        country_code: String!
+    ): GetCitiesResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetCities")
+
+    "Search hotels by destination, dates, and room configuration via DOTW V4 searchhotels API. Results cached 2.5 minutes per company."
+    searchHotels(input: SearchHotelsInput!): SearchHotelsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwSearchHotels")
+}
+
+"Response from the getCities query."
+type GetCitiesResponse {
+    "Whether the request succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "List of DOTW-serveable cities for the requested country."
+    data: GetCitiesData
+}
+
+"Container for city list results."
+type GetCitiesData {
+    "Cities available for hotel search in this country."
+    cities: [DotwCity!]!
+    "Total number of cities returned."
+    total_count: Int!
+}
+
+"A city served by DOTW in the requested country."
+type DotwCity {
+    "DOTW city code — use this as the destination in searchHotels."
+    code: String!
+    "Human-readable city name."
+    name: String!
+}
+
+"Input for the searchHotels query."
+input SearchHotelsInput {
+    "City code from getCities (e.g. DXB for Dubai). Accepts DOTW city code only — use getCities to resolve city names to codes."
+    destination: String!
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+    "Room configuration — one entry per room requested. Supports multi-room complex itineraries (B2B-01)."
+    rooms: [SearchHotelRoomInput!]!
+    "Response currency code (e.g. KWD, USD). Passed through to DOTW as-is. Defaults to USD if not provided."
+    currency: String
+    "Optional filters for rating, price range, property type, meal plan, amenities, and cancellation policy (B2B-02 — full DOTW V4 vocabulary)."
+    filters: SearchHotelsFiltersInput
+}
+
+"Occupancy configuration for a single room."
+input SearchHotelRoomInput {
+    "Number of adults in this room."
+    adultsCode: Int!
+    "Ages of children in this room. Provide an empty array if no children."
+    children: [Int!]!
+    "ISO 3166-1 alpha-2 nationality code for occupants (e.g. AE, KW). Optional."
+    passengerNationality: String
+    "ISO 3166-1 alpha-2 country of residence code for occupants. Optional."
+    passengerCountryOfResidence: String
+}
+
+"Optional filter criteria for hotel search. All fields are optional — omit to search without filters."
+input SearchHotelsFiltersInput {
+    "Minimum star rating to include (1–5). Omit for no minimum."
+    minRating: Int
+    "Maximum star rating to include (1–5). Omit for no maximum."
+    maxRating: Int
+    "Minimum total price filter."
+    minPrice: Float
+    "Maximum total price filter."
+    maxPrice: Float
+    "Property type filter (e.g. hotel, apartment, resort). Maps to DOTW fieldName=propertytype."
+    propertyType: String
+    "Meal plan type filter (e.g. BB, HB, FB, AI, RO, SC). Maps to DOTW fieldName=mealplantype."
+    mealPlanType: String
+    "Amenity codes to require (e.g. pool, wifi). Maps to DOTW fieldName=amenities."
+    amenities: [String!]
+    "Cancellation policy type (e.g. refundable, non-refundable). Maps to DOTW fieldName=cancellation."
+    cancellationPolicy: String
+}
+
+"Response from the searchHotels query."
+type SearchHotelsResponse {
+    "Whether the search succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "True if results were served from the 2.5-minute per-company search cache."
+    cached: Boolean!
+    "Search result data — present only when success is true."
+    data: SearchHotelsData
+}
+
+"Container for hotel search results."
+type SearchHotelsData {
+    "Hotels matching the search criteria with cheapest rate per meal plan per room type."
+    hotels: [HotelSearchResult!]!
+    "Total number of hotels returned."
+    total_count: Int!
+}
+
+"""
+A single hotel result from the DOTW searchhotels API.
+NOTE: Hotel name, city name, star rating, and image_url are NOT available from the DOTW searchhotels command.
+These metadata fields are returned by the getRoomRates query (Phase 5). Use hotel_code from this result
+as the hotel_code input to getRoomRates to obtain full hotel details.
+"""
+type HotelSearchResult {
+    "DOTW hotel ID. Pass this as hotel_code to getRoomRates (Phase 5) for full hotel details and rate blocking."
+    hotel_code: String!
+    "Room configurations with cheapest rate per meal plan."
+    rooms: [HotelRoomResult!]!
+}
+
+"Room occupancy result for a hotel — cheapest rate per meal plan from DOTW searchhotels."
+type HotelRoomResult {
+    "Number of adults this room accommodates."
+    adults: String!
+    "Number of children."
+    children: String!
+    "Child ages as a comma-separated string (from DOTW XML childrenages attribute)."
+    children_ages: String!
+    "Available room types with cheapest rate per meal plan."
+    room_types: [RoomTypeRate!]!
+}
+
+"A room type with its cheapest rate for a specific meal plan — all DOTW searchhotels fields included (B2B-03)."
+type RoomTypeRate {
+    "DOTW room type code."
+    code: String!
+    "Room type name."
+    name: String!
+    "Rate basis ID — maps to meal plan: 1331=RO, 1332=BB, 1333=HB, 1334=FB, 1335=AI, 1336=SC."
+    rate_basis_id: String!
+    "Currency code from DOTW rateType currencyid attribute (passed through as-is — no conversion)."
+    currency_id: String!
+    "True if this rate is non-refundable."
+    non_refundable: Boolean!
+    "Total fare before markup."
+    total: Float!
+    "Markup applied to the fare: original_fare, markup_percent, markup_amount, final_fare."
+    markup: RateMarkup!
+    "Total taxes."
+    total_taxes: Float!
+    "Minimum selling price (MSP) — never undercut this amount."
+    total_minimum_selling: Float!
+}
+
+"Markup breakdown for a rate — transparent pricing for WhatsApp display (MARKUP-03)."
+type RateMarkup {
+    "Original fare from DOTW before markup."
+    original_fare: Float!
+    "Markup percentage applied (from company credential markup_percent)."
+    markup_percent: Float!
+    "Markup amount added."
+    markup_amount: Float!
+    "Final fare after markup — this is the selling price."
+    final_fare: Float!
+}

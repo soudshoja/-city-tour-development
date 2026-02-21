@@ -119,9 +119,7 @@ class CompanyDotwCredential extends Model
      * Used by DotwService to load credentials for a specific company while
      * ensuring disabled companies cannot access the DOTW API.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $companyId
-     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeForCompany($query, int $companyId)

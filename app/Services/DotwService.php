@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CompanyDotwCredential;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,16 +14,21 @@ use SimpleXMLElement;
  * Handles all communication with DOTWconnect (DCML) XML-based hotel booking API
  * Version 4 simplified protocol with mandatory dual getRooms pattern
  *
+ * Credential resolution:
+ * - When constructed with a company_id, credentials are loaded from the
+ *   company_dotw_credentials table via CompanyDotwCredential model (B2B path).
+ * - When constructed with no arguments (company_id = null), credentials fall
+ *   back to config/dotw.php env values for backward compatibility.
+ *
  * Key features:
+ * - Per-company DB credential resolution (multi-tenant B2B)
  * - XML request builder with <customer> authentication wrapper
  * - MD5 password hashing for security
  * - Gzip compression on all requests/responses
  * - Mandatory dual getRooms pattern (browse + block)
  * - 3-minute allocation expiry tracking
  * - Complete error handling with DOTW error codes
- * - Comprehensive logging to 'dotw' channel
- *
- * @package App\Services
+ * - Comprehensive logging to 'dotw' channel (company_id logged, never credentials)
  */
 class DotwService
 {
@@ -57,23 +63,52 @@ class DotwService
     private int $timeout;
 
     /**
+     * B2C markup percentage loaded from DB (per-company) or config fallback
+     */
+    private float $markupPercent;
+
+    /**
+     * Company ID for the current B2B context (null = legacy env-based mode)
+     */
+    private ?int $companyId;
+
+    /**
      * Rate basis code constants
      */
     public const RATE_BASIS_ALL = 1;
+
     public const RATE_BASIS_ROOM_ONLY = 1331;
+
     public const RATE_BASIS_BB = 1332;
+
     public const RATE_BASIS_HB = 1333;
+
     public const RATE_BASIS_FB = 1334;
+
     public const RATE_BASIS_AI = 1335;
+
     public const RATE_BASIS_SC = 1336;
 
     /**
-     * Initialize DOTW service with configuration
+     * Initialize DOTW service with optional per-company credential resolution.
      *
-     * Reads from config/dotw.php and sets up API endpoint,
-     * authentication, and logging based on dev_mode setting
+     * B2B path (company_id provided):
+     *   Loads credentials from company_dotw_credentials table via
+     *   CompanyDotwCredential. Throws RuntimeException if no active credential
+     *   row exists for the given company.
+     *
+     * Legacy path (company_id = null):
+     *   Falls back to config/dotw.php env values for backward compatibility
+     *   with existing callers (e.g., SearchDotwHotels job) that do not pass a
+     *   company_id.
+     *
+     * @param  int|null  $companyId  Company ID for B2B credential resolution,
+     *                               or null for legacy env-based credentials.
+     *
+     * @throws \RuntimeException When company_id is provided but no active
+     *                           credential row exists for that company.
      */
-    public function __construct()
+    public function __construct(?int $companyId = null)
     {
         $isDev = config('dotw.dev_mode', true);
 
@@ -81,17 +116,57 @@ class DotwService
             ? config('dotw.endpoints.development')
             : config('dotw.endpoints.production');
 
-        $this->username = config('dotw.username', '');
-        $this->passwordMd5 = md5(config('dotw.password', ''));
-        $this->companyCode = config('dotw.company_code', '');
         $this->timeout = config('dotw.request.timeout', 120);
         $this->logger = Log::channel(config('dotw.log_channel', 'dotw'));
+        $this->companyId = $companyId;
+
+        if ($companyId !== null) {
+            // B2B path: load per-company credentials from DB
+            $credential = CompanyDotwCredential::forCompany($companyId)->first();
+
+            if (! $credential) {
+                throw new \RuntimeException(
+                    "DOTW credentials not configured for this company (company_id: {$companyId})"
+                );
+            }
+
+            $this->username = $credential->dotw_username;
+            $this->passwordMd5 = md5($credential->dotw_password);
+            $this->companyCode = $credential->dotw_company_code;
+            $this->markupPercent = (float) $credential->markup_percent;
+        } else {
+            // Legacy path: fall back to env credentials (backward compat for existing callers)
+            $this->username = config('dotw.username', '');
+            $this->passwordMd5 = md5(config('dotw.password', ''));
+            $this->companyCode = config('dotw.company_code', '');
+            $this->markupPercent = (float) config('dotw.b2c_markup_percentage', 20);
+        }
 
         $this->logger->debug('DOTW Service initialized', [
             'endpoint' => $this->baseUrl,
-            'username' => $this->username,
+            'company_id' => $this->companyId,
             'mode' => $isDev ? 'development' : 'production',
         ]);
+    }
+
+    /**
+     * Apply B2C markup to a raw DOTW fare.
+     *
+     * Uses the markup_percent loaded from DB (B2B path) or config (legacy path).
+     *
+     * @param  float  $originalFare  The raw fare returned by the DOTW API
+     * @return array{original_fare: float, markup_percent: float, markup_amount: float, final_fare: float}
+     */
+    public function applyMarkup(float $originalFare): array
+    {
+        $markupAmount = round($originalFare * ($this->markupPercent / 100), 2);
+
+        return [
+            'original_fare' => $originalFare,
+            'markup_percent' => $this->markupPercent,
+            'markup_amount' => $markupAmount,
+            'final_fare' => round($originalFare + $markupAmount, 2),
+        ];
     }
 
     /**
@@ -102,17 +177,17 @@ class DotwService
      *
      * Must call getRooms() afterwards to get full details and rate block
      *
-     * @param array $params Search parameters:
-     *   - fromDate: YYYY-MM-DD
-     *   - toDate: YYYY-MM-DD
-     *   - currency: Currency code (USD, AED, etc.)
-     *   - rooms: Array with occupancy details
-     *   - city: City code
-     *   - filters: Optional filter conditions (rating, price, chain, etc.)
-     *   - resultsPerPage: Results per page (default 20)
-     *   - page: Page number (default 1)
-     *
+     * @param  array  $params  Search parameters:
+     *                         - fromDate: YYYY-MM-DD
+     *                         - toDate: YYYY-MM-DD
+     *                         - currency: Currency code (USD, AED, etc.)
+     *                         - rooms: Array with occupancy details
+     *                         - city: City code
+     *                         - filters: Optional filter conditions (rating, price, chain, etc.)
+     *                         - resultsPerPage: Results per page (default 20)
+     *                         - page: Page number (default 1)
      * @return array Parsed response with hotels array
+     *
      * @throws Exception If request fails or validation returns error
      */
     public function searchHotels(array $params): array
@@ -128,9 +203,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW searchHotels error', [
                 'error_code' => $errorCode,
@@ -156,24 +231,23 @@ class DotwService
      * 1. First without blocking: browse available rates and get details
      * 2. Then with blocking: lock the rate for 3 minutes
      *
-     * @param array $params Room search parameters:
-     *   - fromDate: YYYY-MM-DD
-     *   - toDate: YYYY-MM-DD
-     *   - currency: Currency code
-     *   - productId: Hotel ID
-     *   - rooms: Array with room details
-     *   - roomTypeSelected: Only when blocking (includes allocationDetails from first call)
-     *
-     * @param bool $blocking Whether to perform rate blocking
-     *
+     * @param  array  $params  Room search parameters:
+     *                         - fromDate: YYYY-MM-DD
+     *                         - toDate: YYYY-MM-DD
+     *                         - currency: Currency code
+     *                         - productId: Hotel ID
+     *                         - rooms: Array with room details
+     *                         - roomTypeSelected: Only when blocking (includes allocationDetails from first call)
+     * @param  bool  $blocking  Whether to perform rate blocking
      * @return array Parsed response with rooms and allocationDetails
+     *
      * @throws Exception If request fails or rate not available
      */
     public function getRooms(array $params, bool $blocking = false): array
     {
         $blockingText = $blocking ? 'with blocking' : 'without blocking';
 
-        $this->logger->info('DOTW getRooms request initiated ' . $blockingText, [
+        $this->logger->info('DOTW getRooms request initiated '.$blockingText, [
             'from_date' => $params['fromDate'] ?? null,
             'to_date' => $params['toDate'] ?? null,
             'hotel_id' => $params['productId'] ?? null,
@@ -185,9 +259,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW getRooms error', [
                 'error_code' => $errorCode,
@@ -219,16 +293,16 @@ class DotwService
      * Direct confirmation flow (vs. savebooking + bookitinerary for non-refundable)
      * Uses allocationDetails from blocking getRooms call
      *
-     * @param array $params Booking parameters:
-     *   - fromDate: YYYY-MM-DD
-     *   - toDate: YYYY-MM-DD
-     *   - currency: Currency code
-     *   - productId: Hotel ID
-     *   - sendCommunicationTo: Guest email
-     *   - customerReference: Your booking reference
-     *   - rooms: Array with room booking details (includes allocationDetails)
-     *
+     * @param  array  $params  Booking parameters:
+     *                         - fromDate: YYYY-MM-DD
+     *                         - toDate: YYYY-MM-DD
+     *                         - currency: Currency code
+     *                         - productId: Hotel ID
+     *                         - sendCommunicationTo: Guest email
+     *                         - customerReference: Your booking reference
+     *                         - rooms: Array with room booking details (includes allocationDetails)
      * @return array Confirmation response with booking reference
+     *
      * @throws Exception If confirmation fails
      */
     public function confirmBooking(array $params): array
@@ -244,9 +318,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW confirmBooking error', [
                 'error_code' => $errorCode,
@@ -273,9 +347,9 @@ class DotwService
      *
      * Must follow with bookitinerary() to complete the booking
      *
-     * @param array $params Same structure as confirmBooking
-     *
+     * @param  array  $params  Same structure as confirmBooking
      * @return array Response with itinerary code for later confirmation
+     *
      * @throws Exception If save fails
      */
     public function saveBooking(array $params): array
@@ -290,9 +364,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW saveBooking error', [
                 'error_code' => $errorCode,
@@ -317,9 +391,9 @@ class DotwService
      * Used to complete Non-Refundable bookings after saveBooking
      * Converts saved itinerary to confirmed booking
      *
-     * @param string $bookingCode Itinerary code from saveBooking response
-     *
+     * @param  string  $bookingCode  Itinerary code from saveBooking response
      * @return array Confirmation response
+     *
      * @throws Exception If confirmation fails
      */
     public function bookItinerary(string $bookingCode): array
@@ -333,9 +407,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW bookItinerary error', [
                 'error_code' => $errorCode,
@@ -363,12 +437,12 @@ class DotwService
      * 1. Query with confirm=no to get cancellation charge
      * 2. Confirm cancellation with confirm=yes and penaltyApplied amount
      *
-     * @param array $params Cancellation parameters:
-     *   - bookingCode: DOTW booking reference
-     *   - penaltyApplied: Charge amount (only on second call with confirm=yes)
-     *   - confirm: 'yes' or 'no'
-     *
+     * @param  array  $params  Cancellation parameters:
+     *                         - bookingCode: DOTW booking reference
+     *                         - penaltyApplied: Charge amount (only on second call with confirm=yes)
+     *                         - confirm: 'yes' or 'no'
      * @return array Cancellation response with refund amount
+     *
      * @throws Exception If cancellation fails
      */
     public function cancelBooking(array $params): array
@@ -386,9 +460,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW cancelBooking error', [
                 'error_code' => $errorCode,
@@ -415,9 +489,9 @@ class DotwService
      * Retrieves complete booking information including guest details,
      * cancellation policies, and current status
      *
-     * @param string $bookingCode DOTW booking reference
-     *
+     * @param  string  $bookingCode  DOTW booking reference
      * @return array Complete booking details
+     *
      * @throws Exception If retrieval fails
      */
     public function getBookingDetail(string $bookingCode): array
@@ -431,9 +505,9 @@ class DotwService
 
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW getBookingDetail error', [
                 'error_code' => $errorCode,
@@ -460,6 +534,7 @@ class DotwService
      * Results should be cached for performance
      *
      * @return array List of countries with codes
+     *
      * @throws Exception If retrieval fails
      */
     public function getCountryList(): array
@@ -469,9 +544,9 @@ class DotwService
         $xml = $this->wrapRequest('getallcountries', '');
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW getCountryList error', [
                 'error_code' => $errorCode,
@@ -493,9 +568,9 @@ class DotwService
     /**
      * Get list of cities in a country
      *
-     * @param string $countryCode Country code
-     *
+     * @param  string  $countryCode  Country code
      * @return array List of cities
+     *
      * @throws Exception If retrieval fails
      */
     public function getCityList(string $countryCode): array
@@ -508,9 +583,9 @@ class DotwService
         $xml = $this->wrapRequest('getservingcities', $body);
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW getCityList error', [
                 'error_code' => $errorCode,
@@ -535,6 +610,7 @@ class DotwService
      * Get hotel star rating classifications
      *
      * @return array List of hotel classifications with codes
+     *
      * @throws Exception If retrieval fails
      */
     public function getHotelClassifications(): array
@@ -544,9 +620,9 @@ class DotwService
         $xml = $this->wrapRequest('gethotelclassificationids', '');
         $response = $this->post($xml);
 
-        if ((string)$response->successful !== 'TRUE') {
-            $errorCode = (string)$response->request->error->code ?? 'UNKNOWN';
-            $errorDetails = (string)$response->request->error->details ?? 'Unknown error';
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
 
             $this->logger->error('DOTW getHotelClassifications error', [
                 'error_code' => $errorCode,
@@ -571,9 +647,8 @@ class DotwService
      * Adds customer wrapper with MD5-hashed password as per DOTW spec
      * All elements and attributes are case-sensitive
      *
-     * @param string $command DOTW command name (searchhotels, getrooms, etc.)
-     * @param string $body XML request body (without wrapper)
-     *
+     * @param  string  $command  DOTW command name (searchhotels, getrooms, etc.)
+     * @param  string  $body  XML request body (without wrapper)
      * @return string Complete XML request ready for POST
      */
     private function wrapRequest(string $command, string $body): string
@@ -600,8 +675,7 @@ class DotwService
     /**
      * Build XML body for searchhotels command
      *
-     * @param array $params Search parameters
-     *
+     * @param  array  $params  Search parameters
      * @return string XML body
      */
     private function buildSearchHotelsBody(array $params): string
@@ -609,7 +683,7 @@ class DotwService
         $roomsXml = $this->buildRoomsXml($params['rooms'] ?? []);
 
         $filtersXml = '';
-        if (!empty($params['filters'])) {
+        if (! empty($params['filters'])) {
             $filtersXml = $this->buildFilterXml($params['filters']);
         }
 
@@ -630,24 +704,23 @@ class DotwService
             htmlspecialchars($params['currency'] ?? ''),
             $roomsXml,
             $filtersXml,
-            (int)($params['resultsPerPage'] ?? 20),
-            (int)($params['page'] ?? 1)
+            (int) ($params['resultsPerPage'] ?? 20),
+            (int) ($params['page'] ?? 1)
         );
     }
 
     /**
      * Build XML body for getrooms command
      *
-     * @param array $params Room parameters
-     * @param bool $blocking Whether to perform rate blocking
-     *
+     * @param  array  $params  Room parameters
+     * @param  bool  $blocking  Whether to perform rate blocking
      * @return string XML body
      */
     private function buildGetRoomsBody(array $params, bool $blocking = false): string
     {
         $roomsXml = '';
 
-        if ($blocking && !empty($params['roomTypeSelected'])) {
+        if ($blocking && ! empty($params['roomTypeSelected'])) {
             // Blocking mode: add roomTypeSelected with allocationDetails
             $selected = $params['roomTypeSelected'];
             $roomsXml = sprintf(
@@ -665,15 +738,15 @@ class DotwService
         </roomTypeSelected>
       </room>
     </rooms>',
-                (int)($params['rooms'][0]['no'] ?? 1),
-                (int)($params['rooms'][0]['adultsCode'] ?? 2),
+                (int) ($params['rooms'][0]['no'] ?? 1),
+                (int) ($params['rooms'][0]['adultsCode'] ?? 2),
                 $this->buildChildrenXml($params['rooms'][0]['children'] ?? []),
-                htmlspecialchars((string)($selected['rateBasis'] ?? self::RATE_BASIS_ALL)),
-                htmlspecialchars((string)($params['rooms'][0]['passengerNationality'] ?? '')),
-                htmlspecialchars((string)($params['rooms'][0]['passengerCountryOfResidence'] ?? '')),
-                htmlspecialchars((string)($selected['code'] ?? '')),
-                htmlspecialchars((string)($selected['selectedRateBasis'] ?? self::RATE_BASIS_ALL)),
-                htmlspecialchars((string)($selected['allocationDetails'] ?? ''))
+                htmlspecialchars((string) ($selected['rateBasis'] ?? self::RATE_BASIS_ALL)),
+                htmlspecialchars((string) ($params['rooms'][0]['passengerNationality'] ?? '')),
+                htmlspecialchars((string) ($params['rooms'][0]['passengerCountryOfResidence'] ?? '')),
+                htmlspecialchars((string) ($selected['code'] ?? '')),
+                htmlspecialchars((string) ($selected['selectedRateBasis'] ?? self::RATE_BASIS_ALL)),
+                htmlspecialchars((string) ($selected['allocationDetails'] ?? ''))
             );
         } else {
             // Browse mode: get available rates
@@ -681,7 +754,7 @@ class DotwService
         }
 
         $fieldsXml = '';
-        if (!empty($params['fields'])) {
+        if (! empty($params['fields'])) {
             $fieldsXml = '<fields>';
             foreach ($params['fields'] as $field) {
                 $fieldsXml .= sprintf('<roomField>%s</roomField>', htmlspecialchars($field));
@@ -704,7 +777,7 @@ class DotwService
             htmlspecialchars($params['toDate'] ?? ''),
             htmlspecialchars($params['currency'] ?? ''),
             $roomsXml,
-            htmlspecialchars((string)($params['productId'] ?? '')),
+            htmlspecialchars((string) ($params['productId'] ?? '')),
             $fieldsXml
         );
     }
@@ -712,8 +785,7 @@ class DotwService
     /**
      * Build XML body for confirmbooking command
      *
-     * @param array $params Booking parameters
-     *
+     * @param  array  $params  Booking parameters
      * @return string XML body
      */
     private function buildConfirmBookingBody(array $params): string
@@ -733,7 +805,7 @@ class DotwService
             htmlspecialchars($params['fromDate'] ?? ''),
             htmlspecialchars($params['toDate'] ?? ''),
             htmlspecialchars($params['currency'] ?? ''),
-            htmlspecialchars((string)($params['productId'] ?? '')),
+            htmlspecialchars((string) ($params['productId'] ?? '')),
             htmlspecialchars($params['sendCommunicationTo'] ?? ''),
             htmlspecialchars($params['customerReference'] ?? ''),
             $roomsXml
@@ -745,8 +817,7 @@ class DotwService
      *
      * Same structure as confirmbooking but returns itinerary code
      *
-     * @param array $params Booking parameters
-     *
+     * @param  array  $params  Booking parameters
      * @return string XML body
      */
     private function buildSaveBookingBody(array $params): string
@@ -757,8 +828,7 @@ class DotwService
     /**
      * Build XML body for bookitinerary command
      *
-     * @param string $bookingCode Itinerary code from saveBooking
-     *
+     * @param  string  $bookingCode  Itinerary code from saveBooking
      * @return string XML body
      */
     private function buildBookItineraryBody(string $bookingCode): string
@@ -774,15 +844,14 @@ class DotwService
     /**
      * Build XML body for cancelbooking command
      *
-     * @param array $params Cancellation parameters
-     *
+     * @param  array  $params  Cancellation parameters
      * @return string XML body
      */
     private function buildCancelBookingBody(array $params): string
     {
         $penaltyXml = '';
         if (isset($params['penaltyApplied'])) {
-            $penaltyXml = sprintf('<penaltyApplied>%.2f</penaltyApplied>', (float)$params['penaltyApplied']);
+            $penaltyXml = sprintf('<penaltyApplied>%.2f</penaltyApplied>', (float) $params['penaltyApplied']);
         }
 
         return sprintf(
@@ -802,8 +871,7 @@ class DotwService
     /**
      * Build XML body for getbookingdetails command
      *
-     * @param string $bookingCode Booking reference
-     *
+     * @param  string  $bookingCode  Booking reference
      * @return string XML body
      */
     private function buildGetBookingDetailBody(string $bookingCode): string
@@ -819,8 +887,7 @@ class DotwService
     /**
      * Build <rooms> XML element from occupancy array
      *
-     * @param array $rooms Room occupancy details
-     *
+     * @param  array  $rooms  Room occupancy details
      * @return string XML rooms element
      */
     private function buildRoomsXml(array $rooms): string
@@ -844,11 +911,11 @@ class DotwService
         <passengerCountryOfResidence>%s</passengerCountryOfResidence>
       </room>',
                 $index,
-                (int)($room['adultsCode'] ?? 2),
+                (int) ($room['adultsCode'] ?? 2),
                 $childrenXml,
-                (int)($room['rateBasis'] ?? self::RATE_BASIS_ALL),
-                htmlspecialchars((string)($room['passengerNationality'] ?? '')),
-                htmlspecialchars((string)($room['passengerCountryOfResidence'] ?? ''))
+                (int) ($room['rateBasis'] ?? self::RATE_BASIS_ALL),
+                htmlspecialchars((string) ($room['passengerNationality'] ?? '')),
+                htmlspecialchars((string) ($room['passengerCountryOfResidence'] ?? ''))
             );
         }
 
@@ -860,8 +927,7 @@ class DotwService
     /**
      * Build <children> XML element
      *
-     * @param array $children Child ages array
-     *
+     * @param  array  $children  Child ages array
      * @return string XML children element
      */
     private function buildChildrenXml(array $children): string
@@ -877,7 +943,7 @@ class DotwService
             $childrenXml .= sprintf(
                 '<child runno="%d">%d</child>',
                 $index,
-                (int)$age
+                (int) $age
             );
         }
 
@@ -889,8 +955,7 @@ class DotwService
     /**
      * Build <rooms> element for confirmation with passenger details
      *
-     * @param array $rooms Room confirmation details
-     *
+     * @param  array  $rooms  Room confirmation details
      * @return string XML rooms element
      */
     private function buildConfirmRoomsXml(array $rooms): string
@@ -909,7 +974,7 @@ class DotwService
             $passengersXml = $this->buildPassengersXml($room['passengers'] ?? []);
 
             $specialRequestsXml = '';
-            if (!empty($room['specialRequests'])) {
+            if (! empty($room['specialRequests'])) {
                 $specialRequestsXml = sprintf('<specialRequests count="%d">', count($room['specialRequests']));
                 foreach ($room['specialRequests'] as $i => $req) {
                     $specialRequestsXml .= sprintf(
@@ -935,14 +1000,14 @@ class DotwService
         %s
       </room>',
                 $index,
-                htmlspecialchars((string)($room['roomTypeCode'] ?? '')),
-                htmlspecialchars((string)($room['selectedRateBasis'] ?? '')),
-                htmlspecialchars((string)($room['allocationDetails'] ?? '')),
-                (int)($room['adultsCode'] ?? 2),
-                (int)($room['actualAdults'] ?? 2),
+                htmlspecialchars((string) ($room['roomTypeCode'] ?? '')),
+                htmlspecialchars((string) ($room['selectedRateBasis'] ?? '')),
+                htmlspecialchars((string) ($room['allocationDetails'] ?? '')),
+                (int) ($room['adultsCode'] ?? 2),
+                (int) ($room['actualAdults'] ?? 2),
                 $childrenXml,
                 $actualChildrenXml,
-                (int)($room['beddingPreference'] ?? 0),
+                (int) ($room['beddingPreference'] ?? 0),
                 $passengersXml,
                 $specialRequestsXml
             );
@@ -956,8 +1021,7 @@ class DotwService
     /**
      * Build <actualChildren> XML element
      *
-     * @param array $children Actual child ages
-     *
+     * @param  array  $children  Actual child ages
      * @return string XML element
      */
     private function buildActualChildrenXml(array $children): string
@@ -973,7 +1037,7 @@ class DotwService
             $childrenXml .= sprintf(
                 '<actualChild runno="%d">%d</actualChild>',
                 $index,
-                (int)$age
+                (int) $age
             );
         }
 
@@ -985,8 +1049,7 @@ class DotwService
     /**
      * Build <passengersDetails> XML element
      *
-     * @param array $passengers Passenger details
-     *
+     * @param  array  $passengers  Passenger details
      * @return string XML element
      */
     private function buildPassengersXml(array $passengers): string
@@ -1007,7 +1070,7 @@ class DotwService
           <lastName>%s</lastName>
         </passenger>',
                 $isLeading,
-                (int)($passenger['salutation'] ?? 1),
+                (int) ($passenger['salutation'] ?? 1),
                 htmlspecialchars($passenger['firstName'] ?? ''),
                 htmlspecialchars($passenger['lastName'] ?? '')
             );
@@ -1023,8 +1086,7 @@ class DotwService
      *
      * Supports complex conditions with atomic conditions
      *
-     * @param array $filters Filter specifications
-     *
+     * @param  array  $filters  Filter specifications
      * @return string XML filters element
      */
     private function buildFilterXml(array $filters): string
@@ -1043,10 +1105,10 @@ class DotwService
                 $filtersXml .= sprintf('<fieldName>%s</fieldName>', htmlspecialchars($condition['fieldName'] ?? ''));
                 $filtersXml .= sprintf('<fieldTest>%s</fieldTest>', htmlspecialchars($condition['fieldTest'] ?? 'equals'));
 
-                if (!empty($condition['fieldValues'])) {
+                if (! empty($condition['fieldValues'])) {
                     $filtersXml .= '<fieldValues>';
                     foreach ($condition['fieldValues'] as $value) {
-                        $filtersXml .= sprintf('<fieldValue>%s</fieldValue>', htmlspecialchars((string)$value));
+                        $filtersXml .= sprintf('<fieldValue>%s</fieldValue>', htmlspecialchars((string) $value));
                     }
                     $filtersXml .= '</fieldValues>';
                 }
@@ -1067,9 +1129,9 @@ class DotwService
      *
      * Handles gzip compression, timeouts, and error responses
      *
-     * @param string $xml XML request body
-     *
+     * @param  string  $xml  XML request body
      * @return SimpleXMLElement Parsed response
+     *
      * @throws Exception If request fails or response is invalid XML
      */
     private function post(string $xml): SimpleXMLElement
@@ -1090,18 +1152,18 @@ class DotwService
                 'body_length' => strlen($response->body()),
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $this->logger->error('DOTW API HTTP error', [
                     'status' => $response->status(),
                     'body' => substr($response->body(), 0, 500),
                 ]);
 
-                throw new Exception("DOTW API HTTP {$response->status()}: " . substr($response->body(), 0, 200));
+                throw new Exception("DOTW API HTTP {$response->status()}: ".substr($response->body(), 0, 200));
             }
 
             $simpleXml = simplexml_load_string($response->body());
 
-            if (!$simpleXml) {
+            if (! $simpleXml) {
                 $this->logger->error('DOTW API response is not valid XML', [
                     'body' => substr($response->body(), 0, 500),
                 ]);
@@ -1125,7 +1187,7 @@ class DotwService
      * When performing rate blocking, check that each rateBasis has status='checked'
      * If not, rate is no longer available
      *
-     * @param SimpleXMLElement $response XML response from getRooms with blocking
+     * @param  SimpleXMLElement  $response  XML response from getRooms with blocking
      *
      * @throws Exception If blocking failed
      */
@@ -1141,11 +1203,11 @@ class DotwService
             $rateBases = $room->xpath('.//rateBasis');
 
             foreach ($rateBases as $rateBasis) {
-                $status = (string)($rateBasis['status'] ?? 'unchecked');
+                $status = (string) ($rateBasis['status'] ?? 'unchecked');
 
                 if ($status !== 'checked') {
                     throw new Exception(
-                        'Rate blocking failed. Rate is no longer available. Status: ' . $status
+                        'Rate blocking failed. Rate is no longer available. Status: '.$status
                     );
                 }
             }
@@ -1155,8 +1217,7 @@ class DotwService
     /**
      * Parse hotel search results from response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Parsed hotels array
      */
     private function parseHotels(SimpleXMLElement $response): array
@@ -1166,7 +1227,7 @@ class DotwService
 
         foreach ($hotelElements as $hotel) {
             $hotelData = [
-                'hotelId' => (string)$hotel['hotelid'],
+                'hotelId' => (string) $hotel['hotelid'],
                 'rooms' => [],
             ];
 
@@ -1174,9 +1235,9 @@ class DotwService
 
             foreach ($roomElements as $room) {
                 $roomData = [
-                    'adults' => (string)$room['adults'],
-                    'children' => (string)$room['children'],
-                    'childrenAges' => (string)$room['childrenages'],
+                    'adults' => (string) $room['adults'],
+                    'children' => (string) $room['children'],
+                    'childrenAges' => (string) $room['childrenages'],
                     'roomTypes' => [],
                 ];
 
@@ -1187,14 +1248,14 @@ class DotwService
 
                     foreach ($rateBasisElements as $rateBasis) {
                         $roomData['roomTypes'][] = [
-                            'code' => (string)$roomType['roomtypecode'],
-                            'name' => (string)$roomType->n,
-                            'rateBasisId' => (string)$rateBasis['id'],
-                            'rateType' => (string)$rateBasis->rateType['currencyid'] ?? '',
-                            'nonRefundable' => (string)$rateBasis->rateType['nonrefundable'] ?? 'no',
-                            'total' => (float)$rateBasis->total,
-                            'totalTaxes' => (float)($rateBasis->totalTaxes ?? 0),
-                            'totalMinimumSelling' => (float)($rateBasis->totalMinimumSelling ?? 0),
+                            'code' => (string) $roomType['roomtypecode'],
+                            'name' => (string) $roomType->n,
+                            'rateBasisId' => (string) $rateBasis['id'],
+                            'rateType' => (string) $rateBasis->rateType['currencyid'] ?? '',
+                            'nonRefundable' => (string) $rateBasis->rateType['nonrefundable'] ?? 'no',
+                            'total' => (float) $rateBasis->total,
+                            'totalTaxes' => (float) ($rateBasis->totalTaxes ?? 0),
+                            'totalMinimumSelling' => (float) ($rateBasis->totalMinimumSelling ?? 0),
                         ];
                     }
                 }
@@ -1211,8 +1272,7 @@ class DotwService
     /**
      * Parse room details from getRooms response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Parsed rooms array
      */
     private function parseRooms(SimpleXMLElement $response): array
@@ -1222,8 +1282,8 @@ class DotwService
 
         foreach ($roomElements as $room) {
             $roomData = [
-                'roomTypeCode' => (string)$room->roomType['roomtypecode'] ?? '',
-                'roomName' => (string)$room->roomType->n ?? '',
+                'roomTypeCode' => (string) $room->roomType['roomtypecode'] ?? '',
+                'roomName' => (string) $room->roomType->n ?? '',
                 'details' => [],
             ];
 
@@ -1231,11 +1291,11 @@ class DotwService
 
             foreach ($rateBasisElements as $rateBasis) {
                 $roomData['details'][] = [
-                    'id' => (string)$rateBasis['id'],
-                    'status' => (string)($rateBasis['status'] ?? 'unknown'),
-                    'price' => (float)($rateBasis->total ?? 0),
-                    'taxes' => (float)($rateBasis->totalTaxes ?? 0),
-                    'allocationDetails' => (string)($rateBasis->allocationDetails ?? ''),
+                    'id' => (string) $rateBasis['id'],
+                    'status' => (string) ($rateBasis['status'] ?? 'unknown'),
+                    'price' => (float) ($rateBasis->total ?? 0),
+                    'taxes' => (float) ($rateBasis->totalTaxes ?? 0),
+                    'allocationDetails' => (string) ($rateBasis->allocationDetails ?? ''),
                     'cancellationRules' => $this->parseCancellationRules($rateBasis),
                 ];
             }
@@ -1249,8 +1309,7 @@ class DotwService
     /**
      * Parse cancellation rules from rate basis
      *
-     * @param SimpleXMLElement $rateBasis Rate basis element
-     *
+     * @param  SimpleXMLElement  $rateBasis  Rate basis element
      * @return array Parsed rules
      */
     private function parseCancellationRules(SimpleXMLElement $rateBasis): array
@@ -1260,10 +1319,10 @@ class DotwService
 
         foreach ($ruleElements as $rule) {
             $rules[] = [
-                'fromDate' => (string)($rule->fromDate ?? ''),
-                'toDate' => (string)($rule->toDate ?? ''),
-                'charge' => (float)($rule->charge ?? 0),
-                'cancelCharge' => (float)($rule->cancelCharge ?? 0),
+                'fromDate' => (string) ($rule->fromDate ?? ''),
+                'toDate' => (string) ($rule->toDate ?? ''),
+                'charge' => (float) ($rule->charge ?? 0),
+                'cancelCharge' => (float) ($rule->cancelCharge ?? 0),
             ];
         }
 
@@ -1273,77 +1332,72 @@ class DotwService
     /**
      * Parse confirmation response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Confirmation data
      */
     private function parseConfirmation(SimpleXMLElement $response): array
     {
         return [
-            'bookingCode' => (string)($response->bookingCode ?? ''),
-            'confirmationNumber' => (string)($response->confirmationNumber ?? ''),
-            'status' => (string)($response->status ?? 'confirmed'),
-            'paymentGuaranteedBy' => (string)($response->paymentGuaranteedBy ?? ''),
+            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'confirmationNumber' => (string) ($response->confirmationNumber ?? ''),
+            'status' => (string) ($response->status ?? 'confirmed'),
+            'paymentGuaranteedBy' => (string) ($response->paymentGuaranteedBy ?? ''),
         ];
     }
 
     /**
      * Parse itinerary response (from saveBooking)
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Itinerary data
      */
     private function parseItinerary(SimpleXMLElement $response): array
     {
         return [
-            'itineraryCode' => (string)($response->itineraryCode ?? ''),
-            'status' => (string)($response->status ?? 'saved'),
+            'itineraryCode' => (string) ($response->itineraryCode ?? ''),
+            'status' => (string) ($response->status ?? 'saved'),
         ];
     }
 
     /**
      * Parse cancellation response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Cancellation result
      */
     private function parseCancellation(SimpleXMLElement $response): array
     {
         return [
-            'bookingCode' => (string)($response->bookingCode ?? ''),
-            'refund' => (float)($response->refund ?? 0),
-            'charge' => (float)($response->charge ?? 0),
-            'status' => (string)($response->status ?? ''),
+            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'refund' => (float) ($response->refund ?? 0),
+            'charge' => (float) ($response->charge ?? 0),
+            'status' => (string) ($response->status ?? ''),
         ];
     }
 
     /**
      * Parse booking detail response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Booking details
      */
     private function parseBookingDetail(SimpleXMLElement $response): array
     {
         return [
-            'bookingCode' => (string)($response->bookingCode ?? ''),
-            'hotelName' => (string)($response->hotelName ?? ''),
-            'checkIn' => (string)($response->checkIn ?? ''),
-            'checkOut' => (string)($response->checkOut ?? ''),
-            'status' => (string)($response->status ?? ''),
-            'totalPrice' => (float)($response->totalPrice ?? 0),
-            'currency' => (string)($response->currency ?? ''),
+            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'hotelName' => (string) ($response->hotelName ?? ''),
+            'checkIn' => (string) ($response->checkIn ?? ''),
+            'checkOut' => (string) ($response->checkOut ?? ''),
+            'status' => (string) ($response->status ?? ''),
+            'totalPrice' => (float) ($response->totalPrice ?? 0),
+            'currency' => (string) ($response->currency ?? ''),
         ];
     }
 
     /**
      * Parse country list response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Countries array
      */
     private function parseCountryList(SimpleXMLElement $response): array
@@ -1353,8 +1407,8 @@ class DotwService
 
         foreach ($countryElements as $country) {
             $countries[] = [
-                'code' => (string)$country['code'] ?? '',
-                'name' => (string)$country ?? '',
+                'code' => (string) $country['code'] ?? '',
+                'name' => (string) $country ?? '',
             ];
         }
 
@@ -1364,8 +1418,7 @@ class DotwService
     /**
      * Parse city list response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Cities array
      */
     private function parseCityList(SimpleXMLElement $response): array
@@ -1375,8 +1428,8 @@ class DotwService
 
         foreach ($cityElements as $city) {
             $cities[] = [
-                'code' => (string)$city['code'] ?? '',
-                'name' => (string)$city ?? '',
+                'code' => (string) $city['code'] ?? '',
+                'name' => (string) $city ?? '',
             ];
         }
 
@@ -1386,8 +1439,7 @@ class DotwService
     /**
      * Parse hotel classifications response
      *
-     * @param SimpleXMLElement $response XML response
-     *
+     * @param  SimpleXMLElement  $response  XML response
      * @return array Classifications array
      */
     private function parseClassifications(SimpleXMLElement $response): array
@@ -1397,8 +1449,8 @@ class DotwService
 
         foreach ($classElements as $class) {
             $classifications[] = [
-                'id' => (string)$class['id'] ?? '',
-                'name' => (string)$class ?? '',
+                'id' => (string) $class['id'] ?? '',
+                'name' => (string) $class ?? '',
             ];
         }
 

@@ -206,7 +206,12 @@ Plans:
 3. All errors are logged to the `dotw` Laravel logging channel; log entries never include DOTW credentials or full response bodies.
 4. After 5 DOTW API failures within 1 minute, the circuit breaker activates: subsequent search requests return cached results if available, or return "Try again in 30 seconds" with `action: retry_in_30_seconds` — no further DOTW API calls during the open circuit window.
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — DotwTimeoutException + DotwService::post() timeout patch + 25s config + resolver catch chain (ERROR-02)
+- [ ] 07-02-PLAN.md — DotwCircuitBreakerService + DotwCacheService::get() + DotwSearchHotels circuit breaker integration (ERROR-08)
+- [ ] 07-03-PLAN.md — DotwGetCities RuntimeException audit/patch + DotwService log safety audit (ERROR-01, ERROR-07)
 
 ---
 

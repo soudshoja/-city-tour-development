@@ -9,3 +9,13 @@
 
 ---
 
+
+## v1.0 DOTW B2B (Shipped: 2026-02-21)
+
+**Phases completed:** 8 phases, 20 plans, 2 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+

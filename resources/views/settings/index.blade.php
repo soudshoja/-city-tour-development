@@ -82,7 +82,7 @@
 
                     <!-- Agent Charges Tab -->
                     <button
-                        @click="saveTab('agent-charges')" :class="activeTab === 'agent-charges' 
+                        @click="saveTab('agent-charges')" :class="activeTab === 'agent-charges'
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
                         class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,6 +90,21 @@
                         </svg>
                         Agent Charges
                     </button>
+
+                    <!-- DOTW / Hotel API Tab -->
+                    @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
+                    <button
+                        @click="saveTab('dotw')"
+                        :class="activeTab === 'dotw'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <img src="https://www.pratra.com/assets/img/page/api-sub-dotw-webbeds.png"
+                             alt="DOTW"
+                             class="h-5 w-5 object-contain">
+                        DOTW / Hotel API
+                    </button>
+                    @endif
                 </nav>
             </div>
 
@@ -116,6 +131,12 @@
                 <div x-show="activeTab === 'agent-charges'" x-cloak>
                     @include('settings.partial.agent_charges')
                 </div>
+
+                @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
+                <div x-show="activeTab === 'dotw'" x-cloak>
+                    @livewire('admin.dotw-admin-index')
+                </div>
+                @endif
             </div>
         </div>
     </div>

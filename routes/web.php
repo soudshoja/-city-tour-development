@@ -835,6 +835,8 @@ Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, '
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
+Route::get('/docs/dotw', [\App\Http\Controllers\Docs\DotwDocumentationController::class, 'index'])->name('docs.dotw-hub');
+Route::get('/docs/dotw/{doc}', [\App\Http\Controllers\Docs\DotwDocumentationController::class, 'show'])->name('docs.dotw-page');
 Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');

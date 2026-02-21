@@ -38,7 +38,7 @@ Progress: ○ 0 of 8 phases complete
 |-------|------|------|--------|
 | 1 | Credential Management & Markup Foundation | Wave 1 | In Progress (Plan 01 of 02 complete) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | Not started |
-| 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plan 02 of 03 complete) |
+| 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Not started |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
@@ -63,6 +63,9 @@ Progress: ○ 0 of 8 phases complete
 - Nullable ?int $companyId constructor parameter maintains backward compat with existing DotwService callers
 - Crypt::encrypt/Crypt::decrypt used explicitly in model accessors (not $casts) for encryption visibility
 - $hidden array on CompanyDotwCredential prevents credential blob leakage in API responses/logs
+- DateInterval used for Cache TTL (not integer seconds) in DotwCacheService — type-safe and self-documenting
+- remember() does not inject 'cached' flag into results — callers use isCached() before remember() to detect hits
+- company_id embedded directly in cache key string — simpler than namespacing, works across all Laravel cache drivers
 
 ### Pending Todos
 
@@ -75,8 +78,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 01-01-PLAN.md — per-company DOTW credential storage (migration, model, DotwService refactor)
-Next: Execute Phase 1 Plan 02 (remaining plan in Phase 1)
+Stopped at: Completed 03-01-PLAN.md — DotwCacheService with deterministic per-company cache key generation
+Next: Execute Phase 3 Plan 03 (remaining plan in Phase 3)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

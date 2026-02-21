@@ -27,11 +27,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 3. Search Result Caching
 
-- [ ] **CACHE-01**: Hotel search results cached for 2.5 minutes using Laravel cache (key: `dotw_search_{company_id}_{destination}_{dates}_{rooms_hash}`)
-- [ ] **CACHE-02**: Subsequent searches for same destination/dates within 2.5 min return cached results (no API call)
-- [ ] **CACHE-03**: Cache key includes room configuration hash to handle room type/occupancy changes
-- [ ] **CACHE-04**: Cache is per-company (no cross-company data leakage)
-- [ ] **CACHE-05**: GraphQL response includes `cached: true` flag to indicate whether result is fresh or from cache
+- [x] **CACHE-01**: Hotel search results cached for 2.5 minutes using Laravel cache (key: `dotw_search_{company_id}_{destination}_{dates}_{rooms_hash}`)
+- [x] **CACHE-02**: Subsequent searches for same destination/dates within 2.5 min return cached results (no API call)
+- [x] **CACHE-03**: Cache key includes room configuration hash to handle room type/occupancy changes
+- [x] **CACHE-04**: Cache is per-company (no cross-company data leakage)
+- [x] **CACHE-05**: GraphQL response includes `cached: true` flag to indicate whether result is fresh or from cache
 
 ### 4. Hotel Search GraphQL
 
@@ -196,11 +196,11 @@ Complete GraphQL API with full N8N + Resayil integration for production WhatsApp
 | MSG-03 | Phase 2 | Pending |
 | MSG-04 | Phase 2 | Pending |
 | MSG-05 | Phase 2 | Pending |
-| CACHE-01 | Phase 3 | Pending |
-| CACHE-02 | Phase 3 | Pending |
-| CACHE-03 | Phase 3 | Pending |
-| CACHE-04 | Phase 3 | Pending |
-| CACHE-05 | Phase 3 | Pending |
+| CACHE-01 | Phase 3 | Complete |
+| CACHE-02 | Phase 3 | Complete |
+| CACHE-03 | Phase 3 | Complete |
+| CACHE-04 | Phase 3 | Complete |
+| CACHE-05 | Phase 3 | Complete |
 | GQLR-01 | Phase 3 | Complete |
 | GQLR-02 | Phase 3 | Complete |
 | GQLR-03 | Phase 3 | Complete |

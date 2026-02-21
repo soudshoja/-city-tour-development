@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 ## Current Position
 
-Phase: Wave 3 — Phase 6 complete, Phases 7 and 8 pending
+Phase: Wave 3 — Phases 6 and 7 complete, Phase 8 pending
 Plan: —
-Status: Ready — Wave 3 in progress, Phase 6 complete (2/2 plans), Phases 7 + 8 next
-Last activity: 2026-02-21 — Phase 6 Pre-Booking & Confirmation Workflow executed (2/2 plans)
+Status: Ready — Wave 3 in progress, Phase 7 complete (3/3 plans), Phase 8 next
+Last activity: 2026-02-21 — Phase 7 Error Hardening & Circuit Breaker executed (3/3 plans)
 
-Progress: ██████████░░ 6 of 8 phases complete
+Progress: ████████████░ 7 of 8 phases complete
 
 ## Wave Structure (DOTW v1.0 B2B)
 
@@ -42,7 +42,7 @@ Progress: ██████████░░ 6 of 8 phases complete
 | 4 | Hotel Search GraphQL | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Complete (Plans 01 and 02 of 02 complete) |
-| 7 | Error Hardening & Circuit Breaker | Wave 3 | Not started |
+| 7 | Error Hardening & Circuit Breaker | Wave 3 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | Not started |
 
 ## Accumulated Context
@@ -105,6 +105,15 @@ Progress: ██████████░░ 6 of 8 phases complete
 - UPDATED_AT = null on DotwBooking — booking records are append-only after creation (same as DotwAuditLog)
 - No FK on company_id in dotw_bookings — consistent MOD-06 standalone module design across all DOTW tables
 - createPreBooking requires checkin/checkout in input — DotwPrebook does not store these dates (Pitfall 1 from research — resolved by accepting from caller)
+- DotwTimeoutException extends \Exception (NOT \RuntimeException) — catch order in all resolvers: DotwTimeoutException → RuntimeException → \Exception; class identity is the discriminator (ERROR-02)
+- config/dotw.php default timeout: 120s → 25s per DOTW SLA (ERROR-02); DOTW_TIMEOUT env var still overrides
+- ConnectionException caught in DotwService::post() before generic Exception — rethrown as DotwTimeoutException; no credentials in log context
+- Circuit breaker applies ONLY to DotwSearchHotels (ERROR-08) — getRoomRates/blockRates/getCities excluded; FAILURE_THRESHOLD=5, WINDOW_SECONDS=60, OPEN_TTL_SECONDS=30
+- Circuit open + cache hit → return cached hotels with cached:true; circuit open + no cache → CIRCUIT_BREAKER_OPEN + RETRY_IN_30_SECONDS
+- recordFailure() on DotwTimeoutException and generic Exception; NOT on RuntimeException (credential misconfig is not transient)
+- DotwCacheService::get() added for circuit-open fallback read (no TTL side-effect, distinct from remember())
+- ERROR-07 log safety audit: CLEAN — no credential values ($username/$passwordMd5/$companyCode) in any DotwService log context; all body fragments truncated to ≤500 chars
+- DotwGetCities upgraded from string-matching credential detection to proper RuntimeException catch (ERROR-01 now uniform across all 4 resolvers)
 
 ### Pending Todos
 
@@ -117,8 +126,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed Phase 6 — DotwCreatePreBooking mutation resolver (BOOK-01..08, ERROR-03, ERROR-04). Phase 6 complete (2/2 plans).
-Next: Execute Phase 7 (Error Hardening & Circuit Breaker) and Phase 8 (Modular Architecture & B2B Packaging) — Wave 3 completion
+Stopped at: Completed Phase 7 — Error Hardening & Circuit Breaker (ERROR-01, ERROR-02, ERROR-07, ERROR-08). Phase 7 complete (3/3 plans).
+Next: Execute Phase 8 (Modular Architecture & B2B Packaging) — final Wave 3 phase, DOTW v1.0 B2B completion
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

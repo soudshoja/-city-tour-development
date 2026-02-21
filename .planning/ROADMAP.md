@@ -39,7 +39,7 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 - [x] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration (completed 2026-02-21)
 - [x] **Phase 5: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, allocationDetails tokens, transparent markup; blockRates mutation with 3-minute allocation prebook tracking, BLOCK-08 race condition guard, two-phase audit logging (complete 2026-02-21)
 - [x] **Phase 6: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging (completed 2026-02-21)
-- [ ] **Phase 7: Error Hardening & Circuit Breaker** - Circuit breaker pattern, resilience handling, error logging to dotw channel
+- [x] **Phase 7: Error Hardening & Circuit Breaker** - DotwTimeoutException (ERROR-02), circuit breaker with 5-failure/60s threshold (ERROR-08), credential guard uniformity + log safety audit (ERROR-01, ERROR-07) (completed 2026-02-21)
 - [ ] **Phase 8: Modular Architecture & B2B Packaging** - Service modularity, composable GraphQL schema, deployment README, B2B extensibility verification
 
 ---
@@ -327,10 +327,10 @@ Plans:
 | ERROR-03 | Phase 6 | Planned — Plan 06-02 (ALLOCATION_EXPIRED error before DOTW call) |
 | ERROR-04 | Phase 6 | Planned — Plan 06-02 (rate unavailable + 3 alternative hotels) |
 | ERROR-06 | Phase 6 | Planned — Plan 06-02 (hotel sold out handled same as ERROR-04 in RuntimeException catch) |
-| ERROR-01 | Phase 7 | Pending |
-| ERROR-02 | Phase 7 | Pending |
-| ERROR-07 | Phase 7 | Pending |
-| ERROR-08 | Phase 7 | Pending |
+| ERROR-01 | Phase 7 | Complete |
+| ERROR-02 | Phase 7 | Complete |
+| ERROR-07 | Phase 7 | Complete |
+| ERROR-08 | Phase 7 | Complete |
 | MOD-01 | Phase 8 | Pending |
 | MOD-02 | Phase 8 | Pending |
 | MOD-03 | Phase 8 | Pending |

@@ -269,3 +269,260 @@ type RateMarkup {
     "Final fare after markup — this is the selling price."
     final_fare: Float!
 }
+
+# =============================================================================
+# Phase 5: Rate Browsing (getRoomRates) & Rate Blocking (blockRates)
+# =============================================================================
+
+extend type Query {
+    """
+    Get detailed room rates for a specific hotel.
+
+    Returns all room types and meal plans with full cancellation policies,
+    allocationDetails tokens (required for blockRates), and transparent markup breakdown.
+
+    NOTE: DOTW getRooms command does not return hotel metadata (name, city, star rating,
+    image_url). These fields remain deferred (SEARCH-06 partial). Pass hotel_code from
+    searchHotels to this query; the caller must maintain hotel name from their own context.
+
+    Audit logged to dotw_audit_logs. NOT cached — rates change minute-to-minute and
+    allocationDetails tokens expire. Always returns fresh data from DOTW API.
+    """
+    getRoomRates(input: GetRoomRatesInput!): GetRoomRatesResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetRoomRates")
+}
+
+extend type Mutation {
+    """
+    Lock a selected hotel rate for 3 minutes via DOTW blocking.
+
+    Calls DOTW getRooms with blocking=true to reserve the rate, then creates a
+    dotw_prebooks record. Returns prebook_key (UUID) and countdown_timer_seconds.
+
+    BLOCK-08: A new blockRates call from the same (company, resayil_message_id) pair
+    automatically expires any previous active prebook — only one active prebook per
+    WhatsApp conversation at any time.
+
+    Rejects if allocation is < 60 seconds from expiry — prompt re-search in that case.
+    """
+    blockRates(input: BlockRatesInput!): BlockRatesResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwBlockRates")
+}
+
+# -----------------------------------------------------------------------------
+# Input Types
+# -----------------------------------------------------------------------------
+
+input GetRoomRatesInput {
+    "DOTW hotel identifier. Obtained from searchHotels response hotel_code field."
+    hotel_code: String!
+
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+
+    """
+    Room configuration. Reuses SearchHotelRoomInput from Phase 4.
+    Must match the room config used in the searchHotels call that produced this hotel_code.
+    """
+    rooms: [SearchHotelRoomInput!]!
+
+    "Optional currency code (e.g. KWD, USD). When omitted, DOTW account default applies."
+    currency: String
+}
+
+input BlockRatesInput {
+    "DOTW hotel identifier. Must match the hotel_code used in the getRoomRates call."
+    hotel_code: String!
+
+    """
+    Optional hotel name from caller context. DOTW getRooms does not return hotel metadata.
+    Caller should pass hotel name obtained from searchHotels or their hotel directory.
+    Stored in dotw_prebooks.hotel_name for booking reference. Falls back to empty string.
+    """
+    hotel_name: String
+
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+
+    "Room configuration. Must match the config used in getRoomRates."
+    rooms: [SearchHotelRoomInput!]!
+
+    "Room type code from getRoomRates response room_type_code field."
+    selected_room_type: String!
+
+    "Rate basis ID from getRoomRates response rate_basis_id field (e.g. 1332 = Bed & Breakfast)."
+    selected_rate_basis: String!
+
+    """
+    Opaque allocation token from getRoomRates response rate_details[].allocation_details field.
+    Pass this value verbatim — any modification will cause DOTW to reject the blocking call.
+    """
+    allocation_details: String!
+
+    "Optional currency code. When omitted, DOTW account default applies."
+    currency: String
+}
+
+# -----------------------------------------------------------------------------
+# Response Types
+# -----------------------------------------------------------------------------
+
+type GetRoomRatesResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Populated on failure. Null on success."
+    error: DotwError
+
+    "Always present. Contains trace_id, timestamp, company_id."
+    meta: DotwMeta!
+
+    "Always false — getRoomRates never caches results."
+    cached: Boolean!
+
+    "Populated on success. Null on failure."
+    data: GetRoomRatesData
+}
+
+type GetRoomRatesData {
+    "DOTW hotel identifier (echo of input hotel_code)."
+    hotel_code: String!
+
+    "All room types returned by DOTW for this hotel, dates, and room config."
+    rooms: [RoomRateResult!]!
+
+    "Total number of room types returned."
+    total_count: Int!
+}
+
+type RoomRateResult {
+    "DOTW room type code. Pass as selected_room_type to blockRates."
+    room_type_code: String!
+
+    "Human-readable room type name."
+    room_name: String!
+
+    "All rate details for this room type, one per meal plan / rate basis."
+    rate_details: [RateDetail!]!
+}
+
+type RateDetail {
+    """
+    Rate basis code. Mapping:
+    1331 = Room Only, 1332 = Bed & Breakfast, 1333 = Half Board,
+    1334 = Full Board, 1335 = All Inclusive, 1336 = Self Catering.
+    Pass as selected_rate_basis to blockRates.
+    """
+    rate_basis_id: String!
+
+    "Human-readable meal plan name (e.g. Bed & Breakfast, Half Board)."
+    rate_basis_name: String!
+
+    "Whether the rate is refundable. Non-refundable rates cannot be cancelled."
+    is_refundable: Boolean!
+
+    "Base fare from DOTW before markup (pre-markup price)."
+    total_fare: Float!
+
+    "Tax amount from DOTW."
+    total_taxes: Float!
+
+    "Total price inclusive of taxes, before markup."
+    total_price: Float!
+
+    "Transparent markup breakdown. Use markup.final_fare as the customer-facing price."
+    markup: RateMarkup!
+
+    """
+    Opaque allocation token from DOTW. Pass verbatim as allocation_details to blockRates.
+    Do not modify, encode, or truncate — token corruption causes DOTW to reject the block call.
+    """
+    allocation_details: String!
+
+    "Cancellation policy rules. Empty array if no policy data returned by DOTW."
+    cancellation_rules: [CancellationRule!]!
+
+    "Currency code of the rate as returned by DOTW (e.g. KWD, USD). Empty string if DOTW does not include currency in this rate. (RATE-05)"
+    original_currency: String!
+
+    "Exchange rate applied if DOTW performed currency conversion. Null when no conversion occurred. (RATE-05)"
+    exchange_rate: Float
+
+    "Currency code of the final customer-facing price after markup. Matches original_currency when no conversion. (RATE-05)"
+    final_currency: String!
+}
+
+type CancellationRule {
+    "Start of the cancellation penalty window (ISO 8601)."
+    from_date: String!
+
+    "End of the cancellation penalty window (ISO 8601)."
+    to_date: String!
+
+    "Cancellation charge amount in the booking currency."
+    charge: Float!
+
+    "Cancel charge (may differ from charge in some DOTW responses)."
+    cancel_charge: Float!
+}
+
+type BlockRatesResponse {
+    "Whether the blocking operation succeeded."
+    success: Boolean!
+
+    "Populated on failure. Null on success."
+    error: DotwError
+
+    "Always present. Contains trace_id, timestamp, company_id."
+    meta: DotwMeta!
+
+    "Always false — blockRates never caches results."
+    cached: Boolean!
+
+    "Populated on success. Null on failure."
+    data: BlockRatesData
+}
+
+type BlockRatesData {
+    "UUID prebook key. Pass to createPreBooking (Phase 6) to confirm the booking."
+    prebook_key: String!
+
+    "ISO 8601 timestamp when the rate lock expires (3 minutes from block call)."
+    expires_at: String!
+
+    "Seconds remaining until expiry at response time. Computed from expires_at."
+    countdown_timer_seconds: Int!
+
+    "DOTW hotel identifier (echo of input hotel_code)."
+    hotel_code: String!
+
+    "Hotel name from input or empty string if caller did not provide it."
+    hotel_name: String!
+
+    "Room type code that was locked."
+    room_type: String!
+
+    "Rate basis ID of the locked rate."
+    rate_basis: String!
+
+    "Total fare after markup applied (customer-facing price)."
+    total_fare: Float!
+
+    "Tax amount."
+    total_tax: Float!
+
+    "Transparent markup breakdown for the locked rate."
+    markup: RateMarkup!
+
+    "Whether the locked rate is refundable."
+    is_refundable: Boolean!
+
+    "Cancellation rules applicable to the locked rate."
+    cancellation_rules: [CancellationRule!]!
+}

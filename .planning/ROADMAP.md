@@ -158,7 +158,12 @@ Plans:
 7. A new `blockRates` call from the same (company, WhatsApp user) automatically expires the previous prebook — only one active prebook exists per user.
 8. All getRoomRates and blockRates operations log to `dotw_audit_logs`; blockRates log includes the prebook_key and allocation expiry.
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Data layer + schema: dotw_prebooks migration (company_id, resayil_message_id), DotwPrebook model update (activeForUser scope), graphql/dotw.graphql Phase 5 types (10 new types + getRoomRates + blockRates)
+- [ ] 05-02-PLAN.md — DotwGetRoomRates resolver (getRoomRates query: browse rates, markup, allocationDetails, cancellation rules)
+- [ ] 05-03-PLAN.md — DotwBlockRates resolver (blockRates mutation: BLOCK-08 transaction, prebook creation, countdown, full phase verification)
 
 ---
 
@@ -230,7 +235,7 @@ Plans:
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Complete (3/3 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
 | 4 | 3/3 | Complete   | 2026-02-21 | Planned (2 plans) |
-| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Not started |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Planned (3 plans) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | MOD-01..08, B2B-05 | Not started |
@@ -273,7 +278,7 @@ Plans:
 | SEARCH-03 | Phase 4 | Pending |
 | SEARCH-04 | Phase 4 | Pending |
 | SEARCH-05 | Phase 4 | Pending |
-| SEARCH-06 | Phase 4 | Pending |
+| SEARCH-06 | Phase 5 | Partial — hotel_code + rates done Phase 4; metadata (name/city/rating/location/image_url) deferred — DOTW getRooms also does not return hotel metadata |
 | SEARCH-07 | Phase 4 | Pending |
 | SEARCH-08 | Phase 4 | Pending |
 | B2B-01 | Phase 4 | Pending |
@@ -333,5 +338,6 @@ Plans:
 *Roadmap created: 2026-02-21*
 *Phase 2 planned: 2026-02-21 — 2 plans created*
 *Phase 4 planned: 2026-02-21 — 2 plans created*
+*Phase 5 planned: 2026-02-21 — 3 plans created*
 *Milestone: DOTW v1.0 B2B*
 *Phases: 1-8 (standalone, independent of soud-laravel v1.0 Bulk Invoice Upload)*

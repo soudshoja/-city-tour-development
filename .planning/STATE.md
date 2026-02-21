@@ -40,7 +40,7 @@ Progress: ○ 0 of 8 phases complete
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
 | 4 | Hotel Search GraphQL | Wave 2 | Complete (Plans 01, 02, and 03 of 03 complete) |
-| 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | In Progress (Plan 01 of 03 complete) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | Not started |
@@ -90,6 +90,12 @@ Progress: ○ 0 of 8 phases complete
 - currency column on company_dotw_credentials is plain string (not encrypted) — not sensitive, no Crypt needed
 - DotwSearchHotels currency priority chain: input.currency (if non-empty) > company DB currency > 'USD' last resort fallback
 - SEARCH-06 traceability moved to Phase 5 partial — hotel_code+rates delivered Phase 4; name/city/rating/location/image_url deferred
+- No FK on company_id in dotw_prebooks — consistent with dotw_audit_logs standalone module approach (MOD-06)
+- getRoomRates always returns cached: false — rates change minute-to-minute, allocationDetails tokens expire
+- blockRates always returns cached: false — blocking is a side-effecting mutation, caching incorrect
+- RateDetail.original_currency is String! (empty string sentinel when DOTW omits) per RATE-05
+- RateDetail.exchange_rate is Float (nullable) — null when DOTW performs no conversion per RATE-05
+- activeForUser() scope uses where('expired_at', '>', now()) — matches compound index column order for query plan optimization
 
 ### Pending Todos
 
@@ -102,8 +108,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 04-03-PLAN.md — gap closure (SEARCH-06 unchecked+deferred Phase 5, currency column added, DB currency lookup in DotwSearchHotels)
-Next: Phase 4 fully complete — execute Phase 5 (Rate Browsing & Rate Blocking) following same auth guard + cache + error pattern
+Stopped at: Completed 05-01-PLAN.md — data layer and GraphQL contracts for Phase 5 Rate Browsing & Rate Blocking (migration, DotwPrebook model, 10 new dotw.graphql types)
+Next: Execute Phase 5 Plans 02 and 03 — DotwGetRoomRates resolver and DotwBlockRates resolver (resolver classes declared in schema, data layer ready)
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

@@ -37,7 +37,7 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 - [x] **Phase 2: Message Tracking & Audit Infrastructure** - Resayil WhatsApp message_id and quote_id logging, full request/response audit trail (completed 2026-02-21)
 - [x] **Phase 3: Cache Service & GraphQL Response Architecture** - 2.5-minute search result caching, unified GraphQL response wrapper, trace IDs (completed 2026-02-21)
 - [x] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration (completed 2026-02-21)
-- [ ] **Phase 5: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, blockRates mutation with 3-minute allocation prebook tracking
+- [ ] **Phase 5: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, blockRates mutation with 3-minute allocation prebook tracking (Plan 01 of 03 complete 2026-02-21)
 - [ ] **Phase 6: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging
 - [ ] **Phase 7: Error Hardening & Circuit Breaker** - Circuit breaker pattern, resilience handling, error logging to dotw channel
 - [ ] **Phase 8: Modular Architecture & B2B Packaging** - Service modularity, composable GraphQL schema, deployment README, B2B extensibility verification
@@ -161,7 +161,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Data layer + schema: dotw_prebooks migration (company_id, resayil_message_id), DotwPrebook model update (activeForUser scope), graphql/dotw.graphql Phase 5 types (10 new types + getRoomRates + blockRates)
+- [x] 05-01-PLAN.md — Data layer + schema: dotw_prebooks migration (company_id, resayil_message_id), DotwPrebook model update (activeForUser scope), graphql/dotw.graphql Phase 5 types (10 new types + getRoomRates + blockRates) (complete 2026-02-21)
 - [ ] 05-02-PLAN.md — DotwGetRoomRates resolver (getRoomRates query: browse rates, markup, allocationDetails, cancellation rules)
 - [ ] 05-03-PLAN.md — DotwBlockRates resolver (blockRates mutation: BLOCK-08 transaction, prebook creation, countdown, full phase verification)
 
@@ -235,7 +235,7 @@ Plans:
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Complete (3/3 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
 | 4 | 3/3 | Complete   | 2026-02-21 | Planned (2 plans) |
-| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Planned (3 plans) |
+| 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | In Progress (1/3 plans) |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | MOD-01..08, B2B-05 | Not started |
@@ -284,25 +284,25 @@ Plans:
 | B2B-01 | Phase 4 | Pending |
 | B2B-02 | Phase 4 | Pending |
 | B2B-03 | Phase 4 | Pending |
-| RATE-01 | Phase 5 | Pending |
-| RATE-02 | Phase 5 | Pending |
-| RATE-03 | Phase 5 | Pending |
-| RATE-04 | Phase 5 | Pending |
-| RATE-05 | Phase 5 | Pending |
-| RATE-06 | Phase 5 | Pending |
-| RATE-07 | Phase 5 | Pending |
-| RATE-08 | Phase 5 | Pending |
-| BLOCK-01 | Phase 5 | Pending |
-| BLOCK-02 | Phase 5 | Pending |
-| BLOCK-03 | Phase 5 | Pending |
-| BLOCK-04 | Phase 5 | Pending |
-| BLOCK-05 | Phase 5 | Pending |
-| BLOCK-06 | Phase 5 | Pending |
-| BLOCK-07 | Phase 5 | Pending |
-| BLOCK-08 | Phase 5 | Pending |
-| MARKUP-03 | Phase 5 | Pending |
-| MARKUP-04 | Phase 5 | Pending |
-| MARKUP-05 | Phase 5 | Pending |
+| RATE-01 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 02 |
+| RATE-02 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 02 |
+| RATE-03 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 02 |
+| RATE-04 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 02 |
+| RATE-05 | Phase 5 | Schema contracted (Plan 01) — original_currency, exchange_rate, final_currency in RateDetail |
+| RATE-06 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 02 |
+| RATE-07 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 02 |
+| RATE-08 | Phase 5 | Pending — resolver in Plan 02 |
+| BLOCK-01 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 03 |
+| BLOCK-02 | Phase 5 | Pending — resolver in Plan 03 |
+| BLOCK-03 | Phase 5 | Pending — resolver in Plan 03 |
+| BLOCK-04 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 03 |
+| BLOCK-05 | Phase 5 | Schema contracted (Plan 01) — resolver in Plan 03 |
+| BLOCK-06 | Phase 5 | Pending — resolver in Plan 03 |
+| BLOCK-07 | Phase 5 | Pending — resolver in Plan 03 |
+| BLOCK-08 | Phase 5 | Schema contracted (Plan 01) — activeForUser scope + compound index in place |
+| MARKUP-03 | Phase 5 | Schema contracted (Plan 01) — RateMarkup type used in RateDetail and BlockRatesData |
+| MARKUP-04 | Phase 5 | Schema contracted (Plan 01) — markup field in RateDetail and BlockRatesData |
+| MARKUP-05 | Phase 5 | Schema contracted (Plan 01) — resolver implementation in Plans 02+03 |
 | BOOK-01 | Phase 6 | Pending |
 | BOOK-02 | Phase 6 | Pending |
 | BOOK-03 | Phase 6 | Pending |
@@ -339,5 +339,6 @@ Plans:
 *Phase 2 planned: 2026-02-21 — 2 plans created*
 *Phase 4 planned: 2026-02-21 — 2 plans created*
 *Phase 5 planned: 2026-02-21 — 3 plans created*
+*Phase 5 Plan 01 executed: 2026-02-21 — data layer and GraphQL contracts complete*
 *Milestone: DOTW v1.0 B2B*
 *Phases: 1-8 (standalone, independent of soud-laravel v1.0 Bulk Invoice Upload)*

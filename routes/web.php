@@ -935,4 +935,13 @@ Route::middleware(['auth', 'dotw_audit_access'])
             ->name('audit-logs');
     });
 
+// DOTW API Token Manager — Super Admin only (403 enforced in DotwApiTokenIndex::mount())
+Route::middleware(['auth'])
+    ->prefix('admin/dotw')
+    ->name('admin.dotw.')
+    ->group(function () {
+        Route::get('api-tokens', \App\Http\Livewire\Admin\DotwApiTokenIndex::class)
+            ->name('api-tokens');
+    });
+
 require __DIR__.'/auth.php';

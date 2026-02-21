@@ -36,7 +36,7 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 - [x] **Phase 1: Credential Management & Markup Foundation** - Per-company DOTW credential storage with encryption, 20% markup foundation, multi-company isolation (completed 2026-02-21)
 - [x] **Phase 2: Message Tracking & Audit Infrastructure** - Resayil WhatsApp message_id and quote_id logging, full request/response audit trail (completed 2026-02-21)
 - [x] **Phase 3: Cache Service & GraphQL Response Architecture** - 2.5-minute search result caching, unified GraphQL response wrapper, trace IDs (completed 2026-02-21)
-- [ ] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration
+- [x] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration (completed 2026-02-21)
 - [ ] **Phase 5: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, blockRates mutation with 3-minute allocation prebook tracking
 - [ ] **Phase 6: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging
 - [ ] **Phase 7: Error Hardening & Circuit Breaker** - Circuit breaker pattern, resilience handling, error logging to dotw channel
@@ -131,7 +131,7 @@ Plans:
 5. Room detail fields include all DOTW API fields — nothing is summarized away that DOTW returns.
 6. Each search logs a row to `dotw_audit_logs` with the resayil_message_id, destination, and filters used; the GraphQL response reflects `cached: true/false` correctly.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md — GraphQL schema extension (14 new types/inputs) + DotwGetCities resolver (city name→code lookup)
@@ -228,7 +228,7 @@ Plans:
 | 1 | Credential Management & Markup Foundation | Wave 1 | CRED-01..05, MARKUP-01..02, ERROR-05, B2B-04 | Complete (2/2 plans) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | MSG-01..05 | Complete (3/3 plans) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
-| 4 | 1/2 | In Progress|  | Planned (2 plans) |
+| 4 | 2/2 | Complete   | 2026-02-21 | Planned (2 plans) |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Not started |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |

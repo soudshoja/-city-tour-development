@@ -39,7 +39,7 @@ Progress: ○ 0 of 8 phases complete
 | 1 | Credential Management & Markup Foundation | Wave 1 | Complete (Plans 01 and 02 of 02 complete) |
 | 2 | Message Tracking & Audit Infrastructure | Wave 1 | Complete (Plans 01, 02, and 03 of 03 complete) |
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | In Progress (Plans 01 and 02 of 03 complete) |
-| 4 | Hotel Search GraphQL | Wave 2 | In Progress (Plan 01 of 02 complete) |
+| 4 | Hotel Search GraphQL | Wave 2 | Complete (Plans 01 and 02 of 02 complete) |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | Not started |
 | 6 | Pre-Booking & Confirmation Workflow | Wave 3 | Not started |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | Not started |
@@ -83,6 +83,10 @@ Progress: ○ 0 of 8 phases complete
 - Triple-quoted block strings (`"""..."""`) required for multi-line descriptions in GraphQL SDL — double-quoted strings must be single-line
 - DotwErrorCode enum values must be used exactly in resolvers — VALIDATION_ERROR for input validation failures (not INVALID_INPUT)
 - lighthouse:print-schema fails when any @field resolver class is missing — expected until Plan 02 creates DotwSearchHotels
+- DotwService instantiated inside cache closure (not injected) — ensures per-company credentials resolved with companyId on every cache miss
+- isCached() before remember() pattern — wasCached captured before cache read, cached: true accurately reflects API bypass
+- DotwService reused in formatHotels() — single instance across all hotels avoids repeated DB credential lookups
+- RuntimeException vs Exception catch separation — distinct error codes CREDENTIALS_NOT_CONFIGURED vs API_ERROR for N8N workflow branching
 
 ### Pending Todos
 
@@ -95,8 +99,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 04-01-PLAN.md — graphql/dotw.graphql Phase 4 schema extension (14 types) and DotwGetCities resolver
-Next: Execute Phase 4 Plan 02 — create DotwSearchHotels resolver (searchHotels query implementation with caching)
+Stopped at: Completed 04-02-PLAN.md — DotwSearchHotels resolver (searchHotels B2B with caching, markup, and error handling)
+Next: Phase 4 complete — execute Phase 5 (Rate Browsing & Rate Blocking) following same auth guard + cache + error pattern
 
 ## Previous Milestone (v1.0 Bulk Invoice Upload)
 

@@ -8,7 +8,20 @@ A multi-tenant Laravel 11 platform for travel agencies to manage bookings, invoi
 
 **Agents can invoice clients accurately from any source (AIR files, PDFs, Excel uploads) with automated payment tracking and accounting integration.**
 
-## Current State
+## Current Milestone: DOTW v1.0 B2B
+
+**Goal:** Enable agents to search, browse, and book hotels from multiple suppliers using real-time DOTW API rates, with per-company credential management and GraphQL API for B2B integrations.
+
+**Target Features:**
+- Hotel search by destination/dates/rooms with live DOTW rates
+- Rate browsing with cancellation policies and room details
+- Rate blocking with 3-minute allocation tracking
+- Pre-booking creation and confirmation workflow
+- Per-company DOTW credential storage and switching
+- GraphQL API for search, rates, booking operations
+- Integration with existing task/invoice system (future phase)
+
+## Completed Milestones
 
 **v1.0 Bulk Invoice Upload** — ✅ SHIPPED 2026-02-13
 
@@ -60,9 +73,16 @@ Delivered complete bulk invoice creation system from Excel uploads:
 
 ### Active
 
-<!-- Current scope. Next milestone requirements go here. -->
+<!-- DOTW v1.0 B2B Milestone -->
 
-(No active requirements — ready for next milestone planning)
+**DOTW v1.0 B2B Features (in planning):**
+- Per-company DOTW credential management (username, password, company_code)
+- Hotel search with live rates and filters
+- Rate browsing (room types, meal plans, cancellation policies)
+- Rate blocking (3-minute allocation expiry, dotw_prebooks tracking)
+- Pre-booking and confirmation workflow
+- GraphQL API (searchHotels, getRoomRates, createPreBooking, confirmBooking)
+- B2C markup application (20% default, configurable per company)
 
 ### Out of Scope
 
@@ -116,4 +136,4 @@ Delivered complete bulk invoice creation system from Excel uploads:
 | In-memory PDF generation | Uses Laravel 11 Attachment::fromData(), no temp file cleanup needed | ✓ Good (v1.0) |
 
 ---
-*Last updated: 2026-02-13 after v1.0 milestone completion*
+*Last updated: 2026-02-21 after starting DOTW v1.0 B2B milestone*

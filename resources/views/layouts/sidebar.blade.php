@@ -88,7 +88,7 @@
 
         @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
         <div class="flex flex-col items-center">
-            <a href="{{ route('admin.dotw.audit-logs') }}">
+            <a href="{{ route('admin.dotw.index') }}">
                 <div class="relative">
                     <div data-tooltip="WhatsApp AI"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">

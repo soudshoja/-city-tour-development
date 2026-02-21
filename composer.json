@@ -16,6 +16,7 @@
         "josiasmontag/laravel-recaptchav3": "^1.0",
         "laravel/breeze": "^2.1",
         "laravel/framework": "^11.9",
+        "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.9",
         "league/oauth2-client": "^2.8",
         "livewire/livewire": "^3.5",

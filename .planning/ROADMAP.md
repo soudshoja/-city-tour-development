@@ -38,7 +38,7 @@ Enable travel agents to search, browse, and book hotels via real-time DOTW API r
 - [x] **Phase 3: Cache Service & GraphQL Response Architecture** - 2.5-minute search result caching, unified GraphQL response wrapper, trace IDs (completed 2026-02-21)
 - [x] **Phase 4: Hotel Search GraphQL** - searchHotels query with full DOTW filter vocabulary, destination/dates/rooms, cache integration (completed 2026-02-21)
 - [x] **Phase 5: Rate Browsing & Rate Blocking** - getRoomRates query with cancellation policies, allocationDetails tokens, transparent markup; blockRates mutation with 3-minute allocation prebook tracking, BLOCK-08 race condition guard, two-phase audit logging (complete 2026-02-21)
-- [ ] **Phase 6: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging
+- [x] **Phase 6: Pre-Booking & Confirmation Workflow** - createPreBooking mutation with passenger validation, DOTW booking confirmation, error messaging (completed 2026-02-21)
 - [ ] **Phase 7: Error Hardening & Circuit Breaker** - Circuit breaker pattern, resilience handling, error logging to dotw channel
 - [ ] **Phase 8: Modular Architecture & B2B Packaging** - Service modularity, composable GraphQL schema, deployment README, B2B extensibility verification
 
@@ -184,7 +184,7 @@ Plans:
 6. When DOTW returns "hotel sold out," the response includes the error and 3 similar alternatives with availability.
 7. Every booking attempt (success or failure) logs to `dotw_audit_logs` with confirmation_code (if obtained) and booking_status.
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 06-01-PLAN.md — Data layer + schema: dotw_bookings migration, DotwBooking model, graphql/dotw.graphql Phase 6 types (PassengerInput, CreatePreBookingInput, BookingItinerary, CreatePreBookingData, CreatePreBookingResponse + createPreBooking mutation)
@@ -245,7 +245,7 @@ Plans:
 | 3 | Cache Service & GraphQL Response Architecture | Wave 1 | CACHE-01..05, GQLR-01..08 | Complete (2/2 plans) |
 | 4 | Hotel Search GraphQL | Wave 2 | SEARCH-01..08, B2B-01..03 | Complete (3/3 plans) |
 | 5 | Rate Browsing & Rate Blocking | Wave 2 | RATE-01..08, BLOCK-01..08, MARKUP-03..05 | Complete (3/3 plans) |
-| 6 | Pre-Booking & Confirmation Workflow | Wave 3 | BOOK-01..08, ERROR-03/04 | Planned (2 plans) |
+| 6 | Pre-Booking & Confirmation Workflow | Complete    | 2026-02-21 | Planned (2 plans) |
 | 7 | Error Hardening & Circuit Breaker | Wave 3 | ERROR-01/02/07/08 | Not started |
 | 8 | Modular Architecture & B2B Packaging | Wave 3 | MOD-01..08, B2B-05 | Not started |
 

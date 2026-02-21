@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Crypt;
  * @property string $dotw_password Decrypted plaintext password (via accessor)
  * @property string $dotw_company_code DOTW company code (not sensitive)
  * @property float $markup_percent B2C markup percentage (default 20.00)
+ * @property string $currency ISO 4217 currency code for this company (default USD)
  * @property bool $is_active Whether DOTW access is enabled for this company
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
@@ -51,6 +52,7 @@ class CompanyDotwCredential extends Model
         'dotw_password',
         'dotw_company_code',
         'markup_percent',
+        'currency',
         'is_active',
     ];
 
@@ -74,6 +76,7 @@ class CompanyDotwCredential extends Model
      */
     protected $casts = [
         'markup_percent' => 'float',
+        'currency' => 'string',
         'is_active' => 'boolean',
     ];
 

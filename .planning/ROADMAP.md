@@ -232,7 +232,11 @@ Plans:
 6. A developer can copy the DOTW module to a new Laravel installation by: adding 4 env vars, running migrations, and registering the GraphQL schema — documented step-by-step in the README.
 7. The API is usable by an external B2B partner consuming GraphQL — not just N8N — with clear schema documentation from introspection.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Modular architecture audit: verify MOD-01..06 with coupling greps, config/migration/schema checks, fix any violations
+- [ ] 08-02-PLAN.md — Deployment README: rewrite DOTW_INTEGRATION.md as complete deployment + B2B consumer guide (MOD-07, MOD-08, B2B-05)
 
 ---
 

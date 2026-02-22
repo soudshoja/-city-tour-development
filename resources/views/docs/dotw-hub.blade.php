@@ -322,12 +322,16 @@
     </main>
 
     <script>
-        if (localStorage.getItem('darkMode') === 'false') {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
             document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
         }
         document.getElementById('darkModeToggle').addEventListener('click', () => {
             document.documentElement.classList.toggle('dark');
-            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
         });
     </script>
 </body>

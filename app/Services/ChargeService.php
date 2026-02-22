@@ -26,7 +26,7 @@ class ChargeService
         if ($backOfficeChargeType === 'Percent') {
             $backOfficeAmount = ($backOfficeCharge / 100) * $baseAmount;
             // Step 2: Round UP the percentage charge
-            $backOfficeAmountRounded = ceil($backOfficeAmount);
+            $backOfficeAmountRounded = round($backOfficeAmount, 3);
         } else {
             // Flat rate - no rounding needed
             $backOfficeAmount = $backOfficeCharge;

@@ -3066,7 +3066,7 @@ class InvoiceController extends Controller
                 $gatewayFee = [];
                 try {
                     $gatewayFee = ChargeService::calculate(
-                        $partial->amount + ($partial->invoice_charge ?? 0),
+                        $partial->amount,
                         $companyId,
                         $partial->payment_method ?? null,
                         $partial->payment_gateway
@@ -3081,7 +3081,7 @@ class InvoiceController extends Controller
                 }
                 $partial->service_charge = $gatewayFee['gatewayFee'] ?? 0.00;
                 $partial->save();
-                $partial->final_amount = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
+                $partial->final_amount = ceil($partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0));
                 $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
 
                 if ($chargePayer !== 'Company') {

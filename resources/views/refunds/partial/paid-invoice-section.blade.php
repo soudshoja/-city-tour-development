@@ -36,6 +36,7 @@
 
             @php
                 $originalTaskCost = $sourceTask->total ?? ($invoiceDetail->task_price - $invoiceDetail->markup_price);
+                $refundTaskCost = $task->original_task_total ?? $task->total;
             @endphp
 
             <!-- Refund Fee to Client -->
@@ -54,7 +55,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
                     </svg>
                     <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][supplier_charge]" 
-                        value="{{ number_format($originalTaskCost - $task->total, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                        value="{{ number_format($originalTaskCost - $refundTaskCost, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
@@ -75,7 +76,7 @@
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">Refund Task (Cost Price)</label>
                 <input readonly type="number" step="0.001" name="tasks[{{ $loopIndex }}][refund_task_cost_price]" 
-                       value="{{ number_format($task->total, 3, '.', '') }}" 
+                       value="{{ number_format($refundTaskCost, 3, '.', '') }}" 
                        class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
             </div>
 

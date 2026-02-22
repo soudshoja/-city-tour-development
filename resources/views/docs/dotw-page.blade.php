@@ -202,7 +202,7 @@
 
     <script>
         // Dark mode — uses 'theme' key to avoid conflicting with main app's 'darkMode' key
-        const savedTheme = localStorage.getItem('theme');
+        const savedTheme = localStorage.getItem('docsTheme');
         if (savedTheme === 'light') {
             document.documentElement.classList.remove('dark');
         } else {
@@ -211,7 +211,7 @@
         document.getElementById('darkModeToggle').addEventListener('click', () => {
             document.documentElement.classList.toggle('dark');
             const isDark = document.documentElement.classList.contains('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            localStorage.setItem('docsTheme', isDark ? 'dark' : 'light');
         });
 
         // Build sidebar from headings

@@ -369,15 +369,12 @@
                             <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
                                 <thead>
                                     <tr>
-                                        <th class="text-gray-900 dark:text-gray-100">No.</th>
-                                        <th class="px-4 py-2 min-w-[100px] text-gray-900 dark:text-gray-100">Task</th>
-                                        <th class="px-6 py-6 text-gray-900 dark:text-gray-100">Task Price</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
+                                        <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100" @if ($invoice->refund) style="display:none" @endif>Action</th>
                                     </tr>
                                 </thead>
@@ -2497,13 +2494,11 @@
                 show(additionalActions);
                 hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
-                partialPaymentModal?.classList.add('hidden');
             } else if (paymentType === 'split') {
                 show(paymentGatewaySection);
                 show(additionalActions);
                 hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
-                splitPaymentModal?.classList.remove('hidden');
             } else if (paymentType === 'credit') {
                 show(paymentGatewaySection);
                 show(additionalActions);
@@ -2579,7 +2574,7 @@
 
             creditSelectionState = { selectedInstallment: null, totalCreditSelected: 0, remainingBalance: 0 };
             for (const k in creditUsed) delete creditUsed[k];
-            PaymentSelection.clearAllSelections(); // ← add this to PaymentSelection
+            PaymentSelection.clearAllSelections(); 
 
             if (type == 'split') {
                 document.getElementById('splitPaymentModal').classList.remove('hidden');
@@ -2598,6 +2593,14 @@
             document.getElementById('splitPaymentModal')?.classList.add('hidden');
             document.getElementById('partialPaymentModal')?.classList.add('hidden');
             document.getElementById('clientCreditModal')?.classList.add('hidden');
+
+            // Clear row containers to prevent duplicate element IDs
+            // (split and partial both use amount_1, amount_2, etc.)
+            const splitRows = document.getElementById('split-rows');
+            if (splitRows) splitRows.innerHTML = '';
+
+            const partialRows = document.getElementById('partial-rows');
+            if (partialRows) partialRows.innerHTML = '';
         }
 
         function showClientModal() {
@@ -3042,9 +3045,13 @@
                 el.textContent = totalAmount1.toFixed(3);
             });
 
-            const initialPerRowAmount = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(3) : 0;
+            // NEW (fixed) — floor each installment, put remainder on the last one
+            const baseAmount1    = Math.floor((totalAmount1 / splitInto1) * 1000) / 1000;
+            const totalBase1     = baseAmount1 * splitInto1;
+            const remainder1     = Math.round((totalAmount1 - totalBase1) * 1000) / 1000;
+
             const container = document.getElementById('partial-rows');
-           
+
             container.innerHTML = '';
 
             creditRemaining = partialCredit;
@@ -3052,7 +3059,10 @@
             for (const k in creditUsed) delete creditUsed[k];
 
             for (let i = 1; i <= splitInto1; i++) {
-                createPartialInstallmentCard(i, initialPerRowAmount, totalAmount1, container, splitInto1);
+                const rowAmount = (i === splitInto1)
+                    ? (baseAmount1 + remainder1).toFixed(3)
+                    : baseAmount1.toFixed(3);
+                createPartialInstallmentCard(i, rowAmount, totalAmount1, container, splitInto1);
             }
 
             updateCreditUI(splitInto1);
@@ -3289,72 +3299,16 @@
         }
 
         // Enhanced PaymentSelection integration that properly reflects amounts
-        const originalHandleCheckboxChange = PaymentSelection.handleCheckboxChange;
-        PaymentSelection.handleCheckboxChange = function(checkbox, rowId, requiredAmount, rowIndex) {
-            originalHandleCheckboxChange.call(this, checkbox, rowId, requiredAmount, rowIndex);
-
-            const totalSelected    = this.getSelectedTotal(rowId);
-            const [mode, idxStr]   = rowId.split('_');
-            const installmentIndex = parseInt(idxStr);
-
-            if (totalSelected >= 0 && installmentIndex) {
-                const amountInput     = document.getElementById(`amount_${installmentIndex}`);
-                const badgeId         = mode === 'partial'
-                    ? `card_amount_badge_${installmentIndex}`
-                    : `split_card_amount_badge_${installmentIndex}`;
-                const badge           = document.getElementById(badgeId);
-                const selectedDisplay = document.getElementById(`credit_selected_${installmentIndex}`);
-                const statusDisplay   = document.getElementById(`credit_status_${installmentIndex}`);
-
-                if (amountInput)     amountInput.value          = totalSelected.toFixed(3);
-                if (badge)           badge.textContent           = `${totalSelected.toFixed(3)} KWD`;
-                if (selectedDisplay) selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
-
-                if (statusDisplay) {
-                    statusDisplay.textContent = totalSelected > 0 ? 'Credit selected ✓' : 'No vouchers selected';
-                    statusDisplay.className   = totalSelected > 0 ? 'text-green-600 font-medium' : 'text-gray-500';
-                }
-
-                creditSelectionState.totalCreditSelected = totalSelected;
-                creditUsed[installmentIndex] = totalSelected;
-
-                recalculateAfterCreditSelection(mode, installmentIndex, totalSelected);
-                updatePaymentSummary(mode);
-            }
+       const _origCheckbox = PaymentSelection.handleCheckboxChange;
+        PaymentSelection.handleCheckboxChange = function(checkbox) {
+            _origCheckbox.call(this, checkbox);
+            syncInstallmentUI(checkbox.dataset.rowId);
         };
 
-        const originalHandleAmountChange = PaymentSelection.handleAmountChange;
-        PaymentSelection.handleAmountChange = function(input, rowId, requiredAmount, rowIndex) {
-            originalHandleAmountChange.call(this, input, rowId, requiredAmount, rowIndex);
-
-            const totalSelected    = this.getSelectedTotal(rowId);
-            const [mode, idxStr]   = rowId.split('_');
-            const installmentIndex = parseInt(idxStr);
-
-            if (installmentIndex) {
-                const amountInput     = document.getElementById(`amount_${installmentIndex}`);
-                const badgeId         = mode === 'partial'
-                    ? `card_amount_badge_${installmentIndex}`
-                    : `split_card_amount_badge_${installmentIndex}`;
-                const badge           = document.getElementById(badgeId);
-                const selectedDisplay = document.getElementById(`credit_selected_${installmentIndex}`);
-                const statusDisplay   = document.getElementById(`credit_status_${installmentIndex}`);
-
-                if (amountInput && amountInput.readOnly) amountInput.value = totalSelected.toFixed(3);
-                if (badge)           badge.textContent           = `${totalSelected.toFixed(3)} KWD`;
-                if (selectedDisplay) selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
-
-                if (statusDisplay) {
-                    statusDisplay.textContent = totalSelected > 0 ? 'Credit selected ✓' : 'No vouchers selected';
-                    statusDisplay.className   = totalSelected > 0 ? 'text-green-600 font-medium' : 'text-gray-500';
-                }
-
-                creditSelectionState.totalCreditSelected = totalSelected;
-                creditUsed[installmentIndex] = totalSelected;
-
-                recalculateAfterCreditSelection(mode, installmentIndex, totalSelected);
-                updatePaymentSummary(mode);
-            }
+        const _origAmount = PaymentSelection.handleAmountChange;
+        PaymentSelection.handleAmountChange = function(input) {
+            _origAmount.call(this, input);
+            syncInstallmentUI(input.dataset.rowId);
         };
 
         /**
@@ -3416,10 +3370,7 @@
             console.log(`[loadCreditVouchers] vouchers container exists:`, !!document.getElementById(vouchersContainerId));
             console.log(`[loadCreditVouchers] calling PaymentSelection.showForRow(${mode}, ${installmentIndex}, ${clientId})`);
 
-            PaymentSelection.showForRow(mode, installmentIndex, clientId, 0, function(selectedAmount) {
-                console.log(`[loadCreditVouchers] callback fired — selectedAmount:`, selectedAmount);
-                handleCreditVoucherSelection(mode, installmentIndex, selectedAmount);
-            });
+            PaymentSelection.showForRow(mode, installmentIndex, clientId);
         }
 
         /**
@@ -3919,7 +3870,7 @@
             if (!Array.isArray(items) || items.length === 0) {
                 const noItemsRow = document.createElement('tr');
                 noItemsRow.innerHTML =
-                    '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                    '<td colspan="5" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                 tbody.appendChild(noItemsRow);
                 return;
             }
@@ -3954,52 +3905,62 @@
                     row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
 
                     row.innerHTML = `
-                            <td class="flex-grow"><p>${++count}</p></td>
-                            <td class="flex-grow"><p><b>${task.desc}</b><br>Info: ${task.info}</br></p></td>
-                            <td><p>${task.total} KWD</p></td>
-                            <td>
-                                <div class="flex items-center">
-                                    <input id="invprice-table-${task.id}" 
-                                        type="number" 
-                                        name="tasks[${item.id}]" 
-                                        class="no-spin border border-gray-300 rounded-md w-full" 
-                                        value="${item.task_price}" 
-                                        oninput="updateItemPrice(${item.id});" 
-                                    />
-                                    ${!isInvoicePaid && isSaved && !isInvoiceLocked ? `
-                                        <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${task.id})" style="${isRefundInvoice ? 'display:none' : ''}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-600">
-                                                <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
-                                            </svg>
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </td>
-                            <td><p>${task.clientName}</p></td>
-                            <td><p>${task.agentName}</p></td>
-                            <td><p>${task.branchName}</p></td>
-                            <td><p>${task.supplierName}</p></td>
-                            <td><p>${task.typeCap}</p></td>
-                            <td class="action-cell text-center" style="${isRefundInvoice ? 'display:none' : ''}">
-                                <div class="inline-flex space-x-2">
-                                    ${!isSaved ? `
-                                        <button onclick="saveSingleTask(${item.id})" type="button" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                                <polyline points="7 3 7 8 15 8"></polyline>
-                                            </svg>
-                                        </button>
-                                    ` : ''}
-                                    <button onclick="removeTaskFromInvoice(${item.id} )" type="button" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item" style="${isRefundInvoice ? 'display:none' : ''}">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <td class="px-4 py-3"><p>${++count}</p></td>
+                        <td class="px-4 py-3">
+                            <div>
+                                <b>${task.desc}</b>
+                                <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                                    task.type === 'flight' ? 'bg-blue-100 text-blue-700' :
+                                    task.type === 'hotel'  ? 'bg-purple-100 text-purple-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                }">${task.typeCap}</span>
+                            </div>
+                            ${task.info ? `<div class="text-gray-500 text-xs mt-0.5">Info: ${task.info}</div>` : ''}
+                            ${task.supplierName ? `<div class="text-gray-400 text-xs mt-0.5">${task.supplierName}</div>` : ''}
+                        </td>
+                        <td><p>${task.clientName}</p></td>
+                        <td class="px-4 py-3">
+                            <p>${task.agentName}</p>
+                            ${task.branchName ? `<div class="text-gray-400 text-xs mt-0.5">${task.branchName}</div>` : ''}
+                        </td>    
+                        <td class="px-4 py-3"><p>${task.total} KWD</p></td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center">
+                                <input id="invprice-table-${task.id}" 
+                                    type="number" 
+                                    name="tasks[${item.id}]" 
+                                    class="no-spin border border-gray-300 rounded-md w-full" 
+                                    value="${item.task_price}" 
+                                    oninput="updateItemPrice(${item.id});" 
+                                />
+                                ${!isInvoicePaid && isSaved && !isInvoiceLocked ? `
+                                    <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${task.id})" style="${isRefundInvoice ? 'display:none' : ''}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-600">
+                                            <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
                                         </svg>
                                     </button>
-                                </div>
-                            </td>
-                        `;
-
+                                ` : ''}
+                            </div>
+                        </td>
+                        <td class="action-cell text-center px-4 py-3" style="${isRefundInvoice ? 'display:none' : ''}">
+                            <div class="inline-flex space-x-2">
+                                ${!isSaved ? `
+                                    <button onclick="saveSingleTask(${item.id})" type="button" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                            <polyline points="7 3 7 8 15 8"></polyline>
+                                        </svg>
+                                    </button>
+                                ` : ''}
+                                <button onclick="removeTaskFromInvoice(${item.id})" type="button" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item" style="${isRefundInvoice ? 'display:none' : ''}">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    `;
                     frag.appendChild(row);
 
                     const taskDetails = document.getElementById('task-details_' + task.id);
@@ -4864,22 +4825,20 @@
                     console.error('Split button or icon/text elements not found in the DOM.');
                 }
             } else if (mode === 'partial') {
-                const partialRows = document.querySelectorAll('#partial-rows tr');
+                const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
 
-                partialRows.forEach((row, index) => {
-                    const i = index + 1;
-
-                    const date = row.querySelector(`#date_${i}`)?.value || '';
-                    const amount = parseFloat(row.querySelector(`#amount_${i}`)?.value) || 0;
-                    const gatewayEl = row.querySelector(`#payment_gateway1_${i}`);
-                    const methodBox = row.querySelector(`#payment_method_container1_${i}`);
-                    const methodEl = row.querySelector(`#payment_method1_${i}`);
+                for (let i = 1; i <= splitInto; i++) {
+                    const date = document.getElementById(`date_${i}`)?.value || '';
+                    const amount = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
+                    const gatewayEl = document.getElementById(`payment_gateway1_${i}`);
+                    const methodBox = document.getElementById(`payment_method_container1_${i}`);
+                    const methodEl = document.getElementById(`payment_method1_${i}`);
 
                     const gateway = gatewayEl ? gatewayEl.value : null;
                     const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
                     const invoiceChargeInput = document.getElementById(`invoice_charge1_${i}`);
                     const partialInvoiceCharge = parseFloat(invoiceChargeInput ? invoiceChargeInput.value : 0) || 0;
-                    
+
                     // Get selected payments if gateway is Credit
                     let paymentAllocations = [];
                     if (gateway === 'Credit') {
@@ -4887,7 +4846,7 @@
                         paymentAllocations = PaymentSelection.getSelectedPaymentsForRow(rowId);
                         console.log(`Partial row ${i} payment allocations:`, paymentAllocations);
                     }
-                    
+
                     requests.push(save('partial', {
                         date,
                         amount,
@@ -4906,7 +4865,7 @@
                         methodVisible: methodBox && !methodBox.classList.contains('hidden'),
                         method
                     });
-                });
+                }
 
                 // UI feedback (unchanged)
                 const buttonPartial = document.getElementById('partialbutton');
@@ -5242,7 +5201,7 @@
 
 
         // Setup payment types and initial tasks - will be called in main DOMContentLoaded
-        function setupPaymentTypesAndTasks() {
+        function setupPaymentTypesAndTasks() {  
             tasks = @json($tasks);
             let initialTasks = @json($selectedTasks);
 
@@ -5266,17 +5225,6 @@
                     `input[name="payment_type"][value="${paymentTypeSaved}"]`);
                 if (matchingRadio) {
                     matchingRadio.checked = true;
-
-                    // Trigger modal function manually if needed
-                    if (paymentTypeSaved === 'partial') {
-                        showModal('partial');
-                    } else if (paymentTypeSaved === 'split') {
-                        showModal('split');
-                    } else if (paymentTypeSaved === 'credit') {
-                        showModal('credit');
-                    } else {
-                        hideModal();
-                    }
                 }
             }
 
@@ -5360,7 +5308,7 @@
             } else if (mode === 'partial') {
                 // FIX: Query amount inputs directly by ID pattern instead of looking for table rows
                 const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
-                
+
                 for (let i = 1; i <= splitInto; i++) {
                     const amountInput = document.getElementById(`amount_${i}`);
                     if (amountInput) {
@@ -5369,10 +5317,13 @@
                     }
                 }
 
-                if (totalEnteredAmount > totalInvoiceAmount) {
+                const roundedEntered = Number(totalEnteredAmount.toFixed(3));
+                const roundedInvoice = Number(totalInvoiceAmount.toFixed(3));
+
+                if (roundedEntered > roundedInvoice) {
                     isValid = false;
                     errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(3)} KWD) exceed the invoice amount (${totalInvoiceAmount.toFixed(3)} KWD). Partial payments cannot exceed the invoice total.`;
-                } else if (totalEnteredAmount < totalInvoiceAmount) {
+                } else if (roundedEntered < roundedInvoice) {
                     isValid = false;
                     errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(3)} KWD) are less than the invoice amount (${totalInvoiceAmount.toFixed(3)} KWD). Partial payments cannot be less than the invoice total.`;
                 }
@@ -6076,7 +6027,7 @@
                 const gatewaySelect = document.getElementById(`payment_gateway1_${rowIndex}`);
                 if (gatewaySelect && gatewaySelect.value === 'Credit') {
                     // Pass the NEW amount, not the old one
-                    PaymentSelection.updatePartialSummary(rowIndex, newAmount);
+                    PaymentSelection.updatePartialSummary(rowIndex);
                 }
             }
         }
@@ -6343,7 +6294,43 @@
             updatePaymentSummary(mode);
         }
 
-        
+        function syncInstallmentUI(rowId) {
+            const [mode, idxStr] = rowId.split('_');
+            const i = parseInt(idxStr);
+            if (!i) return;
+
+            const totalSelected = PaymentSelection.getSelectedTotal(rowId);
+
+            // Update amount input (only if credit-controlled / readonly)
+            const amountInput = document.getElementById(`amount_${i}`);
+            if (amountInput && amountInput.readOnly) {
+                amountInput.value = totalSelected.toFixed(3);
+            }
+
+            // Update card badge
+            const badgeId = mode === 'partial' ? `card_amount_badge_${i}` : `split_card_amount_badge_${i}`;
+            const badge = document.getElementById(badgeId);
+            if (badge) badge.textContent = `${totalSelected.toFixed(3)} KWD`;
+
+            // Update credit selected display
+            const selectedDisplay = document.getElementById(`credit_selected_${i}`);
+            if (selectedDisplay) selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
+
+            // Update credit status
+            const statusDisplay = document.getElementById(`credit_status_${i}`);
+            if (statusDisplay) {
+                statusDisplay.textContent = totalSelected > 0 ? 'Credit selected ✓' : 'No vouchers selected';
+                statusDisplay.className = totalSelected > 0 ? 'text-green-600 font-medium' : 'text-gray-500';
+            }
+
+            // Update global credit tracking
+            creditSelectionState.totalCreditSelected = totalSelected;
+            creditUsed[i] = totalSelected;
+
+            // Recalculate other installments and footer
+            recalculateAfterCreditSelection(mode, i, totalSelected);
+            updatePaymentSummary(mode);
+        }
     </script>
 
 </x-app-layout>

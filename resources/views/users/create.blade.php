@@ -869,16 +869,20 @@
                 e.stopPropagation();
                 // Close any other open dropdowns first
                 document.querySelectorAll('.custom-select .select-options').forEach((el) => {
-                    if (el !== options) el.classList.add('hidden');
+                    if (el !== options) el.style.display = 'none';
                 });
-                options.classList.toggle('hidden');
+                // Toggle using style.display (CSS class sets display:none which overrides Tailwind hidden)
+                options.style.display = (options.style.display === 'grid') ? 'none' : 'grid';
             });
 
             options.querySelectorAll('.select-option').forEach((option) => {
-                option.addEventListener('click', () => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     trigger.textContent = option.textContent.trim();
                     if (hiddenInput) hiddenInput.value = option.getAttribute('data-value');
-                    options.classList.add('hidden');
+                    options.querySelectorAll('.select-option').forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    options.style.display = 'none';
                 });
             });
         });
@@ -886,7 +890,7 @@
         // Close custom dropdowns when clicking outside
         document.addEventListener('click', () => {
             document.querySelectorAll('.custom-select .select-options').forEach((el) => {
-                el.classList.add('hidden');
+                el.style.display = 'none';
             });
         });
 

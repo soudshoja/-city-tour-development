@@ -49,7 +49,6 @@ use App\Models\Transaction;
 use App\Models\Charge;
 use App\Models\Currency;
 use App\Models\Role;
-use App\Models\Credit;
 use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use App\Models\PaymentMethodChose;
@@ -4392,13 +4391,9 @@ class PaymentController extends Controller
                     ->first();
 
                 if ($paymentTransaction) {
-                    Log::info('[MYFATOORAH] Updating payment transaction ID: ' . $paymentTransaction->id, [
-                        'payment_id' => $payment->id,
-                        'transaction_id' => $transactionId,
-                        'status' => $statusData['InvoiceStatus'],
-                    ]);
-
-                    $paymentTransaction->transaction_id = $transactionId;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
                     $paymentTransaction->status = $statusData['InvoiceStatus'];
                     $paymentTransaction->save();
                 } else {
@@ -6808,27 +6803,20 @@ class PaymentController extends Controller
             $payment = $paymentTransaction->payment;
 
             if (!$payment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment not found for this transaction.',
-                ], 404);
+                return redirect()->back()->with('error', 'Payment not found for this transaction.');
             }
 
             if ($payment->status === 'completed') {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Payment is already completed.',
-                    'status' => $paymentTransaction->status,
-                    'payment_status' => $payment->status,
-                ]);
+                return redirect()->back()->with('error', 'Payment is already completed.');
+            }
+
+            if (in_array(strtolower($paymentTransaction->status), ['paid', 'captured', 'successful'])) {
+                return redirect()->back()->with('error', 'Transaction is already completed. Current status: ' . $paymentTransaction->status);
             }
 
             $gateway = $paymentTransaction->paymentGateway;
             if (!$gateway) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment gateway not found.',
-                ], 404);
+                return redirect()->back()->with('error', 'Payment gateway not found.');
             }
 
             $gatewayName = $gateway->name;
@@ -6893,10 +6881,7 @@ class PaymentController extends Controller
                     break;
 
                 default:
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Unsupported payment gateway: {$gatewayName}",
-                    ], 400);
+                    return redirect()->back()->with('error', "Unsupported payment gateway: {$gatewayName}");
             }
 
             if ($newStatus) {
@@ -6939,36 +6924,18 @@ class PaymentController extends Controller
                             break;
                     }
 
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Payment completed successfully and processed.',
-                        'status' => $newStatus,
-                        'payment_status' => 'completed',
-                        'is_completed' => true,
-                    ]);
+                    return redirect()->back()->with('success', 'Payment completed successfully and processed.');
                 } catch (\Exception $e) {
                     Log::error('[CHECK_STATUS] Error processing completed payment', [
                         'payment_id' => $payment->id,
                         'error' => $e->getMessage(),
                     ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Payment is completed on gateway but failed to process: ' . $e->getMessage(),
-                        'status' => $newStatus,
-                        'is_completed' => true,
-                    ], 500);
+                    return redirect()->back()->with('error', 'Payment is completed on gateway but failed to process: ' . $e->getMessage());
                 }
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => $newStatus ? "Status updated to: {$newStatus}" : 'Unable to retrieve status from gateway.',
-                'status' => $newStatus ?? $paymentTransaction->status,
-                'payment_status' => $payment->status,
-                'is_completed' => $isCompleted,
-            ]);
-
+            return redirect()->back()->with('error', "Payment has not been completed yet. Please ask the client to complete the payment before the expiry date. Current status: {$newStatus}");
         } catch (\Exception $e) {
             Log::error('[CHECK_STATUS] Error checking transaction status', [
                 'transaction_id' => $transactionId,
@@ -6976,10 +6943,7 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error checking payment status: ' . $e->getMessage(),
-            ], 500);
+            return redirect()->back()->with('error', 'Error checking payment status: ' . $e->getMessage());
         }
     }
 
@@ -7036,7 +7000,9 @@ class PaymentController extends Controller
 
                 if ($paymentTransaction) {
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
-                    $paymentTransaction->transaction_id = $transactionId;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
                     $paymentTransaction->save();
                 }
             } else {
@@ -7109,7 +7075,9 @@ class PaymentController extends Controller
 
                 if ($paymentTransaction) {
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
-                    $paymentTransaction->transaction_id = $transactionId;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
                     $paymentTransaction->save();
                 }
             } else {
@@ -7174,7 +7142,9 @@ class PaymentController extends Controller
 
                 if ($paymentTransaction) {
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
-                    $paymentTransaction->transaction_id = $transactionId;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
                     $paymentTransaction->save();
                 }
             } else {

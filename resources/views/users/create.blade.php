@@ -857,6 +857,39 @@
 
 
 
+        // Custom select dropdowns (Agent Type & Branch)
+        document.querySelectorAll('.custom-select').forEach((selectWrapper) => {
+            const trigger = selectWrapper.querySelector('.select-trigger');
+            const options = selectWrapper.querySelector('.select-options');
+            const hiddenInput = selectWrapper.querySelector('input[type="hidden"]');
+
+            if (!trigger || !options) return;
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close any other open dropdowns first
+                document.querySelectorAll('.custom-select .select-options').forEach((el) => {
+                    if (el !== options) el.classList.add('hidden');
+                });
+                options.classList.toggle('hidden');
+            });
+
+            options.querySelectorAll('.select-option').forEach((option) => {
+                option.addEventListener('click', () => {
+                    trigger.textContent = option.textContent.trim();
+                    if (hiddenInput) hiddenInput.value = option.getAttribute('data-value');
+                    options.classList.add('hidden');
+                });
+            });
+        });
+
+        // Close custom dropdowns when clicking outside
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.custom-select .select-options').forEach((el) => {
+                el.classList.add('hidden');
+            });
+        });
+
         const countrySelect = document.getElementById("country-select");
         const phoneInput = document.getElementById("phone");
 

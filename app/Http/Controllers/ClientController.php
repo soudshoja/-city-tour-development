@@ -992,6 +992,18 @@ class ClientController extends Controller
 
     public function addCredit(Payment $payment)
     {
+        $existingCredit = Credit::where('payment_id', $payment->id)
+            ->where('type', Credit::TOPUP)
+            ->exists();
+
+        if ($existingCredit) {
+            Log::warning('Duplicate addCredit attempt blocked', ['payment_id' => $payment->id]);
+            return [
+                'status' => 'error',
+                'message' => 'Credit has already been added for this payment.',
+            ];
+        }
+
         $client = Client::findOrFail($payment->client_id);
         $agent = Agent::find($payment->agent_id);
 

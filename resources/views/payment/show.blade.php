@@ -27,17 +27,6 @@
 
     <div class="py-6">
         <div class="mx-auto">
-            @if (session('status'))
-            <div class="p-4 mb-4 text-green-700 bg-green-100 rounded-lg dark:bg-green-900 dark:text-green-200">
-                {{ session('status') }}
-            </div>
-            @endif
-
-            @if (session('error'))
-            <div class="p-4 mb-4 text-red-700 bg-red-100 rounded-lg dark:bg-red-900 dark:text-red-200">
-                {{ session('error') }}
-            </div>
-            @endif
             <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
                 <a href="{{ route('payment.link.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Payment Links</a>
                 <span class="text-gray-400">&gt;</span>
@@ -52,6 +41,9 @@
                                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Customer Details</h3>
                                 <div class="flex items-center gap-3">
                                     @if($payment->client)
+                                    <a href="{{ route('clients.credits', $payment->client->id) }}" target="_blank"
+                                        class="text-xs text-green-600 hover:text-green-700 font-medium px-3 py-1.5 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">View Credits
+                                    </a>
                                     <a href="{{ route('clients.show', $payment->client->id) }}" target="_blank"
                                         class="text-xs text-blue-600 hover:text-blue-700 font-medium px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">View Profile
                                     </a>
@@ -335,15 +327,14 @@
                                                                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200') }}">
                                                             {{ strtoupper($transaction->status) }}
                                                         </span>
-                                                        @if($payment->status !== 'completed' && !in_array(strtolower($transaction->status), ['paid', 'successful', 'completed', 'captured']))
-                                                        <button type="button"
-                                                            onclick="checkTransactionStatus({{ $transaction->id }}, this)"
+                                                        @if($payment->status !== 'completed' && !in_array(strtolower($transaction->status), ['paid', 'captured', 'successful']))
+                                                        <a href="{{ route('payment.transaction.check-status', $transaction->id) }}"
                                                             class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors">
                                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                             </svg>
                                                             Check
-                                                        </button>
+                                                        </a>
                                                         @endif
                                                     </div>
                                                 </td>
@@ -871,50 +862,6 @@
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
-        }
-
-        async function checkTransactionStatus(transactionId, button) {
-            const originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = `
-                <svg class="w-3 h-3 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                Checking...
-            `;
-
-            try {
-                const response = await fetch(`/payment/transaction/${transactionId}/check-status`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    if (data.is_completed) {
-                        alert(data.message);
-                        window.location.reload();
-                    } else {
-                        alert(data.message);
-                        window.location.reload();
-                    }
-                } else {
-                    alert('Error: ' + data.message);
-                    button.disabled = false;
-                    button.innerHTML = originalText;
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while checking payment status.');
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
         }
 
         function paymentItemsEditor() {

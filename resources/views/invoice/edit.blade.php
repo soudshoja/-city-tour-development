@@ -1528,27 +1528,72 @@
                                 <!-- Error message -->
                             </div>
 
-                            <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-2 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] h-[85vh] flex flex-col overflow-hidden">
-                                    <div class="px-4 md:px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
-                                        <h3 class="text-xl font-bold">Split Payment Details</h3>
+                            <!-- Split Payment -->
+                            <div id="splitPaymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out">
+
+                                    <!-- Header -->
+                                    <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-xl font-bold">Split Payment Details</h3>
+                                            <button type="button" onclick="hideModal()"
+                                                class="inline-flex items-center justify-center w-8 h-8 text-gray-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-6 py-4">
-                                        <form id="split-payment-container" class="space-y-5">
-                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1">Amount *</label>
-                                                    <input type="number" id="total-amount"
-                                                        class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+
+                                    <!-- Body -->
+                                    <div class="bg-gray-100 p-6 flex-1 overflow-y-auto">
+                                        <div id="split-payment-container" class="space-y-5">
+
+                                            <div class="flex items-start gap-5 mb-5">
+                                                <div class="flex-1 flex items-center justify-between gap-4 p-4 bg-white border border-gray-200 rounded-lg flex-wrap">
+                                                     <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client Name</label>
+                                                        <span class="receiver-name-display text-sm font-semibold text-gray-900">AHMED</span>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client's Credit</label>
+                                                        <span class="text-sm font-semibold text-green-600">{{ $balanceCredit }} KWD</span>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Number</label>
+                                                        <span class="text-sm font-semibold text-gray-900">{{ $invoiceNumber }}</span>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Total</label>
+                                                        <span id="subT1" class="text-sm font-semibold text-gray-900">0.000 KWD</span>
+                                                    </div>
+                                                    <div id="total-split-container" class="hidden">
+                                                        <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                                                            Split Payment Total
+                                                            <span id="total-split-tooltip" class="hidden relative cursor-help"
+                                                                onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                                                onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                                                <svg class="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                <span class="tooltip-box opacity-0 invisible absolute bottom-full right-0 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-50">
+                                                                    <span id="total-split-tooltip-text">Split total doesn't match invoice</span>
+                                                                    <span class="absolute top-full right-2 border-4 border-transparent border-t-gray-800"></span>
+                                                                </span>
+                                                            </span>
+                                                        </label>
+                                                        <span id="total-split-display" class="text-sm font-semibold text-blue-600">0.000 KWD</span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
+
+                                                <div id="split-into-initial-wrap" class="w-36 shrink-0">
+                                                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1" for="split-into">Split into *</label>
                                                     <select id="split-into"
-                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                        onchange="updateRowSplit()">
-                                                        <option value="" disabled selected>Select a value
-                                                        </option>
-                                                        <!-- <option value="1">1</option> -->
+                                                            class="w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                            onchange="updateRowSplit()">
+                                                        <option value="" disabled selected>Installments</option>
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
                                                         <option value="4">4</option>
@@ -1561,60 +1606,103 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label class="block text-sm font-medium mb-1">Description *</label>
-                                                <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
-                                            </div>
-                                            <div class="overflow-x-auto -mx-4 md:-mx-6">
-                                                <div class="px-4 md:px-6 inline-block min-w-full">
-                                                    <table class="min-w-full bg-white border border-gray-300 text-center text-sm">
-                                                        <thead>
-                                                            <tr>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">S.No</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Client</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Credit</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Expiry</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Amount</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Gateway</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Method</th>
-                                                                <th class="border-b px-2 py-2 whitespace-nowrap">Invoice Charge</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="split-rows">
-                                                            <!-- Dynamic rows will be generated here -->
-                                                        </tbody>
-                                                    </table>
+
+                                            <!-- Breakdown section (hidden until installments selected) -->
+                                            <div id="split-breakdown-section"
+                                                style="display: none; opacity: 0; transform: translateY(-8px); transition: opacity 0.2s ease-out, transform 0.2s ease-out;">
+
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <h2 class="text-lg font-semibold text-gray-700">Split Payment Breakdown</h2>
+
+                                                    <!-- Moved split-into dropdown (visible after selection) -->
+                                                    <div id="split-into-moved-wrap" class="hidden flex items-center gap-2">
+                                                        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wide" for="split-into-moved">Split into *</label>
+                                                        <select id="split-into-moved"
+                                                                class="w-24 p-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                onchange="updateRowSplitFromMoved()">
+                                                            <option value="2">2</option>
+                                                            <option value="3">3</option>
+                                                            <option value="4">4</option>
+                                                            <option value="5">5</option>
+                                                            <option value="6">6</option>
+                                                            <option value="7">7</option>
+                                                            <option value="8">8</option>
+                                                            <option value="9">9</option>
+                                                            <option value="10">10</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
+
+                                                <!-- Cards rendered here by JS -->
+                                                <div id="split-rows" class="space-y-3"></div>
                                             </div>
-                                            <div class="flex">
-                                                <button type="button" id="splitbutton" onclick="savePartial('split')"
-                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                                city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-full shadow">
+
+                                        </div>
+                                    </div>
+
+                                    <!-- Footer Split -->
+                                    <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg">
+                                        <div class="flex items-center justify-between">
+                                            <button onclick="hideModal()" class="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow">Cancel</button>
+
+                                            <div class="flex items-center gap-6">
+                                                <!-- Summary (hidden until installments selected) -->
+                                                <div id="split-footer-summary" class="hidden flex items-center gap-6">
+                                                    <div class="text-right">
+                                                        <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Invoice Total</span>
+                                                        <span id="invoice-total-display" class="invoice-total-display text-sm font-semibold text-gray-900">0.000 KWD</span>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Split Total</span>
+                                                        <span id="split-footer-split-total" class="text-sm font-semibold text-gray-900">0.000 KWD</span>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <span class="flex items-center justify-end gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                                                            Balance
+                                                            <span id="split-footer-balance-tooltip" class="hidden relative cursor-help"
+                                                                onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                                                onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                                                <svg class="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                <span class="tooltip-box opacity-0 invisible absolute bottom-full right-0 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-50">
+                                                                    <span id="split-footer-balance-tooltip-text">Payment doesn't match invoice total</span>
+                                                                    <span class="absolute top-full right-2 border-4 border-transparent border-t-gray-800"></span>
+                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                        <span id="split-footer-balance" class="text-sm font-bold text-green-600">0.000 KWD</span>
+                                                    </div>
+                                                    <div class="h-10 w-px bg-gray-300"></div>
+                                                </div>
+
+                                                <button id="splitbutton" onclick="savePartial('split')" type="button"
+                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-lg shadow">
                                                     <span id="button-icon-split" class="mr-2"></span>
                                                     <span id="button-text-split">Save Split Payment</span>
                                                 </button>
                                             </div>
-                                        </form>
-                                    </div>
-                                    <div class="px-4 md:px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-end">
-                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
+                            <!-- Partial Payment -->
+                            <div id="partialPaymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
                                 <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out">
                                     
-                                    <!-- Header with Badge -->
+                                    <!-- Header -->
                                     <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
                                         <div class="flex items-center justify-between">
                                             <h3 class="text-xl font-bold">Partial Payment Details</h3>
-                                            <span id="installment-badge" class="hidden inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
-                                                <span class="w-2 h-2 rounded-full bg-blue-600"></span>
-                                                <span class="text-sm font-semibold text-blue-700">
-                                                    <span id="installment-count">0</span> Installments
-                                                </span>
-                                            </span>
+                                            <button type="button" onclick="hideModal()"
+                                                class="inline-flex items-center justify-center w-8 h-8 text-gray-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
                                     
@@ -1625,7 +1713,7 @@
                                                 <div class="flex-1 flex items-center justify-between gap-4 p-4 bg-white border border-gray-200 rounded-lg flex-wrap">
                                                     <div>
                                                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client Name</label>
-                                                        <span id="receiverName1" class="text-sm font-semibold text-gray-900">AHMED</span>
+                                                        <span class="receiver-name-display text-sm font-semibold text-gray-900">AHMED</span>
                                                     </div>
                                                     <div>
                                                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client's Credit</label>
@@ -1669,6 +1757,10 @@
                                                         <option value="4">4</option>
                                                         <option value="5">5</option>
                                                         <option value="6">6</option>
+                                                        <option value="7">7</option>
+                                                        <option value="8">8</option>
+                                                        <option value="9">9</option>
+                                                        <option value="10">10</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -1680,7 +1772,7 @@
                                                     <h2 class="text-lg font-semibold text-gray-700">Partial Payment Breakdown</h2>
                                                     
                                                     <!-- Moved Split Into Position (visible after selection) -->
-                                                    <div id="split-into-moved" class="hidden flex items-center gap-2">
+                                                   <div id="partial-split-into-moved" class="hidden flex items-center gap-2">
                                                         <label class="text-xs font-semibold text-gray-400 uppercase tracking-wide" for="split-into1-moved">Split into *</label>
                                                         <select id="split-into1-moved"
                                                                 class="w-24 p-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
@@ -1690,17 +1782,21 @@
                                                             <option value="4">4</option>
                                                             <option value="5">5</option>
                                                             <option value="6">6</option>
+                                                            <option value="7">7</option>
+                                                            <option value="8">8</option>
+                                                            <option value="9">9</option>
+                                                            <option value="10">10</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 
-                                                <div id="split-rows1" class="space-y-3">
+                                                <div id="partial-rows" class="space-y-3">
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <!-- Footer -->
+                                    <!-- Footer Partial -->
                                     <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg">
                                         <div class="flex items-center justify-between">
                                             <button onclick="hideModal()" class="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow">Cancel</button>
@@ -1711,7 +1807,7 @@
                                                 <div id="footer-summary" class="hidden flex items-center gap-6">
                                                     <div class="text-right">
                                                         <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Invoice Total</span>
-                                                        <span id="footer-invoice-total" class="text-sm font-semibold text-gray-900">0.000 KWD</span>
+                                                        <span id="invoice-total-display" class="invoice-total-display text-sm font-semibold text-gray-900">0.000 KWD</span>
                                                     </div>
                                                     <div class="text-right">
                                                         <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Partial Total</span>
@@ -2382,8 +2478,8 @@
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
             const additionalActions = document.getElementById('additional-actions');
             const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
-            const paymentModal = document.getElementById('paymentModal');
-            const paymentModal1 = document.getElementById('paymentModal1');
+            const splitPaymentModal = document.getElementById('splitPaymentModal');
+            const partialPaymentModal = document.getElementById('partialPaymentModal');
             const creditModal = document.getElementById('clientCreditModal');
             const quickActionsHeader = document.getElementById('quick-actions-header');
 
@@ -2401,13 +2497,13 @@
                 show(additionalActions);
                 hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
-                paymentModal1?.classList.add('hidden');
+                partialPaymentModal?.classList.add('hidden');
             } else if (paymentType === 'split') {
                 show(paymentGatewaySection);
                 show(additionalActions);
                 hide(quickActionsHeader);
                 paymentGatewayDropdowns?.classList.add('hidden');
-                paymentModal?.classList.add('hidden');
+                splitPaymentModal?.classList.remove('hidden');
             } else if (paymentType === 'credit') {
                 show(paymentGatewaySection);
                 show(additionalActions);
@@ -2480,18 +2576,27 @@
 
         function showModal(type) {
             hideModal();
+
+            creditSelectionState = { selectedInstallment: null, totalCreditSelected: 0, remainingBalance: 0 };
+            for (const k in creditUsed) delete creditUsed[k];
+            PaymentSelection.clearAllSelections(); // ← add this to PaymentSelection
+
             if (type == 'split') {
-                document.getElementById('paymentModal').classList.remove('hidden');
+                document.getElementById('splitPaymentModal').classList.remove('hidden');
+                const splitInto = document.getElementById('split-into');
+                if (splitInto) { splitInto.value = ''; updateRowSplit(); }
             } else if (type == 'partial') {
-                document.getElementById('paymentModal1').classList.remove('hidden');
+                document.getElementById('partialPaymentModal').classList.remove('hidden');
+                const splitInto1 = document.getElementById('split-into1');
+                if (splitInto1) { splitInto1.value = ''; updateRowPartial(); }
             } else if (type == 'credit') {
                 document.getElementById('clientCreditModal')?.classList.remove('hidden');
             }
         }
 
         function hideModal() {
-            document.getElementById('paymentModal')?.classList.add('hidden');
-            document.getElementById('paymentModal1')?.classList.add('hidden');
+            document.getElementById('splitPaymentModal')?.classList.add('hidden');
+            document.getElementById('partialPaymentModal')?.classList.add('hidden');
             document.getElementById('clientCreditModal')?.classList.add('hidden');
         }
 
@@ -2538,7 +2643,7 @@
             }
         }
 
-        function updateCreditRow(rowNumber, clientId) {
+        /* function updateCreditRow(rowNumber, clientId) {
             const selectedClient = clients.filter(client => client.id == clientId)[0];
             clientCredits[rowNumber] = selectedClient?.total_credit || 0;
 
@@ -2566,6 +2671,24 @@
             } else {
                 console.error('Credit option not found:', `credit_option_${rowNumber}`);
             }
+        } */
+
+        function updateCreditRow(rowNumber, clientId) {
+            const selectedClientObj = clients.find(c => c.id == clientId);
+            const credit = selectedClientObj?.total_credit || 0;
+            clientCredits[rowNumber] = credit;
+
+            // Update credit display under client dropdown
+            const creditDisplayEl = document.getElementById(`credit_display_${rowNumber}`);
+            if (creditDisplayEl) creditDisplayEl.textContent = `Credit: ${parseFloat(credit).toFixed(3)} KWD`;
+
+            // Update credit option in gateway dropdown
+            const creditOption = document.getElementById(`credit_option_${rowNumber}`);
+            if (creditOption) {
+                creditOption.textContent = `Credit (${parseFloat(credit).toFixed(3)})`;
+                creditOption.disabled = credit <= 0;
+                creditOption.style.color = credit > 0 ? '#000' : '#9ca3af';
+            }
         }
 
         function gwKey(s) {
@@ -2583,219 +2706,295 @@
             selectEl.innerHTML = methods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('');
         }
 
-        function updateRowSplit() { //split payment
-            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+        function updateRowSplit() {
+            const splitIntoEl  = document.getElementById('split-into');
+            const splitInto    = parseInt(splitIntoEl.value) || 0;
+            const totalAmount  = parseFloat(document.getElementById('subTotal')?.value) || 0;
 
-            const baseAmount = Math.floor((totalAmount / splitInto) * 100) / 100;
-            const totalBase = baseAmount * splitInto;
-            const remainder = Math.round((totalAmount - totalBase) * 100) / 100;
+            const section      = document.getElementById('split-breakdown-section');
+            const initialWrap  = document.getElementById('split-into-initial-wrap');
+            const movedWrap    = document.getElementById('split-into-moved-wrap');
+            const movedSelect  = document.getElementById('split-into-moved');
 
-            const tbody = document.getElementById('split-rows');
-            tbody.innerHTML = ''; // Clear existing rows
-
-            for (let i = 1; i <= splitInto; i++) {
-                const rowAmount = (i === splitInto) ? (baseAmount + remainder).toFixed(3) : baseAmount.toFixed(3);
-
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                        <td class="border-b px-2 py-2 whitespace-nowrap">${i}</td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[120px] relative">
-                                <div id="searchable_dropdown_${i}" class="w-full">
-                                    <div class="relative">
-                                        <button type="button"
-                                                onclick="toggleSearchableDropdown(${i})"
-                                                class="w-full border border-gray-300 p-2 rounded text-sm text-left bg-white text-black">
-                                            <span id="selected_text_${i}" class="text-gray-400">Select Client</span>
-                                        </button>
-
-                                        <input type="hidden" name="customer_name_${i}" id="customer_name_${i}">
-
-                                        <div id="dropdown_${i}" style="display: none; position: fixed; z-index: 9999;"
-                                             class="bg-white border w-80 max-h-48 overflow-y-auto rounded shadow">
-                                            <div class="px-2 py-2">
-                                                <input type="text"
-                                                       id="search_input_${i}"
-                                                       placeholder="Search clients..."
-                                                       onkeyup="filterClientsSplit(${i}, this.value)"
-                                                       class="w-full border border-gray-300 rounded px-2 py-1 text-sm text-black">
-                                            </div>
-
-                                            <div id="options_container_${i}" class="max-h-32 overflow-y-auto">
-                                                ${clients.map(client => `
-                                                    <div class="p-2 hover:bg-gray-100 cursor-pointer text-sm client-option"
-                                                         data-client-id="${client.id}"
-                                                         data-client-name="${(client.full_name || client.name || '').replace(/"/g, '&quot;')}"
-                                                         data-row-index="${i}">
-                                                        ${client.full_name || client.name || 'Unnamed Client'}
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[80px] whitespace-nowrap" id="credit_display_${i}">
-                                Credit: 0.00
-                            </div>
-                        </td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[100px]">
-                                <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="w-full border-gray-300 rounded-md shadow-sm text-sm" />
-                            </div>
-                        </td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[80px]">
-                                <input type="number" id="amount_${i}" name="amount_${i}" class="w-full border-gray-300 rounded-md no-spin text-sm" value="${rowAmount}"
-                                    onblur="checkInputAmount('split', ${i})" oninput="checkInputAmount('split', ${i})" />
-                            </div>
-                        </td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[100px]">
-                                <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-1 rounded text-sm">
-                                    <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
-                                    ${charges.map(gateway => `<option value="${gateway.name}">${gateway.name}</option>`).join('')}
-                                </select>
-                            </div>
-                        </td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[120px]">
-                                <div id="payment_method_container_${i}" class="hidden">
-                                    <select id="payment_method_${i}" name="payment_method_${i}" class="w-full border border-gray-300 p-1 rounded text-sm"></select>
-                                </div>
-                                <div id="payment_method_text_${i}" class="text-gray-500 p-1 text-sm">No method required</div>
-                            </div>
-                        </td>
-                        <td class="border-b px-2 py-2">
-                            <div class="min-w-[80px]">
-                                <input type="number" id="invoice_charge_${i}" name="invoice_charge_${i}" 
-                                    class="w-full border-gray-300 rounded-md no-spin text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" 
-                                    value="0" step="0.001" min="0"
-                                    placeholder="0.000"
-                                    disabled />
-                                <p id="invoice_charge_hint_${i}" class="text-xs text-gray-400 mt-1">Select gateway</p>
-                            </div>
-                        </td>
-                `;
-                tbody.appendChild(row);
-
-                const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
-                const methodContainer = row.querySelector(`#payment_method_container_${i}`);
-                const methodText = row.querySelector(`#payment_method_text_${i}`);
-                const methodSelect = row.querySelector(`#payment_method_${i}`);
-                const invoiceChargeInput = row.querySelector(`#invoice_charge_${i}`);
-                const invoiceChargeHint = row.querySelector(`#invoice_charge_hint_${i}`);
-
-                function updateMethodVisibility() {
-                    const selectedGateway = gatewaySelect.value;
-                    const key = gwKey(selectedGateway);
-                    const methods = methodsByGateway[key] || [];
-
-                    // Handle payment method visibility
-                    if (methods.length > 0) {
-                        renderMethodOptions(methodSelect, methods);
-                        methodContainer.classList.remove('hidden');
-                        methodText.classList.add('hidden');
-                    } else {
-                        methodContainer.classList.add('hidden');
-                        methodText.classList.remove('hidden');
-                        methodSelect.value = '';
-                    }
-
-                    // Handle invoice charge - FIXED: Use charges.find() like full payment
-                    const canCharge = canGatewayChargeInvoice(selectedGateway);
-                    
-                    if (canCharge) {
-                        invoiceChargeInput.disabled = false;
-                        invoiceChargeInput.classList.remove('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
-                        invoiceChargeInput.classList.add('bg-white');
-                        invoiceChargeHint.textContent = `${selectedGateway} charge`;
-                        invoiceChargeHint.classList.remove('text-gray-400');
-                        invoiceChargeHint.classList.add('text-gray-500');
-                    } else {
-                        invoiceChargeInput.disabled = true;
-                        invoiceChargeInput.value = '0';
-                        invoiceChargeInput.classList.add('disabled:bg-gray-100', 'disabled:text-gray-400', 'disabled:cursor-not-allowed');
-                        invoiceChargeInput.classList.remove('bg-white');
-                        
-                        if (!selectedGateway || selectedGateway === 'Credit') {
-                            invoiceChargeHint.textContent = selectedGateway === 'Credit' ? 'Not applicable' : 'Select gateway';
-                        } else {
-                            invoiceChargeHint.textContent = 'Not supported';
-                        }
-                        invoiceChargeHint.classList.add('text-gray-400');
-                        invoiceChargeHint.classList.remove('text-gray-500');
-                    }
-
-                    // Handle credit payment selection
-                    if (key === gwKey('credit')) {
-                        handleCreditPaymentSelection(i);
-                    } else {
-                        PaymentSelection.hideForRow('split', i);
-                    }
-                }
-
-                updateMethodVisibility();
-                gatewaySelect.addEventListener('change', updateMethodVisibility);
+            // ── Update the live invoice-total display in the info bar ────────────────
+            const splitInvTotalEl = document.getElementById('split-invoice-total-display');
+            if (splitInvTotalEl) {
+                const invTotal = parseFloat(document.getElementById('subTotal')?.value) || 0;
+                splitInvTotalEl.textContent = invTotal.toFixed(3) + ' KWD';
             }
-        }
 
-        // Handle credit payment selection for SPLIT payments
-        function handleCreditPaymentSelection(rowIndex) {
-            const clientIdInput = document.getElementById(`customer_name_${rowIndex}`);
-            const amountInput = document.getElementById(`amount_${rowIndex}`);
-            const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
-
-            if (!clientIdInput || !clientIdInput.value) {
-                alert('Please select a client first before choosing credit payment.');
-                gatewaySelect.selectedIndex = 1; // Select first non-credit option
+            if (splitInto <= 0) {
+                initialWrap.classList.remove('hidden');
+                movedWrap.classList.add('hidden');
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(-8px)';
+                setTimeout(() => { section.style.display = 'none'; }, 200);
+                document.getElementById('total-split-container')?.classList.add('hidden');
+                document.getElementById('split-footer-summary')?.classList.add('hidden');
                 return;
             }
 
-            const clientId = parseInt(clientIdInput.value);
-            const amount = parseFloat(amountInput.value) || 0;
+            // Show badge and switch dropdown position
+            initialWrap.classList.add('hidden');
+            movedWrap.classList.remove('hidden');
+            if (movedSelect) movedSelect.value = splitInto;
 
-            // Show payment selection UI
-            PaymentSelection.showForRow('split', rowIndex, clientId, amount);
+            section.style.display = 'block';
+            requestAnimationFrame(() => {
+                section.style.opacity  = '1';
+                section.style.transform = 'translateY(0)';
+            });
+
+            // Show summary containers
+            document.getElementById('total-split-container')?.classList.remove('hidden');
+            const footerSummary = document.getElementById('split-footer-summary');
+            if (footerSummary) {
+                footerSummary.classList.remove('hidden');
+                footerSummary.classList.add('flex');
+            }
+
+            // ── Calculate even-split base amounts ───────────────────────────────────
+            const baseAmount    = Math.floor((totalAmount / splitInto) * 1000) / 1000;
+            const totalBase     = baseAmount * splitInto;
+            const remainder     = Math.round((totalAmount - totalBase) * 1000) / 1000;
+
+            const container = document.getElementById('split-rows');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= splitInto; i++) {
+                const rowAmount = (i === splitInto)
+                    ? (baseAmount + remainder).toFixed(3)
+                    : baseAmount.toFixed(3);
+                createSplitInstallmentCard(i, rowAmount, container);
+            }
+
+            updatePaymentSummary('split');
         }
 
-        // Handle credit payment selection for PARTIAL payments
-        function handleCreditPaymentSelectionPartial(rowIndex) {
-            const clientId = {{ $invoice->client_id }};
-            const amountInput = document.getElementById(`amount_${rowIndex}`);
-            const amount = parseFloat(amountInput.value) || 0;
+        function createSplitInstallmentCard(i, initialAmount, container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex gap-4';
 
-            // Show payment selection UI
-            PaymentSelection.showForRow('partial', rowIndex, clientId, amount);
+            const card = document.createElement('div');
+            card.className = 'flex-1 bg-white border border-gray-200 rounded-lg p-5 hover:shadow-sm transition-shadow';
+
+            // Build options from the existing `clients` JS variable
+            const clientOptions = clients.map(c => {
+                const label = (c.full_name || c.name || '') + (c.phone ? ' - ' + c.phone : '');
+                return `<option value="${c.id}">${label}</option>`;
+            }).join('');
+
+            card.innerHTML = `
+                <!-- Card Header -->
+                <div class="flex items-center justify-between mb-5">
+                    <span class="text-sm font-semibold text-blue-700 uppercase tracking-wide">
+                        Installment ${i}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                        <span id="split_card_amount_badge_${i}">${parseFloat(initialAmount).toFixed(3)} KWD</span>
+                    </span>
+                </div>
+
+                <!-- Client -->
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client *</label>
+                    <div id="searchable_dropdown_${i}" class="w-full relative">
+                        <button type="button"
+                                onclick="toggleSearchableDropdown(${i})"
+                                class="w-full border border-gray-300 p-2 rounded text-sm text-left bg-white text-black">
+                            <span id="selected_text_${i}" class="text-gray-400">Select Client</span>
+                        </button>
+
+                        <input type="hidden" name="customer_name_${i}" id="customer_name_${i}">
+
+                        <div id="dropdown_${i}" style="display: none;"
+                            class="fixed z-[9999] bg-white border rounded shadow-lg">
+                            <div class="px-2 py-2">
+                                <input type="text"
+                                    id="search_input_${i}"
+                                    placeholder="Search clients..."
+                                    onkeyup="filterClientsSplit(${i}, this.value)"
+                                    class="w-full border border-gray-300 rounded px-2 py-1 text-sm text-black">
+                            </div>
+                            <div id="options_container_${i}" class="max-h-40 overflow-y-auto">
+                                ${clients.map(client => `
+                                    <div class="p-2 hover:bg-gray-100 cursor-pointer text-sm client-option"
+                                        data-client-id="${client.id}"
+                                        data-client-name="${(client.full_name || client.name || '').replace(/"/g, '&quot;')}"
+                                        data-row-index="${i}">
+                                        ${client.full_name || client.name || 'Unnamed Client'}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expiry Date & Amount -->
+                <div class="flex justify-between gap-4 mb-4">
+                    <div class="w-5/12">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Expiry Date</label>
+                        <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}"
+                            class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm" />
+                    </div>
+                    <div class="w-5/12">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Amount (KWD)</label>
+                        <input type="number" id="amount_${i}" name="amount_${i}" value="${initialAmount}"
+                            class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm"
+                            onblur="handleSplitAmountChange(${i})"
+                            oninput="handleSplitAmountChange(${i})" />
+                    </div>
+                </div>
+
+                <!-- Gateway & Method -->
+                <div class="flex justify-between gap-4 mb-4">
+                    <div class="w-5/12">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Payment Gateway</label>
+                        <select id="payment_gateway_${i}" name="payment_gateway_${i}"
+                                class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm"
+                                onchange="handleSplitGatewayChange(${i})">
+                            <option value="">Select gateway</option>
+                            <option value="Credit" id="credit_option_${i}" disabled>Credit (0.000)</option>
+                            ${charges.map(gw => `<option value="${gw.name}">${gw.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="w-5/12">
+                        <div id="payment_method_container_${i}" class="hidden">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Payment Method</label>
+                            <select id="payment_method_${i}" name="payment_method_${i}"
+                                class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice Charge (conditional) -->
+                <div id="split_invoice_charge_wrapper_${i}" class="hidden mb-2">
+                    <div class="w-5/12">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Charge</label>
+                        <input type="number" id="invoice_charge_${i}" name="invoice_charge_${i}"
+                            class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm"
+                            value="0" step="0.001" min="0" placeholder="0.000" />
+                    </div>
+                </div>
+                <input type="hidden" id="invoice_charge_${i}_fallback" name="invoice_charge_${i}" value="0" />
+            `;
+
+            // Credit panel setup
+            const creditPanel = document.createElement('div');
+            creditPanel.id = `credit_panel_${i}`;  // ← use `i` not `installmentIndex`
+            creditPanel.className = 'hidden w-120 bg-white border-blue-200 border-2 rounded-lg p-4 transition-all duration-300 self-start';
+            creditPanel.innerHTML = createCreditSelectionPanel('split', i, initialAmount);
+
+            wrapper.appendChild(card);         // card is flex child of wrapper
+            wrapper.appendChild(creditPanel);  // panel is flex child of wrapper
+            container.appendChild(wrapper);    // wrapper goes into container 
         }
 
-        // Hide payment selection when gateway changes away from Credit
-        function handleGatewayChange(modalType, rowIndex, gatewayValue) {
-            const key = gwKey(gatewayValue);
-            if (key !== gwKey('credit')) {
-                PaymentSelection.hideForRow(modalType, rowIndex);
+        
+        function toggleSearchableDropdown(rowIndex) {
+            const dropdown = document.getElementById(`dropdown_${rowIndex}`);
+            const searchInput = document.getElementById(`search_input_${rowIndex}`);
+            const button = document.querySelector(`#searchable_dropdown_${rowIndex} button`);
+
+            // Close all other dropdowns first
+            document.querySelectorAll('[id^="dropdown_"]').forEach(dd => {
+                if (dd.id !== `dropdown_${rowIndex}`) {
+                    dd.style.display = 'none';
+                }
+            });
+
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                // ✅ Move to body to escape modal transform/overflow context
+                if (dropdown.parentElement !== document.body) {
+                    document.body.appendChild(dropdown);
+                }
+
+                const buttonRect = button.getBoundingClientRect();
+                const dropdownWidth = Math.max(320, buttonRect.width);
+
+                dropdown.style.position = 'fixed';
+                dropdown.style.zIndex   = '9999';
+                dropdown.style.top      = (buttonRect.bottom + 4) + 'px';
+                dropdown.style.left     = buttonRect.left + 'px';
+                dropdown.style.width    = dropdownWidth + 'px';
+
+                // Prevent going off-screen right
+                const viewportWidth = window.innerWidth;
+                if (buttonRect.left + dropdownWidth > viewportWidth) {
+                    dropdown.style.left = (viewportWidth - dropdownWidth - 10) + 'px';
+                }
+
+                dropdown.style.display = 'block';
+                searchInput.focus();
+                searchInput.value = '';
+                filterClientsSplit(rowIndex, '');
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function handleSplitAmountChange(i) {
+            const amountInput = document.getElementById(`amount_${i}`);
+            const badge       = document.getElementById(`split_card_amount_badge_${i}`);
+            const amount      = parseFloat(amountInput?.value) || 0;
+
+            if (badge) badge.textContent = amount.toFixed(3) + ' KWD';
+            updatePaymentSummary('split');
+            checkInputAmount('split', i);
+        }
+
+        function handleSplitGatewayChange(i) {
+            const gatewaySelect   = document.getElementById(`payment_gateway_${i}`);
+            const selectedGw      = gatewaySelect.value;
+            const methodContainer = document.getElementById(`payment_method_container_${i}`);
+            const methodSelect    = document.getElementById(`payment_method_${i}`);
+            const chargeWrapper   = document.getElementById(`split_invoice_charge_wrapper_${i}`);
+            const chargeInput     = document.getElementById(`invoice_charge_${i}`);
+
+            const key     = gwKey(selectedGw);
+            const methods = methodsByGateway[key] || [];
+            if (methods.length > 0 && selectedGw !== 'Credit') {
+                renderMethodOptions(methodSelect, methods);
+                methodContainer.classList.remove('hidden');
+            } else {
+                methodContainer.classList.add('hidden');
+                if (methodSelect) methodSelect.value = '';
+            }
+
+            const canCharge = canGatewayChargeInvoice(selectedGw);
+            if (canCharge && selectedGw !== 'Credit') {
+                chargeWrapper.classList.remove('hidden');
+            } else {
+                chargeWrapper.classList.add('hidden');
+                if (chargeInput) chargeInput.value = '0';
+            }
+
+            // Delegate credit logic to shared handler
+            handleCreditGatewayChange('split', i);
+        }
+
+        function updateRowSplitFromMoved() {
+            const movedSelect    = document.getElementById('split-into-moved');
+            const originalSelect = document.getElementById('split-into');
+            if (movedSelect && originalSelect) {
+                originalSelect.value = movedSelect.value;
+                updateRowSplit();
             }
         }
 
         function updateCreditUI(splitCount) {
-            updateCreditOptionAvailability();
+            updateAllCreditOptions('partial'); // ← was updateCreditOptionAvailability()
 
             for (let i = 1; i <= splitCount; i++) {
                 const opt = document.getElementById(`credit_option1_${i}`);
+                if (!opt) continue;
                 const amt = Number(document.getElementById(`amount_${i}`)?.value || 0);
                 const usesCredit = Number(creditUsed[i] || 0) > 0;
-
-                // disable credit if this row doesn't already use it and amount > remaining
                 opt.disabled = !usesCredit && (amt <= 0 || amt > creditRemaining);
                 opt.textContent = `Credit (${creditRemaining.toFixed(3)})`;
                 opt.style.color = opt.disabled ? '#9ca3af' : '#000';
             }
         }
-
-        
 
         // Global state for credit selection tracking
         let creditSelectionState = {
@@ -2804,85 +3003,66 @@
             remainingBalance: 0
         };
 
-        /**
-         * Enhanced updateRowPartial with manual credit selection
-         */
         function updateRowPartial() {
+            const splitInto1El = document.getElementById('split-into1');
+            if (!splitInto1El) {
+                console.error('❌ split-into1 element not found');
+                return;
+            }
             const section = document.getElementById('partial-breakdown-section');
             const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-            const badge = document.getElementById('installment-badge');
-            const countSpan = document.getElementById('installment-count');
             
-            // Handle dropdown position switch
             const initialDropdown = document.getElementById('split-into-initial');
-            const movedDropdown = document.getElementById('split-into-moved');
+            const movedDropdown = document.getElementById('partial-split-into-moved'); // ← FIXED
             const movedSelect = document.getElementById('split-into1-moved');
 
             if (splitInto1 > 0) {
-                // Show badge and update count
-                badge.classList.remove('hidden');
-                countSpan.textContent = splitInto1;
-                
-                // Hide initial dropdown, show moved dropdown
-                initialDropdown.classList.add('hidden');
-                movedDropdown.classList.remove('hidden');
-                
-                // Sync the moved dropdown value
-                if (movedSelect) {
-                    movedSelect.value = splitInto1;
-                }
-                
+                if (initialDropdown) initialDropdown.classList.add('hidden');
+                if (movedDropdown) movedDropdown.classList.remove('hidden');
+                if (movedSelect) movedSelect.value = splitInto1;
+
                 section.style.display = 'block';
                 requestAnimationFrame(() => {
                     section.style.opacity = '1';
                     section.style.transform = 'translateY(0)';
                 });
             } else {
-                // Hide badge
-                badge.classList.add('hidden');
-                
-                // Show initial dropdown, hide moved dropdown
-                initialDropdown.classList.remove('hidden');
-                movedDropdown.classList.add('hidden');
-                
-                // Hide total partial payment display
-                updateTotalPartialPayment();
-                
+                if (initialDropdown) initialDropdown.classList.remove('hidden');
+                if (movedDropdown) movedDropdown.classList.add('hidden');
+                updatePaymentSummary('partial');
                 section.style.opacity = '0';
                 section.style.transform = 'translateY(-8px)';
                 setTimeout(() => { section.style.display = 'none'; }, 200);
                 return;
             }
 
-            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-            
-            // INITIAL SETUP: Even split amounts (users can override with credit)
+            const totalAmount1 = parseFloat(document.getElementById('subTotal').value) || 0;
+
+            document.querySelectorAll('#subT1, .invoice-total-display').forEach(el => {
+                el.textContent = totalAmount1.toFixed(3);
+            });
+
             const initialPerRowAmount = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(3) : 0;
-            const container = document.getElementById('split-rows1');
+            const container = document.getElementById('partial-rows');
+           
             container.innerHTML = '';
 
-            // Reset credit state
             creditRemaining = partialCredit;
-            creditSelectionState = {
-                selectedInstallment: null,
-                totalCreditSelected: 0,
-                remainingBalance: totalAmount1
-            };
+            creditSelectionState = { selectedInstallment: null, totalCreditSelected: 0, remainingBalance: totalAmount1 };
             for (const k in creditUsed) delete creditUsed[k];
 
-            // Create installment cards
             for (let i = 1; i <= splitInto1; i++) {
-                createInstallmentCard(i, initialPerRowAmount, totalAmount1, container, splitInto1);
+                createPartialInstallmentCard(i, initialPerRowAmount, totalAmount1, container, splitInto1);
             }
 
             updateCreditUI(splitInto1);
-            updateTotalPartialPayment();
+            updatePaymentSummary('partial');
         }
 
         /**
          * Create individual installment card with credit selection capability
          */
-        function createInstallmentCard(installmentIndex, initialAmount, totalInvoiceAmount, container, totalInstallments) {
+        function createPartialInstallmentCard(installmentIndex, initialAmount, totalInvoiceAmount, container, totalInstallments) {
             const wrapper = document.createElement('div');
             wrapper.className = 'flex gap-4';
             
@@ -2958,22 +3138,26 @@
             const creditPanel = document.createElement('div');
             creditPanel.id = `credit_panel_${installmentIndex}`;
             creditPanel.className = 'hidden w-120 bg-white border-blue-200 border-2 rounded-lg p-4 transition-all duration-300 self-start';
-            creditPanel.innerHTML = createCreditSelectionPanel(installmentIndex, initialAmount);
+            creditPanel.innerHTML = createCreditSelectionPanel('partial', installmentIndex, initialAmount);
 
             wrapper.appendChild(card);
             wrapper.appendChild(creditPanel);
             container.appendChild(wrapper);
 
-            setupInstallmentEventHandlers(installmentIndex, totalInvoiceAmount, totalInstallments);
+            setupInstallmentEventHandlers('partial', installmentIndex, totalInvoiceAmount, totalInstallments); // ← add 'partial'
         }
 
         /**
          * Create the credit selection panel HTML
          */
-        function createCreditSelectionPanel(installmentIndex, requiredAmount) {
+        function createCreditSelectionPanel(mode, installmentIndex, requiredAmount) {
+            const vouchersId = mode === 'split'
+                ? `credit_vouchers_split_${installmentIndex}`
+                : `credit_vouchers_${installmentIndex}`;
+
             return `
                 <div class="flex items-center justify-between mb-3">
-                    <h4 class="text-sm font-semibold text-gray-800 flex items-center gap-2 uppercase tracking-wide mb-1">
+                    <h4 class="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-1">
                         CREDIT SELECTION
                     </h4>
                     <span class="text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
@@ -2981,7 +3165,7 @@
                     </span>
                 </div>
                 
-                <div id="credit_vouchers_${installmentIndex}" class="space-y-2 max-h-64 overflow-y-auto mb-4">
+                <div id="${vouchersId}" class="space-y-2 max-h-64 overflow-y-auto mb-4">
                     <div class="text-center text-sm text-gray-500 py-4">
                         <div class="animate-pulse">Loading available vouchers...</div>
                     </div>
@@ -2998,98 +3182,33 @@
 
         function handleGatewayChangePartial(installmentIndex) {
             const gatewaySelect = document.getElementById(`payment_gateway1_${installmentIndex}`);
-            const selectedGateway = gatewaySelect.value;
-            const key = gwKey(selectedGateway);
-            const creditPanel = document.getElementById(`credit_panel_${installmentIndex}`);
-            const amountInput = document.getElementById(`amount_${installmentIndex}`);
-
-            // Handle payment method visibility
-            updatePaymentMethodVisibility(installmentIndex, selectedGateway);
-
-            if (key === gwKey('credit')) {
-                // CREDIT SELECTED: Show manual selection panel
-                
-                // Check if credit is already used by another installment
-                if (creditSelectionState.selectedInstallment && creditSelectionState.selectedInstallment !== installmentIndex) {
-                    alert(`Credit is already being used in Installment ${creditSelectionState.selectedInstallment}. Only one installment can use credit.`);
-                    gatewaySelect.value = '';
-                    return;
-                }
-                
-                // Show credit panel
-                creditPanel.classList.remove('hidden');
-                requestAnimationFrame(() => {
-                    creditPanel.style.opacity = '1';
-                    creditPanel.style.transform = 'translateX(0)';
-                });
-                
-                // Make amount input readonly (will be controlled by voucher selection)
-                amountInput.readOnly = true;
-                amountInput.style.backgroundColor = '#f3f4f6';
-                amountInput.title = 'Amount will be set based on your voucher selection';
-                
-                // Mark this installment as using credit
-                creditSelectionState.selectedInstallment = installmentIndex;
-                
-                // Load available vouchers
-                loadCreditVouchers(installmentIndex);
-                
-                // Update credit option availability for other installments
-                updateAllCreditOptions();
-                
-            } else {
-                // NON-CREDIT SELECTED: Hide panel and reset
-                
-                // Hide credit panel
-                creditPanel.style.opacity = '0';
-                creditPanel.style.transform = 'translateX(10px)';
-                setTimeout(() => creditPanel.classList.add('hidden'), 300);
-                
-                // Make amount input editable again
-                amountInput.readOnly = false;
-                amountInput.style.backgroundColor = '';
-                amountInput.title = '';
-                
-                // Clear credit selection if this installment was using it
-                if (creditSelectionState.selectedInstallment === installmentIndex) {
-                    creditSelectionState.selectedInstallment = null;
-                    creditSelectionState.totalCreditSelected = 0;
-                    
-                    // Reset other installment amounts to even split
-                    recalculateWithoutCredit();
-                }
-                
-                // Clear payment selection data
-                PaymentSelection.hideForRow('partial', installmentIndex);
-                
-                // Update credit option availability
-                updateAllCreditOptions();
-            }
-            
-            updateTotalPartialPayment();
+            updatePaymentMethodVisibility(installmentIndex, gatewaySelect.value);
+            handleCreditGatewayChange('partial', installmentIndex);
         }
+
         /**
          * Setup event handlers for each installment
          */
-        function setupInstallmentEventHandlers(installmentIndex, totalInvoiceAmount, totalInstallments) {
-            const gatewaySelect = document.getElementById(`payment_gateway1_${installmentIndex}`);
-            const amountInput = document.getElementById(`amount_${installmentIndex}`);
-            const creditPanel = document.getElementById(`credit_panel_${installmentIndex}`);
+        function setupInstallmentEventHandlers(mode, installmentIndex, totalInvoiceAmount, totalInstallments) {
+            const isPartial     = mode === 'partial';
+            const gatewayId     = isPartial
+                ? `payment_gateway1_${installmentIndex}`
+                : `payment_gateway_${installmentIndex}`;
+            const gatewaySelect = document.getElementById(gatewayId);
+            const amountInput   = document.getElementById(`amount_${installmentIndex}`);
 
-            // Gateway change handler - use the partial-specific handler
+            if (!gatewaySelect || !amountInput) return;
+
             gatewaySelect.addEventListener('change', function() {
-                handleGatewayChangePartial(installmentIndex);
+                if (isPartial) {
+                    handleGatewayChangePartial(installmentIndex);
+                } else {
+                    handleSplitGatewayChange(installmentIndex);
+                }
             });
 
-            // Amount change handler - this now handles both credit and non-credit
             amountInput.addEventListener('input', function() {
-                handleAmountChange('partial', installmentIndex);
-                
-                // Update credit requirement if credit panel is visible
-                if (!creditPanel.classList.contains('hidden')) {
-                    // For credit, the amount is controlled by voucher selection
-                    // so we don't need to do anything extra here
-                }
+                handleAmountChange(mode, installmentIndex);
             });
         }
 
@@ -3166,213 +3285,223 @@
                 updateAllCreditOptions();
             }
             
-            updateTotalPartialPayment();
+            updatePaymentSummary('partial');
         }
 
         // Enhanced PaymentSelection integration that properly reflects amounts
         const originalHandleCheckboxChange = PaymentSelection.handleCheckboxChange;
         PaymentSelection.handleCheckboxChange = function(checkbox, rowId, requiredAmount, rowIndex) {
-            // Call original function to handle internal state
             originalHandleCheckboxChange.call(this, checkbox, rowId, requiredAmount, rowIndex);
-            
-            // Get total selected amount from PaymentSelection
-            const totalSelected = this.getSelectedTotal(rowId);
-            const installmentIndex = parseInt(rowId.split('_')[1]);
-            
+
+            const totalSelected    = this.getSelectedTotal(rowId);
+            const [mode, idxStr]   = rowId.split('_');
+            const installmentIndex = parseInt(idxStr);
+
             if (totalSelected >= 0 && installmentIndex) {
-                // Update installment amount input
-                const amountInput = document.getElementById(`amount_${installmentIndex}`);
-                const badge = document.getElementById(`card_amount_badge_${installmentIndex}`);
+                const amountInput     = document.getElementById(`amount_${installmentIndex}`);
+                const badgeId         = mode === 'partial'
+                    ? `card_amount_badge_${installmentIndex}`
+                    : `split_card_amount_badge_${installmentIndex}`;
+                const badge           = document.getElementById(badgeId);
                 const selectedDisplay = document.getElementById(`credit_selected_${installmentIndex}`);
-                const statusDisplay = document.getElementById(`credit_status_${installmentIndex}`);
-                
-                if (amountInput) {
-                    amountInput.value = totalSelected.toFixed(3);
-                }
-                if (badge) {
-                    badge.textContent = `${totalSelected.toFixed(3)} KWD`;
-                }
-                if (selectedDisplay) {
-                    selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
-                }
-                
-                // Update status display
+                const statusDisplay   = document.getElementById(`credit_status_${installmentIndex}`);
+
+                if (amountInput)     amountInput.value          = totalSelected.toFixed(3);
+                if (badge)           badge.textContent           = `${totalSelected.toFixed(3)} KWD`;
+                if (selectedDisplay) selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
+
                 if (statusDisplay) {
-                    if (totalSelected > 0) {
-                        statusDisplay.textContent = 'Credit selected ✓';
-                        statusDisplay.className = 'text-green-600 font-medium';
-                    } else {
-                        statusDisplay.textContent = 'No vouchers selected';
-                        statusDisplay.className = 'text-gray-500';
-                    }
+                    statusDisplay.textContent = totalSelected > 0 ? 'Credit selected ✓' : 'No vouchers selected';
+                    statusDisplay.className   = totalSelected > 0 ? 'text-green-600 font-medium' : 'text-gray-500';
                 }
-                
-                // Store credit selection in global state
+
                 creditSelectionState.totalCreditSelected = totalSelected;
                 creditUsed[installmentIndex] = totalSelected;
-                
-                // Recalculate other installments based on the credit amount
-                recalculateAfterCreditSelection(installmentIndex, totalSelected);
-                
-                // Update total display
-                updateTotalPartialPayment();
+
+                recalculateAfterCreditSelection(mode, installmentIndex, totalSelected);
+                updatePaymentSummary(mode);
             }
         };
 
-        // Add this enhanced PaymentSelection amount change handler
         const originalHandleAmountChange = PaymentSelection.handleAmountChange;
         PaymentSelection.handleAmountChange = function(input, rowId, requiredAmount, rowIndex) {
-            // Call original function to handle internal state
             originalHandleAmountChange.call(this, input, rowId, requiredAmount, rowIndex);
-            
-            // Get updated total and reflect it immediately
-            const totalSelected = this.getSelectedTotal(rowId);
-            const installmentIndex = parseInt(rowId.split('_')[1]);
-            
+
+            const totalSelected    = this.getSelectedTotal(rowId);
+            const [mode, idxStr]   = rowId.split('_');
+            const installmentIndex = parseInt(idxStr);
+
             if (installmentIndex) {
-                const amountInput = document.getElementById(`amount_${installmentIndex}`);
-                const badge = document.getElementById(`card_amount_badge_${installmentIndex}`);
+                const amountInput     = document.getElementById(`amount_${installmentIndex}`);
+                const badgeId         = mode === 'partial'
+                    ? `card_amount_badge_${installmentIndex}`
+                    : `split_card_amount_badge_${installmentIndex}`;
+                const badge           = document.getElementById(badgeId);
                 const selectedDisplay = document.getElementById(`credit_selected_${installmentIndex}`);
-                
-                if (amountInput && amountInput.readOnly) { // Only update if credit is controlling the amount
-                    amountInput.value = totalSelected.toFixed(3);
+                const statusDisplay   = document.getElementById(`credit_status_${installmentIndex}`);
+
+                if (amountInput && amountInput.readOnly) amountInput.value = totalSelected.toFixed(3);
+                if (badge)           badge.textContent           = `${totalSelected.toFixed(3)} KWD`;
+                if (selectedDisplay) selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
+
+                if (statusDisplay) {
+                    statusDisplay.textContent = totalSelected > 0 ? 'Credit selected ✓' : 'No vouchers selected';
+                    statusDisplay.className   = totalSelected > 0 ? 'text-green-600 font-medium' : 'text-gray-500';
                 }
-                if (badge) {
-                    badge.textContent = `${totalSelected.toFixed(3)} KWD`;
-                }
-                if (selectedDisplay) {
-                    selectedDisplay.textContent = `${totalSelected.toFixed(3)} KWD`;
-                }
-                
-                // Update global state
+
                 creditSelectionState.totalCreditSelected = totalSelected;
                 creditUsed[installmentIndex] = totalSelected;
-                
-                // Recalculate other installments
-                recalculateAfterCreditSelection(installmentIndex, totalSelected);
-                
-                // Update totals
-                updateTotalPartialPayment();
+
+                recalculateAfterCreditSelection(mode, installmentIndex, totalSelected);
+                updatePaymentSummary(mode);
             }
         };
 
         /**
          * Load available credit vouchers for selection
          */
-        function loadCreditVouchers(installmentIndex) {
-            const vouchersContainer = document.getElementById(`credit_vouchers_${installmentIndex}`);
-            const clientId = {{ $invoice->client_id ?? 'null' }};
-            
+       function loadCreditVouchers(mode, installmentIndex) {
+            let clientId;
+
+            console.log(`[loadCreditVouchers] mode=${mode}, installmentIndex=${installmentIndex}`);
+
+            if (mode === 'partial') {
+                const rawClientId = @json($invoice->client_id ?? null);
+                clientId = rawClientId ? parseInt(rawClientId) : null;
+                console.log(`[loadCreditVouchers] partial mode — invoice clientId:`, clientId);
+            } else {
+                const clientIdInput = document.getElementById(`customer_name_${installmentIndex}`);
+                console.log(`[loadCreditVouchers] split mode — clientIdInput element:`, clientIdInput);
+                console.log(`[loadCreditVouchers] split mode — clientIdInput value:`, clientIdInput?.value);
+
+                if (!clientIdInput || !clientIdInput.value) {
+                    console.warn(`[loadCreditVouchers] No client selected for split row ${installmentIndex}`);
+                    const gw = document.getElementById(`payment_gateway_${installmentIndex}`);
+                    if (gw) gw.value = '';
+                    const panel = document.getElementById(`credit_panel_${installmentIndex}`);
+                    if (panel) panel.classList.add('hidden');
+                    if (creditSelectionState.selectedInstallment === installmentIndex) {
+                        creditSelectionState.selectedInstallment = null;
+                    }
+                    alert('Please select a client first before choosing credit payment.');
+                    return;
+                }
+                clientId = parseInt(clientIdInput.value);
+                console.log(`[loadCreditVouchers] split mode — parsed clientId:`, clientId);
+            }
+
             if (!clientId) {
-                vouchersContainer.innerHTML = `
-                    <div class="text-red-600 text-sm p-3 bg-red-50 rounded">
-                        No client selected. Please select a client first.
-                    </div>
-                `;
+                console.warn(`[loadCreditVouchers] clientId is null/0 — aborting`);
+                const vouchersContainerId = mode === 'split'
+                    ? `credit_vouchers_split_${installmentIndex}`
+                    : `credit_vouchers_${installmentIndex}`;
+                const vouchersContainer = document.getElementById(vouchersContainerId);
+                console.log(`[loadCreditVouchers] vouchers container (${vouchersContainerId}):`, vouchersContainer);
+                if (vouchersContainer) {
+                    vouchersContainer.innerHTML = `
+                        <div class="text-red-600 text-sm p-3 bg-red-50 rounded">
+                            No client selected. Please select a client first.
+                        </div>
+                    `;
+                }
                 return;
             }
-            
-            // Show payment selection UI
-            PaymentSelection.showForRow('partial', installmentIndex, clientId, 0, function(selectedAmount) {
-                handleCreditVoucherSelection(installmentIndex, selectedAmount);
+
+            // Use mode-aware container ID to match createCreditSelectionPanel
+            const vouchersContainerId = mode === 'split'
+                ? `credit_vouchers_split_${installmentIndex}`
+                : `credit_vouchers_${installmentIndex}`;
+
+            console.log(`[loadCreditVouchers] vouchers container ID:`, vouchersContainerId);
+            console.log(`[loadCreditVouchers] vouchers container exists:`, !!document.getElementById(vouchersContainerId));
+            console.log(`[loadCreditVouchers] calling PaymentSelection.showForRow(${mode}, ${installmentIndex}, ${clientId})`);
+
+            PaymentSelection.showForRow(mode, installmentIndex, clientId, 0, function(selectedAmount) {
+                console.log(`[loadCreditVouchers] callback fired — selectedAmount:`, selectedAmount);
+                handleCreditVoucherSelection(mode, installmentIndex, selectedAmount);
             });
         }
 
         /**
          * Handle voucher selection and amount input
          */
-        function handleCreditVoucherSelection(installmentIndex, selectedAmount) {
-            const amountInput = document.getElementById(`amount_${installmentIndex}`);
-            const badge = document.getElementById(`card_amount_badge_${installmentIndex}`);
+        function handleCreditVoucherSelection(mode, installmentIndex, selectedAmount) {
+            const amountInput     = document.getElementById(`amount_${installmentIndex}`);
+            const badgeId         = mode === 'partial'
+                ? `card_amount_badge_${installmentIndex}`
+                : `split_card_amount_badge_${installmentIndex}`;
+            const badge           = document.getElementById(badgeId);
             const selectedDisplay = document.getElementById(`credit_selected_${installmentIndex}`);
-            const statusDisplay = document.getElementById(`credit_status_${installmentIndex}`);
-            
-            // Update installment amount
-            amountInput.value = selectedAmount.toFixed(3);
-            badge.textContent = `${selectedAmount.toFixed(3)} KWD`;
-            selectedDisplay.textContent = `${selectedAmount.toFixed(3)} KWD`;
-            
-            // Store credit selection
+            const statusDisplay   = document.getElementById(`credit_status_${installmentIndex}`);
+
+            if (amountInput) amountInput.value = selectedAmount.toFixed(3);
+            if (badge)       badge.textContent = `${selectedAmount.toFixed(3)} KWD`;
+            if (selectedDisplay) selectedDisplay.textContent = `${selectedAmount.toFixed(3)} KWD`;
+
             creditSelectionState.totalCreditSelected = selectedAmount;
             creditUsed[installmentIndex] = selectedAmount;
-            
-            // Update status
-            if (selectedAmount > 0) {
-                statusDisplay.textContent = 'Credit selected ✓';
-                statusDisplay.className = 'text-green-600 font-medium';
-            } else {
-                statusDisplay.textContent = 'No vouchers selected';
-                statusDisplay.className = 'text-gray-500';
+
+            if (statusDisplay) {
+                statusDisplay.textContent = selectedAmount > 0 ? 'Credit selected ✓' : 'No vouchers selected';
+                statusDisplay.className   = selectedAmount > 0 ? 'text-green-600 font-medium' : 'text-gray-500';
             }
-            
-            // Recalculate other installments
-            recalculateAfterCreditSelection(installmentIndex, selectedAmount);
-            
-            // Update total display
-            updateTotalPartialPayment();
+
+            recalculateAfterCreditSelection(mode, installmentIndex, selectedAmount);
+            updatePaymentSummary(mode);
         }
 
         /**
          * Recalculate remaining installments after credit selection
          */
-        function recalculateAfterCreditSelection(creditInstallmentIndex, creditAmount) {
-            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-            const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
-            
+       function recalculateAfterCreditSelection(mode, creditInstallmentIndex, creditAmount) {
+            const splitIntoElId = mode === 'partial' ? 'split-into1' : 'split-into';
+            const totalAmount   = parseFloat(document.getElementById('subTotal').value) || 0;
+            const splitInto     = parseInt(document.getElementById(splitIntoElId)?.value) || 0;
+
             if (splitInto <= 1) return;
-            
-            // Calculate remaining amount for other installments
-            const remainingAmount = totalAmount - creditAmount;
+
+            const remainingAmount       = totalAmount - creditAmount;
             const remainingInstallments = splitInto - 1;
-            
+
             if (remainingInstallments <= 0 || remainingAmount <= 0) return;
-            
-            // Distribute remaining amount evenly across other installments
-            const amountPerOtherInstallment = remainingAmount / remainingInstallments;
-            
-            // Update all non-credit installments
+
+            const amountPerOther = remainingAmount / remainingInstallments;
+
             for (let i = 1; i <= splitInto; i++) {
-                if (i === creditInstallmentIndex) continue; // Skip credit installment
-                
+                if (i === creditInstallmentIndex) continue;
                 const amountInput = document.getElementById(`amount_${i}`);
-                const badge = document.getElementById(`card_amount_badge_${i}`);
-                
-                if (amountInput && !amountInput.readOnly) {
-                    amountInput.value = amountPerOtherInstallment.toFixed(3);
-                }
-                if (badge) {
-                    badge.textContent = `${amountPerOtherInstallment.toFixed(3)} KWD`;
-                }
+                const badgeId     = mode === 'partial'
+                    ? `card_amount_badge_${i}`
+                    : `split_card_amount_badge_${i}`;
+                const badge = document.getElementById(badgeId);
+
+                if (amountInput && !amountInput.readOnly) amountInput.value = amountPerOther.toFixed(3);
+                if (badge) badge.textContent = `${amountPerOther.toFixed(3)} KWD`;
             }
-            
-            console.log(`Recalculated: Credit ${creditAmount}, Remaining ${remainingAmount} split across ${remainingInstallments} installments = ${amountPerOtherInstallment.toFixed(3)} each`);
         }
 
         /**
          * Recalculate to even split when credit is removed
          */
-        function recalculateWithoutCredit() {
-            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-            const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
-            
+      function recalculateWithoutCredit(mode) {
+            const splitIntoElId = mode === 'partial' ? 'split-into1' : 'split-into';
+            const totalAmount   = parseFloat(document.getElementById('subTotal').value) || 0;
+            const splitInto     = parseInt(document.getElementById(splitIntoElId)?.value) || 0;
+
             if (splitInto <= 0) return;
-            
+
             const evenAmount = totalAmount / splitInto;
-            
-            // Reset all installments to even split
+
             for (let i = 1; i <= splitInto; i++) {
                 const amountInput = document.getElementById(`amount_${i}`);
-                const badge = document.getElementById(`card_amount_badge_${i}`);
-                
-                if (amountInput) {
-                    amountInput.value = evenAmount.toFixed(3);
-                }
-                if (badge) {
-                    badge.textContent = `${evenAmount.toFixed(3)} KWD`;
-                }
+                const badgeId     = mode === 'partial'
+                    ? `card_amount_badge_${i}`
+                    : `split_card_amount_badge_${i}`;
+                const badge = document.getElementById(badgeId);
+
+                if (amountInput) amountInput.value = evenAmount.toFixed(3);
+                if (badge)       badge.textContent = `${evenAmount.toFixed(3)} KWD`;
             }
-            
-            console.log(`Reset to even split: ${evenAmount.toFixed(3)} KWD per installment`);
         }
 
         /**
@@ -3429,28 +3558,53 @@
         /**
          * Update credit option availability across all installments
          */
-        function updateAllCreditOptions() {
-            const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
-            
+        function updateAllCreditOptions(mode) {
+            const isPartial = mode === 'partial';
+            const splitIntoElId = isPartial ? 'split-into1' : 'split-into';
+            const splitInto = parseInt(document.getElementById(splitIntoElId)?.value) || 0;
+
             for (let i = 1; i <= splitInto; i++) {
-                const creditOption = document.getElementById(`credit_option1_${i}`);
+                const creditOptionId = isPartial ? `credit_option1_${i}` : `credit_option_${i}`;
+                const creditOption = document.getElementById(creditOptionId);
                 if (!creditOption) continue;
-                
-                if (creditSelectionState.selectedInstallment && creditSelectionState.selectedInstallment !== i) {
-                    // Credit is used by another installment
-                    creditOption.disabled = true;
-                    creditOption.textContent = `Credit (Used in Installment ${creditSelectionState.selectedInstallment})`;
-                    creditOption.style.color = '#9ca3af';
-                } else if (creditSelectionState.selectedInstallment === i) {
-                    // This installment is using credit
-                    creditOption.disabled = false;
-                    creditOption.textContent = `Credit (${partialCredit.toFixed(3)})`;
-                    creditOption.style.color = '#000';
+
+                if (isPartial) {
+                    // Original logic: one credit slot for the whole partial modal
+                    if (creditSelectionState.selectedInstallment && creditSelectionState.selectedInstallment !== i) {
+                        creditOption.disabled = true;
+                        creditOption.textContent = `Credit (Used in Installment ${creditSelectionState.selectedInstallment})`;
+                        creditOption.style.color = '#9ca3af';
+                    } else {
+                        creditOption.disabled = partialCredit <= 0;
+                        creditOption.textContent = `Credit (${parseFloat(partialCredit).toFixed(3)})`;
+                        creditOption.style.color = partialCredit > 0 ? '#000' : '#9ca3af';
+                    }
                 } else {
-                    // Credit available for this installment
-                    creditOption.disabled = false;
-                    creditOption.textContent = `Credit (${partialCredit.toFixed(3)})`;
-                    creditOption.style.color = '#000';
+                    // Split: check if THIS row's client is already using credit elsewhere
+                    const thisClientId = document.getElementById(`customer_name_${i}`)?.value;
+                    const available = clientCredits[i] || 0;
+
+                    let blockedByDuplicate = false;
+                    if (thisClientId) {
+                        for (let j = 1; j <= splitInto; j++) {
+                            if (j === i) continue;
+                            const otherGw = document.getElementById(`payment_gateway_${j}`)?.value;
+                            const otherClientId = document.getElementById(`customer_name_${j}`)?.value;
+                            if (gwKey(otherGw) === gwKey('credit') && otherClientId === thisClientId) {
+                                blockedByDuplicate = true;
+                                creditOption.disabled = true;
+                                creditOption.textContent = `Credit (Used in Installment ${j})`;
+                                creditOption.style.color = '#9ca3af';
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!blockedByDuplicate) {
+                        creditOption.disabled = available <= 0;
+                        creditOption.textContent = `Credit (${parseFloat(available).toFixed(3)})`;
+                        creditOption.style.color = available > 0 ? '#000' : '#9ca3af';
+                    }
                 }
             }
         }
@@ -3469,46 +3623,6 @@
                 originalSelect.value = movedSelect.value;
                 // Call the main update function
                 updateRowPartial();
-            }
-        }
-
-        // Searchable dropdown functions for client selection
-        function toggleSearchableDropdown(rowIndex) {
-            const dropdown = document.getElementById(`dropdown_${rowIndex}`);
-            const searchInput = document.getElementById(`search_input_${rowIndex}`);
-            const button = document.querySelector(`#searchable_dropdown_${rowIndex} button`);
-
-            // Close all other dropdowns first
-            document.querySelectorAll('[id^="dropdown_"]').forEach(dd => {
-                if (dd.id !== `dropdown_${rowIndex}`) {
-                    dd.style.display = 'none';
-                }
-            });
-
-            if (dropdown.style.display === 'none') {
-                // Calculate position relative to the button
-                const buttonRect = button.getBoundingClientRect();
-                const dropdownWidth = 320; // w-80 = 320px
-
-                // Position dropdown below the button
-                dropdown.style.top = (buttonRect.bottom + 4) + 'px';
-                dropdown.style.left = buttonRect.left + 'px';
-                dropdown.style.width = Math.max(dropdownWidth, buttonRect.width) + 'px';
-
-                // Check if dropdown would go off-screen and adjust if needed
-                const viewportWidth = window.innerWidth;
-                const dropdownRight = buttonRect.left + dropdownWidth;
-
-                if (dropdownRight > viewportWidth) {
-                    dropdown.style.left = (viewportWidth - dropdownWidth - 10) + 'px';
-                }
-
-                dropdown.style.display = 'block';
-                searchInput.focus();
-                searchInput.value = '';
-                filterClientsSplit(rowIndex, ''); // Show all clients initially
-            } else {
-                dropdown.style.display = 'none';
             }
         }
 
@@ -3780,12 +3894,13 @@
             document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(3)}`;
             document.getElementById('subT').textContent = `${finalTotal.toFixed(3)}`;
 
-            const subT1Element = document.getElementById('subT1');
-            if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(3)}`;
+            document.querySelectorAll('#subT1, .invoice-total-display').forEach(el => {
+                el.textContent = `${finalTotal.toFixed(3)}`;
+            });
 
             document.getElementById('subTotal').value = subtotal;
 
-            const totalAmountElement = document.getElementById('total-amount');
+            const totalAmountElement = document.getElementById('subTotal');
             if (totalAmountElement) totalAmountElement.value = finalTotal;
 
             const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
@@ -4539,8 +4654,7 @@
                 document.getElementById('clientid').value = client.id;
                 // Update input fields for client
                 document.getElementById('receiverName').value = client.full_name;
-                document.getElementById('receiverName1').textContent = client.full_name;
-                document.getElementById('receiverEmail').value = client.email;
+                document.querySelectorAll('.receiver-name-display').forEach(el => el.textContent = client.full_name);                document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 
                 document.getElementById('agentId').value = agent.id;
@@ -4566,8 +4680,7 @@
             document.getElementById('clientid').value = client.id;
             // Update input fields
             document.getElementById('receiverName').value = client.full_name;
-            document.getElementById('receiverName1').textContent = client.full_name;
-            document.getElementById('receiverEmail').value = client.email;
+            document.querySelectorAll('.receiver-name-display').forEach(el => el.textContent = client.full_name);            document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 
             document.getElementById('agentName').value = agent.name;
@@ -4684,42 +4797,32 @@
                 text.textContent = 'Saving...';
                 setTimeout(() => {
                     icon.innerHTML = '';
-                    text.textContent = 'Saved ✅';
+                    text.textContent = 'Saved';
                     location.reload();
                 }, 500);
 
             } else if (mode === 'split') {
-                const rows = document.querySelectorAll('#split-rows tr');
-                rows.forEach((row, index) => {
-                    const i = index + 1;
-                    const clientSelectElement = document.getElementById(`customer_name_${i}`);
+                const splitInto = parseInt(document.getElementById('split-into')?.value) || 0;
 
-                    if (!clientSelectElement) {
-                        console.error(`Client select element not found for row ${i}`);
-                        return;
-                    }
-
-                    const clientId = clientSelectElement.value;
-                    // Get client name from the display text instead of select options
-                    const selectedTextElement = document.getElementById(`selected_text_${i}`);
-                    const clientName = selectedTextElement ? selectedTextElement.textContent.trim() : '';
-
-                    const dateInput = document.getElementById(`date_${i}`);
-                    const date = dateInput ? dateInput.value : null;
-
-                    const amountInput = document.getElementById(`amount_${i}`);
-                    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+                for (let i = 1; i <= splitInto; i++) {
+                    const clientId   = document.getElementById(`customer_name_${i}`)?.value || '';
+                    const clientName = document.getElementById(`selected_text_${i}`)?.textContent.trim() || '';
+ 
+                    const date   = document.getElementById(`date_${i}`)?.value || null;
+                    const amount = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
 
                     const gatewaySelect = document.getElementById(`payment_gateway_${i}`);
                     const gateway = gatewaySelect ? gatewaySelect.value : null;
 
-                    const methodSelect = document.getElementById(`payment_method_${i}`);
-                    const method = methodSelect ? methodSelect.value : null;
+                    const methodContainer = document.getElementById(`payment_method_container_${i}`);
+                    const methodSelect    = document.getElementById(`payment_method_${i}`);
+                    const method = (methodContainer && !methodContainer.classList.contains('hidden'))
+                        ? (methodSelect?.value || null)
+                        : null;
 
-                    const invoiceChargeInput = document.getElementById(`invoice_charge_${i}`);
-                    const partialInvoiceCharge = parseFloat(invoiceChargeInput ? invoiceChargeInput.value : 0) || 0;
+                    const invoiceChargeInput   = document.getElementById(`invoice_charge_${i}`);
+                    const partialInvoiceCharge = parseFloat(invoiceChargeInput?.value) || 0;
 
-                    // Get selected payments if gateway is Credit
                     let paymentAllocations = [];
                     if (gateway === 'Credit') {
                         const rowId = `split_${i}`;
@@ -4737,36 +4840,31 @@
                         partial_invoice_charge: partialInvoiceCharge,
                         payment_allocations: paymentAllocations
                     }));
-                });
+                }
 
                 const buttonSplit = document.getElementById('splitbutton');
-                const iconSplit = document.getElementById('button-icon-split');
-                const textSplit = document.getElementById('button-text-split');
+                const iconSplit   = document.getElementById('button-icon-split');
+                const textSplit   = document.getElementById('button-text-split');
 
                 if (buttonSplit && iconSplit && textSplit) {
                     buttonSplit.disabled = true;
-
-                    // Show spinner
                     iconSplit.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
                     `;
-
                     textSplit.textContent = 'Saving...';
-
                     setTimeout(() => {
-                        iconSplit.innerHTML = ''; // remove spinner
-                        textSplit.textContent = 'Saved ✅';
+                        iconSplit.innerHTML = '';
+                        textSplit.textContent = 'Saved';
                         location.reload();
                     }, 500);
                 } else {
                     console.error('Split button or icon/text elements not found in the DOM.');
                 }
-
             } else if (mode === 'partial') {
-                const partialRows = document.querySelectorAll('#split-rows1 tr');
+                const partialRows = document.querySelectorAll('#partial-rows tr');
 
                 partialRows.forEach((row, index) => {
                     const i = index + 1;
@@ -4824,7 +4922,7 @@
                     textPartial.textContent = 'Saving...';
                     setTimeout(() => {
                         iconPartial.innerHTML = '';
-                        textPartial.textContent = 'Saved ✅';
+                        textPartial.textContent = 'Saved';
                         location.reload();
                     }, 500);
                 } else {
@@ -5242,7 +5340,7 @@
         }
 
        function checkPaymentAmount(mode) {
-            const totalInvoiceAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const totalInvoiceAmount = parseFloat(document.getElementById('subTotal').value) || 0;
             let totalEnteredAmount = 0;
             let isValid = true;
             let errorMessage = '';
@@ -5983,178 +6081,6 @@
             }
         }
 
-        function updateTotalPartialPayment() {
-            const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
-            const totalPartialContainer = document.getElementById('total-partial-container');
-            const totalPartialDisplay = document.getElementById('total-partial-display');
-            const totalPartialTooltip = document.getElementById('total-partial-tooltip');
-            const totalPartialTooltipText = document.getElementById('total-partial-tooltip-text');
-            
-            // Footer elements
-            const footerSummary = document.getElementById('footer-summary');
-            const footerInvoiceTotal = document.getElementById('footer-invoice-total');
-            const footerPartialTotal = document.getElementById('footer-partial-total');
-            const footerBalance = document.getElementById('footer-balance');
-            const footerBalanceTooltip = document.getElementById('footer-balance-tooltip');
-            const footerBalanceTooltipText = document.getElementById('footer-balance-tooltip-text');
-            
-            // If no installments selected, hide containers and exit
-            if (splitInto <= 0) {
-                if (totalPartialContainer) {
-                    totalPartialContainer.classList.add('hidden');
-                }
-                if (footerSummary) {
-                    footerSummary.classList.add('hidden');
-                }
-                return;
-            }
-            
-            // Show containers when installments are selected
-            if (totalPartialContainer) {
-                totalPartialContainer.classList.remove('hidden');
-            }
-            if (footerSummary) {
-                footerSummary.classList.remove('hidden');
-                footerSummary.classList.add('flex');
-            }
-            
-            // Calculate total from all amount inputs
-            let totalPartial = 0;
-            for (let i = 1; i <= splitInto; i++) {
-                const amountInput = document.getElementById(`amount_${i}`);
-                if (amountInput) {
-                    const amount = parseFloat(amountInput.value) || 0;
-                    totalPartial += amount;
-                    console.log(`Installment ${i}: ${amount} KWD`);
-                }
-            }
-            
-            // Get invoice total for comparison
-            const invoiceTotal = parseFloat(document.getElementById('total-amount').value) || 0;
-            const balance = invoiceTotal - totalPartial;
-            
-            console.log(`Total Partial: ${totalPartial}, Invoice Total: ${invoiceTotal}, Balance: ${balance}`);
-            
-            // Update header display
-            if (totalPartialDisplay) {
-                totalPartialDisplay.textContent = totalPartial.toFixed(3) + ' KWD';
-            }
-            
-            // Update footer displays
-            if (footerInvoiceTotal) {
-                footerInvoiceTotal.textContent = invoiceTotal.toFixed(3) + ' KWD';
-            }
-            if (footerPartialTotal) {
-                footerPartialTotal.textContent = totalPartial.toFixed(3) + ' KWD';
-            }
-            if (footerBalance) {
-                footerBalance.textContent = balance.toFixed(3) + ' KWD';
-            }
-            
-            // Color code and tooltip based on balance
-            if (Math.abs(balance) < 0.001) {
-                // Exact match - green, hide tooltips
-                // Header
-                if (totalPartialDisplay) {
-                    totalPartialDisplay.classList.remove('text-red-600', 'text-amber-600');
-                    totalPartialDisplay.classList.add('text-green-600');
-                }
-                if (totalPartialTooltip) {
-                    totalPartialTooltip.classList.add('hidden');
-                }
-                // Footer
-                if (footerBalance) {
-                    footerBalance.classList.remove('text-red-600', 'text-amber-600');
-                    footerBalance.classList.add('text-green-600');
-                }
-                if (footerPartialTotal) {
-                    footerPartialTotal.classList.remove('text-red-600', 'text-amber-600');
-                    footerPartialTotal.classList.add('text-green-600');
-                }
-                if (footerBalanceTooltip) {
-                    footerBalanceTooltip.classList.add('hidden');
-                }
-            } else if (balance < 0) {
-                // Exceeds (negative balance) - red
-                const excess = Math.abs(balance).toFixed(3);
-                // Header
-                if (totalPartialDisplay) {
-                    totalPartialDisplay.classList.remove('text-green-600', 'text-amber-600');
-                    totalPartialDisplay.classList.add('text-red-600');
-                }
-                if (totalPartialTooltip) {
-                    totalPartialTooltip.classList.remove('hidden');
-                    const svg = totalPartialTooltip.querySelector('svg');
-                    if (svg) {
-                        svg.classList.remove('text-amber-500');
-                        svg.classList.add('text-red-500');
-                    }
-                }
-                if (totalPartialTooltipText) {
-                    totalPartialTooltipText.textContent = `Exceeds invoice by ${excess} KWD`;
-                }
-                // Footer
-                if (footerBalance) {
-                    footerBalance.classList.remove('text-green-600', 'text-amber-600');
-                    footerBalance.classList.add('text-red-600');
-                }
-                if (footerPartialTotal) {
-                    footerPartialTotal.classList.remove('text-green-600', 'text-amber-600');
-                    footerPartialTotal.classList.add('text-red-600');
-                }
-                if (footerBalanceTooltip) {
-                    footerBalanceTooltip.classList.remove('hidden');
-                    const svg = footerBalanceTooltip.querySelector('svg');
-                    if (svg) {
-                        svg.classList.remove('text-amber-500');
-                        svg.classList.add('text-red-500');
-                    }
-                }
-                if (footerBalanceTooltipText) {
-                    footerBalanceTooltipText.textContent = `Partial payment exceeds invoice by ${excess} KWD`;
-                }
-            } else {
-                // Short (positive balance) - amber
-                const shortage = balance.toFixed(3);
-                // Header
-                if (totalPartialDisplay) {
-                    totalPartialDisplay.classList.remove('text-green-600', 'text-red-600');
-                    totalPartialDisplay.classList.add('text-amber-600');
-                }
-                if (totalPartialTooltip) {
-                    totalPartialTooltip.classList.remove('hidden');
-                    const svg = totalPartialTooltip.querySelector('svg');
-                    if (svg) {
-                        svg.classList.remove('text-red-500');
-                        svg.classList.add('text-amber-500');
-                    }
-                }
-                if (totalPartialTooltipText) {
-                    totalPartialTooltipText.textContent = `Short by ${shortage} KWD`;
-                }
-                // Footer
-                if (footerBalance) {
-                    footerBalance.classList.remove('text-green-600', 'text-red-600');
-                    footerBalance.classList.add('text-amber-600');
-                }
-                if (footerPartialTotal) {
-                    footerPartialTotal.classList.remove('text-green-600', 'text-red-600');
-                    footerPartialTotal.classList.add('text-amber-600');
-                }
-                if (footerBalanceTooltip) {
-                    footerBalanceTooltip.classList.remove('hidden');
-                    const svg = footerBalanceTooltip.querySelector('svg');
-                    if (svg) {
-                        svg.classList.remove('text-red-500');
-                        svg.classList.add('text-amber-500');
-                    }
-                }
-                if (footerBalanceTooltipText) {
-                    footerBalanceTooltipText.textContent = `Partial payment is short by ${shortage} KWD`;
-                }
-            }
-        }
-
         function updateCreditOptionAvailability() {
             const splitInto = parseInt(document.getElementById('split-into1').value) || 0;
             
@@ -6194,6 +6120,7 @@
                 }
             }
         }
+
         function handleAmountChange(mode, installmentIndex) {
             const amountInput = document.getElementById(`amount_${installmentIndex}`);
             const badge = document.getElementById(`card_amount_badge_${installmentIndex}`);
@@ -6208,11 +6135,215 @@
             }
             
             // Update footer totals
-            updateTotalPartialPayment();
+            updatePaymentSummary('partial');
             
             // Validate
             checkInputAmount(mode, installmentIndex);
         }
+        
+        /* Footer Summary */
+        function updatePaymentSummary(mode) {
+            const isPartial = mode === 'partial';
+
+            const splitIntoId     = isPartial ? 'split-into1'               : 'split-into';
+            const containerHdrId  = isPartial ? 'total-partial-container'   : 'total-split-container';
+            const displayHdrId    = isPartial ? 'total-partial-display'     : 'total-split-display';
+            const tooltipHdrId    = isPartial ? 'total-partial-tooltip'     : 'total-split-tooltip';
+            const tooltipHdrTxtId = isPartial ? 'total-partial-tooltip-text': 'total-split-tooltip-text';
+            const footerSummaryId = isPartial ? 'footer-summary'            : 'split-footer-summary';
+            const footerTotalId   = isPartial ? 'footer-partial-total'      : 'split-footer-split-total';
+            const footerBalanceId = isPartial ? 'footer-balance'            : 'split-footer-balance';
+            const footerTipId     = isPartial ? 'footer-balance-tooltip'    : 'split-footer-balance-tooltip';
+            const footerTipTxtId  = isPartial ? 'footer-balance-tooltip-text': 'split-footer-balance-tooltip-text';
+
+            const splitIntoEl     = document.getElementById(splitIntoId);
+            const splitInto       = parseInt(splitIntoEl?.value) || 0;
+
+            const containerHdr    = document.getElementById(containerHdrId);
+            const displayHdr      = document.getElementById(displayHdrId);
+            const tooltipHdr      = document.getElementById(tooltipHdrId);
+            const tooltipHdrTxt   = document.getElementById(tooltipHdrTxtId);
+            const footerSummary   = document.getElementById(footerSummaryId);
+            const footerTotal     = document.getElementById(footerTotalId);
+            const footerBalance   = document.getElementById(footerBalanceId);
+            const footerTip       = document.getElementById(footerTipId);
+            const footerTipTxt    = document.getElementById(footerTipTxtId);
+
+            if (splitInto <= 0) {
+                containerHdr?.classList.add('hidden');
+                footerSummary?.classList.add('hidden');
+                return;
+            }
+
+            containerHdr?.classList.remove('hidden');
+            if (footerSummary) {
+                footerSummary.classList.remove('hidden');
+                footerSummary.classList.add('flex');
+            }
+
+            let paymentTotal = 0;
+            for (let i = 1; i <= splitInto; i++) {
+                paymentTotal += parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
+            }
+
+            const invoiceTotal = parseFloat(document.getElementById('subTotal')?.value) || 0;
+            const balance      = invoiceTotal - paymentTotal;
+
+           
+            if (displayHdr)   displayHdr.textContent   = paymentTotal.toFixed(3) + ' KWD';
+            if (footerTotal)  footerTotal.textContent  = paymentTotal.toFixed(3) + ' KWD';
+
+            const displayBalance = Math.abs(balance) < 0.001 ? 0 : balance;
+            if (footerBalance) footerBalance.textContent = displayBalance.toFixed(3) + ' KWD';
+
+            
+
+            const allColors = ['text-green-600', 'text-red-600', 'text-amber-600'];
+
+            const clearColors = (...els) => els.forEach(el => el?.classList.remove(...allColors));
+
+            if (Math.abs(balance) < 0.001) {
+                /* Match the invoice */
+                clearColors(displayHdr, footerTotal, footerBalance);
+                displayHdr?.classList.add('text-green-600');
+                footerTotal?.classList.add('text-green-600');
+                footerBalance?.classList.add('text-green-600');
+                tooltipHdr?.classList.add('hidden');
+                footerTip?.classList.add('hidden');
+
+            } else if (balance < 0) {
+                /*  Exceeds the invoice */
+                const excess = Math.abs(balance).toFixed(3);
+                clearColors(displayHdr, footerTotal, footerBalance);
+                displayHdr?.classList.add('text-red-600');
+                footerTotal?.classList.add('text-red-600');
+                footerBalance?.classList.add('text-red-600');
+
+                tooltipHdr?.classList.remove('hidden');
+                tooltipHdr?.querySelector('svg')?.classList.replace('text-amber-500', 'text-red-500');
+                footerTip?.classList.remove('hidden');
+                footerTip?.querySelector('svg')?.classList.replace('text-amber-500', 'text-red-500');
+
+                if (tooltipHdrTxt) tooltipHdrTxt.textContent = `Exceeds invoice by ${excess} KWD`;
+                if (footerTipTxt)  footerTipTxt.textContent  = `Payment exceeds invoice by ${excess} KWD`;
+
+            } else {
+                /* Short from invoice */
+                const shortage = balance.toFixed(3);
+                clearColors(displayHdr, footerTotal, footerBalance);
+                displayHdr?.classList.add('text-amber-600');
+                footerTotal?.classList.add('text-amber-600');
+                footerBalance?.classList.add('text-amber-600');
+
+                tooltipHdr?.classList.remove('hidden');
+                tooltipHdr?.querySelector('svg')?.classList.replace('text-red-500', 'text-amber-500');
+                footerTip?.classList.remove('hidden');
+                footerTip?.querySelector('svg')?.classList.replace('text-red-500', 'text-amber-500');
+
+                if (tooltipHdrTxt) tooltipHdrTxt.textContent = `Short by ${shortage} KWD`;
+                if (footerTipTxt)  footerTipTxt.textContent  = `Payment is short by ${shortage} KWD`;
+            }
+        }
+
+        function handleCreditGatewayChange(mode, i) {
+            const isPartial     = mode === 'partial';
+            const gatewayId     = isPartial ? `payment_gateway1_${i}` : `payment_gateway_${i}`;
+            const gatewaySelect = document.getElementById(gatewayId);
+            const selectedGw    = gatewaySelect.value;
+            const key           = gwKey(selectedGw);
+            const creditPanel   = document.getElementById(`credit_panel_${i}`);
+            const amountInput   = document.getElementById(`amount_${i}`);
+
+            if (key === gwKey('credit')) {
+
+                // ── SPLIT: each client can use credit once, but different clients can each use it ──
+                if (mode === 'split') {
+                    const thisClientId = document.getElementById(`customer_name_${i}`)?.value;
+
+                    if (!thisClientId) {
+                        alert('Please select a client first before choosing credit payment.');
+                        gatewaySelect.value = '';
+                        return;
+                    }
+
+                    // Check if another row with the SAME client is already using credit
+                    const splitInto = parseInt(document.getElementById('split-into')?.value) || 0;
+                    for (let j = 1; j <= splitInto; j++) {
+                        if (j === i) continue;
+                        const otherGw       = document.getElementById(`payment_gateway_${j}`)?.value;
+                        const otherClientId = document.getElementById(`customer_name_${j}`)?.value;
+                        if (gwKey(otherGw) === gwKey('credit') && otherClientId === thisClientId) {
+                            alert(`This client is already using credit in Installment ${j}. Each client can only use credit once.`);
+                            gatewaySelect.value = '';
+                            return;
+                        }
+                    }
+                }
+
+                // ── PARTIAL: single invoice client — only one installment can use credit ──
+                if (mode === 'partial') {
+                    if (creditSelectionState.selectedInstallment && creditSelectionState.selectedInstallment !== i) {
+                        alert(`Credit is already being used in Installment ${creditSelectionState.selectedInstallment}. Only one installment can use credit.`);
+                        gatewaySelect.value = '';
+                        return;
+                    }
+                    creditSelectionState.selectedInstallment = i;
+                }
+
+                // Show credit panel
+                if (creditPanel) {
+                    creditPanel.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        creditPanel.style.opacity  = '1';
+                        creditPanel.style.transform = 'translateX(0)';
+                    });
+                }
+
+                // Lock amount input
+                amountInput.readOnly = true;
+                amountInput.style.backgroundColor = '#f3f4f6';
+                amountInput.title = 'Amount will be set based on your voucher selection';
+
+                // Load vouchers (mode-aware)
+                loadCreditVouchers(mode, i);
+
+                // Update credit options across all rows
+                updateAllCreditOptions(mode);
+
+            } else {
+
+                // Hide credit panel
+                if (creditPanel) {
+                    creditPanel.style.opacity   = '0';
+                    creditPanel.style.transform = 'translateX(10px)';
+                    setTimeout(() => creditPanel.classList.add('hidden'), 300);
+                }
+
+                // Restore amount input
+                amountInput.readOnly = false;
+                amountInput.style.backgroundColor = '';
+                amountInput.title = '';
+
+                // Clear partial state if this row was using credit
+                if (mode === 'partial' && creditSelectionState.selectedInstallment === i) {
+                    creditSelectionState.selectedInstallment  = null;
+                    creditSelectionState.totalCreditSelected  = 0;
+                    recalculateWithoutCredit(mode);
+                }
+
+                // For split, just recalculate without credit for this row
+                if (mode === 'split') {
+                    recalculateWithoutCredit(mode);
+                }
+
+                PaymentSelection.hideForRow(mode, i);
+                updateAllCreditOptions(mode);
+            }
+
+            updatePaymentSummary(mode);
+        }
+
+        
     </script>
 
 </x-app-layout>

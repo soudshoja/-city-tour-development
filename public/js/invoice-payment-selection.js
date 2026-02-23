@@ -430,36 +430,16 @@ const PaymentSelection = (function() {
         
         if (modalType === 'partial') {
             container = document.getElementById(`credit_vouchers_${rowIndex}`);
-            if (!container) {
-                console.error('[PaymentSelection] Could not find credit vouchers container for row:', rowIndex);
-                return;
-            }
         } else if (modalType === 'split') {
-            // For split payments, create in table row
-            container = document.getElementById(`payment-selection-${rowId}`);
-            
-            if (!container) {
-                container = document.createElement('div');
-                container.id = `payment-selection-${rowId}`;
-                container.className = 'payment-selection-container';
-                
-                const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
-                if (gatewaySelect) {
-                    const currentRow = gatewaySelect.closest('tr');
-                    if (currentRow) {
-                        const newRow = document.createElement('tr');
-                        newRow.id = `payment-selection-row-${rowId}`;
-                        newRow.innerHTML = `<td colspan="8" class="px-4 py-2 bg-blue-50">${container.outerHTML}</td>`;
-                        currentRow.parentNode.insertBefore(newRow, currentRow.nextSibling);
-                        
-                        container = document.getElementById(`payment-selection-${rowId}`);
-                    }
-                }
-            }
+            // ← Use the same ID that createCreditSelectionPanel generates
+            container = document.getElementById(`credit_vouchers_split_${rowIndex}`);
         }
 
         if (!container) {
-            console.error('[PaymentSelection] Could not find container for row:', rowId);
+            console.error('[PaymentSelection] Could not find container for row:', rowId, 
+                '— looked for:', modalType === 'split' 
+                    ? `credit_vouchers_split_${rowIndex}` 
+                    : `credit_vouchers_${rowIndex}`);
             return;
         }
 
@@ -469,14 +449,14 @@ const PaymentSelection = (function() {
                 <div class="animate-pulse">Loading payments...</div>
             </div>
         `;
-        container.style.display = 'block';
 
         // Load and render payments
         loadPaymentsForClient(clientId, function(payments) {
             if (modalType === 'partial') {
                 renderPaymentSelectionForPartial(container, payments, rowId, rowIndex, requiredAmount);
             } else {
-                renderPaymentSelection(container, payments, rowId, requiredAmount, null);
+                renderPaymentSelectionForPartial(container, payments, rowId, rowIndex, requiredAmount);
+                // ↑ Use partial renderer for split too — it renders into the credit panel correctly
             }
         });
     }
@@ -485,18 +465,21 @@ const PaymentSelection = (function() {
         const rowId = `${modalType}_${rowIndex}`;
         
         if (modalType === 'split') {
-            const selectionRow = document.getElementById(`payment-selection-row-${rowId}`);
-            if (selectionRow) {
-                selectionRow.remove();
-            }
+            const container = document.getElementById(`credit_vouchers_split_${rowIndex}`);
+            if (container) container.innerHTML = '';
         } else if (modalType === 'partial') {
             const container = document.getElementById(`credit_vouchers_${rowIndex}`);
-            if (container) {
-                container.innerHTML = '';
-            }
+            if (container) container.innerHTML = '';
         }
         
         clearRowSelection(rowId);
+    }
+
+    function clearAllSelections() {
+        // Clear all internal selection state
+        Object.keys(selectedPayments).forEach(key => delete selectedPayments[key]);
+        // Clear cache so fresh data loads next time
+        Object.keys(paymentCache).forEach(key => delete paymentCache[key]);
     }
 
     // Public API
@@ -512,7 +495,8 @@ const PaymentSelection = (function() {
         clearRowSelection,
         showForRow,
         hideForRow,
-        getSelectedTotal
+        getSelectedTotal,
+        clearAllSelections
     };
 })();
 

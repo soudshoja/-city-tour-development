@@ -20,30 +20,27 @@ class ChargeService
         float $baseAmount,
         float $backOfficeCharge, // self_charge (API + Markup combined)
         string $backOfficeChargeType,
-        ?float $extraCharge = null
+        ?float $extraCharge = 0
     ): array {
         // Step 1: Calculate Back Office charge (API + Markup)
         if ($backOfficeChargeType === 'Percent') {
             $backOfficeAmount = ($backOfficeCharge / 100) * $baseAmount;
             // Step 2: Round UP the percentage charge
-            $backOfficeAmountRounded = round($backOfficeAmount, 3);
+            $backOfficeAmountRounded = ceil($backOfficeAmount);
         } else {
             // Flat rate - no rounding needed
             $backOfficeAmount = $backOfficeCharge;
             $backOfficeAmountRounded = $backOfficeCharge;
         }
 
-        // Step 3: Add flat extra charge (if exists) - NO rounding on extra
-        $extraAmount = ($extraCharge !== null && $extraCharge > 0) ? $extraCharge : 0;
-
-        $totalCharge = $backOfficeAmountRounded + $extraAmount;
+        $totalCharge = $backOfficeAmountRounded + $extraCharge;
 
         // Rounding profit = difference between rounded and actual % charge
         $roundingProfit = $backOfficeAmountRounded - $backOfficeAmount;
 
         return [
             'back_office_charge' => $backOfficeAmountRounded,
-            'extra_charge' => round($extraAmount, 3),
+            'extra_charge' => round($extraCharge, 3),
             'total_charge' => round($totalCharge, 3), // What client pays
             'rounding_profit' => round($roundingProfit, 3), // Always company profit
         ];
@@ -128,6 +125,7 @@ class ChargeService
         $chargeType = 'Flat Rate';
         $extraCharge = null;      // Always flat rate, nullable
         $paidBy = 'Company';      // Payment Execution: who physically pays
+        $method = null;          
 
         // Priority 1: Get from payment_methods table
         if ($methodId) {
@@ -224,6 +222,8 @@ class ChargeService
         $finalAmount = $amount + $clientPays;
 
         Log::info('ChargeService::calculate', [
+            'payment_gateway' => $gatewayName,
+            'method' => $method ? $method->english_name : 'N/A',
             'amount' => $amount,
             'contract_charge_rate' => $contractCharge,
             'back_office_charge_rate' => $backOfficeCharge,

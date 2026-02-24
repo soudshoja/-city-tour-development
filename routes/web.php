@@ -563,6 +563,8 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
             Route::post('/import/invoice', [PaymentController::class, 'importFromInvoice'])->name('import.invoice');
             Route::post('/import/payment', [PaymentController::class, 'importFromPayment'])->name('import.payment');
+            Route::post('/import/file', [PaymentController::class, 'importPaymentFile'])->name('import.file');
+            Route::post('/import/assign-client/{paymentId}', [PaymentController::class, 'assignClientToImport'])->name('import.assign-client');
             Route::post('/payment-activation/{paymentId}', [PaymentController::class, 'paymentLinkActivation'])->name('payment.activation');
             Route::post('/multi-initiate', [PaymentController::class, 'multiPaymentLinkInitiate'])->name('multi-initiate')->withoutMiddleware(['auth']);
         });

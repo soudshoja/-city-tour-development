@@ -374,8 +374,8 @@
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
                                         <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100" @if ($invoice->refund) style="display:none" @endif>Action</th>
+                                        <th class="px-4 py-2 w-36 text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                        <th class="px-4 py-2 w-20 text-gray-900 dark:text-gray-100" @if ($invoice->refund) style="display:none" @endif>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1670,6 +1670,19 @@
                                                         </span>
                                                         <span id="split-footer-balance" class="text-sm font-bold text-green-600">0.000 KWD</span>
                                                     </div>
+
+                                                    <!-- Charge Summary (hidden until charges exist) -->
+                                                    <div id="split-footer-charge-summary" class="hidden flex items-center gap-6 pl-4 ml-4 border-l border-dashed border-gray-300">
+                                                        <div class="text-right">
+                                                            <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Service Charge</span>
+                                                            <span id="split-footer-service-charge" class="text-sm font-semibold text-amber-600">0.000 KWD</span>
+                                                        </div>
+                                                        <div class="text-right">
+                                                            <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Client Pays</span>
+                                                            <span id="split-footer-client-pays" class="text-sm font-bold text-gray-900">0.000 KWD</span>
+                                                        </div>
+                                                    </div>
+
                                                     <div class="h-10 w-px bg-gray-300"></div>
                                                 </div>
 
@@ -1827,7 +1840,19 @@
                                                         </span>
                                                         <span id="footer-balance" class="text-sm font-bold text-green-600">0.000 KWD</span>
                                                     </div>
-                                                    
+
+                                                    <!-- Charge Summary (hidden until charges exist) -->
+                                                    <div id="footer-charge-summary" class="hidden flex items-center gap-6 pl-4 ml-4 border-l border-dashed border-gray-300">
+                                                        <div class="text-right">
+                                                            <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Service Charge</span>
+                                                            <span id="footer-service-charge" class="text-sm font-semibold text-amber-600">0.000 KWD</span>
+                                                        </div>
+                                                        <div class="text-right">
+                                                            <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Client Pays</span>
+                                                            <span id="footer-client-pays" class="text-sm font-bold text-gray-900">0.000 KWD</span>
+                                                        </div>
+                                                    </div>
+
                                                     <!-- Vertical Divider -->
                                                     <div class="h-10 w-px bg-gray-300"></div>
                                                 </div>
@@ -2114,6 +2139,7 @@
         const partialCredit = Number(@json(\App\Models\Credit::getTotalCreditsByClient($invoice->client_id)) || 0);
         let creditRemaining = partialCredit;
         const creditUsed = {};
+        const chargeBreakdownStore = { partial: {}, split: {} };
 
         // Refund invoice: use the pre-calculated invoice.amount instead of sum of task prices
         const isRefundInvoice = @json((bool) $invoice->refund);
@@ -2849,17 +2875,45 @@
                     </div>
                 </div>
 
-                <!-- Gateway & Method -->
+               <!-- Gateway & Method -->
                 <div class="flex justify-between gap-4 mb-4">
-                    <div class="w-5/12">
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Payment Gateway</label>
+                    <div class="w-5/12 relative">
+                        <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                            Payment Gateway
+                            <span id="split_charge_tooltip_${i}" class="hidden relative cursor-help"
+                                onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="16" x2="12" y2="12"/>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                </svg>
+                                <span class="tooltip-box opacity-0 invisible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                    <span id="split_charge_tooltip_text_${i}">Invoice charge not supported</span>
+                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                </span>
+                            </span>
+                        </label>
                         <select id="payment_gateway_${i}" name="payment_gateway_${i}"
                                 class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm"
-                                onchange="handleSplitGatewayChange(${i})">
+                                onchange="handleGatewayChangeSplit(${i})">
                             <option value="">Select gateway</option>
                             <option value="Credit" id="credit_option_${i}" disabled>Credit (0.000)</option>
                             ${charges.map(gw => `<option value="${gw.name}">${gw.name}</option>`).join('')}
                         </select>
+                        <span id="split_no_method_tooltip_${i}" class="hidden absolute -right-6 bottom-2 cursor-help"
+                            onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                            onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="16" x2="12" y2="12"/>
+                                <line x1="12" y1="8" x2="12.01" y2="8"/>
+                            </svg>
+                            <span class="tooltip-box opacity-0 invisible absolute bottom-full right-0 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                No specific method required for this gateway
+                                <span class="absolute top-full right-2 border-4 border-transparent border-t-gray-800"></span>
+                            </span>
+                        </span>
                     </div>
                     <div class="w-5/12">
                         <div id="payment_method_container_${i}" class="hidden">
@@ -2870,16 +2924,79 @@
                     </div>
                 </div>
 
-                <!-- Invoice Charge (conditional) -->
+                <!-- Invoice Charge (hidden by default) -->
                 <div id="split_invoice_charge_wrapper_${i}" class="hidden mb-2">
                     <div class="w-5/12">
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Charge</label>
-                        <input type="number" id="invoice_charge_${i}" name="invoice_charge_${i}"
-                            class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm"
+                        <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                            Invoice Charge
+                            <span class="relative cursor-help"
+                                onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="16" x2="12" y2="12"/>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                </svg>
+                                <span class="tooltip-box opacity-0 invisible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                    <span id="split_invoice_charge_tooltip_text_${i}">Gateway charge</span>
+                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                </span>
+                            </span>
+                        </label>
+                        <input type="number" id="split_invoice_charge_${i}" name="split_invoice_charge_${i}" 
+                            class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500" 
                             value="0" step="0.001" min="0" placeholder="0.000" />
                     </div>
                 </div>
-                <input type="hidden" id="invoice_charge_${i}_fallback" name="invoice_charge_${i}" value="0" />
+
+                <input type="hidden" id="split_invoice_charge_${i}_fallback" name="split_invoice_charge_${i}" value="0" />
+
+                <!-- Separator + Payment Breakdown -->
+                <div id="split_charge_breakdown_${i}" class="hidden mb-4">
+                    <hr class="my-4 border-dashed border-gray-300" />
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-md font-semibold text-gray-400 uppercase tracking-wide">Payment Breakdown</label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-500">Paid By:</span>
+                            <span id="split_charge_paid_by_${i}" class="text-sm font-medium">-</span>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded-md p-3 text-sm">
+                        <!-- Base Amount -->
+                        <div class="flex justify-between items-center pb-2 mb-1 border-b border-gray-200">
+                            <span class="text-md text-gray-500 font-medium">Base Amount</span>
+                            <span id="split_charge_base_amount_${i}" class="font-semibold text-gray-700 tabular-nums">0.000</span>
+                        </div>
+
+                        <!-- Base + Service -->
+                        <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
+                                <span class="text-sm text-gray-600">Base + Service Charge</span>
+                                <span class="text-xs italic text-gray-500">Service Charge: <span id="split_charge_fee_${i}" class="text-xs text-amber-500">0.000</span> KWD</span>
+                            </div>
+                            <span id="split_charge_subtotal_service_${i}" class="font-semibold text-gray-700">0.000</span>
+                        </div>
+
+                        <!-- Base + Invoice Charge -->
+                        <div id="split_breakdown_invoice_row_${i}" class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
+                                <span class="text-sm text-gray-600">Base + Invoice Charge</span>
+                                <span class="text-xs italic text-gray-500">Invoice Charge: <span id="split_charge_invoice_charge_${i}" class="text-xs text-amber-500">0.000</span> KWD</span>
+                            </div>
+                            <span id="split_charge_subtotal_invoice_${i}" class="font-semibold text-gray-700">0.000</span>
+                        </div>
+
+                        <div class="flex justify-between items-start pt-2 mt-1 font-bold">
+                            <div class="flex flex-col">
+                                <span class="text-md">Grand Total</span>
+                                <span id="split_grand_total_subtext_${i}" class="text-xs font-normal text-gray-500 tabular-nums hidden">Base + Service Charge + Invoice Charge</span>
+                            </div>
+                            <span id="split_charge_total_${i}" class="tabular-nums">0.000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="invoice_charge_${i}" name="invoice_charge_${i}" value="0" />
             `;
 
             // Credit panel setup
@@ -2890,10 +3007,139 @@
 
             wrapper.appendChild(card);         // card is flex child of wrapper
             wrapper.appendChild(creditPanel);  // panel is flex child of wrapper
-            container.appendChild(wrapper);    // wrapper goes into container 
+            container.appendChild(wrapper);    // wrapper goes into container
+
+            container.appendChild(wrapper);
+
+            // Wire gateway change for tooltip + invoice charge visibility
+            const gatewaySelect = card.querySelector(`#payment_gateway_${i}`);
+            const methodContainer = card.querySelector(`#payment_method_container_${i}`);
+            const methodSelect2 = card.querySelector(`#payment_method_${i}`);
+
+            function updateSplitMethodVisibility() {
+                const selectedGateway = gatewaySelect.value;
+                const key = gwKey(selectedGateway);
+                const methods = methodsByGateway[key] || [];
+                const noMethodTooltip = card.querySelector(`#split_no_method_tooltip_${i}`);
+
+                if (methods.length > 0) {
+                    renderMethodOptions(methodSelect2, methods);
+                    methodContainer.classList.remove('hidden');
+                    if (noMethodTooltip) noMethodTooltip.classList.add('hidden');
+                } else {
+                    methodContainer.classList.add('hidden');
+                    methodSelect2.value = '';
+                    if (noMethodTooltip) noMethodTooltip.classList.remove('hidden');
+                }
+
+                const chargeWrapper = card.querySelector(`#split_invoice_charge_wrapper_${i}`);
+                const chargeInput = card.querySelector(`#split_invoice_charge_${i}`);
+                const chargeTooltip = card.querySelector(`#split_charge_tooltip_${i}`);
+                const chargeTooltipText = card.querySelector(`#split_charge_tooltip_text_${i}`);
+                const invoiceChargeTooltipText = card.querySelector(`#split_invoice_charge_tooltip_text_${i}`);
+                const canCharge = canGatewayChargeInvoice(selectedGateway);
+
+                if (canCharge) {
+                    chargeWrapper.classList.remove('hidden');
+                    chargeTooltip.classList.add('hidden');
+                    if (invoiceChargeTooltipText) {
+                        invoiceChargeTooltipText.textContent = `${selectedGateway} charge`;
+                    }
+                } else {
+                    chargeWrapper.classList.add('hidden');
+                    chargeInput.value = '0';
+                    if (selectedGateway) {
+                        chargeTooltip.classList.remove('hidden');
+                        chargeTooltipText.textContent = `Invoice charge not supported for ${selectedGateway}`;
+                    } else {
+                        chargeTooltip.classList.add('hidden');
+                    }
+                }
+
+                const invoiceBreakdownRow = card.querySelector(`#split_breakdown_invoice_row_${i}`);
+                const grandTotalSubtext   = card.querySelector(`#split_grand_total_subtext_${i}`);
+
+                if (canCharge) {
+                    invoiceBreakdownRow?.classList.remove('hidden');
+                    grandTotalSubtext?.classList.remove('hidden');
+                } else {
+                    invoiceBreakdownRow?.classList.add('hidden');
+                    grandTotalSubtext?.classList.add('hidden');
+                }
+            }
+
+            // Remove inline onchange and wire properly
+            gatewaySelect.removeAttribute('onchange');
+            gatewaySelect.addEventListener('change', () => {
+                handleGatewayChangeSplit(i);
+                updateSplitMethodVisibility();
+            });
+
+            updateSplitMethodVisibility(); // run once on initial render
+
+            // Wire method change + amount blur for charge calculation
+            const methodSelect = document.getElementById(`payment_method_${i}`);
+            if (methodSelect) {
+                methodSelect.addEventListener('change', () => fetchChargeBreakdown('split', i));
+            }
+            
+            const amountInput = card.querySelector(`#amount_${i}`);
+            if (amountInput) {
+                let debounceTimer;
+                amountInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => fetchChargeBreakdown('split', i), 400);
+                });
+            }
+
+            const invoiceChargeEl = card.querySelector(`#split_invoice_charge_${i}`);
+            if (invoiceChargeEl) {
+                invoiceChargeEl.addEventListener('input', () => updateInvoiceChargeInBreakdown(i));
+                invoiceChargeEl.addEventListener('blur',  () => updateInvoiceChargeInBreakdown(i));
+            }
         }
 
-        
+        function updateInvoiceChargeInBreakdown(mode, i) {
+            const isPartial = mode === 'partial';
+
+            const invoiceChargeElId = isPartial ? `partial_invoice_charge_${i}` : `split_invoice_charge_${i}`;
+            const breakdownElId     = isPartial ? `charge_breakdown_${i}`       : `split_charge_breakdown_${i}`;
+            const prefix            = isPartial ? 'charge'                      : 'split_charge';
+
+            const invoiceChargeEl = document.getElementById(invoiceChargeElId);
+            const invoiceCharge   = parseFloat(invoiceChargeEl?.value) || 0;
+
+            const store     = chargeBreakdownStore[mode];
+            const breakdown = store[i];
+
+            const breakdownEl = document.getElementById(breakdownElId);
+            if (!breakdownEl || breakdownEl.classList.contains('hidden')) return;
+
+            const baseAmount = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
+            const gatewayFee = breakdown?.gatewayFee || 0;
+
+            const subtotalService = baseAmount + gatewayFee;
+            const subtotalInvoice = baseAmount + invoiceCharge;
+            const grandTotal      = baseAmount + gatewayFee + invoiceCharge;
+
+            const invoiceChargeRow  = document.getElementById(`${prefix}_invoice_charge_${i}`);
+            const subtotalServiceEl = document.getElementById(`${prefix}_subtotal_service_${i}`);
+            const subtotalInvoiceEl = document.getElementById(`${prefix}_subtotal_invoice_${i}`);
+            const totalEl           = document.getElementById(`${prefix}_total_${i}`);
+
+            if (invoiceChargeRow)  invoiceChargeRow.textContent  = invoiceCharge.toFixed(3);
+            if (subtotalServiceEl) subtotalServiceEl.textContent = subtotalService.toFixed(3);
+            if (subtotalInvoiceEl) subtotalInvoiceEl.textContent = subtotalInvoice.toFixed(3);
+            if (totalEl)           totalEl.textContent           = grandTotal.toFixed(3);
+
+            if (store[i]) {
+                store[i].invoiceCharge = invoiceCharge;
+                store[i].finalAmount   = grandTotal;
+            }
+
+            updatePaymentSummary(mode);
+        }
+
         function toggleSearchableDropdown(rowIndex) {
             const dropdown = document.getElementById(`dropdown_${rowIndex}`);
             const searchInput = document.getElementById(`search_input_${rowIndex}`);
@@ -2946,13 +3192,11 @@
             checkInputAmount('split', i);
         }
 
-        function handleSplitGatewayChange(i) {
+        function handleGatewayChangeSplit(i) {
             const gatewaySelect   = document.getElementById(`payment_gateway_${i}`);
             const selectedGw      = gatewaySelect.value;
             const methodContainer = document.getElementById(`payment_method_container_${i}`);
             const methodSelect    = document.getElementById(`payment_method_${i}`);
-            const chargeWrapper   = document.getElementById(`split_invoice_charge_wrapper_${i}`);
-            const chargeInput     = document.getElementById(`invoice_charge_${i}`);
 
             const key     = gwKey(selectedGw);
             const methods = methodsByGateway[key] || [];
@@ -2964,16 +3208,11 @@
                 if (methodSelect) methodSelect.value = '';
             }
 
-            const canCharge = canGatewayChargeInvoice(selectedGw);
-            if (canCharge && selectedGw !== 'Credit') {
-                chargeWrapper.classList.remove('hidden');
-            } else {
-                chargeWrapper.classList.add('hidden');
-                if (chargeInput) chargeInput.value = '0';
-            }
-
             // Delegate credit logic to shared handler
             handleCreditGatewayChange('split', i);
+
+            // Fetch charge after method options are rendered
+            requestAnimationFrame(() => fetchChargeBreakdown('split', i));
         }
 
         function updateRowSplitFromMoved() {
@@ -3069,9 +3308,7 @@
             updatePaymentSummary('partial');
         }
 
-        /**
-         * Create individual installment card with credit selection capability
-         */
+        /* Partial Payment Modal  */
         function createPartialInstallmentCard(installmentIndex, initialAmount, totalInvoiceAmount, container, totalInstallments) {
             const wrapper = document.createElement('div');
             wrapper.className = 'flex gap-4';
@@ -3113,9 +3350,21 @@
                     <div class="w-5/12 relative">
                         <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
                             Payment Gateway
+                            <span id="partial_charge_tooltip_${installmentIndex}" class="hidden relative cursor-help"
+                                onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="16" x2="12" y2="12"/>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                </svg>
+                                <span class="tooltip-box opacity-0 invisible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                    <span id="partial_charge_tooltip_text_${installmentIndex}">Invoice charge not supported</span>
+                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                </span>
+                            </span>
                         </label>
-                        <select id="payment_gateway1_${installmentIndex}" class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                onchange="handleGatewayChangePartial(${installmentIndex})">
+                        <select id="payment_gateway1_${installmentIndex}" class="w-full p-2 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="" selected>Select gateway</option>
                             <option value="Credit" id="credit_option1_${installmentIndex}">
                                 Credit (${partialCredit.toFixed(3)})
@@ -3131,17 +3380,84 @@
                     </div>
                 </div>
 
-                <!-- Row 3: Invoice Charge (conditional) -->
-                <div id="invoice_charge_wrapper_${installmentIndex}" class="hidden mb-2">
+                <!-- Invoice Charge (hidden by default) -->
+                <div id="partial_invoice_charge_wrapper_${installmentIndex}" class="hidden mb-2">
                     <div class="w-5/12">
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Invoice Charge</label>
-                        <input type="number" id="invoice_charge1_${installmentIndex}" name="invoice_charge1_${installmentIndex}" 
-                            class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                        <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                            Invoice Charge
+                            <span class="relative cursor-help"
+                                onmouseenter="this.querySelector('.tooltip-box').classList.remove('opacity-0','invisible')"
+                                onmouseleave="this.querySelector('.tooltip-box').classList.add('opacity-0','invisible')">
+                                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="16" x2="12" y2="12"/>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                </svg>
+                                <span class="tooltip-box opacity-0 invisible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-800 text-white text-xs font-normal normal-case tracking-normal rounded-md whitespace-nowrap transition-all duration-150 pointer-events-none z-10">
+                                    <span id="partial_invoice_charge_tooltip_text_${installmentIndex}">Gateway charge</span>
+                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                </span>
+                            </span>
+                        </label>
+                        <input type="number" id="partial_invoice_charge_${installmentIndex}" name="invoice_charge1_${installmentIndex}"
+                            class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500"
                             value="0" step="0.001" min="0" placeholder="0.000" />
                     </div>
                 </div>
 
-                <input type="hidden" id="invoice_charge1_${installmentIndex}_fallback" name="invoice_charge1_${installmentIndex}" value="0" />
+                <!-- Payment Breakdown -->
+                <div id="charge_breakdown_${installmentIndex}" class="hidden mb-4">
+                    <hr class="my-4 border-dashed border-gray-300" />
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-md font-semibold text-gray-400 uppercase tracking-wide mb-1">Payment Breakdown</label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-500 uppercase tracking-wide">Paid By:</span>
+                            <span id="charge_paid_by_${installmentIndex}" class="text-sm font-medium uppercase tracking-wide">-</span>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded-md p-3 text-sm">
+                        <!-- Base Amount -->
+                        <div class="flex justify-between items-center pb-2 mb-1 border-b border-gray-200">
+                            <span class="text-md text-gray-500 font-medium uppercase tracking-wide mb-1">Base Amount</span>
+                            <span class="font-semibold text-gray-700"><span id="charge_base_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD</span>
+                        </div>
+                        <!-- Base + Service -->
+                        <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
+                                <span class="text-sm text-gray-600">Base + Service Charge</span>
+                                <span class="text-xs italic text-gray-500">
+                                    <span id="charge_fee_percent_${installmentIndex}" class="text-gray-400">0%</span>
+                                    Service Charge: <span id="charge_fee_${installmentIndex}" class="text-amber-500">0.000</span> KWD
+                                </span>
+                                <span class="text-xs italic text-green-600">
+                                    Profit: <span id="charge_fee_profit_${installmentIndex}">0.000</span> KWD 
+                                    (<span id="charge_fee_ceiled_${installmentIndex}">0.000</span> KWD ceiled)
+                                </span>
+                            </div>
+                            <span class="font-semibold text-gray-700">
+                                <span id="charge_subtotal_service_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD
+                            </span>
+                        </div>
+                        <!-- Base + Invoice Charge -->
+                        <div id="partial_breakdown_invoice_row_${installmentIndex}" class="hidden flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
+                                <span class="text-sm text-gray-600">Base + Invoice Charge</span>
+                                <span class="text-xs italic text-gray-500">Invoice Charge: <span id="charge_invoice_charge_${installmentIndex}" class="text-xs text-amber-500">0.000</span> KWD</span>
+                            </div>
+                            <span class="font-semibold text-gray-700"><span id="charge_subtotal_invoice_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD</span>
+                        </div>
+                        <!-- Grand Total -->
+                        <div class="flex justify-between items-start pt-2 mt-1 font-bold">
+                            <div class="flex flex-col">
+                                <span class="text-md uppercase tracking-wide mb-1">Grand Total</span>
+                                <span id="partial_grand_total_subtext_${installmentIndex}" class="text-xs font-normal text-gray-500 hidden">Base + Service Charge + Invoice Charge</span>
+                            </div>
+                            <span><span id="charge_total_${installmentIndex}" class="tabular-nums">0.000</span> KWD</span>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="invoice_charge1_${installmentIndex}" name="invoice_charge1_${installmentIndex}" value="0" />
             `;
 
             // Credit panel setup
@@ -3154,12 +3470,76 @@
             wrapper.appendChild(creditPanel);
             container.appendChild(wrapper);
 
-            setupInstallmentEventHandlers('partial', installmentIndex, totalInvoiceAmount, totalInstallments); // ← add 'partial'
+            // Wire gateway change — inline closure like split
+            const gatewaySelect = card.querySelector(`#payment_gateway1_${installmentIndex}`);
+
+            function updatePartialMethodVisibility() {
+                const selectedGateway = gatewaySelect.value;
+                const canCharge = canGatewayChargeInvoice(selectedGateway);
+
+                const chargeWrapper          = card.querySelector(`#partial_invoice_charge_wrapper_${installmentIndex}`);
+                const chargeInput            = card.querySelector(`#partial_invoice_charge_${installmentIndex}`);
+                const chargeTooltip          = card.querySelector(`#partial_charge_tooltip_${installmentIndex}`);
+                const chargeTooltipText      = card.querySelector(`#partial_charge_tooltip_text_${installmentIndex}`);
+                const invoiceTooltipText     = card.querySelector(`#partial_invoice_charge_tooltip_text_${installmentIndex}`);
+                const invoiceBreakdownRow    = card.querySelector(`#partial_breakdown_invoice_row_${installmentIndex}`);
+                const grandTotalSubtext      = card.querySelector(`#partial_grand_total_subtext_${installmentIndex}`);
+
+                if (canCharge) {
+                    chargeWrapper?.classList.remove('hidden');
+                    chargeTooltip?.classList.add('hidden');
+                    invoiceBreakdownRow?.classList.remove('hidden');
+                    grandTotalSubtext?.classList.remove('hidden');
+                    if (invoiceTooltipText) invoiceTooltipText.textContent = `${selectedGateway} charge`;
+                } else {
+                    chargeWrapper?.classList.add('hidden');
+                    if (chargeInput) chargeInput.value = '0';
+                    invoiceBreakdownRow?.classList.add('hidden');
+                    grandTotalSubtext?.classList.add('hidden');
+                    if (selectedGateway) {
+                        chargeTooltip?.classList.remove('hidden');
+                        if (chargeTooltipText) chargeTooltipText.textContent = `Invoice charge not supported for ${selectedGateway}`;
+                    } else {
+                        chargeTooltip?.classList.add('hidden');
+                    }
+                }
+            }
+
+            gatewaySelect.addEventListener('change', () => {
+                updatePartialMethodVisibility();
+                fetchChargeBreakdown('partial', installmentIndex);
+
+                // Wire method select after gateway populates it
+                setTimeout(() => {
+                    const methodSelect = card.querySelector(`#payment_method1_${installmentIndex}`);
+                    if (methodSelect) {
+                        methodSelect.addEventListener('change', () => fetchChargeBreakdown('partial', installmentIndex));
+                    }
+                }, 100);
+            });
+
+            const amountInput = card.querySelector(`#amount_${installmentIndex}`);
+            if (amountInput) {
+                amountInput.addEventListener('input', () => fetchChargeBreakdown('partial', installmentIndex));
+                amountInput.addEventListener('blur',  () => fetchChargeBreakdown('partial', installmentIndex));
+            }
+
+            const methodSelect = card.querySelector(`#payment_method1_${installmentIndex}`);
+            if (methodSelect) {
+                methodSelect.addEventListener('change', () => fetchChargeBreakdown('partial', installmentIndex));
+            }
+            updatePartialMethodVisibility(); // run once on initial render
+
+            // Wire invoice charge input
+            const invoiceChargeEl = card.querySelector(`#partial_invoice_charge_${installmentIndex}`);
+            if (invoiceChargeEl) {
+                invoiceChargeEl.addEventListener('input', () => updateInvoiceChargeInBreakdown('partial', installmentIndex));
+                invoiceChargeEl.addEventListener('blur',  () => updateInvoiceChargeInBreakdown('partial', installmentIndex));
+            }
+
+            setupInstallmentEventHandlers('partial', installmentIndex, totalInvoiceAmount, totalInstallments);
         }
 
-        /**
-         * Create the credit selection panel HTML
-         */
         function createCreditSelectionPanel(mode, installmentIndex, requiredAmount) {
             const vouchersId = mode === 'split'
                 ? `credit_vouchers_split_${installmentIndex}`
@@ -3194,6 +3574,127 @@
             const gatewaySelect = document.getElementById(`payment_gateway1_${installmentIndex}`);
             updatePaymentMethodVisibility(installmentIndex, gatewaySelect.value);
             handleCreditGatewayChange('partial', installmentIndex);
+
+            // Delay so the method <select> DOM is populated before we read its value
+            requestAnimationFrame(() => fetchChargeBreakdown('partial', installmentIndex));
+        }
+
+        /* Charge Calculation in Installment Card */
+        async function fetchChargeBreakdown(mode, i) {
+            const isPartial   = mode === 'partial';
+            const gatewayId   = isPartial ? `payment_gateway1_${i}` : `payment_gateway_${i}`;
+            const methodId    = isPartial ? `payment_method1_${i}`  : `payment_method_${i}`;
+            const breakdownId = isPartial ? `charge_breakdown_${i}` : `split_charge_breakdown_${i}`;
+            const prefix      = isPartial ? 'charge'                : 'split_charge';
+
+            const gateway     = document.getElementById(gatewayId)?.value;
+            const method      = document.getElementById(methodId)?.value;
+            const amount      = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
+            const breakdownEl = document.getElementById(breakdownId);
+            const store       = chargeBreakdownStore[mode];
+
+            if (!gateway || gwKey(gateway) === gwKey('Credit') || amount <= 0) {
+                breakdownEl?.classList.add('hidden');
+                delete store[i];
+                updatePaymentSummary(mode);
+                return;
+            }
+
+            const invoiceChargeInputId = isPartial ? `invoice_charge1_${i}` : `split_invoice_charge_${i}`;
+            const invoiceCharge = parseFloat(document.getElementById(invoiceChargeInputId)?.value) || 0;
+
+            try {
+                const response = await fetch("{{ route('invoice.calculate-charge') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        gateway: gateway,
+                        method: method ? parseInt(method) : null,
+                        invoice_id: {{ $invoice->id }},
+                    }),
+                });
+
+                const data = await response.json();
+
+                const gatewayFee = parseFloat(data.gatewayFee || 0);
+
+                if (isPartial) {
+                    const grandTotal = amount + gatewayFee + invoiceCharge;
+
+                    document.getElementById(`${prefix}_base_${i}`).textContent    = amount.toFixed(3);
+                    document.getElementById(`${prefix}_fee_${i}`).textContent     = gatewayFee.toFixed(3);
+                    document.getElementById(`${prefix}_paid_by_${i}`).textContent = data.paid_by || '-';
+                    document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);
+
+                    const ceiledFee   = Math.ceil(gatewayFee * 100) / 100;   // ceil to nearest 0.01
+                    const profit      = parseFloat((ceiledFee - gatewayFee).toFixed(3));
+                    const chargePercent = amount > 0 ? ((gatewayFee / amount) * 100).toFixed(2) : '0.00';
+
+                    const feePercentEl = document.getElementById(`charge_fee_percent_${i}`);
+                    const feeProfitEl  = document.getElementById(`charge_fee_profit_${i}`);
+                    const feeCeiledEl  = document.getElementById(`charge_fee_ceiled_${i}`);
+
+                    if (feePercentEl) feePercentEl.textContent = `${chargePercent}%`;
+                    if (feeProfitEl)  feeProfitEl.textContent  = profit.toFixed(3);
+                    if (feeCeiledEl)  feeCeiledEl.textContent  = ceiledFee.toFixed(3);
+
+                    // New subtotal fields
+                    const subtotalServiceEl = document.getElementById(`charge_subtotal_service_${i}`);
+                    const subtotalInvoiceEl = document.getElementById(`charge_subtotal_invoice_${i}`);
+                    const invoiceChargeRow  = document.getElementById(`charge_invoice_charge_${i}`);
+                    if (subtotalServiceEl) subtotalServiceEl.textContent = (amount + gatewayFee).toFixed(3);
+                    if (subtotalInvoiceEl) subtotalInvoiceEl.textContent = (amount + invoiceCharge).toFixed(3);
+                    if (invoiceChargeRow)  invoiceChargeRow.textContent  = invoiceCharge.toFixed(3);
+
+                    store[i] = {
+                        gatewayFee:    gatewayFee,
+                        finalAmount:   grandTotal,
+                        invoiceCharge: invoiceCharge,
+                        paid_by:       data.paid_by || 'Company',
+                    };
+                } else {
+                    const subtotalService = amount + gatewayFee;
+                    const subtotalInvoice = amount + invoiceCharge;
+                    const grandTotal      = amount + gatewayFee + invoiceCharge;
+
+                    const baseAmountEl = document.getElementById(`split_charge_base_amount_${i}`);
+                    if (baseAmountEl) baseAmountEl.textContent = amount.toFixed(3);
+
+                    const feeEl = document.getElementById(`${prefix}_fee_${i}`);
+                    if (feeEl) feeEl.textContent = `${gatewayFee.toFixed(3)}`;
+
+                    const invoiceChargeRow = document.getElementById(`split_charge_invoice_charge_${i}`);
+                    if (invoiceChargeRow) invoiceChargeRow.textContent = `${invoiceCharge.toFixed(3)}`;
+
+                    const subtotalServiceEl = document.getElementById(`split_charge_subtotal_service_${i}`);
+                    const subtotalInvoiceEl = document.getElementById(`split_charge_subtotal_invoice_${i}`);
+                    if (subtotalServiceEl) subtotalServiceEl.textContent = subtotalService.toFixed(3);
+                    if (subtotalInvoiceEl) subtotalInvoiceEl.textContent = subtotalInvoice.toFixed(3);
+
+                    document.getElementById(`${prefix}_paid_by_${i}`).textContent = data.paid_by || '-';
+                    document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);
+
+                    store[i] = {
+                        gatewayFee:    gatewayFee,
+                        finalAmount:   grandTotal,
+                        invoiceCharge: invoiceCharge,
+                        paid_by:       data.paid_by || 'Company',
+                    };
+                }
+
+                breakdownEl?.classList.remove('hidden');
+                updatePaymentSummary(mode);
+
+            } catch (err) {
+                console.error(`[${mode} ${i}] Charge calc failed:`, err);
+                breakdownEl?.classList.add('hidden');
+                delete store[i];
+                updatePaymentSummary(mode);
+            }
         }
 
         /**
@@ -3213,7 +3714,7 @@
                 if (isPartial) {
                     handleGatewayChangePartial(installmentIndex);
                 } else {
-                    handleSplitGatewayChange(installmentIndex);
+                    handleGatewayChangeSplit(installmentIndex);
                 }
             });
 
@@ -3225,7 +3726,7 @@
         /**
          * Handle gateway selection change
          */
-       function handleGatewayChange(installmentIndex) {
+        function handleGatewayChange(installmentIndex) {
             const gatewaySelect = document.getElementById(`payment_gateway1_${installmentIndex}`);
             const selectedGateway = gatewaySelect.value;
             const key = gwKey(selectedGateway);
@@ -3299,7 +3800,7 @@
         }
 
         // Enhanced PaymentSelection integration that properly reflects amounts
-       const _origCheckbox = PaymentSelection.handleCheckboxChange;
+        const _origCheckbox = PaymentSelection.handleCheckboxChange;
         PaymentSelection.handleCheckboxChange = function(checkbox) {
             _origCheckbox.call(this, checkbox);
             syncInstallmentUI(checkbox.dataset.rowId);
@@ -3314,7 +3815,7 @@
         /**
          * Load available credit vouchers for selection
          */
-       function loadCreditVouchers(mode, installmentIndex) {
+        function loadCreditVouchers(mode, installmentIndex) {
             let clientId;
 
             console.log(`[loadCreditVouchers] mode=${mode}, installmentIndex=${installmentIndex}`);
@@ -3404,7 +3905,7 @@
         /**
          * Recalculate remaining installments after credit selection
          */
-       function recalculateAfterCreditSelection(mode, creditInstallmentIndex, creditAmount) {
+        function recalculateAfterCreditSelection(mode, creditInstallmentIndex, creditAmount) {
             const splitIntoElId = mode === 'partial' ? 'split-into1' : 'split-into';
             const totalAmount   = parseFloat(document.getElementById('subTotal').value) || 0;
             const splitInto     = parseInt(document.getElementById(splitIntoElId)?.value) || 0;
@@ -3478,14 +3979,16 @@
                 methodSelect.value = '';
             }
             
-            // Handle invoice charge display
-            const canCharge = canGatewayChargeInvoice(selectedGateway);
-            if (canCharge && selectedGateway !== 'Credit') {
-                chargeWrapper.classList.remove('hidden');
-                chargeInput.value = chargeInput.value || '0';
-            } else {
-                chargeWrapper.classList.add('hidden');
-                chargeInput.value = '0';
+            // Handle invoice charge display (chargeWrapper may not exist for partial cards)
+            if (chargeWrapper) {
+                const canCharge = canGatewayChargeInvoice(selectedGateway);
+                if (canCharge && selectedGateway !== 'Credit') {
+                    chargeWrapper.classList.remove('hidden');
+                    if (chargeInput) chargeInput.value = chargeInput.value || '0';
+                } else {
+                    chargeWrapper.classList.add('hidden');
+                    if (chargeInput) chargeInput.value = '0';
+                }
             }
         }
 
@@ -3870,7 +4373,7 @@
             if (!Array.isArray(items) || items.length === 0) {
                 const noItemsRow = document.createElement('tr');
                 noItemsRow.innerHTML =
-                    '<td colspan="5" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                    '<td colspan="7" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                 tbody.appendChild(noItemsRow);
                 return;
             }
@@ -3926,10 +4429,10 @@
                         <td class="px-4 py-3"><p>${task.total} KWD</p></td>
                         <td class="px-4 py-3">
                             <div class="flex items-center">
-                                <input id="invprice-table-${task.id}" 
-                                    type="number" 
-                                    name="tasks[${item.id}]" 
-                                    class="no-spin border border-gray-300 rounded-md w-full" 
+                                <input id="invprice-table-${task.id}"
+                                    type="number"
+                                    name="tasks[${item.id}]"
+                                    class="no-spin border border-gray-300 rounded-md w-full p-2"
                                     value="${item.task_price}" 
                                     oninput="updateItemPrice(${item.id});" 
                                 />
@@ -6193,6 +6696,41 @@
 
                 if (tooltipHdrTxt) tooltipHdrTxt.textContent = `Short by ${shortage} KWD`;
                 if (footerTipTxt)  footerTipTxt.textContent  = `Payment is short by ${shortage} KWD`;
+            }
+
+            // Charge summary for both partial and split
+            const chargeStore      = chargeBreakdownStore[mode];
+            const chargeSummaryId  = isPartial ? 'footer-charge-summary'  : 'split-footer-charge-summary';
+            const serviceChargeId  = isPartial ? 'footer-service-charge'  : 'split-footer-service-charge';
+            const clientPaysId     = isPartial ? 'footer-client-pays'     : 'split-footer-client-pays';
+
+            const chargeSummaryEl  = document.getElementById(chargeSummaryId);
+            const serviceChargeEl  = document.getElementById(serviceChargeId);
+            const clientPaysEl     = document.getElementById(clientPaysId);
+
+            let totalServiceCharge = 0;
+            let totalClientPays    = 0;
+
+            for (let i = 1; i <= splitInto; i++) {
+                const charge = chargeStore[i];
+                const baseAmount = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
+
+                if (charge) {
+                    totalServiceCharge += charge.gatewayFee;
+                    totalClientPays    += charge.finalAmount;
+                } else {
+                    totalClientPays += baseAmount;
+                }
+            }
+
+            if (totalServiceCharge > 0 && chargeSummaryEl) {
+                serviceChargeEl.textContent = totalServiceCharge.toFixed(3) + ' KWD';
+                clientPaysEl.textContent    = totalClientPays.toFixed(3) + ' KWD';
+                chargeSummaryEl.classList.remove('hidden');
+                chargeSummaryEl.classList.add('flex');
+            } else {
+                chargeSummaryEl?.classList.add('hidden');
+                chargeSummaryEl?.classList.remove('flex');
             }
         }
 

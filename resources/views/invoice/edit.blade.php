@@ -2964,15 +2964,22 @@
                     <div class="bg-gray-50 rounded-md p-3 text-sm">
                         <!-- Base Amount -->
                         <div class="flex justify-between items-center pb-2 mb-1 border-b border-gray-200">
-                            <span class="text-md text-gray-500 font-medium">Base Amount</span>
+                            <span class="text-md text-gray-500 font-medium uppercase tracking-wide mb-1">Base Amount</span>
                             <span id="split_charge_base_amount_${i}" class="font-semibold text-gray-700 tabular-nums">0.000</span>
                         </div>
 
                         <!-- Base + Service -->
                         <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
                             <div class="flex flex-col">
-                                <span class="text-sm text-gray-600">Base + Service Charge</span>
-                                <span class="text-xs italic text-gray-500">Service Charge: <span id="split_charge_fee_${i}" class="text-xs text-amber-500">0.000</span> KWD</span>
+                                <span class="text-md text-gray-600">Base + Service Charge</span>
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Service Charge (<span id="split_charge_fee_percent_${i}">0%</span>): <span id="split_charge_fee_${i}" class=" text-gray-500">0.000</span> KWD
+                                </span>
+                                <span class="text-sm text-gray-500 pl-4">Rounding Off: <span id="split_charge_fee_ceiled_${i}" class="text-gray-800 font-bold">0.000</span> KWD
+                                </span>
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Profit: <span id="split_charge_fee_profit_${i}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
+                                </span>
                             </div>
                             <span id="split_charge_subtotal_service_${i}" class="font-semibold text-gray-700">0.000</span>
                         </div>
@@ -2980,16 +2987,16 @@
                         <!-- Base + Invoice Charge -->
                         <div id="split_breakdown_invoice_row_${i}" class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
                             <div class="flex flex-col">
-                                <span class="text-sm text-gray-600">Base + Invoice Charge</span>
-                                <span class="text-xs italic text-gray-500">Invoice Charge: <span id="split_charge_invoice_charge_${i}" class="text-xs text-amber-500">0.000</span> KWD</span>
+                                <span class="text-md text-gray-600">Base + Invoice Charge</span>
+                                <span class="text-sm text-gray-500 pl-4">Invoice Charge: <span id="split_charge_invoice_charge_${i}" class="text-sm text-gray-800 font-bold">0.000</span> KWD</span>
                             </div>
                             <span id="split_charge_subtotal_invoice_${i}" class="font-semibold text-gray-700">0.000</span>
                         </div>
 
                         <div class="flex justify-between items-start pt-2 mt-1 font-bold">
                             <div class="flex flex-col">
-                                <span class="text-md">Grand Total</span>
-                                <span id="split_grand_total_subtext_${i}" class="text-xs font-normal text-gray-500 tabular-nums hidden">Base + Service Charge + Invoice Charge</span>
+                                <span class="text-md uppercase tracking-wide mb-1">Grand Total</span>
+                                <span id="split_grand_total_subtext_${i}" class="text-sm font-normal text-gray-500 tabular-nums hidden">Base + Service Charge + Invoice Charge</span>
                             </div>
                             <span id="split_charge_total_${i}" class="tabular-nums">0.000</span>
                         </div>
@@ -3094,8 +3101,8 @@
 
             const invoiceChargeEl = card.querySelector(`#split_invoice_charge_${i}`);
             if (invoiceChargeEl) {
-                invoiceChargeEl.addEventListener('input', () => updateInvoiceChargeInBreakdown(i));
-                invoiceChargeEl.addEventListener('blur',  () => updateInvoiceChargeInBreakdown(i));
+                invoiceChargeEl.addEventListener('input', () => updateInvoiceChargeInBreakdown('split', i));
+                invoiceChargeEl.addEventListener('blur',  () => updateInvoiceChargeInBreakdown('split', i));
             }
         }
 
@@ -3116,11 +3123,12 @@
             if (!breakdownEl || breakdownEl.classList.contains('hidden')) return;
 
             const baseAmount = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
-            const gatewayFee = breakdown?.gatewayFee || 0;
+            const gatewayFee  = breakdown?.gatewayFee || 0;
+            const ceiledFee   = breakdown?.ceiledFee  || Math.ceil(gatewayFee * 100) / 100;
 
-            const subtotalService = baseAmount + gatewayFee;
+            const subtotalService = baseAmount + ceiledFee;   // ← use ceiledFee
             const subtotalInvoice = baseAmount + invoiceCharge;
-            const grandTotal      = baseAmount + gatewayFee + invoiceCharge;
+            const grandTotal      = baseAmount + ceiledFee + invoiceCharge;  // ← use ceiledFee
 
             const invoiceChargeRow  = document.getElementById(`${prefix}_invoice_charge_${i}`);
             const subtotalServiceEl = document.getElementById(`${prefix}_subtotal_service_${i}`);
@@ -3424,14 +3432,16 @@
                         <!-- Base + Service -->
                         <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
                             <div class="flex flex-col">
-                                <span class="text-sm text-gray-600">Base + Service Charge</span>
-                                <span class="text-xs italic text-gray-500">
-                                    <span id="charge_fee_percent_${installmentIndex}" class="text-gray-400">0%</span>
-                                    Service Charge: <span id="charge_fee_${installmentIndex}" class="text-amber-500">0.000</span> KWD
+                                <span class="text-md text-gray-600">Base + Service Charge</span>
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Service Charge (<span id="charge_fee_percent_${installmentIndex}" class="text-gray-500">0%</span>): 
+                                    <span id="charge_fee_${installmentIndex}" class="text-gray-500">0.000</span> KWD
                                 </span>
-                                <span class="text-xs italic text-green-600">
-                                    Profit: <span id="charge_fee_profit_${installmentIndex}">0.000</span> KWD 
-                                    (<span id="charge_fee_ceiled_${installmentIndex}">0.000</span> KWD ceiled)
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Rounding Off: <span id="charge_fee_ceiled_${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD
+                                </span>
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Profit: <span id="charge_fee_profit_${installmentIndex}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
                                 </span>
                             </div>
                             <span class="font-semibold text-gray-700">
@@ -3439,10 +3449,10 @@
                             </span>
                         </div>
                         <!-- Base + Invoice Charge -->
-                        <div id="partial_breakdown_invoice_row_${installmentIndex}" class="hidden flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
-                            <div class="flex flex-col">
-                                <span class="text-sm text-gray-600">Base + Invoice Charge</span>
-                                <span class="text-xs italic text-gray-500">Invoice Charge: <span id="charge_invoice_charge_${installmentIndex}" class="text-xs text-amber-500">0.000</span> KWD</span>
+                        <div id="partial_breakdown_invoice_row_${installmentIndex}" class="hidden flex justify-between items-start py-1.5 border-b border-gray-100 pl-5">
+                            <div class="flex flex-col pl-4 text-gray-600">
+                                <span class="text-md text-gray-600">Base + Invoice Charge</span>
+                                <span class="text-sm text-gray-500 pl-4">Invoice Charge: <span id="charge_invoice_charge_${installmentIndex}" class="text-sm font-bold text-gray-800">0.000</span> KWD</span>
                             </div>
                             <span class="font-semibold text-gray-700"><span id="charge_subtotal_invoice_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD</span>
                         </div>
@@ -3450,7 +3460,7 @@
                         <div class="flex justify-between items-start pt-2 mt-1 font-bold">
                             <div class="flex flex-col">
                                 <span class="text-md uppercase tracking-wide mb-1">Grand Total</span>
-                                <span id="partial_grand_total_subtext_${installmentIndex}" class="text-xs font-normal text-gray-500 hidden">Base + Service Charge + Invoice Charge</span>
+                                <span id="partial_grand_total_subtext_${installmentIndex}" class="text-sm font-normal text-gray-500 hidden">Base + Service Charge + Invoice Charge</span>
                             </div>
                             <span><span id="charge_total_${installmentIndex}" class="tabular-nums">0.000</span> KWD</span>
                         </div>
@@ -3623,16 +3633,15 @@
                 const gatewayFee = parseFloat(data.gatewayFee || 0);
 
                 if (isPartial) {
-                    const grandTotal = amount + gatewayFee + invoiceCharge;
+                    const ceiledFee     = Math.ceil(gatewayFee * 100) / 100;   // ← MOVE THIS UP FIRST
+                    const grandTotal    = amount + ceiledFee + invoiceCharge;   // ← now ceiledFee exists
+                    const profit        = parseFloat((ceiledFee - gatewayFee).toFixed(3));
+                    const chargePercent = amount > 0 ? ((gatewayFee / amount) * 100).toFixed(2) : '0.00';
 
                     document.getElementById(`${prefix}_base_${i}`).textContent    = amount.toFixed(3);
                     document.getElementById(`${prefix}_fee_${i}`).textContent     = gatewayFee.toFixed(3);
                     document.getElementById(`${prefix}_paid_by_${i}`).textContent = data.paid_by || '-';
                     document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);
-
-                    const ceiledFee   = Math.ceil(gatewayFee * 100) / 100;   // ceil to nearest 0.01
-                    const profit      = parseFloat((ceiledFee - gatewayFee).toFixed(3));
-                    const chargePercent = amount > 0 ? ((gatewayFee / amount) * 100).toFixed(2) : '0.00';
 
                     const feePercentEl = document.getElementById(`charge_fee_percent_${i}`);
                     const feeProfitEl  = document.getElementById(`charge_fee_profit_${i}`);
@@ -3642,33 +3651,43 @@
                     if (feeProfitEl)  feeProfitEl.textContent  = profit.toFixed(3);
                     if (feeCeiledEl)  feeCeiledEl.textContent  = ceiledFee.toFixed(3);
 
-                    // New subtotal fields
                     const subtotalServiceEl = document.getElementById(`charge_subtotal_service_${i}`);
                     const subtotalInvoiceEl = document.getElementById(`charge_subtotal_invoice_${i}`);
                     const invoiceChargeRow  = document.getElementById(`charge_invoice_charge_${i}`);
-                    if (subtotalServiceEl) subtotalServiceEl.textContent = (amount + gatewayFee).toFixed(3);
+                    if (subtotalServiceEl) subtotalServiceEl.textContent = (amount + ceiledFee).toFixed(3);
                     if (subtotalInvoiceEl) subtotalInvoiceEl.textContent = (amount + invoiceCharge).toFixed(3);
                     if (invoiceChargeRow)  invoiceChargeRow.textContent  = invoiceCharge.toFixed(3);
 
                     store[i] = {
                         gatewayFee:    gatewayFee,
+                        ceiledFee:     ceiledFee,
                         finalAmount:   grandTotal,
                         invoiceCharge: invoiceCharge,
                         paid_by:       data.paid_by || 'Company',
                     };
                 } else {
-                    const subtotalService = amount + gatewayFee;
+                    const ceiledFee       = Math.ceil(gatewayFee * 100) / 100;
+                    const profit          = parseFloat((ceiledFee - gatewayFee).toFixed(3));
+                    const chargePercent   = amount > 0 ? ((gatewayFee / amount) * 100).toFixed(2) : '0.00';
+                    const subtotalService = amount + ceiledFee;
                     const subtotalInvoice = amount + invoiceCharge;
-                    const grandTotal      = amount + gatewayFee + invoiceCharge;
+                    const grandTotal      = amount + ceiledFee + invoiceCharge;
 
                     const baseAmountEl = document.getElementById(`split_charge_base_amount_${i}`);
                     if (baseAmountEl) baseAmountEl.textContent = amount.toFixed(3);
 
                     const feeEl = document.getElementById(`${prefix}_fee_${i}`);
-                    if (feeEl) feeEl.textContent = `${gatewayFee.toFixed(3)}`;
+                    if (feeEl) feeEl.textContent = gatewayFee.toFixed(3);
+
+                    const feePercentEl = document.getElementById(`split_charge_fee_percent_${i}`);
+                    const feeCeiledEl  = document.getElementById(`split_charge_fee_ceiled_${i}`);
+                    const feeProfitEl  = document.getElementById(`split_charge_fee_profit_${i}`);
+                    if (feePercentEl) feePercentEl.textContent = `${chargePercent}%`;
+                    if (feeCeiledEl)  feeCeiledEl.textContent  = ceiledFee.toFixed(3);
+                    if (feeProfitEl)  feeProfitEl.textContent  = profit.toFixed(3);
 
                     const invoiceChargeRow = document.getElementById(`split_charge_invoice_charge_${i}`);
-                    if (invoiceChargeRow) invoiceChargeRow.textContent = `${invoiceCharge.toFixed(3)}`;
+                    if (invoiceChargeRow) invoiceChargeRow.textContent = invoiceCharge.toFixed(3);
 
                     const subtotalServiceEl = document.getElementById(`split_charge_subtotal_service_${i}`);
                     const subtotalInvoiceEl = document.getElementById(`split_charge_subtotal_invoice_${i}`);
@@ -3680,6 +3699,7 @@
 
                     store[i] = {
                         gatewayFee:    gatewayFee,
+                        ceiledFee:     ceiledFee,
                         finalAmount:   grandTotal,
                         invoiceCharge: invoiceCharge,
                         paid_by:       data.paid_by || 'Company',
@@ -5284,7 +5304,7 @@
                         ? (methodSelect?.value || null)
                         : null;
 
-                    const invoiceChargeInput   = document.getElementById(`invoice_charge_${i}`);
+                    const invoiceChargeInput   = document.getElementById(`split_invoice_charge_${i}`);
                     const partialInvoiceCharge = parseFloat(invoiceChargeInput?.value) || 0;
 
                     let paymentAllocations = [];
@@ -5339,8 +5359,8 @@
 
                     const gateway = gatewayEl ? gatewayEl.value : null;
                     const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
-                    const invoiceChargeInput = document.getElementById(`invoice_charge1_${i}`);
-                    const partialInvoiceCharge = parseFloat(invoiceChargeInput ? invoiceChargeInput.value : 0) || 0;
+                    const invoiceChargeInput = document.getElementById(`partial_invoice_charge_${i}`);
+                    const partialInvoiceCharge = parseFloat(invoiceChargeInput?.value) || 0;
 
                     // Get selected payments if gateway is Credit
                     let paymentAllocations = [];

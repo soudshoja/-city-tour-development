@@ -960,12 +960,12 @@ class InvoiceController extends Controller
 
             $charge = Charge::where('name', $gateway)->first();
 
-            $gatewayFee = ChargeService::calculate($amount + $partialInvoiceCharge, $companyId, $method, $gateway);
+            $gatewayFee = ChargeService::calculate($amount, $companyId, $method, $gateway);
 
             Log::info('ChargeService calculation result', [
                 'base_amount' => $amount,
                 'invoice_charge' => $partialInvoiceCharge,
-                'amount_for_fee_calculation' => $amount + $partialInvoiceCharge,
+                'amount_for_fee_calculation' => $amount,
                 'gateway' => $gateway,
                 'method' => $method,
                 'gatewayFee' => $gatewayFee['gatewayFee'] ?? null,
@@ -3081,14 +3081,14 @@ class InvoiceController extends Controller
                 }
                 $partial->service_charge = $gatewayFee['gatewayFee'] ?? 0.00;
                 $partial->save();
-                $partial->final_amount = ceil($partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0));
+                $partial->final_amount = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
                 $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
 
-                if ($chargePayer !== 'Company') {
-                    $totalGatewayFee['gatewayFee'] += $partial->service_charge;
-                    $totalGatewayFee['paid_by'] = $chargePayer;
-                    $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
-                }
+                $totalGatewayFee['gatewayFee'] += $partial->service_charge;
+                $totalGatewayFee['paid_by'] = $chargePayer;
+
+                if(isset($gatewayFee['charge_type'])) $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'];
+
             } else {
                 $partial->final_amount = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
             }
@@ -3214,9 +3214,9 @@ class InvoiceController extends Controller
                     ]);
                     $gatewayFee = ['gatewayFee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
                 }
-                $partial->service_charge = $gatewayFee['gatewayFee'];
+                $partial->service_charge = $gatewayFee['gatewayFee'] ?? 0.00;
                 $partial->save();
-                $partial->final_amount = $partial->amount + $partial->service_charge;
+                $partial->final_amount = $partial->amount + $partial->service_charge + ($partial->invoice_charge ?? 0);
                 $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
 
                 if ($chargePayer !== 'Company') {
@@ -3227,7 +3227,8 @@ class InvoiceController extends Controller
             }
         }
 
-        $totalGatewayFee['gatewayFee'] += $invoice->invoice_charge ?? 0;
+        $totalPartialInvoiceCharge = $invoicePartials->sum('invoice_charge');
+        $totalGatewayFee['gatewayFee'] += $totalPartialInvoiceCharge;
         $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['gatewayFee'];
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;

@@ -1627,7 +1627,7 @@
                 return (p + t + s).toFixed(3);
             },
             get formAction() {
-                return `/tasks/${this.taskId}/update-financial`;
+                return `/tasks/update-financial/${this.taskId}`;
             }
         });
 

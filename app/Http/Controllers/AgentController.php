@@ -485,7 +485,7 @@ class AgentController extends Controller
                         'root_id' => $accruedExpenses->root_id ?? $accruedExpenses->id,
                         'parent_id' => $accruedExpenses->id,
                         'account_type' => $accruedExpenses->account_type,
-                        'report_type' => $accruedExpenses->report_type ?? 'balance_sheet',
+                        'report_type' => $accruedExpenses->report_type ?? Account::REPORT_TYPES['BALANCE_SHEET'],
                         'level' => ($accruedExpenses->level ?? 0) + 1,
                         'is_group' => 1,
                         'disabled' => 0,
@@ -499,31 +499,40 @@ class AgentController extends Controller
                     $profitGroup = DB::table('accounts')->find($profitGroupId);
                 }
 
-                $lastProfitCode = DB::table('accounts')->where('parent_id', $profitGroup->id)->orderByDesc('code')->value('code');
-                $profitCode = $lastProfitCode && is_numeric($lastProfitCode)
-                    ? (string) ((int) $lastProfitCode + 1)
-                    : (is_numeric($profitGroup->code) ? (string) ((int) $profitGroup->code + 1) : $profitGroup->code . '-001');
+                $existingProfit = DB::table('accounts')
+                    ->where('company_id', $companyId)
+                    ->where('parent_id', $profitGroup->id)
+                    ->where('agent_id', $agent->id)
+                    ->where('name', $agent->name)
+                    ->first();
 
-                $profitAccountId = DB::table('accounts')->insertGetId([
-                    'code' => $profitCode,
-                    'name' => $agent->name,
-                    'company_id' => $companyId,
-                    'root_id' => $profitGroup->root_id ?? $profitGroup->id,
-                    'parent_id' => $profitGroup->id,
-                    'branch_id' => $request->branch_id,
-                    'agent_id' => $agent->id,
-                    'account_type' => $profitGroup->account_type,
-                    'report_type' => $profitGroup->report_type ?? 'balance_sheet',
-                    'level' => ($profitGroup->level ?? 0) + 1,
-                    'is_group' => 0,
-                    'disabled' => 0,
-                    'actual_balance' => 0,
-                    'budget_balance' => 0,
-                    'variance' => 0,
-                    'currency' => 'KWD',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                if ($existingProfit) {
+                    $profitAccountId = $existingProfit->id;
+                } else {
+                    $lastProfitCode = DB::table('accounts')->where('parent_id', $profitGroup->id)->max('code');
+                    $profitCode = (string) (($lastProfitCode ? (int) $lastProfitCode : (int) $profitGroup->code) + 1);
+
+                    $profitAccountId = DB::table('accounts')->insertGetId([
+                        'code' => $profitCode,
+                        'name' => $agent->name,
+                        'company_id' => $companyId,
+                        'root_id' => $profitGroup->root_id ?? $profitGroup->id,
+                        'parent_id' => $profitGroup->id,
+                        'branch_id' => $request->branch_id,
+                        'agent_id' => $agent->id,
+                        'account_type' => $profitGroup->account_type,
+                        'report_type' => $profitGroup->report_type ?? Account::REPORT_TYPES['BALANCE_SHEET'],
+                        'level' => ($profitGroup->level ?? 0) + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0,
+                        'budget_balance' => 0,
+                        'variance' => 0,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
 
                 $agent->update(['profit_account_id' => $profitAccountId]);
             }
@@ -540,7 +549,7 @@ class AgentController extends Controller
                 ->first();
 
             if ($accountsReceivable) {
-                $company = Company::find($companyId);
+                $company = $branch->company;
 
                 $companyGroup = DB::table('accounts')
                     ->where('company_id', $companyId)
@@ -549,10 +558,8 @@ class AgentController extends Controller
                     ->first();
 
                 if (!$companyGroup) {
-                    $lastArCode = DB::table('accounts')->where('parent_id', $accountsReceivable->id)->orderByDesc('code')->value('code');
-                    $companyCode = $lastArCode && is_numeric($lastArCode)
-                        ? (string) ((int) $lastArCode + 1)
-                        : (is_numeric($accountsReceivable->code) ? (string) ((int) $accountsReceivable->code + 1) : $accountsReceivable->code . '-001');
+                    $lastArCode = DB::table('accounts')->where('parent_id', $accountsReceivable->id)->max('code');
+                    $companyCode = (string) (($lastArCode ? (int) $lastArCode : (int) $accountsReceivable->code) + 1);
 
                     $companyGroupId = DB::table('accounts')->insertGetId([
                         'code' => $companyCode,
@@ -561,7 +568,7 @@ class AgentController extends Controller
                         'root_id' => $accountsReceivable->root_id ?? $accountsReceivable->id,
                         'parent_id' => $accountsReceivable->id,
                         'account_type' => $accountsReceivable->account_type,
-                        'report_type' => $accountsReceivable->report_type ?? 'balance_sheet',
+                        'report_type' => $accountsReceivable->report_type ?? Account::REPORT_TYPES['BALANCE_SHEET'],
                         'level' => ($accountsReceivable->level ?? 0) + 1,
                         'is_group' => 1,
                         'disabled' => 0,
@@ -582,10 +589,8 @@ class AgentController extends Controller
                     ->first();
 
                 if (!$agentGroup) {
-                    $lastCompanyCode = DB::table('accounts')->where('parent_id', $companyGroup->id)->orderByDesc('code')->value('code');
-                    $agentGroupCode = $lastCompanyCode && is_numeric($lastCompanyCode)
-                        ? (string) ((int) $lastCompanyCode + 1)
-                        : (is_numeric($companyGroup->code) ? (string) ((int) $companyGroup->code + 1) : $companyGroup->code . '-001');
+                    $lastCompanyCode = DB::table('accounts')->where('parent_id', $companyGroup->id)->max('code');
+                    $agentGroupCode = (string) (($lastCompanyCode ? (int) $lastCompanyCode : (int) $companyGroup->code) + 1);
 
                     $agentGroupId = DB::table('accounts')->insertGetId([
                         'code' => $agentGroupCode,
@@ -596,7 +601,7 @@ class AgentController extends Controller
                         'branch_id' => $request->branch_id,
                         'agent_id' => $agent->id,
                         'account_type' => $companyGroup->account_type,
-                        'report_type' => $companyGroup->report_type ?? 'balance_sheet',
+                        'report_type' => $companyGroup->report_type ?? Account::REPORT_TYPES['BALANCE_SHEET'],
                         'level' => ($companyGroup->level ?? 0) + 1,
                         'is_group' => 1,
                         'disabled' => 0,
@@ -610,36 +615,49 @@ class AgentController extends Controller
                     $agentGroup = DB::table('accounts')->find($agentGroupId);
                 }
 
-                $lastAgentCode = DB::table('accounts')->where('parent_id', $agentGroup->id)->orderByDesc('code')->value('code');
-                $lossCode = $lastAgentCode && is_numeric($lastAgentCode)
-                    ? (string) ((int) $lastAgentCode + 1)
-                    : (is_numeric($agentGroup->code) ? (string) ((int) $agentGroup->code + 1) : $agentGroup->code . '-001');
+                $existingLoss = DB::table('accounts')
+                    ->where('company_id', $companyId)
+                    ->where('parent_id', $agentGroup->id)
+                    ->where('agent_id', $agent->id)
+                    ->where('name', 'Agent Loss Receivable')
+                    ->first();
 
-                $lossAccountId = DB::table('accounts')->insertGetId([
-                    'code' => $lossCode,
-                    'name' => 'Agent Loss Receivable',
-                    'company_id' => $companyId,
-                    'root_id' => $agentGroup->root_id ?? $agentGroup->id,
-                    'parent_id' => $agentGroup->id,
-                    'branch_id' => $request->branch_id,
-                    'agent_id' => $agent->id,
-                    'account_type' => $agentGroup->account_type,
-                    'report_type' => $agentGroup->report_type ?? 'balance_sheet',
-                    'level' => ($agentGroup->level ?? 0) + 1,
-                    'is_group' => 0,
-                    'disabled' => 0,
-                    'actual_balance' => 0,
-                    'budget_balance' => 0,
-                    'variance' => 0,
-                    'currency' => 'KWD',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                if ($existingLoss) {
+                    $lossAccountId = $existingLoss->id;
+                } else {
+                    $lastAgentCode = DB::table('accounts')->where('parent_id', $agentGroup->id)->max('code');
+                    $lossCode = (string) (($lastAgentCode ? (int) $lastAgentCode : (int) $agentGroup->code) + 1);
+
+                    $lossAccountId = DB::table('accounts')->insertGetId([
+                        'code' => $lossCode,
+                        'name' => 'Agent Loss Receivable',
+                        'company_id' => $companyId,
+                        'root_id' => $agentGroup->root_id ?? $agentGroup->id,
+                        'parent_id' => $agentGroup->id,
+                        'branch_id' => $request->branch_id,
+                        'agent_id' => $agent->id,
+                        'account_type' => $agentGroup->account_type,
+                        'report_type' => $agentGroup->report_type ?? Account::REPORT_TYPES['BALANCE_SHEET'],
+                        'level' => ($agentGroup->level ?? 0) + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0,
+                        'budget_balance' => 0,
+                        'variance' => 0,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
 
                 $agent->update(['loss_account_id' => $lossAccountId]);
             }
         } catch (Exception $e) {
+            $agent->delete();
+            $user->delete();
+
             logger('Failed to create profit/loss accounts for agent: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create agent profit/loss accounts');
         }
 
         $this->storeNotification([
@@ -760,5 +778,4 @@ class AgentController extends Controller
 
         return $account ? $account->id : null;
     }
-
 }

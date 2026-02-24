@@ -49,7 +49,6 @@ use App\Models\Transaction;
 use App\Models\Charge;
 use App\Models\Currency;
 use App\Models\Role;
-use App\Models\Credit;
 use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use App\Models\PaymentMethodChose;
@@ -3298,7 +3297,7 @@ class PaymentController extends Controller
                 }
 
                 try {
-                    $this->processMyFatoorahPaymentCompletion($payment, $statusResponse['data'], $process, $partialId);
+                    $this->processMyFatoorahPaymentCompletion($payment, $statusResponse['data'], $process, $partialId, true);
                 } catch (Exception $e) {
                     Log::error('MyFatoorah callback processing failed', [
                         'payment_id' => $payment->id,
@@ -4287,9 +4286,8 @@ class PaymentController extends Controller
             if ($payment->status === 'initiate') {
                 if ($invoiceStatus === 'PAID') {
                     try {
-                        // Use the unified processing method
                         $statusData = $payload['Data'] ?? $payload;
-                        $this->processMyFatoorahPaymentCompletion($payment, $statusData, $process, $partialId);
+                        $this->processMyFatoorahPaymentCompletion($payment, $statusData, $process, $partialId, true);
 
                         Log::info('MF Webhook: payment processed successfully', [
                             'payment_id' => $payment->id,
@@ -4346,7 +4344,7 @@ class PaymentController extends Controller
      * Unified MyFatoorah payment completion logic
      * Used by both callback and webhook to ensure consistent processing
      */
-    private function processMyFatoorahPaymentCompletion($payment, $statusData, $process, $partialId)
+    private function processMyFatoorahPaymentCompletion($payment, $statusData, $process, $partialId, $sendNotification = false)
     {
         DB::beginTransaction();
 
@@ -4393,13 +4391,9 @@ class PaymentController extends Controller
                     ->first();
 
                 if ($paymentTransaction) {
-                    Log::info('[MYFATOORAH] Updating payment transaction ID: ' . $paymentTransaction->id, [
-                        'payment_id' => $payment->id,
-                        'transaction_id' => $transactionId,
-                        'status' => $statusData['InvoiceStatus'],
-                    ]);
-
-                    $paymentTransaction->transaction_id = $transactionId;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
                     $paymentTransaction->status = $statusData['InvoiceStatus'];
                     $paymentTransaction->save();
                 } else {
@@ -4435,32 +4429,9 @@ class PaymentController extends Controller
 
             $payment->refresh();
 
-            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
-            $agent = $receiptInfo['agent'];
-
-            $storeNotificationData = [
-                'user_id' => $agent->user_id,
-                'title'   => $receiptInfo['title'],
-                'message' => $receiptInfo['message'],
-            ];
-
-            if ($payment->invoice) {
-                $storeNotificationData['type'] = 'invoice';
-                $storeNotificationData['invoice'] = $payment->invoice;
-            } else {
-                $storeNotificationData['type'] = 'payment';
-                $storeNotificationData['payment'] = $payment;
+            if ($sendNotification) {
+                $this->sendPaymentCompletionNotifications($payment, $process, $partialId);
             }
-
-            Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
-
-            $this->storeNotificationWithSendingPdf($storeNotificationData);
-
-            (new ResayilController())->message(
-                $agent->phone_number,
-                $agent->country_code,
-                $receiptInfo['message']
-            );
 
             DB::commit();
         } catch (Exception $e) {
@@ -6823,5 +6794,416 @@ class PaymentController extends Controller
             'invDirection',
             'search'
         ));
+    }
+
+    public function checkTransactionStatus($transactionId)
+    {
+        try {
+            $paymentTransaction = PaymentTransaction::with(['payment.invoice', 'payment.agent.branch.company', 'payment.client', 'paymentGateway'])->findOrFail($transactionId);
+            $payment = $paymentTransaction->payment;
+
+            if (!$payment) {
+                return redirect()->back()->with('error', 'Payment not found for this transaction.');
+            }
+
+            if ($payment->status === 'completed') {
+                return redirect()->back()->with('error', 'Payment is already completed.');
+            }
+
+            if (in_array(strtolower($paymentTransaction->status), ['paid', 'captured', 'successful'])) {
+                return redirect()->back()->with('error', 'Transaction is already completed. Current status: ' . $paymentTransaction->status);
+            }
+
+            $gateway = $paymentTransaction->paymentGateway;
+            if (!$gateway) {
+                return redirect()->back()->with('error', 'Payment gateway not found.');
+            }
+
+            $gatewayName = $gateway->name;
+            $statusResult = null;
+            $newStatus = null;
+            $isCompleted = false;
+
+            switch ($gatewayName) {
+                case 'Tap':
+                    $tap = new Tap();
+                    $response = $tap->getCharge($paymentTransaction->reference_number);
+
+                    Log::info('[CHECK_STATUS] Tap response', ['response' => $response]);
+
+                    if (isset($response['status'])) {
+                        $newStatus = $response['status'];
+                        $isCompleted = strtoupper($newStatus) === 'CAPTURED';
+                        $statusResult = $response;
+                    }
+                    break;
+
+                case 'MyFatoorah':
+                    $myFatoorah = new MyFatoorah();
+                    $response = $myFatoorah->getPaymentStatus('invoice', $paymentTransaction->track_id);
+
+                    Log::info('[CHECK_STATUS] MyFatoorah response', ['response' => $response]);
+
+                    if ($response['success'] && isset($response['data'])) {
+                        $invoiceStatus = $response['data']['InvoiceStatus'] ?? null;
+                        $newStatus = $invoiceStatus;
+                        $isCompleted = strtoupper($invoiceStatus) === 'PAID';
+                        $statusResult = $response['data'];
+                    }
+                    break;
+
+                case 'Hesabe':
+                    $hesabe = new Hesabe();
+                    $response = $hesabe->getPaymentStatus($paymentTransaction->reference_number);
+
+                    Log::info('[CHECK_STATUS] Hesabe response', ['response' => $response->json()]);
+
+                    $responseData = $response->json();
+                    if (isset($responseData['status']) && $responseData['status'] === true) {
+                        $newStatus = $responseData['data']['status'] ?? null;
+                        $isCompleted = in_array(strtolower($newStatus), ['captured', 'completed', 'successful', 'paid']);
+                        $statusResult = $responseData['data'];
+                    }
+                    break;
+
+                case 'UPayment':
+                    $uPayment = new UPayment();
+                    $response = $uPayment->getPaymentStatus($paymentTransaction->track_id);
+
+                    Log::info('[CHECK_STATUS] UPayment response', ['response' => $response]);
+
+                    if (isset($response['status']) && $response['status'] === true && isset($response['data']['transaction'])) {
+                        $transaction = $response['data']['transaction'];
+                        $newStatus = $transaction['result'] ?? $transaction['status'] ?? null;
+                        $isCompleted = strtoupper($newStatus) === 'CAPTURED' || strtoupper($newStatus) === 'SUCCESS';
+                        $statusResult = $transaction;
+                    }
+                    break;
+
+                default:
+                    return redirect()->back()->with('error', "Unsupported payment gateway: {$gatewayName}");
+            }
+
+            if ($newStatus) {
+                $paymentTransaction->status = $newStatus;
+                $paymentTransaction->save();
+
+                Log::info('[CHECK_STATUS] Payment transaction updated', [
+                    'transaction_id' => $transactionId,
+                    'new_status' => $newStatus,
+                    'is_completed' => $isCompleted,
+                ]);
+            }
+
+            if ($isCompleted && $payment->status !== 'completed') {
+                $process = $payment->invoice ? 'invoice' : 'topup';
+                $partialId = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('id');
+
+                Log::info('[CHECK_STATUS] Processing completed payment', [
+                    'payment_id' => $payment->id,
+                    'gateway' => $gatewayName,
+                    'process' => $process,
+                ]);
+
+                try {
+                    switch ($gatewayName) {
+                        case 'Tap':
+                            $this->processCompletedTapPayment($payment, $statusResult, $process, $partialId, $paymentTransaction, false);
+                            break;
+
+                        case 'MyFatoorah':
+                            $this->processMyFatoorahPaymentCompletion($payment, $statusResult, $process, $partialId, false);
+                            break;
+
+                        case 'Hesabe':
+                            $this->processCompletedHesabePayment($payment, $statusResult, $process, $partialId, $paymentTransaction, false);
+                            break;
+
+                        case 'UPayment':
+                            $this->processCompletedUPaymentPayment($payment, $statusResult, $process, $partialId, $paymentTransaction, false);
+                            break;
+                    }
+
+                    return redirect()->back()->with('success', 'Payment completed successfully and processed.');
+                } catch (\Exception $e) {
+                    Log::error('[CHECK_STATUS] Error processing completed payment', [
+                        'payment_id' => $payment->id,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    return redirect()->back()->with('error', 'Payment is completed on gateway but failed to process: ' . $e->getMessage());
+                }
+            }
+
+            return redirect()->back()->with('error', "Payment has not been completed yet. Please ask the client to complete the payment before the expiry date. Current status: {$newStatus}");
+        } catch (\Exception $e) {
+            Log::error('[CHECK_STATUS] Error checking transaction status', [
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Error checking payment status: ' . $e->getMessage());
+        }
+    }
+
+    private function processCompletedTapPayment($payment, $response, $process, $partialId, $paymentTransaction, $sendNotification = false)
+    {
+        DB::beginTransaction();
+
+        try {
+            $finalPaidAmount = $response['amount'] ?? $payment->amount;
+
+            $dateCreated = isset($response['transaction']['date']['created'])
+                ? Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s')
+                : now();
+            $dateCompleted = isset($response['transaction']['date']['completed'])
+                ? Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s')
+                : now();
+            $dateTransaction = isset($response['transaction']['date']['transaction'])
+                ? Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s')
+                : now();
+
+            TapPayment::updateOrCreate(
+                ['payment_id' => $payment->id],
+                [
+                    'tap_id' => $response['id'],
+                    'authorization_id' => $response['transaction']['authorization_id'] ?? null,
+                    'timezone' => $response['transaction']['timezone'] ?? null,
+                    'expiry_period' => $response['transaction']['expiry']['period'] ?? null,
+                    'expiry_type' => $response['transaction']['expiry']['type'] ?? null,
+                    'amount' => $finalPaidAmount,
+                    'currency' => $response['currency'] ?? 'KWD',
+                    'date_created' => $dateCreated,
+                    'date_completed' => $dateCompleted,
+                    'date_transaction' => $dateTransaction,
+                    'receipt_id' => $response['receipt']['id'] ?? null,
+                    'receipt_email' => $response['receipt']['email'] ?? null,
+                    'receipt_sms' => $response['receipt']['sms'] ?? null,
+                ]
+            );
+
+            $payment->status = 'completed';
+            $payment->completed = 1;
+            $payment->service_charge = $finalPaidAmount - $payment->amount;
+            $payment->payment_reference = $response['id'];
+            $payment->payment_date = now();
+            $payment->save();
+
+            if ($process === 'topup') {
+                $clientController = new ClientController;
+                $addCreditResponse = $clientController->addCredit($payment);
+
+                if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
+                    throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
+                }
+
+                if ($paymentTransaction) {
+                    $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
+                    $paymentTransaction->save();
+                }
+            } else {
+                $coaResult = $this->createInvoicePaymentCOA(
+                    payment: $payment,
+                    finalPaidAmount: $finalPaidAmount,
+                    gatewayName: 'Tap',
+                    partialIds: !empty($partialId) ? [$partialId] : null,
+                    paymentReference: $response['id']
+                );
+
+                if (!$coaResult['success']) {
+                    throw new \RuntimeException($coaResult['message']);
+                }
+            }
+
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null && !$tboResult['success']) {
+                Log::error('TBO booking failed via manual status check', $tboResult);
+            }
+
+            $payment->refresh();
+
+            if ($sendNotification) {
+                $this->sendPaymentCompletionNotifications($payment, $process, $partialId);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    private function processCompletedHesabePayment($payment, $data, $process, $partialId, $paymentTransaction, $sendNotification = false)
+    {
+        DB::beginTransaction();
+
+        try {
+            $finalPaidAmount = $data['amount'] ?? $payment->amount;
+
+            $payment->status = 'completed';
+            $payment->service_charge = $finalPaidAmount - $payment->amount;
+            $payment->payment_date = now();
+            $payment->save();
+
+            HesabePayment::updateOrCreate(
+                ['payment_int_id' => $payment->id],
+                [
+                    'status' => $data['resultCode'] ?? $data['status'] ?? null,
+                    'payment_token' => $data['paymentToken'] ?? null,
+                    'payment_id' => $data['paymentId'] ?? null,
+                    'order_reference_number' => $data['orderReferenceNumber'] ?? null,
+                    'auth_code' => $data['auth'] ?? null,
+                    'track_id' => $data['trackID'] ?? null,
+                    'transaction_id' => $data['transactionId'] ?? null,
+                    'invoice_id' => $data['Id'] ?? null,
+                    'paid_on' => $data['paidOn'] ?? null,
+                    'payload' => $data,
+                ]
+            );
+
+            if ($process === 'topup') {
+                $clientController = new ClientController;
+                $addCreditResponse = $clientController->addCredit($payment);
+
+                if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
+                    throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['error'] ?? $addCreditResponse['message']));
+                }
+
+                if ($paymentTransaction) {
+                    $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
+                    $paymentTransaction->save();
+                }
+            } else {
+                $coaResult = $this->createInvoicePaymentCOA(
+                    payment: $payment,
+                    finalPaidAmount: (float) $finalPaidAmount,
+                    gatewayName: 'Hesabe',
+                    partialIds: !empty($partialId) ? [$partialId] : null,
+                    paymentReference: $data['transactionId'] ?? null
+                );
+
+                if (!$coaResult['success']) {
+                    throw new \RuntimeException($coaResult['message']);
+                }
+            }
+
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null && !$tboResult['success']) {
+                Log::error('TBO booking failed via manual status check', $tboResult);
+            }
+
+            $payment->refresh();
+
+            if ($sendNotification) {
+                $this->sendPaymentCompletionNotifications($payment, $process, $partialId);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    private function processCompletedUPaymentPayment($payment, $transaction, $process, $partialId, $paymentTransaction, $sendNotification = false)
+    {
+        DB::beginTransaction();
+
+        try {
+            $finalPaidAmount = $transaction['amount'] ?? $payment->amount;
+
+            $payment->status = 'completed';
+            $payment->completed = 1;
+            $payment->service_charge = $finalPaidAmount - $payment->amount;
+            $payment->payment_reference = $transaction['trackId'] ?? $transaction['paymentId'] ?? null;
+            $payment->payment_date = now();
+            $payment->save();
+
+            if ($paymentTransaction) {
+                $paymentTransaction->status = $transaction['result'] ?? $transaction['status'] ?? 'CAPTURED';
+                $paymentTransaction->track_id = $transaction['trackId'] ?? $paymentTransaction->track_id;
+                $paymentTransaction->save();
+            }
+
+            if ($process === 'topup') {
+                $clientController = new ClientController;
+                $addCreditResponse = $clientController->addCredit($payment);
+
+                if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
+                    throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['error'] ?? $addCreditResponse['message']));
+                }
+
+                if ($paymentTransaction) {
+                    $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
+                    if ($transactionId) {
+                        $paymentTransaction->transaction_id = $transactionId;
+                    }
+                    $paymentTransaction->save();
+                }
+            } else {
+                $coaResult = $this->createInvoicePaymentCOA(
+                    payment: $payment,
+                    finalPaidAmount: $finalPaidAmount,
+                    gatewayName: 'UPayment',
+                    partialIds: !empty($partialId) ? [$partialId] : null,
+                    paymentReference: $transaction['paymentId'] ?? $transaction['trackId'] ?? null
+                );
+
+                if (!$coaResult['success']) {
+                    throw new \RuntimeException($coaResult['message']);
+                }
+            }
+
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null && !$tboResult['success']) {
+                Log::error('TBO booking failed via manual status check', $tboResult);
+            }
+
+            $payment->refresh();
+
+            if ($sendNotification) {
+                $this->sendPaymentCompletionNotifications($payment, $process, $partialId);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    private function sendPaymentCompletionNotifications($payment, $process, $partialId)
+    {
+        $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+        $agent = $receiptInfo['agent'];
+
+        $storeNotificationData = [
+            'user_id' => $agent->user_id,
+            'title' => $receiptInfo['title'],
+            'message' => $receiptInfo['message'],
+        ];
+
+        if ($payment->invoice) {
+            $storeNotificationData['type'] = 'invoice';
+            $storeNotificationData['invoice'] = $payment->invoice;
+        } else {
+            $storeNotificationData['type'] = 'payment';
+            $storeNotificationData['payment'] = $payment;
+        }
+
+        $this->storeNotificationWithSendingPdf($storeNotificationData);
+
+        (new ResayilController())->message(
+            $agent->phone_number,
+            $agent->country_code,
+            $receiptInfo['message']
+        );
     }
 }

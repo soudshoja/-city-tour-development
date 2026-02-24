@@ -353,13 +353,13 @@
                 @endphp
 
                 @if ($prefill)
-                <input type="hidden" name="payment_gateway" value="{{ $prefill['payment_gateway'] }}">
                 <input type="hidden" name="payment_method" value="{{ $prefill['payment_method'] }}">
                 <input type="hidden" name="amount" value="{{ $prefill['amount'] }}">
                 <input type="hidden" name="client_id" value="{{ $prefill['client_id'] }}">
                 <input type="hidden" name="agent_id" value="{{ $prefill['agent_id'] }}">
                 <input type="hidden" name="notes" value="{{ $prefill['notes'] }}">
                 @endif
+                <input type="hidden" name="payment_gateway" value="{{ old('payment_gateway', $prefill['payment_gateway'] ?? '') }}">
                 <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
@@ -367,6 +367,7 @@
                 <input type="hidden" name="auth_code" value="{{ old('auth_code', $prefill['auth_code'] ?? '') }}">
                 <input type="hidden" name="payment_reference" value="{{ old('payment_reference', $prefill['payment_reference'] ?? '') }}">
                 <input type="hidden" name="track_id" value="{{ old('track_id', $prefill['track_id'] ?? '') }}">
+                <input type="hidden" name="actual_gateway_fee" value="{{ old('actual_gateway_fee', '') }}">
 
                 <!-- Client & Agent -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -427,7 +428,7 @@
                                     name="payment_methods[]"
                                     value="{{ $chose->paymentMethod->id }}"
                                     id="payment_method_{{ $chose->paymentMethod->id }}"
-                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) || (strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet') ? 'checked' : '' }}
+                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) || (!old('source') && strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet') ? 'checked' : '' }}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="payment_method_{{ $chose->paymentMethod->id }}" class="ml-2 text-sm text-gray-700">
                                     {{ $chose->paymentMethodGroup->name }}
@@ -447,7 +448,8 @@
                             value="{{ old('amount') }}"
                             placeholder="0.000"
                             :required="!advancedMode"
-                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
+                            {{ old('source') === 'import' ? 'readonly' : '' }}
+                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors {{ old('source') === 'import' ? 'bg-gray-100 cursor-not-allowed' : '' }}">
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>

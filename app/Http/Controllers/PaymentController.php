@@ -1533,7 +1533,6 @@ class PaymentController extends Controller
         ]);
 
         if (!$response->successful()) {
-
             $message = $response->json()['Message'] ?? 'Unknown error';
 
             Log::error('Failed to fetch payment status from MyFatoorah', [
@@ -1592,7 +1591,7 @@ class PaymentController extends Controller
                 ], 400);
             }
 
-            $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
+            $existingInvoiceId = MyFatoorahPayment::where('invoice_id', $invoiceId)->exists();
 
             if ($existingInvoiceId) {
                 Log::info('Invoice ID has already been imported');
@@ -1610,7 +1609,24 @@ class PaymentController extends Controller
         }
 
         $userDefined = json_decode($data['UserDefinedField'] ?? '{}', true);
-        $paymentMethodId = PaymentMethod::where('english_name')->value('id');
+
+        $paymentGatewayName = data_get($invoiceTransactions, '0.PaymentGateway');
+        $paymentMethodId = null;
+
+        if ($paymentGatewayName) {
+            $companyId = getCompanyId(Auth::user());
+            $group = PaymentMethodGroup::where('name', $paymentGatewayName)->first();
+
+            if ($group) {
+                $paymentMethodId = PaymentMethodChose::where('company_id', $companyId)
+                    ->where('payment_method_group_id', $group->id)
+                    ->value('payment_method_id');
+            }
+        }
+
+        $totalServiceCharge = (float) data_get($invoiceTransactions, '0.TotalServiceCharge', 0);
+        $vatAmount = (float) data_get($invoiceTransactions, '0.VatAmount', 0);
+        $actualGatewayFee = $totalServiceCharge + $vatAmount;
 
         return response()->json([
             'status' => 'success',
@@ -1626,6 +1642,7 @@ class PaymentController extends Controller
             'payment_method_id' => $paymentMethodId,
             'auth_code' => $authCode,
             'user_defined' => $userDefined,
+            'actual_gateway_fee' => $actualGatewayFee,
         ]);
     }
 
@@ -1765,12 +1782,13 @@ class PaymentController extends Controller
             return redirect()->route('payment.link.create')->withInput([
                 'invoice_id'        => $response['invoice_id'],
                 'payment_gateway'   => $response['payment_gateway'],
-                'payment_method'    => $response['payment_method_id'],
+                'payment_methods'   => $response['payment_method_id'] ? [(string) $response['payment_method_id']] : [],
                 'amount'            => $response['amount'],
                 'notes'             => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
                 'source'            => 'import',
                 'invoice_reference' => $response['invoice_reference'],
                 'auth_code'         => $response['auth_code'],
+                'actual_gateway_fee' => $response['actual_gateway_fee'] ?? 0,
             ]);
         } elseif ($gateway === 'hesabe') {
             $orderRef = $request->input('import_order_reference');
@@ -1803,6 +1821,7 @@ class PaymentController extends Controller
 
         $request->validate([
             'payment_gateway' => 'required',
+            'payment_methods' => 'nullable|array',
             'payment_method' => 'nullable',
             'amount' => 'required|numeric',
             'client_id' => 'nullable',
@@ -1866,7 +1885,12 @@ class PaymentController extends Controller
             ];
         }
 
+        DB::beginTransaction();
+
         try {
+            $paymentMethodId = $request->payment_methods[0] ?? $request->payment_method;
+            $actualGatewayFee = (float) ($request->input('actual_gateway_fee', 0));
+
             $data = [
                 'voucher_number' => $voucherNumber,
                 'payment_reference' => $invoiceId ?? $paymentReference,
@@ -1877,8 +1901,10 @@ class PaymentController extends Controller
                 'currency' => 'KWD',
                 'payment_date' => Carbon::now(),
                 'amount' => $request->amount,
+                'service_charge' => $actualGatewayFee,
+                'gateway_fee' => $actualGatewayFee,
                 'payment_gateway' => $request->payment_gateway,
-                'payment_method_id' => $request->payment_method,
+                'payment_method_id' => $paymentMethodId,
                 'status' => 'completed',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
@@ -1895,19 +1921,23 @@ class PaymentController extends Controller
             }
 
             if ($payment->payment_gateway === 'MyFatoorah') {
-                $fatoorahPayload = $data ?? session()->pull('fatoorah_import');
-                Log::info('MyFatoorah Payload', [
-                    'fatoorah_payload' => $fatoorahPayload,
+                $fatoorahSession = session()->pull('fatoorah_import');
+                $apiData = data_get($fatoorahSession, 'data', []);
+                $transaction = data_get($apiData, 'InvoiceTransactions.0', []);
+
+                Log::info('MyFatoorah Payload from API response', [
+                    'invoice_id' => data_get($apiData, 'InvoiceId'),
+                    'payment_id' => data_get($transaction, 'PaymentId'),
                 ]);
 
                 $fatoorahData = [
                     'payment_int_id' => $payment->id,
-                    'payment_id' => $fatoorahPayload['user_defined']['payment_id'] ?? null,
-                    'invoice_id' => $fatoorahPayload['invoice_id'] ?? null,
-                    'invoice_reference' => $fatoorahPayload['invoice_reference'] ?? null,
-                    'invoice_status' => $fatoorahPayload['invoice_status'] ?? null,
-                    'customer_reference' => $fatoorahPayload['customer_name'] ?? null,
-                    'payload' => $fatoorahPayload ?? null,
+                    'payment_id' => data_get($transaction, 'PaymentId'),
+                    'invoice_id' => data_get($apiData, 'InvoiceId', $invoiceId),
+                    'invoice_ref' => data_get($apiData, 'InvoiceReference', $invoiceReference),
+                    'invoice_status' => data_get($apiData, 'InvoiceStatus'),
+                    'customer_reference' => $payment->voucher_number,
+                    'payload' => $apiData,
                 ];
 
                 $fatoorah = MyFatoorahPayment::create($fatoorahData);
@@ -1917,7 +1947,7 @@ class PaymentController extends Controller
                     Log::error('MyFatoorah Payment failed to create');
                 }
             } elseif ($payment->payment_gateway === 'Hesabe') {
-                $hesabePayload = $data ?? session()->pull('hesabe_import');
+                $hesabePayload = session()->pull('hesabe_import');
 
                 if (is_string($hesabePayload)) {
                     $hesabePayload = json_decode($hesabePayload, true);
@@ -1957,6 +1987,7 @@ class PaymentController extends Controller
                 }
             }
         } catch (Exception $e) {
+            DB::rollBack();
             Log::error('Failed to create payment', [
                 'status' => 'error',
                 'message' => $e->getMessage(),
@@ -1980,6 +2011,7 @@ class PaymentController extends Controller
                 $addCredit = $clientController->addCredit($payment);
 
                 if (isset($addCredit['error'])) {
+                    DB::rollBack();
                     Log::error('Failed to add credit to client', [
                         'status' => 'error',
                         'message' => $addCredit['error'],
@@ -2003,12 +2035,14 @@ class PaymentController extends Controller
                     ],
                 ];
             } elseif ($payment->status != 'completed') {
+                DB::rollBack();
                 return [
                     'status' => 'error',
                     'message' => 'Failed to add credit and journal entry as the payment is not yet completed'
                 ];
             }
         } catch (Exception $e) {
+            DB::rollBack();
             Log::error('Failed to add credit & journal entry for import payment from payment gateway ' . $payment->payment_gateway);
 
             return [
@@ -2016,6 +2050,270 @@ class PaymentController extends Controller
                 'message' => 'Failed to add credit & journal entry for import payment',
             ];
         }
+    }
+
+    public function importPaymentFile(Request $request): RedirectResponse
+    {
+        set_time_limit(0);
+
+        $request->validate([
+            'gateway' => 'required|string',
+            'file' => 'required|file|mimes:xlsx,csv,xls',
+        ]);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+        $gatewayName = $request->input('gateway');
+
+        $import = new \App\Imports\PaymentImport();
+        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        $rows = $import->rows;
+        $gatewayNameLower = strtolower($gatewayName);
+
+        if ($rows->isEmpty()) {
+            return redirect()->back()->with('error', 'The uploaded file is empty.');
+        }
+
+        $imported = 0;
+        $skipped = 0;
+        $skippedIds = [];
+        $errors = [];
+
+        foreach ($rows as $index => $row) {
+            $invoiceId = $row['invoice_id'] ?? null;
+
+            if (!$invoiceId) {
+                $skippedIds[] = ['row' => $index + 2, 'reason' => 'no_invoice_id'];
+                $skipped++;
+                continue;
+            }
+
+            // Skip if already imported
+            if (MyFatoorahPayment::where('invoice_id', $invoiceId)->exists()) {
+                $skippedIds[] = ['row' => $index + 2, 'invoice_id' => $invoiceId, 'reason' => 'already_imported'];
+                $skipped++;
+                continue;
+            }
+
+            // Find agent by "Created By" name
+            $agentName = $row['created_by'] ?? null;
+            $agent = $agentName ? Agent::where('name', 'like', '%' . trim($agentName) . '%')
+                ->whereHas('branch', fn($q) => $q->where('company_id', $companyId))
+                ->first() : null;
+
+            if (!$agent) {
+                $errors[] = "Row " . ($index + 2) . ": Agent '{$agentName}' not found";
+                $skippedIds[] = ['row' => $index + 2, 'invoice_id' => $invoiceId, 'reason' => 'agent_not_found', 'agent' => $agentName];
+                $skipped++;
+                continue;
+            }
+
+            // Read Excel columns for fallback values
+            $excelPaymentId = $row['payment_id'] ?? null;
+            $excelVendorServiceCharge = (float) ($row['vendor_service_charge'] ?? 0);
+            $excelAuthorizationId = $row['authorization_id'] ?? null;
+            $excelPaymentMethod = trim($row['payment_method'] ?? '');
+
+            // Look up payment method from Excel by english_name and gateway type
+            $paymentMethodModel = null;
+            if ($excelPaymentMethod) {
+                $paymentMethodModel = PaymentMethod::withoutGlobalScopes()
+                    ->where('company_id', $companyId)
+                    ->where('type', $gatewayNameLower)
+                    ->where('english_name', $excelPaymentMethod)
+                    ->first();
+            }
+
+            // Call gateway API to get fee & payment details
+            $apiData = null;
+            $actualGatewayFee = $excelVendorServiceCharge;
+            $paymentMethodId = $paymentMethodModel?->id;
+            $invoiceReference = $row['invoice_reference'] ?? null;
+            $authCode = $excelAuthorizationId;
+
+            try {
+                if (str_contains($gatewayNameLower, 'myfatoorah')) {
+                    // Always use InvoiceId to fetch payment status
+                    $response = $this->getPaymentStatusMyFatoorah($invoiceId, 'InvoiceId')->getData(true);
+
+                    if ($response['status'] === 'success') {
+                        $apiData = $response['data'] ?? [];
+                        $actualGatewayFee = (float) ($response['actual_gateway_fee'] ?? 0) ?: $excelVendorServiceCharge;
+                        $paymentMethodId = $response['payment_method_id'] ?? $paymentMethodModel?->id;
+                        $invoiceReference = $response['invoice_reference'] ?? $invoiceReference;
+                        $authCode = $response['auth_code'] ?? $excelAuthorizationId;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('API call failed for import row', [
+                    'invoice_id' => $invoiceId,
+                    'payment_id' => $excelPaymentId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // Parse created date (Excel col C) for created_at
+            $rawCreatedDate = $row['created_date'] ?? $row['created date'] ?? null;
+            try {
+                $createdDate = $rawCreatedDate ? Carbon::parse($rawCreatedDate) : now();
+            } catch (\Throwable) {
+                $createdDate = now();
+            }
+
+            // Parse paid date (Excel col H) for payment_date
+            $rawPaidDate = $row['paid_date'] ?? $row['paid date'] ?? $row['payment_date'] ?? $row['payment date'] ?? null;
+            try {
+                $paidDate = $rawPaidDate ? Carbon::parse($rawPaidDate) : $createdDate;
+            } catch (\Throwable) {
+                $paidDate = $createdDate;
+            }
+
+            $amount = (float) ($row['invoice_value'] ?? $row['customer_service'] ?? 0);
+
+            // If company pays the fee, service_charge = 0 but gateway_fee keeps actual value
+            $companyPays = $paymentMethodModel && strtolower($paymentMethodModel->paid_by) === 'company';
+            $serviceCharge = $companyPays ? 0 : $actualGatewayFee;
+
+            DB::beginTransaction();
+            try {
+                $payment = Payment::create([
+                    'voucher_number' => null,
+                    'payment_reference' => $invoiceId,
+                    'invoice_reference' => $invoiceReference,
+                    'auth_code' => $authCode,
+                    'from' => $row['customer_name'] ?? 'Unknown',
+                    'pay_to' => $agent->branch->company->name,
+                    'currency' => 'KWD',
+                    'payment_date' => $paidDate,
+                    'amount' => $amount,
+                    'service_charge' => $serviceCharge,
+                    'gateway_fee' => $actualGatewayFee,
+                    'payment_gateway' => $gatewayName,
+                    'payment_method_id' => $paymentMethodId,
+                    'status' => 'completed',
+                    'completed' => true,
+                    'client_id' => null,
+                    'agent_id' => $agent->id,
+                    'notes' => 'Imported from ' . $gatewayName . ' file with Invoice ID: ' . $invoiceId,
+                    'created_by' => $agent->user_id ?? Auth::id(),
+                    'is_imported' => true,
+                    'created_at' => $createdDate,
+                    'updated_at' => $createdDate,
+                ]);
+
+                // Store in gateway-specific table
+                if (str_contains($gatewayNameLower, 'myfatoorah')) {
+                    $transaction = data_get($apiData, 'InvoiceTransactions.0', []);
+
+                    // Build Excel payload as fallback when API data is unavailable
+                    $excelPayload = collect($row)->filter(fn($v) => $v !== null && $v !== '')->toArray();
+
+                    MyFatoorahPayment::create([
+                        'payment_int_id' => $payment->id,
+                        'payment_id' => data_get($transaction, 'PaymentId', $excelPaymentId),
+                        'invoice_id' => data_get($apiData, 'InvoiceId', $invoiceId),
+                        'invoice_ref' => data_get($apiData, 'InvoiceReference', $invoiceReference),
+                        'invoice_status' => data_get($apiData, 'InvoiceStatus', $row['invoice_status'] ?? null),
+                        'customer_reference' => null,
+                        'payload' => $apiData ?? $excelPayload,
+                    ]);
+                } elseif (str_contains($gatewayNameLower, 'hesabe')) {
+                    HesabePayment::create([
+                        'payment_int_id' => $payment->id,
+                        'invoice_id' => $invoiceId,
+                        'payload' => $apiData ?? [],
+                    ]);
+                } elseif (str_contains($gatewayNameLower, 'tap')) {
+                    TapPayment::create([
+                        'payment_id' => $payment->id,
+                        'amount' => $amount,
+                        'currency' => 'KWD',
+                    ]);
+                } elseif (str_contains($gatewayNameLower, 'upayment')) {
+                    UpaymentPayment::create([
+                        'payment_int_id' => $payment->id,
+                        'invoice_id' => $invoiceId,
+                        'total_price' => $amount,
+                        'payload' => $apiData ?? [],
+                    ]);
+                }
+
+                DB::commit();
+                $imported++;
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::error('Failed to import payment row', [
+                    'row' => $index + 2,
+                    'invoice_id' => $invoiceId,
+                    'error' => $e->getMessage(),
+                ]);
+                $errors[] = "Row " . ($index + 2) . ": " . $e->getMessage();
+                $skipped++;
+            }
+        }
+
+        $message = "{$imported} payments imported successfully.";
+        if ($skipped > 0) {
+            $message .= " {$skipped} skipped.";
+            Log::info('Import skipped details', ['skipped' => $skippedIds]);
+        }
+
+        return redirect()->route('payment.link.index')
+            ->with($imported > 0 ? 'success' : 'error', $message);
+    }
+
+    public function assignClientToImport(Request $request, $paymentId): RedirectResponse
+    {
+        $request->validate([
+            'client_id' => 'required|integer|exists:clients,id',
+        ]);
+
+        $payment = Payment::where('id', $paymentId)
+            ->where('is_imported', true)
+            ->whereNull('client_id')
+            ->firstOrFail();
+
+        $client = Client::findOrFail($request->client_id);
+
+        // Generate voucher number on assign
+        $companyId = getCompanyId(Auth::user());
+        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
+        $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
+        $voucherSequence->current_sequence++;
+        $voucherSequence->save();
+
+        $payment->update([
+            'voucher_number' => $voucherNumber,
+            'client_id' => $client->id,
+            'from' => $client->full_name,
+            'is_imported' => false,
+        ]);
+
+        // Update MyFatoorah customer_reference with voucher number
+        if ($payment->myFatoorahPayment) {
+            $payment->myFatoorahPayment->update(['customer_reference' => $voucherNumber]);
+        }
+
+        $payment->refresh();
+
+        try {
+            $clientController = new ClientController();
+            $addCredit = $clientController->addCredit($payment);
+
+            if (isset($addCredit['error']) || (isset($addCredit['status']) && $addCredit['status'] === 'error')) {
+                return redirect()->back()->with('error', 'Client assigned but failed to create COA: ' . ($addCredit['message'] ?? $addCredit['error']));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to create COA for imported payment', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', 'Client assigned but COA creation failed: ' . $e->getMessage());
+        }
+
+        return redirect()->route('payment.link.index')
+            ->with('success', 'Client assigned and journal entries created for ' . $payment->voucher_number);
     }
 
     public function paymentLink(Request $request)
@@ -2053,8 +2351,10 @@ class PaymentController extends Controller
                 });
         })->get();
 
-        $payments = Payment::with('invoice')
-            ->where(function ($query) use ($agentsId) {
+        $baseQuery = Payment::with([
+                'invoice', 'client', 'agent.branch', 'createdBy',
+                'paymentMethod', 'myFatoorahPayment', 'availablePaymentMethodGroups', 'paymentItems',
+            ])->where(function ($query) use ($agentsId) {
                 $query->whereHas('invoice', function ($payment) use ($agentsId) {
                     $payment->whereIn('agent_id', $agentsId);
                 })->orWhereIn('agent_id', $agentsId);
@@ -2063,11 +2363,15 @@ class PaymentController extends Controller
         if ($request->boolean('clear')) {
             session()->forget('filter');
             return redirect()->route('payment.link.index', array_filter([
-                'q' => $request->query('q'),
+                'search' => $request->query('search'),
             ]));
         }
 
-        if ($search = $request->query('q')) {
+        // --- Tab 1: Regular payments (not imported) ---
+        $payments = clone $baseQuery;
+        $payments = $payments->where(fn($q) => $q->where('is_imported', false)->orWhereNull('is_imported'));
+
+        if ($search = $request->query('search')) {
             $payments = $payments->where(function ($query) use ($search) {
                 $query->where('payment_reference', 'like', '%' . $search . '%')
                     ->orWhere('payment_gateway', 'like', '%' . $search . '%')
@@ -2098,7 +2402,7 @@ class PaymentController extends Controller
         if ($request->has('filter')) {
             session(['filter' => array_replace(session('filter', []), $incoming)]);
             return redirect()->route('payment.link.index', array_filter([
-                'q' => $request->query('q'),
+                'search' => $request->query('search'),
             ]));
         }
 
@@ -2113,7 +2417,7 @@ class PaymentController extends Controller
         $payments->when(data_get($filters, 'date_from'), fn($q, $v) => $q->whereDate('created_at', '>=', $v));
         $payments->when(data_get($filters, 'date_to'), fn($q, $v) => $q->whereDate('created_at', '<=', $v));
 
-        $payments = $payments->orderBy('id', 'desc')->paginate(15)->appends($request->only(['q']));
+        $payments = $payments->orderBy('id', 'desc')->paginate(15, ['*'], 'page')->appends($request->only(['search', 'ipage']));
 
         $payments->getCollection()->transform(function ($payment) {
             if ($payment->payment_gateway === 'MyFatoorah') {
@@ -2125,13 +2429,40 @@ class PaymentController extends Controller
             return $payment;
         });
 
-        $paymentGateways = Charge::where('can_generate_link', true)
+        $paymentGateways = Charge::with('methods')
+            ->where('can_generate_link', true)
             ->where('is_active', true)->get();
 
         foreach ($payments as $payment) {
             $payment->selected_gateway = $paymentGateways->where('name', $payment->payment_gateway)->first();
             $payment->selected_method = PaymentMethod::where('id', $payment->payment_method_id)->first();
         }
+
+        // --- Tab 2: Imported payments ---
+        $importedPayments = clone $baseQuery;
+        $importedPayments = $importedPayments->where('is_imported', true);
+
+        if ($search = $request->query('search')) {
+            $importedPayments = $importedPayments->where(function ($query) use ($search) {
+                $query->where('voucher_number', 'like', '%' . $search . '%')
+                    ->orWhere('payment_gateway', 'like', '%' . $search . '%')
+                    ->orWhereHas('agent', fn($q) => $q->where('name', 'like', '%' . $search . '%'))
+                    ->orWhereHas('client', fn($q) => $q
+                        ->where('first_name', 'like', '%' . $search . '%')
+                        ->orWhere('last_name', 'like', '%' . $search . '%')
+                    );
+            });
+        }
+
+        $importedPayments->when(data_get($filters, 'date_from'), fn($q, $v) => $q->whereDate('payment_date', '>=', $v));
+        $importedPayments->when(data_get($filters, 'date_to'), fn($q, $v) => $q->whereDate('payment_date', '<=', $v));
+
+        $importedPayments = $importedPayments->orderBy('id', 'desc')
+            ->paginate(15, ['*'], 'ipage')
+            ->appends($request->only(['search', 'page']));
+
+        $importedCount = (clone $baseQuery)->where('is_imported', true)->count();
+        $unassignedCount = (clone $baseQuery)->where('is_imported', true)->whereNull('client_id')->count();
 
         $users = User::whereIn('id', Payment::select('created_by')->distinct()->pluck('created_by'))->get();
         $status = ['pending', 'initiate', 'completed', 'failed', 'cancelled'];
@@ -2142,6 +2473,9 @@ class PaymentController extends Controller
 
         return view('payment.link.index', compact(
             'payments',
+            'importedPayments',
+            'importedCount',
+            'unassignedCount',
             'clients',
             'agents',
             'paymentGateways',
@@ -2439,6 +2773,17 @@ class PaymentController extends Controller
 
     public function paymentStoreLink(Request $request)
     {
+        if ($request->input('source') === 'import') {
+            $response = $this->paymentStoreLinkProcess($request);
+
+            if ($response['status'] === 'error') {
+                return redirect()->back()->with('error', $response['message']);
+            }
+
+            return redirect()->route('payment.link.index')
+                ->with('success', 'Payment imported successfully!');
+        }
+
         if ($request->payment_gateway == null) {
 
             Log::info("multi payment method invoke at paymentStoreLink");

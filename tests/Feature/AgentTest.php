@@ -153,6 +153,50 @@ class AgentTest extends TestCase
             'code' => 'SAL-001',
         ]);
 
+        // Create Accounts Receivable under Assets (for loss account)
+        Account::create([
+            'name' => 'Accounts Receivable',
+            'level' => 1,
+            'actual_balance' => 0.00,
+            'budget_balance' => 0.00,
+            'variance' => 0.00,
+            'parent_id' => $rootAccount->id,
+            'root_id' => $rootAccount->id,
+            'company_id' => $this->company->id,
+            'account_type' => 'asset',
+            'report_type' => Account::REPORT_TYPES['BALANCE_SHEET'],
+            'code' => '1350',
+        ]);
+
+        // Create Liabilities root account (for profit account)
+        $liabilities = Account::create([
+            'name' => 'Liabilities',
+            'company_id' => $this->company->id,
+            'root_id' => 2,
+            'level' => 0,
+            'actual_balance' => 0.00,
+            'budget_balance' => 0.00,
+            'variance' => 0.00,
+            'account_type' => 'liability',
+            'report_type' => Account::REPORT_TYPES['BALANCE_SHEET'],
+            'code' => '2000',
+        ]);
+
+        // Create Accrued Expenses under Liabilities
+        Account::create([
+            'name' => 'Accrued Expenses',
+            'level' => 1,
+            'actual_balance' => 0.00,
+            'budget_balance' => 0.00,
+            'variance' => 0.00,
+            'parent_id' => $liabilities->id,
+            'root_id' => $liabilities->id,
+            'company_id' => $this->company->id,
+            'account_type' => 'liability',
+            'report_type' => Account::REPORT_TYPES['BALANCE_SHEET'],
+            'code' => '2200',
+        ]);
+
         // Create agent user
         $this->agentUser = User::factory()->create([
             'role_id' => Role::AGENT,
@@ -274,7 +318,7 @@ class AgentTest extends TestCase
         // Agent creation should succeed
         $response->assertRedirect(route('agents.index'));
         $response->assertSessionHas('success', 'Agent registered successfully');
-        
+
         // Check if agent was actually created
         $this->assertDatabaseHas('agents', [
             'name' => 'New Agent',
@@ -289,6 +333,74 @@ class AgentTest extends TestCase
             'email' => 'newagent@test.com',
             'role_id' => Role::AGENT
         ]);
+
+        // Check profit & loss accounts were created
+        $newAgent = Agent::where('email', 'newagent@test.com')->first();
+        $this->assertNotNull($newAgent->profit_account_id, 'Profit account should be created');
+        $this->assertNotNull($newAgent->loss_account_id, 'Loss account should be created');
+
+        // Profit account: under Agent Profit Payable group
+        $this->assertDatabaseHas('accounts', [
+            'id' => $newAgent->profit_account_id,
+            'name' => 'New Agent',
+            'agent_id' => $newAgent->id,
+            'is_group' => 0,
+        ]);
+
+        // Agent Profit Payable group should be auto-created
+        $this->assertDatabaseHas('accounts', [
+            'name' => 'Agent Profit Payable',
+            'code' => '2230',
+            'company_id' => $this->company->id,
+            'is_group' => 1,
+        ]);
+
+        // Loss account: Agent Loss Receivable leaf
+        $this->assertDatabaseHas('accounts', [
+            'id' => $newAgent->loss_account_id,
+            'name' => 'Agent Loss Receivable',
+            'agent_id' => $newAgent->id,
+            'is_group' => 0,
+        ]);
+
+        // Agent group under Company group should be auto-created
+        $this->assertDatabaseHas('accounts', [
+            'name' => 'New Agent',
+            'agent_id' => $newAgent->id,
+            'is_group' => 1,
+            'company_id' => $this->company->id,
+        ]);
+    }
+
+    public function test_agent_created_without_profit_loss_when_parent_accounts_missing()
+    {
+        $this->actingAs($this->adminUser);
+
+        // Remove the Accrued Expenses and Accounts Receivable accounts
+        DB::table('accounts')->where('name', 'Accrued Expenses')->delete();
+        DB::table('accounts')->where('name', 'Accounts Receivable')->delete();
+
+        $userData = [
+            'name' => 'Agent No PL',
+            'email' => 'agentnopl@test.com',
+            'password' => 'password123',
+            'dial_code' => '+1',
+            'phone' => '1234567890',
+            'branch_id' => $this->branch->id,
+            'type_id' => $this->agentType->id,
+            'serial_number' => 'SN002',
+            'account_type' => 'agent'
+        ];
+
+        $response = $this->post(route('agents.store'), $userData);
+
+        $response->assertRedirect(route('agents.index'));
+        $response->assertSessionHas('success', 'Agent registered successfully');
+
+        $newAgent = Agent::where('email', 'agentnopl@test.com')->first();
+        $this->assertNotNull($newAgent);
+        $this->assertNull($newAgent->profit_account_id, 'Profit account should be null when parent accounts missing');
+        $this->assertNull($newAgent->loss_account_id, 'Loss account should be null when parent accounts missing');
     }
 
     public function test_agent_creation_requires_valid_data()

@@ -1607,68 +1607,197 @@ class AirFileParser
     {
         $passengers = [];
 
-        // Find all I- lines (passenger lines)
-        $passengerLines = $this->findLines('/^I-(\d+);(\d+)([^;]+);/');
-
         $status = $this->extractStatus();
+
+        // Determine which ticket line patterns to look for, in priority order.
+        // For EMD/void files TMCD takes highest priority, followed by T-K/T-E, then R-.
+        // Even if T-K appears before TMCD in the file, TMCD wins.
         if ($status === 'refund') {
-            $ticketLines = $this->findLines('/^R-(\d+)-(\d+)/');
-        } else if ($status === 'emd' || $status === 'void') {
-            $ticketLines = $this->findLines('/^TMCD\d+-\d+/');
-            if (empty($ticketLines)) {
-                $ticketLines = $this->findLines('/^(T-[KE]\d+-\d+)/');
-            }
-            
-            if (empty($ticketLines)) {
-                $ticketLines = $this->findLines('/^(R-\d+-\d+)/');
-            }
+            $ticketPatternsByPriority = ['/^(R-\d+-\d+)/'];
+        } elseif ($status === 'emd' || $status === 'void') {
+            $ticketPatternsByPriority = ['/^(TMCD\d+-\d+)/', '/^(T-[KE]\d+-\d+)/', '/^(R-\d+-\d+)/'];
         } else {
-            $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
+            // issued / reissued
+            $ticketPatternsByPriority = ['/^(T-[KE]\d+-\d+)/'];
         }
 
-        // Match passengers with their tickets
-        foreach ($passengerLines as $index => $passengerMatch) {
-            $passengerNumber = $passengerMatch[1]; // e.g., "001", "002"
-            $clientName = trim($passengerMatch[3]); // e.g., "ALZANKI/FAHAD MR"
-
-            // Find corresponding ticket (they should be in order)
-            $ticketNumber = '';
-            if (isset($ticketLines[$index])) {
-                $ticketMatch = $ticketLines[$index];
-                $ticketNumber = $ticketMatch[0];    // e.g., "T-K012-1234567890"
-            }
-
-            $passengers[] = [
-                'passenger_number' => $passengerNumber,
-                'client_name' => $clientName,
-                'ticket_number' => $ticketNumber,
-                'price' => 0.0,
-            ];
-        }
+        // Parse the file sequentially to group ticket lines under each I- line block.
+        // Each passenger block collects all ticket candidates; the highest-priority one wins.
+        // For EMD status, we also collect ALL TMCD lines with their D-references.
+        $passengerBlocks = [];
+        $currentBlock = null;
 
         foreach ($this->lines as $line) {
-            // Pattern where base & total are both present (…;KWD 58.000;N;;KWD 58.000…;P1;)
-            if (preg_match('/^EMD\d+;.*?;([A-Z]{3})\s*([\d.]+)\s*;N;;([A-Z]{3})\s*([\d.]+).*?;P(\d+)\b/i', $line, $m)) {
-                $paxIndex = (int)$m[5];
-                $cur      = $m[3];           // use the “total” currency
-                $amt      = (float)$m[4];    // use the “total” amount
+            $trimmed = trim($line);
 
-                // Fallback: at least one currency+amount before ;P#
-            } elseif (preg_match('/^EMD\d+;.*?([A-Z]{3})\s*([\d.]+).*?;P(\d+)\b/i', $line, $m)) {
-                $paxIndex = (int)$m[3];
-                $cur      = $m[1];
-                $amt      = (float)$m[2];
-            } else {
+            // Detect a new passenger (I-) line
+            if (preg_match('/^I-(\d+);(\d+)([^;]+);/', $trimmed, $iMatch)) {
+                // Save current block if we were tracking one
+                if ($currentBlock !== null) {
+                    $passengerBlocks[] = $currentBlock;
+                }
+                $currentBlock = [
+                    'passenger_match'   => $iMatch,
+                    'ticket_candidates' => array_fill(0, count($ticketPatternsByPriority), null),
+                    'tmcd_list'         => [], // [ ['ticket' => 'TMCD...', 'd_ref' => 'D9'], ... ]
+                ];
                 continue;
             }
 
-            // Handle case where EMD references a passenger that doesn't have an I- line
-            // Accumulate to the first available passenger if the referenced passenger doesn't exist
-            $targetIndex = isset($passengers[$paxIndex - 1]) ? $paxIndex - 1 : 0;
-            
-            if (isset($passengers[$targetIndex])) {
-                $passengers[$targetIndex]['price'] += $amt;                 // <= accumulate
-                $passengers[$targetIndex]['emd_currency'] ??= $cur;         // <= set once
+            // Collect ticket candidates within the current passenger block
+            if ($currentBlock !== null) {
+                // For EMD status, collect every TMCD line with its D-reference
+                if ($status === 'emd' && preg_match('/^(TMCD\d+-\d+);;(D\d+)/', $trimmed, $tmcdMatch)) {
+                    $currentBlock['tmcd_list'][] = [
+                        'ticket' => $tmcdMatch[1],
+                        'd_ref'  => $tmcdMatch[2],
+                    ];
+                }
+
+                foreach ($ticketPatternsByPriority as $priority => $pattern) {
+                    // Only store the first occurrence per priority level
+                    if ($currentBlock['ticket_candidates'][$priority] === null) {
+                        if (preg_match($pattern, $trimmed, $tMatch)) {
+                            $currentBlock['ticket_candidates'][$priority] = $tMatch[1];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Don't forget the last block
+        if ($currentBlock !== null) {
+            $passengerBlocks[] = $currentBlock;
+        }
+
+        // Select the best ticket for each block using priority order
+        $selectTicket = function (array $candidates): string {
+            foreach ($candidates as $candidate) {
+                if ($candidate !== null) {
+                    return $candidate;
+                }
+            }
+            return '';
+        };
+
+        // For EMD status, build a D-reference → price map from EMD lines
+        // Each EMD line has the D-reference as the 6th semicolon-delimited field
+        $emdDRefPriceMap = []; // [ 'D9' => ['price' => 9.25, 'currency' => 'KWD'], ... ]
+        if ($status === 'emd') {
+            foreach ($this->lines as $line) {
+                $trimmed = trim($line);
+                if (!preg_match('/^EMD\d+;/', $trimmed)) {
+                    continue;
+                }
+                // Extract D-reference from field index 5 (0-based), i.e. the 6th semicolon-delimited field
+                $fields = explode(';', $trimmed);
+                $dRef = isset($fields[5]) ? trim($fields[5]) : null;
+                if (!$dRef || !preg_match('/^D\d+$/', $dRef)) {
+                    continue;
+                }
+                // Extract price: prefer the ;KWD amt;N;;KWD totalAmt; pattern (total after N;;)
+                $amt = null;
+                $cur = null;
+                if (preg_match('/;([A-Z]{3})\s*([\d.]+)\s*;N;;([A-Z]{3})\s*([\d.]+)/i', $trimmed, $pm)) {
+                    $cur = $pm[3];
+                    $amt = (float)$pm[4];
+                } elseif (preg_match('/;([A-Z]{3})\s*([\d.]+)/i', $trimmed, $pm)) {
+                    $cur = $pm[1];
+                    $amt = (float)$pm[2];
+                }
+                if ($amt !== null) {
+                    if (!isset($emdDRefPriceMap[$dRef])) {
+                        $emdDRefPriceMap[$dRef] = ['price' => 0.0, 'currency' => $cur];
+                    }
+                    $emdDRefPriceMap[$dRef]['price'] += $amt;
+                }
+            }
+        }
+
+        // If no blocks were found by sequential parsing (e.g. the file has no I- lines),
+        // fall back to an empty passenger list (no tickets to assign).
+        if (empty($passengerBlocks)) {
+            $passengerLines = $this->findLines('/^I-(\d+);(\d+)([^;]+);/');
+            foreach ($passengerLines as $passengerMatch) {
+                $passengers[] = [
+                    'passenger_number' => $passengerMatch[1],
+                    'client_name'      => trim($passengerMatch[3]),
+                    'ticket_number'    => '',
+                    'price'            => 0.0,
+                ];
+            }
+        } elseif ($status === 'emd') {
+            // For EMD: expand each passenger block into one entry per TMCD ticket,
+            // each with its own price derived from the D-reference map.
+            foreach ($passengerBlocks as $block) {
+                $passengerMatch = $block['passenger_match'];
+                $tmcdList = $block['tmcd_list'];
+
+                if (!empty($tmcdList)) {
+                    // One entry per TMCD
+                    foreach ($tmcdList as $tmcd) {
+                        $dRef  = $tmcd['d_ref'];
+                        $price = isset($emdDRefPriceMap[$dRef]) ? $emdDRefPriceMap[$dRef]['price'] : 0.0;
+                        $cur   = isset($emdDRefPriceMap[$dRef]) ? $emdDRefPriceMap[$dRef]['currency'] : null;
+                        $passengers[] = [
+                            'passenger_number' => $passengerMatch[1],
+                            'client_name'      => trim($passengerMatch[3]),
+                            'ticket_number'    => $tmcd['ticket'],
+                            'price'            => $price,
+                            'emd_currency'     => $cur,
+                        ];
+                    }
+                } else {
+                    // No TMCD lines found; fall back to best available ticket with price 0
+                    $passengers[] = [
+                        'passenger_number' => $passengerMatch[1],
+                        'client_name'      => trim($passengerMatch[3]),
+                        'ticket_number'    => $selectTicket($block['ticket_candidates']),
+                        'price'            => 0.0,
+                    ];
+                }
+            }
+        } else {
+            // Non-EMD: one entry per passenger block (original behaviour)
+            foreach ($passengerBlocks as $block) {
+                $passengerMatch = $block['passenger_match'];
+                $passengers[] = [
+                    'passenger_number' => $passengerMatch[1],
+                    'client_name'      => trim($passengerMatch[3]),
+                    'ticket_number'    => $selectTicket($block['ticket_candidates']),
+                    'price'            => 0.0,
+                ];
+            }
+        }
+
+        // For non-EMD statuses, accumulate prices from EMD lines by passenger number
+        // (This path is kept for void and other statuses that may have EMD lines)
+        if ($status !== 'emd') {
+            foreach ($this->lines as $line) {
+                // Pattern where base & total are both present (…;KWD 58.000;N;;KWD 58.000…;P1;)
+                if (preg_match('/^EMD\d+;.*?;([A-Z]{3})\s*([\d.]+)\s*;N;;([A-Z]{3})\s*([\d.]+).*?;P(\d+)\b/i', $line, $m)) {
+                    $paxIndex = (int)$m[5];
+                    $cur      = $m[3];           // use the “total” currency
+                    $amt      = (float)$m[4];    // use the “total” amount
+
+                    // Fallback: at least one currency+amount before ;P#
+                } elseif (preg_match('/^EMD\d+;.*?([A-Z]{3})\s*([\d.]+).*?;P(\d+)\b/i', $line, $m)) {
+                    $paxIndex = (int)$m[3];
+                    $cur      = $m[1];
+                    $amt      = (float)$m[2];
+                } else {
+                    continue;
+                }
+
+                // Handle case where EMD references a passenger that doesn't have an I- line
+                // Accumulate to the first available passenger if the referenced passenger doesn't exist
+                $targetIndex = isset($passengers[$paxIndex - 1]) ? $paxIndex - 1 : 0;
+
+                if (isset($passengers[$targetIndex])) {
+                    $passengers[$targetIndex]['price'] += $amt;                 // <= accumulate
+                    $passengers[$targetIndex]['emd_currency'] ??= $cur;         // <= set once
+                }
             }
         }
 

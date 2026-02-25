@@ -1014,9 +1014,9 @@ class ClientController extends Controller
             ->first();
 
         if ($payment->gateway_fee && $payment->gateway_fee > 0) {
-            // Imported payment: fee already set from the external gateway (e.g. MyFatoorah TotalServiceCharge + VAT)
-            $gatewayFee = 0;
-            $accountingFee = (float) $payment->gateway_fee;
+            // Imported payment: fee already set from the external gateway
+            $gatewayFee = $payment->service_charge ?? 0;
+            $accountingFee = $payment->gateway_fee;
             $paidBy = $payment->paymentMethod?->paid_by ?? 'Company';
         } else {
             $chargeResult = ChargeService::calculate(
@@ -1077,8 +1077,6 @@ class ClientController extends Controller
         // STEP 4: Create Journal Entries (ALL IN ONE TRANSACTION)
         DB::beginTransaction();
         try {
-            $transactionDate = $payment->payment_date ?? now();
-
             $bankPaymentFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_bank_id) : null;
             $bankCOAFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_id) : null;
             $incomeAccount = Account::where('name', 'Gateway Fee Recovery')->where('company_id', $companyId)->first();
@@ -1120,7 +1118,7 @@ class ClientController extends Controller
                 'payment_id' => $payment->id,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
-                'transaction_date' => $transactionDate,
+                'transaction_date' => $payment->payment_date ?? now(),
             ]);
 
             // ENTRY 1: DEBIT Asset (Payment Gateway Bank)
@@ -1130,7 +1128,7 @@ class ClientController extends Controller
                     'company_id' => $companyId,
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankPaymentFee->id,
-                    'transaction_date' => $transactionDate,
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $assetAmount,
                     'credit' => 0,
@@ -1153,7 +1151,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankCOAFee->id,
                     'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => $transactionDate,
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
                     'debit' => $accountingFee,
                     'credit' => 0,
@@ -1175,7 +1173,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $incomeAccount->id,
                     'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => $transactionDate,
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                     'debit' => 0,
                     'credit' => $accountingFee,
@@ -1195,7 +1193,7 @@ class ClientController extends Controller
                 'branch_id' => $agent->branch->id,
                 'company_id' => $companyId,
                 'account_id' => $clientAdvancePaymentGateway->id,
-                'transaction_date' => $transactionDate,
+                'transaction_date' => $payment->payment_date ?? now(),
                 'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                 'debit' => 0,
                 'credit' => $clientCreditAmount,

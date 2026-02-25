@@ -250,176 +250,194 @@
                         @endif
                     </div>
                 </div>
-                <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-                <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
-                    <!-- client details -->
-                    <div class="w-full">
-                        <div class="flex items-center">
-                            <button type="button" id="openClientModalButton"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Client</span>
-                            </button>
-                            <input id="receiverId" type="hidden" name="receiverId" />
+
+                <hr class="my-4 border-dashed border-gray-300 mb-3 mt-6" />
+
+                <!-- Client Agent Information -->
+                <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-10 w-full p-8 items-start">
+
+                    <!-- Client -->
+                    <div class="bg-white">
+                        <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-900 tracking-wide uppercase">Client</h3>
+                                    <p class="text-xs text-gray-400">Client Information</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="openClientModalButton"
+                                    class="text-[11px] font-semibold text-black city-light-yellow hover:text-[#004c9e] px-3 py-1.5 rounded-full shadow city-light-yellow inline-flex items-center gap-2">
+                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                    </svg>
+                                    <span>Choose</span>
+                                </button>
+
+                                <span id="client_status_badge"
+                                    class="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                                    Selected
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 space-y-3 text-sm">
+                            <div class="grid grid-cols-[90px_1fr] items-center gap-3">
+                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</span>
+                                <input id="receiverName" type="text" class="form-input w-full" placeholder="Client Name" readonly />
+                            </div>
+
+                            <div class="grid grid-cols-[90px_1fr] items-center gap-3">
+                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Email</span>
+                                <input id="receiverEmail" type="email" class="form-input w-full" placeholder="Client Email" readonly />
+                            </div>
+
+                            <div class="grid grid-cols-[90px_1fr] items-center gap-3">
+                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Phone</span>
+                                <input id="receiverPhone" type="text" class="form-input w-full" placeholder="Client Phone Number" readonly />
+                            </div>
+
+                            <!-- REAL FIELDS (submitted) -->
+                            <input id="receiverId" type="hidden" name="receiverId" value="{{ request()->input('client_id') ?? '' }}" />
+                            <input id="receiverName_hidden" type="hidden" name="receiverName" value="" />
+                            <input id="receiverEmail_hidden" type="hidden" name="receiverEmail" value="" />
+                            <input id="receiverPhone_hidden" type="hidden" name="receiverPhone" value="" />
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="hidden lg:flex justify-center">
+                        <div class="w-px h-full bg-gray-100"></div>
+                    </div>
+
+                    <!-- Agent -->
+                    <div class="bg-white">
+                        <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-900 tracking-wide uppercase">Agent</h3>
+                                    <p class="text-xs text-gray-400">Agent Information</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                @can('pickAgent', App\Models\Invoice::class)
+                                    <button id="select-agent" type="button" onclick="openAgentModal()"
+                                        class="text-[11px] font-semibold text-black city-light-yellow hover:text-[#004c9e] px-3 py-1.5 rounded-full shadow city-light-yellow inline-flex items-center gap-2">
+                                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                            <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                            <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                        </svg>
+                                        <span>Choose</span>
+                                    </button>
+                                @else
+                                    <button id="select-agent" type="button" disabled
+                                        class="text-[11px] font-semibold text-black city-light-yellow px-3 py-1.5 rounded-full shadow city-light-yellow inline-flex items-center gap-2 opacity-60">
+                                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                            <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                            <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                        </svg>
+                                        <span>Choose</span>
+                                    </button>
+                                @endcan
+
+                                <span id="agent_status_badge"
+                                    class="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                                    Assigned
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 space-y-3 text-sm">
+                            <div class="grid grid-cols-[90px_1fr] items-center gap-3">
+                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</span>
+                                <input id="agentName" type="text" class="form-input w-full"
+                                    placeholder="Agent Name"
+                                    value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name : '' }}"
+                                    readonly />
+                            </div>
+
+                            <div class="grid grid-cols-[90px_1fr] items-center gap-3">
+                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Email</span>
+                                <input id="agentEmail" type="email" class="form-input w-full"
+                                    placeholder="Agent Email"
+                                    value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email : '' }}"
+                                    readonly />
+                            </div>
+
+                            <div class="grid grid-cols-[90px_1fr] items-center gap-3">
+                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Phone</span>
+                                <input id="agentPhone" type="text" class="form-input w-full"
+                                    placeholder="Agent Phone"
+                                    value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone_number : '' }}"
+                                    readonly />
+                            </div>
+
+                            <!-- REAL FIELDS (submitted) -->
                             <input id="agentId" type="hidden" name="agentId"
-                                value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
-                        </div>
-
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a
-                            client</p>
-                        <!-- client name -->
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
-                                placeholder="Client Name" disabled />
-                            <input type="hidden" id="receiverName" name="receiverName" value="{{ request()->input('client_id') }}">
-                        </div>
-
-                        <!-- client email -->
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1"
-                                placeholder="Client Email" disabled />
-                        </div>
-
-                        <!-- client phone -->
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
-                                placeholder="Client Phone Number" disabled />
-                        </div>
-
-                    </div>
-
-                    <!-- Agent details -->
-                    <div class="w-full">
-                        <!-- choose agent button -->
-                        <div class="flex items-center">
-                            @can('pickAgent', App\Models\Invoice::class)
-                            <button id="select-agent" type="button" onclick="openAgentModal()"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
-                            @else
-                            <button disabled id="select-agent" type="button"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
-                            @endcan
-                        </div>
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
-                            an Agent</p>
-
-                        <!-- agent name -->
-                        <div class="mt-4 flex items-center">
-                            <input id="agentName" type="text" name="agentName" class="form-input flex-1"
-                                placeholder="Agent Name"
-                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name : '' }}"
-                                disabled />
-                            <input type="hidden" id="agentName" name="agentName" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->id : '' }}">
-                        </div>
-
-                        <!-- agent email -->
-                        <div class="mt-4 flex items-center">
-                            <input id="agentEmail" type="email" name="agentEmail" class="form-input flex-1"
-                                placeholder="Agent Email"
-                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email : '' }}"
-                                disabled />
-                        </div>
-
-                        <!-- agent phone -->
-                        <div class="mt-4 flex items-center">
-                            <input id="agentPhone" type="text" name="agentPhone" class="form-input flex-1"
-                                placeholder="Agent Phone"
-                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone_number : '' }}"
-                                disabled />
+                                value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : (auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->id : '') }}" />
+                            <input id="agentName_hidden" type="hidden" name="agentName" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->id : '' }}" />
+                            <input id="agentEmail_hidden" type="hidden" name="agentEmail" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email : '' }}" />
+                            <input id="agentPhone_hidden" type="hidden" name="agentPhone" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone_number : '' }}" />
                         </div>
                     </div>
+
                 </div>
 
-                <!-- choose items -->
-                <div class="mt-8">
-                    <form id="updateAmountForm" method="POST" action="{{ route('invoice.updateAmount', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}">
-                        @csrf
-                        @method('PUT')
-                        <div class="overflow-x-auto w-full border border-gray-200">
-                            <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
-                                <thead>
-                                    <tr>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
-                                        <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
-                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
-                                        <th class="px-4 py-2 w-36 text-gray-900 dark:text-gray-100">Invoice Price</th>
-                                        <th class="px-4 py-2 w-20 text-gray-900 dark:text-gray-100" @if ($invoice->refund) style="display:none" @endif>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    <!-- Items will be added dynamically here -->
-                                    <!-- "No Item Available" row will show if items.length <= 0 -->
-                                </tbody>
-                            </table>
-                        </div>
+               <!-- Payment Summary -->
+                <div class="px-4 grid grid-cols-2 gap-4">
 
-                        <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
-                            <div class="mb-6 sm:mb-0">
-                                <button id="openTaskModalButton" type="button"
-                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow"
-                                    @if ($invoice->refund) style="display:none" @endif>
-                                    <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                        <path fill="currentColor"
-                                            d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
-                                    </svg> Add Task
-                                </button>
-                            </div>
-                            <div class="sm:w-2/5 flex justify-end flex-col items-end">
+                    {{-- LEFT COLUMN: keep empty (void area) --}}
+                    <div></div>
+
+                    {{-- RIGHT COLUMN: everything aligned like "Subtotal: 2,338.000" --}}
+                    <div class="w-full lg:w-[380px] justify-self-end">
+                        <div class="px-4 py-3">
+                            <div class="space-y-2 text-sm">
+
                                 @php
                                     $isRefundInvoiceEdit = $invoice->refund;
                                     $refundBreakdown = null;
+
                                     if ($isRefundInvoiceEdit) {
                                         $refundObjEdit = \App\Models\Refund::where('refund_invoice_id', $invoice->id)
                                             ->with(['refundDetails.task.originalTask', 'originalInvoice.invoiceDetails', 'originalInvoice.invoicePartials'])
                                             ->first();
+
                                         if ($refundObjEdit && $refundObjEdit->originalInvoice) {
                                             $origInv = $refundObjEdit->originalInvoice;
                                             $paidParts = $origInv->invoicePartials->where('status', 'paid');
+
                                             $rPaidTotal = $paidParts->sum('amount') + $paidParts->sum('service_charge') + $paidParts->sum('invoice_charge');
-                                            $rNonRefundable = $paidParts->sum('service_charge') + $paidParts->sum('invoice_charge');
                                             $rRefundedIds = $refundObjEdit->refundDetails
                                                 ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
                                                 ->filter()->unique()->toArray();
+
                                             $rRemainingTotal = $origInv->invoiceDetails
                                                 ->when(!empty($rRefundedIds), fn($c) => $c->whereNotIn('task_id', $rRefundedIds))
                                                 ->sum('task_price');
+
                                             $refundBreakdown = [
                                                 'paidTotal'       => $rPaidTotal,
                                                 'remainingTasks'  => $rRemainingTotal,
-                                                'nonRefundable'   => $rNonRefundable,
                                                 'cancellationFee' => $refundObjEdit->total_refund_amount,
                                                 'amountToCollect' => $invoice->amount,
                                             ];
@@ -428,78 +446,140 @@
                                 @endphp
 
                                 @if ($isRefundInvoiceEdit && $refundBreakdown)
-                                <div class="mb-3 w-full p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs">
-                                    <p class="font-semibold text-blue-800 mb-1">Refund Balance Calculation</p>
-                                    <div class="space-y-0.5">
-                                        <div class="flex justify-between text-gray-600">
-                                            <span>Total Paid (original invoice):</span>
-                                            <span>{{ number_format($refundBreakdown['paidTotal'], 3) }}</span>
-                                        </div>
-                                        <div class="flex justify-between text-red-600">
-                                            <span>Remaining Task Costs:</span>
-                                            <span>-{{ number_format($refundBreakdown['remainingTasks'], 3) }}</span>
-                                        </div>
-                                        @if ($refundBreakdown['nonRefundable'] > 0)
-                                        <div class="flex justify-between text-red-600">
-                                            <span>Non-refundable Charges:</span>
-                                            <span>-{{ number_format($refundBreakdown['nonRefundable'], 3) }}</span>
-                                        </div>
-                                        @endif
-                                        <div class="flex justify-between text-red-600">
-                                            <span>Cancellation Fee:</span>
-                                            <span>-{{ number_format($refundBreakdown['cancellationFee'], 3) }}</span>
-                                        </div>
-                                        <div class="flex justify-between font-bold border-t border-blue-300 pt-1 text-green-700">
-                                            <span>Amount to Collect:</span>
-                                            <span>{{ number_format($refundBreakdown['amountToCollect'], 3) }}</span>
-                                        </div>
+
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">Total Paid (Original Invoice):</span>
+                                        <span class="font-semibold text-gray-900">{{ number_format($refundBreakdown['paidTotal'], 3, '.', ' ') }} KWD</span>
                                     </div>
-                                </div>
+
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">Total Net:</span>
+                                        <span class="font-semibold text-gray-900">
+                                            <span id="netT">0.00</span>
+                                            <input id="netTotal" type="hidden" name="netTotal" />
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">Remaining Task Cost:</span>
+                                        <span class="font-semibold text-red-600">-{{ number_format($refundBreakdown['remainingTasks'], 3, '.', ' ') }} KWD</span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">Cancellation Fee:</span>
+                                        <span class="font-semibold text-red-600">-{{ number_format($refundBreakdown['cancellationFee'], 3, '.', ' ') }} KWD</span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+                                        <span class="font-semibold text-gray-900">Amount to Collect:</span>
+                                        <span class="font-bold text-gray-900">{{ number_format($refundBreakdown['amountToCollect'], 3, '.', ' ') }} KWD</span>
+                                    </div>
+
+                                @else
+
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-500">Total Net</span>
+                                        <span class="font-semibold text-gray-900">
+                                            <span id="netT">0.00</span>
+                                            <input id="netTotal" type="hidden" name="netTotal" />
+                                        </span>
+                                    </div>
+
                                 @endif
 
-                                {{-- Standard totals always rendered so JS can reference these elements --}}
-                                <div class="mt-4 flex flex-col items-end font-semibold space-y-1">
-                                    <div class="flex items-center pb-1 font-medium">
-                                        <div class="mr-2">Total Net:</div>
-                                        <span id="netT">0.00</span>
-                                        <input id="netTotal" type="hidden" name="netTotal" />
-                                    </div>
-                                    <div class="flex items-center mb-1">
-                                        <div class="mr-2">Subtotal:</div>
-                                        <span id="subTotalDisplay">0.00</span>
-                                    </div>
-                                    <div id="service_charge_display_row" class="flex items-center mb-1" style="display: none;">
-                                        <div id="service_charge_label" class="mr-2">Service Charge:</div>
-                                        <span id="serviceChargeDisplay">0.00</span>
-                                    </div>
-                                    <div id="final_amount_display_row" class="flex items-center mb-1 font-medium border-t pt-1" style="display: none;">
-                                        <div class="mr-2">Final Amount:</div>
-                                        <span id="finalAmountDisplay">0.00</span>
-                                    </div>
-                                    <div id="invoice_charge_display_row" class="flex items-center mb-1" style="display: none;">
-                                        <div id="invoice_charge_label" class="mr-2">Invoice Charge:</div>
-                                        <span id="invoiceChargeDisplay">0.00</span>
-                                    </div>
-                                    <div class="flex items-center border-t pt-1">
-                                        <div class="mr-2">Invoice Total:</div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-500">Subtotal</span>
+                                    <span class="font-semibold text-gray-900" id="subTotalDisplay">0.00</span>
+                                </div>
+
+                                <div id="service_charge_display_row" class="flex items-center justify-between" style="display: none;">
+                                    <span id="service_charge_label" class="text-gray-500">Service Charge</span>
+                                    <span class="font-semibold text-gray-900" id="serviceChargeDisplay">0.00</span>
+                                </div>
+
+                                <div id="invoice_charge_display_row" class="flex items-center justify-between" style="display: none;">
+                                    <span id="invoice_charge_label" class="text-gray-500">Invoice Charge</span>
+                                    <span class="font-semibold text-gray-900" id="invoiceChargeDisplay">0.00</span>
+                                </div>
+
+                                <div id="final_amount_display_row" class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200" style="display: none;">
+                                    <span class="text-gray-900 font-semibold">Final Amount</span>
+                                    <span class="font-bold text-gray-900" id="finalAmountDisplay">0.00</span> 
+                                </div>
+
+                                <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+                                    <span class="text-gray-900 font-semibold">Invoice Total</span>
+                                    <span class="font-bold text-gray-900">
                                         <span id="subT">0.00</span>
                                         <input id="subTotal" type="hidden" name="subTotal" />
-                                    </div>
+                                    </span>
                                 </div>
+
                             </div>
                         </div>
-                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full'))
-                        <div class="px-4 mt-8 border-t pt-6 flex justify-end">
-                            <button type="submit" class="inline-flex items-center justify-center text-base font-semibold bg-blue-600 text-white hover:bg-blue-700 py-3 px-6 rounded-lg shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
-                                    <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" />
-                                </svg>
-                                Update Invoice Amounts
-                            </button>
-                        </div>
-                        @endif
-                    </form>
+                    </div>
+
                 </div>
+
+                <hr class="my-4 border-dashed border-gray-300 mb-6 mt-3" />
+
+                <div class="p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-[1.35rem] font-bold text-gray-900 tracking-wide uppercase">Task Details</h2>
+                            <p class="text-xs text-gray-400">Items and price of the tasks in this invoice</p>
+                        </div>
+                        
+                        <button id="openTaskModalButton" type="button"
+                            class="inline-flex items-center justify-center text-sm text-black font-semibold
+                            city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-4 rounded-full shadow"
+                            @if ($invoice->refund) style="display:none" @endif>
+                            <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <path fill="currentColor"
+                                    d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
+                            </svg> Add Task
+                        </button>
+                    </div>
+
+                    <!-- Invoice Table -->
+                    <div class="mt-8">
+                        <form id="updateAmountForm" method="POST" action="{{ route('invoice.updateAmount', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}">
+                            @csrf
+                            @method('PUT')
+                            <div class="overflow-x-auto w-full border border-gray-200">
+                                <table id="itemsTable" class="text-left table-auto rounded-full border-collapse w-full text-xs">
+                                    <thead class="uppercase tracking-wide mb-1">
+                                        <tr>
+                                            <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
+                                            <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
+                                            <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
+                                            <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
+                                            <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
+                                            <th class="px-4 py-2 w-36 text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                            <th class="px-4 py-2 w-20 text-gray-900 dark:text-gray-100" @if ($invoice->refund) style="display:none" @endif>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                        <!-- Items will be added dynamically here -->
+                                        <!-- "No Item Available" row will show if items.length <= 0 -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full'))
+                            <div class="px-4 mt-8 border-t pt-6 flex justify-end">
+                                <button type="submit" class="inline-flex items-center justify-center text-base font-semibold bg-blue-600 text-white hover:bg-blue-700 py-3 px-6 rounded-lg shadow-md">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
+                                        <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" />
+                                    </svg>
+                                    Update Invoice Amounts
+                                </button>
+                            </div>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+                
             </div>
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
                 <div class="panel mb-5">
@@ -1526,8 +1606,8 @@
                             </div>
 
                             <!-- Split Payment -->
-                            <div id="splitPaymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out">
+                            <div id="splitPaymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain"  onclick="hideModal()">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out" onclick="event.stopPropagation()">
 
                                     <!-- Header -->
                                     <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
@@ -1555,7 +1635,7 @@
                                                         <span class="receiver-name-display text-sm font-semibold text-gray-900">AHMED</span>
                                                     </div>
                                                     <div>
-                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client's Credit</label>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client Credit</label>
                                                         <span class="text-sm font-semibold text-green-600">{{ $balanceCredit }} KWD</span>
                                                     </div>
                                                     <div>
@@ -1698,8 +1778,10 @@
                             </div>
 
                             <!-- Partial Payment -->
-                            <div id="partialPaymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
-                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out">
+                            <div id="partialPaymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain"
+                                onclick="hideModal()">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1300px] max-h-[85vh] flex flex-col transition-all duration-300 ease-out"
+                                    onclick="event.stopPropagation()">
                                     
                                     <!-- Header -->
                                     <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
@@ -1726,7 +1808,7 @@
                                                         <span class="receiver-name-display text-sm font-semibold text-gray-900">AHMED</span>
                                                     </div>
                                                     <div>
-                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client's Credit</label>
+                                                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Client Credit</label>
                                                         <span class="text-sm font-semibold text-green-600">{{ $balanceCredit }} KWD</span>
                                                     </div>
                                                     <div>
@@ -2945,7 +3027,7 @@
                         </label>
                         <input type="number" id="split_invoice_charge_${i}" name="split_invoice_charge_${i}" 
                             class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500" 
-                            value="0" step="0.001" min="0" placeholder="0.000" />
+                            value="0" step="0.001" min="0" placeholder="0.000" oninput="fetchChargeBreakdown('split', ${i})"/>
                     </div>
                 </div>
 
@@ -2978,25 +3060,22 @@
                                 <span class="text-sm text-gray-500 pl-4">Rounding Off: <span id="split_charge_fee_ceiled_${i}" class="text-gray-800 font-bold">0.000</span> KWD
                                 </span>
                                 <span class="text-sm text-gray-500 pl-4">
+                                    Invoice Charge: <span id="split_invoice_charge_value_${i}" class="text-gray-800 font-bold">0.000</span> KWD                                
+                                </span>
+                                <br>
+                                <span class="text-sm text-gray-500 pl-4">
                                     Profit: <span id="split_charge_fee_profit_${i}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
                                 </span>
+                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge</small>
                             </div>
                             <span id="split_charge_subtotal_service_${i}" class="font-semibold text-gray-700">0.000</span>
                         </div>
 
-                        <!-- Base + Invoice Charge -->
-                        <div id="split_breakdown_invoice_row_${i}" class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
-                            <div class="flex flex-col">
-                                <span class="text-md text-gray-600">Base + Invoice Charge</span>
-                                <span class="text-sm text-gray-500 pl-4">Invoice Charge: <span id="split_charge_invoice_charge_${i}" class="text-sm text-gray-800 font-bold">0.000</span> KWD</span>
-                            </div>
-                            <span id="split_charge_subtotal_invoice_${i}" class="font-semibold text-gray-700">0.000</span>
-                        </div>
-
+                        <!-- Grand Total -->
                         <div class="flex justify-between items-start pt-2 mt-1 font-bold">
                             <div class="flex flex-col">
-                                <span class="text-md uppercase tracking-wide mb-1">Grand Total</span>
-                                <span id="split_grand_total_subtext_${i}" class="text-sm font-normal text-gray-500 tabular-nums hidden">Base + Service Charge + Invoice Charge</span>
+                                <span class="text-md uppercase tracking-wide">Grand Total</span>
+                                <span id="split_grand_total_subtext_${i}" class="text-xs font-normal italic text-gray-400 hidden">Base + Service Charge + Invoice Charge</span>
                             </div>
                             <span id="split_charge_total_${i}" class="tabular-nums">0.000</span>
                         </div>
@@ -3063,14 +3142,11 @@
                     }
                 }
 
-                const invoiceBreakdownRow = card.querySelector(`#split_breakdown_invoice_row_${i}`);
                 const grandTotalSubtext   = card.querySelector(`#split_grand_total_subtext_${i}`);
 
                 if (canCharge) {
-                    invoiceBreakdownRow?.classList.remove('hidden');
                     grandTotalSubtext?.classList.remove('hidden');
                 } else {
-                    invoiceBreakdownRow?.classList.add('hidden');
                     grandTotalSubtext?.classList.add('hidden');
                 }
             }
@@ -3126,9 +3202,22 @@
             const gatewayFee  = breakdown?.gatewayFee || 0;
             const ceiledFee   = breakdown?.ceiledFee  || Math.ceil(gatewayFee * 100) / 100;
 
-            const subtotalService = baseAmount + ceiledFee;   // ← use ceiledFee
+            const subtotalService = isPartial ? ceiledFee              : (baseAmount + ceiledFee);
             const subtotalInvoice = baseAmount + invoiceCharge;
-            const grandTotal      = baseAmount + ceiledFee + invoiceCharge;  // ← use ceiledFee
+            const grandTotal      = isPartial ? (ceiledFee + invoiceCharge) : (baseAmount + ceiledFee + invoiceCharge);
+
+            if (isPartial) {
+                const roundingProfit = parseFloat(breakdown?.roundingProfit || 0);
+                const totalProfit    = parseFloat((roundingProfit + invoiceCharge).toFixed(3));
+                const feeProfitEl    = document.getElementById(`charge_fee_profit_${i}`);
+                if (feeProfitEl) feeProfitEl.textContent = totalProfit.toFixed(3);
+            } else {
+                // Split: update profit (rounding profit + invoice charge)
+                const roundingProfit = parseFloat(breakdown?.roundingProfit || 0);
+                const totalProfit    = parseFloat((roundingProfit + invoiceCharge).toFixed(3));
+                const feeProfitEl    = document.getElementById(`split_charge_fee_profit_${i}`);
+                if (feeProfitEl) feeProfitEl.textContent = totalProfit.toFixed(3);
+            }
 
             const invoiceChargeRow  = document.getElementById(`${prefix}_invoice_charge_${i}`);
             const subtotalServiceEl = document.getElementById(`${prefix}_subtotal_service_${i}`);
@@ -3409,7 +3498,8 @@
                         </label>
                         <input type="number" id="partial_invoice_charge_${installmentIndex}" name="invoice_charge1_${installmentIndex}"
                             class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                            value="0" step="0.001" min="0" placeholder="0.000" />
+                            value="0" step="0.001" min="0" placeholder="0.000" oninput="fetchChargeBreakdown('partial', ${installmentIndex})"
+
                     </div>
                 </div>
 
@@ -3429,6 +3519,7 @@
                             <span class="text-md text-gray-500 font-medium uppercase tracking-wide mb-1">Base Amount</span>
                             <span class="font-semibold text-gray-700"><span id="charge_base_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD</span>
                         </div>
+
                         <!-- Base + Service -->
                         <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
                             <div class="flex flex-col">
@@ -3438,29 +3529,27 @@
                                     <span id="charge_fee_${installmentIndex}" class="text-gray-500">0.000</span> KWD
                                 </span>
                                 <span class="text-sm text-gray-500 pl-4">
-                                    Rounding Off: <span id="charge_fee_ceiled_${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD
+                                    Rounding Off: <span id="rounding_off_value${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD
                                 </span>
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Invoice Charge: <span id="partial_invoice_charge_value_${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD                                
+                                </span>
+                                <br>
                                 <span class="text-sm text-gray-500 pl-4">
                                     Profit: <span id="charge_fee_profit_${installmentIndex}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
                                 </span>
+                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge</small>
                             </div>
                             <span class="font-semibold text-gray-700">
                                 <span id="charge_subtotal_service_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD
                             </span>
                         </div>
-                        <!-- Base + Invoice Charge -->
-                        <div id="partial_breakdown_invoice_row_${installmentIndex}" class="hidden flex justify-between items-start py-1.5 border-b border-gray-100 pl-5">
-                            <div class="flex flex-col pl-4 text-gray-600">
-                                <span class="text-md text-gray-600">Base + Invoice Charge</span>
-                                <span class="text-sm text-gray-500 pl-4">Invoice Charge: <span id="charge_invoice_charge_${installmentIndex}" class="text-sm font-bold text-gray-800">0.000</span> KWD</span>
-                            </div>
-                            <span class="font-semibold text-gray-700"><span id="charge_subtotal_invoice_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD</span>
-                        </div>
+                       
                         <!-- Grand Total -->
                         <div class="flex justify-between items-start pt-2 mt-1 font-bold">
                             <div class="flex flex-col">
                                 <span class="text-md uppercase tracking-wide mb-1">Grand Total</span>
-                                <span id="partial_grand_total_subtext_${installmentIndex}" class="text-sm font-normal text-gray-500 hidden">Base + Service Charge + Invoice Charge</span>
+                                <span id="partial_grand_total_subtext_${installmentIndex}" class="text-xs font-normal italic text-gray-400 hidden">Base + Service Charge + Invoice Charge</span>
                             </div>
                             <span><span id="charge_total_${installmentIndex}" class="tabular-nums">0.000</span> KWD</span>
                         </div>
@@ -3492,19 +3581,16 @@
                 const chargeTooltip          = card.querySelector(`#partial_charge_tooltip_${installmentIndex}`);
                 const chargeTooltipText      = card.querySelector(`#partial_charge_tooltip_text_${installmentIndex}`);
                 const invoiceTooltipText     = card.querySelector(`#partial_invoice_charge_tooltip_text_${installmentIndex}`);
-                const invoiceBreakdownRow    = card.querySelector(`#partial_breakdown_invoice_row_${installmentIndex}`);
                 const grandTotalSubtext      = card.querySelector(`#partial_grand_total_subtext_${installmentIndex}`);
 
                 if (canCharge) {
                     chargeWrapper?.classList.remove('hidden');
                     chargeTooltip?.classList.add('hidden');
-                    invoiceBreakdownRow?.classList.remove('hidden');
                     grandTotalSubtext?.classList.remove('hidden');
                     if (invoiceTooltipText) invoiceTooltipText.textContent = `${selectedGateway} charge`;
                 } else {
                     chargeWrapper?.classList.add('hidden');
                     if (chargeInput) chargeInput.value = '0';
-                    invoiceBreakdownRow?.classList.add('hidden');
                     grandTotalSubtext?.classList.add('hidden');
                     if (selectedGateway) {
                         chargeTooltip?.classList.remove('hidden');
@@ -3605,16 +3691,18 @@
 
             if (!gateway || gwKey(gateway) === gwKey('Credit') || amount <= 0) {
                 breakdownEl?.classList.add('hidden');
+                    document.getElementById(`partial_grand_total_subtext_${i}`)?.classList.add('hidden');
+
                 delete store[i];
                 updatePaymentSummary(mode);
                 return;
             }
 
-            const invoiceChargeInputId = isPartial ? `invoice_charge1_${i}` : `split_invoice_charge_${i}`;
+            const invoiceChargeInputId = isPartial ? `partial_invoice_charge_${i}` : `split_invoice_charge_${i}`;            
             const invoiceCharge = parseFloat(document.getElementById(invoiceChargeInputId)?.value) || 0;
 
             try {
-                const response = await fetch("{{ route('invoice.calculate-charge') }}", {
+                const response = await fetch("{{ route('charges.calculate-charge') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3630,48 +3718,48 @@
 
                 const data = await response.json();
 
-                const gatewayFee = parseFloat(data.gatewayFee || 0);
+                const gatewayFee = parseFloat(data.accountingFee || 0);
 
                 if (isPartial) {
-                    const ceiledFee     = Math.ceil(gatewayFee * 100) / 100;   // ← MOVE THIS UP FIRST
-                    const grandTotal    = amount + ceiledFee + invoiceCharge;   // ← now ceiledFee exists
-                    const profit        = parseFloat((ceiledFee - gatewayFee).toFixed(3));
-                    const chargePercent = amount > 0 ? ((gatewayFee / amount) * 100).toFixed(2) : '0.00';
+                    const serviceCharge   = parseFloat(data.accountingFee || 0);  // calculated service charge
+                    const ceiledFee       = parseFloat(data.finalAmount || 0);     // base + ceiled service
+                    const roundingProfit  = parseFloat(data.rounding_profit || 0); // rounding off value (finalAmount - baseAmount - serviceCharge)
+                    const totalProfit     = parseFloat((roundingProfit + invoiceCharge).toFixed(3)); //Profit: rounding off + invoice charge
+                    const chargePercent   = data.self_charge;                      // "8.00"
+                    const grandTotal      = ceiledFee + invoiceCharge;             // 100 + 2 = 102 ✓
 
-                    document.getElementById(`${prefix}_base_${i}`).textContent    = amount.toFixed(3);
-                    document.getElementById(`${prefix}_fee_${i}`).textContent     = gatewayFee.toFixed(3);
+                    document.getElementById(`${prefix}_base_${i}`).textContent    = amount.toFixed(3);        // 92
+                    document.getElementById(`${prefix}_fee_${i}`).textContent     = serviceCharge.toFixed(3); // 7.36
                     document.getElementById(`${prefix}_paid_by_${i}`).textContent = data.paid_by || '-';
-                    document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);
+                    document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);    // 102
 
                     const feePercentEl = document.getElementById(`charge_fee_percent_${i}`);
                     const feeProfitEl  = document.getElementById(`charge_fee_profit_${i}`);
-                    const feeCeiledEl  = document.getElementById(`charge_fee_ceiled_${i}`);
+                    const roundingOffEl = document.getElementById(`rounding_off_value${i}`);
+                    const invoiceChargeDisplayEl = document.getElementById(`partial_invoice_charge_value_${i}`);
+                    const subtotalServiceEl = document.getElementById(`charge_subtotal_service_${i}`);
 
                     if (feePercentEl) feePercentEl.textContent = `${chargePercent}%`;
-                    if (feeProfitEl)  feeProfitEl.textContent  = profit.toFixed(3);
-                    if (feeCeiledEl)  feeCeiledEl.textContent  = ceiledFee.toFixed(3);
-
-                    const subtotalServiceEl = document.getElementById(`charge_subtotal_service_${i}`);
-                    const subtotalInvoiceEl = document.getElementById(`charge_subtotal_invoice_${i}`);
-                    const invoiceChargeRow  = document.getElementById(`charge_invoice_charge_${i}`);
-                    if (subtotalServiceEl) subtotalServiceEl.textContent = (amount + ceiledFee).toFixed(3);
-                    if (subtotalInvoiceEl) subtotalInvoiceEl.textContent = (amount + invoiceCharge).toFixed(3);
-                    if (invoiceChargeRow)  invoiceChargeRow.textContent  = invoiceCharge.toFixed(3);
+                    if (feeProfitEl)  feeProfitEl.textContent  = totalProfit.toFixed(3);   // 0.640
+                    if (roundingOffEl)  roundingOffEl.textContent  = roundingProfit.toFixed(3);     // 0.640
+                    if (invoiceChargeDisplayEl) invoiceChargeDisplayEl.textContent = invoiceCharge.toFixed(3);
+                    if (subtotalServiceEl) subtotalServiceEl.textContent = ceiledFee.toFixed(3);               // 100 ✓
 
                     store[i] = {
-                        gatewayFee:    gatewayFee,
+                        gatewayFee:    serviceCharge,
                         ceiledFee:     ceiledFee,
+                        roundingProfit: roundingProfit, 
                         finalAmount:   grandTotal,
                         invoiceCharge: invoiceCharge,
                         paid_by:       data.paid_by || 'Company',
                     };
                 } else {
-                    const ceiledFee       = Math.ceil(gatewayFee * 100) / 100;
-                    const profit          = parseFloat((ceiledFee - gatewayFee).toFixed(3));
-                    const chargePercent   = amount > 0 ? ((gatewayFee / amount) * 100).toFixed(2) : '0.00';
-                    const subtotalService = amount + ceiledFee;
-                    const subtotalInvoice = amount + invoiceCharge;
-                    const grandTotal      = amount + ceiledFee + invoiceCharge;
+                    const serviceCharge     = parseFloat(data.accountingFee);
+                    const ceiledFee         = parseFloat(data.finalAmount);
+                    const roundingProfit    = parseFloat(data.rounding_profit || 0); // rounding off value (finalAmount - baseAmount - serviceCharge)
+                    const totalProfit       = parseFloat((roundingProfit + invoiceCharge).toFixed(3)); //Profit: rounding off + invoice charge
+                    const chargePercent     = data.self_charge;                      // "8.00"
+                    const grandTotal        = ceiledFee + invoiceCharge;
 
                     const baseAmountEl = document.getElementById(`split_charge_base_amount_${i}`);
                     if (baseAmountEl) baseAmountEl.textContent = amount.toFixed(3);
@@ -3682,17 +3770,14 @@
                     const feePercentEl = document.getElementById(`split_charge_fee_percent_${i}`);
                     const feeCeiledEl  = document.getElementById(`split_charge_fee_ceiled_${i}`);
                     const feeProfitEl  = document.getElementById(`split_charge_fee_profit_${i}`);
+                    const invoiceChargeDisplayEl = document.getElementById(`split_invoice_charge_value_${i}`);
                     if (feePercentEl) feePercentEl.textContent = `${chargePercent}%`;
-                    if (feeCeiledEl)  feeCeiledEl.textContent  = ceiledFee.toFixed(3);
-                    if (feeProfitEl)  feeProfitEl.textContent  = profit.toFixed(3);
-
-                    const invoiceChargeRow = document.getElementById(`split_charge_invoice_charge_${i}`);
-                    if (invoiceChargeRow) invoiceChargeRow.textContent = invoiceCharge.toFixed(3);
+                    if (feeCeiledEl)  feeCeiledEl.textContent  = roundingProfit.toFixed(3);
+                    if (feeProfitEl)  feeProfitEl.textContent  = totalProfit.toFixed(3);
+                    if (invoiceChargeDisplayEl) invoiceChargeDisplayEl.textContent = invoiceCharge.toFixed(3);
 
                     const subtotalServiceEl = document.getElementById(`split_charge_subtotal_service_${i}`);
-                    const subtotalInvoiceEl = document.getElementById(`split_charge_subtotal_invoice_${i}`);
-                    if (subtotalServiceEl) subtotalServiceEl.textContent = subtotalService.toFixed(3);
-                    if (subtotalInvoiceEl) subtotalInvoiceEl.textContent = subtotalInvoice.toFixed(3);
+                    if (subtotalServiceEl) subtotalServiceEl.textContent = ceiledFee.toFixed(3);
 
                     document.getElementById(`${prefix}_paid_by_${i}`).textContent = data.paid_by || '-';
                     document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);
@@ -3700,15 +3785,18 @@
                     store[i] = {
                         gatewayFee:    gatewayFee,
                         ceiledFee:     ceiledFee,
+                        roundingProfit: roundingProfit, 
                         finalAmount:   grandTotal,
                         invoiceCharge: invoiceCharge,
                         paid_by:       data.paid_by || 'Company',
                     };
                 }
+                const grandTotalSubtext = document.getElementById(`partial_grand_total_subtext_${i}`);
+                if (grandTotalSubtext) grandTotalSubtext.classList.remove('hidden');
 
                 breakdownEl?.classList.remove('hidden');
                 updatePaymentSummary(mode);
-
+                
             } catch (err) {
                 console.error(`[${mode} ${i}] Charge calc failed:`, err);
                 breakdownEl?.classList.add('hidden');
@@ -4345,12 +4433,12 @@
             const finalAmount = subtotal + serviceCharge;
             const finalTotal = finalAmount + invoiceCharge;
 
-            document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(3)}`;
+            document.getElementById('subTotalDisplay').textContent = `${fmt3Space(subtotal)} KWD`;
 
             const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
             const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
             if (serviceChargeDisplayElement) {
-                serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(3)}`;
+                serviceChargeDisplayElement.textContent = `${fmt3Space(serviceCharge)} KWD`;
             }
             if (serviceChargeDisplayRow) {
                 serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
@@ -4359,17 +4447,17 @@
             const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
             const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
             if (finalAmountDisplayElement) {
-                finalAmountDisplayElement.textContent = `${finalAmount.toFixed(3)}`;
+                finalAmountDisplayElement.textContent = `${fmt3Space(finalAmount)}`;
             }
             if (finalAmountDisplayRow) {
                 finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
             }
 
-            document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(3)}`;
-            document.getElementById('subT').textContent = `${finalTotal.toFixed(3)}`;
+            document.getElementById('invoiceChargeDisplay').textContent = `${fmt3Space(invoiceCharge)} KWD`;
+            document.getElementById('subT').textContent = `${fmt3Space(finalTotal)} KWD`;
 
             document.querySelectorAll('#subT1, .invoice-total-display').forEach(el => {
-                el.textContent = `${finalTotal.toFixed(3)}`;
+                el.textContent = `${fmt3Space(finalTotal)} KWD`;
             });
 
             document.getElementById('subTotal').value = subtotal;
@@ -4379,10 +4467,10 @@
 
             const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
             const netT = document.getElementById('netT');
-            if (netT) netT.textContent = netTotals.toFixed(3);
+            if (netT) netT.textContent = `${fmt3Space(netTotals)} KWD`;
 
             const netTotal = document.getElementById('netTotal');
-            if (netTotal) netTotal.value = netTotals.toFixed(3);
+            if (netTotal) netTotal.value = `${fmt3Space(netTotals)} KWD`;
         }
 
         function renderItems() {
@@ -6889,6 +6977,13 @@
             recalculateAfterCreditSelection(mode, i, totalSelected);
             updatePaymentSummary(mode);
         }
+
+        function fmt3Space(n) {
+            const s = (Number(n || 0)).toFixed(3);          // "2237.750"
+            const [intPart, decPart] = s.split('.');        // "2237" , "750"
+            const withSpace = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' '); // "2 237"
+            return `${withSpace}.${decPart}`;               // "2 237.750"
+            }
     </script>
 
 </x-app-layout>

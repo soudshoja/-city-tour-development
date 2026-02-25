@@ -1165,6 +1165,17 @@
                                                                     placeholder="Enter order reference"
                                                                     :required="source === 'gateway' && gateway === 'hesabe'">
                                                         </div>
+
+                                                        <!-- Tap -->
+                                                        <div x-show="gateway === 'tap'" class="mt-4" x-cloak>
+                                                            <label for="import_charge_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                                                Existing Charge ID
+                                                            </label>
+                                                            <input type="text" name="import_charge_id" id="import_charge_id"
+                                                                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                                    placeholder="Enter charge ID (chg_...)"
+                                                                    :required="source === 'gateway' && gateway === 'tap'">
+                                                        </div>
                                                     </div>
 
                                                     <!-- Receipt Voucher section -->
@@ -4787,15 +4798,15 @@
                 const sourceEl = form.querySelector('[name="source"]');
                 const source   = (sourceEl?.value || '').trim();
 
-                // Common context
-                const agentName  = document.getElementById('agentName')?.value || '';
-                const clientName = document.getElementById('receiverName')?.value || '';
+                const agentIdVal = document.getElementById('agentId')?.value || '';
+                const clientIdVal = document.getElementById('clientid')?.value || '';
                 const invoiceNumber = document.getElementById('invoiceNumber')?.value || '';
 
                 // Gateway inputs
                 const gatewayVal = document.getElementById('gateway')?.value || '';
                 const invoiceId  = (document.getElementById('import_invoice_id')?.value || '').trim();
                 const orderRef   = (document.getElementById('import_order_reference')?.value || '').trim();
+                const chargeId   = (document.getElementById('import_charge_id')?.value || '').trim();
 
                 // Receipt input (either datalist or your searchable component’s hidden/input)
                 const receiptRef = (
@@ -4804,7 +4815,7 @@
                     ''
                 ).trim();
 
-                if (!agentName || !clientName) {
+                if (!agentIdVal || !clientIdVal) {
                     loadingBox.classList.add('hidden');
                     errorBox.textContent = 'Agent and Client must be selected.';
                     errorBox.classList.remove('hidden');
@@ -4822,20 +4833,21 @@
                     errorBox.classList.remove('hidden');
                     return;
                     }
-                    if (!invoiceId && !orderRef) {
+                    if (!invoiceId && !orderRef && !chargeId) {
                     loadingBox.classList.add('hidden');
-                    errorBox.textContent = 'Payment ID or Order Reference is required.';
+                    errorBox.textContent = 'Payment ID, Order Reference, or Charge ID is required.';
                     errorBox.classList.remove('hidden');
                     return;
                     }
 
                     url = `{{ route('payment.link.import.invoice') }}`;
                     fd.append('gateway', gatewayVal);
-                    fd.append('agentName', agentName);
-                    fd.append('receiverName', clientName);
+                    fd.append('agent_id', agentIdVal);
+                    fd.append('client_id', clientIdVal);
                     fd.append('page', 'invoice');
                     if (invoiceId) fd.append('import_invoice_id', invoiceId);
                     if (orderRef)  fd.append('import_order_reference', orderRef);
+                    if (chargeId)  fd.append('import_charge_id', chargeId);
 
                 } else if (source === 'receipt') {
                     if (!receiptRef) {

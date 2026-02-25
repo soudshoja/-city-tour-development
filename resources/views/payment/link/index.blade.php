@@ -6,15 +6,12 @@
     <div class="pl-header">
         <div class="pl-header-left">
             <h2 class="pl-title">Payment Links</h2>
-            <div data-tooltip="Number of payments"
-                class="pl-count-badge DarkBGcolor">
+            <div data-tooltip="Number of payments" class="pl-count-badge DarkBGcolor">
                 <span>{{ $payments->total() + $importedPayments->total() }}</span>
             </div>
         </div>
         <div class="pl-header-right">
-            <div data-tooltip-left="Reload"
-                class="rotate refresh-icon pl-action-btn pl-refresh-btn"
-                onclick="window.location.reload()">
+            <div data-tooltip-left="Reload" class="rotate refresh-icon pl-action-btn pl-refresh-btn" onclick="window.location.reload()">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path fill="currentColor"
                         d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
@@ -50,7 +47,7 @@
                                     <label class="pl-modal-label">Payment Gateway</label>
                                     <select name="gateway" required class="pl-modal-select">
                                         <option value="" disabled selected>Select Gateway</option>
-                                        @foreach ($paymentGateways as $gw)
+                                        @foreach ($can_import as $gw)
                                             <option value="{{ $gw->name }}">{{ $gw->name }}</option>
                                         @endforeach
                                     </select>
@@ -61,7 +58,7 @@
                                         class="pl-file-input file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 file:cursor-pointer hover:file:bg-blue-100">
                                     <p class="pl-file-hint">Accepted: .xlsx, .csv, .xls</p>
                                 </div>
-                                <div class="flex justify-end gap-3">
+                                <div class="flex justify-between">
                                     <button type="button" @click="showImportModal = false"
                                         class="pl-btn-cancel">Cancel</button>
                                     <button type="submit"
@@ -94,9 +91,7 @@
             }
          }">
         <div class="main-tabs-bar">
-            <button
-                @click="setTab('payment_links')"
-                class="main-tab-shape main-tab main-tab-active"
+            <button @click="setTab('payment_links')" class="main-tab-shape main-tab main-tab-active"
                 :class="{ 'main-tab-active': activeTab === 'payment_links', 'main-tab-inactive': activeTab !== 'payment_links' }">
                 <div class="main-tab-content-wrapper">
                     <svg class="main-tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,16 +102,14 @@
                 </div>
             </button>
 
-            <button
-                @click="setTab('imported')"
-                class="main-tab-shape main-tab main-tab-inactive"
+            <button @click="setTab('imported')" class="main-tab-shape main-tab main-tab-inactive"
                 :class="{ 'main-tab-active': activeTab === 'imported', 'main-tab-inactive': activeTab !== 'imported' }">
                 <div class="main-tab-content-wrapper">
                     <svg class="main-tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                     </svg>
                     Imported
-                    <span class="main-tab-badge main-tab-badge-red">{{ $importedCount }}</span>
+                    <span class="main-tab-badge main-tab-badge-red">{{ $importedPayments->total() }}</span>
                 </div>
             </button>
         </div>
@@ -131,47 +124,33 @@
 
                     <div class="shrink-0 flex items-center gap-2">
                         <span class="pl-date-label">Select a date:</span>
-                        <input type="text"
-                            id="payment-date-range"
-                            class="pl-date-input"
-                            placeholder="Choose date range">
+                        <input type="text" id="payment-date-range" class="pl-date-input" placeholder="Choose date range">
                     </div>
 
-                    <button @click="openFilters = !openFilters"
-                        class="pl-filter-btn">
+                    <button @click="openFilters = !openFilters" class="pl-filter-btn">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                         Filters
-                        @if (!empty($filters))
-                        <span class="pl-filter-count">
-                            {{ collect($filters)->filter()->count() }}
-                        </span>
-                        @endif
+                        @if (!empty($filters)) <span class="pl-filter-count">{{ collect($filters)->filter()->count() }}</span> @endif
                     </button>
                 </div>
 
                 <form id="date-filter-form" action="{{ route('payment.link.index') }}" method="GET" class="hidden">
-                    <input type="hidden" name="search" value="{{ request('search') }}" />
+                    <input type="hidden" name="search" value="{{ request('search') }}">
                     <input type="hidden" name="filter[date_from]" id="date_from" value="{{ data_get($filters, 'date_from') }}">
                     <input type="hidden" name="filter[date_to]" id="date_to" value="{{ data_get($filters, 'date_to') }}">
-                    @foreach(request()->except(['filter', 'search']) as $key => $value)
-                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                    @endforeach
-                    @foreach(request('filter', []) as $filterKey => $filterValue)
-                    @if(!in_array($filterKey, ['date_from', 'date_to']))
-                    <input type="hidden" name="filter[{{ $filterKey }}]" value="{{ $filterValue }}">
-                    @endif
-                    @endforeach
+                    <input type="hidden" name="filter[client_id]" value="{{ data_get($filters, 'client_id') }}">
+                    <input type="hidden" name="filter[agent_id]" value="{{ data_get($filters, 'agent_id') }}">
+                    <input type="hidden" name="filter[created_by]" value="{{ data_get($filters, 'created_by') }}">
+                    <input type="hidden" name="filter[payment_gateway]" value="{{ data_get($filters, 'payment_gateway') }}">
+                    <input type="hidden" name="filter[status]" value="{{ data_get($filters, 'status') }}">
                 </form>
 
-                <div x-show="openFilters" x-cloak x-transition
-                    class="pl-filter-panel">
+                <div x-show="openFilters" x-cloak x-transition class="pl-filter-panel">
                     <div class="pl-filter-header">
                         <span class="pl-filter-title">Filter payments</span>
-                        <button @click="openFilters = false" class="pl-filter-hide-btn">
-                            Hide
-                        </button>
+                        <button @click="openFilters = false" class="pl-filter-hide-btn">Hide</button>
                     </div>
                     <form action="{{ route('payment.link.index') }}" method="GET" class="px-4 pt-4">
                         <input type="hidden" name="search" value="{{ request('search') }}" />
@@ -222,20 +201,17 @@
                                 class="pl-filter-clear">
                                 Clear
                             </a>
-                            <button type="submit"
-                                class="pl-filter-apply">
-                                Apply Filters
-                            </button>
+                            <button type="submit" class="pl-filter-apply">Apply Filters</button>
                         </div>
                     </form>
                 </div>
             </div>
 
             <div class="pl-col-header">
-                <div class="col-span-3">Payment Details</div>
+                <div class="col-span-4">Payment Details</div>
                 <div class="col-span-2">Client & Agent</div>
                 <div class="col-span-2">Payment Methods</div>
-                <div class="col-span-3">Amount Details</div>
+                <div class="col-span-2">Amount Details</div>
                 <div class="col-span-2 text-center">Actions</div>
             </div>
 
@@ -243,8 +219,7 @@
                 @forelse ($payments as $index => $payment)
                 <div class="pl-row {{ $index % 2 === 0 ? 'pl-row-even' : 'pl-row-odd' }}">
                     <div class="pl-row-grid">
-
-                        <div class="md:col-span-1 xl:col-span-3 space-y-2">
+                        <div class="md:col-span-1 xl:col-span-4 space-y-2">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <a href="{{ route('payment.show', $payment->id) }}" target="_blank" class="pl-voucher-link">
                                     {{ $payment->voucher_number }}
@@ -265,20 +240,45 @@
                                 @endphp
                                 <span class="pl-status {{ $statusClass }}">{{ ucfirst($payment->status) }}</span>
                             </div>
-                            <div class="pl-meta space-y-1">
+                            <div class="pl-meta-grid">
                                 @if ($payment->notes)
-                                    <div style="max-width:260px;">
-                                        <span class="pl-label">Notes:</span> {{ $payment->notes }}
+                                    <div class="pl-meta-item pl-meta-item-full">
+                                        <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                        <div>
+                                            <span class="pl-meta-label">Notes</span>
+                                            <span class="pl-meta-value">{{ $payment->notes }}</span>
+                                        </div>
                                     </div>
                                 @endif
-                                <div><span class="pl-label">Created Date:</span> {{ $payment->created_at?->format('d M Y H:i') ?? 'N/A' }}</div>
-                                <div><span class="pl-label">Paid Date:</span> {{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d M Y H:i') : 'N/A' }}</div>
-                                <div><span class="pl-label">Created By:</span> {{ $payment->createdBy?->name ?? 'N/A' }}</div>
-                                @php
-                                    $payment_reference = $payment->myFatoorahPayment?->invoice_ref ?? $payment->payment_reference ?? 'N/A';
-                                @endphp
-                                @if ($payment_reference !== 'N/A')
-                                    <div><span class="pl-label">Reference:</span> {{ $payment_reference }}</div>
+                                <div class="pl-meta-item">
+                                    <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    <div>
+                                        <span class="pl-meta-label">Created</span>
+                                        <span class="pl-meta-value">{{ $payment->created_at?->format('d M Y H:i') ?? 'N/A' }}</span>
+                                    </div>
+                                </div>
+                                <div class="pl-meta-item">
+                                    <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <div>
+                                        <span class="pl-meta-label">Paid</span>
+                                        <span class="pl-meta-value">{{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d M Y H:i') : 'Not Yet' }}</span>
+                                    </div>
+                                </div>
+                                <div class="pl-meta-item">
+                                    <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <div>
+                                        <span class="pl-meta-label">Created By</span>
+                                        <span class="pl-meta-value">{{ $payment->createdBy?->name ?? 'N/A' }}</span>
+                                    </div>
+                                </div>
+                                @if (($paymentRef = $payment->myFatoorahPayment?->invoice_ref ?? $payment->payment_reference) !== null)
+                                    <div class="pl-meta-item">
+                                        <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                        <div>
+                                            <span class="pl-meta-label">Reference</span>
+                                            <span class="pl-meta-value">{{ $paymentRef }}</span>
+                                        </div>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -351,16 +351,13 @@
                             </div>
                         </div>
 
-                        <div class="md:col-span-1 xl:col-span-3">
+                        <div class="md:col-span-1 xl:col-span-2">
                             <div class="pl-amount-grid">
                                 <div class="pl-amount-label">Net Amount:</div>
                                 <div class="pl-amount-value">{{ number_format($payment->amount, 3) }} {{ $payment->currency ?? 'KWD' }}</div>
-
                                 <div class="pl-amount-label">Service Charge:</div>
                                 <div class="pl-amount-value">{{ number_format($payment->service_charge ?? 0, 3) }} {{ $payment->currency ?? 'KWD' }}</div>
-
                                 <div class="pl-amount-divider"></div>
-
                                 <div class="pl-amount-total-label">Client Pay:</div>
                                 <div class="pl-amount-total">
                                     {{ number_format($payment->amount + ($payment->service_charge ?? 0), 3) }}
@@ -371,7 +368,6 @@
 
                         <div class="md:col-span-2 xl:col-span-2 pl-actions"
                              x-data="{ editPaymentLink: false }" @keydown.escape.window="editPaymentLink = false">
-
                             <form action="{{ route('resayil.share-payment-link') }}" method="POST" class="inline-block">
                                 @csrf
                                 <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
@@ -397,21 +393,21 @@
                             <form action="{{ route('payment.link.payment.activation', $payment->id) }}" method="POST" class="inline-block">
                                 @csrf
                                 @if ($payment->status !== 'completed' && !$payment->is_disabled)
-                                <button data-tooltip="Disable Link"
-                                    class="pl-action pl-action-lock">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                        <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 11V7a5 5 0 00-10 0v4" />
-                                    </svg>
-                                </button>
+                                    <button data-tooltip="Disable Link"
+                                        class="pl-action pl-action-lock">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 11V7a5 5 0 00-10 0v4" />
+                                        </svg>
+                                    </button>
                                 @elseif ($payment->status !== 'completed' && $payment->is_disabled)
-                                <button data-tooltip="Enable Link"
-                                    class="pl-action pl-action-lock">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                        <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 8a5 5 0 10-10 0v1" />
-                                    </svg>
-                                </button>
+                                    <button data-tooltip="Enable Link"
+                                        class="pl-action pl-action-lock-disabled">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8a5 5 0 10-10 0v1" />
+                                        </svg>
+                                    </button>
                                 @endif
                             </form>
 
@@ -438,7 +434,7 @@
 
                             <template x-teleport="body">
                                 <div x-cloak x-show="editPaymentLink" class="pl-modal-overlay">
-                                    <div class="pl-modal">
+                                    <div class="pl-modal" @click.outside="editPaymentLink = false">
                                         <div class="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 class="pl-modal-title">Edit Payment Link Details</h2>
@@ -467,124 +463,119 @@
                                             @csrf
                                             @method('PUT')
                                             @unlessrole('agent')
-                                            @php
-                                            $selectedAgent = \App\Models\Agent::find($payment->agent_id);
-                                            $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
-                                            @endphp
                                             <div class="mb-4">
                                                 <x-searchable-dropdown name="agent_id"
                                                     :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                                    :placeholder="$agentPlaceholder"
-                                                    :selectedName="$selectedAgent ? $selectedAgent->name : null" label="Agent" />
+                                                    :placeholder="$payment->agent?->name ?? 'Select an Agent'"
+                                                    :selectedName="$payment->agent?->name" label="Agent" />
                                             </div>
                                             @else
-                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                                <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
                                             @endunlessrole
 
-                                            @php
-                                            $client = $payment->client;
-                                            $namePlaceholder = $client ? $client->full_name : 'Select a Client';
-                                            $dialPlaceholder = $client ? $client->country_code : 'Select Dial Code';
-                                            @endphp
-
                                             @if($payment->status === 'initiate')
-                                            <div class="mb-4">
-                                                <label class="pl-modal-label">Client</label>
-                                                <div class="pl-input-disabled">
-                                                    {{ $client ? $client->full_name . ' - ' . $client->phone : 'N/A' }}
+                                                <div class="mb-4">
+                                                    <label class="pl-modal-label">Client</label>
+                                                    <div class="pl-input-disabled">
+                                                        {{ $payment->client ? $payment->client->full_name . ' - ' . $payment->client->phone : 'N/A' }}
+                                                    </div>
+                                                    <input type="hidden" name="client_id" value="{{ $payment->client?->id }}">
                                                 </div>
-                                                <input type="hidden" name="client_id" value="{{ $client ? $client->id : '' }}">
-                                            </div>
                                             @else
-                                            <div class="mb-4">
-                                                <x-searchable-dropdown name="client_id"
-                                                    :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
-                                                    :placeholder="$namePlaceholder"
-                                                    :selectedName="$client ? $client->full_name : null" label="Client" />
-                                                <input type="hidden" name="client_id_fallback" value="{{ $client ? $client->id : '' }}">
-                                            </div>
+                                                <div class="mb-4">
+                                                    <x-searchable-dropdown name="client_id"
+                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
+                                                        :placeholder="$payment->client?->full_name ?? 'Select a Client'"
+                                                        :selectedName="$payment->client?->full_name" label="Client" />
+                                                    <input type="hidden" name="client_id_fallback" value="{{ $payment->client?->id }}">
+                                                </div>
 
-                                            <label for="phone_{{ $payment->client_id }}" class="pl-modal-label">Phone Number</label>
-                                            <div class="flex gap-4 mb-4">
-                                                <div class="w-2/5">
-                                                    <x-searchable-dropdown name="dial_code"
-                                                        :items="\App\Models\Country::all()->map(fn($country) => ['id' => $country->dialing_code, 'name' => $country->dialing_code . ' ' . $country->name])"
-                                                        :placeholder="$dialPlaceholder"
-                                                        :selectedName="$client ? $client->country_code : null" :showAllOnOpen="true" />
-                                                    <input type="hidden" name="dial_code_fallback" value="{{ $client ? $client->country_code : '' }}">
+                                                <label for="phone_{{ $payment->client_id }}" class="pl-modal-label">Phone Number</label>
+                                                <div class="flex gap-4 mb-4">
+                                                    <div class="w-2/5">
+                                                        <x-searchable-dropdown name="dial_code"
+                                                            :items="\App\Models\Country::all()->map(fn($country) => ['id' => $country->dialing_code, 'name' => $country->dialing_code . ' ' . $country->name])"
+                                                            :placeholder="$payment->client?->country_code ?? 'Select Dial Code'"
+                                                            :selectedName="$payment->client?->country_code" :showAllOnOpen="true" />
+                                                        <input type="hidden" name="dial_code_fallback" value="{{ $payment->client?->country_code }}">
+                                                    </div>
+                                                    <div class="w-3/5">
+                                                        <input type="text" name="phone" id="phone_{{ $payment->client_id }}" value="{{ $payment->client?->phone }}"
+                                                            placeholder="Phone Number" class="pl-modal-input" required />
+                                                    </div>
                                                 </div>
-                                                <div class="w-3/5">
-                                                    <input type="text" name="phone" id="phone_{{ $payment->client_id }}" value="{{ $client ? $client->phone : '' }}"
-                                                        placeholder="Phone Number" class="pl-modal-input" required />
-                                                </div>
-                                            </div>
                                             @endif
 
-                                            @if($payment->paymentItems && $payment->paymentItems->isNotEmpty())
-                                            <div class="mb-4 pl-advance-box">
-                                                <p class="pl-advance-title">Advance Payment Detected</p>
-                                                <p class="pl-advance-text">Amount modification is not available here. Visit the payment details page.</p>
-                                            </div>
+                                            @if($payment->paymentItems?->isNotEmpty())
+                                                <div class="pl-advance-box">
+                                                    <svg class="pl-advance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <div>
+                                                        <p class="pl-advance-title">Advance Payment Detected</p>
+                                                        <p class="pl-advance-text">
+                                                            Amount modification is not available here. Please visit the
+                                                            <span class="pl-advance-link">payment details page</span> to update the amount.
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             @else
-                                            <div class="mb-4">
-                                                <label for="amount" class="pl-modal-label">Amount</label>
-                                                <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
-                                                    class="pl-modal-input {{ $payment->status === 'initiate' ? 'pl-input-disabled cursor-not-allowed' : '' }}"
-                                                    {{ $payment->status === 'initiate' ? 'disabled' : '' }}>
-                                            </div>
+                                                <div class="mb-4">
+                                                    <label for="amount" class="pl-modal-label">Amount</label>
+                                                    <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
+                                                        class="pl-modal-input {{ $payment->status === 'initiate' ? 'pl-input-disabled cursor-not-allowed' : '' }}"
+                                                        {{ $payment->status === 'initiate' ? 'disabled' : '' }}>
+                                                </div>
                                             @endif
 
-                                            @if ($payment->availablePaymentMethodGroups && $payment->availablePaymentMethodGroups->isNotEmpty())
-                                            @php $existingGroupIds = $payment->availablePaymentMethodGroups->pluck('id')->toArray(); @endphp
-                                            <div class="mb-4">
-                                                <label class="pl-modal-label mb-2">Payment Method</label>
-                                                <div class="flex flex-wrap gap-8">
-                                                    @foreach ($paymentMethodChose as $chose)
-                                                    <div class="flex items-center gap-4">
-                                                        <input type="checkbox" name="payment_method_groups[]" value="{{ $chose->paymentMethodGroup->id }}"
-                                                            id="edit_pmg_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}"
-                                                            {{ in_array($chose->paymentMethodGroup->id, old('payment_method_groups', $existingGroupIds)) ? 'checked' : '' }}
-                                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                        <label for="edit_pmg_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}" class="ml-2 text-sm pl-amount-label">
+                                            @if ($payment->availablePaymentMethodGroups?->isNotEmpty())
+                                                <div class="mb-4">
+                                                    <label class="pl-modal-label mb-2">Payment Method</label>
+                                                    <div class="flex flex-wrap gap-x-6 gap-y-2">
+                                                        @foreach ($paymentMethodChose as $chose)
+                                                        <label for="edit_pmg_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}" class="flex items-center gap-2 text-sm pl-amount-label cursor-pointer">
+                                                            <input type="checkbox" name="payment_method_groups[]" value="{{ $chose->paymentMethodGroup->id }}"
+                                                                id="edit_pmg_{{ $payment->id }}_{{ $chose->paymentMethodGroup->id }}"
+                                                                {{ $payment->availablePaymentMethodGroups->contains('id', $chose->paymentMethodGroup->id) ? 'checked' : '' }}
+                                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                                             {{ $chose->paymentMethodGroup->name }}
                                                         </label>
+                                                        @endforeach
                                                     </div>
-                                                    @endforeach
                                                 </div>
-                                            </div>
                                             @else
-                                            <div class="mb-4" x-data="{
-                                                selectedGateway: '{{ $payment->payment_gateway ?? '' }}',
-                                                gatewaysWithMethods: @js($paymentGateways->filter(fn($g) => $g->methods->isNotEmpty())->pluck('name')->toArray()),
-                                                hasMethod() { return this.gatewaysWithMethods.includes(this.selectedGateway); }
-                                            }">
-                                                <div :class="hasMethod() ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'block'">
-                                                    <div>
-                                                        <label class="pl-modal-label">Payment Gateway</label>
-                                                        <select name="payment_gateway" class="pl-modal-select mt-1" x-model="selectedGateway">
-                                                            <option value="" disabled>Select Payment Gateway</option>
-                                                            @foreach ($paymentGateways as $gw)
-                                                            <option value="{{ $gw->name }}" @if ($payment->payment_gateway === $gw->name) selected @endif>{{ $gw->name }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-                                                    @foreach($paymentGateways as $gw)
-                                                    @if($gw->methods->isNotEmpty())
-                                                    <template x-if="selectedGateway === '{{ $gw->name }}'">
-                                                        <div x-cloak>
-                                                            <label class="pl-modal-label">{{ $gw->name }} Methods</label>
-                                                            <select name="payment_method_id" class="pl-modal-select mt-1">
-                                                                <option value="" disabled>Select Method</option>
-                                                                @foreach ($gw->methods as $m)
-                                                                <option value="{{ $m->id }}" @if ($payment->payment_method_id === $m->id) selected @endif>{{ $m->english_name }}</option>
+                                                <div class="mb-4" x-data="{
+                                                    selectedGateway: '{{ $payment->payment_gateway ?? '' }}',
+                                                    gatewaysWithMethods: @js($paymentGateways->filter(fn($g) => $g->methods->isNotEmpty())->pluck('name')->toArray()),
+                                                    hasMethod() { return this.gatewaysWithMethods.includes(this.selectedGateway); }
+                                                }">
+                                                    <div :class="hasMethod() ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'block'">
+                                                        <div>
+                                                            <label class="pl-modal-label">Payment Gateway</label>
+                                                            <select name="payment_gateway" class="pl-modal-select mt-1" x-model="selectedGateway">
+                                                                <option value="" disabled>Select Payment Gateway</option>
+                                                                @foreach ($paymentGateways as $gw)
+                                                                <option value="{{ $gw->name }}" @if ($payment->payment_gateway === $gw->name) selected @endif>{{ $gw->name }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>
-                                                    </template>
-                                                    @endif
-                                                    @endforeach
+                                                        @foreach($paymentGateways as $gw)
+                                                        @if($gw->methods->isNotEmpty())
+                                                        <template x-if="selectedGateway === '{{ $gw->name }}'">
+                                                            <div x-cloak>
+                                                                <label class="pl-modal-label">{{ $gw->name }} Methods</label>
+                                                                <select name="payment_method_id" class="pl-modal-select mt-1">
+                                                                    <option value="" disabled>Select Method</option>
+                                                                    @foreach ($gw->methods as $m)
+                                                                    <option value="{{ $m->id }}" @if ($payment->payment_method_id === $m->id) selected @endif>{{ $m->english_name }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                        </template>
+                                                        @endif
+                                                        @endforeach
+                                                    </div>
                                                 </div>
-                                            </div>
                                             @endif
 
                                             <div class="mb-4">
@@ -592,19 +583,17 @@
                                                 <div x-data="{ language: '{{ $payment->language ?? 'EN' }}' }" class="pl-lang-toggle">
                                                     <input type="hidden" name="language" :value="language">
                                                     <button type="button" @click="language = 'EN'"
-                                                        :class="language === 'EN' ? 'pl-lang-active' : 'pl-lang-inactive'"
-                                                        class="pl-lang-btn">English</button>
+                                                        :class="language === 'EN' ? 'pl-lang-active' : 'pl-lang-inactive'" class="pl-lang-btn">
+                                                        <span class="pl-lang-code">GB</span> English</button>
                                                     <button type="button" @click="language = 'ARB'"
-                                                        :class="language === 'ARB' ? 'pl-lang-active' : 'pl-lang-inactive'"
-                                                        class="pl-lang-btn">العربية</button>
+                                                        :class="language === 'ARB' ? 'pl-lang-active' : 'pl-lang-inactive'" class="pl-lang-btn">
+                                                        <span class="pl-lang-code">SA</span> العربية</button>
                                                 </div>
                                             </div>
 
-                                            <div class="flex justify-between space-x-4">
-                                                <button type="button" @click="editPaymentLink = false"
-                                                    class="pl-btn-cancel shadow-md">Cancel</button>
-                                                <button type="submit"
-                                                    class="pl-btn-primary shadow-md">Update</button>
+                                            <div class="flex justify-between">
+                                                <button type="button" @click="editPaymentLink = false" class="pl-btn-cancel">Cancel</button>
+                                                <button type="submit" class="pl-btn-primary">Update</button>
                                             </div>
                                         </form>
                                     </div>
@@ -625,9 +614,9 @@
             </div>
 
             @if ($payments->hasPages())
-            <div class="mt-4">
-                {{ $payments->links() }}
-            </div>
+                <div class="mt-4">
+                    {{ $payments->links() }}
+                </div>
             @endif
         </div>
 
@@ -640,10 +629,7 @@
 
                 <div class="shrink-0 flex items-center gap-2">
                     <span class="pl-date-label">Select a date:</span>
-                    <input type="text"
-                        id="imported-date-range"
-                        class="pl-date-input"
-                        placeholder="Choose date range">
+                    <input type="text" id="imported-date-range" class="pl-date-input" placeholder="Choose date range">
                 </div>
             </div>
 
@@ -664,26 +650,37 @@
                 @forelse ($importedPayments as $index => $imported)
                 <div class="pl-row {{ $index % 2 === 0 ? 'pl-row-even' : 'pl-row-odd' }}">
                     <div class="imp-row-grid">
-
-                        {{-- Payment Info --}}
                         <div class="md:col-span-1 xl:col-span-4 space-y-1.5">
                             <div class="flex items-center gap-2">
                                 <span class="imp-id">#IMP-{{ $imported->id }}</span>
                             </div>
-                            <div class="pl-meta space-y-0.5">
-                                <div><span class="pl-label">Created Date:</span> {{ $imported->created_at?->format('d M Y H:i') ?? 'N/A' }}</div>
-                                <div><span class="pl-label">Paid Date:</span> {{ $imported->payment_date ? \Carbon\Carbon::parse($imported->payment_date)->format('d M Y H:i') : 'N/A' }}</div>
-                                <div><span class="pl-label">Gateway:</span> {{ $imported->payment_gateway ?? 'N/A' }}</div>
-                                @php
-                                $ref = $imported->myFatoorahPayment?->invoice_ref ?? $imported->payment_reference ?? null;
-                                @endphp
-                                @if ($ref)
-                                <div><span class="pl-label">Ref:</span> {{ Str::limit($ref, 20) }}</div>
+                            <div class="pl-meta-grid">
+                                <div class="pl-meta-item">
+                                    <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    <div>
+                                        <span class="pl-meta-label">Created</span>
+                                        <span class="pl-meta-value">{{ $imported->created_at?->format('d M Y H:i') ?? 'N/A' }}</span>
+                                    </div>
+                                </div>
+                                <div class="pl-meta-item">
+                                    <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <div>
+                                        <span class="pl-meta-label">Paid</span>
+                                        <span class="pl-meta-value">{{ $imported->payment_date ? \Carbon\Carbon::parse($imported->payment_date)->format('d M Y H:i') : 'N/A' }}</span>
+                                    </div>
+                                </div>
+                                @if ($ref = $imported->myFatoorahPayment?->invoice_ref ?? $imported->tapPayment?->tap_id ?? $imported->payment_reference)
+                                    <div class="pl-meta-item">
+                                        <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                        <div>
+                                            <span class="pl-meta-label">Reference</span>
+                                            <span class="pl-meta-value">{{ $ref }}</span>
+                                        </div>
+                                    </div>
                                 @endif
                             </div>
                         </div>
 
-                        {{-- Method & Agent --}}
                         <div class="md:col-span-1 xl:col-span-2 space-y-2">
                             <div>
                                 @if ($imported->paymentMethod)
@@ -697,7 +694,7 @@
                                     };
                                     @endphp
                                     <div class="pl-method-tag {{ $importedMethodCss }}">
-                                        <span>{{ $imported->paymentMethod->english_name }}</span>
+                                        <span>{{ $imported->payment_gateway ? $imported->payment_gateway . ' - ' : '' }}{{ $imported->paymentMethod->english_name }}</span>
                                     </div>
                                 @elseif ($imported->payment_gateway)
                                     <div class="pl-method-tag pl-method-tag-orange">
@@ -717,17 +714,13 @@
                             </div>
                         </div>
 
-                        {{-- Amount --}}
                         <div class="md:col-span-1 xl:col-span-3">
                             <div class="pl-amount-grid">
                                 <div class="pl-amount-label">Net Amount:</div>
                                 <div class="pl-amount-value">{{ number_format($imported->amount, 3) }} {{ $imported->currency ?? 'KWD' }}</div>
-
                                 <div class="pl-amount-label">Gateway Fee:</div>
                                 <div class="pl-amount-value">{{ number_format($imported->service_charge ?? 0, 3) }} {{ $imported->currency ?? 'KWD' }}</div>
-
                                 <div class="pl-amount-divider"></div>
-
                                 <div class="pl-amount-total-label">Total:</div>
                                 <div class="pl-amount-total">
                                     {{ number_format($imported->amount + ($imported->service_charge ?? 0), 3) }}
@@ -736,7 +729,6 @@
                             </div>
                         </div>
 
-                        {{-- Action --}}
                         <div class="md:col-span-1 xl:col-span-3 pl-actions">
                             @if (!$imported->client_id)
                             <div x-data="{ showAssign: false }">
@@ -744,7 +736,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>
                                     </svg>
-                                    Assign Client
+                                    {{ $imported->agent_id ? 'Assign Client' : 'Assign' }}
                                 </button>
 
                                 <template x-teleport="body">
@@ -752,13 +744,21 @@
                                         <div class="pl-modal" @click.outside="showAssign = false">
                                             <div class="flex items-center justify-between mb-4">
                                                 <div>
-                                                    <h2 class="pl-modal-title" style="font-size:1.125rem;">Assign Client</h2>
+                                                    <h2 class="pl-modal-title" style="font-size:1.125rem;">{{ $imported->agent_id ? 'Assign Client' : 'Assign Agent & Client' }}</h2>
                                                     <p class="pl-modal-subtitle" style="font-style:normal;">#IMP-{{ $imported->id }} &mdash; {{ number_format($imported->amount + ($imported->service_charge ?? 0), 3) }} {{ $imported->currency ?? 'KWD' }}</p>
                                                 </div>
                                                 <button @click="showAssign = false" class="pl-modal-close">&times;</button>
                                             </div>
                                             <form action="{{ route('payment.link.import.assign-client', $imported->id) }}" method="POST">
                                                 @csrf
+                                                @if (!$imported->agent_id)
+                                                <div class="mb-4">
+                                                    <x-searchable-dropdown name="agent_id"
+                                                        :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                                        :placeholder="'Search for agent'"
+                                                        label="Agent" />
+                                                </div>
+                                                @endif
                                                 <div class="mb-4">
                                                     <x-searchable-dropdown name="client_id"
                                                         :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
@@ -766,13 +766,17 @@
                                                         label="Client" />
                                                 </div>
                                                 <div class="mb-4 pl-info-box">
-                                                    <p class="pl-info-text">Assigning a client will generate a voucher number, create a credit entry and journal entries (COA) using the paid date as transaction date.</p>
+                                                    <p class="pl-info-text">
+                                                        @if (!$imported->agent_id)
+                                                            Assigning an agent and client will generate a voucher number, create a credit entry and journal entries (COA) using the paid date as transaction date.
+                                                        @else
+                                                            Assigning a client will generate a voucher number, create a credit entry and journal entries (COA) using the paid date as transaction date.
+                                                        @endif
+                                                    </p>
                                                 </div>
-                                                <div class="flex justify-end gap-3">
-                                                    <button type="button" @click="showAssign = false"
-                                                        class="pl-btn-cancel">Cancel</button>
-                                                    <button type="submit"
-                                                        class="pl-btn-primary">Assign</button>
+                                                <div class="flex justify-between">
+                                                    <button type="button" @click="showAssign = false" class="pl-btn-cancel">Cancel</button>
+                                                    <button type="submit" class="pl-btn-primary">Assign</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -802,9 +806,9 @@
             </div>
 
             @if ($importedPayments->hasPages())
-            <div class="mt-4">
-                {{ $importedPayments->links() }}
-            </div>
+                <div class="mt-4">
+                    {{ $importedPayments->links() }}
+                </div>
             @endif
         </div>
     </div>

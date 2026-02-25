@@ -15,6 +15,9 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use App\Jobs\SyncGatewayMethods;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\JsonResponse;
+use App\Models\Invoice;
+use App\Services\ChargeService;
 
 class ChargeController extends Controller
 {
@@ -536,5 +539,27 @@ class ChargeController extends Controller
         }
 
         return redirect()->route('charges.index')->with('error', 'You do not have permission to update this gateway.');
+    }
+    
+    public function calculateCharge(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'gateway' => 'required|string',
+            'method' => 'nullable|integer',
+            'invoice_id' => 'required|integer',
+        ]);
+
+        $invoice = Invoice::findOrFail($validated['invoice_id']);
+        $companyId = $invoice->agent->branch->company_id;
+
+        $result = ChargeService::calculate(
+            (float) $validated['amount'],
+            $companyId,
+            $validated['method'] ?? null,
+            $validated['gateway']
+        );
+
+        return response()->json($result);
     }
 }

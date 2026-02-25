@@ -501,7 +501,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
-        Route::post('/calculate-charge', [InvoiceController::class, 'calculateCharge'])->name('calculate-charge');
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details');
         Route::post('/{invoice}/lock', [InvoiceController::class, 'lockInvoice'])->name('lock');
         Route::post('/{invoice}/unlock', [InvoiceController::class, 'unlockInvoice'])->name('unlock');
@@ -651,6 +650,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
         Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
         Route::put('/{id}/credentials', [ChargeController::class, 'updateCredentials'])->name('credentials.update');
+        Route::post('/calculate-charge', [ChargeController::class, 'calculateCharge'])->name('calculate-charge');
+
     });
 
     //Auto Billing

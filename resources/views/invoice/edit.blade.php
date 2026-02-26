@@ -520,7 +520,7 @@
 
                                     <div class="flex justify-end">
                                         <small class="text-xs italic text-gray-400">
-                                            *Profit from service charge rounding and applied invoice charge
+                                            *Profit from service charge rounding and applied invoice charge (if applicable)
                                         </small>
                                     </div>
                                 </div>
@@ -2547,7 +2547,6 @@
             return gateway && gateway.can_charge_invoice === true;
         }
 
-        // console.log('invoice', invoice);
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
         const addTabButton = document.getElementById('addTabButton');
@@ -3083,13 +3082,16 @@
                                 <span class="text-sm text-gray-500 pl-4">Rounding Off: <span id="split_charge_fee_ceiled_${i}" class="text-gray-800 font-bold">0.000</span> KWD
                                 </span>
                                 <span class="text-sm text-gray-500 pl-4">
+                                    Rounded Service Charge: <span id="split_rounded_service_charge_value${i}" class="text-gray-800 font-bold">0.000</span> KWD
+                                </span>
+                                <span id="split_invoice_charge_breakdown_row_${i}" class="text-sm text-gray-500 pl-4 hidden">
                                     Invoice Charge: <span id="split_invoice_charge_value_${i}" class="text-gray-800 font-bold">0.000</span> KWD                                
                                 </span>
                                 <br>
                                 <span class="text-sm text-gray-500 pl-4">
                                     Profit: <span id="split_charge_fee_profit_${i}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
                                 </span>
-                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge</small>
+                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge (if applicable)</small>
                             </div>
                             <span id="split_charge_subtotal_service_${i}" class="font-semibold text-gray-700">0.000</span>
                         </div>
@@ -3147,6 +3149,7 @@
                 const chargeTooltipText = card.querySelector(`#split_charge_tooltip_text_${i}`);
                 const invoiceChargeTooltipText = card.querySelector(`#split_invoice_charge_tooltip_text_${i}`);
                 const canCharge = canGatewayChargeInvoice(selectedGateway);
+                const invoiceChargeBreakdownRow = card.querySelector(`#split_invoice_charge_breakdown_row_${i}`);
 
                 if (canCharge) {
                     chargeWrapper.classList.remove('hidden');
@@ -3154,6 +3157,7 @@
                     if (invoiceChargeTooltipText) {
                         invoiceChargeTooltipText.textContent = `${selectedGateway} charge`;
                     }
+                    invoiceChargeBreakdownRow?.classList.remove('hidden');
                 } else {
                     chargeWrapper.classList.add('hidden');
                     chargeInput.value = '0';
@@ -3163,6 +3167,7 @@
                     } else {
                         chargeTooltip.classList.add('hidden');
                     }
+                    invoiceChargeBreakdownRow?.classList.add('hidden');
                 }
 
                 const grandTotalSubtext   = card.querySelector(`#split_grand_total_subtext_${i}`);
@@ -3521,7 +3526,7 @@
                         </label>
                         <input type="number" id="partial_invoice_charge_${installmentIndex}" name="invoice_charge1_${installmentIndex}"
                             class="w-full p-2 text-sm border border-gray-300 rounded-md no-spin shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                            value="0" step="0.001" min="0" placeholder="0.000" oninput="fetchChargeBreakdown('partial', ${installmentIndex})"
+                            value="0" step="0.001" min="0" placeholder="0.000" oninput="fetchChargeBreakdown('partial', ${installmentIndex})"/>
 
                     </div>
                 </div>
@@ -3555,13 +3560,16 @@
                                     Rounding Off: <span id="rounding_off_value${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD
                                 </span>
                                 <span class="text-sm text-gray-500 pl-4">
+                                    Rounded Service Charge: <span id="rounded_service_charge_value${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD
+                                </span>
+                                <span id="partial_invoice_charge_breakdown_row_${installmentIndex}" class="text-sm text-gray-500 pl-4 hidden">
                                     Invoice Charge: <span id="partial_invoice_charge_value_${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD                                
                                 </span>
                                 <br>
                                 <span class="text-sm text-gray-500 pl-4">
                                     Profit: <span id="charge_fee_profit_${installmentIndex}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
                                 </span>
-                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge</small>
+                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge (if applicable)</small>
                             </div>
                             <span class="font-semibold text-gray-700">
                                 <span id="charge_subtotal_service_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD
@@ -3605,16 +3613,20 @@
                 const chargeTooltipText      = card.querySelector(`#partial_charge_tooltip_text_${installmentIndex}`);
                 const invoiceTooltipText     = card.querySelector(`#partial_invoice_charge_tooltip_text_${installmentIndex}`);
                 const grandTotalSubtext      = card.querySelector(`#partial_grand_total_subtext_${installmentIndex}`);
+                const invoiceChargeBreakdownRow = card.querySelector(`#partial_invoice_charge_breakdown_row_${installmentIndex}`);
 
                 if (canCharge) {
                     chargeWrapper?.classList.remove('hidden');
                     chargeTooltip?.classList.add('hidden');
                     grandTotalSubtext?.classList.remove('hidden');
+                    invoiceChargeBreakdownRow?.classList.remove('hidden');
                     if (invoiceTooltipText) invoiceTooltipText.textContent = `${selectedGateway} charge`;
                 } else {
                     chargeWrapper?.classList.add('hidden');
                     if (chargeInput) chargeInput.value = '0';
                     grandTotalSubtext?.classList.add('hidden');
+                    invoiceChargeBreakdownRow?.classList.add('hidden');
+
                     if (selectedGateway) {
                         chargeTooltip?.classList.remove('hidden');
                         if (chargeTooltipText) chargeTooltipText.textContent = `Invoice charge not supported for ${selectedGateway}`;
@@ -3740,16 +3752,22 @@
                 });
 
                 const data = await response.json();
-
                 const gatewayFee = parseFloat(data.accountingFee || 0);
 
                 if (isPartial) {
-                    const serviceCharge   = parseFloat(data.accountingFee || 0);  // calculated service charge
+                    const baseAmount      = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0; // 40.000
+                    const serviceCharge   = parseFloat(data.self_charge / 100) * baseAmount;  // calculated service charge
                     const ceiledFee       = parseFloat(data.finalAmount || 0);     // base + ceiled service
-                    const roundingProfit  = parseFloat(data.rounding_profit || 0); // rounding off value (finalAmount - baseAmount - serviceCharge)
-                    const totalProfit     = parseFloat((roundingProfit + invoiceCharge).toFixed(3)); //Profit: rounding off + invoice charge
                     const chargePercent   = data.self_charge;                      // "8.00"
                     const grandTotal      = ceiledFee + invoiceCharge;             // 100 + 2 = 102 ✓
+
+                    const paidBy = data.paid_by || 'Company';
+                    const ceiledServiceOnly = ceiledFee - baseAmount;
+                    const roundingProfit = paidBy === 'Client' 
+                        ? parseFloat((ceiledServiceOnly - serviceCharge).toFixed(3))
+                        : 0;
+                    const totalProfit = parseFloat((roundingProfit + invoiceCharge).toFixed(3));
+                    const roundedServiceCharge = paidBy === 'Client' ? ceiledServiceOnly : 0;
 
                     document.getElementById(`${prefix}_base_${i}`).textContent    = amount.toFixed(3);        // 92
                     document.getElementById(`${prefix}_fee_${i}`).textContent     = serviceCharge.toFixed(3); // 7.36
@@ -3757,32 +3775,44 @@
                     document.getElementById(`${prefix}_total_${i}`).textContent   = grandTotal.toFixed(3);    // 102
 
                     const feePercentEl = document.getElementById(`charge_fee_percent_${i}`);
+                    const feeValueEl   = document.getElementById(`charge_fee_${i}`);
                     const feeProfitEl  = document.getElementById(`charge_fee_profit_${i}`);
                     const roundingOffEl = document.getElementById(`rounding_off_value${i}`);
+                    const roundedServiceChargeEl = document.getElementById(`rounded_service_charge_value${i}`);
                     const invoiceChargeDisplayEl = document.getElementById(`partial_invoice_charge_value_${i}`);
                     const subtotalServiceEl = document.getElementById(`charge_subtotal_service_${i}`);
 
                     if (feePercentEl) feePercentEl.textContent = `${chargePercent}%`;
+                    if (feeValueEl)   feeValueEl.textContent   = serviceCharge.toFixed(3); // 7.360
                     if (feeProfitEl)  feeProfitEl.textContent  = totalProfit.toFixed(3);   // 0.640
                     if (roundingOffEl)  roundingOffEl.textContent  = roundingProfit.toFixed(3);     // 0.640
+                    if (roundedServiceChargeEl) roundedServiceChargeEl.textContent = roundedServiceCharge.toFixed(3);
                     if (invoiceChargeDisplayEl) invoiceChargeDisplayEl.textContent = invoiceCharge.toFixed(3);
                     if (subtotalServiceEl) subtotalServiceEl.textContent = ceiledFee.toFixed(3);               // 100 ✓
 
                     store[i] = {
                         gatewayFee:    serviceCharge,
                         ceiledFee:     ceiledFee,
+                        ceiledServiceOnly: ceiledServiceOnly,
                         roundingProfit: roundingProfit, 
                         finalAmount:   grandTotal,
                         invoiceCharge: invoiceCharge,
                         paid_by:       data.paid_by || 'Company',
                     };
                 } else {
-                    const serviceCharge     = parseFloat(data.accountingFee);
+                    const baseAmount        = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0; // 40.000
+                    const serviceCharge     = parseFloat(data.self_charge / 100) * baseAmount;  // calculated service charge
                     const ceiledFee         = parseFloat(data.finalAmount);
-                    const roundingProfit    = parseFloat(data.rounding_profit || 0); // rounding off value (finalAmount - baseAmount - serviceCharge)
-                    const totalProfit       = parseFloat((roundingProfit + invoiceCharge).toFixed(3)); //Profit: rounding off + invoice charge
                     const chargePercent     = data.self_charge;                      // "8.00"
                     const grandTotal        = ceiledFee + invoiceCharge;
+                    
+                    const paidBy          = data.paid_by || 'Company';
+                    const ceiledServiceOnly = ceiledFee - baseAmount;
+                    const roundedServiceCharge = paidBy === 'Client' ? ceiledServiceOnly : 0;
+                    const roundingProfit  = paidBy === 'Client'
+                        ? parseFloat((ceiledServiceOnly - serviceCharge).toFixed(3))
+                        : 0;
+                    const totalProfit     = parseFloat((roundingProfit + invoiceCharge).toFixed(3));
 
                     const baseAmountEl = document.getElementById(`split_charge_base_amount_${i}`);
                     if (baseAmountEl) baseAmountEl.textContent = amount.toFixed(3);
@@ -3791,13 +3821,17 @@
                     if (feeEl) feeEl.textContent = gatewayFee.toFixed(3);
 
                     const feePercentEl = document.getElementById(`split_charge_fee_percent_${i}`);
+                    const feeValueEl   = document.getElementById(`split_charge_fee_${i}`);
                     const feeCeiledEl  = document.getElementById(`split_charge_fee_ceiled_${i}`);
                     const feeProfitEl  = document.getElementById(`split_charge_fee_profit_${i}`);
                     const invoiceChargeDisplayEl = document.getElementById(`split_invoice_charge_value_${i}`);
+                    const roundedServiceChargeEl = document.getElementById(`split_rounded_service_charge_value${i}`);
                     if (feePercentEl) feePercentEl.textContent = `${chargePercent}%`;
+                    if (feeValueEl) feeValueEl.textContent = serviceCharge.toFixed(3);
                     if (feeCeiledEl)  feeCeiledEl.textContent  = roundingProfit.toFixed(3);
                     if (feeProfitEl)  feeProfitEl.textContent  = totalProfit.toFixed(3);
                     if (invoiceChargeDisplayEl) invoiceChargeDisplayEl.textContent = invoiceCharge.toFixed(3);
+                    if (roundedServiceChargeEl) roundedServiceChargeEl.textContent = roundedServiceCharge.toFixed(3);
 
                     const subtotalServiceEl = document.getElementById(`split_charge_subtotal_service_${i}`);
                     if (subtotalServiceEl) subtotalServiceEl.textContent = ceiledFee.toFixed(3);
@@ -3808,6 +3842,7 @@
                     store[i] = {
                         gatewayFee:    gatewayFee,
                         ceiledFee:     ceiledFee,
+                        ceiledServiceOnly: ceiledServiceOnly,
                         roundingProfit: roundingProfit, 
                         finalAmount:   grandTotal,
                         invoiceCharge: invoiceCharge,
@@ -3949,19 +3984,13 @@
         function loadCreditVouchers(mode, installmentIndex) {
             let clientId;
 
-            console.log(`[loadCreditVouchers] mode=${mode}, installmentIndex=${installmentIndex}`);
-
             if (mode === 'partial') {
                 const rawClientId = @json($invoice->client_id ?? null);
                 clientId = rawClientId ? parseInt(rawClientId) : null;
-                console.log(`[loadCreditVouchers] partial mode — invoice clientId:`, clientId);
             } else {
                 const clientIdInput = document.getElementById(`customer_name_${installmentIndex}`);
-                console.log(`[loadCreditVouchers] split mode — clientIdInput element:`, clientIdInput);
-                console.log(`[loadCreditVouchers] split mode — clientIdInput value:`, clientIdInput?.value);
 
                 if (!clientIdInput || !clientIdInput.value) {
-                    console.warn(`[loadCreditVouchers] No client selected for split row ${installmentIndex}`);
                     const gw = document.getElementById(`payment_gateway_${installmentIndex}`);
                     if (gw) gw.value = '';
                     const panel = document.getElementById(`credit_panel_${installmentIndex}`);
@@ -3973,16 +4002,13 @@
                     return;
                 }
                 clientId = parseInt(clientIdInput.value);
-                console.log(`[loadCreditVouchers] split mode — parsed clientId:`, clientId);
             }
 
             if (!clientId) {
-                console.warn(`[loadCreditVouchers] clientId is null/0 — aborting`);
                 const vouchersContainerId = mode === 'split'
                     ? `credit_vouchers_split_${installmentIndex}`
                     : `credit_vouchers_${installmentIndex}`;
                 const vouchersContainer = document.getElementById(vouchersContainerId);
-                console.log(`[loadCreditVouchers] vouchers container (${vouchersContainerId}):`, vouchersContainer);
                 if (vouchersContainer) {
                     vouchersContainer.innerHTML = `
                         <div class="text-red-600 text-sm p-3 bg-red-50 rounded">
@@ -3997,10 +4023,6 @@
             const vouchersContainerId = mode === 'split'
                 ? `credit_vouchers_split_${installmentIndex}`
                 : `credit_vouchers_${installmentIndex}`;
-
-            console.log(`[loadCreditVouchers] vouchers container ID:`, vouchersContainerId);
-            console.log(`[loadCreditVouchers] vouchers container exists:`, !!document.getElementById(vouchersContainerId));
-            console.log(`[loadCreditVouchers] calling PaymentSelection.showForRow(${mode}, ${installmentIndex}, ${clientId})`);
 
             PaymentSelection.showForRow(mode, installmentIndex, clientId);
         }
@@ -4288,7 +4310,6 @@
 
 
         function updateField(itemId, fieldId) {
-            // console.log('updated', itemId + '-' + fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
             const newValue = inputField.value || NULL;
 
@@ -4317,16 +4338,12 @@
                     }
 
                     const nettValue = (item.invprice - item.price);
-                    // console.log(item);
-                    // console.log('Supplier price: ' + item.total);
-                    // console.log('Invoice price: ' + item.invprice);
-                    // console.log('Nett of markup: ' + nettValue);
+                
                     calculateSubtotal(); // Recalculate the subtotal
 
                     let existingAlert = document.getElementById("errorNotification");
 
                     if (nettValue <= 0) {
-                        // console.log("The Invoice Price must be higher than the Task Price.");
 
                         if (!existingAlert) {
                             let errorNotification = document.createElement('div');
@@ -4389,7 +4406,7 @@
                 : (invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0);
 
             // Check if invoice charge has been modified from original
-            const originalInvoiceCharge = parseFloat("{{ $invoice->invoice_charge ?? 0 }}") || 0;
+            const originalInvoiceCharge = parseFloat({{ $invoice->invoice_charge ?? 0 }}) || 0;
             const invoiceChargeChanged = Math.abs(invoiceCharge - originalInvoiceCharge) > 0.001;
             
             let originalServiceCharge = 0;
@@ -4402,10 +4419,39 @@
             let chargeType = 'Flat Rate';
 
             // Only use stored partials' service charge if invoice charge hasn't changed
-            if (window.invoicePartials && Array.isArray(window.invoicePartials) && window.invoicePartials.length > 0 && !invoiceChargeChanged) {
+            if (window.invoicePartials && Array.isArray(window.invoicePartials) && window.invoicePartials.length > 0) {
                 serviceCharge = window.invoicePartials.reduce((sum, partial) => {
                     return sum + (parseFloat(partial.service_charge) || 0);
                 }, 0);
+
+                // ADD: sum invoice charges from partials
+                const totalInvoiceChargeFromPartials = window.invoicePartials.reduce((sum, partial) => {
+                    return sum + (parseFloat(partial.invoice_charge) || 0);
+                }, 0);
+
+                // ADD: sum original (pre-ceiling) service charges
+                originalServiceCharge = window.invoicePartials.reduce((sum, partial) => {
+                    return sum + (parseFloat(partial.gateway_fee) || 0);
+                }, 0);
+
+                // ADD: derive rounding profit
+                roundingProfit = parseFloat((serviceCharge - originalServiceCharge).toFixed(3));
+
+                // ADD: profit display
+                profitForDisplay = roundingProfit + totalInvoiceChargeFromPartials;
+                profitShouldShow = profitForDisplay > 0;
+
+                // ADD: update invoice charge display from partials
+                document.getElementById('invoiceChargeDisplay').textContent = `${fmt3Space(totalInvoiceChargeFromPartials)} KWD`;
+                const invoiceChargeDisplayRow = document.getElementById('invoice_charge_display_row');
+                if (invoiceChargeDisplayRow) {
+                    invoiceChargeDisplayRow.style.display = totalInvoiceChargeFromPartials > 0 ? 'flex' : 'none';
+                }
+
+                // ADD: paidBy — if any partial has client-paid service charge, show the breakdown rows
+                paidBy = serviceCharge > 0 ? 'Client' : 'Company';
+                chargeType = 'Percent'; // to trigger isPercentCharge check below
+                chargeValue = serviceCharge > 0 ? 1 : 0; // non-zero to pass the isPercentCharge guard
             } else {
                 // Calculate dynamically when no partials OR when invoice charge changed
                 const selectedGateway = document.getElementById('payment_gateway_option')?.value;
@@ -4908,7 +4954,6 @@
 
                     if (openButton && closeButton && modal) {
                         openButton.addEventListener('click', function() {
-                            // console.log(item.id);
                             modalInvoice.showModal();
                         });
 
@@ -5465,7 +5510,6 @@
                     if (gateway === 'Credit') {
                         const rowId = `split_${i}`;
                         paymentAllocations = PaymentSelection.getSelectedPaymentsForRow(rowId);
-                        console.log(`Split row ${i} payment allocations:`, paymentAllocations);
                     }
 
                     requests.push(save('split', {
@@ -5521,7 +5565,6 @@
                     if (gateway === 'Credit') {
                         const rowId = `partial_${i}`;
                         paymentAllocations = PaymentSelection.getSelectedPaymentsForRow(rowId);
-                        console.log(`Partial row ${i} payment allocations:`, paymentAllocations);
                     }
 
                     requests.push(save('partial', {
@@ -5532,16 +5575,6 @@
                         partial_invoice_charge: partialInvoiceCharge,
                         payment_allocations: paymentAllocations
                     }));
-
-                    console.log(`row ${i}`, {
-                        date,
-                        amount,
-                        gatewayId: gatewayEl?.id,
-                        gateway,
-                        methodId: methodEl?.id,
-                        methodVisible: methodBox && !methodBox.classList.contains('hidden'),
-                        method
-                    });
                 }
 
                 // UI feedback (unchanged)
@@ -5637,7 +5670,6 @@
             if (type === 'credit') {
                 payload.credit = true;
             }
-            console.log(payload);
 
             try {
                 const response = await fetch(invoiceUrl, {
@@ -5737,11 +5769,7 @@
             // Show loading state
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
-            // console.log(
-            //     'clientId:', clientId,
-            //     'agentId:', agentId,
-            //     'tasksLength:', tasks.length,
-            // );
+          
             if (!clientId || !agentId || !tasks.length) {
                 console.error("Required data is missing.");
                 let errorNotification = document.createElement('div');
@@ -5786,7 +5814,6 @@
                 const {
                     invoiceId
                 } = result;
-                // console.log(invoiceId);
 
                 document.getElementById('invoiceId').value = invoiceId;
                 const generatedLink = appUrl + '/invoice/' + invoiceNumber;
@@ -5834,7 +5861,6 @@
             navigator.clipboard.writeText(fetchUrl).then(() => {
                 alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here
                 copyFeedback.classList.remove('hidden');
-                // console.log(fetchUrl);
                 setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
 
                 fetch(fetchUrl, {
@@ -6171,13 +6197,6 @@
                     errorBox.textContent = 'Please select where to import from.';
                     errorBox.classList.remove('hidden');
                     return;
-                }
-
-                // 🔎 DEBUG: log URL and payload being sent
-                console.log('[IMPORT] POST URL =>', url);
-                console.log('[IMPORT] FormData payload:');
-                for (const [k, v] of fd.entries()) {
-                    console.log('  ', k, '=>', v);
                 }
 
                 try {
@@ -6682,11 +6701,9 @@
                 window[fn] = function() { return false; };
             });
 
-            console.log('🔒 Invoice is locked — all editing disabled.');
         }
 
         function updateCreditRequired(rowIndex) {
-            console.log('updateCreditRequired called for row:', rowIndex);
             const amountInput = document.getElementById(`amount_${rowIndex}`);
             const requiredEl = document.getElementById(`credit_required_${rowIndex}`);
             
@@ -6890,7 +6907,7 @@
                 const baseAmount = parseFloat(document.getElementById(`amount_${i}`)?.value) || 0;
 
                 if (charge) {
-                    totalServiceCharge += charge.gatewayFee;
+                    totalServiceCharge += charge.ceiledServiceOnly ?? charge.gatewayFee;
                     totalClientPays    += charge.finalAmount;
                 } else {
                     totalClientPays += baseAmount;

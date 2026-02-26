@@ -543,23 +543,41 @@ class ChargeController extends Controller
     
     public function calculateCharge(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        $request->validate([
             'amount' => 'required|numeric|min:0',
             'gateway' => 'required|string',
             'method' => 'nullable|integer',
             'invoice_id' => 'required|integer',
         ]);
 
-        $invoice = Invoice::findOrFail($validated['invoice_id']);
+        $invoice = Invoice::findOrFail($request->invoice_id);
+        if (!$invoice) {
+            Log::info('Invoice not found');
+            return response()->json(['error' => 'Invoice not found.'], 404);
+        }
+
         $companyId = $invoice->agent->branch->company_id;
+        if (!$companyId) {
+            Log::info('Company ID not found for invoice');
+            return response()->json(['error' => 'Company not found for the given invoice.'], 404);
+        }
 
         $result = ChargeService::calculate(
-            (float) $validated['amount'],
+            (float) $request->amount,
             $companyId,
-            $validated['method'] ?? null,
-            $validated['gateway']
+            $request->method ?? null,
+            $request->gateway
         );
 
+        if (!$result) {
+            Log::info('Charge calculation failed', [
+                'amount' => $request->amount,
+                'gateway' => $request->gateway,
+                'method' => $request->method ?? null,
+            ]);
+            return response()->json(['error' => 'Failed to calculate charge. Please check the gateway and method.'], 400);
+        }
+        
         return response()->json($result);
     }
 }

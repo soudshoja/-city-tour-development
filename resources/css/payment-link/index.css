@@ -114,6 +114,16 @@
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
+.pl-table {
+    @apply space-y-0 border border-t border-b-0 mt-6;
+}
+
+@media (min-width: 1280px) {
+    .pl-table {
+        @apply border border-y-0 mt-0; 
+    }
+}
+
 /* --------------------------------------------------------------------------
    Search & Filter Bar
    -------------------------------------------------------------------------- */
@@ -359,6 +369,7 @@
    Column Headers
    -------------------------------------------------------------------------- */
 .pl-col-header {
+    @apply border border-gray-200;
     display: none;
     gap: 1rem;
     padding: 0.75rem 1rem;
@@ -1491,6 +1502,7 @@
    Imported Tab – Row Layout
    -------------------------------------------------------------------------- */
 .imp-col-header {
+    @apply border border-gray-200;
     display: none;
     gap: 1rem;
     padding: 0.75rem 1rem;

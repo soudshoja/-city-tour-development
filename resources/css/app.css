@@ -10900,10 +10900,10 @@ select::-moz-focus-inner {
    Tabs Bar
    -------------------------------------------------------------------------- */
 .main-tabs-bar {
+    @apply bg-gray-300;
     display: flex;
     gap: 0.25rem;
     margin-bottom: 0;
-    background-color: #f1f5f9;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     padding-top: 0.5rem;
@@ -10985,6 +10985,7 @@ select::-moz-focus-inner {
     background-color: #ffffff;
     border-radius: 0.5rem;
     border-top-left-radius: 0;
+    border-top-right-radius: 0;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     padding: 1rem;
 }

@@ -82,8 +82,7 @@
         </div>
     </div>
 
-    <div class="main-panel"
-        x-data="{
+    <div x-data="{
             activeTab: localStorage.getItem('payment_link_tab') || 'payment_links',
             setTab(tab) {
                 this.activeTab = tab;
@@ -215,7 +214,7 @@
                 <div class="col-span-2 text-center">Actions</div>
             </div>
 
-            <div class="space-y-0">
+            <div class="pl-table">
                 @forelse ($payments as $index => $payment)
                 <div class="pl-row {{ $index % 2 === 0 ? 'pl-row-even' : 'pl-row-odd' }}">
                     <div class="pl-row-grid">
@@ -646,7 +645,7 @@
                 <div class="col-span-3 text-center">Action</div>
             </div>
 
-            <div class="space-y-0">
+            <div class="pl-table">
                 @forelse ($importedPayments as $index => $imported)
                 <div class="pl-row {{ $index % 2 === 0 ? 'pl-row-even' : 'pl-row-odd' }}">
                     <div class="imp-row-grid">

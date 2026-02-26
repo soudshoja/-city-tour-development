@@ -47,6 +47,7 @@ class Payment extends Model
         'language',
         'completed',
         'is_disabled',
+        'is_imported',
     ];
 
     protected $casts = [
@@ -57,6 +58,7 @@ class Payment extends Model
         'tax' => 'decimal:3',
         'completed' => 'boolean',
         'is_disabled' => 'boolean',
+        'is_imported' => 'boolean',
         'send_payment_receipt' => 'boolean',
     ];
 

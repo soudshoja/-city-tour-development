@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 
-class Hesabe 
+class Hesabe
 {
     use HttpRequestTrait;
 
@@ -50,7 +50,7 @@ class Hesabe
         $this->accessCode = $hesabeConfig['access_code'];
     }
 
-    public function createCharge(Request $request) : array
+    public function createCharge(Request $request): array
     {
         $request->validate([
             'final_amount' => 'required|numeric|min:1',
@@ -66,13 +66,13 @@ class Hesabe
             'type' => 'required|in:invoice,topup',
             // 'payment_transaction_id' => 'nullable|string|max:255',
         ]);
-         
+
         $auth = Auth::user();
         $payment = Payment::find($request->input('payment_id'));
 
         $company = $payment->agent->branch->company;
 
-        if(!$company){
+        if (!$company) {
             Log::error('[HESABE] Company not found for payment', ['payment_id' => $payment->id]);
             return [
                 'success' => false,
@@ -88,7 +88,7 @@ class Hesabe
         $myfatoorahId = $paymentMethod ? $paymentMethod->myfatoorah_id : null;
 
 
-        if(!$myfatoorahId){
+        if (!$myfatoorahId) {
             Log::error('[HESABE] Payment method MyFatoorah ID not found', ['payment_method_id' => $paymentMethodId]);
             return [
                 'success' => false,
@@ -120,7 +120,7 @@ class Hesabe
             'email' => $companyEmail,
             /* 'saveCard' => 'boolean',
             'cardId' => 'required|string',
-            'authorize' => 'boolean', */            
+            'authorize' => 'boolean', */
             'variable1' => $request->type,
             'version' => '2.0',
             'responseUrl' => route('payment.hesabe.response'),
@@ -128,7 +128,7 @@ class Hesabe
             'webhookUrl' => route('payment.hesabe.webhook'),
         ];
 
-        if($request->type === 'invoice'){
+        if ($request->type === 'invoice') {
             $requestData['variable2'] = (string) $request->invoice_partial_id;
         }
 
@@ -161,10 +161,10 @@ class Hesabe
             'accessCode' => $this->accessCode,
             'Accept' => 'application/json',
         ])->timeout(60)
-        ->post("$this->baseUrl/checkout", $hesabePayload);
-        
+            ->post("$this->baseUrl/checkout", $hesabePayload);
+
         Log::info('[HESABE] CheckoutPayment response', ['response' => $checkoutResponse->body()]);
-        
+
         if (!$checkoutResponse->successful()) {
             return [
                 'success' => false,
@@ -176,7 +176,7 @@ class Hesabe
         }
         $response = $checkoutResponse->body();
 
-        $decryptedData = HesabeCrypt::decrypt($response , $this->apiKey, $this->ivKey);
+        $decryptedData = HesabeCrypt::decrypt($response, $this->apiKey, $this->ivKey);
 
         Log::info('[HESABE] Decrypted CheckoutPayment response', ['decrypted_response' => $decryptedData]);
 
@@ -209,7 +209,19 @@ class Hesabe
         ])->get("$this->baseUrl/api/transaction/$token");
 
         Log::info('[HESABE] GetPaymentStatus response', ['response' => $response->json()]);
-    
+
         return $response;
+    }
+
+    public function getTransaction(string $orderRef): array
+    {
+        $response = Http::withHeaders([
+            'accessCode' => $this->accessCode,
+            'Accept' => 'application/json',
+        ])->get("$this->baseUrl/api/transaction/" . urlencode($orderRef) . "?isOrderReference=1");
+
+        Log::info('[HESABE] getTransaction response', ['data' => $response->json()]);
+
+        return $response->json() ?? [];
     }
 }

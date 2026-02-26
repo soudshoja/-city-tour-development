@@ -327,6 +327,16 @@
                                     class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                                     placeholder="Enter order reference">
                             </div>
+
+                            <!-- Tap: Charge ID -->
+                            <div x-show="gateway === 'tap'" class="mt-4" x-cloak>
+                                <label for="import_charge_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Existing Charge ID
+                                </label>
+                                <input type="text" name="import_charge_id" id="import_charge_id"
+                                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                    placeholder="Enter charge ID">
+                            </div>
                         </div>
 
                         <div class="flex justify-between pt-4 mt-4">
@@ -353,13 +363,13 @@
                 @endphp
 
                 @if ($prefill)
-                <input type="hidden" name="payment_gateway" value="{{ $prefill['payment_gateway'] }}">
                 <input type="hidden" name="payment_method" value="{{ $prefill['payment_method'] }}">
                 <input type="hidden" name="amount" value="{{ $prefill['amount'] }}">
                 <input type="hidden" name="client_id" value="{{ $prefill['client_id'] }}">
                 <input type="hidden" name="agent_id" value="{{ $prefill['agent_id'] }}">
                 <input type="hidden" name="notes" value="{{ $prefill['notes'] }}">
                 @endif
+                <input type="hidden" name="payment_gateway" value="{{ old('payment_gateway', $prefill['payment_gateway'] ?? '') }}">
                 <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
@@ -367,6 +377,9 @@
                 <input type="hidden" name="auth_code" value="{{ old('auth_code', $prefill['auth_code'] ?? '') }}">
                 <input type="hidden" name="payment_reference" value="{{ old('payment_reference', $prefill['payment_reference'] ?? '') }}">
                 <input type="hidden" name="track_id" value="{{ old('track_id', $prefill['track_id'] ?? '') }}">
+                <input type="hidden" name="actual_gateway_fee" value="{{ old('actual_gateway_fee', '') }}">
+                <input type="hidden" name="payment_method_name" value="{{ old('payment_method_name', '') }}">
+                <input type="hidden" name="transaction_date" value="{{ old('transaction_date', '') }}">
 
                 <!-- Client & Agent -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -420,34 +433,42 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
                     <div class="flex flex-wrap gap-8">
                         @foreach ($paymentMethodChose as $chose)
+                        @php
+                            $isChecked = in_array($chose->paymentMethod->id, old('payment_methods', [])) ||
+                                (old('payment_method_name') && strtolower($chose->paymentMethodGroup->name) === strtolower(old('payment_method_name'))) ||
+                                (!old('source') && strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet');
+                            $isImport = old('source') === 'import';
+                            $shouldGrey = $isImport && !$isChecked;
+                        @endphp
                         <div class="flex items-center gap-4">
                             <div class="flex">
-                                <input
-                                    type="checkbox"
-                                    name="payment_methods[]"
-                                    value="{{ $chose->paymentMethod->id }}"
-                                    id="payment_method_{{ $chose->paymentMethod->id }}"
-                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) || (strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet') ? 'checked' : '' }}
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <label for="payment_method_{{ $chose->paymentMethod->id }}" class="ml-2 text-sm text-gray-700">
+                                <input type="checkbox" name="payment_methods[]" value="{{ $chose->paymentMethod->id }}" id="payment_method_{{ $chose->paymentMethod->id }}"
+                                    {{ $isChecked ? 'checked' : '' }} {{ $isImport ? 'disabled' : '' }} class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded
+                                    {{ $isImport ? 'cursor-not-allowed' : '' }} {{ $shouldGrey ? 'opacity-40' : '' }}">
+                                @if ($isImport && $isChecked)
+                                    <input type="hidden" name="payment_methods[]" value="{{ $chose->paymentMethod->id }}">
+                                @endif
+                                <label for="payment_method_{{ $chose->paymentMethod->id }}" 
+                                    class="ml-2 text-sm {{ $shouldGrey ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700' }}">
                                     {{ $chose->paymentMethodGroup->name }}
                                 </label>
                             </div>
                         </div>
                         @endforeach
                     </div>
+                    @if(old('source') === 'import') <p class="text-xs text-gray-500 mt-1.5 italic">Payment method is locked for imported payments.</p> @endif
                 </div>
-
 
                 <!-- Amount & Currency (Quick Mode Only) -->
                 <div x-show="!advancedMode" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
                         <input type="number" name="amount" id="amount" step="0.001" min="0"
-                            value="{{ old('amount') }}"
+                            value="{{ old('amount') ? number_format((float) old('amount'), 3, '.', '') : '' }}"
                             placeholder="0.000"
                             :required="!advancedMode"
-                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
+                            {{ old('source') === 'import' ? 'readonly' : '' }}
+                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors {{ old('source') === 'import' ? 'bg-gray-100 cursor-not-allowed' : '' }}">
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>

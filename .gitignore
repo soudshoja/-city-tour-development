@@ -8,6 +8,7 @@
 /public/videos
 /storage/*.key
 /vendor
+.claude/*
 .env
 .env.testing
 .env.staging

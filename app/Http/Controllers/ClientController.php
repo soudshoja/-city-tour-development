@@ -1005,15 +1005,7 @@ class ClientController extends Controller
         }
 
         $client = Client::findOrFail($payment->client_id);
-        $agent = Agent::find($payment->agent_id);
-
-        if (!$client) {
-            return [
-                'status' => 'error',
-                'message' => 'Client not found',
-            ];
-        }
-
+        $agent = Agent::findOrFail($payment->agent_id);
         $companyId = $agent->branch->company->id;
 
         // STEP 1: Get charge configuration and calculate fee
@@ -1021,17 +1013,25 @@ class ClientController extends Controller
             ->where('company_id', $companyId)
             ->first();
 
-        $chargeResult = ChargeService::calculate(
-            $payment->amount,
-            $companyId,
-            $payment->payment_method_id,
-            $payment->payment_gateway
-        );
-        $accountingFee = $chargeResult['accountingFee'];
-        $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
+        if ($payment->gateway_fee && $payment->gateway_fee > 0) {
+            // Imported payment: fee already set from the external gateway
+            $gatewayFee = $payment->service_charge ?? 0;
+            $accountingFee = $payment->gateway_fee;
+            $paidBy = $payment->paymentMethod?->paid_by ?? 'Company';
+        } else {
+            $chargeResult = ChargeService::calculate(
+                $payment->amount,
+                $companyId,
+                $payment->payment_method_id,
+                $payment->payment_gateway
+            );
+            $gatewayFee = $chargeResult['gatewayFee'];
+            $accountingFee = $chargeResult['accountingFee'];
+            $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
 
-        $payment->gateway_fee = $accountingFee;
-        $payment->save();
+            $payment->gateway_fee = $accountingFee;
+            $payment->save();
+        }
 
         // STEP 2: Calculate amounts based on WHO PAYS FEE
         if ($paidBy === 'Company') {
@@ -1048,7 +1048,7 @@ class ClientController extends Controller
             'payment_id' => $payment->id,
             'paid_by' => $paidBy,
             'payment_amount' => $payment->amount,
-            'gateway_fee' => $chargeResult['gatewayFee'],
+            'gateway_fee' => $gatewayFee,
             'accounting_fee' => $accountingFee,
             'asset_amount' => $assetAmount,
             'client_credit' => $clientCreditAmount,
@@ -1118,7 +1118,7 @@ class ClientController extends Controller
                 'payment_id' => $payment->id,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
-                'transaction_date' => now(),
+                'transaction_date' => $payment->payment_date ?? now(),
             ]);
 
             // ENTRY 1: DEBIT Asset (Payment Gateway Bank)
@@ -1128,7 +1128,7 @@ class ClientController extends Controller
                     'company_id' => $companyId,
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankPaymentFee->id,
-                    'transaction_date' => now(),
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $assetAmount,
                     'credit' => 0,
@@ -1151,7 +1151,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankCOAFee->id,
                     'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => now(),
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
                     'debit' => $accountingFee,
                     'credit' => 0,
@@ -1173,7 +1173,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $incomeAccount->id,
                     'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => now(),
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                     'debit' => 0,
                     'credit' => $accountingFee,
@@ -1193,7 +1193,7 @@ class ClientController extends Controller
                 'branch_id' => $agent->branch->id,
                 'company_id' => $companyId,
                 'account_id' => $clientAdvancePaymentGateway->id,
-                'transaction_date' => now(),
+                'transaction_date' => $payment->payment_date ?? now(),
                 'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                 'debit' => 0,
                 'credit' => $clientCreditAmount,
@@ -1215,7 +1215,7 @@ class ClientController extends Controller
                 'data' => [
                     'client_id' => $client->id,
                     'credit' => $clientCreditAmount,
-                    'gateway_fee' => $chargeResult['gatewayFee'],
+                    'gateway_fee' => $gatewayFee,
                     'accounting_fee' => $accountingFee,
                     'paid_by' => $paidBy,
                     'asset_amount' => $assetAmount,

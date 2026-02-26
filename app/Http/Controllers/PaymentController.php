@@ -66,8 +66,7 @@ use Throwable;
 
 class PaymentController extends Controller
 {
-    use NotificationTrait, EmailNotificationTrait;
-    use CurrencyExchangeTrait;
+    use NotificationTrait, CurrencyExchangeTrait;
 
     public function show(int $id)
     {
@@ -1648,7 +1647,7 @@ class PaymentController extends Controller
             'gateway' => 'required|in:myfatoorah,hesabe,tap',
             'import_invoice_id' => 'nullable|string',
             'import_order_reference' => 'nullable|string',
-            'import_charge_id' => 'nullable|string',
+            'import_charge_id' => 'required_if:gateway,tap|string',
             'client_id' => 'required|integer|exists:clients,id',
             'agent_id' => 'required|integer|exists:agents,id',
         ]);
@@ -2178,7 +2177,7 @@ class PaymentController extends Controller
             try {
                 if (str_contains($gatewayName, 'myfatoorah')) {
                     // Always use InvoiceId to fetch payment status
-                    $response = $this->getPaymentStatusMyFatoorah($invoiceId, 'InvoiceId')->getData(true);
+                    $response = $this->getPaymentStatusMyFatoorah($invoiceId)->getData(true);
 
                     if ($response['status'] === 'success') {
                         $apiData = $response['data'] ?? [];
@@ -2466,10 +2465,25 @@ class PaymentController extends Controller
             ->firstOrFail();
 
         $rules = ['client_id' => 'required|integer|exists:clients,id'];
+        $messages = ['client_id.in' => 'The client you assigned does not assigned to this agent.'];
+
+        $agentId = null;
+
         if (!$payment->agent_id) {
             $rules['agent_id'] = 'required|integer|exists:agents,id';
+            $agentId = $request->agent_id;
+        } else {
+            $agentId = $payment->agent_id;
         }
-        $request->validate($rules);
+
+        $clients = Client::where('agent_id', $agentId)
+            ->orWhereHas('agents', fn($q) => $q->where('agent_id', $agentId))
+            ->pluck('id')
+            ->toArray();
+
+        $rules['client_id'] .= '|in:' . implode(',', $clients);
+
+        $request->validate($rules, $messages);
 
         $client = Client::findOrFail($request->client_id);
 

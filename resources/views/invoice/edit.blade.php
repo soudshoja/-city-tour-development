@@ -405,10 +405,8 @@
                 <!-- Payment Summary -->
                 <div class="px-4 grid grid-cols-2 gap-4">
 
-                    {{-- LEFT COLUMN: keep empty (void area) --}}
                     <div></div>
 
-                    {{-- RIGHT COLUMN: everything aligned like "Subtotal: 2,338.000" --}}
                     <div class="w-full lg:w-[380px] justify-self-end">
                         <div class="px-4 py-3">
                             <div class="space-y-2 text-sm">
@@ -446,7 +444,6 @@
                                 @endphp
 
                                 @if ($isRefundInvoiceEdit && $refundBreakdown)
-
                                     <div class="flex items-center justify-between">
                                         <span class="text-gray-600">Total Paid (Original Invoice):</span>
                                         <span class="font-semibold text-gray-900">{{ number_format($refundBreakdown['paidTotal'], 3, '.', ' ') }} KWD</span>
@@ -474,7 +471,6 @@
                                         <span class="font-semibold text-gray-900">Amount to Collect:</span>
                                         <span class="font-bold text-gray-900">{{ number_format($refundBreakdown['amountToCollect'], 3, '.', ' ') }} KWD</span>
                                     </div>
-
                                 @else
 
                                     <div class="flex items-center justify-between">
@@ -488,31 +484,36 @@
                                 @endif
 
                                 <div class="flex items-center justify-between">
+                                    <span class="text-gray-500">Markup Price</span>
+                                    <span class="font-semibold text-gray-900" id="markupDisplay">0.00</span>
+                                </div>
+
+                                <div class="flex items-center justify-between">
                                     <span class="text-gray-500">Subtotal</span>
                                     <span class="font-semibold text-gray-900" id="subTotalDisplay">0.00</span>
                                 </div>
-
-                                <div id="original_service_charge_display_row" class="flex items-center justify-between" style="display: none;">
+                                <br>
+                                <div id="original_service_charge_display_row" class="flex items-center justify-between pl-4" style="display: none;">
                                     <span class="text-gray-500">Service Charge</span>
                                     <span class="font-semibold text-gray-900" id="originalServiceChargeDisplay">0.00</span>
                                 </div>
 
-                                <div id="rounding_off_display_row" class="flex items-center justify-between" style="display: none;">
-                                    <span class="text-gray-500">Service Charge Round Off</span>
+                                <div id="rounding_off_display_row" class="flex items-center justify-between pl-4" style="display: none;">
+                                    <span class="text-gray-500">Rounding Off</span>
                                     <span class="font-semibold text-gray-900" id="roundingOffDisplay">0.00</span>
                                 </div>
                                 
-                                <div id="service_charge_display_row" class="flex items-center justify-between" style="display: none;">
+                                <div id="service_charge_display_row" class="flex items-center justify-between pl-4" style="display: none;">
                                     <span id="service_charge_label" class="text-gray-500">Rounded Service Charge</span>
                                     <span class="font-semibold text-gray-900" id="serviceChargeDisplay">0.00</span>
                                 </div>
 
-                                <div id="invoice_charge_display_row" class="flex items-center justify-between" style="display: none;">
+                                <div id="invoice_charge_display_row" class="flex items-center justify-between pl-4" style="display: none;">
                                     <span id="invoice_charge_label" class="text-gray-500">Invoice Charge</span>
                                     <span class="font-semibold text-gray-900" id="invoiceChargeDisplay">0.00</span>
                                 </div>
 
-                                <div id="total_profit_display_row" class="flex flex-col gap-1" style="display: none;">
+                                <div id="total_profit_display_row" class="flex flex-col gap-1 pl-4" style="display: none;">
                                     <div class="flex items-center justify-between">
                                         <span class="text-gray-500">Total Profit</span>
                                         <span class="font-semibold text-gray-900" id="totalProfitDisplay">0.00</span>
@@ -3084,16 +3085,27 @@
                                 <span class="text-sm text-gray-500 pl-4">
                                     Rounded Service Charge: <span id="split_rounded_service_charge_value${i}" class="text-gray-800 font-bold">0.000</span> KWD
                                 </span>
+                            </div>
+                            <span id="split_charge_subtotal_service_${i}" class="font-semibold text-gray-700">0.000</span>
+                        </div>
+
+                        <!--- Invoice Charge -->
+                        <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
                                 <span id="split_invoice_charge_breakdown_row_${i}" class="text-sm text-gray-500 pl-4 hidden">
                                     Invoice Charge: <span id="split_invoice_charge_value_${i}" class="text-gray-800 font-bold">0.000</span> KWD                                
                                 </span>
-                                <br>
+                            </div>
+                        </div>
+
+                        <!--- Profit -->
+                        <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
                                 <span class="text-sm text-gray-500 pl-4">
                                     Profit: <span id="split_charge_fee_profit_${i}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
                                 </span>
                                 <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge (if applicable)</small>
                             </div>
-                            <span id="split_charge_subtotal_service_${i}" class="font-semibold text-gray-700">0.000</span>
                         </div>
 
                         <!-- Grand Total -->
@@ -3562,20 +3574,30 @@
                                 <span class="text-sm text-gray-500 pl-4">
                                     Rounded Service Charge: <span id="rounded_service_charge_value${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD
                                 </span>
-                                <span id="partial_invoice_charge_breakdown_row_${installmentIndex}" class="text-sm text-gray-500 pl-4 hidden">
-                                    Invoice Charge: <span id="partial_invoice_charge_value_${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD                                
-                                </span>
-                                <br>
-                                <span class="text-sm text-gray-500 pl-4">
-                                    Profit: <span id="charge_fee_profit_${installmentIndex}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
-                                </span>
-                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge (if applicable)</small>
                             </div>
                             <span class="font-semibold text-gray-700">
                                 <span id="charge_subtotal_service_${installmentIndex}" class="font-semibold text-gray-700">0.000</span> KWD
                             </span>
                         </div>
                        
+                        <!--- Invoice Charge -->
+                        <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
+                                <span id="partial_invoice_charge_breakdown_row_${installmentIndex}" class="text-sm text-gray-500 pl-4 hidden">
+                                    Invoice Charge: <span id="partial_invoice_charge_value_${installmentIndex}" class="text-gray-800 font-bold">0.000</span> KWD                                
+                                </span>
+                            </div>
+                        </div>
+
+                        <!--- Profit -->
+                        <div class="flex justify-between items-start py-1.5 border-b border-gray-100 pl-4">
+                            <div class="flex flex-col">
+                                <span class="text-sm text-gray-500 pl-4">
+                                    Profit: <span id="charge_fee_profit_${installmentIndex}" class="text-green-600 font-bold">0.000</span><span class="text-green-600"> KWD</span>
+                                </span>
+                                <small class="pl-4 italic text-gray-400">*Profit from service charge rounding and applied invoice charge (if applicable)</small>
+                            </div>
+                        </div>
                         <!-- Grand Total -->
                         <div class="flex justify-between items-start pt-2 mt-1 font-bold">
                             <div class="flex flex-col">
@@ -4459,7 +4481,6 @@
 
                 if (selectedGateway) {
                     const selectedCharge = charges.find(charge => charge.name === selectedGateway);
-
                     if (selectedCharge) {
                         const gatewayKey = gwKey(selectedGateway);
                         const gatewayMethods = methodsByGateway[gatewayKey] || [];
@@ -4516,6 +4537,16 @@
                 }
             }
 
+            const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            const netT = document.getElementById('netT');
+            if (netT) netT.textContent = `${fmt3Space(netTotals)} KWD`;
+
+            const netTotal = document.getElementById('netTotal');
+            if (netTotal) netTotal.value = `${fmt3Space(netTotals)} KWD`;
+
+            const markup = subtotal - netTotals;
+            document.getElementById('markupDisplay').textContent = `${fmt3Space(markup)} KWD`   ;
+
             const totalProfit = roundingProfit + invoiceCharge;
             const finalAmount = subtotal + serviceCharge;
             const finalTotal = finalAmount + invoiceCharge;
@@ -4549,24 +4580,17 @@
 
             document.getElementById('subTotal').value = subtotal;
 
-            const totalAmountElement = document.getElementById('subTotal');
-            if (totalAmountElement) totalAmountElement.value = finalTotal;
-
-            const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
-            const netT = document.getElementById('netT');
-            if (netT) netT.textContent = `${fmt3Space(netTotals)} KWD`;
-
-            const netTotal = document.getElementById('netTotal');
-            if (netTotal) netTotal.value = `${fmt3Space(netTotals)} KWD`;
-
             const roundingOffRow = document.getElementById('rounding_off_display_row');
             const roundingOffDisplay = document.getElementById('roundingOffDisplay');
             if (roundingOffRow) roundingOffRow.style.display = roundingProfit > 0 ? 'flex' : 'none';
             if (roundingOffDisplay) roundingOffDisplay.textContent = `${fmt3Space(roundingProfit)} KWD`;
 
             const totalProfitRow = document.getElementById('total_profit_display_row');
-            const totalProfitDisplay = document.getElementById('totalProfitDisplay');
             if (totalProfitRow) totalProfitRow.style.display = profitShouldShow ? 'flex' : 'none';
+
+            /* Profit: round off + invoice charge + markup */
+            profitForDisplay = profitForDisplay + markup;
+            const totalProfitDisplay = document.getElementById('totalProfitDisplay');
             if (totalProfitDisplay) totalProfitDisplay.textContent = `${fmt3Space(profitForDisplay)} KWD`;
 
             const originalServiceChargeRow = document.getElementById('original_service_charge_display_row');

@@ -151,12 +151,10 @@
                         <div class="main-set-mb-4">
                             <label class="main-set-form-label main-set-mb-2">Status</label>
                             <div style="display: flex; gap: 1rem;">
-                                <label class="noti-channel-card" :class="{'noti-channel-card-active': editingSetting.is_active}" style="padding: 0.75rem 1.25rem; flex: 1;">
-                                    <input type="radio" name="agent_status" :value="true" x-model="editingSetting.is_active" class="noti-sr-only">
+                                <label class="noti-channel-card" :class="{'noti-channel-card-active': editingSetting.is_active}" @click="editingSetting.is_active = true" style="padding: 0.75rem 1.25rem; flex: 1; cursor: pointer;">
                                     <span class="noti-channel-title">Active</span>
                                 </label>
-                                <label class="noti-channel-card" :class="{'noti-channel-card-active': !editingSetting.is_active}" style="padding: 0.75rem 1.25rem; flex: 1;">
-                                    <input type="radio" name="agent_status" :value="false" x-model="editingSetting.is_active" class="noti-sr-only">
+                                <label class="noti-channel-card" :class="{'noti-channel-card-active': !editingSetting.is_active}" @click="editingSetting.is_active = false" style="padding: 0.75rem 1.25rem; flex: 1; cursor: pointer;">
                                     <span class="noti-channel-title">Inactive</span>
                                 </label>
                             </div>

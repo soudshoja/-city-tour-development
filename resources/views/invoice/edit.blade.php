@@ -402,7 +402,7 @@
 
                 </div>
 
-               <!-- Payment Summary -->
+                <!-- Payment Summary -->
                 <div class="px-4 grid grid-cols-2 gap-4">
 
                     {{-- LEFT COLUMN: keep empty (void area) --}}
@@ -492,14 +492,37 @@
                                     <span class="font-semibold text-gray-900" id="subTotalDisplay">0.00</span>
                                 </div>
 
+                                <div id="original_service_charge_display_row" class="flex items-center justify-between" style="display: none;">
+                                    <span class="text-gray-500">Service Charge</span>
+                                    <span class="font-semibold text-gray-900" id="originalServiceChargeDisplay">0.00</span>
+                                </div>
+
+                                <div id="rounding_off_display_row" class="flex items-center justify-between" style="display: none;">
+                                    <span class="text-gray-500">Service Charge Round Off</span>
+                                    <span class="font-semibold text-gray-900" id="roundingOffDisplay">0.00</span>
+                                </div>
+                                
                                 <div id="service_charge_display_row" class="flex items-center justify-between" style="display: none;">
-                                    <span id="service_charge_label" class="text-gray-500">Service Charge</span>
+                                    <span id="service_charge_label" class="text-gray-500">Rounded Service Charge</span>
                                     <span class="font-semibold text-gray-900" id="serviceChargeDisplay">0.00</span>
                                 </div>
 
                                 <div id="invoice_charge_display_row" class="flex items-center justify-between" style="display: none;">
                                     <span id="invoice_charge_label" class="text-gray-500">Invoice Charge</span>
                                     <span class="font-semibold text-gray-900" id="invoiceChargeDisplay">0.00</span>
+                                </div>
+
+                                <div id="total_profit_display_row" class="flex flex-col gap-1" style="display: none;">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-500">Total Profit</span>
+                                        <span class="font-semibold text-gray-900" id="totalProfitDisplay">0.00</span>
+                                    </div>
+
+                                    <div class="flex justify-end">
+                                        <small class="text-xs italic text-gray-400">
+                                            *Profit from service charge rounding and applied invoice charge
+                                        </small>
+                                    </div>
                                 </div>
 
                                 <div id="final_amount_display_row" class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200" style="display: none;">
@@ -4368,8 +4391,15 @@
             // Check if invoice charge has been modified from original
             const originalInvoiceCharge = parseFloat("{{ $invoice->invoice_charge ?? 0 }}") || 0;
             const invoiceChargeChanged = Math.abs(invoiceCharge - originalInvoiceCharge) > 0.001;
-
+            
+            let originalServiceCharge = 0;
             let serviceCharge = 0;
+            let roundingProfit = 0;
+            let profitForDisplay = 0;
+            let profitShouldShow = false;
+            let paidBy = 'Company';
+            let chargeValue = 0;
+            let chargeType = 'Flat Rate';
 
             // Only use stored partials' service charge if invoice charge hasn't changed
             if (window.invoicePartials && Array.isArray(window.invoicePartials) && window.invoicePartials.length > 0 && !invoiceChargeChanged) {
@@ -4385,10 +4415,6 @@
                     const selectedCharge = charges.find(charge => charge.name === selectedGateway);
 
                     if (selectedCharge) {
-                        let chargeValue = 0;
-                        let chargeType = 'Flat Rate';
-                        let paidBy = 'Company';
-
                         const gatewayKey = gwKey(selectedGateway);
                         const gatewayMethods = methodsByGateway[gatewayKey] || [];
 
@@ -4409,7 +4435,7 @@
                             
                             if (!isNaN(selfCharge) && selfCharge > 0) {
                                 chargeValue = selfCharge;
-                                chargeType = selectedCharge.self_charge_type || 'Flat Rate';
+                                chargeType = selectedCharge.charge_type || 'Flat Rate';
                             } else {
                                 chargeValue = gatewayAmount;
                                 chargeType = selectedCharge.charge_type || 'Percent';
@@ -4420,19 +4446,34 @@
                         // Only calculate if client pays
                         if (paidBy === 'Client' && chargeValue > 0) {
                             if (chargeType === 'Percent') {
-                                const baseAmount = subtotal + invoiceCharge;
+                                const baseAmount = subtotal;
+
+                                originalServiceCharge = (baseAmount * (chargeValue / 100));
                                 serviceCharge = Math.ceil((baseAmount * chargeValue) / 100);
+
+                                roundingProfit = serviceCharge - originalServiceCharge;
+
+                                // Percent: profit = rounding + invoice charge
+                                profitForDisplay = roundingProfit + invoiceCharge;
+                                profitShouldShow = profitForDisplay > 0;
+
                             } else {
                                 serviceCharge = chargeValue;
+
+                                // Flat: profit = service charge ONLY
+                                roundingProfit = 0;
+                                profitForDisplay = serviceCharge;
+                                profitShouldShow = profitForDisplay > 0;
                             }
                         }
                     }
                 }
             }
 
+            const totalProfit = roundingProfit + invoiceCharge;
             const finalAmount = subtotal + serviceCharge;
             const finalTotal = finalAmount + invoiceCharge;
-
+            
             document.getElementById('subTotalDisplay').textContent = `${fmt3Space(subtotal)} KWD`;
 
             const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
@@ -4471,6 +4512,31 @@
 
             const netTotal = document.getElementById('netTotal');
             if (netTotal) netTotal.value = `${fmt3Space(netTotals)} KWD`;
+
+            const roundingOffRow = document.getElementById('rounding_off_display_row');
+            const roundingOffDisplay = document.getElementById('roundingOffDisplay');
+            if (roundingOffRow) roundingOffRow.style.display = roundingProfit > 0 ? 'flex' : 'none';
+            if (roundingOffDisplay) roundingOffDisplay.textContent = `${fmt3Space(roundingProfit)} KWD`;
+
+            const totalProfitRow = document.getElementById('total_profit_display_row');
+            const totalProfitDisplay = document.getElementById('totalProfitDisplay');
+            if (totalProfitRow) totalProfitRow.style.display = profitShouldShow ? 'flex' : 'none';
+            if (totalProfitDisplay) totalProfitDisplay.textContent = `${fmt3Space(profitForDisplay)} KWD`;
+
+            const originalServiceChargeRow = document.getElementById('original_service_charge_display_row');
+            const originalServiceChargeDisplay = document.getElementById('originalServiceChargeDisplay');
+
+            const isPercentCharge =
+                (paidBy === 'Client') &&
+                (chargeValue > 0) &&
+                (String(chargeType).toLowerCase() === 'percent');
+
+            if (originalServiceChargeRow) {
+                originalServiceChargeRow.style.display = isPercentCharge ? 'flex' : 'none';
+            }
+            if (originalServiceChargeDisplay) {
+                originalServiceChargeDisplay.textContent = `${fmt3Space(originalServiceCharge)} KWD`;
+            }
         }
 
         function renderItems() {

@@ -16,7 +16,9 @@ export default defineConfig({
 
                 "resources/css/refund.css",
                 "resources/css/settings/main.css",
+                "resources/css/settings/index.css",
                 "resources/css/settings/agent-loss.css",
+                "resources/css/settings/notification.css",
                 "resources/css/system-setting/main.css",
                 "resources/css/system-setting/hotel.css",
                 "resources/css/lock-management/index.css",

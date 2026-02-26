@@ -1,186 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="color-scheme" content="light dark">
-    <meta name="supported-color-schemes" content="light dark">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'AutoBill Notification' }}</title>
-
+    @if($isPdf ?? false)
     <style>
+        @page {
+            margin: 25px;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f8;
-            color: #333;
-            padding: 20px;
-        }
-
-        .email-container {
-            max-width: 680px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 40px 50px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e5e7eb;
-        }
-
-        .logo {
-            display: block;
-            margin: 0 auto 10px auto;
-            max-height: 80px;
-        }
-
-        .brand-name {
-            text-align: center;
-            font-size: 20px;
-            font-weight: 700;
-            color: #2563eb;
-            text-transform: uppercase;
-            margin-bottom: 25px;
-        }
-
-        h2 {
-            font-size: 26px;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 25px 0;
-        }
-
-        p {
-            font-size: 15px;
-            line-height: 1.7;
-            margin: 15px 0;
-        }
-
-        .details-box {
-            padding: 18px 24px;
-            border-radius: 8px;
-            margin: 25px 0;
-        }
-
-        .details-box strong {
-            color: #111827;
-        }
-
-        .button {
-            display: inline-block;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 12px 28px;
-            border-radius: 8px;
-            text-align: center;
-            margin-top: 10px;
-            transition: background 0.2s ease-in-out;
-            color: #ffffff !important;
-        }
-
-        .footer {
-            margin-top: 40px;
-            font-size: 12px;
-            color: #6b7280;
-            text-align: center;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 15px;
-        }
-
-        .success h2 {
-            background-color: #eff6ff;
-            color: #1d4ed8;
-        }
-        .success .details-box {
-            background-color: #f9fafb;
-            border-left: 4px solid #3b82f6;
-        }
-        .success .button {
-            background-color: #2563eb;
-        }
-        .success .button:hover {
-            background-color: #1d4ed8;
-        }
-
-        /* ❌ ERROR THEME */
-        .failed h2 {
-            background-color: #fee2e2;
-            color: #b91c1c;
-        }
-        .failed .details-box {
-            background-color: #fef2f2;
-            border-left: 4px solid #ef4444;
-        }
-        .failed .button {
-            background-color: #dc2626;
-        }
-        .failed .button:hover {
-            background-color: #b91c1c;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            body { background-color: #0f172a !important; color: #e2e8f0 !important; }
-            .email-container { background-color: #1e293b !important; border-color: #334155 !important; }
-            .footer { color: #94a3b8 !important; border-top-color: #334155 !important; }
-            .success h2 { background-color: #1e3a8a !important; color: #ffffff !important; }
-            .success .details-box { background-color: #334155 !important; border-left-color: #3b82f6 !important; }
-            .success .button { background-color: #3b82f6 !important; }
-            .failed h2 { background-color: #7f1d1d !important; color: #ffffff !important; }
-            .failed .details-box { background-color: #3f3f46 !important; border-left-color: #f87171 !important; }
-            .failed .button { background-color: #ef4444 !important; }
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 11px;
         }
     </style>
+    @endif
 </head>
 
-<body>
-    @php
-        $isFailed = isset($title) && str_contains(strtolower($title), 'failed');
-    @endphp
+@php
+    $isFailed = isset($title) && str_contains(strtolower($title), 'failed');
+@endphp
 
-    <div class="email-container {{ $isFailed ? 'failed' : 'success' }}">
-        @if(isset($company) && $company->logo)
-            <img src="{{ $company->logo ? url('storage/' . $company->logo) : url('images/UserPic.svg') }}" alt="Company logo" class="logo">
-        @endif
+<body style="margin:0;padding:0;font-family:{{ ($isPdf ?? false) ? 'DejaVu Sans,' : '' }}Arial,Helvetica,sans-serif;background-color:{{ ($isPdf ?? false) ? '#ffffff' : '#f5f5f5' }};">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:{{ ($isPdf ?? false) ? '#ffffff' : '#f5f5f5' }};">
+        <tr>
+            <td align="center" style="padding:{{ ($isPdf ?? false) ? '0' : '30px 20px' }};">
+                <table role="presentation" width="{{ ($isPdf ?? false) ? '100%' : '800' }}" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);' }}">
 
-        <div class="brand-name">{{ strtoupper($company->name ?? config('app.name', 'City Tour')) }}</div>
+                    <tr>
+                        <td style="padding:{{ ($isPdf ?? false) ? '20px 25px' : '30px 40px' }};border-bottom:3px solid #004c9e;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td width="50%" valign="top">
+                                        @if(isset($company) && $company->logo)
+                                            @if($isPdf ?? false)
+                                                <img src="{{ public_path('storage/' . $company->logo) }}" alt="{{ $company->name ?? 'Company' }}" style="max-height:50px;max-width:150px;margin-bottom:10px;">
+                                            @else
+                                                <img src="{{ asset('storage/' . $company->logo) }}" alt="{{ $company->name ?? 'Company' }}" style="max-height:60px;max-width:180px;margin-bottom:15px;">
+                                            @endif
+                                        @endif
+                                        <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '16px' : '20px' }};font-weight:bold;color:#004c9e;">{{ $company->name ?? config('app.name', 'City Tour') }}</p>
+                                        <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $company->address ?? '' }}</p>
+                                        @if($company->phone ?? null)
+                                            <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $company->phone }}</p>
+                                        @endif
+                                        @if($company->email ?? null)
+                                            <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $company->email }}</p>
+                                        @endif
+                                    </td>
+                                    <td width="50%" valign="top" align="right">
+                                        <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '20px' : '28px' }};font-weight:bold;color:#004c9e;letter-spacing:1px;">NOTIFICATION</p>
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:{{ ($isPdf ?? false) ? '10px' : '15px' }};margin-left:auto;">
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Date:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ now()->format('d/m/Y H:i') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Client:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#333;">{{ $clientName ?? 'N/A' }}</td>
+                                            </tr>
+                                            @if(!$isFailed)
+                                                <tr>
+                                                    <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Invoice #:</td>
+                                                    <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#333;">{{ $invoiceNumber ?? 'N/A' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Amount:</td>
+                                                    <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#333;">{{ $amount ?? 'N/A' }} {{ $currency ?? 'KWD' }}</td>
+                                                </tr>
+                                            @endif
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
 
-        <h2>{{ $title ?? 'AutoBill Invoice Generated' }}</h2>
+                    <tr>
+                        <td style="padding:{{ ($isPdf ?? false) ? '15px 25px 5px' : '25px 40px 10px' }};">
+                            @if($isFailed)
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#fef2f2;border-left:4px solid #ef4444;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;' }}">
+                                    <tr>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '10px 15px' : '15px 20px' }};">
+                                            <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '12px' : '15px' }};font-weight:bold;color:#991b1b;">AutoBill Failed</p>
+                                            <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#991b1b;">An error occurred during the AutoBilling process for {{ $clientName ?? 'N/A' }}. Please review the details below.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @else
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#eff6ff;border-left:4px solid #3b82f6;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;' }}">
+                                    <tr>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '10px 15px' : '15px 20px' }};">
+                                            <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '12px' : '15px' }};font-weight:bold;color:#1e40af;">AutoBill Invoice Generated</p>
+                                            <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#1e40af;">An automatic invoice has been generated via the AutoBilling system for {{ $clientName ?? 'N/A' }}.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endif
+                        </td>
+                    </tr>
 
-        <p>Hello,</p>
+                    @if($isFailed)
+                        <tr>
+                            <td style="padding:{{ ($isPdf ?? false) ? '10px 25px 5px' : '15px 40px 10px' }};">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;overflow:hidden;' }}">
+                                    <tr>
+                                        <th colspan="2" style="background-color:#dc2626;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Error Details</th>
+                                    </tr>
+                                    <tr style="background-color:#ffffff;">
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;width:140px;font-weight:bold;">Client</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $clientName ?? 'N/A' }}</td>
+                                    </tr>
+                                    <tr style="background-color:#f9fafb;">
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;font-weight:bold;">Error Message</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#dc2626;border-bottom:1px solid #e0e0e0;">{{ $errorMessage ?? 'Unknown error occurred.' }}</td>
+                                    </tr>
+                                    <tr style="background-color:#ffffff;">
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;font-weight:bold;">Occurred At</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ now()->format('d/m/Y H:i') }}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:{{ ($isPdf ?? false) ? '5px 25px 10px' : '10px 40px 15px' }};">
+                                <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">Please review the AutoBilling logs for more details.</p>
+                            </td>
+                        </tr>
+                    @else
+                        @if(isset($tasks) && count($tasks) > 0)
+                            <tr>
+                                <td style="padding:{{ ($isPdf ?? false) ? '10px 25px 3px' : '15px 40px 5px' }};">
+                                    <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '11px' : '14px' }};font-weight:bold;color:#004c9e;">Tasks Included ({{ count($tasks) }})</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:{{ ($isPdf ?? false) ? '3px 25px 10px' : '5px 40px 15px' }};">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;overflow:hidden;' }}">
+                                        <tr>
+                                            <th style="background-color:#004c9e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;width:30px;">#</th>
+                                            <th style="background-color:#004c9e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Reference</th>
+                                            <th style="background-color:#004c9e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Agent</th>
+                                            <th style="background-color:#004c9e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Passenger</th>
+                                            <th style="background-color:#004c9e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:right;text-transform:uppercase;">Total (KWD)</th>
+                                        </tr>
+                                        @foreach($tasks as $index => $task)
+                                        @php
+                                            $bgColor = $index % 2 === 0 ? '#ffffff' : '#f9fafb';
+                                        @endphp
+                                        <tr style="background-color:{{ $bgColor }};">
+                                            <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $index + 1 }}</td>
+                                            <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $task->reference ?? 'N/A' }}</td>
+                                            <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $task->agent->name ?? 'N/A' }}</td>
+                                            <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $task->passenger_name ?? 'N/A' }}</td>
+                                            <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:bold;">{{ number_format($task->invoice_price ?? $task->total ?? 0, 3) }}</td>
+                                        </tr>
+                                        @endforeach
+                                        <tr style="background-color:#f0f4ff;">
+                                            <td colspan="4" style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#004c9e;text-align:right;">Total:</td>
+                                            <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#004c9e;text-align:right;">{{ $amount ?? number_format(collect($tasks)->sum('total'), 3) }} KWD</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        @endif
 
-        @if($isFailed)
-            <p><strong>An error occurred during the AutoBilling process.</strong></p>
-            <div class="details-box">
-                <p><strong>Client:</strong> {{ $clientName ?? 'N/A' }}</p>
-                <p><strong>Error Message:</strong> {{ $errorMessage ?? 'Unknown error occurred.' }}</p>
-                <p><strong>Occurred At:</strong> {{ now()->format('d M, Y H:i') }}</p>
-            </div>
-            <p>Please review the AutoBilling logs for more details.</p>
-        @else
-            <p>An automatic invoice has just been generated via the AutoBilling system.</p>
-            <div class="details-box">
-                <p><strong>Client:</strong> {{ $clientName ?? 'N/A' }}</p>
-                <p><strong>Invoice Number:</strong> {{ $invoiceNumber ?? 'N/A' }}</p>
-                <p><strong>Total Amount:</strong> {{ $amount ?? 'N/A' }} {{ $currency ?? 'KWD' }}</p>
-                <p><strong>Tasks Included:</strong> {{ $taskCount ?? 'N/A' }}</p>
-                @if(!empty($taskRefs))
-                    <ul style="margin-top: 5px; padding-left: 20px;">
-                        @foreach($taskRefs as $ref)
-                            <li>{{ $ref }}</li>
-                        @endforeach
-                    </ul>
-                @endif
-                <p><strong>Generated At:</strong> {{ now()->format('d M, Y H:i') }}</p>
-            </div>
+                        @if(isset($invoiceLink) && !($isPdf ?? false))
+                            <tr>
+                                <td align="center" style="padding:10px 40px 25px;">
+                                    <a href="{{ $invoiceLink }}" target="_blank" style="display:inline-block;background-color:#004c9e;color:#ffffff;padding:14px 40px;font-size:14px;font-weight:bold;text-decoration:none;border-radius:4px;text-transform:uppercase;letter-spacing:1px;">View Invoice</a>
+                                </td>
+                            </tr>
+                        @endif
+                    @endif
 
-            @if(isset($invoiceLink))
-                <p>You can view the full invoice details here:</p>
-                <p><a href="{{ $invoiceLink }}" class="button" target="_blank">View Invoice</a></p>
-            @endif
-        @endif
+                    <tr>
+                        <td style="padding:{{ ($isPdf ?? false) ? '10px 25px' : '20px 40px' }};border-top:1px solid #e0e0e0;text-align:center;">
+                            <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#999;">This is an automated notification from {{ $company->name ?? config('app.name', 'City Tour') }}.</p>
+                            <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};color:#bbb;">&copy; {{ date('Y') }} {{ $company->name ?? config('app.name', 'City Tour') }}. All rights reserved.</p>
+                        </td>
+                    </tr>
 
-        <p>Best regards,<br>{{ $company->name ?? config('app.name', 'City Tour') }} Team</p>
-
-        <div class="footer">
-            &copy; {{ date('Y') }} {{ $company->name ?? config('app.name', 'City Tour') }}. All rights reserved.
-        </div>
-    </div>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
+
 </html>

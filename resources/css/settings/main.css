@@ -1,8 +1,3 @@
-/* ================================================================
-   SETTINGS - MAIN SHARED STYLES
-   All classes prefixed with: main-set-
-   ================================================================ */
-
 /* Loading Spinner */
 .main-set-loading-container {
     display: flex;
@@ -203,7 +198,7 @@
 
 .main-set-search-input {
     width: 100%;
-    max-width: 16rem;
+    max-width: 28rem;
     padding: 0.5rem 1rem;
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
@@ -845,4 +840,11 @@
 }
 .dark .main-set-text-gray-900 {
     color: #f9fafb;
+}
+
+/* Responsive: hide columns on mobile */
+@media (max-width: 768px) {
+    .main-set-hide-mobile {
+        display: none;
+    }
 }

@@ -315,6 +315,7 @@ class RunAutoBilling extends Command
                     'currency' => $invoice->currency,
                     'taskCount' => $tasks->count(),
                     'taskRefs' => $tasks->pluck('reference')->toArray(),
+                    'tasks' => $tasks->each(fn ($t) => $t->loadMissing('agent')),
                     'invoiceLink' => route('invoice.show', [
                         'companyId' => $rule->company_id,
                         'invoiceNumber' => $invoiceNumber,

@@ -1,27 +1,35 @@
 <x-app-layout>
     @push('styles')
-        @vite(['resources/css/settings/main.css', 'resources/css/settings/agent-loss.css'])
+        @vite(['resources/css/settings/main.css', 'resources/css/settings/index.css', 'resources/css/settings/notification.css', 'resources/css/settings/agent-loss.css'])
     @endpush
-    <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
-        <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Dashboard</a>
-        <span class="text-gray-400">&gt;</span>
-        <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">Settings</span>
+    <nav class="setting-breadcrumb">
+        <a href="{{ route('dashboard') }}" class="setting-breadcrumb-link">Dashboard</a>
+        <span class="setting-breadcrumb-sep">&gt;</span>
+        <span class="setting-breadcrumb-current">Settings</span>
     </nav>
 
-    <div class="grid bg-white dark:bg-gray-800 rounded-xl shadow-sm gap-2">
+    <div class="setting-container">
 
-        <div id="setting-index" x-data="settingsPage()" x-init="init()" class="flex min-h-[500px] overflow-x-auto">
+        <div id="setting-index" x-data="settingsPage()" x-init="init()" class="setting-layout">
+            <!-- Mobile Sidebar Toggle -->
+            <button @click="sidebarOpen = !sidebarOpen" class="setting-sidebar-toggle">
+                <span x-text="tabLabels[activeTab]"></span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     :style="sidebarOpen && 'transform: rotate(180deg)'">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
             <!-- Internal Sidebar -->
-            <div class="w-56 border-r border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
-                <nav class="space-y-1">
+            <div class="setting-sidebar"
+                 :class="{'setting-sidebar-open': sidebarOpen}">
+                <nav class="setting-sidebar-nav">
                     <!-- Invoice -->
                     <!-- <button
                         @click="saveTab('invoice')"
-                        :class="activeTab === 'invoice' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' 
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        :class="{'setting-sidebar-btn-active': activeTab === 'invoice'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         Invoice
@@ -30,11 +38,9 @@
                     <!-- Payment -->
                     <button
                         @click="saveTab('payment')"
-                        :class="activeTab === 'payment' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' 
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="stroke-black" width="24" height="24" stroke="currentColor" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        :class="{'setting-sidebar-btn-active': activeTab === 'payment'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" stroke="currentColor" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M2 11C2 8.17157 2 6.75736 2.87868 5.87868C3.75736 5 5.17157 5 8 5H13C15.8284 5 17.2426 5 18.1213 5.87868C19 6.75736 19 8.17157 19 11C19 13.8284 19 15.2426 18.1213 16.1213C17.2426 17 15.8284 17 13 17H8C5.17157 17 3.75736 17 2.87868 16.1213C2 15.2426 2 13.8284 2 11Z" stroke-width="1.5" />
                             <path d="M19.0001 8.07617C19.9751 8.17208 20.6315 8.38885 21.1214 8.87873C22.0001 9.75741 22.0001 11.1716 22.0001 14.0001C22.0001 16.8285 22.0001 18.2427 21.1214 19.1214C20.2427 20.0001 18.8285 20.0001 16.0001 20.0001H11.0001C8.17163 20.0001 6.75742 20.0001 5.87874 19.1214C5.38884 18.6315 5.17208 17.9751 5.07617 17" stroke-width="1.5" />
                             <path d="M13 11C13 12.3807 11.8807 13.5 10.5 13.5C9.11929 13.5 8 12.3807 8 11C8 9.61929 9.11929 8.5 10.5 8.5C11.8807 8.5 13 9.61929 13 11Z" stroke-width="1.5" />
@@ -47,11 +53,9 @@
                     <!-- Terms & Regulation -->
                     <button
                         @click="saveTab('terms')"
-                        :class="activeTab === 'terms' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' 
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        :class="{'setting-sidebar-btn-active': activeTab === 'terms'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
                         Terms & Regulation
@@ -60,11 +64,9 @@
                     <!-- Charges / Payment Gateways -->
                     <button
                         @click="saveTab('charges')"
-                        :class="activeTab === 'charges' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' 
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        :class="{'setting-sidebar-btn-active': activeTab === 'charges'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                         </svg>
                         Payment Gateways
@@ -73,11 +75,9 @@
                     <!-- Payment Methods Selection -->
                     <button
                         @click="saveTab('payment-methods')"
-                        :class="activeTab === 'payment-methods' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' 
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        :class="{'setting-sidebar-btn-active': activeTab === 'payment-methods'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                         </svg>
                         Payment Methods
@@ -85,29 +85,40 @@
 
                     <!-- Agent Charges Tab -->
                     <button
-                        @click="saveTab('agent-charges')" :class="activeTab === 'agent-charges' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        @click="saveTab('agent-charges')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'agent-charges'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
                         Agent Charges
                     </button>
 
                     <button
-                        @click="saveTab('agent-loss')" :class="activeTab === 'agent-loss' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        @click="saveTab('agent-loss')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'agent-loss'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
                         </svg>
                         Agent Loss
+                    </button>
+
+                    <!-- Notifications -->
+                    <button
+                        @click="saveTab('notifications')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'notifications'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                        Notifications
                     </button>
                 </nav>
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 p-6">
+            <div class="setting-content">
 
                 <!-- <div x-show="activeTab === 'invoice'" x-cloak>
                     @include('settings.partial.invoice')
@@ -129,6 +140,9 @@
                 </div>
                 <div x-show="activeTab === 'agent-loss'" x-cloak>
                     @include('settings.partial.agent_loss')
+                </div>
+                <div x-show="activeTab === 'notifications'" x-cloak>
+                    @include('settings.partial.notifications')
                 </div>
             </div>
         </div>
@@ -159,6 +173,10 @@
                 window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('agent-loss-tab-loaded'));
                 });
+            } else if ("{{ $activeTab }}" === 'notifications') {
+                window.Alpine && Alpine.nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
+                });
             }
         });
 
@@ -166,6 +184,16 @@
             return {
                 activeTab: "{{ $activeTab }}",
                 companyId: "{{ $companyId }}",
+                sidebarOpen: false,
+                tabLabels: {
+                    'payment': 'Payment',
+                    'terms': 'Terms & Regulation',
+                    'charges': 'Payment Gateways',
+                    'payment-methods': 'Payment Methods',
+                    'agent-charges': 'Agent Charges',
+                    'agent-loss': 'Agent Loss',
+                    'notifications': 'Notifications',
+                },
 
                 init() {
                     // Load data for the active tab on page load
@@ -176,6 +204,7 @@
 
                 saveTab(tab) {
                     this.activeTab = tab;
+                    this.sidebarOpen = false;
                     fetch('{{ route("settings.save-tab") }}', {
                         method: 'POST',
                         headers: {
@@ -200,6 +229,8 @@
                         window.dispatchEvent(new CustomEvent('agent-charges-tab-loaded'));
                     } else if (tab === 'agent-loss') {
                         window.dispatchEvent(new CustomEvent('agent-loss-tab-loaded'));
+                    } else if (tab === 'notifications') {
+                        window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
                     }
                 },
 

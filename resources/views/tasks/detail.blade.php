@@ -456,7 +456,7 @@
             
             toggleSelectAll(checked) {
                 if (checked) {
-                    const selectableIds = @json($tasks->filter(fn($t) => $t->client_id && $t->agent_id && $t->company_id && $t->supplier_id && $t->status && $t->type && $t->total && $t->reference && !$t->invoiceDetail)->pluck('id'));
+                    const selectableIds = @json($selectableId);
                     this.selectedForInvoice = [...new Set([...this.selectedForInvoice, ...selectableIds])];
                 } else {
                     this.selectedForInvoice = [];
@@ -631,13 +631,6 @@
                             </div>
                         </div>
 
-                        @php
-                            $selectableCount = $tasks->filter(fn($t) =>
-                                $t->client_id && $t->agent_id && $t->company_id && $t->supplier_id &&
-                                $t->status && $t->type && $t->total && $t->reference && !$t->invoiceDetail
-                            )->count();
-                        @endphp
-
                         @if($selectableCount > 0)
                         <div class="px-4 py-2 border-t border-gray-100 flex items-center gap-6 flex-shrink-0 bg-gray-100">
                             <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -669,20 +662,16 @@
                                 :class="selectedTaskId === {{ $task->id }} && !bulkEditMode ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-gray-50 border-l-4 border-transparent'"
                                 class="cursor-pointer transition-all border-b border-gray-200">
                                 <div class="px-4 py-3 pl-8">
-
-                                    @php
-                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference && !$task->invoiceDetail;
-                                    @endphp
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1">
 
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
-                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $canInvoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $task->can_invoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
-                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
-                                                    {{ $canInvoice ? '' : 'disabled' }}>
+                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $task->can_invoice ? 'true' : 'false' }})"
+                                                    {{ $task->can_invoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0 pl-2">
                                                 <div class="flex items-center gap-2 flex-wrap">
@@ -798,9 +787,6 @@
                                 @endif
                             </div>
                         </div>
-                        @php
-                            $selectableCount = $tasks->filter(fn($t) => $t->client_id && $t->agent_id && $t->company_id && $t->supplier_id && $t->status && $t->type && $t->total && $t->reference && !$t->invoiceDetail)->count();
-                        @endphp
                         @if($selectableCount > 0)
                         <div class="px-4 py-2 border-t border-gray-100 flex items-center gap-6 flex-shrink-0 bg-gray-100">
                             <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -833,19 +819,16 @@
                                 class="cursor-pointer transition-all border-b border-gray-200">
                                 <div class="px-4 py-3 pl-8">
 
-                                    @php
-                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference && !$task->invoiceDetail;
-                                    @endphp
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1 pl-2">
 
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
-                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $canInvoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $task->can_invoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
-                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
-                                                    {{ $canInvoice ? '' : 'disabled' }}>
+                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $task->can_invoice ? 'true' : 'false' }})"
+                                                    {{ $task->can_invoice ? '' : 'disabled' }}>
                                             </div>
                                             <div class="flex-1 min-w-0 pl-2">
                                                 <div class="flex items-center gap-2 flex-wrap">

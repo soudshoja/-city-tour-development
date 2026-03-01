@@ -5521,6 +5521,8 @@ class TaskController extends Controller
                     $hasInvoicedTasks = true;
                 }
             }
+
+            $task->can_invoice = !$task->invoiceDetail && $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
         }
 
         // Block access if any task has a paid invoice
@@ -5581,7 +5583,22 @@ class TaskController extends Controller
             ];
         });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'airports', 'airlines', 'hasInvoicedTasks'));
+        $selectableTask = $tasks->filter(fn($task) => $task->can_invoice);
+
+        $selectableId = $selectableTask->pluck('id')->toArray();
+        $selectableCount = $selectableTask->count();
+
+        return view('tasks.detail', compact(
+            'tasks',
+            'agents',
+            'clients',
+            'listOfCreditors',
+            'airports',
+            'airlines',
+            'hasInvoicedTasks',
+            'selectableCount',
+            'selectableId'
+        ));
     }
 
     public function bulkUpdate(Request $request)

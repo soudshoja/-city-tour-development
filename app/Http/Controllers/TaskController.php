@@ -149,7 +149,7 @@ class TaskController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info', 'supplier'];
+        $defaultColumns = ['reference', 'type', 'gds-reference', 'amadeus-reference', 'bill-to', 'passenger-name', 'supplier-pay-date','agent-name', 'price', 'invoice', 'status', 'info', 'supplier'];
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
         $sortBy = $request->query('sortBy', 'created_at');
@@ -5521,6 +5521,8 @@ class TaskController extends Controller
                     $hasInvoicedTasks = true;
                 }
             }
+
+            $task->can_invoice = !$task->invoiceDetail && $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
         }
 
         // Block access if any task has a paid invoice
@@ -5581,7 +5583,22 @@ class TaskController extends Controller
             ];
         });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'airports', 'airlines', 'hasInvoicedTasks'));
+        $selectableTask = $tasks->filter(fn($task) => $task->can_invoice);
+
+        $selectableId = $selectableTask->pluck('id')->toArray();
+        $selectableCount = $selectableTask->count();
+
+        return view('tasks.detail', compact(
+            'tasks',
+            'agents',
+            'clients',
+            'listOfCreditors',
+            'airports',
+            'airlines',
+            'hasInvoicedTasks',
+            'selectableCount',
+            'selectableId'
+        ));
     }
 
     public function bulkUpdate(Request $request)

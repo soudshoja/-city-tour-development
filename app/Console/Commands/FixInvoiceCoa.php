@@ -104,7 +104,7 @@ class FixInvoiceCoa extends Command
         if (!$transactionId) return;
 
         $chargeSettings = AgentCharge::getForAgent($agent->id, $companyId);
-        $lossSettings = AgentLoss::getForAgent($agent->id, $companyId);
+        $lossSettings = $invoice->getEffectiveLossSettings();
 
         // Invoice-level calculations
         $totalAccountingFee = $this->getTotalAccountingFee($invoice);

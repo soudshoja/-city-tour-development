@@ -1844,7 +1844,7 @@ class InvoiceController extends Controller
         $companyId,
         float $supplierLossAmount
     ): void {
-        $lossSettings = AgentLoss::getForAgent($agent->id, $companyId);
+        $lossSettings = $invoice->getEffectiveLossSettings();
         $distribution = $lossSettings->calculateLossDistribution($supplierLossAmount);
 
         // Agent's portion of supplier loss
@@ -2323,7 +2323,7 @@ class InvoiceController extends Controller
         if (!$transactionId) return;
 
         $chargeSettings = AgentCharge::getForAgent($agent->id, $companyId);
-        $lossSettings = AgentLoss::getForAgent($agent->id, $companyId);
+        $lossSettings = $invoice->getEffectiveLossSettings();
 
         $totalAccountingFee = $this->calculateTotalAccountingFee($invoice, $companyId);
         $gatewayProfitData = $this->calculateTotalGatewayProfit($invoice, $companyId);
@@ -2480,6 +2480,9 @@ class InvoiceController extends Controller
                     ])
                 );
             }
+
+            // Delete existing loss entries before recalculating (handles bearer switching)
+            $this->deleteLossEntries($detail->id);
 
             // Loss handling
             $isSupplierLoss = $margin < 0;
@@ -6465,5 +6468,120 @@ class InvoiceController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Invoice ' . $invoice->invoice_number . ' has been unlocked.');
+    }
+
+    /**
+     * Get loss bearer info for an invoice (AJAX).
+     */
+    public function getLossBearer(Invoice $invoice): JsonResponse
+    {
+        $effectiveSettings = $invoice->getEffectiveLossSettings();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'loss_bearer' => $effectiveSettings->loss_bearer,
+                'agent_percentage' => (float) $effectiveSettings->agent_percentage,
+                'company_percentage' => (float) $effectiveSettings->company_percentage,
+                'is_override' => $invoice->hasLossBearerOverride(),
+                'has_loss' => $invoice->hasLoss(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update loss bearer override for a specific invoice and recalculate journal entries.
+     */
+    public function updateLossBearer(Request $request, Invoice $invoice): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.',
+            ], 403);
+        }
+
+        if ($invoice->is_locked && !Gate::check('manageLocks', User::class)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot modify a locked invoice.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'loss_bearer' => 'required|in:company,agent,split',
+            'agent_percentage' => 'required_if:loss_bearer,split|numeric|min:0|max:100',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $agentPct = 0;
+            $companyPct = 100;
+
+            if ($validated['loss_bearer'] === 'agent') {
+                $agentPct = 100;
+                $companyPct = 0;
+            } elseif ($validated['loss_bearer'] === 'split') {
+                $agentPct = $validated['agent_percentage'];
+                $companyPct = 100 - $agentPct;
+            }
+
+            $invoice->update([
+                'agent_loss' => $agentPct,
+                'company_loss' => $companyPct,
+            ]);
+
+            $this->recalculateInvoiceCOA($invoice->fresh());
+
+            DB::commit();
+
+            $effectiveSettings = $invoice->fresh()->getEffectiveLossSettings();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Loss bearer updated and journal entries recalculated.',
+                'data' => [
+                    'loss_bearer' => $effectiveSettings->loss_bearer,
+                    'agent_percentage' => (float) $effectiveSettings->agent_percentage,
+                    'company_percentage' => (float) $effectiveSettings->company_percentage,
+                    'is_override' => $invoice->fresh()->hasLossBearerOverride(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating loss bearer', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update loss bearer: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete existing loss-related journal entries for an invoice detail.
+     * Called before recalculating to handle bearer switching correctly.
+     * Entries are deleted (not zeroed) so no zombie rows remain when
+     * switching between company/agent/split bearers.
+     */
+    private function deleteLossEntries(int $detailId): void
+    {
+        JournalEntry::where('invoice_detail_id', $detailId)
+            ->where(function ($q) {
+                $q->where('description', 'like', 'Supplier loss charged to agent%')
+                  ->orWhere('description', 'like', 'Supplier loss recovery from agent%')
+                  ->orWhere('description', 'like', 'Company portion of supplier loss%')
+                  ->orWhere('description', 'like', 'Transfer supplier loss to loss account%')
+                  ->orWhere('description', 'like', 'Fee loss charged to agent%')
+                  ->orWhere('description', 'like', 'Fee loss recovery from agent%')
+                  ->orWhere('description', 'like', 'Company portion of fee loss%')
+                  ->orWhere('description', 'like', 'Fee loss provision for%');
+            })
+            ->delete();
     }
 }

@@ -504,6 +504,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details');
         Route::post('/{invoice}/lock', [InvoiceController::class, 'lockInvoice'])->name('lock');
         Route::post('/{invoice}/unlock', [InvoiceController::class, 'unlockInvoice'])->name('unlock');
+        Route::get('/{invoice}/loss-bearer', [InvoiceController::class, 'getLossBearer'])->name('loss-bearer.get');
+        Route::put('/{invoice}/loss-bearer', [InvoiceController::class, 'updateLossBearer'])->name('loss-bearer.update');
     });
 
 

@@ -86,19 +86,33 @@ trait EmailNotificationTrait
             }
 
             $companyName = $company->name ?? config('app.name', 'City Tour');
-            $isFailed = isset($data['title']) && str_contains(strtolower($data['title']), 'failed');
+            $status = $data['status'] ?? 'success';
 
-            $caption = $isFailed
-                ? "*AutoBill Failed*\n\n"
-                . "AutoBilling failed for *{$data['clientName']}*.\n\n"
-                . "Error: {$data['errorMessage']}\n\n"
-                . "Please review the AutoBilling logs.\n\n"
-                . "_{$companyName}_"
-                : "*AutoBill Invoice Generated*\n\n"
-                . "Invoice *#{$data['invoiceNumber']}* has been created for *{$data['clientName']}*.\n\n"
-                . "Amount: *{$data['amount']} {$data['currency']}*\n"
-                . "Tasks: {$data['taskCount']}\n\n"
-                . "_{$companyName}_";
+            if ($status === 'warning') {
+                $taskList = collect($data['ineligibleTasks'] ?? [])->map(fn ($t) =>
+                    "- {$t['reference']}: {$t['issues']}"
+                )->implode("\n");
+
+                $nextRun = $data['nextRunAt'] ?? 'N/A';
+
+                $caption = "*AutoBill: Tasks Need Attention*\n\n"
+                    . "The following tasks for *{$data['clientName']}* could not be invoiced:\n\n"
+                    . "{$taskList}\n\n"
+                    . "Please fix them before the next AutoBill run on *{$nextRun}*.\n\n"
+                    . "_{$companyName}_";
+            } elseif ($status === 'failed') {
+                $caption = "*AutoBill Failed*\n\n"
+                    . "AutoBilling failed for *{$data['clientName']}*.\n\n"
+                    . "Error: {$data['errorMessage']}\n\n"
+                    . "Please review the AutoBilling logs.\n\n"
+                    . "_{$companyName}_";
+            } else {
+                $caption = "*AutoBill Invoice Generated*\n\n"
+                    . "Invoice *#{$data['invoiceNumber']}* has been created for *{$data['clientName']}*.\n\n"
+                    . "Amount: *{$data['amount']} {$data['currency']}*\n"
+                    . "Tasks: {$data['taskCount']}\n\n"
+                    . "_{$companyName}_";
+            }
 
             $pdfPath = $this->generateAutoBillPdf($data, $company);
 

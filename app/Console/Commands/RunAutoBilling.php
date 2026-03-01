@@ -72,13 +72,14 @@ class RunAutoBilling extends Command
 
                 $invoiceTime = Carbon::parse(Carbon::now()->format('Y-m-d') . ' ' . $rule->invoice_time_system);
                 $endTime = $invoiceTime->copy();
+                $startTime = $invoiceTime->copy()->subDays(7);
 
                 $query = Task::query()
                     ->where('company_id', $rule->company_id)
                     ->whereIn('status', ['issued', 'reissued', 'void'])
                     ->where('client_id', $rule->client_id)
                     ->whereDoesntHave('invoiceDetail')
-                    ->where('created_at', '<=', $endTime)
+                    ->whereBetween('created_at', [$startTime, $endTime])
                     ->where(function ($q) use ($rule) {
                         if ($rule->created_by) {
                             $q->where('created_by', $rule->created_by);
@@ -120,6 +121,10 @@ class RunAutoBilling extends Command
 
                     if (empty($task->supplier_pay_date)) {
                         $issues[] = 'Missing supplier issued date';
+                    }
+
+                    if (in_array($task->status, ['reissued', 'void']) && empty($task->original_task_id)) {
+                        $issues[] = 'Reissued/void task has no original task linked';
                     }
 
                     $journalExists = JournalEntry::where('task_id', $task->id)

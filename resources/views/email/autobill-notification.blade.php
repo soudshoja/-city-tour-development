@@ -20,7 +20,9 @@
 </head>
 
 @php
-    $isFailed = isset($title) && str_contains(strtolower($title), 'failed');
+    $status = $status ?? 'success';
+    $isFailed = $status === 'failed';
+    $isWarning = $status === 'warning';
 @endphp
 
 <body style="margin:0;padding:0;font-family:{{ ($isPdf ?? false) ? 'DejaVu Sans,' : '' }}Arial,Helvetica,sans-serif;background-color:{{ ($isPdf ?? false) ? '#ffffff' : '#f5f5f5' }};">
@@ -61,7 +63,7 @@
                                                 <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Client:</td>
                                                 <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#333;">{{ $clientName ?? 'N/A' }}</td>
                                             </tr>
-                                            @if(!$isFailed)
+                                            @if(!$isFailed && !$isWarning)
                                                 <tr>
                                                     <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Invoice #:</td>
                                                     <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#333;">{{ $invoiceNumber ?? 'N/A' }}</td>
@@ -80,7 +82,16 @@
 
                     <tr>
                         <td style="padding:{{ ($isPdf ?? false) ? '15px 25px 5px' : '25px 40px 10px' }};">
-                            @if($isFailed)
+                            @if($isWarning)
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#fefce8;border-left:4px solid #eab308;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;' }}">
+                                    <tr>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '10px 15px' : '15px 20px' }};">
+                                            <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '12px' : '15px' }};font-weight:bold;color:#854d0e;">Tasks Need Attention</p>
+                                            <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#854d0e;">The following tasks for {{ $clientName ?? 'N/A' }} could not be auto-invoiced because they are missing required information. Please fix them before the next AutoBill run on <strong>{{ $nextRunAt ?? 'N/A' }}</strong>.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @elseif($isFailed)
                                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#fef2f2;border-left:4px solid #ef4444;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;' }}">
                                     <tr>
                                         <td style="padding:{{ ($isPdf ?? false) ? '10px 15px' : '15px 20px' }};">
@@ -102,7 +113,39 @@
                         </td>
                     </tr>
 
-                    @if($isFailed)
+                    @if($isWarning && isset($ineligibleTasks) && count($ineligibleTasks) > 0)
+                        <tr>
+                            <td style="padding:{{ ($isPdf ?? false) ? '10px 25px 3px' : '15px 40px 5px' }};">
+                                <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '11px' : '14px' }};font-weight:bold;color:#854d0e;">Ineligible Tasks ({{ count($ineligibleTasks) }})</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:{{ ($isPdf ?? false) ? '3px 25px 10px' : '5px 40px 15px' }};">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;overflow:hidden;' }}">
+                                    <tr>
+                                        <th style="background-color:#854d0e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;width:60px;">Task ID</th>
+                                        <th style="background-color:#854d0e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Reference</th>
+                                        <th style="background-color:#854d0e;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Issues</th>
+                                    </tr>
+                                    @foreach($ineligibleTasks as $index => $bad)
+                                    @php
+                                        $bgColor = $index % 2 === 0 ? '#ffffff' : '#fefce8';
+                                    @endphp
+                                    <tr style="background-color:{{ $bgColor }};">
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $bad['task_id'] }}</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $bad['reference'] ?? 'N/A' }}</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#dc2626;border-bottom:1px solid #e0e0e0;">{{ $bad['issues'] }}</td>
+                                    </tr>
+                                    @endforeach
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:{{ ($isPdf ?? false) ? '5px 25px 10px' : '10px 40px 15px' }};">
+                                <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">Please assign the missing information so these tasks can be included in the next AutoBill run on <strong>{{ $nextRunAt ?? 'N/A' }}</strong>.</p>
+                            </td>
+                        </tr>
+                    @elseif($isFailed)
                         <tr>
                             <td style="padding:{{ ($isPdf ?? false) ? '10px 25px 5px' : '15px 40px 10px' }};">
                                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;overflow:hidden;' }}">

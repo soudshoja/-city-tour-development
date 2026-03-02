@@ -652,6 +652,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
         Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
         Route::put('/{id}/credentials', [ChargeController::class, 'updateCredentials'])->name('credentials.update');
+        Route::post('/calculate-charge', [ChargeController::class, 'calculateCharge'])->name('calculate-charge');
+
     });
 
     //Auto Billing

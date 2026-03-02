@@ -286,15 +286,11 @@
                             <thead>
                                 <tr>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
-                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task Detail
-                                    </th>
+                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
@@ -876,7 +872,7 @@
                 // If no items, display the "No Item Available" row
                 const noItemsRow = document.createElement('tr');
                 noItemsRow.innerHTML =
-                    '<td colspan="15" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                    '<td colspan="7" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                 itemsBody.appendChild(noItemsRow);
             } else {
                 // Iterate over items and create rows
@@ -887,75 +883,69 @@
                     row.classList.add('TrX');
 
                     row.innerHTML = `
-                    <td class="flex-grow">
-                    <p>${++count}</p>
-                    </td>
-                    <td class="flex-grow">
-                    <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
-                    </p>
-                    </td>
-                    <td>
-                    <p>${item.total} KWD</p>
-                    </td>
-                    <td>
-                        <input
-                            id="invprice-table-${item.id}"
-                            type="text"
-                            inputmode="decimal"
-                            pattern="\d*\.?\d*"
-                            class="border border-gray-300 rounded-md px-2 py-1 text-center w-28 min-w-[7rem] invoice-price-${item.id}"
-                            value="${item.invprice ?? ''}"
-                            oninput="updateField(${item.id}, 'invprice-table')"
-                        />
-                    </td>
-                    <td>
-                    <p>${item.client_name}</p>
-                    </td>
-                    <td>
-                    <p>${item.agent.name}</p>
-                    </td>
-                    <td>
-                    <p>${item.agent.branch.name}</p>
-                    </td>
-                    <td>
-                        <p>${item.supplier_name}</p>
-                    </td>
-                    <td>
-                        <p>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
-                    </td>
-                    <td>
-                    <div
-                        class="inline-flex items-center justify-evenly">
-                        <div 
-                            id="modal-open-button_${item.id}"
-                            data-tooltip-left="See Details">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
-                            <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
-                            <div class="flex justify-between text-center items-center p-4 border-b border-black">
-                                <h2 class="text-lg font-bold text-center text-gray-700">TASK DETAILS</h2>
-                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
+                        <td class="px-4 py-3">
+                            <p>${++count}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div>
+                                <b>${item.description}</b>
+                                <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                                    item.type === 'flight' ? 'bg-blue-100 text-blue-700' :
+                                    item.type === 'hotel'  ? 'bg-purple-100 text-purple-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                }">${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
                             </div>
-                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
-                        </dialog>
-
-
-                        <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip-left="Remove Item">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-
-                    </div>
-                    </td>
-                `;
+                            ${item.additional_info ? `<div class="text-gray-500 text-xs mt-0.5">Info: ${item.additional_info}</div>` : ''}
+                            ${item.supplier_name ? `<div class="text-gray-400 text-xs mt-0.5">${item.supplier_name}</div>` : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <p>${item.client_name}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <p>${item.agent.name}</p>
+                            ${item.agent.branch?.name ? `<div class="text-gray-400 text-xs mt-0.5">${item.agent.branch.name}</div>` : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <p>${item.total} KWD</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <input
+                                id="invprice-table-${item.id}"
+                                type="text"
+                                inputmode="decimal"
+                                pattern="\\d*\\.?\\d*"
+                                class="border border-gray-300 rounded-md px-2 py-1 text-center w-28 min-w-[7rem] invoice-price-${item.id}"
+                                value="${item.invprice ?? ''}"
+                                oninput="updateField(${item.id}, 'invprice-table')"
+                            />
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="inline-flex items-center justify-evenly">
+                                <div id="modal-open-button_${item.id}" data-tooltip-left="See Details">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
+                                    <div class="flex justify-between text-center items-center p-4 border-b border-black">
+                                        <h2 class="text-lg font-bold text-center text-gray-700">TASK DETAILS</h2>
+                                        <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"></div>
+                                </dialog>
+                                <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip-left="Remove Item">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </td>
+                    `;
                     itemsBody.appendChild(row);
 
                     let taskDetails = document.getElementById('task-details_' + item.id);

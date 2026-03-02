@@ -72,7 +72,7 @@
                         Payment Gateways
                     </button>
 
-                    <!-- Payment Methods Selection -->
+                    @can('viewPaymentMethodGroup', 'App\Models\PaymentMethod')
                     <button
                         @click="saveTab('payment-methods')"
                         :class="{'setting-sidebar-btn-active': activeTab === 'payment-methods'}"
@@ -82,8 +82,9 @@
                         </svg>
                         Payment Methods
                     </button>
+                    @endcan
 
-                    <!-- Agent Charges Tab -->
+                    @can('viewAgentCharges', 'App\Models\Setting')
                     <button
                         @click="saveTab('agent-charges')"
                         :class="{'setting-sidebar-btn-active': activeTab === 'agent-charges'}"
@@ -93,7 +94,9 @@
                         </svg>
                         Agent Charges
                     </button>
+                    @endcan
 
+                    @can('viewAgentLoss', 'App\Models\Setting')
                     <button
                         @click="saveTab('agent-loss')"
                         :class="{'setting-sidebar-btn-active': activeTab === 'agent-loss'}"
@@ -103,8 +106,9 @@
                         </svg>
                         Agent Loss
                     </button>
+                    @endcan
 
-                    <!-- Notifications -->
+                    @can('viewNotifications', 'App\Models\Setting')
                     <button
                         @click="saveTab('notifications')"
                         :class="{'setting-sidebar-btn-active': activeTab === 'notifications'}"
@@ -114,6 +118,7 @@
                         </svg>
                         Notifications
                     </button>
+                    @endcan
                 </nav>
             </div>
 
@@ -129,21 +134,31 @@
                 <div x-show="activeTab === 'terms'" x-cloak>
                     @include('settings.partial.terms_condition')
                 </div>
+                @can('viewAny', 'App\Models\Charge')
                 <div x-show="activeTab === 'charges'" x-cloak x-ref="chargesTab">
                     @include('settings.partial.charges')
                 </div>
+                @endcan
+                @can('viewPaymentMethodGroup', 'App\Models\PaymentMethod')
                 <div x-show="activeTab === 'payment-methods'" x-cloak>
                     @include('settings.partial.payment_methods')
                 </div>
+                @endcan
+                @can('viewAgentCharges', 'App\Models\Setting')
                 <div x-show="activeTab === 'agent-charges'" x-cloak>
                     @include('settings.partial.agent_charges')
                 </div>
+                @endcan
+                @can('viewAgentLoss', 'App\Models\Setting')
                 <div x-show="activeTab === 'agent-loss'" x-cloak>
                     @include('settings.partial.agent_loss')
                 </div>
+                @endcan
+                @can('viewNotifications', 'App\Models\Setting')
                 <div x-show="activeTab === 'notifications'" x-cloak>
                     @include('settings.partial.notifications')
                 </div>
+                @endcan
             </div>
         </div>
     </div>

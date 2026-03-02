@@ -116,22 +116,24 @@ trait EmailNotificationTrait
 
             $pdfPath = $this->generateAutoBillPdf($data, $company);
 
-            $resayil = new ResayilController();
-            $response = $resayil->document(
-                phone: $phone,
-                country_code: '',
-                filePath: $pdfPath,
-                caption: $caption,
-            );
+            try {
+                $resayil = new ResayilController();
+                $response = $resayil->document(
+                    phone: $phone,
+                    country_code: '',
+                    filePath: $pdfPath,
+                    caption: $caption,
+                );
 
-            if (file_exists($pdfPath)) {
-                unlink($pdfPath);
-            }
-
-            if ($response['success'] ?? false) {
-                Log::info("[AutoBill] WhatsApp sent to {$phone} for '{$data['title']}'");
-            } else {
-                Log::error("[AutoBill] WhatsApp failed for company {$companyId}: " . json_encode($response));
+                if ($response['success'] ?? false) {
+                    Log::info("[AutoBill] WhatsApp sent to {$phone} for '{$data['title']}'");
+                } else {
+                    Log::error("[AutoBill] WhatsApp failed for company {$companyId}: " . json_encode($response));
+                }
+            } finally {
+                if (file_exists($pdfPath)) {
+                    unlink($pdfPath);
+                }
             }
         } catch (\Exception $e) {
             Log::error('[AutoBill] Failed to send WhatsApp: ' . $e->getMessage());
@@ -148,9 +150,9 @@ trait EmailNotificationTrait
         $filename = 'autobill_' . ($company->id ?? 0) . '_' . now()->format('Ymd_His') . '.pdf';
         $path = "temp/{$filename}";
 
-        Storage::disk('public')->put($path, $pdf->output());
+        Storage::disk('local')->put($path, $pdf->output());
 
-        return storage_path("app/public/{$path}");
+        return storage_path("app/{$path}");
     }
 
     private function resolveEmail(array $data, ?int $companyId, ?string $settingKey = null): ?string

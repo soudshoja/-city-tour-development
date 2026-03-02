@@ -10,9 +10,6 @@ use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
 use App\Models\InvoiceSequence;
 use App\Models\Client;
-use App\Models\Company;
-use App\Models\Charge;
-use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Services\ChargeService;
@@ -35,9 +32,10 @@ class RunAutoBilling extends Command
     public function handle()
     {
         $commandStart = microtime(true);
-        $now = Carbon::now('Asia/Kuala_Lumpur')->format('H:i');
+        $nowFull = Carbon::now('Asia/Kuala_Lumpur');
+        $now = $nowFull->format('H:i');
 
-        $this->info("🕒 Running AutoBilling at {$now}");
+        $this->info("🕒 Running AutoBilling at {$nowFull->format('Y-m-d H:i')}");
         // Log::info("=== [AutoBilling] Command started at {$now} ===");
 
         $rules = AutoBilling::where('is_active', true)
@@ -73,8 +71,8 @@ class RunAutoBilling extends Command
                 Log::info("[AutoBilling] {$msg}");
 
                 $invoiceTime = Carbon::parse(Carbon::now()->format('Y-m-d') . ' ' . $rule->invoice_time_system);
-                $startTime = $invoiceTime->copy()->subDay();
                 $endTime = $invoiceTime->copy();
+                $startTime = $invoiceTime->copy()->subDays(7);
 
                 $query = Task::query()
                     ->where('company_id', $rule->company_id)
@@ -110,19 +108,23 @@ class RunAutoBilling extends Command
                     $issues = [];
 
                     if (!$task->is_complete) {
-                        $issues[] = 'Task not marked complete';
+                        $issues[] = 'Task not marked as complete';
                     }
 
                     if (!$task->agent_id) {
-                        $issues[] = 'Missing agent assignment';
+                        $issues[] = 'No agent assigned';
                     }
 
                     if (!$task->client_id) {
-                        $issues[] = 'Missing client assignment';
+                        $issues[] = 'No client assigned';
                     }
 
                     if (empty($task->supplier_pay_date)) {
                         $issues[] = 'Missing supplier issued date';
+                    }
+
+                    if (in_array($task->status, ['reissued', 'void']) && empty($task->original_task_id)) {
+                        $issues[] = 'Reissued/void task has no original task linked';
                     }
 
                     $journalExists = JournalEntry::where('task_id', $task->id)
@@ -132,7 +134,7 @@ class RunAutoBilling extends Command
                         ->exists();
 
                     if (!$journalExists) {
-                        $issues[] = 'No matching journal entry found for task reference';
+                        $issues[] = 'Task not fully completed — please edit and fill in all required details';
                     }
 
                     // Auto-enable task if it meets all completion requirements
@@ -179,6 +181,20 @@ class RunAutoBilling extends Command
                     foreach ($ineligibleTasks as $bad) {
                         $this->line("   - Task ID {$bad['task_id']} ({$bad['reference']}): {$bad['issues']}");
                     }
+
+                    $nextRun = Carbon::tomorrow($rule->timezone)->setTimeFromTimeString($rule->invoice_time_company);
+
+                    $this->storeNotificationWithEmail([
+                        'type' => 'autobill',
+                        'status' => 'warning',
+                        'user_id' => $rule->company->user_id,
+                        'title' => 'AutoBill Tasks Need Attention',
+                        'message' => "{$invalidCount} task(s) for {$clientName} could not be invoiced due to missing information. Please fix them before the next AutoBill run.",
+                        'clientName' => $clientName,
+                        'ineligibleTasks' => $ineligibleTasks,
+                        'nextRunAt' => $nextRun->format('d/m/Y h:i A'),
+                        'company' => $rule->company,
+                    ]);
                 }
 
                 Log::info("[AutoBilling] Rule #{$rule->id} task validation", [
@@ -305,6 +321,7 @@ class RunAutoBilling extends Command
 
                 $this->storeNotificationWithEmail([
                     'type' => 'autobill',
+                    'status' => 'success',
                     'user_id' => $rule->company->user_id,
                     'title' => 'AutoBill Invoice Generated',
                     'message' => "Invoice #{$invoiceNumber} successfully created for {$clientName} ({$tasks->count()} task[s]).\n\n"
@@ -315,6 +332,7 @@ class RunAutoBilling extends Command
                     'currency' => $invoice->currency,
                     'taskCount' => $tasks->count(),
                     'taskRefs' => $tasks->pluck('reference')->toArray(),
+                    'tasks' => $tasks->each(fn ($t) => $t->loadMissing('agent')),
                     'invoiceLink' => route('invoice.show', [
                         'companyId' => $rule->company_id,
                         'invoiceNumber' => $invoiceNumber,
@@ -343,6 +361,7 @@ class RunAutoBilling extends Command
 
                 $this->storeNotificationWithEmail([
                     'type' => 'autobill',
+                    'status' => 'failed',
                     'user_id' => $rule->company->user_id,
                     'title' => 'AutoBill Invoice Failed Generated',
                     'message' => "AutoBilling failed for {$clientName} (Rule #{$rule->id}).\n" . "Please review the AutoBilling log for more details.",

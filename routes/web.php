@@ -719,6 +719,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-loss', [SettingController::class, 'storeAgentLoss'])->name('agent-loss.store');
         Route::post('/agent-loss/bulk-update', [SettingController::class, 'bulkUpdateAgentLoss'])->name('agent-loss.bulk-update');
         Route::delete('/agent-loss/{id}', [SettingController::class, 'deleteAgentLoss'])->name('agent-loss.delete');
+        Route::get('/notifications', [SettingController::class, 'getNotificationSettings'])->name('notifications');
+        Route::post('/notifications', [SettingController::class, 'updateNotificationSetting'])->name('notifications.update');
+        Route::get('/agent-notifications', [SettingController::class, 'getAgentNotifications'])->name('agent-notifications');
+        Route::post('/agent-notifications', [SettingController::class, 'storeAgentNotification'])->name('agent-notifications.store');
+        Route::post('/agent-notifications/bulk-update', [SettingController::class, 'bulkUpdateAgentNotifications'])->name('agent-notifications.bulk-update');
+        Route::delete('/agent-notifications/{id}', [SettingController::class, 'deleteAgentNotification'])->name('agent-notifications.delete');
     });
 
     Route::group([

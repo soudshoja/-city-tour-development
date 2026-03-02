@@ -385,7 +385,9 @@
         })
 
 
-        const ctx = document.getElementById('earningsChart').getContext('2d');
+        const earningsEl = document.getElementById('earningsChart');
+    if (earningsEl) {
+        const ctx = earningsEl.getContext('2d');
 
         const labels = [
             'January', 'February', 'March', 'April', 'May', 'June',
@@ -516,6 +518,7 @@
         //         chart.update();
         //     },
         // }, ];
+    } // end if (earningsEl)
 
         document.addEventListener('DOMContentLoaded', () => {
             const jazeeraData = @json($jazeeraCredit ?? []);

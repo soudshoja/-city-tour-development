@@ -107,6 +107,11 @@ class ProfileController extends Controller
                     ->get();
                 break;
 
+            case Role::ADMIN:
+                $companyId = getCompanyId($user);
+                $company = $companyId ? Company::find($companyId) : null;
+                break;
+
             default:
                 $company = null;
                 break;
@@ -123,6 +128,7 @@ class ProfileController extends Controller
             'totalProfit' => $totalProfit,
             'month' => $month,
             'companyLogo' => $companyLogo,
+            'company' => $company,
             'viewType' => $viewType,
             'hasBonus' => $bonuses ?? false,
             'filterBonus' => $filterBonus,
@@ -184,6 +190,13 @@ class ProfileController extends Controller
                 $path = $request->file('logo')->store('logos', 'public_storage');
                 $company->logo = $path;
             }
+
+            // Save social media links
+            if ($request->filled('facebook')) $company->facebook = $request->input('facebook');
+            if ($request->filled('instagram')) $company->instagram = $request->input('instagram');
+            if ($request->filled('snapchat')) $company->snapchat = $request->input('snapchat');
+            if ($request->filled('tiktok')) $company->tiktok = $request->input('tiktok');
+            if ($request->filled('whatsapp')) $company->whatsapp = $request->input('whatsapp');
 
             $company->save();
         }
@@ -270,22 +283,6 @@ class ProfileController extends Controller
 
             if ($request->has('address') && $request->input('address') !== $company->address) {
                 $updateData['address'] = $request->input('address');
-            }
-
-            if ($request->filled('facebook')) {
-                $updateData['facebook'] = $request->input('facebook');
-            }
-            if ($request->filled('instagram')) {
-                $updateData['instagram'] = $request->input('instagram');
-            }
-            if ($request->filled('snapchat')) {
-                $updateData['snapchat'] = $request->input('snapchat');
-            }
-            if ($request->filled('tiktok')) {
-                $updateData['tiktok'] = $request->input('tiktok');
-            }
-            if ($request->filled('whatsapp')) {
-                $updateData['whatsapp'] = $request->input('whatsapp');
             }
 
             if (!empty($updateData)) {

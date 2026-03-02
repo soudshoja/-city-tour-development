@@ -2,9 +2,7 @@
 
 namespace App\View\Components;
 
-use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\Component;
 use Illuminate\View\View;
 
@@ -53,13 +51,9 @@ class ApplicationLogo extends Component
      */
     private function getCompanyFromUserRole($user)
     {
-        return match ($user->role->id) {
-            Role::COMPANY => $user->company,
-            Role::BRANCH => $user->branch?->company,
-            Role::AGENT => $user->agent?->branch?->company,
-            Role::ACCOUNTANT => $user->accountant?->branch?->company,
-            default => null,
-        };
+        $companyId = getCompanyId($user);
+
+        return $companyId ? \App\Models\Company::find($companyId) : null;
     }
 
     public function render(): View

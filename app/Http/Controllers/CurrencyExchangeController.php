@@ -98,7 +98,7 @@ class CurrencyExchangeController extends Controller
         Log::info('Starting to create new currency rate');
 
         $user = Auth::user();
-        $companyId = getCompanyId($user);
+        $companyId = $request->input('company_id') ?? ($user ? getCompanyId($user) : null);
 
         if (!$companyId) {
             return response()->json([

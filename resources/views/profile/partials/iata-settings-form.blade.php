@@ -9,20 +9,20 @@
         <div>
             <x-input-label for="iata_code" :value="__('IATA Code')" />
             <x-text-input id="iata_code" name="iata_code" type="text"
-                class="mt-1 block w-full" :value="old('iata_code', optional($user->company)->iata_code)"
+                class="mt-1 block w-full" :value="old('iata_code', optional($company ?? $user->company)->iata_code)"
                 placeholder="8-digit IATA Code" maxlength="8" />
             <x-input-error class="mt-2" :messages="$errors->get('iata_code')" />
         </div>
         <div>
             <x-input-label for="iata_client_id" :value="__('Client ID')" />
             <x-text-input id="iata_client_id" name="iata_client_id" type="text" placeholder="IATA Client ID"
-                class="mt-1 block w-full" :value="old('iata_client_id', optional($user->company)->iata_client_id)" />
+                class="mt-1 block w-full" :value="old('iata_client_id', optional($company ?? $user->company)->iata_client_id)" />
             <x-input-error class="mt-2" :messages="$errors->get('iata_client_id')" />
         </div>
         <div>
             <x-input-label for="iata_client_secret" :value="__('Client Secret')" />
             <x-text-input id="iata_client_secret" name="iata_client_secret" type="text" placeholder="IATA Client Secret"
-                class="mt-1 block w-full" :value="old('iata_client_secret', optional($user->company)->iata_client_secret)" />
+                class="mt-1 block w-full" :value="old('iata_client_secret', optional($company ?? $user->company)->iata_client_secret)" />
             <x-input-error class="mt-2" :messages="$errors->get('iata_client_secret')" />
         </div>
         <div class="flex justify-end">

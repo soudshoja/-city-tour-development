@@ -34,6 +34,16 @@ class SettingController extends Controller
         $invoiceWhatsappSetting = UserSetting::getValue(Auth::user()->id, 'invoice_whatsapp_notification', false);
         $bearerOptions = AgentCharge::getBearerOptions();
 
+        // Reset active tab if user doesn't have permission for it
+        $tabPermissions = [
+            'agent-charges' => 'viewAgentCharges',
+            'agent-loss' => 'viewAgentLoss',
+            'notifications' => 'viewNotifications',
+        ];
+        if (isset($tabPermissions[$activeTab]) && !Gate::allows($tabPermissions[$activeTab], Setting::class)) {
+            $activeTab = 'payment';
+        }
+
         return view('settings.index', compact(
             'invoiceExpiryDefault',
             'companyId',
@@ -56,14 +66,8 @@ class SettingController extends Controller
 
     public function updateInvoiceExpiry(Request $request)
     {
+        Gate::authorize('settingCompanyInvoice', Setting::class);
         $user = Auth::user();
-
-        if (!($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to update settings.',
-            ], 403);
-        }
 
         $request->validate([
             'invoice_expiry_default' => 'required|integer|min:1|max:365',
@@ -190,6 +194,7 @@ class SettingController extends Controller
      */
     public function getAgentCharges(Request $request)
     {
+        Gate::authorize('viewAgentCharges', Setting::class);
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
@@ -201,17 +206,23 @@ class SettingController extends Controller
         }
 
         try {
-            $agents = Agent::whereHas('branch', function ($query) use ($companyId) {
+            $agentsQuery = Agent::whereHas('branch', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })
                 ->with('branch:id,name')
-                ->select('id', 'name', 'email', 'branch_id', 'type_id', 'commission')
-                ->get();
+                ->select('id', 'name', 'email', 'branch_id', 'type_id', 'commission');
 
-            $settings = AgentCharge::where('company_id', $companyId)
-                ->get()
-                ->keyBy('agent_id')
-                ->toArray();
+            if ($user->agent) {
+                $agentsQuery->where('id', $user->agent->id);
+            }
+            $agents = $agentsQuery->get();
+
+            $settingsQuery = AgentCharge::where('company_id', $companyId);
+            if ($user->agent) {
+                $settingsQuery->where('agent_id', $user->agent->id);
+            }
+
+            $settings = $settingsQuery->get()->keyBy('agent_id')->toArray();
 
             return response()->json([
                 'success' => true,
@@ -233,13 +244,11 @@ class SettingController extends Controller
      */
     public function storeAgentCharge(Request $request)
     {
+        Gate::authorize('manageAgentCharges', Setting::class);
         $user = Auth::user();
 
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized access.',
-            ], 403);
+        if ($user->agent && $request->agent_id != $user->agent->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access.'], 403);
         }
 
         $validated = $request->validate([
@@ -320,14 +329,8 @@ class SettingController extends Controller
      */
     public function bulkUpdateAgentCharges(Request $request)
     {
+        Gate::authorize('bulkManageAgentCharges', Setting::class);
         $user = Auth::user();
-
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
-        }
 
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -399,19 +402,16 @@ class SettingController extends Controller
      */
     public function deleteAgentCharge(int $id)
     {
+        Gate::authorize('manageAgentCharges', Setting::class);
         $user = Auth::user();
-
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
-        }
 
         try {
             $setting = AgentCharge::findOrFail($id);
 
-            // Verify company access
+            if ($user->agent && $setting->agent_id != $user->agent->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access.'], 403);
+            }
+
             $companyId = getCompanyId($user);
             if ($user->role_id != Role::ADMIN && $setting->company_id != $companyId) {
                 return response()->json([
@@ -450,6 +450,7 @@ class SettingController extends Controller
      */
     public function getAgentLoss(Request $request)
     {
+        Gate::authorize('viewAgentLoss', Setting::class);
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
@@ -461,20 +462,26 @@ class SettingController extends Controller
         }
 
         try {
-            $agents = Agent::whereHas('branch', function ($query) use ($companyId) {
+            $agentsQuery = Agent::whereHas('branch', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })
                 ->with([
                     'branch:id,name',
                     'lossAccount:id,name,code'
                 ])
-                ->select('id', 'name', 'email', 'branch_id', 'type_id', 'commission', 'loss_account_id')
-                ->get();
+                ->select('id', 'name', 'email', 'branch_id', 'type_id', 'commission', 'loss_account_id');
 
-            $settings = AgentLoss::where('company_id', $companyId)
-                ->get()
-                ->keyBy('agent_id')
-                ->toArray();
+            if ($user->agent) {
+                $agentsQuery->where('id', $user->agent->id);
+            }
+            $agents = $agentsQuery->get();
+
+            $settingsQuery = AgentLoss::where('company_id', $companyId);
+            if ($user->agent) {
+                $settingsQuery->where('agent_id', $user->agent->id);
+            }
+
+            $settings = $settingsQuery->get()->keyBy('agent_id')->toArray();
 
             return response()->json([
                 'success' => true,
@@ -496,9 +503,10 @@ class SettingController extends Controller
      */
     public function storeAgentLoss(Request $request)
     {
+        Gate::authorize('manageAgentLoss', Setting::class);
         $user = Auth::user();
 
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+        if ($user->agent && $request->agent_id != $user->agent->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.',
@@ -583,14 +591,8 @@ class SettingController extends Controller
      */
     public function bulkUpdateAgentLoss(Request $request)
     {
+        Gate::authorize('bulkManageAgentLoss', Setting::class);
         $user = Auth::user();
-
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
-        }
 
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -661,19 +663,16 @@ class SettingController extends Controller
      */
     public function deleteAgentLoss(int $id)
     {
+        Gate::authorize('manageAgentLoss', Setting::class);
         $user = Auth::user();
-
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
-        }
 
         try {
             $setting = AgentLoss::findOrFail($id);
 
-            // Verify company access
+            if ($user->agent && $setting->agent_id != $user->agent->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access.'], 403);
+            }
+
             $companyId = getCompanyId($user);
             if ($user->role_id != Role::ADMIN && $setting->company_id != $companyId) {
                 return response()->json([
@@ -855,16 +854,26 @@ class SettingController extends Controller
         }
 
         try {
-            $agents = Agent::whereHas('branch', function ($query) use ($companyId) {
-                $query->where('company_id', $companyId);
-            })
-                ->with('branch:id,name')
-                ->select('id', 'name', 'email', 'phone_number', 'country_code', 'branch_id', 'type_id')
-                ->get();
+            $agentQuery = Agent::with('branch:id,name')
+                ->select('id', 'name', 'email', 'phone_number', 'country_code', 'branch_id', 'type_id');
 
-            $settings = AgentNotificationSetting::where('company_id', $companyId)
-                ->where('notification_type', AgentNotificationSetting::TYPE_TASK_CLOSE)
-                ->get()
+            if ($user->role_id === Role::AGENT) {
+                $agentQuery->where('id', $user->agent?->id);
+            } else {
+                $agentQuery->whereHas('branch', function ($query) use ($companyId) {
+                    $query->where('company_id', $companyId);
+                });
+            }
+            $agents = $agentQuery->get();
+
+            $settingsQuery = AgentNotificationSetting::where('company_id', $companyId)
+                ->where('notification_type', AgentNotificationSetting::TYPE_TASK_CLOSE);
+
+            if ($user->role_id === Role::AGENT) {
+                $settingsQuery->where('agent_id', $user->agent?->id);
+            }
+
+            $settings = $settingsQuery->get()
                 ->keyBy('agent_id')
                 ->toArray();
 
@@ -890,7 +899,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+        if (!Gate::allows('manageNotifications', Setting::class)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.',
@@ -904,6 +913,13 @@ class SettingController extends Controller
             'channel' => 'required|in:email,whatsapp,both',
             'is_active' => 'required|boolean',
         ]);
+
+        if ($user->role_id === Role::AGENT && (!$user->agent || $validated['agent_id'] != $user->agent->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.',
+            ], 403);
+        }
 
         try {
             $setting = AgentNotificationSetting::updateOrCreate(
@@ -957,7 +973,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+        if (!Gate::allows('manageNotifications', Setting::class)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
@@ -1024,7 +1040,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+        if (!Gate::allows('manageNotifications', Setting::class)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
@@ -1036,6 +1052,13 @@ class SettingController extends Controller
 
             $companyId = getCompanyId($user);
             if ($user->role_id != Role::ADMIN && $setting->company_id != $companyId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access.',
+                ], 403);
+            }
+
+            if ($user->role_id === Role::AGENT && (!$user->agent || $setting->agent_id != $user->agent->id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized access.',

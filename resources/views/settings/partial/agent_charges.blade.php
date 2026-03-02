@@ -13,12 +13,14 @@
                 <h3>Agent Extra Charge Settings</h3>
                 <p>Configure who bears extra charges (gateway fees) for profit calculation</p> {{--  + supplier surcharges --}}
             </div>
+            @can('bulkManageAgentCharges', 'App\Models\Setting')
             <button @click="showBulkModal = true" class="main-set-btn main-set-btn-primary">
                 <svg class="main-set-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
                 Bulk Update
             </button>
+            @endcan
         </div>
 
         <div class="main-set-info-box">
@@ -39,21 +41,21 @@
             </div>
         </div>
 
+        @if(auth()->user()->role_id != \App\Models\Role::AGENT)
         <div class="main-set-search-container">
-            <input type="text" 
-                   x-model="searchQuery" 
-                   placeholder="Search agents..."
-                   class="main-set-search-input">
+            <input type="text" x-model="searchQuery" placeholder="Search agents..." class="main-set-search-input">
         </div>
+        @endif
 
         <div class="main-set-table-container">
             <table class="main-set-table">
                 <thead>
                     <tr>
+                        @can('bulkManageAgentCharges', 'App\Models\Setting')
                         <th>
-                            <input type="checkbox" @change="toggleSelectAll" :checked="allSelected"
-                                   class="main-set-checkbox">
+                            <input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="main-set-checkbox">
                         </th>
+                        @endcan
                         <th>Agent</th>
                         <!-- <th>Branch</th> -->
                         <th>Type</th>
@@ -66,9 +68,11 @@
                 <tbody>
                     <template x-for="agent in filteredAgents" :key="agent.id">
                         <tr>
+                            @can('bulkManageAgentCharges', 'App\Models\Setting')
                             <td>
                                 <input type="checkbox" :value="agent.id" x-model="selectedAgents" class="main-set-checkbox">
                             </td>
+                            @endcan
                             <td>
                                 <div class="main-set-agent-name" x-text="agent.name"></div>
                                 <div class="main-set-agent-email" x-text="agent.email"></div>
@@ -97,7 +101,7 @@
                             </td>
                             <td style="text-align: right;">
                                 <button @click="openEditModal(agent)" class="main-set-edit-link">
-                                    Edit
+                                    @can('manageAgentCharges', 'App\Models\Setting') Edit @else View @endcan
                                 </button>
                             </td>
                         </tr>
@@ -123,43 +127,56 @@
             <div class="main-set-modal-content">
                 <form @submit.prevent="saveAgentSetting">
                     <div class="main-set-modal-header">
-                        <h3 class="main-set-modal-title">
-                            Edit Charge Settings for <span x-text="editingAgent?.name"></span>
-                        </h3>
+                        <div class="main-set-modal-header-top">
+                            <div>
+                                <h3 class="main-set-modal-title">
+                                    @can('manageAgentCharges', 'App\Models\Setting') Edit @else View @endcan Charge Settings
+                                </h3>
+                                <p class="main-set-modal-subtitle">Configure who bears extra charges for <span x-text="editingAgent?.name"></span></p>
+                            </div>
+                            <button type="button" @click="showEditModal = false" class="main-set-modal-close">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
 
                         <div class="main-set-mb-4">
                             <label class="main-set-form-label">Who Bears Extra Charges?</label>
                             <div class="main-set-radio-group">
-                                <label class="main-set-radio-option"
+                                <label class="main-set-radio-option @cannot('manageAgentCharges', 'App\Models\Setting') pointer-events-none @endcannot"
                                        :class="{'main-set-radio-option-active': editingSetting.charge_bearer === 'company'}">
-                                    <input type="radio" 
-                                           name="charge_bearer" 
+                                    <input type="radio"
+                                           name="charge_bearer"
                                            value="company"
                                            x-model="editingSetting.charge_bearer"
+                                           @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                            class="main-set-radio-input">
                                     <div class="main-set-radio-label-wrapper">
                                         <span class="main-set-radio-label-title">Company Bears All</span>
                                         <p class="main-set-radio-label-desc">Agent keeps full markup as profit</p>
                                     </div>
                                 </label>
-                                <label class="main-set-radio-option"
+                                <label class="main-set-radio-option @cannot('manageAgentCharges', 'App\Models\Setting') pointer-events-none @endcannot"
                                        :class="{'main-set-radio-option-active': editingSetting.charge_bearer === 'agent'}">
-                                    <input type="radio" 
-                                           name="charge_bearer" 
+                                    <input type="radio"
+                                           name="charge_bearer"
                                            value="agent"
                                            x-model="editingSetting.charge_bearer"
+                                           @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                            class="main-set-radio-input">
                                     <div class="main-set-radio-label-wrapper">
                                         <span class="main-set-radio-label-title">Agent Bears All</span>
                                         <p class="main-set-radio-label-desc">Full charges deducted from profit</p>
                                     </div>
                                 </label>
-                                <label class="main-set-radio-option"
+                                <label class="main-set-radio-option @cannot('manageAgentCharges', 'App\Models\Setting') pointer-events-none @endcannot"
                                        :class="{'main-set-radio-option-active': editingSetting.charge_bearer === 'split'}">
-                                    <input type="radio" 
-                                           name="charge_bearer" 
+                                    <input type="radio"
+                                           name="charge_bearer"
                                            value="split"
                                            x-model="editingSetting.charge_bearer"
+                                           @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                            class="main-set-radio-input">
                                     <div class="main-set-radio-label-wrapper">
                                         <span class="main-set-radio-label-title">Split</span>
@@ -172,12 +189,13 @@
                         <div x-show="editingSetting.charge_bearer === 'split'" class="main-set-percentage-section">
                             <label class="main-set-form-label main-set-mb-2">Agent Percentage</label>
                             <div class="main-set-percentage-wrapper">
-                                <input type="number" 
-                                       x-model="editingSetting.agent_percentage" 
-                                       min="0" 
-                                       max="100" 
+                                <input type="number"
+                                       x-model="editingSetting.agent_percentage"
+                                       min="0"
+                                       max="100"
                                        step="0.01"
                                        @input="editingSetting.company_percentage = 100 - editingSetting.agent_percentage"
+                                       @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                        class="main-set-number-input">
                                 <span class="main-set-percentage-symbol">%</span>
                                 <span class="main-set-percentage-divider">|</span>
@@ -188,37 +206,43 @@
 
                         <div class="main-set-mb-4">
                             <label class="main-set-form-label">Notes (optional)</label>
-                            <textarea x-model="editingSetting.notes" 
+                            <textarea x-model="editingSetting.notes"
                                       rows="2"
+                                      @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                       class="main-set-textarea"
                                       placeholder="Any notes about this setting..."></textarea>
                         </div>
                     </div>
 
                     <div class="main-set-modal-footer">
-                        <button type="submit" 
-                                :disabled="saving"
-                                class="main-set-btn main-set-btn-primary">
-                            <span x-show="!saving">Save</span>
-                            <span x-show="saving">Saving...</span>
-                        </button>
-                        <button type="button" 
+                        <button type="button"
                                 @click="showEditModal = false"
                                 class="main-set-btn main-set-btn-secondary">
-                            Cancel
+                            @can('manageAgentCharges', 'App\Models\Setting') Cancel @else Close @endcan
                         </button>
-                        <button type="button" 
-                                x-show="editingSetting.id" 
-                                @click="deleteSetting"
-                                class="main-set-btn main-set-btn-danger">
-                            Reset to Default
-                        </button>
+                        <div class="main-set-modal-footer-right">
+                            @can('manageAgentCharges', 'App\Models\Setting')
+                            <button type="button"
+                                    x-show="editingSetting.id"
+                                    @click="deleteSetting"
+                                    class="main-set-btn main-set-btn-danger">
+                                Reset to Default
+                            </button>
+                            <button type="submit"
+                                    :disabled="saving"
+                                    class="main-set-btn main-set-btn-primary">
+                                <span x-show="!saving">Save</span>
+                                <span x-show="saving">Saving...</span>
+                            </button>
+                            @endcan
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
+    @can('bulkManageAgentCharges', 'App\Models\Setting')
     <div x-show="showBulkModal" x-cloak class="main-set-modal-overlay">
         <div class="main-set-modal-wrapper">
             <div class="main-set-modal-backdrop" @click="showBulkModal = false"></div>
@@ -226,7 +250,17 @@
             <div class="main-set-modal-content">
                 <form @submit.prevent="bulkUpdate">
                     <div class="main-set-modal-header">
-                        <h3 class="main-set-modal-title">Bulk Update Charge Settings</h3>
+                        <div class="main-set-modal-header-top">
+                            <div>
+                                <h3 class="main-set-modal-title">Bulk Update Charge Settings</h3>
+                                <p class="main-set-modal-subtitle">Update extra charge settings for multiple agents at once</p>
+                            </div>
+                            <button type="button" @click="showBulkModal = false" class="main-set-modal-close">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
 
                         <div x-show="selectedAgents.length === 0" class="main-set-alert-warning">
                             <p class="main-set-alert-warning-text">Please select agents from the table first</p>
@@ -268,20 +302,20 @@
                     </div>
 
                     <div class="main-set-modal-footer">
+                        <button type="button" @click="showBulkModal = false" class="main-set-btn main-set-btn-secondary">
+                            Cancel
+                        </button>
                         <button type="submit" :disabled="saving || selectedAgents.length === 0"
                                 class="main-set-btn main-set-btn-primary">
                             <span x-show="!saving">Update All</span>
                             <span x-show="saving">Updating...</span>
-                        </button>
-                        <button type="button" @click="showBulkModal = false"
-                                class="main-set-btn main-set-btn-secondary">
-                            Cancel
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+    @endcan
 </div>
 
 <script>

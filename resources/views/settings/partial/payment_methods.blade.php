@@ -26,16 +26,20 @@
                         <div class="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
                             <h4 class="font-semibold text-gray-800" x-text="group.name"></h4>
                             <template x-if="selectedMethods[group.id]">
+                                @can('managePaymentMethodGroup', 'App\Models\PaymentMethod')
                                 <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" 
-                                        :data-choice-id="choiceIds[group.id]" 
-                                        :data-group-id="group.id" 
+                                    <input type="checkbox"
+                                        :data-choice-id="choiceIds[group.id]"
+                                        :data-group-id="group.id"
                                         class="sr-only peer"
                                         :checked="enabledGroups[group.id]"
                                         @change="toggleGroup($event, group.id)">
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     <span class="ml-3 text-sm font-medium text-gray-700">Enabled</span>
                                 </label>
+                                @else
+                                <span :class="enabledGroups[group.id] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="enabledGroups[group.id] ? 'Enabled' : 'Disabled'"></span>
+                                @endcan
                             </template>
                             <template x-if="!selectedMethods[group.id]">
                                 <span class="text-xs text-gray-500">Select a method to enable</span>
@@ -45,14 +49,14 @@
                         <!-- Group Options -->
                         <div class="p-4 space-y-2">
                             <template x-for="(methods, gatewayName) in getMethodsByGateway(group)" :key="gatewayName">
-                                <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                <label class="flex items-center gap-3 p-3 border rounded-lg transition-colors @can('managePaymentMethodGroup', 'App\Models\PaymentMethod') cursor-pointer hover:bg-gray-50 @else cursor-default @endcan"
                                     :class="{'bg-gray-100 cursor-not-allowed opacity-60': !methods[0].is_active, 'border-blue-500 bg-blue-50': selectedMethods[group.id] == methods[0].id}">
-                                    <input 
-                                        type="radio" 
-                                        :name="'payment_method_group_' + group.id" 
+                                    <input
+                                        type="radio"
+                                        :name="'payment_method_group_' + group.id"
                                         :value="methods[0].id"
                                         :checked="selectedMethods[group.id] == methods[0].id"
-                                        :disabled="!methods[0].is_active"
+                                        :disabled="!methods[0].is_active @cannot('managePaymentMethodGroup', 'App\Models\PaymentMethod') || true @endcannot"
                                         @change="selectedMethods[group.id] = methods[0].id"
                                         class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
                                     <span class="flex-1 font-medium text-gray-700" x-text="gatewayName"></span>
@@ -76,6 +80,7 @@
                 </div>
             </template>
 
+            @can('managePaymentMethodGroup', 'App\Models\PaymentMethod')
             <template x-if="groups.length > 0">
                 <div class="mt-6">
                     <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
@@ -86,6 +91,7 @@
                     </button>
                 </div>
             </template>
+            @endcan
         </form>
     </div>
 </div>

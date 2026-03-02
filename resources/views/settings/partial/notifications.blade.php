@@ -15,6 +15,7 @@
             </div>
         </div>
 
+        @if(auth()->user()->role_id !== \App\Models\Role::AGENT)
         <div class="noti-subtab-desktop">
             <button @click="activeSubTab = 'unassigned-task'" class="noti-subtab-btn" :class="{'noti-subtab-btn-active': activeSubTab === 'unassigned-task'}">
                 Unassigned Tasks
@@ -36,6 +37,11 @@
         <div x-show="activeSubTab === 'auto-billing'" x-cloak>
             @include('settings.partial.notification.auto_billing')
         </div>
+        @else
+        <div>
+            @include('settings.partial.notification.agent_task_close')
+        </div>
+        @endif
     </div>
 </div>
 
@@ -44,7 +50,7 @@
         return {
             loading: false,
             saving: false,
-            activeSubTab: 'unassigned-task',
+            activeSubTab: '{{ auth()->user()->role_id === \App\Models\Role::AGENT ? 'agent-task-close' : 'unassigned-task' }}',
             companyId: "{{ $companyId }}",
 
             settings: {

@@ -13,12 +13,14 @@
                 <h3 class="text-lg font-semibold text-gray-800">Payment Gateways</h3>
                 <span x-show="charges.length > 0" class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-blue-600 rounded-full" x-text="charges.length"></span>
             </div>
+            @can('create', 'App\Models\Charge')
             <button @click="showCreateModal = true" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
                 Add Gateway
             </button>
+            @endcan
         </div>
 
         <!-- Charges Table -->
@@ -65,10 +67,12 @@
                                     <!-- Show charges only if no payment methods -->
                                     <template x-if="!charge.methods || charge.methods.length === 0">
                                         <div class="text-xs space-y-0.5">
+                                            @can('update', 'App\Models\Charge')
                                             <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-500 w-20">Contract:</span>
                                                 <span class="font-medium text-gray-800" x-text="parseFloat(charge.amount || 0).toFixed(2) + (charge.charge_type === 'Percent' ? '%' : ' KWD')"></span>
                                             </div>
+                                            @endcan
                                             <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-500 w-20">Back Office:</span>
                                                 <span class="font-medium text-gray-800" x-text="parseFloat(charge.self_charge || 0).toFixed(2) + (charge.charge_type === 'Percent' ? '%' : ' KWD')"></span>
@@ -105,10 +109,12 @@
                                         <td class="px-4 py-3 text-sm text-gray-600" x-text="method.paid_by"></td>
                                         <td class="px-4 py-3">
                                             <div class="text-xs space-y-0.5">
+                                                @can('update', 'App\Models\Charge')
                                                 <div class="flex items-center gap-1.5">
                                                     <span class="text-gray-500 w-20">Contract:</span>
                                                     <span class="font-medium text-gray-800" x-text="parseFloat(method.service_charge || 0).toFixed(2) + (method.charge_type === 'Percent' ? '%' : ' KWD')"></span>
                                                 </div>
+                                                @endcan
                                                 <div class="flex items-center gap-1.5">
                                                     <span class="text-gray-500 w-20">Back Office:</span>
                                                     <span class="font-medium text-gray-800" x-text="parseFloat(method.self_charge || 0).toFixed(2) + (method.charge_type === 'Percent' ? '%' : ' KWD')"></span>
@@ -150,6 +156,7 @@
     </div>
 
     <!-- Create Charge Modal -->
+    @can('create', 'App\Models\Charge')
     <div x-cloak x-show="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
         <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" @click.away="showCreateModal = false">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -294,6 +301,7 @@
             </div>
         </div>
     </div>
+    @endcan
 
     <!-- Settings Modal (Dynamic based on payment methods) -->
     <div x-cloak x-show="showSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
@@ -311,7 +319,7 @@
             </div>
 
             <div class="overflow-y-auto overflow-x-visible flex-1 px-6 py-4">
-                <!-- Form for gateways WITHOUT payment methods (full editing) -->
+                <!-- Form for gateways WITHOUT payment methods -->
                 <template x-if="!editingCharge?.methods || editingCharge.methods.length === 0">
                     <form :action="`{{ route('charges.update', ['id' => '__ID__']) }}`.replace('__ID__', editingCharge?.id)" method="POST">
                         @csrf
@@ -319,7 +327,8 @@
                         <input type="hidden" name="from_settings" value="1">
 
                         <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid @can('update', 'App\Models\Charge') grid-cols-2 @else grid-cols-1 @endcan gap-4">
+                                @can('update', 'App\Models\Charge')
                                 <div>
                                     <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                                         Contract Charge
@@ -334,19 +343,22 @@
                                     </label>
                                     <input type="number" name="amount" step="0.01" :value="editingCharge?.amount" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                 </div>
+                                @endcan
                                 <div>
                                     <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                                         Back Office Charge
+                                        @can('update', 'App\Models\Charge')
                                         <div class="group relative inline-block">
                                             <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
                                             <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
-                                                What you charge client (Contract + Markup). Must be ≥ Contract Charge
+                                                What you charge client (Contract + Markup). Must be &ge; Contract Charge
                                             </div>
                                         </div>
+                                        @endcan
                                     </label>
-                                    <input type="number" name="self_charge" step="0.01" :value="editingCharge?.self_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                    <input type="number" name="self_charge" step="0.01" :value="editingCharge?.self_charge" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" @cannot('update', 'App\Models\Charge') disabled @endcannot required>
                                 </div>
                             </div>
 
@@ -362,20 +374,20 @@
                                         </div>
                                     </div>
                                 </label>
-                                <input type="number" name="extra_charge" step="0.001" :value="editingCharge?.extra_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD">
+                                <input type="number" name="extra_charge" step="0.001" :value="editingCharge?.extra_charge" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Paid By</label>
-                                    <select name="paid_by" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.paid_by">
+                                    <select name="paid_by" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.paid_by" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                         <option value="Company">Company</option>
                                         <option value="Client">Client</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Charge Type</label>
-                                    <select name="charge_type" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.charge_type">
+                                    <select name="charge_type" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.charge_type" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                         <option value="Flat Rate">Flat Rate</option>
                                         <option value="Percent">Percent</option>
                                     </select>
@@ -384,16 +396,18 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <input type="text" name="description" :value="editingCharge?.description" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description">
+                                <input type="text" name="description" :value="editingCharge?.description" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                             </div>
 
                             <hr class="border-gray-200">
 
                             <!-- API Configuration -->
+                            @can('update', 'App\Models\Charge')
                             <div x-show="editingCharge?.is_system_default">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                                 <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
                             </div>
+                            @endcan
 
                             <div class="bg-gray-50 rounded-lg p-4 space-y-3">
                                 <div class="flex items-center justify-between">
@@ -401,8 +415,8 @@
                                         <p class="text-sm font-medium text-gray-700">Active</p>
                                         <p class="text-xs text-gray-400">Enable or disable this gateway</p>
                                     </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active">
+                                    <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
+                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                         <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -411,8 +425,8 @@
                                         <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
                                         <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
                                     </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice">
+                                    <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
+                                        <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                         <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -432,8 +446,10 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-3 mt-6">
-                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') Cancel @else Close @endcan</button>
+                            @can('update', 'App\Models\Charge')
                             <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                            @endcan
                         </div>
                     </form>
                 </template>
@@ -446,10 +462,12 @@
                         <input type="hidden" name="from_settings" value="1">
 
                         <div class="space-y-4">
+                            @can('update', 'App\Models\Charge')
                             <div x-show="editingCharge?.is_system_default">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                                 <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
                             </div>
+                            @endcan
 
                             <div class="bg-gray-50 rounded-lg p-4 space-y-3">
                                 <div class="flex items-center justify-between">
@@ -457,8 +475,8 @@
                                         <p class="text-sm font-medium text-gray-700">Active</p>
                                         <p class="text-xs text-gray-400">Enable or disable this gateway</p>
                                     </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active">
+                                    <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
+                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                         <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -467,8 +485,8 @@
                                         <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
                                         <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
                                     </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice">
+                                    <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
+                                        <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                         <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -488,8 +506,10 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-3 mt-6">
-                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') Cancel @else Close @endcan</button>
+                            @can('update', 'App\Models\Charge')
                             <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                            @endcan
                         </div>
                     </form>
                 </template>
@@ -502,7 +522,7 @@
         <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" @click.away="showEditMethodModal = false">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-800">Edit Payment Method</h2>
+                    <h2 class="text-lg font-bold text-gray-800">@can('update', 'App\Models\Charge') Edit Payment Method @else Payment Method @endcan</h2>
                     <p class="text-sm text-gray-500" x-text="editingMethod?.english_name"></p>
                 </div>
                 <button @click="showEditMethodModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
@@ -529,7 +549,8 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid @can('update', 'App\Models\Charge') grid-cols-2 @else grid-cols-1 @endcan gap-4">
+                            @can('update', 'App\Models\Charge')
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                                     Contract Charge
@@ -544,19 +565,22 @@
                                 </label>
                                 <input type="number" name="service_charge" step="0.01" :value="editingMethod?.service_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             </div>
+                            @endcan
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                                     Back Office Charge
+                                    @can('update', 'App\Models\Charge')
                                     <div class="group relative">
                                         <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                            What you charge client (Contract + Markup). Must be ≥ Contract Charge
+                                            What you charge client (Contract + Markup). Must be &ge; Contract Charge
                                         </div>
                                     </div>
+                                    @endcan
                                 </label>
-                                <input type="number" name="self_charge" step="0.01" :value="editingMethod?.self_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <input type="number" name="self_charge" step="0.01" :value="editingMethod?.self_charge" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                             </div>
                         </div>
 
@@ -572,20 +596,20 @@
                                     </div>
                                 </div>
                             </label>
-                            <input type="number" name="extra_charge" step="0.001" :value="editingMethod?.extra_charge" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD">
+                            <input type="number" name="extra_charge" step="0.001" :value="editingMethod?.extra_charge" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.000 KWD" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Paid By</label>
-                                <select name="paid_by" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingMethod.paid_by">
+                                <select name="paid_by" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingMethod.paid_by" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                     <option value="Company">Company</option>
                                     <option value="Client">Client</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Charge Type</label>
-                                <select name="charge_type" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingMethod.charge_type">
+                                <select name="charge_type" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingMethod.charge_type" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                     <option value="Flat Rate">Flat Rate</option>
                                     <option value="Percent">Percent</option>
                                 </select>
@@ -594,7 +618,7 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <input type="text" name="description" :value="editingMethod?.description" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description">
+                            <input type="text" name="description" :value="editingMethod?.description" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                         </div>
 
                         <div class="bg-gray-50 rounded-lg p-4" x-show="editingMethodCharge?.is_active">
@@ -603,8 +627,8 @@
                                     <p class="text-sm font-medium text-gray-700">Active</p>
                                     <p class="text-xs text-gray-400">Enable this payment method</p>
                                 </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingMethod?.is_active">
+                                <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
+                                    <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingMethod?.is_active" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                                     <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
@@ -612,8 +636,10 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <button type="button" @click="showEditMethodModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="button" @click="showEditMethodModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') Cancel @else Close @endcan</button>
+                        @can('update', 'App\Models\Charge')
                         <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                        @endcan
                     </div>
                 </form>
             </div>

@@ -36,46 +36,46 @@
             placeholder="Quick search for invoices" />
 
         <div class="my-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-blue-50 border border-blue-200">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+            <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <div>
-                    <div class="text-sm font-medium text-blue-600">Total Net</div>
-                    <div class="text-base md:text-lg font-semibold text-blue-700">{{ number_format($totalNet, 3) }} KWD</div>
+                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400">Total Net</div>
+                    <div class="text-base md:text-lg font-semibold text-blue-700 dark:text-blue-300">{{ number_format($totalNet, 3) }} KWD</div>
                 </div>
             </div>
-            <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-emerald-50 border border-emerald-200">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6M9 11h6m-8 4h10M5 21l1.5-1.5L8 21l1.5-1.5L11 21l1.5-1.5L14 21l1.5-1.5L17 21l1.5-1.5L20 21V3a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18z" />
                     </svg>
                 </div>
                 <div>
-                    <div class="text-sm font-medium text-emerald-600">Total Sales</div>
-                    <div class="text-base md:text-lg font-semibold text-emerald-700">{{ number_format($totalSales, 3) }} KWD</div>
+                    <div class="text-sm font-medium text-emerald-600 dark:text-emerald-400">Total Sales</div>
+                    <div class="text-base md:text-lg font-semibold text-emerald-700 dark:text-emerald-300">{{ number_format($totalSales, 3) }} KWD</div>
                 </div>
             </div>
             <div class="col-span-1 md:col-span-2">
                 <div class="p-2 md:p-4 w-full">
                     <form method="GET" action="{{ route('invoices.index') }}" class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 flex-wrap" id="invoice-filter-form">
                         <div class="flex flex-col justify-end">
-                            <label class="text-sm font-semibold text-gray-600 mb-1">Filter By</label>
-                            <select name="date_field" class="border rounded px-2 py-1.5 text-sm w-full sm:min-w-[120px] sm:w-auto">
+                            <label class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Filter By</label>
+                            <select name="date_field" class="border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1.5 text-sm w-full sm:min-w-[120px] sm:w-auto">
                                 <option value="created_at" {{ request('date_field') == 'created_at' ? 'selected' : '' }}>Created Date</option>
                                 <option value="invoice_date" {{ request('date_field') == 'invoice_date' ? 'selected' : '' }}>Invoice Date</option>
                             </select>
                         </div>
                         <div class="flex flex-col justify-end">
-                            <label class="text-sm font-semibold text-gray-600 mb-1">Date Range</label>
-                            <input type="text" id="date-range" class="border rounded px-2 py-1.5 text-sm w-full sm:min-w-[180px] sm:w-auto" placeholder="Select date range" autocomplete="off" />
+                            <label class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Date Range</label>
+                            <input type="text" id="date-range" class="border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1.5 text-sm w-full sm:min-w-[180px] sm:w-auto" placeholder="Select date range" autocomplete="off" />
                             <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
                             <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
                         </div>
                         <div class="flex flex-row items-end gap-1 pt-3 sm:pt-5">
-                            <a href="{{ route('invoices.index') }}" class="px-3 py-1.5 rounded bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 border border-gray-300">Clear</a>
+                            <a href="{{ route('invoices.index') }}" class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600">Clear</a>
                             <button type="submit" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 border border-blue-700">Apply</button>
                         </div>
                     </form>
@@ -83,7 +83,7 @@
             </div>
         </div>
 
-        <div class="hidden xl:grid xl:grid-cols-12 gap-4 px-4 py-3 bg-gray-100 rounded-t-lg border-b border-gray-200 text-base font-semibold text-gray-600">
+        <div class="hidden xl:grid xl:grid-cols-12 gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-t-lg border-b border-gray-200 dark:border-gray-700 text-base font-semibold text-gray-600 dark:text-gray-400">
             <div class="col-span-3">Invoice Details</div>
             <div class="col-span-2">Customer & Agent</div>
             <div class="col-span-2">Payment Gateways</div>
@@ -117,7 +117,7 @@
                     ];
                 })->values()->toArray();
             @endphp
-            <div class="border-b border-gray-200 hover:bg-blue-50/30 transition-colors {{ $index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}"
+            <div class="border-b border-gray-200 dark:border-gray-700 hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-colors {{ $index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50' }}"
                 data-tasks='@json($tasksPayload)'>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 md:gap-4 p-3 md:p-4">
@@ -129,7 +129,7 @@
                                     {{ $invoice->invoice_number }}
                                 </a>
                             @else
-                                <span class="text-sm md:text-base font-bold text-gray-800">{{ $invoice->invoice_number }}</span>
+                                <span class="text-sm md:text-base font-bold text-gray-800 dark:text-gray-200">{{ $invoice->invoice_number }}</span>
                             @endif
                             
                             <button type="button" onclick="copyToClipboard('{{ $invoice->invoice_number }}')" 
@@ -274,11 +274,11 @@
                         
                         @if($invoice->status === 'partial' && $paidPercentage > 0)
                             <div class="mt-3 max-w-[160px]">
-                                <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                                     <span>Progress</span>
                                     <span>{{ number_format($paidPercentage, 0) }}%</span>
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                                     <div class="bg-green-500 h-1.5 rounded-full" style="width: {{ $paidPercentage }}%"></div>
                                 </div>
                             </div>
@@ -287,16 +287,52 @@
 
                     <div class="md:col-span-1 xl:col-span-3">
                         <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs md:text-sm">
-                            <div class="text-gray-500">Net Amount:</div>
-                            <div class="font-medium text-gray-800">{{ number_format($invoice->invoiceDetails->sum('supplier_price'), 3) }} {{ $invoice->currency }}</div>
+                            <div class="text-gray-500 dark:text-gray-400">Net Amount:</div>
+                            <div class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($invoice->invoiceDetails->sum('supplier_price'), 3) }} {{ $invoice->currency }}</div>
                             
-                            <div class="text-gray-500">Profit:</div>
+                            <div class="text-gray-500 dark:text-gray-400">Profit:</div>
                             <div class="font-semibold {{ $invoice->invoiceDetails->sum('profit') >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $invoice->invoiceDetails->sum('profit') >= 0 ? '+' : '' }}{{ number_format($invoice->invoiceDetails->sum('profit'), 3) }} {{ $invoice->currency }}
                             </div>
-                            
-                            <div class="text-gray-500">Invoice Amount:</div>
-                            <div class="font-medium text-gray-800">
+
+                            @if($invoice->invoiceDetails->contains(fn($d) => $d->profit < 0) && auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]))
+                                @php
+                                    $effectiveLoss = $invoice->getEffectiveLossSettings();
+                                    $bearerDisplay = $effectiveLoss->loss_bearer;
+                                    $effectiveAgentPct = (float) $effectiveLoss->agent_percentage;
+                                    $isOverride = $invoice->agent_loss !== null;
+                                @endphp
+                                <div class="text-gray-500 dark:text-gray-400">Loss Bearer:</div>
+                                <div>
+                                    @if(!$invoice->is_locked || Gate::check('manageLocks', 'App\Models\User'))
+                                        <span class="inline-flex items-center px-2.5 py-1 text-xs md:text-sm rounded-full font-medium cursor-pointer hover:opacity-80 transition
+                                            {{ $bearerDisplay === 'company' ? 'bg-blue-100 text-blue-700' : '' }}
+                                            {{ $bearerDisplay === 'agent' ? 'bg-orange-100 text-orange-700' : '' }}
+                                            {{ $bearerDisplay === 'split' ? 'bg-purple-100 text-purple-700' : '' }}"
+                                            data-tooltip-left="Change loss bearer"
+                                            onclick="openLossBearerModal({{ $invoice->id }}, '{{ $bearerDisplay }}', {{ $effectiveAgentPct }})">
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-1 text-xs md:text-sm rounded-full font-medium
+                                            {{ $bearerDisplay === 'company' ? 'bg-blue-100 text-blue-700' : '' }}
+                                            {{ $bearerDisplay === 'agent' ? 'bg-orange-100 text-orange-700' : '' }}
+                                            {{ $bearerDisplay === 'split' ? 'bg-purple-100 text-purple-700' : '' }}">
+                                    @endif
+                                        @if($bearerDisplay === 'split')
+                                            Agent {{ $effectiveAgentPct }}% / Company {{ 100 - $effectiveAgentPct }}%
+                                        @else
+                                            {{ ucfirst($bearerDisplay) }}
+                                        @endif
+                                        @if($isOverride)
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ml-0.5">
+                                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                            </svg>
+                                        @endif
+                                    </span>
+                                </div>
+                            @endif
+
+                            <div class="text-gray-500 dark:text-gray-400">Invoice Amount:</div>
+                            <div class="font-medium text-gray-800 dark:text-gray-200">
                                 @if ($invoice->status === 'paid' && $invoice->payment_type === 'full' && !$invoice->refund && !$invoice->is_locked)
                                     <button type="button" class="text-blue-600 hover:underline"
                                         data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
@@ -307,13 +343,13 @@
                                 @endif
                             </div>
 
-                            <div class="text-gray-500">Service Charges:</div>
-                            <div class="font-medium text-gray-800">{{ number_format($invoice->invoicePartials->sum('service_charge'), 3) }} {{ $invoice->currency }}</div>
-                            
-                            <div class="col-span-2 border-t border-gray-200 my-1"></div>
-                            
-                            <div class="text-gray-700 font-semibold">Client Pay:</div>
-                            <div class="font-bold text-base md:text-lg text-blue-700">{{ number_format($invoice->client_pay, 3) }} <span class="text-xs md:text-sm font-normal">{{ $invoice->currency }}</span></div>
+                            <div class="text-gray-500 dark:text-gray-400">Service Charges:</div>
+                            <div class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($invoice->invoicePartials->sum('service_charge'), 3) }} {{ $invoice->currency }}</div>
+
+                            <div class="col-span-2 border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+                            <div class="text-gray-700 dark:text-gray-300 font-semibold">Client Pay:</div>
+                            <div class="font-bold text-base md:text-lg text-blue-700 dark:text-blue-400">{{ number_format($invoice->client_pay, 3) }} <span class="text-xs md:text-sm font-normal">{{ $invoice->currency }}</span></div>
                         </div>
                     </div>
 
@@ -367,11 +403,11 @@
                                     </svg>
                                 </button>
 
-                                <div x-cloak x-show="viewVoucherModal" class="fixed inset-0 z-50 bg-gray-800 bg-opacity-50 flex items-center justify-center overflow-y-auto p-4">
-                                    <div @click.away="viewVoucherModal = false" class="bg-white rounded-xl border-2 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-xl">
-                                        <div class="flex justify-between items-center gap-4 p-4 border-b sticky top-0 bg-white z-10">
-                                            <p class="text-lg font-semibold">Voucher - {{ $invoice->invoice_number }}</p>
-                                            <button type="button" @click="viewVoucherModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+                                <div x-cloak x-show="viewVoucherModal" class="fixed inset-0 z-50 bg-gray-800 bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center overflow-y-auto p-4">
+                                    <div @click.away="viewVoucherModal = false" class="bg-white dark:bg-gray-800 rounded-xl border-2 dark:border-gray-700 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-xl">
+                                        <div class="flex justify-between items-center gap-4 p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                                            <p class="text-lg font-semibold dark:text-white">Voucher - {{ $invoice->invoice_number }}</p>
+                                            <button type="button" @click="viewVoucherModal = false" class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 text-2xl leading-none">&times;</button>
                                         </div>
                                         <div class="py-6 px-4 md:px-10 flex flex-col gap-4">
                                             @foreach ($invoice->invoiceDetails as $invoiceDetail)
@@ -439,7 +475,7 @@
                                                     </div>
                                                 </a>
                                                 @else
-                                                <div class="p-4 bg-gray-100 rounded-lg text-gray-500 text-center">
+                                                <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 text-center">
                                                     Task type "{{ $invoiceDetail->task->type ?? 'Unknown' }}" voucher not available
                                                 </div>
                                                 @endif
@@ -512,11 +548,11 @@
                 </div>
             </div>
             @empty
-            <div class="p-8 text-center text-gray-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <p class="text-lg font-medium">No invoices found</p>
+                <p class="text-lg font-medium dark:text-gray-300">No invoices found</p>
                 <p class="text-sm">Create a new invoice to get started</p>
             </div>
             @endforelse
@@ -524,35 +560,35 @@
 
         <x-pagination :data="$invoices" />
 
-        <div id="editModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30 p-4">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-                <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-                    <h3 id="editModalTitle" class="text-lg font-semibold">Edit</h3>
+        <div id="editModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30 dark:bg-black/50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+                    <h3 id="editModalTitle" class="text-lg font-semibold dark:text-white">Edit</h3>
                     <button type="button" class="text-gray-500 hover:text-red-500 text-2xl" onclick="closeEditModal()">&times;</button>
                 </div>
                 <form id="editForm" method="POST" action="">
                     @csrf
                     @method('PUT')
                     <div class="p-4 space-y-4">
-                        <p id="editLabel" class="text-sm text-gray-600">Amount per Task</p>
+                        <p id="editLabel" class="text-sm text-gray-600 dark:text-gray-400">Amount per Task</p>
                         <div id="taskAmountsContainer"></div>
-                        <div class="flex items-center justify-between border-t pt-3">
-                            <div class="text-sm text-gray-500">New invoice total</div>
-                            <div class="text-lg font-bold"><span id="total-payment-display">0.00</span></div>
+                        <div class="flex items-center justify-between border-t dark:border-gray-700 pt-3">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">New invoice total</div>
+                            <div class="text-lg font-bold dark:text-white"><span id="total-payment-display">0.00</span></div>
                         </div>
                     </div>
-                    <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 sticky bottom-0">
-                        <button type="button" class="px-4 py-2 text-sm rounded border hover:bg-gray-100" onclick="closeEditModal()">Cancel</button>
+                    <div class="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-end gap-2 sticky bottom-0">
+                        <button type="button" class="px-4 py-2 text-sm rounded border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300" onclick="closeEditModal()">Cancel</button>
                         <button type="submit" class="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div id="quickEmailModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden p-4" onclick="handleQuickEmailBackdropClick(event)">
-            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div id="quickEmailModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-opacity-70 z-50 hidden p-4" onclick="handleQuickEmailBackdropClick(event)">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg md:text-xl font-bold text-gray-800">Send Invoice via Email</h2>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800 dark:text-white">Send Invoice via Email</h2>
                     <button type="button" onclick="closeQuickEmailModal()" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
                 </div>
 
@@ -560,38 +596,38 @@
                     @csrf
                     <input type="hidden" id="quickEmailInvoiceNumber" name="invoice_number">
                     <input type="hidden" id="quickEmailCompanyId" name="company_id">
-                    
+
                     <div class="space-y-3">
-                        <p class="text-sm text-gray-600">Select recipients for invoice <strong id="quickEmailInvoiceDisplay"></strong></p>
-                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" name="send_to_agent" id="quick_send_to_agent" value="1" 
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Select recipients for invoice <strong id="quickEmailInvoiceDisplay" class="dark:text-white"></strong></p>
+                        <label class="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                            <input type="checkbox" name="send_to_agent" id="quick_send_to_agent" value="1"
                                 class="form-checkbox h-5 w-5 text-indigo-600 rounded" checked>
                             <div class="ml-3">
-                                <span class="block font-medium text-gray-800">Agent</span>
-                                <span class="block text-sm text-gray-500" id="quickAgentEmail">-</span>
+                                <span class="block font-medium text-gray-800 dark:text-white">Agent</span>
+                                <span class="block text-sm text-gray-500 dark:text-gray-400" id="quickAgentEmail">-</span>
                             </div>
                         </label>
-                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <label class="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                             <input type="checkbox" name="send_to_client" id="quick_send_to_client" value="1"
                                 class="form-checkbox h-5 w-5 text-indigo-600 rounded">
                             <div class="ml-3">
-                                <span class="block font-medium text-gray-800">Client</span>
-                                <span class="block text-sm text-gray-500" id="quickClientEmail">-</span>
+                                <span class="block font-medium text-gray-800 dark:text-white">Client</span>
+                                <span class="block text-sm text-gray-500 dark:text-gray-400" id="quickClientEmail">-</span>
                             </div>
                         </label>
                         <div class="pt-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Email Addresses</label>
-                            <input type="text" name="custom_emails" id="quick_custom_emails" 
-                                class="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Additional Email Addresses</label>
+                            <input type="text" name="custom_emails" id="quick_custom_emails"
+                                class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg p-2 text-sm"
                                 placeholder="email1@example.com, email2@example.com">
-                            <p class="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Separate multiple emails with commas</p>
                         </div>
                     </div>
-                    <div id="quickEmailSuccessMessage" class="hidden p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm"></div>
-                    <div id="quickEmailErrorMessage" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm"></div>
+                    <div id="quickEmailSuccessMessage" class="hidden p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-300 text-sm"></div>
+                    <div id="quickEmailErrorMessage" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-300 text-sm"></div>
                     <div class="flex justify-between pt-4">
                         <button type="button" onclick="closeQuickEmailModal()"
-                            class="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 transition">
+                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                             Cancel
                         </button>
                         <button type="submit" id="quickSubmitSendEmail"
@@ -609,6 +645,67 @@
             </div>
         </div>
     </div>
+
+    {{-- Loss Bearer Modal --}}
+    @if(auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]))
+    <div id="lossBearerModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-opacity-70 z-50 hidden p-4" onclick="if(event.target===this) closeLossBearerModal()">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 w-full max-w-md" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg md:text-xl font-bold text-gray-800 dark:text-white">Change Loss Bearer</h2>
+                <button type="button" onclick="closeLossBearerModal()" class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 text-2xl leading-none">&times;</button>
+            </div>
+
+            <input type="hidden" id="lossBearerInvoiceId">
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Who bears the loss?</label>
+                    <select id="lossBearerSelect" onchange="toggleSplitFields()"
+                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="company">Company Bears Loss</option>
+                        <option value="agent">Agent Bears Loss</option>
+                        <option value="split">Split Between Company & Agent</option>
+                    </select>
+                </div>
+
+                <div id="splitPercentageFields" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Percentage (%)</label>
+                        <input type="number" id="lossBearerAgentPct" min="0" max="100" step="0.01" value="50.00"
+                            class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            oninput="document.getElementById('lossBearerCompanyPct').value = (100 - parseFloat(this.value || 0)).toFixed(2)"
+                            onblur="this.value = parseFloat(this.value || 0).toFixed(2)">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Percentage (%)</label>
+                        <input type="number" id="lossBearerCompanyPct" min="0" max="100" step="0.01" value="50"
+                            class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-lg p-2.5 text-sm bg-gray-50" readonly>
+                    </div>
+                </div>
+
+                <div id="lossBearerSuccessMsg" class="hidden p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-300 text-sm"></div>
+                <div id="lossBearerErrorMsg" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-300 text-sm"></div>
+
+                <div class="flex justify-between pt-4">
+                    <button type="button" onclick="closeLossBearerModal()"
+                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        Cancel
+                    </button>
+                    <button type="button" id="lossBearerSubmitBtn" onclick="saveLossBearer()"
+                        class="px-5 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition flex items-center">
+                        <span id="lossBearerBtnText">Save & Recalculate</span>
+                        <span id="lossBearerSpinner" class="hidden ml-2">
+                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <script>
         function copyToClipboard(text) {
@@ -855,6 +952,87 @@
                 });
             }
         });
+
+        // Loss Bearer Modal Functions
+        function openLossBearerModal(invoiceId, currentBearer, agentPct) {
+            document.getElementById('lossBearerInvoiceId').value = invoiceId;
+            document.getElementById('lossBearerSelect').value = currentBearer;
+            document.getElementById('lossBearerAgentPct').value = parseFloat(agentPct || 50).toFixed(2);
+            document.getElementById('lossBearerCompanyPct').value = (100 - parseFloat(agentPct || 50)).toFixed(2);
+            toggleSplitFields();
+
+            document.getElementById('lossBearerSuccessMsg').classList.add('hidden');
+            document.getElementById('lossBearerErrorMsg').classList.add('hidden');
+
+            document.getElementById('lossBearerModal').classList.remove('hidden');
+        }
+
+        function closeLossBearerModal() {
+            document.getElementById('lossBearerModal').classList.add('hidden');
+        }
+
+        function toggleSplitFields() {
+            const select = document.getElementById('lossBearerSelect');
+            const fields = document.getElementById('splitPercentageFields');
+            if (select.value === 'split') {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
+        async function saveLossBearer() {
+            const invoiceId = document.getElementById('lossBearerInvoiceId').value;
+            const bearer = document.getElementById('lossBearerSelect').value;
+            const agentPct = document.getElementById('lossBearerAgentPct').value;
+
+            const submitBtn = document.getElementById('lossBearerSubmitBtn');
+            const btnText = document.getElementById('lossBearerBtnText');
+            const spinner = document.getElementById('lossBearerSpinner');
+            const successMsg = document.getElementById('lossBearerSuccessMsg');
+            const errorMsg = document.getElementById('lossBearerErrorMsg');
+
+            submitBtn.disabled = true;
+            btnText.textContent = 'Saving...';
+            spinner.classList.remove('hidden');
+            successMsg.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+
+            try {
+                const response = await fetch(`/invoice/${invoiceId}/loss-bearer`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        loss_bearer: bearer,
+                        agent_percentage: parseFloat(agentPct) || 0
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    successMsg.textContent = result.message;
+                    successMsg.classList.remove('hidden');
+                    setTimeout(() => {
+                        closeLossBearerModal();
+                        location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(result.message || 'Failed to update loss bearer');
+                }
+            } catch (error) {
+                errorMsg.textContent = error.message || 'An error occurred.';
+                errorMsg.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                btnText.textContent = 'Save & Recalculate';
+                spinner.classList.add('hidden');
+            }
+        }
     </script>
 
     <style>

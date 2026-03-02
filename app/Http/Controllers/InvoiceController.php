@@ -527,7 +527,7 @@ class InvoiceController extends Controller
             ->where('invoice_id', $invoice->id)
             ->first();
 
-        $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
+        $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->where('company_id', $companyId)->first();
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
         $can_import = Charge::where('company_id', $companyId)

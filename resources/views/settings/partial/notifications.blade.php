@@ -137,6 +137,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
@@ -148,6 +149,11 @@
                     });
 
                     const data = await response.json();
+
+                    if (!response.ok) {
+                        alert(data.message || 'Failed to save setting');
+                        return;
+                    }
 
                     if (data.success) {
                         const alert = document.getElementById('custom-success-ajax-alert');
@@ -244,6 +250,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
@@ -255,6 +262,11 @@
                     });
 
                     const data = await response.json();
+
+                    if (!response.ok) {
+                        alert(data.message || 'Failed to save setting');
+                        return;
+                    }
 
                     if (data.success) {
                         this.agentSettings[this.editingAgent.id] = {
@@ -287,11 +299,17 @@
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     });
 
                     const data = await response.json();
+
+                    if (!response.ok) {
+                        alert(data.message || 'Failed to delete setting');
+                        return;
+                    }
 
                     if (data.success) {
                         delete this.agentSettings[this.editingAgent.id];
@@ -320,6 +338,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
@@ -331,6 +350,11 @@
                     });
 
                     const data = await response.json();
+
+                    if (!response.ok) {
+                        alert(data.message || 'Failed to update settings');
+                        return;
+                    }
 
                     if (data.success) {
                         this.agents = [];

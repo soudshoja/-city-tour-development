@@ -73,11 +73,17 @@ class SendAgentUninvoicedTaskReminders extends Command
 
                 $windowLabel = $from->format('d/m/Y') . ' - ' . $to->format('d/m/Y');
             } else {
-                for ($week = 0; $week < 100; $week++) {
-                    $from = now()->subDays(($week + 1) * 7);
-                    $to = $week === 0 ? now() : now()->subDays($week * 7);
+                $latestTask = Task::where('agent_id', $agent->id)
+                    ->whereDoesntHave('invoiceDetail')
+                    ->whereNotNull('created_at')
+                    ->latest('created_at')
+                    ->first();
 
-                    $batch = Task::with('client')
+                if ($latestTask) {
+                    $to = $latestTask->created_at;
+                    $from = $to->copy()->subDays(7);
+
+                    $tasks = Task::with('client')
                         ->where('agent_id', $agent->id)
                         ->whereDoesntHave('invoiceDetail')
                         ->whereNotNull('created_at')
@@ -85,11 +91,7 @@ class SendAgentUninvoicedTaskReminders extends Command
                         ->orderBy('created_at', 'desc')
                         ->get();
 
-                    if ($batch->isNotEmpty()) {
-                        $tasks = $batch;
-                        $windowLabel = $from->format('d/m/Y') . ' - ' . $to->format('d/m/Y');
-                        break;
-                    }
+                    $windowLabel = $from->format('d/m/Y') . ' - ' . $to->format('d/m/Y');
                 }
             }
 
@@ -227,8 +229,8 @@ class SendAgentUninvoicedTaskReminders extends Command
         $filename = "uninvoiced_tasks_{$agent->id}_" . now()->format('Ymd_His') . '.pdf';
         $path = "temp/{$filename}";
 
-        Storage::disk('public')->put($path, $pdf->output());
+        Storage::disk('local')->put($path, $pdf->output());
 
-        return storage_path("app/public/{$path}");
+        return storage_path("app/{$path}");
     }
 }

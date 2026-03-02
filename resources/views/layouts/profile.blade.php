@@ -374,12 +374,7 @@ function JazeeraAirwaysCredit() {
     const sections = document.querySelectorAll('.jazeera-section');
     const creditInfos = document.querySelectorAll('.jazeera-info');
 
-    if (typeof data === 'undefined' || data === null) {
-        sections.forEach(section => section.classList.add('hidden'));
-        return;
-    }
-
-    if (!data.length) {
+    if (typeof data === 'undefined' || data === null || !data.length) {
         sections.forEach(section => section.classList.remove('hidden'));
         creditInfos.forEach(creditInfo => {
             creditInfo.innerHTML = `

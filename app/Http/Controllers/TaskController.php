@@ -3068,16 +3068,12 @@ class TaskController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role_id == Role::COMPANY) {
-            $company = $user->company;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $company = $user->branch->company;
-        } elseif ($user->role_id == Role::AGENT) {
-            $company = $user->agent->branch->company;
-        } else {
+        $companyId = getCompanyId($user);
+        if (!$companyId) {
             return redirect()->back()->with('error', 'User not authorized to upload tasks.');
         }
 
+        $company = Company::find($companyId);
         if (!$company) {
             Log::error("Company not found for user ID: {$user->id}");
             return redirect()->back()->with('error', 'Something went wrong.');
@@ -4112,13 +4108,8 @@ class TaskController extends Controller
             $agentId = $agent->id;
         }
 
-        if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company->id;
-        } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company->id;
-        } else {
+        $companyId = getCompanyId($user);
+        if (!$companyId) {
             return redirect()->back()->with('error', 'User not authorized to create task');
         }
 

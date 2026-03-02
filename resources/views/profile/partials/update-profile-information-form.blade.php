@@ -25,17 +25,16 @@
     @method('patch')
 
     {{-- RIGHT COLUMN (Logo Upload) --}}
-    @if ($user->role_id == \App\Models\Role::COMPANY)
+    @if (in_array($user->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
     <div class="flex justify-end justify-end pr-6">
         <div class="flex flex-col items-center space-y-4">
             <!-- Logo Preview -->
             <div id="logo-preview-container"
                 class="h-24 w-24 border-2 border-gray-300 flex items-center justify-center
                         rounded-md overflow-hidden bg-gray-50 dark:bg-gray-700">
-                @if ($user->company && $user->company->logo)
-                <img id="logo-preview" src="{{ asset('storage/' . $user->company->logo) }}"
-                    alt="Company Logo"
-                    class="h-full w-full object-cover">
+                @if (($company ?? $user->company)?->logo)
+                <img id="logo-preview" src="{{ asset('storage/' . ($company ?? $user->company)->logo) }}"
+                    alt="Company Logo" class="h-full w-full object-cover">
                 @else
                 <span id="logo-placeholder" class="text-gray-400 text-3xl">+</span>
                 @endif
@@ -93,41 +92,41 @@
         </div>
         @endif
 
-        @if ($user->role_id == \App\Models\Role::COMPANY)
+        @if (in_array($user->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
         <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <x-input-label for="facebook" :value="__('Facebook Page Link')" />
                 <x-text-input id="facebook" name="facebook" type="url" placeholder="https://www.facebook.com/"
                     class="mt-1 block w-full"
-                    :value="old('facebook', optional($user->company)->facebook)" autocomplete="off" />
+                    :value="old('facebook', optional($company ?? $user->company)->facebook)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('facebook')" />
             </div>
             <div>
                 <x-input-label for="instagram" :value="__('Instagram Profile Link')" />
                 <x-text-input id="instagram" name="instagram" type="url" placeholder="https://www.instagram.com/"
                     class="mt-1 block w-full"
-                    :value="old('instagram', optional($user->company)->instagram)" autocomplete="off" />
+                    :value="old('instagram', optional($company ?? $user->company)->instagram)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('instagram')" />
             </div>
             <div>
                 <x-input-label for="snapchat" :value="__('Snapchat Profile Link')" />
                 <x-text-input id="snapchat" name="snapchat" type="url" placeholder="https://www.snapchat.com/add/"
                     class="mt-1 block w-full"
-                    :value="old('snapchat', optional($user->company)->snapchat)" autocomplete="off" />
+                    :value="old('snapchat', optional($company ?? $user->company)->snapchat)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('snapchat')" />
             </div>
             <div>
                 <x-input-label for="tiktok" :value="__('TikTok Profile Link')" />
                 <x-text-input id="tiktok" name="tiktok" type="url" placeholder="https://www.tiktok.com/"
                     class="mt-1 block w-full"
-                    :value="old('tiktok', optional($user->company)->tiktok)" autocomplete="off" />
+                    :value="old('tiktok', optional($company ?? $user->company)->tiktok)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('tiktok')" />
             </div>
             <div>
                 <x-input-label for="whatsapp" :value="__('WhatsApp Link')" />
                 <x-text-input id="whatsapp" name="whatsapp" type="url" placeholder="https://wa.me/"
                     class="mt-1 block w-full"
-                    :value="old('whatsapp', optional($user->company)->whatsapp)" autocomplete="off" />
+                    :value="old('whatsapp', optional($company ?? $user->company)->whatsapp)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('whatsapp')" />
             </div>
         </div>

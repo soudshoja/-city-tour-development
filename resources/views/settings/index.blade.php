@@ -61,7 +61,7 @@
                         Terms & Regulation
                     </button>
 
-                    <!-- Charges / Payment Gateways -->
+                    @can('viewAny', 'App\Models\Charge')
                     <button
                         @click="saveTab('charges')"
                         :class="{'setting-sidebar-btn-active': activeTab === 'charges'}"
@@ -71,6 +71,7 @@
                         </svg>
                         Payment Gateways
                     </button>
+                    @endcan
 
                     @can('viewPaymentMethodGroup', 'App\Models\PaymentMethod')
                     <button

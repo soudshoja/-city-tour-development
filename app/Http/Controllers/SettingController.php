@@ -36,12 +36,17 @@ class SettingController extends Controller
 
         // Reset active tab if user doesn't have permission for it
         $tabPermissions = [
-            'agent-charges' => 'viewAgentCharges',
-            'agent-loss' => 'viewAgentLoss',
-            'notifications' => 'viewNotifications',
+            'charges' => ['viewAny', Charge::class],
+            'payment-methods' => ['viewPaymentMethodGroup', PaymentMethod::class],
+            'agent-charges' => ['viewAgentCharges', Setting::class],
+            'agent-loss' => ['viewAgentLoss', Setting::class],
+            'notifications' => ['viewNotifications', Setting::class],
         ];
-        if (isset($tabPermissions[$activeTab]) && !Gate::allows($tabPermissions[$activeTab], Setting::class)) {
-            $activeTab = 'payment';
+        if (isset($tabPermissions[$activeTab])) {
+            [$ability, $model] = $tabPermissions[$activeTab];
+            if (!Gate::allows($ability, $model)) {
+                $activeTab = 'payment';
+            }
         }
 
         return view('settings.index', compact(
@@ -843,6 +848,7 @@ class SettingController extends Controller
      */
     public function getAgentNotifications(Request $request)
     {
+        Gate::authorize('viewNotifications', Setting::class);
         $user = Auth::user();
         $companyId = getCompanyId($user);
 

@@ -8,6 +8,7 @@ export function ajaxSearchableDropdown({
     columns = [],
     displayColumn = 'name',
     mode = 'dropdown',
+    watchDropdown = '',
 }) {
     return {
         open: false,
@@ -23,15 +24,34 @@ export function ajaxSearchableDropdown({
         columns,
         displayColumn,
         mode,
+        watchDropdown,
         debounceTimer: null,
         originalId: selectedId,
         originalName: selectedName,
 
-        init() {},
+        init() {
+            if (this.watchDropdown) {
+                window.addEventListener('dropdown-select', (e) => {
+                    if (e.detail && e.detail.name === this.watchDropdown) {
+                        this.dataId = e.detail.value;
+                        this.selectedId = '';
+                        this.selectedName = '';
+                        this.filtered = [];
+                    }
+                });
+            }
+
+            window.addEventListener('dropdown-opened', (e) => {
+                if (e.detail && e.detail.name !== name) {
+                    this.open = false;
+                }
+            });
+        },
 
         toggleOpen() {
             this.open = !this.open;
             if (this.open) {
+                window.dispatchEvent(new CustomEvent('dropdown-opened', { detail: { name } }));
                 this.$nextTick(() => this.focusSearch());
             }
         },
@@ -115,7 +135,7 @@ export function ajaxSearchableDropdown({
 
         renderOption(option) {
             if (!this.columns || this.columns.length === 0) {
-                return this.highlightMatch(option.name);
+                return this.highlightMatch(option[this.displayColumn] || option.name);
             }
 
             const primary = this.columns.find(c => c.key === this.displayColumn) || this.columns[0];

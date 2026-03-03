@@ -149,7 +149,7 @@ class TaskController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        $defaultColumns = ['reference', 'type', 'gds-reference', 'amadeus-reference', 'bill-to', 'passenger-name', 'supplier-pay-date','agent-name', 'price', 'invoice', 'status', 'info', 'supplier'];
+        $defaultColumns = ['reference', 'type', 'gds-reference', 'amadeus-reference', 'bill-to', 'passenger-name', 'supplier-pay-date', 'agent-name', 'price', 'invoice', 'status', 'info', 'supplier'];
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
         $sortBy = $request->query('sortBy', 'created_at');
@@ -5560,14 +5560,14 @@ class TaskController extends Controller
             ->toArray();
 
 
-        $airports = Airport::orderBy('iata_code', 'asc')->get(['id', 'iata_code', 'name'])->map(function($airport) {
+        $airports = Airport::orderBy('iata_code', 'asc')->get(['id', 'iata_code', 'name'])->map(function ($airport) {
             return [
                 'id' => $airport->id,
                 'name' => $airport->iata_code . ' - ' . $airport->name
             ];
         });
 
-        $airlines = Airline::orderBy('name', 'asc')->get(['id', 'iata_designator', 'name'])->map(function($airline) {
+        $airlines = Airline::orderBy('name', 'asc')->get(['id', 'iata_designator', 'name'])->map(function ($airline) {
             return [
                 'id' => $airline->id,
                 'name' => $airline->iata_designator . ' - ' . $airline->name
@@ -6438,10 +6438,12 @@ class TaskController extends Controller
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('reference', 'like', "%{$search}%")
-                    ->orWhereHas('client', function ($clientQuery) use ($search) {
-                    $clientQuery->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $search . '%'])
-                            ->orWhere('client_name', 'like', "%{$search}%");
-                    });
+                    ->orWhere('client_name', 'like', "%{$search}%")
+                    ->orWhereHas(
+                        'client',
+                        fn($clientQuery) => $clientQuery
+                            ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$search}%"])
+                    );
             });
         }
 
@@ -6451,10 +6453,10 @@ class TaskController extends Controller
             $tasks->map(function ($t) {
                 return [
                     'id' => $t->id,
-                    'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
+                    'reference' => $t->reference,
+                    'client_name' => $t->client?->full_name ?? $t->client_name ?? $t->passenger_name,
                 ];
             })
         );
     }
-
 }

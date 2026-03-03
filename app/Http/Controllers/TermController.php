@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Term;
-USE App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Mime\DraftEmail;
 
 class TermController extends Controller
 {
@@ -20,7 +18,7 @@ class TermController extends Controller
             'company_id' => 'nullable|exists:companies,id',
         ]); 
     
-        $companyId = $this->getCompanyId($request);
+        $companyId = getCompanyId(Auth::user());
 
         $request = $request->all();
 
@@ -63,7 +61,7 @@ class TermController extends Controller
             'is_default' => 'nullable|boolean',
         ]);
 
-        $companyId = $this->getCompanyId($request);
+        $companyId = getCompanyId(Auth::user());
 
         $template = Term::create([
             'company_id' => $companyId,
@@ -120,7 +118,7 @@ class TermController extends Controller
             $template->update(['is_default' => false]);
 
             // Set as default for new language if no default exists
-            $existingDefault = Term::where('company_id', $companyId)
+            $existingDefault = Term::where('company_id', $template->company_id)
                 ->where('language', $request->language)
                 ->where('is_default', true)
                 ->exists();
@@ -130,13 +128,13 @@ class TermController extends Controller
             }
 
             // Set new default for old language if needed
-            $oldLangDefault = Term::where('company_id', $companyId)
+            $oldLangDefault = Term::where('company_id', $template->company_id)
                 ->where('language', $oldLanguage)
                 ->where('is_default', true)
                 ->exists();
 
             if (!$oldLangDefault) {
-                $newOldLangDefault = Term::where('company_id', $companyId)
+                $newOldLangDefault = Term::where('company_id', $template->company_id)
                     ->where('language', $oldLanguage)
                     ->where('is_active', true)
                     ->first();
@@ -166,8 +164,8 @@ class TermController extends Controller
 
         // If deleted template was default, set another one as default FOR SAME LANGUAGE
         if ($wasDefault) {
-            $newDefault = Term::where('company_id', $companyId)
-                ->where('language', $language) // ADD THIS LINE
+            $newDefault = Term::where('company_id', $template->company_id)
+                ->where('language', $language)
                 ->where('is_active', true)
                 ->first();
 
@@ -209,25 +207,4 @@ class TermController extends Controller
         return redirect()->route('settings.index')->with('success', $message);
     }
 
-    /**
-     * Get company ID based on user role
-     */
-    private function getCompanyId(?Request $request = null)
-    {
-        $user = Auth::user();
-
-        if ($user->role->id == Role::ADMIN) {
-            return $request->input('company_id', 1);
-        } elseif ($user->role->id == Role::COMPANY) {
-            return $user->company->id;
-        } elseif ($user->role->id == Role::BRANCH) {
-            return $user->branch->company_id;
-        } elseif ($user->role->id == Role::AGENT) {
-            return $user->agent->branch->company->id;
-        } elseif ($user->role->id == Role::ACCOUNTANT) {
-            return $user->accountant->branch->company_id;
-        }
-
-        return null;
-    }
 }

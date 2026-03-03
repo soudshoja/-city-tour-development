@@ -30,11 +30,16 @@ class Client extends Model
         'company_id',
     ];
 
-    protected $appends = ['full_name'];
+    protected $appends = ['full_name', 'phone_number'];
 
     public function getFullNameAttribute()
     {
         return trim(collect([$this->first_name, $this->middle_name, $this->last_name])->filter()->join(' '));
+    }
+
+    public function getPhoneNumberAttribute()
+    {
+        return trim(($this->country_code ?? '') . ($this->phone ?? ''));
     }
 
     public function agent()

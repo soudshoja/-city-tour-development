@@ -56,7 +56,7 @@
                                         :name="'payment_method_group_' + group.id"
                                         :value="methods[0].id"
                                         :checked="selectedMethods[group.id] == methods[0].id"
-                                        :disabled="!methods[0].is_active @cannot('managePaymentMethodGroup', 'App\Models\PaymentMethod') || true @endcannot"
+                                        :disabled="!methods[0].is_active @cannot('managePaymentMethodGroup', 'App\Models\PaymentMethod') @endcannot"
                                         @change="selectedMethods[group.id] = methods[0].id"
                                         class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
                                     <span class="flex-1 font-medium text-gray-700" x-text="gatewayName"></span>

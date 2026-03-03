@@ -293,7 +293,7 @@
                                     </svg>
                                     <span class="pl-label">Agent</span>
                                 </div>
-                                <span class="pl-name">{{ $payment->agent?->name ?? 'N/A' }}</span>
+                                <span class="pl-name">{{ $payment->agent?->name ?? 'Not Set' }}</span>
                             </div>
                             <div>
                                 <div class="pl-section-label">
@@ -307,7 +307,7 @@
                                     <a href="{{ route('clients.show', $payment->client_id) }}" class="pl-client-link">
                                         {{ $payment->client->full_name }}
                                     </a>
-                                    <div class="pl-phone">{{ $payment->client->country_code . $payment->client->phone }}</div>
+                                    <div class="pl-phone">{{ $payment->client->phone_number }}</div>
                                 @else
                                     <span class="pl-na">N/A</span>
                                 @endif
@@ -475,8 +475,8 @@
                                             @if($payment->status === 'initiate')
                                                 <div class="mb-4">
                                                     <label class="pl-modal-label">Client</label>
-                                                    <div class="pl-input-disabled">
-                                                        {{ $payment->client ? $payment->client->full_name . ' - ' . $payment->client->phone : 'N/A' }}
+                                                    <div class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-500 bg-gray-100">
+                                                        {{ $payment->client ? $payment->client->full_name . ' - ' . $payment->client->phone_number : 'N/A' }}
                                                     </div>
                                                     <input type="hidden" name="client_id" value="{{ $payment->client?->id }}">
                                                 </div>
@@ -490,7 +490,7 @@
                                                 </div>
 
                                                 <label for="phone_{{ $payment->client_id }}" class="pl-modal-label">Phone Number</label>
-                                                <div class="flex gap-4 mb-4">
+                                                <div class="flex gap-3 mb-4">
                                                     <div class="w-2/5">
                                                         <x-searchable-dropdown name="dial_code"
                                                             :items="\App\Models\Country::all()->map(fn($country) => ['id' => $country->dialing_code, 'name' => $country->dialing_code . ' ' . $country->name])"
@@ -500,7 +500,7 @@
                                                     </div>
                                                     <div class="w-3/5">
                                                         <input type="text" name="phone" id="phone_{{ $payment->client_id }}" value="{{ $payment->client?->phone }}"
-                                                            placeholder="Phone Number" class="pl-modal-input" required />
+                                                            placeholder="Phone Number" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" required />
                                                     </div>
                                                 </div>
                                             @endif
@@ -522,7 +522,7 @@
                                                 <div class="mb-4">
                                                     <label for="amount" class="pl-modal-label">Amount</label>
                                                     <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
-                                                        class="pl-modal-input {{ $payment->status === 'initiate' ? 'pl-input-disabled cursor-not-allowed' : '' }}"
+                                                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none {{ $payment->status === 'initiate' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900' }}"
                                                         {{ $payment->status === 'initiate' ? 'disabled' : '' }}>
                                                 </div>
                                             @endif
@@ -709,7 +709,7 @@
                                     </svg>
                                     <span class="pl-label">Agent</span>
                                 </div>
-                                <span class="pl-name">{{ $imported->agent?->name ?? 'N/A' }}</span>
+                                <span class="pl-name">{{ $imported->agent?->name ?? 'Not Set' }}</span>
                             </div>
                         </div>
 
@@ -730,7 +730,8 @@
 
                         <div class="md:col-span-1 xl:col-span-3 pl-actions">
                             @if (!$imported->client_id)
-                            <div x-data="{ showAssign: false }">
+                            <div x-data="{ showAssign: false, selectedAgentId: '{{ $imported->agent_id ?? '' }}' }"
+                                @dropdown-select.window="if ($event.detail.name === 'agent_id_{{ $imported->id }}') selectedAgentId = $event.detail.value">
                                 <button @click="showAssign = true" class="imp-assign-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>
@@ -752,16 +753,22 @@
                                                 @csrf
                                                 @if (!$imported->agent_id)
                                                 <div class="mb-4">
-                                                    <x-searchable-dropdown name="agent_id"
+                                                    <x-searchable-dropdown name="agent_id_{{ $imported->id }}"
                                                         :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
                                                         :placeholder="'Search for agent'"
                                                         label="Agent" />
+                                                    <input type="hidden" name="agent_id" :value="selectedAgentId">
                                                 </div>
                                                 @endif
                                                 <div class="mb-4">
-                                                    <x-searchable-dropdown name="client_id"
-                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
+                                                    <x-ajax-searchable-dropdown
+                                                        name="client_id"
+                                                        :ajaxUrl="route('clients.ajax.search')"
+                                                        :dataId="$imported->agent_id ?? ''"
+                                                        :watchDropdown="'agent_id_' . $imported->id"
                                                         :placeholder="'Search for client'"
+                                                        displayColumn="full_name"
+                                                        :columns="['full_name', 'phone_number']"
                                                         label="Client" />
                                                 </div>
                                                 <div class="mb-4 pl-info-box">

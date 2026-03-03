@@ -1182,6 +1182,7 @@ class PaymentController extends Controller
         $originalAmount = $partial->amount;
 
         $payment = Payment::create([
+            'company_id' => $invoice->agent->branch->company_id,
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->full_name,
             'pay_to' => $invoice->agent->branch->company->name,
@@ -1970,6 +1971,7 @@ class PaymentController extends Controller
             $voucherSequence->increment('current_sequence');
 
             $data = [
+                'company_id' => $companyId,
                 'voucher_number' => $voucherNumber,
                 'payment_reference' => $invoiceId ?? $paymentReference,
                 'invoice_reference' => $invoiceReference ?? $trackId,
@@ -2115,7 +2117,7 @@ class PaymentController extends Controller
         }
 
         if (str_contains($gatewayName, 'tap')) {
-            return $this->importTapPaymentFile($rows, $request->input('gateway'));
+            return $this->importTapPaymentFile($rows, $request->input('gateway'), $companyId);
         }
 
         $imported = 0;
@@ -2215,6 +2217,7 @@ class PaymentController extends Controller
             DB::beginTransaction();
             try {
                 $payment = Payment::create([
+                    'company_id' => $companyId,
                     'voucher_number' => null,
                     'payment_reference' => $invoiceId,
                     'invoice_reference' => $invoiceReference,
@@ -2293,7 +2296,7 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with($imported > 0 ? 'success' : 'error', $message);
     }
 
-    private function importTapPaymentFile($rows, string $gatewayName): RedirectResponse
+    private function importTapPaymentFile($rows, string $gatewayName, int $companyId): RedirectResponse
     {
         $imported = 0;
         $skipped = 0;
@@ -2386,6 +2389,7 @@ class PaymentController extends Controller
             DB::beginTransaction();
             try {
                 $payment = Payment::create([
+                    'company_id' => $companyId,
                     'voucher_number' => null,
                     'payment_reference' => $chargeId,
                     'invoice_reference' => $saleRow['receipt'] ?? null,
@@ -2605,11 +2609,8 @@ class PaymentController extends Controller
                 ->orWhereHas(
                     'client',
                     fn($q) => $q
-                        ->where('first_name', 'like', '%' . $search . '%')
-                        ->orWhere('middle_name', 'like', '%' . $search . '%')
-                        ->orWhere('last_name', 'like', '%' . $search . '%')
-                        ->orWhere('country_code', 'like', '%' . $search . '%')
-                        ->orWhere('phone', 'like', '%' . $search . '%')
+                        ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $search . '%'])
+                        ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%' . $search . '%'])
                 )
                 ->orWhereHas('myFatoorahPayment', fn($q) => $q->where('invoice_ref', 'like', '%' . $search . '%'))
                 ->orWhereHas('tapPayment', fn($q) => $q->where('tap_id', 'like', '%' . $search . '%'));
@@ -2916,6 +2917,7 @@ class PaymentController extends Controller
 
         try {
             $data = [
+                'company_id' => $companyId,
                 'voucher_number' => $voucherNumber,
                 'payment_reference' => $invoiceId,
                 'invoice_reference' => $invoiceReference,
@@ -6627,6 +6629,7 @@ class PaymentController extends Controller
                 Log::info('[MULTI PAYMENT METHOD] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount . ' KWD');
 
                 $payment = Payment::create([
+                    'company_id' => $company->id,
                     'voucher_number' => $voucherNumber,
                     'amount' => $totalAmount,
                     'from' => $client->full_name,
@@ -7207,10 +7210,8 @@ class PaymentController extends Controller
             $paymentLinksQuery->where(function ($q) use ($search) {
                 $q->where('payments.voucher_number', 'like', "%{$search}%")
                     ->orWhereHas('client', fn($sub) => $sub->where(fn($s) => $s
-                        ->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('middle_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) like ?", ["%{$search}%"])))
+                        ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ["%{$search}%"])))
                     ->orWhereHas('agent', fn($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
@@ -7240,10 +7241,8 @@ class PaymentController extends Controller
             $invoicesQuery->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
                     ->orWhereHas('client', fn($sub) => $sub->where(fn($s) => $s
-                        ->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('middle_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) like ?", ["%{$search}%"])))
+                        ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ["%{$search}%"])))
                     ->orWhereHas('agent', fn($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }

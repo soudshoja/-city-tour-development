@@ -52,10 +52,12 @@ class Agent extends Model
 
     public function clientQuery()
     {
-        return Client::where('agent_id', $this->id)
-            ->orWhereHas('agents', function ($query) {
-                $query->where('agent_id', $this->id);
-            });
+        return Client::where(function ($q) {
+            $q->where('agent_id', $this->id)
+                ->orWhereHas('agents', function ($query) {
+                    $query->where('agent_id', $this->id);
+                });
+        });
     }
 
     public function user()

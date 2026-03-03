@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Http\Traits\Lockable;
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Log;
-use App\Http\Traits\Lockable;
 
 class JournalEntry extends Model
 {
-    use HasFactory, SoftDeletes, Lockable;
+    use HasFactory, SoftDeletes, Lockable, BelongsToCompany;
 
     protected $fillable = [
         'transaction_id',
@@ -52,15 +53,6 @@ class JournalEntry extends Model
     ];
 
     public const ADDITIONAL_INVOICE_CHARGE = 'Additional Invoice Charge';
-
-    protected static function booted()
-    {
-        static::addGlobalScope('company', function ($query) {
-            if (auth()->check() && auth()->user()->company != null) {
-                $query->where('company_id', auth()->user()->company->id);
-            }
-        });
-    }
 
     // public static function boot()
     // {

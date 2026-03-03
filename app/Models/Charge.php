@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Builder;
 
 class Charge extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
         'name',
@@ -144,34 +143,5 @@ class Charge extends Model
     public function canGeneratePaymentLink(): bool
     {
         return $this->hasApiImplementation() && $this->can_generate_link;
-    }
-
-    protected static ?int $resolvedCompanyId = null;
-
-    protected static function resolveCompanyId(): ?int
-    {
-        if (static::$resolvedCompanyId !== null) {
-            return static::$resolvedCompanyId;
-        }
-
-        $user = Auth::user();
-
-        if (!$user) {
-            return null;
-        }
-
-        static::$resolvedCompanyId = getCompanyId($user);
-
-        return static::$resolvedCompanyId;
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('company', function (Builder $q) {
-            $id = static::resolveCompanyId();
-            if ($id !== null) {
-                $q->where($q->qualifyColumn('company_id'), $id);
-            }
-        });
     }
 }

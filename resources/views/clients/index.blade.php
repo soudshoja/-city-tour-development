@@ -49,7 +49,7 @@
                             </tr>
                             @else
                             @foreach ($clients as $client)
-                            <tr data-name="{{ $client->full_name }}" data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
+                            <tr data-name="{{ $client->full_name }}" data-email="{{ $client->email }}" data-phone="{{ $client->phone_number }}"
                                 class="p-3 text-sm font-semibold text-gray-600 text-center">
                                 <td class="text-left">
                                     <div class="w-full text-blue-600 dark:text-gray-300 flex justify-between items-center">
@@ -69,7 +69,7 @@
                                         </a>
                                     </div>
                                 </td>
-                                <td>{{ $client->civil_no ?? 'N/A' }}</td>
+                                <td>{{ $client->civil_no ?? 'Not Set' }}</td>
                                 <td>{{ date('d M Y', strtotime($client->created_at)) }}</td>
                                 <td>
                                     <a href="javascript:void(0);"
@@ -78,8 +78,8 @@
                                         {{ number_format($client->totalCredit ?? 0, 2) }}
                                     </a>
                                 </td>
-                                <td>{{ $client->email ? $client->email : 'N/A' }}</td>
-                                <td>{{ $client->phone ? $client->phone : 'N/A' }}</td>
+                                <td>{{ $client->email ? $client->email : 'Not Set' }}</td>
+                                <td>{{ $client->phone_number ?: 'Not Set' }}</td>
                                 <td>
                                     @if($client->agents->isEmpty())
                                         {{ $client->agent->name }}

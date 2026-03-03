@@ -110,49 +110,20 @@ class ClientController extends Controller
             $search = $request->search;
             $clients = $clients->where(function ($query) use ($search) {
                 $searchTerm = '%' . strtolower($search) . '%';
-                $query->where('first_name', 'LIKE', $searchTerm)
-                    ->orWhere('middle_name', 'LIKE', $searchTerm)
-                    ->orWhere('last_name', 'LIKE', $searchTerm)
+                $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm])
+                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm])
                     ->orWhere('email', 'LIKE', $searchTerm)
-                    ->orWhere('phone', 'LIKE', $searchTerm)
+                    ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", [$searchTerm])
                     ->orWhere('civil_no', 'LIKE', $searchTerm)
                     ->orWhereHas('agent', function ($q) use ($searchTerm) {
                         $q->where('name', 'LIKE', $searchTerm);
                     });
-
-                // Handle multi-word search for name combinations
-                if (str_word_count($search) > 1) {
-                    $searchWords = explode(' ', trim($search));
-                    $query->orWhere(function ($nameQuery) use ($searchWords) {
-                        $firstWord = $searchWords[0];
-                        $lastWord = end($searchWords);
-                        $middleWords = array_slice($searchWords, 1, -1);
-
-                        // For 2 words: first_name + last_name
-                        if (count($searchWords) == 2) {
-                            $nameQuery->where(function ($q) use ($firstWord, $lastWord) {
-                                $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-                            });
-                        }
-                        // For 3+ words: first_name + middle_name(s) + last_name
-                        else if (count($searchWords) >= 3) {
-                            $nameQuery->where(function ($q) use ($firstWord, $middleWords, $lastWord) {
-                                $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-
-                                // Add middle name conditions
-                                foreach ($middleWords as $middleWord) {
-                                    $q->where('middle_name', 'LIKE', '%' . $middleWord . '%');
-                                }
-                            });
-                        }
-                    });
-                }
             });
         }
 
-        $clients = $clients->orderByDesc('created_at')->paginate(20)->withQueryString();
+        $clients = $clients->orderByDesc('created_at');
+
+        $clients = $clients->paginate(20)->withQueryString();
         $fullClients = $fullClients->orderByDesc('created_at')->get();
 
         if ($user->role_id == Role::AGENT) {
@@ -1736,7 +1707,7 @@ class ClientController extends Controller
 
 
     // AJAX
-    
+
     public function searchClient(Request $request)
     {
         $searchTerm = $request->input('search', '');
@@ -1749,12 +1720,12 @@ class ClientController extends Controller
         switch ($user->role_id) {
             case Role::ADMIN:
                 $clientQuery = $clientQuery->where('company_id', $companyId);
-            break;
+                break;
             case Role::COMPANY:
 
                 $clientQuery = $clientQuery->where('company_id', $companyId);
 
-            break;
+                break;
             case Role::BRANCH:
 
                 $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
@@ -1762,39 +1733,45 @@ class ClientController extends Controller
                 $agentIds = Agent::whereIn('branch_id', $branchesId)->pluck('id')->toArray();
                 $clientQuery = $clientQuery->whereIn('agent_id', $agentIds);
 
-            break;
+                break;
             case Role::AGENT:
 
                 $clientQuery = $user->agent->clientQuery();
 
-            break;
+                break;
             case Role::ACCOUNTANT:
 
                 $clientQuery = $clientQuery->where('company_id', $companyId);
 
-            break;
+                break;
             default:
 
-            Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: ' . $user->id);
+                Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: ' . $user->id);
 
-            return response()->json([], 403);
+                return response()->json([], 403);
+        }
+
+        $agentId = $request->input('agent_id') ?: $request->input('id');
+        if ($agentId) {
+            $clientQuery->where('agent_id', $agentId);
         }
 
         if ($searchTerm) {
-            $clientQuery->where(function($query) use ($searchTerm) {
-            $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
-                  ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
+            $clientQuery->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
             });
         }
 
         $clients = $clientQuery
-                ->select('id', 'phone')
-                ->selectRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) as name")
-                ->orderBy('first_name', 'asc')
-                ->limit(50)
-                ->get();
+            ->select('id', 'phone', 'country_code', 'first_name', 'middle_name', 'last_name')
+            ->selectRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) as name")
+            ->orderBy('first_name', 'asc')
+            ->limit(50)
+            ->get();
 
         return response()->json($clients);
     }

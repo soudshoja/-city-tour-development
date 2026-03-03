@@ -9,6 +9,7 @@
 'columns' => [],
 'displayColumn' => 'name',
 'mode' => 'dropdown',
+'watchDropdown' => '',
 ])
 
 @php
@@ -35,6 +36,7 @@
         columns: {{ Js::from($normalizedColumns) }},
         displayColumn: '{{ $displayColumn }}',
         mode: '{{ $mode }}',
+        watchDropdown: '{{ $watchDropdown }}',
     })"
     class="ajax-searchable">
     <div class="ajax-searchable-wrapper">

@@ -38,8 +38,8 @@ class SendUnassignedTaskReminders extends Command
             $email = Setting::getByKey($company->id, 'notification.unassigned_task.email');
             $phone = Setting::getByKey($company->id, 'notification.unassigned_task.phone');
 
-            // Get the first non-empty 7-day batch (newest first)
-            // e.g. today → 7 days ago, then 7-14 days ago, etc.
+            $voidReferences = Task::where('company_id', $company->id)->where('status', 'void')->pluck('reference');
+
             $tasks = null;
             $windowLabel = '';
 
@@ -50,9 +50,11 @@ class SendUnassignedTaskReminders extends Command
                 $from = \Carbon\Carbon::createFromFormat('d/m/Y', $optFrom)->startOfDay();
                 $to = \Carbon\Carbon::createFromFormat('d/m/Y', $optTo)->endOfDay();
 
-                $tasks = Task::with('client')
+                $tasks = Task::with(['client', 'supplier'])
                     ->whereNull('agent_id')
                     ->where('company_id', $company->id)
+                    ->where('status', '!=', 'void')
+                    ->when($voidReferences->isNotEmpty(), fn($q) => $q->whereNotIn('reference', $voidReferences))
                     ->whereNotNull('created_at')
                     ->whereBetween('created_at', [$from, $to])
                     ->orderBy('created_at', 'desc')
@@ -62,6 +64,8 @@ class SendUnassignedTaskReminders extends Command
             } else {
                 $latestTask = Task::whereNull('agent_id')
                     ->where('company_id', $company->id)
+                    ->where('status', '!=', 'void')
+                    ->when($voidReferences->isNotEmpty(), fn($q) => $q->whereNotIn('reference', $voidReferences))
                     ->whereNotNull('created_at')
                     ->latest('created_at')
                     ->first();
@@ -70,9 +74,11 @@ class SendUnassignedTaskReminders extends Command
                     $to = $latestTask->created_at;
                     $from = $to->copy()->subDays(7);
 
-                    $tasks = Task::with('client')
+                    $tasks = Task::with(['client', 'supplier'])
                         ->whereNull('agent_id')
                         ->where('company_id', $company->id)
+                        ->where('status', '!=', 'void')
+                        ->when($voidReferences->isNotEmpty(), fn($q) => $q->whereNotIn('reference', $voidReferences))
                         ->whereNotNull('created_at')
                         ->whereBetween('created_at', [$from, $to])
                         ->orderBy('created_at', 'desc')
@@ -91,13 +97,15 @@ class SendUnassignedTaskReminders extends Command
 
             if ($isDryRun) {
                 $this->table(
-                    ['#', 'Reference', 'Type', 'Client', 'Created', 'Days'],
+                    ['#', 'Reference', 'Type', 'Supplier', 'Client', 'Status', 'Created', 'Days'],
                     $tasks->map(function ($task, $index) {
                         return [
                             $index + 1,
                             $task->reference ?? 'N/A',
                             ucfirst($task->type ?? 'N/A'),
-                            $task->client->full_name ?? $task->client_name ?? 'N/A',
+                            $task->supplier->name ?? 'Not Set',
+                            $task->client->full_name ?? $task->client_name ?? $task->passenger_name ?? 'Not Set',
+                            ucfirst($task->status ?? 'N/A'),
                             $task->created_at ? $task->created_at->format('d/m/Y') : 'N/A',
                             $task->created_at ? (int) $task->created_at->diffInDays(now()) : '-',
                         ];

@@ -28,15 +28,20 @@ return new class extends Migration
         Schema::table('payments', function (Blueprint $table) {
             $table->dropIndex(['voucher_number']);
             $table->dropIndex(['payment_reference']);
-            $table->dropIndex(['client_id']);
-            $table->dropIndex(['agent_id']);
             $table->dropIndex(['status']);
             $table->dropIndex(['completed']);
             $table->dropIndex(['payment_date']);
 
+            // Drop composite indexes that share columns with simple indexes.
+            // Must drop composites BEFORE the simple single-column indexes
+            // so MySQL still has an index for FK constraints.
             $table->dropIndex(['client_id', 'status']);
             $table->dropIndex(['agent_id', 'status']);
             $table->dropIndex(['invoice_id', 'status']);
+
+            // Now safe to drop the simple indexes
+            $table->dropIndex(['client_id']);
+            $table->dropIndex(['agent_id']);
         });
     }
 };

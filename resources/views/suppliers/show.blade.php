@@ -1,5 +1,4 @@
 <x-app-layout>
-
     <style>
         .supplier-details {
             text-transform: uppercase;
@@ -26,285 +25,194 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
         }
+
+        .service-badge {
+            background: hsl(var(--hue) 60% 93%);
+            color: hsl(var(--hue) 50% 35%);
+            border: 1px solid hsl(var(--hue) 40% 80%);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .service-badge {
+                background: hsl(var(--hue) 40% 20%);
+                color: hsl(var(--hue) 60% 75%);
+                border-color: hsl(var(--hue) 30% 35%);
+            }
+        }
     </style>
 
-    <div>
-        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-            <li class="hover:underline">
-                <a href="{{ route('suppliers.index') }}">Suppliers</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1">
-                {{ $supplier->name }}
-            </li>
-        </ul>
-    </div>
+    <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
+        <a href="{{ route('suppliers.index') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Suppliers</a>
+        <span class="text-gray-400">&gt;</span>
+        <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">{{ $supplier->name }}</span>
+    </nav>
 
-    <div class="flex flex-col gap-2">
+    @php
+        $statusColors = [
+            'issued' => 'bg-green-100 text-green-700 border-green-400',
+            'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+            'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+            'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+            'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+            'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+            'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+            'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+        ];
 
-        <div class="grid bg-gradient-to-r from-blue-600 to-gray-800 p-4 rounded-md shadow-md w-full">
-            <div class="flex justify-between items-center gap-4 mb-4">
-                <div class="flex items-center justify-center rounded-full bg-black/50 font-semibold text-white p-2">
-                    <x-application-logo style="width:32px;height:32px;" />
-                    <h3 class="ml-2">{{ $supplier->name }}</h3>
-                </div>
-                <div class="flex items-center justify-end mb-4">
-                    <form method="GET" action="{{ route('suppliers.show', ['suppliersId' => $supplier->id]) }}" class="flex flex-row items-end gap-2" id="task-filter-form">
-                        <!-- Dropdown -->
-                        <div class="flex flex-col justify-end">
-                            <label class="text-xs font-semibold text-white mb-1">Filter By</label>
-                            <select name="date_field" class="border rounded px-2 py-1 text-sm min-w-[150px]">
-                                <option value="created_at" {{ request('date_field') == 'created_at' ? 'selected' : '' }}>Created Date</option>
-                                <option value="supplier_pay_date" {{ request('date_field') == 'supplier_pay_date' ? 'selected' : '' }}>Issued Date</option>
-                            </select>
-                        </div>
-                        <!-- Date Range -->
-                        <div class="flex flex-col justify-end">
-                            <label class="text-xs font-semibold text-white mb-1">Date Range</label>
-                            <input type="text" id="task-date-range" class="border rounded px-2 py-1 text-sm min-w-[240px]" placeholder="Select date range" autocomplete="off" />
-                            <input type="hidden" name="from_date" id="task_from_date" value="{{ request('from_date') }}">
-                            <input type="hidden" name="to_date" id="task_to_date" value="{{ request('to_date') }}">
-                        </div>
-                        <!-- Buttons -->
-                        <div class="flex flex-row items-end gap-1 pt-5">
-                            <a href="{{ route('suppliers.show', ['suppliersId' => $supplier->id]) }}" class="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-300 flex items-center">Clear</a>
-                            <button type="submit" class="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 border border-blue-700 flex items-center">Apply</button>
-                            <button type="button" id="export-pdf-btn" class="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700 border border-red-700 flex items-center">Export PDF</button>
-                            <button type="button" id="export-excel-btn" class="px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700 border border-green-700 flex items-center">Export Excel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+        $dateField = request('date_field', 'created_at');
+        $fromDate = request('from_date');
+        $toDate = request('to_date');
+        $filteredTasks = $supplier->tasks;
 
-            @php
-            $dateField = request('date_field', 'created_at');
-            $fromDate = request('from_date');
-            $toDate = request('to_date');
-            $filteredTasks = $supplier->tasks;
-
-            // Apply date filter
-            if ($fromDate && $toDate) {
+        if ($fromDate && $toDate) {
             $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
-            $date = $task[$dateField];
-            if (!$date) return false;
-            $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
-            return $date >= $fromDate && $date <= $toDate;
-                });
-                }
+                $date = $task[$dateField];
+                if (!$date) return false;
+                $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                return $date >= $fromDate && $date <= $toDate;
+            });
+        }
 
-                // Only "issued" status
-                $filteredTasks=$filteredTasks->filter(function($task) {
-                return strtolower($task->status) === 'issued';
-                });
+        $issuedTasks = $filteredTasks->filter(fn($task) => strtolower($task->status) === 'issued');
+        $totalDebit = $issuedTasks->flatMap->journalEntries->sum('debit');
+        $totalCredit = $issuedTasks->flatMap->journalEntries->sum('credit');
 
-                // Calculate totals for filtered "issued" tasks
-                $totalDebit = $filteredTasks->flatMap->journalEntries->sum('debit');
-                $totalCredit = $filteredTasks->flatMap->journalEntries->sum('credit');
-                @endphp
-                <div class="flex gap-4 mb-2">
-                    <div class="bg-green-100 text-green-800 px-4 py-2 rounded">Total Debit: {{ $totalDebit }}</div>
-                    <div class="bg-red-100 text-red-800 px-4 py-2 rounded">Total Credit: {{ $totalCredit }}</div>
-                    <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded">Balance: {{ $totalDebit - $totalCredit }}</div>
+        $filteredTasks = $filteredTasks->sortByDesc(function($task) use ($dateField) {
+            return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
+        });
+
+        $firstTask = $supplier->tasks->first();
+        $supplierType = $firstTask ? $firstTask->type : null;
+    @endphp
+
+    <div class="flex flex-col gap-4">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $supplier->name }}</h2>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <form method="GET" action="{{ route('suppliers.show', ['suppliersId' => $supplier->id]) }}" class="flex flex-wrap items-end gap-4" id="task-filter-form">
+                <div class="flex flex-col">
+                    <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Filter By</label>
+                    <select name="date_field" class="h-9 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md px-3 text-sm min-w-[150px] focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                        <option value="created_at" {{ request('date_field') == 'created_at' ? 'selected' : '' }}>Created Date</option>
+                        <option value="supplier_pay_date" {{ request('date_field') == 'supplier_pay_date' ? 'selected' : '' }}>Issued Date</option>
+                    </select>
                 </div>
+                <div class="flex flex-col">
+                    <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Date Range</label>
+                    <input type="text" id="task-date-range" class="h-9 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md px-3 text-sm min-w-[220px] focus:ring-2 focus:ring-blue-400 focus:border-blue-400" placeholder="Select date range" autocomplete="off" />
+                    <input type="hidden" name="from_date" id="task_from_date" value="{{ request('from_date') }}">
+                    <input type="hidden" name="to_date" id="task_to_date" value="{{ request('to_date') }}">
+                </div>
+                <div class="flex items-end gap-2">
+                    <a href="{{ route('suppliers.show', ['suppliersId' => $supplier->id]) }}" class="h-9 px-3 inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600">Clear</a>
+                    <button type="submit" class="h-9 px-3 inline-flex items-center rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700">Apply</button>
+                    <button type="button" id="export-pdf-btn" class="h-9 px-3 inline-flex items-center rounded-md bg-red-600 text-white text-sm hover:bg-red-700">Export PDF</button>
+                    <button type="button" id="export-excel-btn" class="h-9 px-3 inline-flex items-center rounded-md bg-green-600 text-white text-sm hover:bg-green-700">Export Excel</button>
+                </div>
+            </form>
+        </div>
 
-                <div id="debit-credit" class="bg-white rounded-md shadow-md w-full overflow-x-auto">
-                    @php
-                    // Determine supplier type based on tasks (assuming all tasks are same type for this supplier)
-                    $firstTask = $supplier->tasks->first();
-                    $filteredTasks = $filteredTasks->take(20);
-                    $supplierType = $firstTask ? $firstTask->type : null;
-                    @endphp
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <p class="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Total Debit</p>
+                <p class="text-xl font-bold text-green-700 dark:text-green-300 mt-1">{{ number_format($totalDebit, 3) }}</p>
+            </div>
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p class="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wide">Total Credit</p>
+                <p class="text-xl font-bold text-red-700 dark:text-red-300 mt-1">{{ number_format($totalCredit, 3) }}</p>
+            </div>
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Balance</p>
+                <p class="text-xl font-bold text-blue-700 dark:text-blue-300 mt-1">{{ number_format($totalDebit - $totalCredit, 3) }}</p>
+            </div>
+        </div>
 
-                    <div class="min-w-max">
-                        @if($supplierType === 'flight')
-                        <div class="grid grid-cols-10 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0">
-                            <div class="w-[120px]">Created Date</div>
-                            <div class="w-[120px]">Task Ref</div>
-                            <div class="w-[120px]">GDS Ref</div>
-                            <div class="w-[140px]">Agent</div>
-                            <div class="w-[110px]">Status</div>
-                            <div class="w-[120px]">Issued Date</div>
-                            <div class="w-[150px]">Passenger Name</div>
-                            <div class="w-[90px]">Price</div>
-                            <div class="w-[180px]">Departure</div>
-                            <div class="w-[180px]">Arrival</div>
-                        </div>
-                        @elseif($supplierType === 'hotel')
-                        <div class="grid grid-cols-10 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
-                            <div class="w-[120px]">Created Date</div>
-                            <div class="w-[120px]">Task Ref</div>
-                            <div class="w-[140px]">Agent</div>
-                            <div class="w-[110px]">Status</div>
-                            <div class="w-[120px]">Issued Date</div>
-                            <div class="w-[150px]">Info</div>
-                            <div class="w-[50px]">Price</div>
-                            <div class="w-[50px]">Debit</div>
-                            <div class="w-[50px]">Credit</div>
-                            <div class="w-[50px]">Balance</div>
-                        </div>
-                        @else
-                        <div class="grid grid-cols-12 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
-                            <div class="w-[120px]">Created Date</div>
-                            <div class="w-[120px]">Task Ref</div>
-                            <div class="w-[140px]">Agent</div>
-                            <div class="w-[110px]">Status</div>
-                            <div class="w-[120px]">Issued Date</div>
-                            <div class="w-[150px]">Passenger Name</div>
-                            <div class="w-[90px]">Price</div>
-
-                        </div>
-                        @endif
-
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="overflow-x-auto" style="max-height: 550px; overflow-y: auto;">
+                <table class="table-hover whitespace-nowrap w-full">
+                    <thead class="sticky top-0 z-10">
+                        <tr>
+                            <th>Created Date</th>
+                            <th>Task Ref</th>
+                            @if($supplierType === 'flight')<th>GDS Ref</th>@endif
+                            <th>Agent</th>
+                            <th>Status</th>
+                            <th>Issued Date</th>
+                            <th>{{ $supplierType === 'hotel' ? 'Info' : 'Passenger Name' }}</th>
+                            <th>Price</th>
+                            @if($supplierType === 'flight')
+                                <th>Departure</th>
+                                <th>Arrival</th>
+                            @elseif($supplierType === 'hotel')
+                                <th>Debit</th>
+                                <th>Credit</th>
+                                <th>Balance</th>
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody>
                         @php
-                        $dateField = request('date_field', 'created_at');
-                        $fromDate = request('from_date');
-                        $toDate = request('to_date');
-                        $filteredTasks = $supplier->tasks;
-
-                        if ($fromDate && $toDate) {
-                        $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
-                        $date = $task[$dateField];
-                        if (!$date) return false;
-                        $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
-                        return $date >= $fromDate && $date <= $toDate;
-                            });
-                            }
-
-                            // Sort by selected date field, newest first
-                            $filteredTasks=$filteredTasks->sortByDesc(function($task) use ($dateField) {
-                            return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
-                            });
+                            $balance = 0;
+                            $displayTasks = $filteredTasks->take(20);
+                        @endphp
+                        @forelse($displayTasks as $task)
+                            @php
+                                $status = strtolower($task->status);
+                                $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
+                                if ($supplierType === 'hotel') {
+                                    $debit = $task->journalEntries->first()->debit ?? 0;
+                                    $credit = $task->journalEntries->first()->credit ?? 0;
+                                    $balance += $debit - $credit;
+                                }
                             @endphp
-                            <div style="max-height: 550px; overflow-y: auto;">
-
-                                @forelse($filteredTasks as $task)
-                                @if($supplierType === 'flight')
-                                <div class="general-ledger-rows grid grid-cols-10 gap-2 p-2 text-center border-b">
-                                    <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                    <div class="w-[120px]">{{ $task->reference }}</div>
-                                    <div class="w-[120px]">{{ $task->gds_reference ?? '-' }}</div>
-                                    <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                    <div class="w-[110px]">
-                                        @php
-                                        $status = strtolower($task->status);
-                                        $statusColors = [
-                                        'issued' => 'bg-green-100 text-green-700 border-green-400',
-                                        'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                        'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                        'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                        'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
-                                        'void' => 'bg-gray-200 text-gray-700 border-gray-400',
-                                        'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
-                                        'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
-                                        ];
-                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                        @endphp
-                                        <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                            {{ ucfirst($task->status) }}
-                                        </span>
-                                    </div>
-                                    <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</div>
-                                    <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                    <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
-                                    <div class="w-[180px]">
-                                        @if ($task->type === 'flight' && $task->flightDetails)
-                                        <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
-                                        {{ optional($task->flightDetails->departure_time)->format('d-m-Y H:i') ?? '-' }}
-                                        @else
-                                        -
-                                        @endif
-                                    </div>
-                                    <div class="w-[180px]">
-                                        @if ($task->type === 'flight' && $task->flightDetails)
-                                        <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
-                                        {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
-                                        @else
-                                        -
-                                        @endif
-                                    </div>
-                                </div>
-                                @elseif($supplierType === 'hotel')
-                                @php
-                                $balance = 0;
-                                $hotelTasks = $filteredTasks->take(20);
-                                @endphp
-                                @foreach($hotelTasks as $task)
-                                @php
-                                $debit = $task->journalEntries->first()->debit ?? 0;
-                                $credit = $task->journalEntries->first()->credit ?? 0;
-                                $balance += $debit - $credit;
-                                @endphp
-                                <div class="general-ledger-rows grid grid-cols-10 gap-2 p-2 text-center border-b">
-                                    <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                    <div class="w-[120px]">{{ $task->reference }}</div>
-                                    <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                    <div class="w-[110px]">
-                                        @php
-                                        $status = strtolower($task->status);
-                                        $statusColors = [
-                                        'issued' => 'bg-green-100 text-green-700 border-green-400',
-                                        'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                        'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                        'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                        'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
-                                        'void' => 'bg-gray-200 text-gray-700 border-gray-400',
-                                        'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
-                                        'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
-                                        ];
-                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                        @endphp
-                                        <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                            {{ ucfirst($task->status) }}
-                                        </span>
-                                    </div>
-                                    <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
-                                    <div class="w-[150px]">{{ $task->passenger_name ?? '-' }} <br>
-                                        {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
-                                        {{ $task->hotelDetails->check_in ?? '-' }} to {{ $task->hotelDetails->check_out ?? '-' }}
-                                    </div>
-                                    <div class="w-[50px]">{{ $task->price ?? '-' }}</div>
-                                    <div class="w-[50px]">{{ $debit ?: '-' }}</div>
-                                    <div class="w-[50px]">{{ $credit ?: '-' }}</div>
-                                    <div class="w-[50px]">{{ $balance }}</div>
-                                </div>
-                                @endforeach
+                            <tr class="text-center">
+                                <td>{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</td>
+                                <td>{{ $task->reference }}</td>
+                                @if($supplierType === 'flight')<td>{{ $task->gds_reference ?? '-' }}</td>@endif
+                                <td>{{ $task->agent ? $task->agent->name : 'Not Set' }}</td>
+                                <td>
+                                    <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
+                                        {{ ucfirst($task->status) }}
+                                    </span>
+                                </td>
+                                <td>{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</td>
+                                @if($supplierType === 'hotel')
+                                    <td>
+                                        {{ $task->passenger_name ?? '-' }}<br>
+                                        <span class="text-gray-500 text-xs">{{ $task->hotelDetails->hotel->name ?? '-' }}</span><br>
+                                        <span class="text-gray-400 text-xs">{{ $task->hotelDetails->check_in ?? '-' }} to {{ $task->hotelDetails->check_out ?? '-' }}</span>
+                                    </td>
                                 @else
-                                <div class="general-ledger-rows grid grid-cols-7 gap-2 p-2 text-center border-b">
-                                    <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                    <div class="w-[120px]">{{ $task->reference }}</div>
-                                    <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                    <div class="w-[110px]">
-                                        @php
-                                        $status = strtolower($task->status);
-                                        $statusColors = [
-                                        'issued' => 'bg-green-100 text-green-700 border-green-400',
-                                        'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                        'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                        'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                        'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
-                                        'void' => 'bg-gray-200 text-gray-700 border-gray-400',
-                                        'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
-                                        'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
-                                        ];
-                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                        @endphp
-                                        <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                            {{ ucfirst($task->status) }}
-                                        </span>
-                                    </div>
-                                    <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
-                                    <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                    <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
-
-                                </div>
+                                    <td>{{ $task->passenger_name ?? '-' }}</td>
                                 @endif
-                                @empty
-                                <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center text-gray-500">
-                                    <div colspan="10">No entries found for selected dates.</div>
-                                </div>
-                                @endforelse
-                            </div>
-                    </div>
-                </div>
+                                <td>{{ $task->price ?? '-' }}</td>
+                                @if($supplierType === 'flight')
+                                    <td>
+                                        @if($task->type === 'flight' && $task->flightDetails)
+                                            <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
+                                            {{ optional($task->flightDetails->departure_time)->format('d-m-Y H:i') ?? '-' }}
+                                        @else - @endif
+                                    </td>
+                                    <td>
+                                        @if($task->type === 'flight' && $task->flightDetails)
+                                            <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
+                                            {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
+                                        @else - @endif
+                                    </td>
+                                @elseif($supplierType === 'hotel')
+                                    <td>{{ $debit ?: '-' }}</td>
+                                    <td>{{ $credit ?: '-' }}</td>
+                                    <td>{{ $balance }}</td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="12" class="text-center text-gray-500 py-8">No entries found for selected dates.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -537,83 +445,6 @@
         </div>
     </div>
     <script>
-        if (document.getElementById('customize-columns-btn')) {
-            document.getElementById('customize-columns-btn').addEventListener('click', function(e) {
-                const dropdown = document.getElementById('columns-dropdown');
-                dropdown.classList.toggle('hidden');
-                dropdown.style.left = (e.target.getBoundingClientRect().left) + 'px';
-            });
-        }
-
-        document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('columns-dropdown');
-            if(dropdown){
-                if (!dropdown.contains(e.target) && e.target.id !== 'customize-columns-btn') {
-                    dropdown.classList.add('hidden');
-                }
-            }
-        });
-
-        document.querySelectorAll('.column-toggle').forEach(function(checkbox) {
-            checkbox.addEventListener('change', function() {
-                const colIndex = parseInt(this.dataset.col);
-                const rows = document.querySelectorAll('#debit-credit .grid.grid-cols-12');
-                rows.forEach(row => {
-                    if (row.children[colIndex]) {
-                        row.children[colIndex].style.display = this.checked ? '' : 'none';
-                    }
-                });
-                const dataRows = document.querySelectorAll('#debit-credit .general-ledger-rows');
-                dataRows.forEach(row => {
-                    if (row.children[colIndex]) {
-                        row.children[colIndex].style.display = this.checked ? '' : 'none';
-                    }
-                });
-            });
-        });
-
-        function addSurchargeRow() {
-            const container = document.getElementById('surcharge-container');
-            const newRow = document.createElement('div');
-            newRow.className = 'flex items-center gap-3 px-4 py-3 bg-white hover:bg-blue-50 transition duration-150 ease-in-out';
-            newRow.innerHTML = `
-                <input type="hidden" name="surcharge_id[]" value="">
-                <span class="inline-flex items-center justify-center bg-gray-200 text-gray-600 text-xs font-bold w-7 h-7 rounded-full">--</span>
-                <input type="text" name="surcharge_label[]" value="" 
-                    class="flex-1 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-3 py-1.5"
-                    placeholder="Enter surcharge name" />
-                <input type="number" step="0.001" name="surcharge_amount[]" value="" 
-                    class="w-28 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-2 py-1.5 text-right font-medium text-blue-700" 
-                    placeholder="0.000" />
-                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            `;
-
-            container.appendChild(newRow);
-        }
-
-        function removeSurchargeRow(button) {
-            const row = button.closest('div[data-surcharge-id]');
-            const id = row ? row.getAttribute('data-surcharge-id') : null;
-            const input = document.getElementById('deleted_surcharges');
-
-            if (id) {
-                const current = input.value ? input.value.split(',') : [];
-                if (!current.includes(id)) {
-                    current.push(id);
-                    input.value = current.join(',');
-                }
-            }
-
-            row.style.transition = 'opacity 0.3s';
-            row.style.opacity = '0';
-            setTimeout(() => row.remove(), 300);
-        }
-    </script>
-    <script>
         document.getElementById('export-pdf-btn').addEventListener('click', function() {
             const form = document.getElementById('task-filter-form');
             const range = document.getElementById('task-date-range').value.split(' to ');
@@ -661,101 +492,4 @@
         });
     </script>
 
-    <script>
-        let supplierId = "{{ json_encode($supplier->id) }}";
-
-        const filterBtn = document.getElementById('filter-btn');
-        const clearBtn = document.getElementById('clear-btn');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const dateRangeInput = document.getElementById('date-range');
-
-        flatpickr(dateRangeInput, {
-            mode: "range",
-            dateFormat: "Y-m-d",
-            defaultDate: [new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]]
-        });
-
-        filterBtn.addEventListener('click', function() {
-            updateRows();
-        });
-
-        clearBtn.addEventListener('click', function() {
-            dateRangeInput.value = '';
-            let ledgerBody = document.getElementById('debit-credit');
-            let rows = ledgerBody.querySelectorAll('.general-ledger-rows');
-            rows.forEach(row => row.remove());
-        });
-
-        function updateRows() {
-            let dates = dateRangeInput.value.split(' to ');
-            let fromDate = dates[0] ? dates[0].trim() : '';
-            let toDate = dates[1] ? dates[1].trim() : dates[0];
-
-            if (!fromDate || !toDate) return;
-
-            let url = `{{ route('suppliers.suppliers.ledger-by-date', ['supplierId' => '__supplierId__']) }}?fromDate=${fromDate} 00:00:00&toDate=${toDate} 23:59:59`;
-            url = url.replace('__supplierId__', supplierId);
-
-            filterBtn.disabled = true;
-            clearBtn.disabled = true;
-            loadingSpinner.classList.remove('hidden');
-
-            let ledgerBody = document.getElementById('debit-credit');
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    // Remove old rows except header
-                    let rows = ledgerBody.querySelectorAll('.general-ledger-rows');
-                    rows.forEach(row => row.remove());
-
-                    if (data.entries.length === 0) {
-                        let emptyRow = document.createElement('div');
-                        emptyRow.className = 'general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center text-gray-500';
-                        emptyRow.innerHTML = `<div colspan="8">No entries found for selected dates.</div>`;
-                        ledgerBody.appendChild(emptyRow);
-                    } else {
-                        data.entries.sort((a, b) => {
-                            const dateA = a.supplier_pay_date ? new Date(a.supplier_pay_date) : new Date(0);
-                            const dateB = b.supplier_pay_date ? new Date(b.supplier_pay_date) : new Date(0);
-                            return dateB - dateA;
-                        });
-                        data.entries.forEach(task => {
-                            let info = '-';
-                            if (task.type === 'flight' && task.flight_details) {
-                                const f = task.flight_details;
-                                info = `${f.airport_from ?? '-'} → ${f.airport_to ?? '-'}<br>${f.departure_time ?? '-'} - ${f.arrival_time ?? '-'}`;
-                            } else if (task.type === 'hotel' && task.hotel_details) {
-                                const h = task.hotel_details;
-                                info = `${h.hotel?.name ?? '-'}<br>${h.check_in ?? '-'} - ${h.check_out ?? '-'}`;
-                            } else if (task.additional_info) {
-                                info = task.additional_info;
-                            }
-
-                            let row = document.createElement('div');
-                            row.className = 'general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center';
-                            row.innerHTML = `
-                            <div>${task.created_at.substring(0, 10)}</div>
-                            <div>${task.reference ?? '-'}</div>
-                            <div>${task.type ?? '-'}</div>
-                            <div>${task.agent ? task.agent.name ?? '-' : '-'}</div>
-                            <div>${task.status ? task.status.charAt(0).toUpperCase() + task.status.slice(1) : '-'}</div>
-                            <div>${task.supplier_pay_date ? task.supplier_pay_date.substring(0, 10) : '-'}</div>
-                            <div>${task.passenger_name ?? '-'}</div>
-                            <div class="text-xs">${info}</div>
-                        `;
-                            ledgerBody.appendChild(row);
-                        });
-                    }
-                })
-                .finally(() => {
-                    filterBtn.disabled = false;
-                    clearBtn.disabled = false;
-                    loadingSpinner.classList.add('hidden');
-                });
-        }
-
-        // Initial load
-        updateRows();
-    </script>
 </x-app-layout>

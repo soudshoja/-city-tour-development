@@ -1,126 +1,123 @@
 <section>
     <header>
         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-            {{ __('Change Password') }}
+            Change Password
         </h2>
 
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {{ __('Ensure your account is using a long, random password to stay secure.') }}
+            Ensure your account is using a long, random password to stay secure
         </p>
     </header>
-
+    
     @if (session('status') === 'password-updated')
         <div class="mt-4 rounded-md bg-green-100 p-4 text-green-700 dark:bg-green-900 dark:text-green-300">
-            {{ __('Password updated successfully.') }}
+            Password updated successfully
         </div>
     @endif
 
     @if (!session('password_update_verified'))
-        <form method="post" action="{{ route('profile.password.request-update') }}" class="mt-6 space-y-6">
-            @csrf
+    <form method="post" action="{{ route('profile.password.request-update') }}" class="mt-6 space-y-6">
+        @csrf
 
-            <div>
-                <x-input-label for="update_password_current_password" :value="__('Current Password')" />
+        <div>
+            <x-input-label for="update_password_current_password" :value="__('Please enter your current password')" />
+            <div class="relative mt-1">
                 <x-text-input id="update_password_current_password" name="current_password" type="password"
-                    class="mt-1 block w-full" autocomplete="current-password" />
-                <x-input-error :messages="$errors->get('current_password')" class="mt-2" />
+                    class="block w-full pr-10" autocomplete="current-password" />
+                <button type="button"
+                    onclick="togglePassword('update_password_current_password', this)"
+                    class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600">
+                    <!-- Eye Open -->
+                    <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <!-- Eye Closed -->
+                    <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                    </svg>
+                </button>
             </div>
+            <x-input-error :messages="$errors->get('current_password')" class="mt-2" />
+        </div>
 
-            <div class="flex items-center gap-4">
-                <x-primary-button>{{ __('Request Verification Code') }}</x-primary-button>
-            </div>
-        </form>
+        <div class="flex justify-end gap-4">
+            <button type="submit" class="btn-primary">Request Verification Code</button>
+        </div>
+    </form>
 
-        {{-- @if (session('status') === 'code-sent')
-            <div id="verificationModal"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                <div class="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-lg w-full max-w-md">
-                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Enter Verification Code</h2>
-
-                    <p class="text-green-600 mt-2">
-                        {{ __('Verification code sent to your email. Please check your inbox.') }}
-                    </p>
-
-                    <form method="POST" action="{{ route('profile.password.verify-code') }}" class="mt-4 space-y-4">
-                        @csrf
-
-                        <div>
-                            <x-input-label for="code" :value="__('Verification Code')" />
-                            <x-text-input id="code" name="code" type="text" required
-                                class="mt-1 block w-full border-gray-300 dark:border-gray-600" />
-                            <x-input-error :messages="$errors->get('code')" class="mt-2" />
-                        </div>
-
-                        <div class="flex justify-end gap-2">
-                            <button type="button" onclick="hideModal()"
-                                class="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
-                                Cancel
-                            </button>
-
-                            <button type="submit"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                                Verify & Continue
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <script>
-                function hideModal() {
-                    document.getElementById('verificationModal').classList.add('hidden');
-                }
-            </script>
-        @endif --}}
-
-        {{-- Step 2: After code verified, show password fields --}}
+    <!-- After code verification, create new password -->
     @else
-        <form method="post" action="{{ route('profile.password.update') }}" class="mt-6 space-y-6">
-            @method('PUT')
-            @csrf
+    <form method="post" action="{{ route('profile.password.update') }}" class="mt-6 space-y-6">
+        @method('PUT')
+        @csrf
 
-            <div>
+        <div class="flex gap-4 mt-4">
+            <div class="flex-1">
                 <x-input-label for="update_password_password" :value="__('New Password')" />
-                <x-text-input id="update_password_password" name="password" type="password" class="mt-1 block w-full"
-                    autocomplete="new-password" />
+                <div class="relative mt-1">
+                    <x-text-input id="update_password_password" name="password" type="password"
+                        class="block w-full pr-10" autocomplete="new-password" />
+                    <button type="button"
+                        onclick="togglePassword('update_password_password', this)"
+                        class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                        </svg>
+                    </button>
+                </div>
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
 
-            <div>
-                <x-input-label for="update_password_password_confirmation" :value="__('Confirm Password')" />
-                <x-text-input id="update_password_password_confirmation" name="password_confirmation" type="password"
-                    class="mt-1 block w-full" autocomplete="new-password" />
+            <div class="flex-1">
+                <x-input-label for="update_password_password_confirmation" :value="__('Confirm New Password')" />
+                <div class="relative mt-1">
+                    <x-text-input id="update_password_password_confirmation" name="password_confirmation" type="password"
+                        class="block w-full pr-10" autocomplete="new-password" />
+                    <button type="button"
+                        onclick="togglePassword('update_password_password_confirmation', this)"
+                        class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                        </svg>
+                    </button>
+                </div>
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
             </div>
+        </div>
 
-            <div class="flex items-center gap-4">
-                <x-primary-button>{{ __('Save New Password') }}</x-primary-button>
-
-                @if (session('status') === 'password-updated')
-                    <p class="text-sm text-green-600 dark:text-green-400">
-                        {{ __('Password updated successfully.') }}
-                    </p>
-                @endif
-            </div>
-        </form>
+        <div class="flex justify-end gap-4">
+            <button class="btn-primary">Save</button>
+        </div>
+    </form>
     @endif
 </section>
 
-
 @if (session('status') === 'code-sent')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            showModal();
-        });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        showModal();
+    });
 
-        function showModal() {
-            document.getElementById('verificationModal').classList.remove('hidden');
-            document.getElementById('verificationModal').classList.add('flex');
-        }
+    function showModal() {
+        document.getElementById('verificationModal').classList.remove('hidden');
+        document.getElementById('verificationModal').classList.add('flex');
+    }
 
-        function hideModal() {
-            document.getElementById('verificationModal').classList.remove('flex');
-            document.getElementById('verificationModal').classList.add('hidden');
-        }
-    </script>
+    function hideModal() {
+        document.getElementById('verificationModal').classList.remove('flex');
+        document.getElementById('verificationModal').classList.add('hidden');
+    }
+</script>
 @endif

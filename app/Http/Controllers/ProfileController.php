@@ -39,7 +39,17 @@ class ProfileController extends Controller
     public function edit(Request $request)
     {
         $user = $request->user();
-        $month = $request->input('month') ? Carbon::parse($request->input('month'))->startOfMonth() : now()->startOfMonth();
+        if ($request->input('filter_month') && $request->input('filter_year')) {
+            $month = Carbon::createFromDate(
+                $request->input('filter_year'),
+                $request->input('filter_month'),
+                1
+            )->startOfMonth();
+        } elseif ($request->input('month')) {
+            $month = Carbon::parse($request->input('month'))->startOfMonth();
+        } else {
+            $month = now()->startOfMonth();
+        }        
         $viewType = $request->input('view_type', 'invoice');
 
         $phone = null;
@@ -47,6 +57,7 @@ class ProfileController extends Controller
         $commissionData['commissions'] = collect();
         $totalCommission = 0;
         $totalProfit = 0;
+        $totalLoss = 0;
 
         $filterBonus = now()->startOfMonth();
         $bonuses = collect();
@@ -94,17 +105,25 @@ class ProfileController extends Controller
                 if (in_array($typeId, [2, 3, 4])) {
                     $totalCommission = number_format($commissionData['totalCommission'], 3);
                 }
+                
+                $start = $month->copy()->startOfMonth();
+                $end = $month->copy()->endOfmonth();
+
+                $totalLoss = number_format(
+                    JournalEntry::where('account_id', $profile->loss_account_id)
+                        ->whereBetween('transaction_date', [$start, $end])
+                        ->sum('debit'),
+                    3
+                );
 
                 $filterBonusMonth = (int) request('filter_month', now()->month);
                 $filterBonusYear  = (int) request('filter_year', now()->year);
                 $filterBonus = Carbon::createFromDate($filterBonusYear, $filterBonusMonth, 1)->startOfMonth();
 
                 $bonuses = BonusAgent::where('agent_id', $profile->id)
-                    ->whereMonth('created_at', $filterBonus->month)
-                    ->whereYear('created_at', $filterBonus->year)
-                    ->with('transaction')
-                    ->orderByDesc('created_at')
-                    ->get();
+                ->with('transaction')
+                ->orderByDesc('created_at')
+                ->get();
                 break;
 
             case Role::ADMIN:
@@ -130,8 +149,9 @@ class ProfileController extends Controller
             'companyLogo' => $companyLogo,
             'company' => $company,
             'viewType' => $viewType,
-            'hasBonus' => $bonuses ?? false,
+            'filteredBonuses' => $bonuses ?? collect(),
             'filterBonus' => $filterBonus,
+            'totalLoss' => $totalLoss,
         ]);
     }
 
@@ -553,7 +573,15 @@ class ProfileController extends Controller
 
         $paginated = $query->paginate(5, ['*'], 'commission');
 
-        $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent) {
+        // Get per-invoice loss from journal entries
+        $invoiceLosses = JournalEntry::where('account_id', $agent->loss_account_id)
+            ->whereBetween('transaction_date', [$start, $end])
+            ->whereNotNull('invoice_id')
+            ->selectRaw('invoice_id, SUM(debit) as total_loss')
+            ->groupBy('invoice_id')
+            ->pluck('total_loss', 'invoice_id');
+
+        $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent, $invoiceLosses) {
             $invoiceProfit = $invoice->invoiceDetails->sum('profit');
             $invoiceCommission = in_array($agent->type_id, [2, 3, 4])
                 ? $invoice->invoiceDetails->sum('commission')
@@ -567,6 +595,7 @@ class ProfileController extends Controller
                 'company_id' => $invoice->agent->branch->company_id,
                 'task_count' => $invoice->invoiceDetails->count(),
                 'total_profit' => $invoiceProfit,
+                'total_loss' => $invoiceLosses[$invoice->id] ?? 0,
                 'total_commission' => $invoiceCommission,
                 'tasks' => $invoice->invoiceDetails->map(fn($detail) => [
                     'task_reference' => $detail->task->reference ?? 'N/A',
@@ -601,9 +630,15 @@ class ProfileController extends Controller
         $totalProfit = $allDetails->sum('profit');
         $totalCommission = in_array($agent->type_id, [2, 3, 4]) ? $allDetails->sum('commission') : 0;
 
+        // Get per-task loss from journal entries
+        $taskLosses = JournalEntry::where('account_id', $agent->loss_account_id)
+            ->whereBetween('transaction_date', [$start, $end])
+            ->whereNotNull('invoice_detail_id')
+            ->pluck('debit', 'invoice_detail_id');
+
         $paginated = $query->paginate(5, ['*'], 'commission');
 
-        $mapped = $paginated->getCollection()->map(function ($detail) use ($agent) {
+        $mapped = $paginated->getCollection()->map(function ($detail) use ($agent, $taskLosses) {
             $task = $detail->task;
             $invoice = $detail->invoice;
 
@@ -613,6 +648,7 @@ class ProfileController extends Controller
                 'passenger_name' => $task?->passenger_name ?? 'N/A',
                 'transaction_date' => $invoice->invoice_date,
                 'task_profit' => $detail->profit ?? 0,
+                'task_loss' => $taskLosses[$detail->id] ?? 0,
                 'net_commission' => in_array($agent->type_id, [2, 3, 4]) ? ($detail->commission ?? 0) : 0,
                 'invoice' => [
                     'id' => $invoice->id,

@@ -8,14 +8,10 @@ deployment:
     - cd $DEPLOYPATH
 
     # Ensure permissions are correct after copying (exclude node_modules)
-    - find . -not -path './node_modules/*' -type f -exec chmod 644 {} \;
-    - find . -not -path './node_modules/*' -type d -exec chmod 755 {} \;
+    - find . -type f -exec chmod 644 {} \;
+    - find . -type d -exec chmod 755 {} \;
     - chmod -R 775 storage
     - chmod -R 775 bootstrap/cache
-
-    # Build frontend assets
-    - npm install
-    - npm run build
 
     # Laravel deployment
     - ~/composer.phar install --no-dev --prefer-dist

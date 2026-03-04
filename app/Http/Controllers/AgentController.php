@@ -99,7 +99,7 @@ class AgentController extends Controller
             ->where('agent_id', $id)
             ->orderByRaw('invoice_details.id IS NULL, tasks.created_at DESC')
             ->select('tasks.*')
-            ->paginate(6, ['*'], 'tasks');
+            ->paginate(25, ['*'], 'tasks');
 
         $taskInvoiced = Task::where('agent_id', $id)->whereHas('invoiceDetail')->count();
         $taskNotInvoiced = Task::where('agent_id', $id)->whereDoesntHave('invoiceDetail')->count();
@@ -125,6 +125,13 @@ class AgentController extends Controller
             $totalCommission = number_format($monthlySummary['commission'], 3);
             $totalProfit = number_format($monthlySummary['profit'], 3);
         }
+       
+        $totalLoss = number_format(
+            JournalEntry::where('account_id', $agent->loss_account_id)
+                ->whereBetween('transaction_date', [$month, $endOfMonth])
+                ->sum('debit'),
+            3
+        );
 
         $allInvoicesQuery = Invoice::with(['invoiceDetails.task'])
             ->where('agent_id', $id)
@@ -148,7 +155,7 @@ class AgentController extends Controller
         );
 
         // Now get paginated invoices for display
-        $invoices = $allInvoicesQuery->orderBy('invoice_date', 'asc')->paginate(5, ['*'], 'invoices');
+        $invoices = $allInvoicesQuery->orderBy('invoice_date', 'asc')->paginate(25, ['*'], 'invoices');
 
         foreach ($invoices as $invoice) {
             $invoice->total_profit = number_format($invoice->invoiceDetails->sum('profit'), 3);
@@ -167,7 +174,7 @@ class AgentController extends Controller
 
         $clients = Client::with('invoices')->whereHas('tasks', function ($query) use ($agent) {
             $query->where('agent_id', $agent->id);
-        })->paginate(3, ['*'], 'clients');
+        })->paginate(25, ['*'], 'clients');
 
         foreach ($clients as $client) {
             $client->paid = number_format($client->invoices->where('status', 'paid')->sum('amount'), 3);
@@ -215,6 +222,7 @@ class AgentController extends Controller
             'bonuses',
             'clientCount',
             'filterBonus',
+            'totalLoss',
         ));
     }
 

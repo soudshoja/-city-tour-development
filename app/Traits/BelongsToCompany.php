@@ -9,18 +9,23 @@ use Illuminate\Support\Facades\Auth;
 trait BelongsToCompany
 {
     protected static ?int $resolvedCompanyId = null;
+    protected static ?int $resolvedForUserId = null;
 
     public static function resolveCompanyId(): ?int
     {
         if (!Auth::check()) {
             static::$resolvedCompanyId = null;
+            static::$resolvedForUserId = null;
             return null;
         }
 
-        if (static::$resolvedCompanyId !== null) {
+        $currentUserId = Auth::id();
+
+        if (static::$resolvedCompanyId !== null && static::$resolvedForUserId === $currentUserId) {
             return static::$resolvedCompanyId;
         }
 
+        static::$resolvedForUserId = $currentUserId;
         static::$resolvedCompanyId = getCompanyId(Auth::user());
 
         return static::$resolvedCompanyId;

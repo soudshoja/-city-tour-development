@@ -121,7 +121,7 @@ class SendAgentUninvoicedTaskReminders extends Command
                             $task->supplier->name ?? 'Not Set',
                             $task->client->full_name ?? $task->client_name ?? $task->passenger_name?? 'Not Set',
                             ucfirst($task->status ?? 'N/A'),
-                            number_format($task->total ?? 0, 2),
+                            number_format($task->total ?? 0, 3),
                             $task->created_at ? $task->created_at->format('d/m/Y') : 'N/A',
                         ];
                     })

@@ -193,70 +193,26 @@
                 <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
                     <div class="w-full">
                         <div class="flex items-center">
-                            <button type="button" id="openClientModalButton"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Client</span>
-                            </button>
-                            <input id="receiverId" type="hidden" name="receiverId" />
-                            <input id="agentId" type="hidden" name="agentId"
-                                value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
-                        </div>
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a
-                            client</p>
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
-                                placeholder="Client Name" disabled />
-                        </div>
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1"
-                                placeholder="Client Email" disabled />
-                        </div>
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
-                                placeholder="Client Phone Number" disabled />
-                        </div>
-                    </div>
-
-                    <div class="w-full">
-                        <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                            <button id="select-agent" type="button" onclick="openAgentModal()"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
+                            <button id="select-agent" type="button" onclick="openAgentModal()" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
+                                    <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
                                 </svg><span class="pl-5">Choose Agent</span>
                             </button>
                             @else
-                            <button disabled id="select-agent" type="button"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                            city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
+                            <button disabled id="select-agent" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
+                                    <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
                                 </svg><span class="pl-5">Choose Agent</span>
                             </button>
                             @endcan
+                            <input id="agentId" type="hidden" name="agentId" value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
                         <div class="mt-4 flex items-center">
@@ -276,6 +232,30 @@
                                 placeholder="Agent Phone"
                                 value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone : '' }}"
                                 disabled />
+                        </div>
+                    </div>
+
+                    <div class="w-full">
+                        <div class="flex items-center">
+                            <button type="button" id="openClientModalButton" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Client</span>
+                            </button>
+                            <input id="receiverId" type="hidden" name="receiverId" />
+                        </div>
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a client</p>
+                        <div class="mt-4 flex items-center">
+                            <input id="receiverName" type="text" name="receiverName" class="form-input flex-1" placeholder="Client Name" disabled />
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1" placeholder="Client Email" disabled />
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1" placeholder="Client Phone Number" disabled />
                         </div>
                     </div>
                 </div>
@@ -1316,6 +1296,12 @@
             document.getElementById('agentEmail').value = agentEmail;
             document.getElementById('agentPhone').value = agentPhone;
 
+            // Clear client selection when agent changes
+            document.getElementById('receiverId').value = '';
+            document.getElementById('receiverName').value = '';
+            document.getElementById('receiverEmail').value = '';
+            document.getElementById('receiverPhone').value = '';
+
             closeAgentModal();
             refreshTaskList();
         }
@@ -1359,9 +1345,19 @@
             calculateSubtotal();
         }
 
+        function getAgentFilteredClients() {
+            const agentId = document.getElementById('agentId').value;
+            if (agentId) {
+                return clients.filter(c => String(c.agent_id) === String(agentId));
+            }
+            return clients;
+        }
+
         function openClientModal() {
             const modal = document.getElementById("clientModal");
             modal.classList.remove("hidden");
+            document.getElementById('clientSearchInput').value = '';
+            renderClientList(getAgentFilteredClients());
         }
 
         // Close Client Modal
@@ -1382,7 +1378,8 @@
 
         function filterClients() {
             const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
-            const filteredClients = clients.filter(client =>
+            const baseClients = getAgentFilteredClients();
+            const filteredClients = baseClients.filter(client =>
                 (client.first_name && client.first_name.toLowerCase().includes(searchValue)) ||
                 (client.middle_name && client.middle_name.toLowerCase().includes(searchValue)) ||
                 (client.last_name && client.last_name.toLowerCase().includes(searchValue)) ||
@@ -1406,12 +1403,10 @@
         function selectClient(client) {
             renderClientCredit(client);
             document.getElementById('receiverId').value = client.id;
-
             document.getElementById('receiverName').value = client.full_name;
             document.getElementById('receiverEmail').value = client.email;
-            document.getElementById('receiverPhone').value = client.phone;
+            document.getElementById('receiverPhone').value = client.phone_number;
             closeClientModal();
-
         }
 
         function openTaskModal() {

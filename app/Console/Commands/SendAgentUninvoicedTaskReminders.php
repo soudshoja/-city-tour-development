@@ -112,12 +112,14 @@ class SendAgentUninvoicedTaskReminders extends Command
 
             if ($isDryRun) {
                 $this->table(
-                    ['#', 'Reference', 'Type', 'Supplier', 'Client', 'Status', 'Total', 'Created'],
+                    ['#', 'Reference', 'Type', 'GDS Ref', 'Airline Ref', 'Supplier', 'Client', 'Status', 'Total', 'Created'],
                     $tasks->map(function ($task, $index) {
                         return [
                             $index + 1,
                             $task->reference ?? 'N/A',
                             ucfirst($task->type ?? 'N/A'),
+                            $task->gds_reference ?? 'N/A',
+                            $task->airline_reference ?? 'N/A',
                             $task->supplier->name ?? 'Not Set',
                             $task->client->full_name ?? $task->client_name ?? $task->passenger_name?? 'Not Set',
                             ucfirst($task->status ?? 'N/A'),

@@ -115,7 +115,7 @@
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $task->supplier->name ?? 'Not Set' }}</td>
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $task->client->full_name ?? $task->client_name ?? 'Not Set' }}</td>
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ ucfirst($task->status ?? 'N/A') }}</td>
-                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:bold;">{{ number_format($task->total ?? 0, 2) }}</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:bold;">{{ number_format($task->total ?? 0, 3) }}</td>
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('d/m/Y') : 'N/A' }}</td>
                                 </tr>
                                 @endforeach
@@ -123,7 +123,7 @@
                                 {{-- Total Row --}}
                                 <tr style="background-color:#f0f4ff;">
                                     <td colspan="6" style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#004c9e;text-align:right;">Total:</td>
-                                    <td colspan="2" style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#004c9e;text-align:right;">{{ number_format(collect($tasks)->sum('total'), 2) }} KWD</td>
+                                    <td colspan="2" style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#004c9e;text-align:right;">{{ number_format(collect($tasks)->sum('total'), 3) }} KWD</td>
                                 </tr>
                             </table>
                         </td>

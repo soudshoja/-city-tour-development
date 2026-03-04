@@ -12,16 +12,16 @@ trait BelongsToCompany
 
     public static function resolveCompanyId(): ?int
     {
+        if (!Auth::check()) {
+            static::$resolvedCompanyId = null;
+            return null;
+        }
+
         if (static::$resolvedCompanyId !== null) {
             return static::$resolvedCompanyId;
         }
 
-        $user = Auth::user();
-        if (!$user) {
-            return null;
-        }
-
-        static::$resolvedCompanyId = getCompanyId($user);
+        static::$resolvedCompanyId = getCompanyId(Auth::user());
 
         return static::$resolvedCompanyId;
     }
@@ -38,7 +38,7 @@ trait BelongsToCompany
         });
 
         static::creating(function (Model $model) {
-            if ($model->company_id === null) {
+            if ($model->company_id === null && Auth::check()) {
                 $id = static::resolveCompanyId();
                 if ($id !== null) {
                     $model->company_id = $id;

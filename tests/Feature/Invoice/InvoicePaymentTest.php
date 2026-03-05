@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Invoice;
 
 use App\Models\Account;
 use App\Models\Agent;
@@ -548,6 +548,452 @@ class InvoicePaymentTest extends TestCase
             ]);
 
         $response->assertStatus(422);
+    }
+
+    // ─── FULL PAYMENT (NON-CREDIT GATEWAY) ──────────────────────────
+
+    public function test_full_payment_with_non_credit_gateway_creates_unpaid_partial(): void
+    {
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'SomeGateway',
+                'companyId' => $this->company->id,
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $partial = InvoicePartial::where('invoice_id', $this->invoice->id)->first();
+        $this->assertNotNull($partial);
+        $this->assertEquals('unpaid', $partial->status);
+        $this->assertEquals('SomeGateway', $partial->payment_gateway);
+        $this->assertEquals(150.00, $partial->amount);
+    }
+
+    public function test_full_payment_with_gateway_sets_invoice_payment_type(): void
+    {
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'SomeGateway',
+                'companyId' => $this->company->id,
+            ]);
+
+        $this->invoice->refresh();
+        $this->assertEquals('full', $this->invoice->payment_type);
+    }
+
+    // ─── SPLIT PAYMENT SCENARIOS ─────────────────────────────────────
+
+    public function test_split_payment_credit_plus_gateway(): void
+    {
+        // Give client credit
+        Credit::create([
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'client_id' => $this->client->id,
+            'type' => Credit::TOPUP,
+            'amount' => 100.00,
+            'gateway_fee' => 0,
+        ]);
+
+        // First split: 80 via credit
+        $response1 = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 80.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        $response1->assertOk()->assertJson(['success' => true]);
+
+        // Second split: 70 via gateway
+        $response2 = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 70.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'SomeGateway',
+                'companyId' => $this->company->id,
+            ]);
+
+        $response2->assertOk()->assertJson(['success' => true]);
+
+        $this->invoice->refresh();
+
+        // Should have 2 partials
+        $this->assertEquals(2, $this->invoice->invoicePartials()->count());
+
+        // Credit partial should be paid, gateway partial should be unpaid
+        $creditPartial = $this->invoice->invoicePartials()->where('payment_gateway', 'Credit')->first();
+        $gatewayPartial = $this->invoice->invoicePartials()->where('payment_gateway', 'SomeGateway')->first();
+
+        $this->assertEquals('paid', $creditPartial->status);
+        $this->assertEquals('unpaid', $gatewayPartial->status);
+
+        // Invoice status should be partial (mix of paid + unpaid)
+        $this->assertEquals('partial', $this->invoice->status);
+    }
+
+    public function test_split_payment_all_credit_becomes_paid(): void
+    {
+        Credit::create([
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'client_id' => $this->client->id,
+            'type' => Credit::TOPUP,
+            'amount' => 500.00,
+            'gateway_fee' => 0,
+        ]);
+
+        // Split 1: 80 credit
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 80.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        // Split 2: 70 credit
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 70.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        $this->invoice->refresh();
+
+        // Both paid → invoice should be paid
+        $this->assertEquals('paid', $this->invoice->status);
+        $this->assertEquals(2, $this->invoice->invoicePartials()->where('status', 'paid')->count());
+    }
+
+    public function test_split_payment_shows_correct_client_credit_deduction(): void
+    {
+        Credit::create([
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'client_id' => $this->client->id,
+            'type' => Credit::TOPUP,
+            'amount' => 200.00,
+            'gateway_fee' => 0,
+        ]);
+
+        $balanceBefore = Credit::getTotalCreditsByClient($this->client->id);
+        $this->assertEquals(200.00, $balanceBefore);
+
+        // Use 80 in credit for split
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 80.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        $balanceAfter = Credit::getTotalCreditsByClient($this->client->id);
+        $this->assertEquals(120.00, $balanceAfter); // 200 - 80 = 120
+    }
+
+    // ─── INVOICE CHARGE WITH PARTIALS ────────────────────────────────
+
+    public function test_multiple_partials_accumulate_invoice_charges(): void
+    {
+        Credit::create([
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'client_id' => $this->client->id,
+            'type' => Credit::TOPUP,
+            'amount' => 1000.00,
+            'gateway_fee' => 0,
+        ]);
+
+        // Partial 1 with invoice_charge = 3.00
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 50.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'partial_invoice_charge' => 3.00,
+                'companyId' => $this->company->id,
+            ]);
+
+        // Partial 2 with invoice_charge = 7.00
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 100.00,
+                'type' => 'split',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'partial_invoice_charge' => 7.00,
+                'companyId' => $this->company->id,
+            ]);
+
+        $this->invoice->refresh();
+
+        // Total invoice_charge = 3 + 7 = 10
+        $this->assertEquals(10.00, $this->invoice->invoice_charge);
+        // Amount = sub_amount + total charges = 150 + 10 = 160
+        $this->assertEquals(160.00, $this->invoice->amount);
+    }
+
+    // ─── PARTIAL PAYMENT TYPE TRANSITIONS ────────────────────────────
+
+    public function test_partial_payment_keeps_invoice_unpaid_when_only_gateway(): void
+    {
+        // Only gateway partials (no credit) → all unpaid → invoice stays unpaid
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'partial',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'SomeGateway',
+                'companyId' => $this->company->id,
+            ]);
+
+        $this->invoice->refresh();
+        $this->assertEquals('unpaid', $this->invoice->status);
+    }
+
+    public function test_credit_full_payment_creates_negative_credit_record(): void
+    {
+        Credit::create([
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'client_id' => $this->client->id,
+            'type' => Credit::TOPUP,
+            'amount' => 500.00,
+            'gateway_fee' => 0,
+        ]);
+
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        // Should have a negative credit record for the invoice payment
+        $this->assertDatabaseHas('credits', [
+            'client_id' => $this->client->id,
+            'invoice_id' => $this->invoice->id,
+            'type' => Credit::INVOICE,
+            'amount' => -150.00,
+        ]);
+    }
+
+    // ─── PAYMENT VALIDATION EDGE CASES ───────────────────────────────
+
+    public function test_partial_payment_requires_type(): void
+    {
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'companyId' => $this->company->id,
+            ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_partial_payment_requires_client_id(): void
+    {
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'companyId' => $this->company->id,
+            ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_partial_payment_requires_company_id(): void
+    {
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+            ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_partial_payment_requires_invoice_number(): void
+    {
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'gateway' => 'Credit',
+                'companyId' => $this->company->id,
+            ]);
+
+        $response->assertStatus(422);
+    }
+
+    // ─── CREDIT BALANCE EDGE CASES ───────────────────────────────────
+
+    public function test_client_with_zero_credit_cannot_pay_via_credit(): void
+    {
+        // No credit topup - balance is 0
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Client credit is not enough!',
+        ]);
+    }
+
+    public function test_client_credit_exact_amount_succeeds(): void
+    {
+        // Credit exactly matches invoice amount
+        Credit::create([
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'client_id' => $this->client->id,
+            'type' => Credit::TOPUP,
+            'amount' => 150.00,
+            'gateway_fee' => 0,
+        ]);
+
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'gateway' => 'Credit',
+                'credit' => true,
+                'companyId' => $this->company->id,
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        // Balance should be exactly 0
+        $this->assertEquals(0.00, Credit::getTotalCreditsByClient($this->client->id));
+    }
+
+    public function test_multiple_topups_accumulate_in_credit_balance(): void
+    {
+        Credit::create([
+            'client_id' => $this->client->id,
+            'company_id' => $this->company->id,
+            'type' => Credit::TOPUP,
+            'amount' => 100.00,
+            'gateway_fee' => 0,
+        ]);
+
+        Credit::create([
+            'client_id' => $this->client->id,
+            'company_id' => $this->company->id,
+            'type' => Credit::TOPUP,
+            'amount' => 200.00,
+            'gateway_fee' => 0,
+        ]);
+
+        $this->assertEquals(300.00, Credit::getTotalCreditsByClient($this->client->id));
+    }
+
+    public function test_mixed_credit_types_calculate_balance_correctly(): void
+    {
+        // Topup +500
+        Credit::create([
+            'client_id' => $this->client->id,
+            'company_id' => $this->company->id,
+            'type' => Credit::TOPUP,
+            'amount' => 500.00,
+            'gateway_fee' => 0,
+        ]);
+
+        // Invoice usage -150
+        Credit::create([
+            'client_id' => $this->client->id,
+            'company_id' => $this->company->id,
+            'invoice_id' => $this->invoice->id,
+            'type' => Credit::INVOICE,
+            'amount' => -150.00,
+            'gateway_fee' => 0,
+        ]);
+
+        // Refund +50
+        Credit::create([
+            'client_id' => $this->client->id,
+            'company_id' => $this->company->id,
+            'type' => Credit::REFUND,
+            'amount' => 50.00,
+            'gateway_fee' => 0,
+        ]);
+
+        // 500 - 150 + 50 = 400
+        $this->assertEquals(400.00, Credit::getTotalCreditsByClient($this->client->id));
     }
 
     // ─── INVOICE STATUS ENUM ──────────────────────────────────────────

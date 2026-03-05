@@ -132,12 +132,15 @@ class InvoiceCreationTest extends TestCase
             'status' => 'unpaid',
         ]);
 
-        // Verify invoice detail was created
+        // Verify invoice detail with markup, profit, paid status
         $this->assertDatabaseHas('invoice_details', [
             'invoice_number' => 'INV-2026-00001',
             'task_id' => $this->task->id,
             'task_price' => 150.00,
             'supplier_price' => $this->task->total,
+            'markup_price' => 50.00, // 150 - 100
+            'profit' => 50.00,
+            'paid' => false,
         ]);
     }
 
@@ -195,41 +198,18 @@ class InvoiceCreationTest extends TestCase
         $invoice = Invoice::where('invoice_number', 'INV-2026-00002')->first();
         $this->assertNotNull($invoice);
         $this->assertEquals(400.00, $invoice->amount);
+        $this->assertEquals(400.00, $invoice->sub_amount);
+        $this->assertEquals(0, (float) $invoice->invoice_charge);
         $this->assertEquals(2, $invoice->invoiceDetails()->count());
-    }
 
-    public function test_invoice_creation_calculates_markup_correctly(): void
-    {
-        $payload = [
-            'invoiceNumber' => 'INV-2026-00003',
-            'invdate' => '2026-03-04',
-            'duedate' => '2026-03-09',
-            'currency' => 'KWD',
-            'subTotal' => 200.00,
-            'clientId' => $this->client->id,
-            'agentId' => $this->agent->id,
-            'tasks' => [
-                [
-                    'id' => $this->task->id,
-                    'description' => $this->task->reference,
-                    'invprice' => 200.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => $this->task->total,
-                ],
-            ],
-        ];
+        // Each task markup calculated independently
+        $details = $invoice->invoiceDetails;
 
-        $this->actingAs($this->companyUser)
-            ->postJson(route('invoice.store'), $payload);
+        $detail1 = $details->where('task_id', $this->task->id)->first();
+        $this->assertEquals(50.00, $detail1->markup_price); // 150 - 100
 
-        $detail = InvoiceDetail::where('invoice_number', 'INV-2026-00003')->first();
-        $expectedMarkup = 200.00 - $this->task->total;
-
-        $this->assertEquals($expectedMarkup, $detail->markup_price);
-        $this->assertEquals($expectedMarkup, $detail->profit);
-        $this->assertFalse((bool) $detail->paid);
+        $detail2 = $details->where('task_id', $task2->id)->first();
+        $this->assertEquals(50.00, $detail2->markup_price); // 250 - 200
     }
 
     public function test_invoice_creation_increments_sequence(): void
@@ -262,6 +242,120 @@ class InvoiceCreationTest extends TestCase
 
         $sequenceAfter = InvoiceSequence::where('company_id', $this->company->id)->first()->current_sequence;
         $this->assertEquals($sequenceBefore + 1, $sequenceAfter);
+    }
+
+    public function test_generate_invoice_number_uses_correct_format(): void
+    {
+        $controller = app(\App\Http\Controllers\InvoiceController::class);
+
+        $number1 = $controller->generateInvoiceNumber(1);
+        $this->assertEquals('INV-' . now()->year . '-00001', $number1);
+
+        $number42 = $controller->generateInvoiceNumber(42);
+        $this->assertEquals('INV-' . now()->year . '-00042', $number42);
+
+        $number99999 = $controller->generateInvoiceNumber(99999);
+        $this->assertEquals('INV-' . now()->year . '-99999', $number99999);
+    }
+
+    public function test_create_page_returns_invoice_number_from_sequence(): void
+    {
+        // Sequence starts at 1 → create page should show INV-YEAR-00001
+        $response = $this->actingAs($this->companyUser)
+            ->get(route('invoices.create'));
+
+        $response->assertStatus(200);
+        $response->assertSee('INV-' . now()->year . '-00001');
+    }
+
+    public function test_different_companies_have_separate_invoice_sequences(): void
+    {
+        // Company A (this->company) starts at sequence 1
+        $sequenceA = InvoiceSequence::where('company_id', $this->company->id)->first();
+        $this->assertEquals(1, $sequenceA->current_sequence);
+
+        // Create Company B with its own setup
+        $companyUserB = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $companyUserB->id]);
+        $roleB = Role::create(['name' => 'company_b', 'guard_name' => 'web', 'company_id' => $companyB->id]);
+        $companyUserB->assignRole($roleB);
+        $roleB->givePermissionTo('view invoice');
+        $roleB->givePermissionTo('create invoice');
+
+        $branchB = Branch::factory()->create(['user_id' => $companyUserB->id, 'company_id' => $companyB->id]);
+        $agentUserB = User::factory()->create(['role_id' => Role::AGENT]);
+        $agentB = Agent::factory()->create([
+            'user_id' => $agentUserB->id,
+            'branch_id' => $branchB->id,
+            'type_id' => $this->agent->type_id,
+        ]);
+        $clientB = Client::factory()->create(['agent_id' => $agentB->id]);
+        $taskB = Task::factory()->create([
+            'company_id' => $companyB->id,
+            'agent_id' => $agentB->id,
+            'client_id' => $clientB->id,
+            'supplier_id' => $this->supplier->id,
+            'total' => 100.00,
+            'status' => 'issued',
+        ]);
+
+        InvoiceSequence::create(['company_id' => $companyB->id, 'current_sequence' => 1]);
+
+        // Create invoice in Company A → sequence A becomes 2
+        $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.store'), [
+                'invoiceNumber' => 'INV-2026-A0001',
+                'invdate' => '2026-03-04',
+                'duedate' => null,
+                'currency' => 'KWD',
+                'subTotal' => 150.00,
+                'clientId' => $this->client->id,
+                'agentId' => $this->agent->id,
+                'tasks' => [[
+                    'id' => $this->task->id,
+                    'description' => $this->task->reference,
+                    'invprice' => 150.00,
+                    'supplier_id' => $this->supplier->id,
+                    'client_id' => $this->client->id,
+                    'agent_id' => $this->agent->id,
+                    'total' => $this->task->total,
+                ]],
+            ]);
+
+        // Company A sequence should be 2 now
+        $sequenceA->refresh();
+        $this->assertEquals(2, $sequenceA->current_sequence);
+
+        // Company B sequence should still be 1 (independent)
+        $sequenceB = InvoiceSequence::where('company_id', $companyB->id)->first();
+        $this->assertEquals(1, $sequenceB->current_sequence);
+
+        // Create invoice in Company B → sequence B becomes 2
+        $this->actingAs($companyUserB)
+            ->postJson(route('invoice.store'), [
+                'invoiceNumber' => 'INV-2026-B0001',
+                'invdate' => '2026-03-04',
+                'duedate' => null,
+                'currency' => 'KWD',
+                'subTotal' => 100.00,
+                'clientId' => $clientB->id,
+                'agentId' => $agentB->id,
+                'tasks' => [[
+                    'id' => $taskB->id,
+                    'description' => $taskB->reference,
+                    'invprice' => 100.00,
+                    'supplier_id' => $this->supplier->id,
+                    'client_id' => $clientB->id,
+                    'agent_id' => $agentB->id,
+                    'total' => $taskB->total,
+                ]],
+            ]);
+
+        // Both sequences should be 2 now (independent)
+        $sequenceA->refresh();
+        $sequenceB->refresh();
+        $this->assertEquals(2, $sequenceA->current_sequence);
+        $this->assertEquals(2, $sequenceB->current_sequence);
     }
 
     public function test_invoice_creation_fails_without_tasks(): void
@@ -513,36 +607,6 @@ class InvoiceCreationTest extends TestCase
         ]);
     }
 
-    public function test_invoice_status_defaults_to_unpaid(): void
-    {
-        $payload = [
-            'invoiceNumber' => 'INV-2026-STATUS',
-            'invdate' => '2026-03-04',
-            'duedate' => '2026-03-09',
-            'currency' => 'KWD',
-            'subTotal' => 150.00,
-            'clientId' => $this->client->id,
-            'agentId' => $this->agent->id,
-            'tasks' => [
-                [
-                    'id' => $this->task->id,
-                    'description' => $this->task->reference,
-                    'invprice' => 150.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => $this->task->total,
-                ],
-            ],
-        ];
-
-        $this->actingAs($this->companyUser)
-            ->postJson(route('invoice.store'), $payload);
-
-        $invoice = Invoice::where('invoice_number', 'INV-2026-STATUS')->first();
-        $this->assertEquals('unpaid', $invoice->status);
-    }
-
     public function test_create_invoice_page_loads_for_company(): void
     {
         $response = $this->actingAs($this->companyUser)
@@ -755,143 +819,6 @@ class InvoiceCreationTest extends TestCase
 
     // ─── INVOICE AMOUNT CALCULATIONS ─────────────────────────────────
 
-    public function test_invoice_sub_amount_equals_sum_of_task_prices(): void
-    {
-        $task2 = Task::factory()->create([
-            'company_id' => $this->company->id,
-            'agent_id' => $this->agent->id,
-            'client_id' => $this->client->id,
-            'supplier_id' => $this->supplier->id,
-            'total' => 200.00,
-            'status' => 'issued',
-        ]);
-
-        $payload = [
-            'invoiceNumber' => 'INV-2026-SUM',
-            'invdate' => '2026-03-04',
-            'duedate' => '2026-03-09',
-            'currency' => 'KWD',
-            'subTotal' => 350.00,
-            'clientId' => $this->client->id,
-            'agentId' => $this->agent->id,
-            'tasks' => [
-                [
-                    'id' => $this->task->id,
-                    'description' => $this->task->reference,
-                    'invprice' => 150.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => $this->task->total,
-                ],
-                [
-                    'id' => $task2->id,
-                    'description' => $task2->reference,
-                    'invprice' => 200.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => $task2->total,
-                ],
-            ],
-        ];
-
-        $this->actingAs($this->companyUser)
-            ->postJson(route('invoice.store'), $payload);
-
-        $invoice = Invoice::where('invoice_number', 'INV-2026-SUM')->first();
-
-        $this->assertEquals(350.00, $invoice->sub_amount);
-        $this->assertEquals(350.00, $invoice->amount);
-        $this->assertEquals(0, (float) $invoice->invoice_charge);
-    }
-
-    public function test_each_task_markup_calculated_independently(): void
-    {
-        $task2 = Task::factory()->create([
-            'company_id' => $this->company->id,
-            'agent_id' => $this->agent->id,
-            'client_id' => $this->client->id,
-            'supplier_id' => $this->supplier->id,
-            'total' => 80.00,
-            'status' => 'issued',
-        ]);
-
-        $payload = [
-            'invoiceNumber' => 'INV-2026-MARKUP',
-            'invdate' => '2026-03-04',
-            'duedate' => '2026-03-09',
-            'currency' => 'KWD',
-            'subTotal' => 350.00,
-            'clientId' => $this->client->id,
-            'agentId' => $this->agent->id,
-            'tasks' => [
-                [
-                    'id' => $this->task->id,
-                    'description' => $this->task->reference,
-                    'invprice' => 200.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => 100.00,
-                ],
-                [
-                    'id' => $task2->id,
-                    'description' => $task2->reference,
-                    'invprice' => 150.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => 80.00,
-                ],
-            ],
-        ];
-
-        $this->actingAs($this->companyUser)
-            ->postJson(route('invoice.store'), $payload);
-
-        $invoice = Invoice::where('invoice_number', 'INV-2026-MARKUP')->first();
-        $details = $invoice->invoiceDetails;
-
-        // Task 1: 200 - 100 = 100 markup
-        $detail1 = $details->where('task_id', $this->task->id)->first();
-        $this->assertEquals(100.00, $detail1->markup_price);
-
-        // Task 2: 150 - 80 = 70 markup
-        $detail2 = $details->where('task_id', $task2->id)->first();
-        $this->assertEquals(70.00, $detail2->markup_price);
-    }
-
-    public function test_invoice_detail_paid_defaults_to_false(): void
-    {
-        $payload = [
-            'invoiceNumber' => 'INV-2026-PAID-FLAG',
-            'invdate' => '2026-03-04',
-            'duedate' => '2026-03-09',
-            'currency' => 'KWD',
-            'subTotal' => 150.00,
-            'clientId' => $this->client->id,
-            'agentId' => $this->agent->id,
-            'tasks' => [
-                [
-                    'id' => $this->task->id,
-                    'description' => $this->task->reference,
-                    'invprice' => 150.00,
-                    'supplier_id' => $this->supplier->id,
-                    'client_id' => $this->client->id,
-                    'agent_id' => $this->agent->id,
-                    'total' => $this->task->total,
-                ],
-            ],
-        ];
-
-        $this->actingAs($this->companyUser)
-            ->postJson(route('invoice.store'), $payload);
-
-        $detail = InvoiceDetail::where('invoice_number', 'INV-2026-PAID-FLAG')->first();
-        $this->assertFalse((bool) $detail->paid);
-    }
-
     // ─── INVOICE CREATION VALIDATION EDGE CASES ──────────────────────
 
     public function test_invoice_creation_fails_without_currency(): void
@@ -977,5 +904,56 @@ class InvoiceCreationTest extends TestCase
             ->postJson(route('invoice.store'), $payload);
 
         $response->assertStatus(422);
+    }
+
+    // ─── LOSS SCENARIO ──────────────────────────────────────────────
+
+    public function test_loss_when_invoice_price_below_supplier_cost(): void
+    {
+        // Invoice price = 80, supplier cost = 100 → loss of 20
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.store'), [
+                'invoiceNumber' => 'INV-LOSS-001',
+                'invdate' => '2026-03-04',
+                'duedate' => '2026-03-09',
+                'currency' => 'KWD',
+                'subTotal' => 80.00,
+                'clientId' => $this->client->id,
+                'agentId' => $this->agent->id,
+                'tasks' => [[
+                    'id' => $this->task->id,
+                    'description' => $this->task->reference,
+                    'invprice' => 80.00,
+                    'supplier_id' => $this->supplier->id,
+                    'client_id' => $this->client->id,
+                    'agent_id' => $this->agent->id,
+                    'total' => 100.00,
+                ]],
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $detail = InvoiceDetail::where('invoice_number', 'INV-LOSS-001')->first();
+
+        // Markup and profit should be negative (loss)
+        $this->assertEquals(-20.00, $detail->markup_price);
+        $this->assertEquals(-20.00, $detail->profit);
+    }
+
+    // ─── INVOICE STATUS ENUM ─────────────────────────────────────────
+
+    public function test_invoice_status_enum_values(): void
+    {
+        $validStatuses = ['paid', 'unpaid', 'partial', 'paid by refund', 'refunded', 'partial refund'];
+
+        foreach ($validStatuses as $status) {
+            $invoice = Invoice::factory()->create([
+                'agent_id' => $this->agent->id,
+                'client_id' => $this->client->id,
+                'status' => $status,
+            ]);
+
+            $this->assertEquals($status, $invoice->fresh()->status);
+        }
     }
 }

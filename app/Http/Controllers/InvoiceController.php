@@ -880,6 +880,16 @@ class InvoiceController extends Controller
         $invoicePartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
 
         if ($invoicePartial) {
+            // Delete old receipt vouchers before updating gateway
+            $invoiceReceipts = InvoiceReceipt::where('invoice_partial_id', $invoicePartial->id)->get();
+            foreach ($invoiceReceipts as $receipt) {
+                if ($receipt->transaction_id) {
+                    JournalEntry::where('transaction_id', $receipt->transaction_id)->delete();
+                    Transaction::where('id', $receipt->transaction_id)->delete();
+                }
+                $receipt->delete();
+            }
+
             $invoicePartial->update([
                 'payment_gateway' => $validated['gateway'],
                 'type' => 'full',
@@ -4026,6 +4036,19 @@ class InvoiceController extends Controller
                     'invoice_number' => $invoice->invoice_number,
                     'credit_partials_count' => $creditPartials->count(),
                 ]);
+            }
+
+            // Delete receipt vouchers linked to partials (their transactions use receipt->transaction_id, not invoice_id)
+            $partials = InvoicePartial::where('invoice_id', $invoice->id)->get();
+            foreach ($partials as $partial) {
+                $invoiceReceipts = InvoiceReceipt::where('invoice_partial_id', $partial->id)->get();
+                foreach ($invoiceReceipts as $receipt) {
+                    if ($receipt->transaction_id) {
+                        JournalEntry::where('transaction_id', $receipt->transaction_id)->delete();
+                        Transaction::where('id', $receipt->transaction_id)->delete();
+                    }
+                    $receipt->delete();
+                }
             }
 
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();

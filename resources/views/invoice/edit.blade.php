@@ -576,7 +576,7 @@
                                         <tr>
                                             <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
                                             <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
-                                            <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
+                                            <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Passenger Name</th>
                                             <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
                                             <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                             <th class="px-4 py-2 w-36 text-gray-900 dark:text-gray-100">Invoice Price</th>
@@ -4644,7 +4644,7 @@
                         info: item?.additional_info ?? '',
                         total: item?.total ?? 0,
                         taskPrice: item?.task_price ?? 0,
-                        clientName: item?.client_name ?? '',
+                        clientName: item?.passenger_name ?? '',
                         agentName: item?.agent?.name ?? item?.agent_name ?? '',
                         branchName: item?.agent?.branch?.name ?? item?.branch_name ?? '',
                         supplierName: item?.supplier_name ?? item?.supplier?.name ?? '',

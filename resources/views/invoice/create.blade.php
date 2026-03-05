@@ -267,7 +267,7 @@
                                 <tr>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
                                     <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Passenger Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
@@ -879,7 +879,7 @@
                             ${item.supplier_name ? `<div class="text-gray-400 text-xs mt-0.5">${item.supplier_name}</div>` : ''}
                         </td>
                         <td class="px-4 py-3">
-                            <p>${item.client_name}</p>
+                            <p>${item.passenger_name || 'N/A'}</p>
                         </td>
                         <td class="px-4 py-3">
                             <p>${item.agent.name}</p>

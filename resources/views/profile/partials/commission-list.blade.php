@@ -217,6 +217,7 @@
                         <th class="py-3 px-4 border-b text-center">Task Count</th>
                         @if($showProfit)
                         <th class="py-3 px-4 border-b text-center">Total Profit (KWD)</th>
+                        <th class="py-3 px-4 border-b text-center">Total Loss    (KWD)</th>
                         @endif
                         @if($showCommission)
                         <th class="py-3 px-4 border-b text-center">Total Commission (KWD)</th>

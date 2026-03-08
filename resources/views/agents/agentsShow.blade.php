@@ -39,7 +39,7 @@
                                 <p class="text-md text-gray-300 dark:text-gray-400">{{ $agent->branch->company->name }}</p>
                             </div>
                         </div>
-                        <button @click="showModal = true" data-tooltip-left="Edit details"
+                        <button @click="showModal = true" :data-tooltip-left="showModal ? null : 'Edit details'"
                             class="transition hover:text-gray-700 dark:hover:text-gray-300">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                                 stroke="currentColor" class="w-5 h-5 text-gray-300">
@@ -88,82 +88,90 @@
                 <div class="h-[300px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 panel p-6 flex flex-col text-left rounded-lg shadow-lg">
                     <div class="flex justify-between items-center mb-4">
                         <h5 class="text-lg font-semibold dark:text-white-light">Bonus Records</h5>
-                        <form method="GET" action="{{ route('agents.show', $agent->id) }}"
-                            class="flex items-center gap-1 bg-white/60 z-20 dark:bg-gray-800/40 px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+                        <div class="flex items-center gap-2">
+                            <form method="GET" id="agentBonusFilterForm" action="{{ route('agents.show', $agent->id) }}"
+                                class="flex items-center gap-1 bg-white/60 z-20 dark:bg-gray-800/40 px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
 
-                            <div x-data="{ 
-                                    open: false, 
+                                <div x-data="{
+                                    open: false,
                                     selected: {{ request('filter_month', now()->month) }},
                                     months: ['January','February','March','April','May','June','July','August','September','October','November','December']
                                 }" class="relative">
-
-                                <input type="hidden" name="filter_month" :value="selected">
-
-                                <button type="button" @click="open = !open" @click.outside="open = false"
-                                    class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
-                                    <span x-text="months[selected - 1]"></span>
-                                </button>
-
-                                <div x-show="open" x-cloak
-                                    class="absolute top-8 left-0 z-9999 bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[140px]">
-                                    <template x-for="(month, index) in months" :key="index">
-                                        <button type="button"
-                                            @click="selected = index + 1; open = false"
-                                            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
-                                            :class="selected === index + 1 ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
-                                            x-text="month">
-                                        </button>
-                                    </template>
+                                    <input type="hidden" name="filter_month" x-model="selected">
+                                    <button type="button" @click="open = !open" @click.outside="open = false"
+                                        class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
+                                        <span x-text="months[selected - 1]"></span>
+                                    </button>
+                                    <div x-show="open" x-cloak
+                                        class="absolute top-8 left-0 z-[9999] bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[140px]">
+                                        <template x-for="(month, index) in months" :key="index">
+                                            <button type="button"
+                                                @click="selected = index + 1; open = false"
+                                                class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                                                :class="selected === index + 1 ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
+                                                x-text="month">
+                                            </button>
+                                        </template>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <span class="text-gray-400 text-sm">/</span>
+                                <span class="text-gray-400 text-sm">/</span>
 
-                            <div x-data="{ 
-                                    open: false, 
+                                <div x-data="{
+                                    open: false,
                                     selected: {{ request('filter_year', now()->year) }},
                                     years: {{ json_encode(range(now()->year, now()->year - 5)) }}
                                 }" class="relative">
-
-                                <input type="hidden" name="filter_year" :value="selected">
-
-                                <button type="button" @click="open = !open" @click.outside="open = false"
-                                    class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
-                                    <span x-text="selected"></span>
-                                </button>
-
-                                <div x-show="open" x-cloak
-                                    class="absolute top-8 left-0 z-100 bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[90px]">
-                                    <template x-for="year in years" :key="year">
-                                        <button type="button"
-                                            @click="selected = year; open = false"
-                                            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
-                                            :class="selected === year ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
-                                            x-text="year">
-                                        </button>
-                                    </template>
+                                    <input type="hidden" name="filter_year" x-model="selected">
+                                    <button type="button" @click="open = !open" @click.outside="open = false"
+                                        class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
+                                        <span x-text="selected"></span>
+                                    </button>
+                                    <div x-show="open" x-cloak
+                                        class="absolute top-8 left-0 z-[9999] bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[90px]">
+                                        <template x-for="year in years" :key="year">
+                                            <button type="button"
+                                                @click="selected = year; open = false"
+                                                class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                                                :class="selected === year ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
+                                                x-text="year">
+                                            </button>
+                                        </template>
+                                    </div>
                                 </div>
-                            </div>
+                            </form>
 
-                            <button type="submit"
-                                class="ml-1 text-blue-500 hover:text-blue-700 text-sm transition">
-                                <i class="fas fa-filter"></i>
+                            <!-- Filter Button -->
+                            <button type="submit" form="agentBonusFilterForm"
+                                class="w-8 h-8 inline-flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                                title="Filter">
+                                <i class="fas fa-filter text-sm"></i>
                             </button>
 
-                        </form>
+                            <!-- Reset Button -->
+                            @php
+                                $isFiltered = request('filter_month') && (
+                                    (int)request('filter_month') !== now()->month ||
+                                    (int)request('filter_year', now()->year) !== now()->year
+                                );
+                            @endphp
+                            @if($isFiltered)
+                            <a href="{{ route('agents.show', $agent->id) }}"
+                                class="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-600 text-white hover:bg-gray-700 transition shadow-sm"
+                                title="Reset">
+                                <i class="fas fa-rotate-left text-sm"></i>
+                            </a>
+                            @endif
+                        </div>
                     </div>
 
-                    <div class="mb-4 flex items-center justify-between">
-                        <span class="text-md font-medium text-gray-600 dark:text-gray-400">Total Bonus</span>
-                        <div class="text-right leading-tight">
-                            <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                {{ number_format($bonuses->sum('amount'), 2) }} KWD
-                            </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                Last updated:
-                                <span class="text-blue-600 dark:text-blue-400">{{ now()->format('jS M Y') }}</span>
-                            </p>
-                        </div>
+                    <div class="mb-4 flex flex-col">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
+                            Total bonus earned in {{ \Carbon\Carbon::createFromDate(request('filter_year', now()->year), request('filter_month', now()->month), 1)->format('F Y') }}
+                        </span>
+                        <p class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-1">
+                            {{ number_format($bonuses->sum('amount'), 2) }} KWD
+                        </p>
                     </div>
 
                     <div class="flex-1 overflow-y-auto custom-scrollbar rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800 shadow-lg">
@@ -194,6 +202,10 @@
                             </tbody>
                         </table>
                     </div>
+                    <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-5">
+                        Last updated:
+                        <span class="text-blue-600 dark:text-blue-400">{{ now()->format('jS M Y') }}</span>
+                    </p>
                 </div>
             </div>
 
@@ -342,6 +354,7 @@
                 </button>
             </div>
 
+            <!-- Client List -->
             <div x-show="activeTab === 'client-list' && !showModal" class="main-tab-content">
                 <div class="flex items-center justify-between mt-2">
                     <div>
@@ -368,8 +381,8 @@
                             </thead>
                             <tbody>
                                 @foreach($clients as $client)
-                                <tr class="transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
-                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
+                                <tr class="text-center transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
+                                    <td class="text-left py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
                                         {{ $client->full_name }}
                                     </td>
                                     <td class="py-4 px-6 text-gray-700 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700">{{ $client->email }}</td>
@@ -390,7 +403,12 @@
                                         </span>
                                     </td>
                                     <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
-                                        <a href="{{ url('/clients/' . $client->id) }}" class="text-blue-500 hover:underline">View</a>
+                                        <a href="{{ url('/clients/' . $client->id) }}" class="text-blue-500 hover:text-blue-700 transition">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </a>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -404,6 +422,7 @@
                 </div>
             </div>
 
+            <!-- Invoice List -->
             <div x-show="activeTab === 'invoice-list'" class="main-tab-content" x-cloak>
                 <div class="flex items-center justify-between mt-2">
                     <div>
@@ -415,10 +434,12 @@
                         </p>
                     </div>
 
-                    <form method="GET" class="z-50 ml-auto flex items-center gap-1 w-fit bg-white/60 dark:bg-gray-800/40 backdrop-blur-md px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
-                        <input type="hidden" name="tab" value="invoice-list">
+                    <div class="flex items-center gap-2">
+                        <form method="GET" id="invoiceListFilterForm"
+                            class="flex items-center gap-1 bg-white/60 z-20 dark:bg-gray-800/40 px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+                            <input type="hidden" name="tab" value="invoice-list">
 
-                        <div x-data="{
+                            <div x-data="{
                                 monthOpen: false,
                                 yearOpen: false,
                                 month: {{ request('month') ? (int)\Carbon\Carbon::parse(request('month'))->format('m') : now()->month }},
@@ -427,65 +448,66 @@
                                 years: {{ json_encode(range(now()->year, now()->year - 5)) }}
                             }" class="flex items-center gap-1">
 
-                            <input type="hidden" name="month" :value="`${year}-${String(month).padStart(2, '0')}`">
+                                <input type="hidden" name="month" :value="`${year}-${String(month).padStart(2, '0')}`">
 
-                            {{-- Month --}}
-                            <div class="relative">
-                                <button type="button" @click="monthOpen = !monthOpen; yearOpen = false" @click.outside="monthOpen = false"
-                                    class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
-                                    <span x-text="months[month - 1]"></span>
-                                </button>
-                                <div x-show="monthOpen" x-cloak
-                                    :style="`position: fixed; top: ${$el.parentElement.getBoundingClientRect().bottom + 8}px; left: ${$el.parentElement.getBoundingClientRect().left}px; z-index: 9999;`"
-                                    class="bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[140px]">
-                                    <template x-for="(m, index) in months" :key="index">
-                                        <button type="button"
-                                            @click="month = index + 1; monthOpen = false"
-                                            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
-                                            :class="month === index + 1 ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
-                                            x-text="m">
-                                        </button>
-                                    </template>
+                                {{-- Month --}}
+                                <div class="relative">
+                                    <button type="button" @click="monthOpen = !monthOpen; yearOpen = false" @click.outside="monthOpen = false"
+                                        class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
+                                        <span x-text="months[month - 1]"></span>
+                                    </button>
+                                    <div x-show="monthOpen" x-cloak
+                                        class="absolute top-8 left-0 z-[9999] bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[140px]">
+                                        <template x-for="(m, index) in months" :key="index">
+                                            <button type="button"
+                                                @click="month = index + 1; monthOpen = false"
+                                                class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                                                :class="month === index + 1 ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
+                                                x-text="m">
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <span class="text-gray-400 text-sm">/</span>
+
+                                {{-- Year --}}
+                                <div class="relative">
+                                    <button type="button" @click="yearOpen = !yearOpen; monthOpen = false" @click.outside="yearOpen = false"
+                                        class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
+                                        <span x-text="year"></span>
+                                    </button>
+                                    <div x-show="yearOpen" x-cloak
+                                        class="absolute top-8 left-0 z-[9999] bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[90px]">
+                                        <template x-for="y in years" :key="y">
+                                            <button type="button"
+                                                @click="year = y; yearOpen = false"
+                                                class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                                                :class="year === y ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
+                                                x-text="y">
+                                            </button>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
+                        </form>
 
-                            <span class="text-gray-400 text-sm">/</span>
+                        <!-- Filter Button -->
+                        <button type="submit" form="invoiceListFilterForm"
+                            class="w-8 h-8 inline-flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                            title="Filter">
+                            <i class="fas fa-filter text-sm"></i>
+                        </button>
 
-                            {{-- Year --}}
-                            <div class="relative">
-                                <button type="button" @click="yearOpen = !yearOpen; monthOpen = false" @click.outside="yearOpen = false"
-                                    class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
-                                    <span x-text="year"></span>
-                                </button>
-                                <div x-show="yearOpen" x-cloak
-                                    :style="`position: fixed; top: ${$el.parentElement.getBoundingClientRect().bottom + 8}px; left: ${$el.parentElement.getBoundingClientRect().left}px; z-index: 9999;`"
-                                    class="bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[90px]">
-                                    <template x-for="y in years" :key="y">
-                                        <button type="button"
-                                            @click="year = y; yearOpen = false"
-                                            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
-                                            :class="year === y ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
-                                            x-text="y">
-                                        </button>
-                                    </template>
-                                </div>
-                            </div>
-
-                            {{-- Manual submit --}}
-                            <button type="submit"
-                                class="ml-1 text-blue-500 hover:text-blue-700 text-sm transition">
-                                <i class="fas fa-filter"></i>
-                            </button>
-                        </div>
-
+                        <!-- Reset Button -->
                         @if(request()->has('month'))
-                        <span class="text-gray-300"> | </span>
                         <a href="{{ url()->current() }}?tab=invoice-list"
-                            class="text-red-500 hover:text-red-700 text-sm transition pl-2">
-                            <i class="fas fa-sort-amount-down"></i>
+                            class="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-600 text-white hover:bg-gray-700 transition shadow-sm"
+                            title="Reset">
+                            <i class="fas fa-rotate-left text-sm"></i>
                         </a>
                         @endif
-                    </form>
+                    </div>
                 </div>
 
                 <div class="mt-10 mb-10 flex flex-wrap justify-center items-center gap-5">
@@ -522,7 +544,7 @@
                     <p class="text-gray-600">No invoices for this agent.</p>
                     @else
                     <div class="max-h-100 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800" x-data="{ openRow: null }">
-                        <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
+                       <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg">
                             <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                 <tr class="text-center">
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Invoice Number</th>
@@ -533,6 +555,7 @@
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Commission (KWD)</th>
                                     @endif
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Profit (KWD)</th>
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Loss (KWD)</th>
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client</th>
                                     <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Actions</th>
                                 </tr>
@@ -574,9 +597,18 @@
                                     <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700 text-blue-700 font-semibold">
                                         {{ $invoice->total_profit }}
                                     </td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700 text-blue-700 font-semibold">
+                                        {{ $invoice->total_loss }}
+                                    </td>
                                     <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $invoice->client->full_name }}</td>
-                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
-                                        <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop target="_blank">View</a>
+                                    <td class="py-4 px-6 text-center text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
+                                        <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                            class="text-blue-500 hover:text-blue-700 transition" @click.stop target="_blank">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </a>
                                     </td>
                                 </tr>
                                 <tr x-show="openRow === {{ $invoice->id }}" x-cloak>
@@ -613,29 +645,16 @@
                 </div>
             </div>
 
+            <!-- Task List -->
             <div x-show="activeTab === 'task-list'" class="main-tab-content" x-cloak>
                 <div class="flex items-center justify-between mt-2">
                     <div>
                         <h3 class="font-semibold text-slate-800">Tasks List</h3>
-                        <p class="text-sm text-slate-500">{{ $tasks->total() }} tasks that were assigned to {{ $agent->name}}</p>
-                    </div>
-
-                    <div class="flex gap-2 items-center">
-                        <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700 ring-1 ring-green-400 cursor-default">
-                            {{ $taskInvoiced }} Invoiced
-                            <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100
-                                transition-all duration-200 shadow-lg w-48 z-10">
-                                Task that invoiced
-                            </div>
-                        </div>
-
-                        <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-700 ring-1 ring-red-400 cursor-default">
-                            {{ $taskNotInvoiced }} Not Invoiced
-                            <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100
-                                transition-all duration-200 shadow-lg w-60 z-10">
-                                Task that not invoiced yet
-                            </div>
-                        </div>
+                        <p class="text-sm text-slate-500">
+                            {{ $tasks->total() }} tasks that were assigned to {{ $agent->name }}.
+                            <span class="font-bold text-green-700">{{ $taskInvoiced }} invoiced</span>,
+                            <span class="font-bold text-red-700">{{ $taskNotInvoiced }} uninvoiced</span>
+                        </p>
                     </div>
                 </div>
 
@@ -647,7 +666,7 @@
                         </div>
                         @else
                         <div class="max-h-98 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
-                            <table class="min-w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
+                            <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg">                                
                                 <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                     <tr>
                                         <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Name</th>
@@ -656,12 +675,24 @@
                                         <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client</th>
                                     </tr>
                                 </thead>
-                                <tbody class="overflow-auto">
+                                <tbody class="overflow-auto text-center">
                                     @foreach($tasks as $task)
-                                    <tr class="{{ $task->invoiceDetail !== null ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700' }} transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700 text-center">
-                                        <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
+                                    <tr class="transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
+                                        <td class="py-4 px-6 text-left text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
+                                            <div class="flex flex-col gap-0.5">
+                                                <span class="font-bold">{{ $task->reference }}</span>
+                                                <span class="text-xs text-gray-400">{{ $task->additional_info }}</span>
+                                                <span class="text-xs text-gray-400">{{ $task->venue }}</span>
+                                            </div>
+                                        </td>
                                         <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $task->created_at }}</td>
-                                        <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ ucfirst($task->status) }}</td>
+                                        <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
+                                            @if (in_array($task->status, ['void', 'cancelled']))
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">{{ ucfirst($task->status) }}</span>
+                                            @else
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">{{ ucfirst($task->status) }}</span>
+                                            @endif
+                                        </td>
                                         <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $task->client !== null ? $task->client->full_name : $task->client_name ?? 'Not Set' }}</td>
                                     </tr>
                                     @endforeach

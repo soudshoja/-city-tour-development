@@ -158,7 +158,12 @@ class AgentController extends Controller
         $invoices = $allInvoicesQuery->orderBy('invoice_date', 'asc')->paginate(25, ['*'], 'invoices');
 
         foreach ($invoices as $invoice) {
-            $invoice->total_profit = number_format($invoice->invoiceDetails->sum('profit'), 3);
+            $invoice->total_profit = number_format(
+                $invoice->invoiceDetails->where('profit', '>', 0)->sum('profit'), 3
+            );
+            $invoice->total_loss = number_format(
+                $invoice->invoiceDetails->where('profit', '<', 0)->sum('profit'), 3
+            );        
             $invoice->total_commission = number_format(in_array($agent->type_id, [2, 3, 4]) ? $invoice->invoiceDetails->sum('commission') : 0, 3);
             $invoice->task_count = $invoice->invoiceDetails->count();
 
@@ -219,6 +224,7 @@ class AgentController extends Controller
             'supplierCompany',
             'totalCommission',
             'totalProfit',
+            'totalLoss',
             'bonuses',
             'clientCount',
             'filterBonus',

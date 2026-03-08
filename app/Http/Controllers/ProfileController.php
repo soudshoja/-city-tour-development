@@ -647,7 +647,7 @@ class ProfileController extends Controller
                 'task_reference' => $task?->reference ?? 'N/A',
                 'passenger_name' => $task?->passenger_name ?? 'N/A',
                 'transaction_date' => $invoice->invoice_date,
-                'task_profit' => $detail->profit ?? 0,
+                'task_profit' => ($detail->profit ?? 0) > 0 ? $detail->profit : 0,
                 'task_loss' => $taskLosses[$detail->id] ?? 0,
                 'net_commission' => in_array($agent->type_id, [2, 3, 4]) ? ($detail->commission ?? 0) : 0,
                 'invoice' => [

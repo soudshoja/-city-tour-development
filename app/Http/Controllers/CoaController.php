@@ -2,32 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Imports\AccountsImport;
-use App\Exports\AccountsExport;
 use Maatwebsite\Excel\Facades\Excel;
-use Maatwebsite\Excel\Concerns\ToModel;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Agent;
-use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\CoaCategory;
-use App\Models\Supplier;
 use App\Models\JournalEntry;
-use App\Models\Payment;
 use App\Models\Role;
-use App\Models\Sequence;
-use App\Models\SupplierCompany;
-use App\Models\Task;
 use App\Enums\CoaLabel;
 use App\Models\Transaction;
 use Exception;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -47,55 +36,103 @@ class CoaController extends Controller
         }
 
         $companyId = getCompanyId($user);
-
         if (!$companyId) {
             return redirect()->route('dashboard')->with('error', 'Please select a company first.');
         }
 
         $company = Company::find($companyId);
-
         if (!$company) {
             return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
 
-        $agents = $company->agents()
-            ->with('branch')
-            ->get();
+        $agents = $company->agents()->select('agents.id', 'agents.name')->get();
         $agentIds = $agents->pluck('id')->toArray();
 
-        $invoices = Invoice::with('agent.branch', 'client')
-            ->whereIn('agent_id', $agentIds)
-            ->get();
-
         $clients = Client::whereIn('agent_id', $agentIds)
-            ->with('agent.branch')
+            ->select('id', 'name')
             ->get();
 
-        $suppliers = Supplier::all();
+        $branches = Branch::where('company_id', $companyId)
+            ->select('id', 'name')
+            ->get();
 
-        $branches = Branch::where('company_id', $companyId)->get();
+        // Load all company accounts in a single query
+        $allAccounts = Account::where('company_id', $companyId)->get()->keyBy('id');
 
-        $assetsAccount = Account::where('name', 'Assets')
-            ->where('company_id', $companyId)
-            ->first();
-        $liabilitiesAccount = Account::where('name', 'Liabilities')
-            ->where('company_id', $companyId)
-            ->first();
-        $incomesAccount = Account::where('name', 'Income')
-            ->where('company_id', $companyId)
-            ->first();
-        $expensesAccount = Account::where('name', 'Expenses')
-            ->where('company_id', $companyId)
-            ->first();
-        $equitiesAccount = Account::where('name', 'Equity')
-            ->where('company_id', $companyId)
-            ->first();
+        foreach ($allAccounts as $acct) {
+            if ($acct->root_id && $allAccounts->has($acct->root_id)) {
+                $acct->setRelation('root', $allAccounts->get($acct->root_id));
+            }
+        }
 
-        $assets = $assetsAccount ? $this->childAccount($assetsAccount, 'normal') : null;
-        $liabilities = $liabilitiesAccount ? $this->childAccount($liabilitiesAccount, 'reverse') : null;
-        $incomes = $incomesAccount ? $this->childAccount($incomesAccount, 'reverse') : null;
-        $expenses = $expensesAccount ? $this->childAccount($expensesAccount, 'normal') : null;
-        $equities = $equitiesAccount ? $this->childAccount($equitiesAccount, 'reverse') : null;
+        // Build parent->children map in PHP (eliminates N+1)
+        $childrenMap = [];
+        foreach ($allAccounts as $acct) {
+            if ($acct->parent_id !== null) {
+                $childrenMap[$acct->parent_id][] = $acct;
+            }
+        }
+
+        // Single aggregate query: debit/credit sums + count per account
+        $accountIds = $allAccounts->pluck('id');
+        $journalAggregates = DB::table('journal_entries')
+            ->whereNull('deleted_at')
+            ->whereIn('account_id', $accountIds)
+            ->groupBy('account_id')
+            ->select(
+                'account_id',
+                DB::raw('SUM(debit) as total_debit'),
+                DB::raw('SUM(credit) as total_credit'),
+                DB::raw('COUNT(*) as entry_count')
+            )
+            ->get()
+            ->keyBy('account_id');
+
+        // Currency-specific aggregates for non-KWD accounts only
+        $nonKwdAccountIds = $allAccounts->filter(fn($a) => $a->currency !== null && $a->currency !== 'KWD')->pluck('id');
+
+        $currencyAggregates = collect();
+        if ($nonKwdAccountIds->isNotEmpty()) {
+            $currencyAggregates = DB::table('journal_entries')
+                ->whereNull('deleted_at')
+                ->whereIn('account_id', $nonKwdAccountIds)
+                ->whereNotNull('original_currency')
+                ->groupBy('account_id', 'original_currency')
+                ->select(
+                    'account_id',
+                    'original_currency',
+                    DB::raw('SUM(CASE WHEN debit > 0 THEN original_amount ELSE 0 END) as original_debit'),
+                    DB::raw('SUM(CASE WHEN credit > 0 THEN original_amount ELSE 0 END) as original_credit')
+                )
+                ->get()
+                ->groupBy('account_id');
+        }
+
+        $rootConfig = [
+            'Assets'      => 'normal',
+            'Liabilities' => 'reverse',
+            'Income'      => 'reverse',
+            'Expenses'    => 'normal',
+            'Equity'      => 'reverse',
+        ];
+
+        $rootAccounts = $allAccounts->filter(fn($a) => $a->parent_id === null);
+
+        $assets = $liabilities = $incomes = $expenses = $equities = null;
+
+        foreach ($rootConfig as $rootName => $debitCreditType) {
+            $rootAccount = $rootAccounts->firstWhere('name', $rootName);
+            if ($rootAccount) {
+                $this->buildAccountTree($rootAccount, $childrenMap, $journalAggregates, $currencyAggregates, $debitCreditType);
+            }
+            match ($rootName) {
+                'Assets'      => $assets = $rootAccount,
+                'Liabilities' => $liabilities = $rootAccount,
+                'Income'      => $incomes = $rootAccount,
+                'Expenses'    => $expenses = $rootAccount,
+                'Equity'      => $equities = $rootAccount,
+            };
+        }
 
         return view('coa.index', [
             'assets'      => $assets,
@@ -103,9 +140,7 @@ class CoaController extends Controller
             'incomes'     => $incomes,
             'expenses'    => $expenses,
             'equities'    => $equities,
-            'invoices'    => $invoices,
             'clients'     => $clients,
-            'suppliers'   => $suppliers,
             'branches'    => $branches,
             'agents'      => $agents,
             'labelType'   => CoaLabel::cases(),
@@ -114,7 +149,7 @@ class CoaController extends Controller
 
     public function addCategory(Request $request)
     {
-        if (auth()->user()->company == null) {
+        if (Auth::user()->company == null) {
             return response()->json(['success' => false, 'message' => 'User not authorized'], 404);
         }
 
@@ -151,7 +186,7 @@ class CoaController extends Controller
             $category->variance = 0;
             $category->budget_balance = 0;
             $category->actual_balance = 0;
-            $category->company_id = auth()->user()->company->id;
+            $category->company_id = Auth::user()->company->id;
             $category->root_id  = $request->root_id;
 
             $category->save();
@@ -321,6 +356,121 @@ class CoaController extends Controller
         return $account; // Return the account with its childAccounts populated
     }
 
+    /**
+     * Build account tree using pre-loaded data (no additional DB queries).
+     * Sets the same dynamic properties as childAccount() for view compatibility.
+     */
+    private function buildAccountTree(
+        $account,
+        array &$childrenMap,
+        $journalAggregates,
+        $currencyAggregates,
+        string $debitCreditType = 'normal'
+    ) {
+        $children = $childrenMap[$account->id] ?? [];
+
+        $totalDebit = 0;
+        $totalCredit = 0;
+        $originalCurrencyTotals = [];
+        $excludedPaymentDebit = 0;
+        $excludedPaymentCredit = 0;
+
+        if (!empty($children)) {
+            $account->childAccounts = collect($children);
+
+            foreach ($children as $child) {
+                $this->buildAccountTree($child, $childrenMap, $journalAggregates, $currencyAggregates, $debitCreditType);
+
+                if (($child->account_dimension ?? 'both') !== 'payment') {
+                    $totalDebit += $child->debit ?? 0;
+                    $totalCredit += $child->credit ?? 0;
+                } else {
+                    $child->excluded_from_parent = true;
+                    $excludedPaymentDebit += $child->debit ?? 0;
+                    $excludedPaymentCredit += $child->credit ?? 0;
+                }
+
+                if (isset($child->excluded_payment_debit) && $child->excluded_payment_debit > 0) {
+                    $excludedPaymentDebit += $child->excluded_payment_debit;
+                }
+                if (isset($child->excluded_payment_credit) && $child->excluded_payment_credit > 0) {
+                    $excludedPaymentCredit += $child->excluded_payment_credit;
+                }
+
+                if (isset($child->original_currency) && $child->original_currency !== 'KWD') {
+                    $currency = $child->original_currency;
+                    if (!isset($originalCurrencyTotals[$currency])) {
+                        $originalCurrencyTotals[$currency] = ['debit' => 0, 'credit' => 0, 'balance' => 0];
+                    }
+                    $originalCurrencyTotals[$currency]['debit'] += $child->original_debit ?? 0;
+                    $originalCurrencyTotals[$currency]['credit'] += $child->original_credit ?? 0;
+                    $originalCurrencyTotals[$currency]['balance'] += $child->original_balance ?? 0;
+                }
+            }
+
+            $account->debit = (string) $totalDebit;
+            $account->credit = (string) $totalCredit;
+            $account->excluded_payment_debit = (string) $excludedPaymentDebit;
+            $account->excluded_payment_credit = (string) $excludedPaymentCredit;
+
+            if (!empty($originalCurrencyTotals)) {
+                $account->original_currency_totals = $originalCurrencyTotals;
+            }
+
+            if ($debitCreditType == 'normal') {
+                $account->balance = bcsub($totalDebit, $totalCredit, 2);
+                $account->excluded_payment_balance = bcsub($excludedPaymentDebit, $excludedPaymentCredit, 2);
+            } elseif ($debitCreditType == 'reverse') {
+                $account->balance = bcsub($totalCredit, $totalDebit, 2);
+                $account->excluded_payment_balance = bcsub($excludedPaymentCredit, $excludedPaymentDebit, 2);
+            } else {
+                throw new Exception('Invalid debitCreditType');
+            }
+        } else {
+            // Leaf account: use pre-computed aggregates
+            $aggregate = $journalAggregates->get($account->id);
+
+            $debit = $aggregate ? (float) $aggregate->total_debit : 0;
+            $credit = $aggregate ? (float) $aggregate->total_credit : 0;
+            $entryCount = $aggregate ? (int) $aggregate->entry_count : 0;
+
+            // Handle non-KWD currency accounts
+            if ($account->currency !== null && $account->currency !== 'KWD') {
+                $accountCurrencyAggs = $currencyAggregates->get($account->id, collect());
+                $matchingCurrency = $accountCurrencyAggs->firstWhere('original_currency', $account->currency);
+
+                $originalDebit = $matchingCurrency ? (float) $matchingCurrency->original_debit : 0;
+                $originalCredit = $matchingCurrency ? (float) $matchingCurrency->original_credit : 0;
+
+                $account->original_currency = $account->currency;
+                $account->original_debit = (string) $originalDebit;
+                $account->original_credit = (string) $originalCredit;
+                $account->original_balance = $debitCreditType == 'normal'
+                    ? bcsub($originalDebit, $originalCredit, 2)
+                    : bcsub($originalCredit, $originalDebit, 2);
+            }
+
+            $account->debit = (string) $debit;
+            $account->credit = (string) $credit;
+
+            $openingBalance = (float) ($account->opening_balance ?? 0);
+
+            if ($debitCreditType == 'normal') {
+                $movementBalance = bcsub($debit, $credit, 2);
+            } else {
+                $movementBalance = bcsub($credit, $debit, 2);
+            }
+
+            $account->balance = bcadd($openingBalance, $movementBalance, 2);
+            $account->ledger = true;
+
+            // View only checks ->count() > 0 for the Amadeus delegate button
+            $account->journalEntries = $entryCount > 0 ? collect([true]) : collect();
+        }
+
+        return $account;
+    }
+
     // create accounts
     public function createAccounts(Request $request)
     {
@@ -440,159 +590,6 @@ class CoaController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'account_name' => 'required|string|max:100',
-            'account_description' => 'required|string'
-        ]);
-
-        $parent = Account::where('id', $request->parent_id)->first();
-
-        $account = Account::create([
-            'name' => $request->account_name,
-            'level' => $parent->level + 1,
-            'parent_id' => $request->parent_id,
-            'company_id' => $parent->company_id,
-            'description' => $request->account_description,
-            'balance' => $request->balance,
-        ]);
-
-
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $file) {
-                $path = $file->store('documents', 'public'); // Store in storage/app/public/documents
-                // Save the path to the database as needed
-            }
-        }
-
-        // Handle the creation of the account, transaction, and document upload...
-
-        return redirect()->back()->with('success', 'Item added successfully!');
-    }
-
-    public function payment(Request $request)
-    {
-        $user = Auth::user();
-
-        // Retrieve the company associated with the user
-        $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists before proceeding
-        if (!$company) {
-            return redirect()->route('dashboard')->with('error', 'Company not found.');
-        }
-
-        $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-
-        if (!$voucherSequence) {
-            $voucherSequence = Sequence::create(['current_sequence' => 1]);
-        }
-
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-
-        $voucherSequence->current_sequence++;
-        $voucherSequence->save();
-
-
-        return view('coa.payment', compact('company', 'voucherNumber'));
-    }
-
-    private function generateVoucherNumber($sequence)
-    {
-        $year = now()->year;
-        return sprintf('VOU-%s-%05d', $year, $sequence);
-    }
-
-    public function submitVoucher(Request $request)
-    {
-        Log::info('request', ['request' => $request]);
-        $user = Auth::user();
-        $company = Company::where('user_id', $user->id)->first();
-        Log::info('company', ['company' => $company]);
-        // Ensure the company exists
-        if (!$company) {
-            return response()->json(['error' => 'Company not found.'], 404);
-        }
-
-        $data = $request->validate([
-            'voucher_no' => 'required|string|max:255',
-            'voucher_date' => 'required|date',
-            'payment_method' => 'string|max:255',
-            'pay_to' => 'string|max:255',
-            'entries' => 'required|array',
-            'entries.*.account_id' => 'required|exists:accounts,id',
-            'entries.*.particulars' => 'string|max:255',
-            'entries.*.debit' => 'nullable|numeric',
-            'entries.*.credit' => 'nullable|numeric',
-        ]);
-
-        $voucherNo = $data['voucher_no'];
-        $voucherDate = $data['voucher_date'];
-        $paymentMethod = $data['payment_method'];
-        $payTo =  $data['pay_to'];
-
-        Log::info('data', ['data' => $data]);
-        // Create General Ledger entries
-        foreach ($data['entries'] as $entry) {
-
-            $account = Account::find($entry['account_id']);
-            Log::info('account_id', ['account_id' => $entry['account_id']]);
-
-            $amount = $entry['debit'] ?? $entry['credit'];
-            $type = $entry['debit'] ? 'debit' : 'credit';
-
-            $payment = Payment::create([
-                'voucher_number' => $voucherNo,
-                'from' => $company->name,
-                'pay_to' => $payTo,
-                'account_id' => $entry['account_id'],
-                'currency' => 'KWD',
-                'payment_date' => $voucherDate,
-                'amount' => $amount,
-                'payment_method' => $paymentMethod,
-                'status' => 'paid',
-                'account_number' => NULL,
-                'bank_name' => NULL,
-                'swift_no' => NULL,
-                'iban_no' => NULL,
-                'country' => NULL,
-                'tax' => NULL,
-                'discount' => NULL,
-                'shipping' => NULL,
-                'payment_reference' => $voucherNo,
-                'type' => $type,
-            ]);
-
-            $newBalance = $this->calculateNewBalance($account->actual_balance, $entry['debit'], $entry['credit']);
-            Log::info('newBalance', ['newBalance' => $newBalance]);
-            JournalEntry::create([
-                'transaction_id' => $payment->id,
-                'company_id' => $company->id,
-                'account_id' => $entry['account_id'],
-                'transaction_date' => $data['voucher_date'],
-                'voucher_number' => $voucherNo,
-                'description' => $entry['particulars'],
-                'debit' => $entry['debit'] ?? 0,
-                'credit' => $entry['credit'] ?? 0,
-                'balance' => $newBalance
-            ]);
-
-            // Update the actual_balance of the Level 4 account
-
-            $account->actual_balance = $newBalance;
-            $account->save();
-        }
-
-        return response()->json(['message' => 'Voucher submitted successfully']);
-    }
-
-    private function calculateNewBalance($currentBalance, $debit, $credit)
-    {
-        // Implement your logic for updating the balance
-        return $currentBalance + ($debit - $credit);
-    }
 
     public function transaction(Request $request)
     {
@@ -956,7 +953,7 @@ class CoaController extends Controller
 
         $account = Account::with('journalEntries')
             ->where('id', $accountId)
-            ->where('company_id', auth()->user()->company->id)
+            ->where('company_id', Auth::user()->company->id)
             ->first();
 
         $debit = $account->journalEntries->sum('debit');

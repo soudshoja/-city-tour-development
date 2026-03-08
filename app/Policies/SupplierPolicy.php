@@ -9,27 +9,29 @@ class SupplierPolicy
 {
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole('accountant')) {
-            return $user->can('view supplier');
-        }
-
         if ($user->hasRole('admin')) {
             return true;
         }
-        
+
         return $user->can('view supplier');
     }
 
     public function view(User $user): bool
     {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
         return $user->can('view supplier');
     }
 
     public function create(User $user): bool
     {
-        if ($user->hasRole('accountant')) {
-            return $user->can('create supplier');
+        if ($user->hasRole('admin')) {
+            return true;
         }
+
+        return $user->can('create supplier');
     }
 
     public function update(User $user): bool
@@ -38,23 +40,6 @@ class SupplierPolicy
             return true;
         }
 
-        if ($user->hasRole('accountant')) {
-            return $user->can('update supplier');
-        }
-        
-        return false;
-    }
-
-    public function store(User $user, Supplier $supplier): bool
-    {
-        if ($user->hasRole('admin')) {
-            return true;
-        }
-
-        if ($user->hasRole('accountant')) {
-            return $user->can('update supplier');
-        }
-        
-        return false;
+        return $user->can('update supplier');
     }
 }

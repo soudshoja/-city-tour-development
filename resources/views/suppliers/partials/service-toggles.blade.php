@@ -22,7 +22,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-2" @click.stop>
         @foreach([
             'hasHotel' => ['label' => 'Has Hotel', 'name' => 'has_hotel', 'extra' => "if(!hasHotel) hotelChannel='';"],
-            'hasFlight' => ['label' => 'Has Flight', 'name' => 'has_flight', 'extra' => "if(!hasFlight) flightChannel='';"],
+            'hasFlight' => ['label' => 'Has Flight', 'name' => 'has_flight'],
             'hasVisa' => ['label' => 'Has Visa', 'name' => 'has_visa'],
             'hasInsurance' => ['label' => 'Has Insurance', 'name' => 'has_insurance'],
             'hasTour' => ['label' => 'Has Tour', 'name' => 'has_tour'],

@@ -179,8 +179,8 @@
                                 @if($supplierType === 'hotel')
                                     <td>
                                         {{ $task->passenger_name ?? '-' }}<br>
-                                        <span class="text-gray-500 text-xs">{{ $task->hotelDetails->hotel->name ?? '-' }}</span><br>
-                                        <span class="text-gray-400 text-xs">{{ $task->hotelDetails->check_in ?? '-' }} to {{ $task->hotelDetails->check_out ?? '-' }}</span>
+                                        <span class="text-gray-500 text-xs">{{ $task->hotelDetails?->hotel->name ?? '-' }}</span><br>
+                                        <span class="text-gray-400 text-xs">{{ $task->hotelDetails?->check_in ?? '-' }} to {{ $task->hotelDetails?->check_out ?? '-' }}</span>
                                     </td>
                                 @else
                                     <td>{{ $task->passenger_name ?? '-' }}</td>
@@ -207,7 +207,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="12" class="text-center text-gray-500 py-8">No entries found for selected dates.</td>
+                                <td colspan="{{ ($supplierType === 'flight' || $supplierType === 'hotel') ? 10 : 7 }}" class="text-center text-gray-500 py-8">No entries found for selected dates.</td>
                             </tr>
                         @endforelse
                     </tbody>

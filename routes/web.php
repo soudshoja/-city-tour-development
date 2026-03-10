@@ -9,6 +9,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\BulkInvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\RoleController;
@@ -508,6 +509,21 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{invoice}/loss-bearer', [InvoiceController::class, 'updateLossBearer'])->name('loss-bearer.update');
     });
 
+    // Bulk Invoice Upload Routes
+    Route::group([
+        'prefix' => 'bulk-invoices',
+        'as' => 'bulk-invoices.',
+        'middleware' => ['auth'],
+    ], function () {
+        Route::get('/upload', [BulkInvoiceController::class, 'index'])->name('index');
+        Route::get('/template', [BulkInvoiceController::class, 'downloadTemplate'])->name('template');
+        Route::post('/upload', [BulkInvoiceController::class, 'upload'])->name('upload');
+        Route::get('/{id}/error-report', [BulkInvoiceController::class, 'downloadErrorReport'])->name('error-report');
+        Route::get('/{id}/preview', [BulkInvoiceController::class, 'preview'])->name('preview');
+        Route::post('/{id}/approve', [BulkInvoiceController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [BulkInvoiceController::class, 'reject'])->name('reject');
+        Route::get('/{id}/success', [BulkInvoiceController::class, 'success'])->name('success');
+    });
 
     // REFUND
     Route::group([

@@ -3257,7 +3257,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function generatePdf(string $invoiceNumber)
+    public function generatePdf(int $companyId, string $invoiceNumber)
     {
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();

@@ -64,6 +64,18 @@ class SupplierController extends Controller
             })->with(['country', 'supplierCompanies', 'companies' => function ($q) use ($companyId) {
                 $q->where('company_id', $companyId);
             }]);
+
+            $otherQuery = Supplier::query()
+                ->whereDoesntHave('companies', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })
+                ->with(['country', 'supplierCompanies']);
+
+            if ($request->filled('q')) {
+                $otherQuery->where('name', 'like', '%' . $request->q . '%');
+            }
+
+            $otherSuppliers = $otherQuery->orderBy('name')->get();
         } elseif ($user->role_id == Role::COMPANY) {
             $query->activeForCompany($companyId)
                 ->with(['credentials', 'companies' => function ($q) use ($companyId) {
@@ -76,6 +88,10 @@ class SupplierController extends Controller
                 }]);
         } else {
             return abort(403, 'Unauthorized action.');
+        }
+
+        if (!isset($otherSuppliers)) {
+            $otherSuppliers = collect();
         }
 
         $suppliers = $query->orderBy('id')->paginate(20)->withQueryString();
@@ -97,6 +113,7 @@ class SupplierController extends Controller
 
         return view('suppliers.index', compact(
             'suppliers',
+            'otherSuppliers',
             'countries',
             'supplierAuthTypes',
             'companyId',

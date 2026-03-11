@@ -87,11 +87,48 @@
         </div>
     </div>
 
-    <div class="panel rounded-lg">
-        <x-search
-            :action="route('suppliers.index')"
-            searchParam="q"
-            placeholder="Quick search for supplier" />
+    <div x-data="{
+            @role('admin')
+            activeTab: localStorage.getItem('supplier_tab') || 'suppliers',
+            @else
+            activeTab: 'suppliers',
+            @endrole
+            setTab(tab) {
+                this.activeTab = tab;
+                localStorage.setItem('supplier_tab', tab);
+            }
+        }">
+        <div class="main-tabs-bar">
+            <button @click="setTab('suppliers')" class="main-tab-shape main-tab main-tab-active"
+                :class="{ 'main-tab-active': activeTab === 'suppliers', 'main-tab-inactive': activeTab !== 'suppliers' }">
+                <div class="main-tab-content-wrapper">
+                    <svg class="main-tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    Suppliers
+                    <span class="main-tab-badge main-tab-badge-blue">{{ $suppliers->total() }}</span>
+                </div>
+            </button>
+
+            @role('admin')
+            <button @click="setTab('available')" class="main-tab-shape main-tab main-tab-inactive"
+                :class="{ 'main-tab-active': activeTab === 'available', 'main-tab-inactive': activeTab !== 'available' }">
+                <div class="main-tab-content-wrapper">
+                    <svg class="main-tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Available Suppliers
+                    <span class="main-tab-badge main-tab-badge-amber">{{ $otherSuppliers->count() }}</span>
+                </div>
+            </button>
+            @endrole
+        </div>
+
+        <div x-show="activeTab === 'suppliers'" class="main-tab-content">
+            <x-search
+                :action="route('suppliers.index')"
+                searchParam="q"
+                placeholder="Quick search for supplier" />
 
         @unlessrole('admin')
             <div class="mt-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-2.5">
@@ -101,7 +138,6 @@
                 <span>To activate, deactivate, or add new suppliers, please contact your administrator.</span>
             </div>
         @endunlessrole
-
         <div class="dataTable-wrapper mt-4">
             <div class="dataTable-container h-max">
                 <table class="table-hover whitespace-nowrap dataTable-table">
@@ -475,6 +511,228 @@
 
             <x-pagination :data="$suppliers" />
         </div>
+        </div>
+
+        @role('admin')
+        <div x-show="activeTab === 'available'" class="main-tab-content">
+            <div class="main-section-header">
+                <div>
+                    <h3 class="main-section-title">Available Suppliers</h3>
+                    <p class="main-section-subtitle">{{ $otherSuppliers->count() }} {{ Str::plural('supplier', $otherSuppliers->count()) }} available for activation</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2.5 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>These suppliers have been created but are not yet assigned to your company. Click <strong>Activate</strong> to add them to your company.</span>
+            </div>
+
+            @if($otherSuppliers->isNotEmpty())
+            <div class="dataTable-wrapper">
+            <div class="dataTable-container h-max">
+                <table class="table-hover whitespace-nowrap dataTable-table">
+                    <thead>
+                        <tr class="p-3 text-left text-md font-bold text-gray-500">
+                            <th>Supplier Name</th>
+                            <th>Services</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($otherSuppliers as $supplier)
+                            <tr class="transition-colors duration-150 p-3 text-sm font-semibold text-gray-600 dark:text-gray-300">
+                                <td>{{ $supplier->name }}</td>
+                                <td>
+                                    <div class="flex items-center gap-1 flex-wrap">
+                                        @foreach(['has_hotel' => 'Hotel', 'has_flight' => 'Flight', 'has_visa' => 'Visa', 'has_insurance' => 'Insurance', 'has_tour' => 'Tour', 'has_cruise' => 'Cruise', 'has_car' => 'Car', 'has_rail' => 'Rail', 'has_esim' => 'eSIM', 'has_event' => 'Event', 'has_lounge' => 'Lounge', 'has_ferry' => 'Ferry'] as $field => $label)
+                                            @if($supplier->$field)
+                                                <span class="service-badge px-1.5 py-0.5 rounded text-xs font-medium" style="--hue: {{ crc32($label) % 360 }}">{{ $label }}</span>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-500 bg-gray-50 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">Not Activated</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        {{-- Activate --}}
+                                        <a data-tooltip-left="Activate supplier"
+                                            class="p-2 rounded-lg bg-green-50 text-green-500 hover:bg-green-100 hover:shadow-sm dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40 transition-all"
+                                            href="{{ route('supplier-company.activate', ['supplier_id' => $supplier->id, 'company_id' => $companyId]) }}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="1" y="5" width="22" height="14" rx="7" ry="7"/>
+                                                <circle cx="8" cy="12" r="3"/>
+                                            </svg>
+                                        </a>
+
+                                        {{-- Manage Companies --}}
+                                        <div x-data="{ manageCompaniesModal: false }">
+                                            <button type="button" data-tooltip-left="Manage companies"
+                                                class="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:shadow-sm dark:bg-indigo-900/20 dark:text-indigo-400 dark:hover:bg-indigo-900/40 transition-all"
+                                                @click="manageCompaniesModal = true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M3 21h18"/>
+                                                    <path d="M5 21V7l8-4v18"/>
+                                                    <path d="M19 21V11l-6-4"/>
+                                                    <path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>
+                                                </svg>
+                                            </button>
+
+                                            <div x-show="manageCompaniesModal" x-cloak
+                                                class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                                                <div @click.away="manageCompaniesModal = false"
+                                                    class="bg-white dark:bg-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl mx-4 text-left custom-scrollbar">
+                                                    <div class="sticky top-0 bg-white dark:bg-gray-800 z-10 p-5 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between">
+                                                        <div>
+                                                            <h1 class="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">Manage Companies</h1>
+                                                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 italic">Activate or deactivate <strong>{{ $supplier->name }}</strong> for each company</p>
+                                                        </div>
+                                                        <button type="button" @click="manageCompaniesModal = false"
+                                                            class="p-2 -mr-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path fill-rule="evenodd" d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.414L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.414L12 12l-4.361 4.361a1 1 0 0 1-1.414-1.414l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414z" clip-rule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    <div class="p-5 space-y-3">
+                                                        @foreach($companies as $comp)
+                                                            @php
+                                                                $pivotRecord = $supplier->supplierCompanies->where('company_id', $comp->id)->first();
+                                                                $isLinked = $pivotRecord !== null;
+                                                                $isCompanyActive = $isLinked && $pivotRecord->is_active;
+                                                            @endphp
+                                                            <div class="flex items-center justify-between p-3 rounded-lg border
+                                                                {{ $isCompanyActive ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700' }}">
+                                                                <div class="flex items-center gap-3">
+                                                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+                                                                        {{ $isCompanyActive ? 'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-300' : 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400' }}">
+                                                                        {{ strtoupper(substr($comp->name, 0, 2)) }}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $comp->name }}</p>
+                                                                        <p class="text-xs {{ $isCompanyActive ? 'text-green-600 dark:text-green-400' : ($isLinked ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500') }}">
+                                                                            {{ $isCompanyActive ? 'Active' : ($isLinked ? 'Inactive' : 'Not linked') }}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                @if($isCompanyActive)
+                                                                    <a href="{{ route('supplier-company.deactivate', ['supplier_id' => $supplier->id, 'company_id' => $comp->id]) }}"
+                                                                        class="px-3 py-1.5 text-xs font-medium rounded-md border border-red-300 text-red-600 bg-white hover:bg-red-50 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/50 transition-all">
+                                                                        Deactivate
+                                                                    </a>
+                                                                @else
+                                                                    <a href="{{ route('supplier-company.activate', ['supplier_id' => $supplier->id, 'company_id' => $comp->id]) }}"
+                                                                        class="px-3 py-1.5 text-xs font-medium rounded-md border border-green-300 text-green-600 bg-white hover:bg-green-50 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/50 transition-all">
+                                                                        Activate
+                                                                    </a>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                    <div class="sticky bottom-0 bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
+                                                        <button type="button" @click="manageCompaniesModal = false"
+                                                            class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                            Close
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Edit Supplier --}}
+                                        <div x-data="{ editSupplierModal: false }">
+                                            <button type="button" data-tooltip-left="Edit supplier"
+                                                class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 hover:shadow-sm dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-all"
+                                                @click="editSupplierModal = true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42" opacity=".5" />
+                                                </svg>
+                                            </button>
+                                            <div x-show="editSupplierModal" x-cloak
+                                                class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                                                <div @click.away="editSupplierModal = false" class="bg-white dark:bg-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md shadow-md text-left custom-scrollbar">
+                                                    <div class="sticky top-0 bg-white dark:bg-gray-800 z-10 p-5 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between">
+                                                        <div>
+                                                            <h1 class="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">Edit Supplier</h1>
+                                                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 italic">Edit the details of the supplier</p>
+                                                        </div>
+                                                        <button type="button" @click="editSupplierModal = false"
+                                                            class="p-2 -mr-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path fill-rule="evenodd" d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.414L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.414L12 12l-4.361 4.361a1 1 0 0 1-1.414-1.414l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414z" clip-rule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    <div class="p-5">
+                                                        <form action="{{ route('suppliers.update', $supplier->id) }}" method="POST" class="flex flex-col gap-2 mb-2">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <div class="mb-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier Name</label>
+                                                                    <input type="text" name="name" value="{{ $supplier->name }}" placeholder="Supplier Name"
+                                                                        class="h-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md px-3 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Authentication Type</label>
+                                                                    <select name="auth_type"
+                                                                        class="h-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md px-3 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
+                                                                        required>
+                                                                        <option value="basic" {{ old('auth_type', $supplier->auth_type) === 'basic' ? 'selected' : '' }}>Basic</option>
+                                                                        <option value="oauth" {{ old('auth_type', $supplier->auth_type) === 'oauth' ? 'selected' : '' }}>OAuth</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-3 whitespace-nowrap shrink-0">Country of Origin</span>
+                                                            <div>
+                                                                <x-searchable-dropdown
+                                                                    name="country_id"
+                                                                    :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                                                    placeholder="Select Country"
+                                                                    :selectedId="$supplier->country->id ?? null"
+                                                                    :selectedName="$supplier->country->name ?? ''" />
+                                                            </div>
+
+                                                            @include('suppliers.partials.service-toggles', ['supplier' => $supplier])
+
+                                                            <div class="mt-5 flex items-center justify-between">
+                                                                <button type="button" @click="editSupplierModal = false"
+                                                                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                                    Cancel
+                                                                </button>
+                                                                <button type="submit"
+                                                                    class="py-2 px-6 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700">
+                                                                    Update
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @else
+            <div class="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <p class="text-base font-semibold text-gray-500 dark:text-gray-400">No available suppliers</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500">All suppliers are already assigned to your company</p>
+            </div>
+        @endif
+        </div>
+        @endrole
     </div>
 
     <script>

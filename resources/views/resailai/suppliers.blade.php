@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div x-data="{ toggleLoading: {}, toggleModal: false }">
+    <div x-data="ResailAISuppliers">
         <div class="flex justify-between items-center my-4">
             <div class="flex items-center gap-5">
                 <h2 class="text-3xl font-bold">ResailAI Supplier Settings</h2>

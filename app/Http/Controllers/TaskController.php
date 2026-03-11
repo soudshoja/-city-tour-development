@@ -55,6 +55,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+
+// ResailAI Module
+use App\Modules\ResailAI\Services\ProcessingAdapter;
+use App\Modules\ResailAI\Jobs\ProcessDocumentJob;
 use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -3195,7 +3199,7 @@ class TaskController extends Controller
                     }
                     Storage::put($mergedPath, $mergedBytes);
 
-                    FileUpload::create([
+                    $fileUpload = FileUpload::create([
                         'file_name'        => $mergedName,
                         'destination_path' => Storage::path($mergedPath),
                         'user_id'          => $user->id,
@@ -3204,6 +3208,22 @@ class TaskController extends Controller
                         'status'           => 'pending',
                         'source_files'     => $successFiles,
                     ]);
+
+                    // Check if auto-process PDF is enabled for this supplier/company
+                    if (ProcessingAdapter::isPdfProcessingEnabled($supplier->id, $company->id)) {
+                        // Dispatch to ResailAI queue for processing
+                        ProcessDocumentJob::dispatch([
+                            'document_id' => $fileUpload->id,
+                            'supplier_id' => $supplier->id,
+                            'company_id' => $company->id,
+                            'agent_id' => $request->input('agent_id'),
+                            'branch_id' => null,
+                            'file_path' => Storage::path($mergedPath),
+                        ]);
+
+                        // Update status to queued
+                        $fileUpload->update(['status' => 'queued']);
+                    }
 
                     if (count($successFiles) === 1) {
                         $allMessages[] = "Batch {$batchIndex} uploaded single PDF: " . $successFiles[0];
@@ -3280,7 +3300,7 @@ class TaskController extends Controller
             Log::info("Uploading file: " . $file->getClientOriginalName() . " to: " . $filePath);
 
             try {
-                FileUpload::create([
+                $fileUpload = FileUpload::create([
                     'file_name' => $file->getClientOriginalName(),
                     'destination_path' => $filePath . '/' . $file->getClientOriginalName(),
                     'user_id' => $user->id,
@@ -3288,6 +3308,23 @@ class TaskController extends Controller
                     'company_id' => $company->id,
                     'status' => 'pending',
                 ]);
+
+                // Check if auto-process PDF is enabled for this supplier/company
+                $fileExtension = strtolower($file->getClientOriginalExtension());
+                if (ProcessingAdapter::isPdfProcessingEnabled($supplier->id, $company->id) && $fileExtension === 'pdf') {
+                    // Dispatch to ResailAI queue for processing
+                    ProcessDocumentJob::dispatch([
+                        'document_id' => $fileUpload->id,
+                        'supplier_id' => $supplier->id,
+                        'company_id' => $company->id,
+                        'agent_id' => $request->input('agent_id'),
+                        'branch_id' => null,
+                        'file_path' => $filePath . '/' . $file->getClientOriginalName(),
+                    ]);
+
+                    // Update status to queued
+                    $fileUpload->update(['status' => 'queued']);
+                }
             } catch (Exception $e) {
                 Log::error("Failed to create file upload record for {$fileName}: " . $e->getMessage());
                 $errorFilesWithMessage['file_name'] = $fileName;

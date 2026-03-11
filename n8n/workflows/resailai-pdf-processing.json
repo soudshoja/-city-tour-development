@@ -1,0 +1,218 @@
+{
+  "name": "ResailAI PDF Processing",
+  "description": "PDF document extraction workflow for ResailAI module - processes uploaded PDFs and sends results back to Laravel",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "resailai-pdf-processing",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "soud-laravel-resailai"
+  },
+  "tags": [],
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resailai-process",
+        "responseMode": "lastNode",
+        "responseCode": 202,
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "responseData": "={{ {\n    \"success\": true,\n    \"message\": \"PDF received for processing\",\n    \"processing_id\": $json.body.document_id,\n    \"received_at\": new Date().toISOString()\n  } }}"
+        }
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "resailai-process"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ResailAI Webhook Validation\n// Validates incoming request and extracts payload\n\nconst crypto = require('crypto');\n\nconst body = $input.all()[0].json;\nconst headers = body.headers || {};\nconst payload = body.body || body;\n\n// Check for Bearer token in Authorization header\nconst authHeader = headers.authorization || headers.Authorization;\nif (!authHeader || !authHeader.startsWith('Bearer ')) {\n  throw new Error('ERR_AUTH_INVALID: Missing or invalid Authorization header');\n}\n\n// Extract token\nconst token = authHeader.substring(7);\n\n// Validate token (in production, fetch from Laravel API)\n// For now, validate against environment variable\nconst expectedToken = process.env.RESAILAI_WEBHOOK_SECRET || 'your-secret-token-here';\n\nif (!crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken))) {\n  throw new Error('ERR_AUTH_INVALID: Invalid API token');\n}\n\n// Validate required fields\nconst requiredFields = ['document_id', 'supplier_id', 'company_id', 'file_path'];\nfor (const field of requiredFields) {\n  if (!payload[field]) {\n    throw new Error(`ERR_INVALID_PAYLOAD: Missing required field: ${field}`);\n  }\n}\n\n// Validate callback_url is provided\nif (!payload.callback_url) {\n  throw new Error('ERR_INVALID_PAYLOAD: callback_url is required');\n}\n\n// Extract file extension\nconst filePath = payload.file_path;\nconst ext = filePath.split('.').pop().toLowerCase();\n\n// Validate file type\nif (!['pdf', 'jpg', 'jpeg', 'png', 'gif'].includes(ext)) {\n  throw new Error(`ERR_INVALID_FILE_TYPE: File type .${ext} not supported. Only PDF and images allowed.`);\n}\n\n// Generate processing ID\nconst processingId = crypto.randomUUID();\n\nreturn {\n  json: {\n    ...payload,\n    processing_id: processingId,\n    file_ext: ext,\n    validation_timestamp: new Date().toISOString(),\n    original_input: payload\n  }\n};"
+      },
+      "name": "Validate & Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ '/var/www/storage/app/' + $json.file_path }}",
+        "options": {}
+      },
+      "name": "Read PDF File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://tika-server:9998/tika",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "text/plain"
+            },
+            {
+              "name": "X-Tika-PDFextractInlineImages",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/pdf",
+        "body": "={{ $binary.data }}",
+        "options": {
+          "timeout": 60000,
+          "retry": {
+            "maxRetries": 2,
+            "retryInterval": 3000
+          }
+        }
+      },
+      "name": "Extract PDF with Tika",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Tika response and build extraction result\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  try {\n    // Extract text from Tika response\n    let extractedText = '';\n    \n    if (item.binary && item.binary.data) {\n      extractedText = item.binary.data.toString('utf-8');\n    } else if (item.json && item.json.data) {\n      extractedText = item.json.data;\n    } else if (typeof item.json === 'string') {\n      extractedText = item.json;\n    } else if (item.json && item.json.response) {\n      extractedText = item.json.response;\n    }\n    \n    // Validate extracted text\n    if (!extractedText || extractedText.trim().length === 0) {\n      throw new Error('ERR_INSUFFICIENT_DATA: Tika extracted no text from PDF');\n    }\n    \n    // Build extraction result with task-like structure\n    results.push({\n      json: {\n        document_id: item.json.document_id,\n        document_type: 'pdf',\n        extraction_status: 'success',\n        extraction_method: 'tika',\n        extracted_text: extractedText.trim(),\n        text_length: extractedText.trim().length,\n        processing_id: item.json.processing_id,\n        file_path: item.json.file_path,\n        supplier_id: item.json.supplier_id,\n        company_id: item.json.company_id,\n        agent_id: item.json.agent_id || null,\n        callback_url: item.json.callback_url,\n        extraction_timestamp: new Date().toISOString(),\n        extraction_result: {\n          tasks: [],\n          metadata: {\n            extraction_method: 'tika',\n            document_type: 'pdf',\n            supplier_id: item.json.supplier_id,\n            company_id: item.json.company_id,\n            confidence_score: 0.95,\n            text_length: extractedText.trim().length,\n            processing_timestamp: new Date().toISOString()\n          }\n        }\n      }\n    });\n  } catch (error) {\n    results.push({\n      json: {\n        document_id: item.json.document_id,\n        document_type: 'pdf',\n        extraction_status: 'error',\n        error_code: error.message.includes('ERR_') ? error.message.split(':')[0] : 'ERR_EXTRACTION_FAILED',\n        error_message: error.message,\n        processing_id: item.json.processing_id,\n        file_path: item.json.file_path,\n        supplier_id: item.json.supplier_id,\n        company_id: item.json.company_id,\n        agent_id: item.json.agent_id || null,\n        callback_url: item.json.callback_url,\n        extraction_timestamp: new Date().toISOString(),\n        extraction_result: null\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Tika Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + process.env.RESAILAI_CALLBACK_TOKEN || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ {\n  document_id: $json.document_id,\n  status: $json.extraction_status,\n  supplier_id: $json.supplier_id,\n  company_id: $json.company_id,\n  agent_id: $json.agent_id,\n  file_url: $json.file_path.startsWith('http') ? $json.file_path : null,\n  extraction_result: $json.extraction_result,\n  error: $json.extraction_status === 'error' ? {\n    code: $json.error_code,\n    message: $json.error_message\n  } : null\n} }}",
+        "options": {
+          "timeout": 15000,
+          "retry": {
+            "maxRetries": 3,
+            "retryInterval": 5000,
+            "retryOn": ["408", "429", "500", "502", "503", "504"]
+          }
+        }
+      },
+      "name": "Send Callback to Laravel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build success response for n8n webhook\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const payload = item.json;\n  \n  results.push({\n    json: {\n      success: payload.extraction_status === 'success',\n      message: payload.extraction_status === 'success'\n        ? 'Extraction completed and callback sent'\n        : `Extraction failed: ${payload.error_message}`,\n      document_id: payload.document_id,\n      processing_id: payload.processing_id,\n      extraction_status: payload.extraction_status,\n      extraction_method: payload.extraction_result?.metadata?.extraction_method || null,\n      callback_sent: payload.extraction_status !== 'error'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate & Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Read PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF File": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF with Tika",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF with Tika": {
+      "main": [
+        [
+          {
+            "node": "Parse Tika Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tika Response": {
+      "main": [
+        [
+          {
+            "node": "Send Callback to Laravel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Callback to Laravel": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

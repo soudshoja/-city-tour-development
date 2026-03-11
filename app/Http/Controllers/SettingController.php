@@ -44,7 +44,7 @@ class SettingController extends Controller
     public function saveTab(Request $request)
     {
         $request->validate([
-            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,dotw',
+            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,dotw,resailai',
         ]);
 
         session(['settings_active_tab' => $request->tab]);

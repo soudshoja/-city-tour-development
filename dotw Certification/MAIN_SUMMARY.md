@@ -122,13 +122,6 @@ To complete certification testing, we recommend:
    - Minimum Stay warnings
    - APR rate restrictions (no cancel button)
 
----
-
-## Contact Information
-
-For questions about this certification submission, please contact:
-- **Technical Support:** techventure26alphia@dotwconnect.com
-- **DOTW Integration Team:** xmlsupport@dotw.com
 
 ---
 

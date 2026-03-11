@@ -1,0 +1,55 @@
+{
+  "name": "Email Content Pipeline",
+  "description": "Extracts email content using Gmail API integration",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "get",
+        "messageId": "={{ $json.metadata.gmail_message_id }}",
+        "format": "full",
+        "options": {}
+      },
+      "name": "Fetch Email Content",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [850, 550],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail_oauth2_credentials",
+          "name": "Gmail API Credentials"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gmail API response and extract email body\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  try {\n    const message = item.json;\n    \n    // Extract plain text body from Gmail message\n    let emailBody = '';\n    \n    if (message.payload && message.payload.parts) {\n      // Multi-part email (text + HTML)\n      const textPart = message.payload.parts.find(p => p.mimeType === 'text/plain');\n      if (textPart && textPart.body && textPart.body.data) {\n        emailBody = Buffer.from(textPart.body.data, 'base64').toString('utf-8');\n      }\n    } else if (message.payload && message.payload.body && message.payload.body.data) {\n      // Single-part email\n      emailBody = Buffer.from(message.payload.body.data, 'base64').toString('utf-8');\n    }\n    \n    // Validate extracted email body\n    if (!emailBody || emailBody.trim().length === 0) {\n      throw new Error('ERR_INSUFFICIENT_DATA: Email has no extractable text content');\n    }\n    \n    // Extract email headers\n    const headers = message.payload.headers || [];\n    const getHeader = (name) => {\n      const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());\n      return header ? header.value : '';\n    };\n    \n    // Build normalized output\n    results.push({\n      json: {\n        document_id: $('Fetch Email Content').first().json.document_id,\n        document_type: 'email',\n        extracted_text: emailBody.trim(),\n        extraction_method: 'gmail-api',\n        email_subject: getHeader('Subject'),\n        email_from: getHeader('From'),\n        email_date: getHeader('Date'),\n        email_message_id: message.id,\n        file_path: $('Fetch Email Content').first().json.file_path || '',\n        company_id: $('Fetch Email Content').first().json.company_id,\n        supplier_id: $('Fetch Email Content').first().json.supplier_id,\n        callback_url: $('Fetch Email Content').first().json.callback_url,\n        text_length: emailBody.trim().length,\n        processing_timestamp: new Date().toISOString()\n      }\n    });\n  } catch (error) {\n    // Handle extraction errors\n    results.push({\n      json: {\n        document_id: $('Fetch Email Content').first().json.document_id,\n        document_type: 'email',\n        extraction_status: 'error',\n        error_code: error.message.includes('ERR_') ? error.message.split(':')[0] : 'ERR_EXTRACTION_FAILED',\n        error_message: error.message,\n        file_path: $('Fetch Email Content').first().json.file_path || '',\n        company_id: $('Fetch Email Content').first().json.company_id,\n        supplier_id: $('Fetch Email Content').first().json.supplier_id,\n        callback_url: $('Fetch Email Content').first().json.callback_url\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Email Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 550]
+    }
+  ],
+  "connections": {
+    "Fetch Email Content": {
+      "main": [
+        [
+          {
+            "node": "Parse Email Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "meta": {
+    "description": "Email extraction using Gmail API. Fetches email content by message ID, extracts plain text body and headers.",
+    "requirements": {
+      "gmail_oauth2": "OAuth2 credentials for Gmail API access",
+      "scope": "https://www.googleapis.com/auth/gmail.readonly"
+    }
+  }
+}

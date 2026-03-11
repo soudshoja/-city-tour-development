@@ -1,0 +1,182 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Payment extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'client_id',
+        'agent_id',
+        'voucher_number',
+        'payment_reference',
+        'invoice_id',
+        'invoice_reference',
+        'auth_code',
+        'from',
+        'pay_to',
+        'created_by',
+        'service_charge',
+        'gateway_fee',
+        'account_id',
+        'currency',
+        'payment_date',
+        'notes',
+        'amount',
+        'payment_gateway',
+        'payment_method_id',
+        'payment_url',
+        'expiry_date',
+        'status',
+        'terms_conditions',
+        'send_payment_receipt',
+        'account_number',
+        'bank_name',
+        'swift_no',
+        'iban_no',
+        'country',
+        'tax',
+        'discount',
+        'shipping',
+        'language',
+        'completed',
+        'is_disabled',
+    ];
+
+    protected $casts = [
+        'payment_date' => 'datetime',
+        'expiry_date' => 'datetime',
+        'amount' => 'decimal:3',
+        'service_charge' => 'decimal:3',
+        'tax' => 'decimal:3',
+        'completed' => 'boolean',
+        'is_disabled' => 'boolean',
+        'send_payment_receipt' => 'boolean',
+    ];
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class, 'agent_id');
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+    
+    public function transactions(): MorphMany
+    {
+        return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');
+    }
+
+    public function partials()
+    {
+        return $this->hasMany(InvoicePartial::class);
+    }
+
+    public function tapPayment()
+    {
+        return $this->hasOne(TapPayment::class);
+    }
+
+    public function myFatoorahPayment()
+    {
+        return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
+    }
+
+    public function hesabePayment()
+    {
+        return $this->hasOne(HesabePayment::class, 'payment_int_id', 'id');
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
+
+    public function availablePaymentMethods()
+    {
+        return $this->belongsToMany(PaymentMethod::class, 'payment_link_payment_method')
+            ->withTimestamps();
+    }
+
+    public function availablePaymentMethodGroups()
+    {
+        return $this->belongsToMany(PaymentMethodGroup::class, 'payment_link_payment_method_group')
+            ->withTimestamps();
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function credit() 
+    {
+        return $this->hasMany(Credit::class, 'payment_id');
+    }
+
+    public function hotelBooking()
+    {
+        return $this->hasOne(HotelBooking::class, 'payment_id');
+    }
+
+    public function paymentTransactions()
+    {
+        return $this->hasMany(PaymentTransaction::class, 'payment_id');
+    }
+
+    public function paymentItems()
+    {
+        return $this->hasMany(PaymentItem::class, 'payment_id');
+    }
+
+    public function paymentFiles()
+    {
+        return $this->hasMany(PaymentFile::class, 'payment_id');
+    }
+
+    /**
+     * Get all payment applications (where this payment was applied to invoices)
+     */
+    public function paymentApplications()
+    {
+        return $this->hasMany(PaymentApplication::class, 'payment_id');
+    }
+
+    /**
+     * Get the available balance from this payment (for topup payments)
+     * Calculated from Credit records: Topup amount - Used amounts
+     */
+    public function getAvailableBalanceAttribute()
+    {
+        return Credit::getAvailableBalanceByPayment($this->id);
+    }
+
+    /**
+     * Get total amount applied from this payment to invoices
+     */
+    public function getTotalAppliedAttribute()
+    {
+        return PaymentApplication::getTotalAppliedByPayment($this->id);
+    }
+
+    /**
+     * Check if this payment has available balance to use
+     */
+    public function hasAvailableBalance()
+    {
+        return $this->available_balance > 0;
+    }
+}

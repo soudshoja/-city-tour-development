@@ -1,0 +1,26 @@
+{
+    "description": "test read refund files p5",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALMUTAIRI\/YOUSEF MR",
+            "reference": "2833133116",
+            "status": "refund",
+            "refund_date": "2025-07-20",
+            "price": 28,
+            "currency": "KWD",
+            "exchange_currency": "KWD",
+            "original_price": 28.0,
+            "original_currency": "KWD",
+            "total": 35.90,
+            "surcharge": 0.0,
+            "penalty_fee": 13.0,
+            "tax": 20.90,
+            "ticket_number": "R-229-2833133116",
+            "original_ticket_number": "T-E229-2833133116",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "0002AB"
+        }
+    ]
+}

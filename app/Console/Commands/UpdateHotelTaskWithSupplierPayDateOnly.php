@@ -1,0 +1,145 @@
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use App\Models\Task;
+use App\Models\Transaction;
+use App\Models\JournalEntry;
+use App\Models\Supplier;
+use App\Http\Controllers\TaskController;
+use Carbon\Carbon;
+
+class UpdateHotelTaskWithSupplierPayDateOnly extends Command
+{
+    protected $signature = 'app:update-hotel-supplier-pay-date-only
+                                {--supplier= : The ID of the supplier to use this command}
+                                {--reference= : The reference of the task, can handle one or more tasks to update}
+                            ';
+    protected $description = 'Update the existing hotel task with of status issued for its supplier pay date without creating new COA';
+
+    public function handle()
+    {
+        $supplierId = $this->option('supplier');
+        $reference = collect($this->option('reference'))
+                    ->flatMap(fn($r) => array_map('trim', explode(',', (string) $r)))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+        Log::info('Starting to update the supplier_pay_date for issued Hotel tasks');
+
+        if($supplierId && $reference->isNotEmpty()) {
+            $this->error('Use either --supplier or --reference, not both.');
+            return;
+        }
+        
+        if (!$supplierId && $reference->isEmpty()) {
+            $this->error('Provide either --supplier or --reference.');
+            return;
+        }
+
+        $query = Task::query()
+                ->where('type', 'hotel')
+                ->where('status', 'issued')
+                ->whereNull('supplier_pay_date');
+        
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        } else {
+            $query->whereIn('reference', $reference);
+        }
+
+        $tasks = $query->get();
+
+        if ($tasks->isEmpty()) {
+            $target = $supplierId ? "supplier {$supplierId}" : 'reference [' . $reference->implode(', ') . ']';
+            $this->error("No hotel task found for {$target}");
+            return;
+        }
+
+        /* $tasks = Task::where('type', 'hotel')
+            ->where('supplier_id', $supplierId)
+            ->where('status', 'issued')
+            ->whereNull('supplier_pay_date')
+            ->get();
+
+        if ($tasks->isEmpty()) {
+            $this->error('No hotel task found for supplier ' . $supplierId);
+            return;
+        } */
+
+        $updated = 0;
+        
+        foreach ($tasks as $task) {
+            $status               = $task->status;
+            $issuedDate           = $task->issued_date;
+            $cancellationDeadline = $task->cancellation_deadline;
+
+            if (empty($issuedDate)) {
+                Log::warning('IssuedDate missing, skipping task', ['task_id' => $task->id, 'reference' => $task->reference]);
+                continue;
+            }
+
+            if (empty($issuedDate)) {
+                Log::info('IssuedDate is required. Cannot proceed the rest of the command process.');
+
+                $this->error('IssuedDate is missing. Cannot proceed determining the SupplierPayDate.');
+                return;
+            } elseif (empty($cancellationDeadline)) {
+                Log::info('Status is ' . $status . '. CancellationDeadline is missing. Proceed to use IssuedDate ' . $issuedDate . ' as the SupplierPayDate');
+
+                $supplierPayDate = $issuedDate;
+            } elseif ($cancellationDeadline) {
+                Log::info('Status is ' . $status . '. CancellationDeadline is present. Determining the SupplierPayDate based on IssuedDate ' . $issuedDate);
+
+                if ($cancellationDeadline <= $issuedDate) {
+                    Log::info('SupplierPayDate is using IssuedDate');
+                    $supplierPayDate = $issuedDate;
+                } elseif ($cancellationDeadline > $issuedDate) {
+                    Log::info('SupplierPayDate is using CancellationDeadline');
+                    $supplierPayDate = $cancellationDeadline;
+                }
+
+                $task->supplier_pay_date =  $supplierPayDate;
+            }
+
+            $task->supplier_pay_date = $supplierPayDate;
+            $task->updated_at = now();
+            $task->save();
+
+            JournalEntry::where('task_id', $task->id)->update([
+                'transaction_date' => $supplierPayDate,
+                'updated_at'       => now(),
+            ]);
+
+
+            $transactionIds = JournalEntry::where('task_id', $task->id)
+                ->whereNotNull('transaction_id')
+                ->distinct()
+                ->pluck('transaction_id');
+
+            if ($transactionIds->isNotEmpty()) {
+                Transaction::whereIn('id', $transactionIds)->update([
+                    'transaction_date' => $supplierPayDate,
+                    'updated_at'       => now(),
+                ]);
+            }
+
+            Log::info('SupplierPayDate updated without creating new COA', [
+                'task_id'               => $task->id,
+                'task_reference'        => $task->reference,
+                'task_status'           => $task->status,
+                'issued_date'           => $issuedDate,
+                'cancellation_deadline' => $cancellationDeadline,
+                'supplier_pay_date'     => $supplierPayDate,
+                'updated_at'            => $task->updated_at,
+            ]);
+
+            $updated++;
+        }
+
+        $this->info("Updated {$updated} task(s) for supplier {$supplierId}.");
+    }
+}

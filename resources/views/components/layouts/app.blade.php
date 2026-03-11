@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ session('theme') === 'dark' ? 'dark' : '' }}">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    @include('layouts.links')
+
+    <title>{{ config('app.name', 'Laravel') }}</title>
+
+    <!-- CSS -->
+    @vite(['resources/css/app.css'])
+    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js', 'resources/js/tools.js'])
+
+    @stack('styles')
+
+    @livewireStyles
+    <script src="{{ asset('js/nice-select2.js') }}"></script>
+    <!-- Scripts -->
+
+    {!! RecaptchaV3::initJs() !!}
+</head>
+
+<body>
+    @include('layouts.alert')
+
+    <!-- Top Navigation -->
+    <div>
+        @include('layouts.navigation')
+
+    </div>
+    <!-- ./Top Navigation -->
+
+    <!-- Page Content -->
+    <main>
+        <div class="container mx-auto max-w-screen overflow-hidden">
+            <div class="flex flex-col lg:flex-row md:flex-row">
+                
+                @include('layouts.sidebar')
+
+                <!-- Main Content -->
+                <div class="Main p-5">
+                    {{ $slot }}
+                    @include('layouts.footer')
+                </div>
+            </div>
+        </div>
+
+
+    </main>
+
+    @if(session('tbo.url') === null && request()->routeIs('suppliers.tbo.index'))
+    @include('suppliers.credential-modal')
+    @endif
+
+    <!-- Global Duplicate Client Warning Modal -->
+    <x-duplicate-client-warning />
+
+    @livewireScripts
+
+
+</body>
+
+</html>

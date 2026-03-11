@@ -1,0 +1,933 @@
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+    <style>
+        .bank-payment-table {
+            font-size: 12px;
+            border: 1px solid #ddd;
+            width: 100%;
+            text-align: center;
+        }
+
+        .bank-payment-table th,
+        .bank-payment-table td {
+            padding: 2px !important;
+            vertical-align: middle;
+            border: 1px solid #ddd !important;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .bank-payment-table input,
+        .bank-payment-table select {
+            font-size: 12px;
+            padding: 1px 5px;
+            height: 28px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            text-align: left;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .add-record-container {
+            margin-top: 15px;
+            text-align: right;
+        }
+
+        .bank-option-disabled {
+            color: #9ca3af;
+            background-color: #f3f4f6;
+        }
+        
+        .bank-balance-positive {
+            color: #059669;
+        }
+        
+        .bank-balance-zero {
+            color: #dc2626;
+        }
+    </style>
+
+    <div class="panel h-full overflow-hidden border-0 p-0">
+        <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
+            <div class="flex items-center justify-between text-white">
+                <p class="text-2xl">Payment Voucher</p>
+            </div>
+        </div>
+        <form method="POST" action="<?php echo e(route('bank-payments.store')); ?>">
+            <?php echo csrf_field(); ?>
+            <div class="flex flex-col gap-2.5 xl:flex-row">
+                <div class="panel flex-1 px-0 py-6 ltr:lg:mr-6 rtl:lg:ml-6">
+                    <div class="flex flex-wrap justify-between px-4">
+
+                        <div class="mb-6 w-full lg:w-1/2">
+                            <div class="mt-6 space-y-1 text-gray-800 dark:text-gray-400">
+                                <?php if (isset($component)) { $__componentOriginal40b9bc8bbe72b013cda6958fd160ce72 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal40b9bc8bbe72b013cda6958fd160ce72 = $attributes; } ?>
+<?php $component = App\View\Components\ApplicationLogo::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('application-logo'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\ApplicationLogo::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['class' => 'custom-logo-size']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal40b9bc8bbe72b013cda6958fd160ce72)): ?>
+<?php $attributes = $__attributesOriginal40b9bc8bbe72b013cda6958fd160ce72; ?>
+<?php unset($__attributesOriginal40b9bc8bbe72b013cda6958fd160ce72); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal40b9bc8bbe72b013cda6958fd160ce72)): ?>
+<?php $component = $__componentOriginal40b9bc8bbe72b013cda6958fd160ce72; ?>
+<?php unset($__componentOriginal40b9bc8bbe72b013cda6958fd160ce72); ?>
+<?php endif; ?>
+                                <?php if($companies): ?>
+                                    <div class="pl-2">
+                                        <h3><?php echo e($companies->name); ?></h3>
+                                        <p><?php echo nl2br(e($companies->address)); ?></p>
+                                        <p><?php echo e($companies->email); ?></p>
+                                        <p><?php echo e($companies->phone); ?></p>
+                                    </div>
+                                <?php endif; ?>
+                                <input type="hidden" id="company_id" name="company_id" value="<?php echo e($companies->id); ?>">
+                            </div>
+                        </div>
+                        <div class="w-full lg:w-1/2 lg:max-w-fit mt-5">
+                            <div class="flex items-center gap-x-4">
+                                <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment Ref <span class="text-red-500">*</span></label>
+                                <input type="text" readonly value="PV-<?php echo e(now()->timestamp); ?>" class="form-input w-2/3 lg:w-[250px]  bg-gray-200" />
+                                <input type="hidden" name="bankpaymentref" value="PV-<?php echo e(now()->timestamp); ?>" required>
+
+                            </div>
+                            <div class="flex items-center gap-x-4 mt-4">
+                                <label for="bankpaymenttype" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment Type <span class="text-red-500">*</span></label>
+                                <select required id="bankpaymenttype" name="bankpaymenttype" class="form-select w-2/3 lg:w-[250px] bg-white text-gray-700 border-gray-300"
+                                    onchange="toggleRefundDatalist()">
+                                    <option value="">Choose One</option>
+                                    <option value="Payment">Payment</option>
+                                    <option value="PaymentByDate">Payment by Date</option>
+                                    <option value="Refund">Refund</option>
+                                </select>
+                            </div>
+                            <div id="lastSearchInfo" class="text-muted ml-30" style="display: none;"></div>
+                            <div id="refundNumberField" class="flex items-center gap-x-4 mt-4 hidden">
+                                <label for="refund_number" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Refund Number <span class="text-red-500">*</span></label>
+                                <input required list="refundList" name="refund_number" id="refund_number"
+                                    class="form-input w-2/3 lg:w-[250px] bg-white text-gray-700 border border-gray-300" placeholder="Search refund number..." />
+                                <datalist id="refundList">
+                                    <?php $__currentLoopData = $refundNumbers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $refund): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($refund->refund_number); ?>"></option>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </datalist>
+                            </div>
+                            <div class="flex items-center gap-x-4 mt-4">
+                                <label for="branch_id" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Branch <span class="text-red-500">*</span></label>
+                                <select required id="branch_id" name="branch_id" class="form-input w-2/3 lg:w-[250px]">
+                                    <option value="">Select Branch</option>
+                                    <?php $__currentLoopData = $branches; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branch): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($branch->id); ?>" data-name="<?php echo e($branch->name); ?>"><?php echo e($branch->name); ?></option>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </select>
+                            </div>
+                            <div class="mt-4 flex items-center gap-x-4">
+                                <label for="docdate" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Doc Date <span class="text-red-500">*</span></label>
+                                <input required id="docdate" type="date" name="docdate" class="form-input w-2/3 lg:w-[250px]" />
+                            </div>
+                            <input type="hidden" id="total_payment" name="total_payment" value="" readonly>
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
+
+                    <div class="mt-8 px-4">
+                        <div class="flex flex-col justify-between lg:flex-row gap-x-24">
+                            <div class="mb-6 w-full lg:w-1/2">
+                                <div class="text-lg font-semibold">Payment Voucher</div>
+                                <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="pay_from_account" class="mb-0 shrink-0">
+                                        Pay From <span class="text-red-500">*</span>
+                                    </label>
+                                    <select required id="pay_from_account" name="pay_from_account" class="form-select flex-1" onchange="updateSelectedBankBalance()">
+                                        <option value="">Select Bank/Cash Account</option>
+                                        <?php $__currentLoopData = $bankAccounts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bank): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <option value="<?php echo e($bank->id); ?>" data-balance="<?php echo e($bank->current_balance); ?>"
+                                                <?php echo e($bank->current_balance <= 0 ? 'disabled' : ''); ?>
+
+                                                class="<?php echo e($bank->current_balance <= 0 ? 'bank-option-disabled' : ''); ?>"
+                                            >
+                                                <?php echo e($bank->name); ?> - KWD <?php echo e(number_format($bank->current_balance, 3)); ?>
+
+                                                <?php echo e($bank->current_balance <= 0 ? '(Insufficient)' : ''); ?>
+
+                                            </option>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="w-full lg:w-1/2">
+                                <div class="text-lg font-semibold">Remarks</div>
+
+                                <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="remarks_create_label" class="mb-0 shrink-0">Remarks <span class="text-red-500">*</span></label>
+                                    <input required id="remarks_create" type="text" name="remarks_create" class="form-input flex-1" placeholder="Enter Remarks" />
+                                </div>
+
+                                <!-- <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="internal_remarks" class="mb-0 shrink-0">Internal Remarks</label>
+                                    <input id="internal_remarks" type="text" name="internal_remarks" class="form-input flex-1" placeholder="Enter Internal Remarks" />
+                                </div>
+
+                                <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="remarks_fl" class="mb-0 shrink-0">Remarks FL</label>
+                                    <input id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1" placeholder="Enter Remarks FL" />
+                                </div> -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-bordered bank-payment-table mt-10 w-full">
+                            <thead class="table-light">
+                                <tr>
+                                    <th colspan="2">Type</th>
+                                    <th>Currency</th>
+                                    <th>Exchange Rate</th>
+                                    <!-- <th>Debit</th> -->
+                                    <th>Credit</th>
+                                    <!-- <th>Cheque No</th>
+                                    <th>Cheque Date</th>
+                                    <th>Bank Name</th>
+                                    <th>Auth No</th>
+                                    <th>Branch</th>
+                                    <th>Balance</th> -->
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentTable"></tbody>
+                        </table>
+                        <div class="add-record-container mb-10 ml-4">
+                            <button type="button" class="btn btn-primary" id="addItem">+ Add New Record</button>
+                        </div>
+                    </div>
+
+                    <div class="panel overflow-hidden">
+                        <div class="relative">
+                            <div class="grid grid-cols-2 gap-6 md:grid-cols-4">
+                                <div class="mt-2">
+                                    <div class="text-primary">Total Debit</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="total_debit">0.000</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <div class="text-primary">Total Credit</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="total_credit">0.000</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <div class="text-primary">Net Payment</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="total_difference">0.000</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <div class="text-primary">Bank After Payment</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="bank_after_payment" class="text-green-600">0.000</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute -bottom-12 right-12 h-36 w-36">
+                                <svg id="correct" width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-success opacity-20">
+                                    <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                                <svg id="false" width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-danger opacity-20" style="display:none;">
+                                    <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M12 7V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                    <circle cx="12" cy="16" r="1" fill="currentColor" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-between px-4">
+                        <a href="<?php echo e(route('bank-payments.index')); ?>" class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
+                            Cancel
+                        </a>
+
+                        <div class="flex gap-4 ml-5">
+                            <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
+                            <button id="save-paymentvoucher-btn" type="submit" class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
+                                <span id="iconSavePaymentVoucher" class="mr-2 inline-block">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+                                    </svg>
+                                </span>
+                                <span id="textSavePaymentVoucher">Save</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="paymentByDateModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-3xl shadow-xl">
+            <h2 class="text-lg font-bold mb-4">Select Payments by Date</h2>
+
+            <div class="flex flex-col sm:flex-row sm:gap-4 gap-2 mb-4">
+                <div class="w-full sm:w-1/3">
+                    <label class="block text-sm font-medium">Date From:</label>
+                    <input type="date" id="dateFrom" class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
+                </div>
+                <div class="w-full sm:w-1/3">
+                    <label class="block text-sm font-medium">Date To:</label>
+                    <input type="date" id="dateTo" class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
+                </div>
+                <div class="w-full sm:w-1/3">
+                    <label class="block text-sm font-medium">Supplier:</label>
+                    <input required id="supplierName" type="text" name="supplierName" class="border border-gray-300 rounded w-full px-2 py-1 h-10" list="supplierList"
+                        placeholder="Search supplier name..." />
+                    <datalist id="supplierList">
+                        <?php $__currentLoopData = $suppliers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($supplier->name); ?>">
+                                [<?php echo e($supplier->root->name ?? 'N/A'); ?>] [<?php echo e($supplier->code); ?>] <?php echo e($supplier->name); ?>
+
+                            </option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </datalist>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <button onclick="loadJournalEntries()" class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Search</button>
+            </div>
+            <div id="totalOutstandingBalance" class="text-right text-sm font-medium text-blue-700 mt-2 hidden">
+                Total Outstanding Balance: KWD <span id="outstandingAmount">0.000</span>
+            </div>
+            <div id="recordsContainer" class="text-sm overflow-x-auto">
+                <p class="text-gray-500">Select a date range and click Search to load entries.</p>
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2">
+                <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded w-full sm:w-auto">Close</button>
+                <button onclick="submitSelectedPayments()" class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Add Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const suppliers = <?php echo json_encode($suppliers, 15, 512) ?>;
+        const lastLevelAccounts = <?php echo json_encode($lastLevelAccounts, 15, 512) ?>;
+        const bonusAccounts = <?php echo json_encode($bonusAccounts, 15, 512) ?>;
+        const agents = <?php echo json_encode($agents, 15, 512) ?>;
+        const bankAccounts = <?php echo json_encode($bankAccounts, 15, 512) ?>;
+
+        let items = [];
+        let selectedBankBalance = 0;
+
+        // Update selected bank balance display
+        function updateSelectedBankBalance() {
+            const select = document.getElementById('pay_from_account');
+            const selectedOption = select.options[select.selectedIndex];
+            const balanceSpan = document.getElementById('selectedBankBalance');
+            
+            if (selectedOption && selectedOption.value) {
+                const balance = parseFloat(selectedOption.dataset.balance) || 0;
+                selectedBankBalance = balance;
+                balanceSpan.textContent = 'KWD ' + balance.toFixed(3);
+                balanceSpan.className = balance > 0 ? 'font-semibold bank-balance-positive' : 'font-semibold bank-balance-zero';
+            } else {
+                selectedBankBalance = 0;
+            }
+            
+            updateTotals();
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const paymentTable = document.getElementById("paymentTable");
+            const totalDebitEl = document.getElementById("total_debit");
+            const totalCreditEl = document.getElementById("total_credit");
+            const totalDifferenceEl = document.getElementById("total_difference");
+            const bankAfterPaymentEl = document.getElementById("bank_after_payment");
+            const addItemButton = document.getElementById("addItem");
+
+            function addItem() {
+                let id = crypto.randomUUID();
+                let item = {
+                    id,
+                    ac_code: "",
+                    account_id: "",
+                    transaction_id: "",
+                    currency: "KWD",
+                    exchange_rate: 1.0,
+                    debit: 0,
+                    credit: 0,
+                    cheque_no: "",
+                    cheque_date: "",
+                    bank_name: "",
+                    branch: "",
+                    auth_no: "",
+                    balance: 0,
+                    type_reference_id: "",
+                    type_selector: "none",
+                    bonus_ac_code: "",
+                    agent_id: "",
+                };
+
+                items.push(item);
+                renderTable();
+            }
+
+            window.removeItem = function(index) {
+                const type = document.getElementById('bankpaymenttype').value;
+
+                // If the payment type is 'PaymentByDate', reset the table and arrays when one item is removed
+                if (type === 'PaymentByDate') {
+                    selectedJournalIds = [];
+                    items = [];
+
+                    renderTable();
+                    alert("All records have been reset. Please re-select records if you want to continue.");
+                } else {
+                    // For other payment types, continue normal removal
+                    if (items.length > 1) {
+                        items.splice(index, 1);
+                        renderTable();
+                    } else {
+                        alert("At least one record is required.");
+                    }
+                }
+            };
+
+            window.updateField = function(index, field, value) {
+                if (["debit", "credit", "exchange_rate", "balance"].includes(field)) {
+                    items[index][field] = parseFloat(value) || 0;
+                } else {
+                    items[index][field] = value;
+                }
+                updateTotals();
+            };
+
+            window.updateTotals = function() {
+                let totalDebit = items.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0);
+                let totalCredit = items.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0);
+                let netPayment = totalCredit;
+                let bankAfter = selectedBankBalance - netPayment;
+
+                totalDebitEl.textContent = totalDebit.toFixed(3);
+                totalCreditEl.textContent = totalCredit.toFixed(3);
+                totalDifferenceEl.textContent = netPayment.toFixed(3);
+                bankAfterPaymentEl.textContent = bankAfter.toFixed(3);
+
+                // Color coding for bank after payment
+                if (bankAfter < 0) {
+                    bankAfterPaymentEl.className = 'text-red-600';
+                    document.getElementById('false').style.display = 'block';
+                    document.getElementById('correct').style.display = 'none';
+                } else {
+                    bankAfterPaymentEl.className = 'text-green-600';
+                    document.getElementById('false').style.display = 'none';
+                    document.getElementById('correct').style.display = 'block';
+                }
+
+                const totalPaymentInput = document.getElementById('total_payment');
+                if (totalPaymentInput) {
+                    totalPaymentInput.value = netPayment.toFixed(3);
+                }
+            }
+
+            function selectedAccName(input, index) {
+                const selectedText = input.value.trim();
+                const match = selectedText.match(/^\[(.+?)\]\s+(.+)$/);
+                if (!match) {
+                    items[index].ac_code = null;
+                    document.getElementById(`selectedAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                    return;
+                }
+
+                const selectedCode = match[1];
+                const selectedName = match[2];
+                const acc = lastLevelAccounts.find(a => a.code === selectedCode && a.name === selectedName);
+
+                if (acc) {
+                    items[index].ac_code = acc.id;
+                    items[index].account_id = acc.id;
+                    document.getElementById(`selectedAccName_${index}`).innerText =
+                        `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
+                    document.getElementById(`account_id_${index}`).value = acc.id;
+                } else {
+                    items[index].ac_code = null;
+                    items[index].account_id = null;
+                    document.getElementById(`selectedAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                }
+
+                renderTable();
+            }
+            window.selectedAccName = selectedAccName;
+
+            function handleAgentChange(select, index) {
+                items[index].agent_id = select.value;
+            }
+            window.handleAgentChange = handleAgentChange;
+
+            function selectedBonusName(input, index) {
+                const selectedText = input.value.trim();
+                const match = selectedText.match(/^\[(.+?)\]\s+(.+)$/);
+
+                if (!match) {
+                    items[index].bonus_ac_code = null;
+                    items[index].account_id = null;
+                    items[index].showAgent = false;
+                    document.getElementById(`selectedBonusAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                    renderTable();
+                    return;
+                }
+
+                const selectedCode = match[1];
+                const selectedName = match[2];
+                const bonusAcc = bonusAccounts.find(bAcc => bAcc.code === selectedCode && bAcc.name === selectedName);
+
+                if (bonusAcc) {
+                    items[index].bonus_ac_code = bonusAcc.id;
+                    items[index].account_id = bonusAcc.id;
+                    items[index].type_selector = 'bonus';
+
+                    const label = bonusAcc.label?.toLowerCase() || '';
+                    const accName = bonusAcc.name?.toLowerCase() || '';
+                    items[index].showAgent = label === 'bonus' && accName.includes('agent');
+
+                    document.getElementById(`selectedBonusAccName_${index}`).innerText =
+                        `[${bonusAcc.root ? bonusAcc.root.name : 'No Root'}] [${bonusAcc.code}] ${bonusAcc.name}`;
+                    document.getElementById(`account_id_${index}`).value = bonusAcc.id;
+                } else {
+                    items[index].bonus_ac_code = null;
+                    items[index].account_id = null;
+                    items[index].showAgent = false;
+                    document.getElementById(`selectedBonusAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                }
+
+                renderTable();
+            }
+            window.selectedBonusName = selectedBonusName;
+
+            window.toggleTypeInput = function(select, index) {
+                items[index].type_selector = select.value;
+                renderTable();
+            };
+
+            function renderTable() {
+                paymentTable.innerHTML = "";
+                items.forEach((item, index) => {
+                    const row = document.createElement("tr");
+
+                    const accountOptions = lastLevelAccounts.map(acc =>
+                        `<option value="[${acc.code}] ${acc.name}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}</option>`
+                    ).join('');
+
+                    const selectedAcc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
+                    const selectedAccDisplay = selectedAcc ?
+                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` : '';
+
+                    const isBonusAccountsArray = Array.isArray(bonusAccounts) && bonusAccounts.length > 0;
+                    const bonusOptions = isBonusAccountsArray ? bonusAccounts.map(bAcc =>
+                        `<option value="[${bAcc.code}] ${bAcc.name}">[${bAcc.root ? bAcc.root.name : 'No Root'}] [${bAcc.code}] ${bAcc.name}</option>`
+                    ).join('') : '';
+
+                    const selectedBonusAcc = bonusAccounts ? bonusAccounts.find(bAcc => bAcc.id == item.bonus_ac_code) : null;
+                    const selectedBonusAccDisplay = selectedBonusAcc ?
+                        `[${selectedBonusAcc.root ? selectedBonusAcc.root.name : 'No Root'}] [${selectedBonusAcc.code}] ${selectedBonusAcc.name}` : '';
+
+                    row.innerHTML = `
+                    <td colspan="2">
+                        <div style="display: flex; gap: 8px;">
+                            <select required class="form-control form-control-sm" 
+                                name="items[${index}][type_selector]" onchange="toggleTypeInput(this, ${index})" style="flex: 0 0 140px;">
+                                <option value="none" ${item.type_selector === 'none' ? 'selected' : ''}>Choose a Type</option>
+                                <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account</option>
+                                <!-- <option value="refund" ${item.type_selector === 'refund' ? 'selected' : ''}>Refund</option> --!>
+                                <option value="bonus" ${item.type_selector === 'bonus' ? 'selected' : ''}>Bonus</option>
+                            </select>
+
+                            <div id="typeInput_${index}" style="flex: 1 1 8%;">
+                                ${
+                                    item.type_selector === 'none'
+                                    ? `<input type="text" class="form-control form-control-sm" value="" placeholder="Select a Type First..." readonly>`
+                                    : item.type_selector === 'account'
+                                    ? `
+                                        <input required list="accountList_${index}" class="form-control form-control-sm" 
+                                            name="items[${index}][ac_code]" 
+                                            value="${selectedAcc ? `[${selectedAcc.code}] ${selectedAcc.name}` : ''}" 
+                                            placeholder="Search account..."
+                                            oninput="selectedAccName(this, ${index})">
+                                        <datalist id="accountList_${index}">${accountOptions}</datalist>
+                                        <small id="selectedAccName_${index}" class="text-muted">${selectedAccDisplay}</small>
+                                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">
+                                    `
+                                    : item.type_selector === 'bonus'
+                                    ? `
+                                        <input required list="bonusAccountList_${index}" class="form-control form-control-sm" 
+                                            name="items[${index}][bonus_ac_code]" 
+                                            value="${selectedBonusAcc ? `[${selectedBonusAcc.code}] ${selectedBonusAcc.name}` : ''}" 
+                                            placeholder="Search Bonus Account..."
+                                            oninput="selectedBonusName(this, ${index})">
+                                        <datalist id="bonusAccountList_${index}">${bonusOptions}</datalist>
+                                        <small id="selectedBonusAccName_${index}" class="text-muted">${selectedBonusAccDisplay}</small>
+                                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedBonusAcc ? selectedBonusAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">
+                                        ${item.showAgent ? `
+                                            <div style="margin-top:10px;">
+                                                <label class="text-xs font-weight-bold mb-1">Agent</label>
+                                                <select required class="form-control form-control-sm" name="items[${index}][agent_id]" onchange="handleAgentChange(this, ${index})">
+                                                    <option value="">Select Agent</option>
+                                                    ${agents ? agents.map(agent => `<option value="${agent.id}" ${item.agent_id == agent.id ? 'selected' : ''}>${agent.name}</option>`).join('') : ''}
+                                                </select>
+                                            </div>
+                                        ` : ''}
+                                    `
+                                    : item.type_selector === 'refund'
+                                    ? `<input required type="text" class="form-control form-control-sm" name="items[${index}][refund_ref]" value="${item.refund_ref || ''}" placeholder="Enter Refund Reference">
+                                       <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="">
+                                       <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">`
+                                    : ''
+                                }
+                            </div>
+                        </div>
+                    </td>
+                    <td style="vertical-align: top;">
+                        <select required class="form-control form-control-sm" name="items[${index}][currency]" onchange="updateField(${index}, 'currency', this.value)">
+                            <option ${item.currency === "KWD" ? "selected" : ""}>KWD</option>
+                            <option ${item.currency === "USD" ? "selected" : ""}>USD</option>
+                            <option ${item.currency === "GBP" ? "selected" : ""}>GBP</option>
+                        </select>
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input required type="number" step="0.001" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)">
+                    </td>
+                    <!-- <td style="vertical-align: top;">
+                        <input type="number" step="0.001" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)">
+                    </td> --!>
+                    <td style="vertical-align: top;">
+                        <input type="number" step="0.001" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)">
+                    </td>
+                    <!-- <td style="vertical-align: top;">
+                        <input type="text" class="form-control form-control-sm" name="items[${index}][cheque_no]" value="${item.cheque_no}" oninput="updateField(${index}, 'cheque_no', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="date" class="form-control form-control-sm" name="items[${index}][cheque_date]" value="${item.cheque_date}" oninput="updateField(${index}, 'cheque_date', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="text" class="form-control form-control-sm" name="items[${index}][bank_name]" value="${item.bank_name}" oninput="updateField(${index}, 'bank_name', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="number" class="form-control form-control-sm" name="items[${index}][auth_no]" value="${item.auth_no}" oninput="updateField(${index}, 'auth_no', this.value)">
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input list="branchList${index}" name="items[${index}][branch]" class="form-input w-full" onchange="updateField(${index}, 'branch', this.value)" value="${item.branch}" />
+                        <datalist id="branchList${index}">
+                            <?php $__currentLoopData = $branches; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branch): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($branch->id); ?>">[<?php echo e($branch->id); ?>] <?php echo e($branch->name); ?></option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </datalist>
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="number" class="form-control form-control-sm" name="items[${index}][balance]" value="${item.balance}" oninput="updateField(${index}, 'balance', this.value)">
+                    </td> --!>
+                    <td style="vertical-align: top;"><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${index})">X</button></td>
+                `;
+
+                    paymentTable.appendChild(row);
+                });
+
+                updateTotals();
+            }
+
+            addItemButton.addEventListener("click", addItem);
+            addItem();
+
+            window.renderTable = renderTable;
+
+            // Form submission handling
+            const saveBtn = document.getElementById('save-paymentvoucher-btn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    
+                    // Validate bank is selected
+                    const bankSelect = document.getElementById('pay_from_account');
+                    if (!bankSelect.value) {
+                        alert('Please select a bank account to pay from.');
+                        return;
+                    }
+                    
+                    // Validate bank balance
+                    const netPayment = items.reduce((sum, item) => sum + (parseFloat(item.debit) || 0) - (parseFloat(item.credit) || 0), 0);
+                    if (netPayment > selectedBankBalance) {
+                        alert('Insufficient bank balance!\nRequired: KWD ' + netPayment.toFixed(3) + '\nAvailable: KWD ' + selectedBankBalance.toFixed(3));
+                        return;
+                    }
+                    
+                    const button = this;
+                    const icon = document.getElementById('iconSavePaymentVoucher');
+                    const text = document.getElementById('textSavePaymentVoucher');
+
+                    button.disabled = true;
+                    icon.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>`;
+                    text.textContent = 'Saving...';
+
+                    setTimeout(() => {
+                        button.closest('form').submit();
+                    }, 500);
+                });
+            }
+        });
+
+        // Toggle refund field and handle payment types
+        function toggleRefundDatalist() {
+            const type = document.getElementById('bankpaymenttype').value;
+            const refundField = document.getElementById('refundNumberField');
+
+            if (type === 'Refund') {
+                refundField.classList.remove('hidden');
+            } else {
+                refundField.classList.add('hidden');
+            }
+
+            items = [];
+            selectedJournalIds = [];
+            renderTable();
+
+            document.getElementById('lastSearchInfo').innerHTML = '';
+            document.getElementById('lastSearchInfo').style.display = 'none';
+
+            if (type === 'PaymentByDate') {
+                openPaymentByDateModal();
+            }
+        }
+
+        let lastSearchFrom = '';
+        let lastSearchTo = '';
+        let selectedJournalIds = [];
+
+        function openPaymentByDateModal() {
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            const toDateString = date => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            document.getElementById('dateFrom').value = toDateString(firstDayOfMonth);
+            document.getElementById('dateTo').value = toDateString(lastDayOfMonth);
+            document.getElementById('paymentByDateModal').classList.remove('hidden');
+            document.getElementById('recordsContainer').innerHTML = '<p class="text-gray-500">Select a date range and click Search to load entries.</p>';
+            
+            loadJournalEntries();
+        }
+
+        function closeModal() {
+            document.getElementById('paymentByDateModal').classList.add('hidden');
+        }
+
+        function loadJournalEntries() {
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+            const supplier = document.getElementById('supplierName').value;
+
+            if (!from || !to) {
+                alert('Please select both Date From and Date To.');
+                return;
+            }
+
+            lastSearchFrom = from;
+            lastSearchTo = to;
+
+            const container = document.getElementById('recordsContainer');
+            container.innerHTML = '<p class="text-gray-500">Loading records...</p>';
+
+            fetch(`/bank-payments/fetch-journals-by-date?from=${from}&to=${to}&supplier=${encodeURIComponent(supplier)}`)
+                .then(response => response.json())
+                .then(data => {
+                    container.innerHTML = '';
+
+                    if (data.length === 0) {
+                        container.innerHTML = '<p class="text-gray-500">No records found in the selected range.</p>';
+                        return;
+                    }
+
+                    let tableHTML = `
+                        <div class="overflow-x-auto">
+                            <div class="max-h-[300px] overflow-y-auto">
+                                <table class="w-full border border-gray-300 text-sm">
+                                    <thead class="bg-gray-100 sticky top-0">
+                                        <tr>
+                                            <th class="p-2 border text-center">Select<br><input type="checkbox" id="selectAllCheckbox" onclick="toggleAllJournals(this)"></th>
+                                            <th class="p-2 border">Date</th>
+                                            <th class="p-2 border">A/C</th>
+                                            <th class="p-2 border">Name</th>
+                                            <th class="p-2 border">Description</th>
+                                            <th class="p-2 border">Outstanding (KWD)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+
+                    data.forEach(record => {
+                        if (selectedJournalIds.includes(record.id)) return;
+
+                        const formattedDate = new Date(record.transaction_date).toLocaleDateString('en-GB');
+                        tableHTML += `
+                            <tr class="border-t">
+                                <td class="p-2 border text-center">
+                                    <input type="checkbox" class="payment-checkbox" value="${record.id}"
+                                        data-id="${record.id}"
+                                        data-account-id="${record.account_id}"
+                                        data-account-name="${record.account_name}"
+                                        data-debit="${record.debit}"
+                                        data-credit="${record.credit}"
+                                        data-transaction-id="${record.transaction_id}"
+                                        data-description="${record.description}"
+                                        onclick="updateOutstandingTotal()" />
+                                </td>
+                                <td class="p-2 border text-center">${formattedDate}</td>
+                                <td class="p-2 border text-center">[${record.root_name}]<br>${record.account_code}</td>
+                                <td class="p-2 border">${record.name}</td>
+                                <td class="p-2 border">${record.description}</td>
+                                <td class="p-2 border text-right">KWD ${Math.abs(parseFloat(record.credit) - parseFloat(record.debit)).toFixed(3)}</td>
+                            </tr>`;
+                    });
+
+                    tableHTML += `</tbody></table></div></div>`;
+                    container.innerHTML = tableHTML;
+                });
+
+            const info = document.getElementById('lastSearchInfo');
+            info.innerHTML = `<small>Last search: <strong>${from}</strong> to <strong>${to}</strong> <a href="#" onclick="openPaymentByDateModal()" class="text-blue-400 ml-1">[View]</a></small>`;
+            info.style.display = 'block';
+        }
+
+        function toggleAllJournals(masterCheckbox) {
+            document.querySelectorAll('.payment-checkbox').forEach(cb => {
+                cb.checked = masterCheckbox.checked;
+            });
+            updateOutstandingTotal();
+        }
+
+        function updateOutstandingTotal() {
+            const selectedCheckboxes = document.querySelectorAll('.payment-checkbox:checked');
+            let totalOutstanding = 0;
+
+            selectedCheckboxes.forEach(cb => {
+                const debit = parseFloat(cb.dataset.debit || 0);
+                const credit = parseFloat(cb.dataset.credit || 0);
+                totalOutstanding += Math.abs(credit - debit);
+            });
+
+            const container = document.getElementById('totalOutstandingBalance');
+            const amountEl = document.getElementById('outstandingAmount');
+
+            if (selectedCheckboxes.length > 0) {
+                container.classList.remove('hidden');
+                amountEl.textContent = totalOutstanding.toFixed(3);
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function submitSelectedPayments() {
+            const selectedCheckboxes = [...document.querySelectorAll('.payment-checkbox:checked')];
+
+            if (selectedCheckboxes.length === 0) {
+                alert("Please select at least one record.");
+                return;
+            }
+
+            const groupedByAccount = {};
+
+            selectedCheckboxes.forEach(cb => {
+                const accountId = cb.dataset.accountId;
+                if (!groupedByAccount[accountId]) {
+                    groupedByAccount[accountId] = {
+                        account_id: accountId,
+                        account_name: cb.dataset.accountName,
+                        total_debit: 0,
+                        total_credit: 0,
+                        journal_entry_ids: [],
+                    };
+                }
+                groupedByAccount[accountId].total_debit += parseFloat(cb.dataset.debit || 0);
+                groupedByAccount[accountId].total_credit += parseFloat(cb.dataset.credit || 0);
+                groupedByAccount[accountId].journal_entry_ids.push(parseInt(cb.value));
+                selectedJournalIds.push(parseInt(cb.value));
+            });
+
+            for (const accId in groupedByAccount) {
+                const group = groupedByAccount[accId];
+                const outstandingAmount = group.total_credit - group.total_debit;
+
+                items.push({
+                    id: accId,
+                    ac_code: accId,
+                    account_id: accId,
+                    transaction_id: group.journal_entry_ids.join(','),
+                    currency: "KWD",
+                    exchange_rate: 1.0,
+                    debit: 0,
+                    credit: outstandingAmount,
+                    cheque_no: "",
+                    cheque_date: "",
+                    bank_name: "",
+                    branch: "",
+                    auth_no: "",
+                    balance: 0,
+                    type_selector: "account",
+                });
+            }
+
+            renderTable();
+            closeModal();
+        }
+    </script>
+
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php /**PATH /home/soudshoja/soud-laravel/resources/views/bank-payments/create.blade.php ENDPATH**/ ?>

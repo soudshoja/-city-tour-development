@@ -1,0 +1,1 @@
+document.querySelectorAll(".refresh-icon").forEach(e=>{e.addEventListener("click",()=>{window.location.href=window.location.href;const o=e.querySelector("svg");o.classList.add("rotate"),setTimeout(()=>{o.classList.remove("rotate"),console.log("Content refreshed!")},1e3)})});

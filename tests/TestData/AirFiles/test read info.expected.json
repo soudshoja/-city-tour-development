@@ -1,0 +1,56 @@
+{
+    "description": null,
+    "passenger_count": 2,
+    "passengers": [
+        {
+            "client_name": "ALAZMI\/SALEM MR",
+            "reference": "5825640033",
+            "status": "issued",
+            "price": 129,
+            "currency": "KWD",
+            "ticket_number": "T-K229-5825640033",
+            "agent_name": "COMO TRAVEL AND TOURISM",
+            "agent_email": "",
+            "agent_amadeus_id": "0002AB",
+            "task_flight_details": [
+                {
+                    "flight_number": "KU0787",
+                    "airline": "KU",
+                    "departure_time": "2025-09-04 08:40:00",
+                    "seat_number": "14H"
+                },
+                {
+                    "flight_number": "KU0792",
+                    "airline": "KU",
+                    "departure_time": "2025-09-07 11:15:00",
+                    "seat_number": "14H"
+                }
+            ]
+        },
+        {
+            "client_name": "KWAIKH\/REEM MRS",
+            "reference": "5825640034",
+            "status": "issued",
+            "price": 129,
+            "currency": "KWD",
+            "ticket_number": "T-K229-5825640034",
+            "agent_name": "COMO TRAVEL AND TOURISM",
+            "agent_email": "",
+            "agent_amadeus_id": "0002AB",
+            "task_flight_details": [
+                {
+                    "flight_number": "KU0787",
+                    "airline": "KU",
+                    "departure_time": "2025-09-04 08:40:00",
+                    "seat_number": "14K"
+                },
+                {
+                    "flight_number": "KU0792",
+                    "airline": "KU",
+                    "departure_time": "2025-09-07 11:15:00",
+                    "seat_number": "14K"
+                }
+            ]
+        }
+    ]
+}

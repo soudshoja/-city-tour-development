@@ -1,0 +1,1282 @@
+"Metadata attached to every DOTW GraphQL response for tracing and debugging."
+type DotwMeta {
+    "Unique identifier for this request — use with X-Trace-ID header for log correlation."
+    trace_id: String!
+
+    "ISO 8601 timestamp when the response was generated (UTC)."
+    timestamp: String!
+
+    "The company_id of the authenticated company making this request."
+    company_id: Int!
+
+    "Request identifier echoed back — same as trace_id, kept for backwards compatibility."
+    request_id: String!
+}
+
+"Structured error returned by any DOTW operation when success is false."
+type DotwError {
+    "Machine-readable error code for N8N workflow branching."
+    error_code: DotwErrorCode!
+
+    "User-friendly message suitable for display in WhatsApp conversation."
+    error_message: String!
+
+    "Technical error details for debugging — never shown to end users."
+    error_details: String
+
+    "Suggested next action for the N8N workflow or caller."
+    action: DotwErrorAction!
+}
+
+"Enumeration of all possible DOTW error codes."
+enum DotwErrorCode {
+    "DOTW API credentials are not configured for this company."
+    CREDENTIALS_NOT_CONFIGURED
+
+    "The provided DOTW credentials are invalid (wrong username, password, or company code)."
+    CREDENTIALS_INVALID
+
+    "The rate allocation has expired — the 3-minute window closed before confirmation."
+    ALLOCATION_EXPIRED
+
+    "The selected rate is no longer available from the supplier."
+    RATE_UNAVAILABLE
+
+    "The hotel is fully booked for the requested dates."
+    HOTEL_SOLD_OUT
+
+    "A required passenger field is missing or invalid."
+    PASSENGER_VALIDATION_FAILED
+
+    "The DOTW API did not respond within the 25-second timeout."
+    API_TIMEOUT
+
+    "The DOTW API returned an unexpected error."
+    API_ERROR
+
+    "The circuit breaker is open — too many recent DOTW failures."
+    CIRCUIT_BREAKER_OPEN
+
+    "A validation error on the GraphQL input arguments."
+    VALIDATION_ERROR
+
+    "An unexpected internal server error occurred."
+    INTERNAL_ERROR
+}
+
+"Suggested action for the caller (N8N workflow or client) after an error."
+enum DotwErrorAction {
+    "Call the same operation again — transient error."
+    RETRY
+
+    "Wait 30 seconds before retrying — rate limit or temporary overload."
+    RETRY_IN_30_SECONDS
+
+    "Ask an admin to configure DOTW credentials for this company."
+    RECONFIGURE_CREDENTIALS
+
+    "Run a new searchHotels — the rate or allocation is no longer valid."
+    RESEARCH
+
+    "Do not retry — the booking has failed and manual intervention is needed."
+    CANCEL
+
+    "No specific action — informational error."
+    NONE
+}
+
+"Shared response envelope for all DOTW GraphQL operations. Every DOTW query and mutation returns a type that includes these fields, ensuring N8N workflows and Resayil can always parse responses predictably regardless of operation."
+type DotwResponseEnvelope {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "True when the response was served from cache rather than a live DOTW API call."
+    cached: Boolean!
+}
+
+extend type Query {
+    "List cities served by DOTW for a given country. Use city codes returned here as the destination input to searchHotels."
+    getCities(
+        "ISO 3166-1 alpha-2 country code (e.g. AE for United Arab Emirates, KW for Kuwait)."
+        country_code: String!
+    ): GetCitiesResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetCities")
+
+    "Search hotels by destination, dates, and room configuration via DOTW V4 searchhotels API. Results cached 2.5 minutes per company."
+    searchHotels(input: SearchHotelsInput!): SearchHotelsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwSearchHotels")
+}
+
+"Response from the getCities query."
+type GetCitiesResponse {
+    "Whether the request succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "List of DOTW-serveable cities for the requested country."
+    data: GetCitiesData
+}
+
+"Container for city list results."
+type GetCitiesData {
+    "Cities available for hotel search in this country."
+    cities: [DotwCity!]!
+    "Total number of cities returned."
+    total_count: Int!
+}
+
+"A city served by DOTW in the requested country."
+type DotwCity {
+    "DOTW city code — use this as the destination in searchHotels."
+    code: String!
+    "Human-readable city name."
+    name: String!
+}
+
+"Input for the searchHotels query."
+input SearchHotelsInput {
+    "City code from getCities (e.g. DXB for Dubai). Accepts DOTW city code only — use getCities to resolve city names to codes."
+    destination: String!
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+    "Room configuration — one entry per room requested. Supports multi-room complex itineraries (B2B-01)."
+    rooms: [SearchHotelRoomInput!]!
+    "Response currency code (e.g. KWD, USD). Passed through to DOTW as-is. Defaults to USD if not provided."
+    currency: String
+    "Optional filters for rating, price range, property type, meal plan, amenities, and cancellation policy (B2B-02 — full DOTW V4 vocabulary)."
+    filters: SearchHotelsFiltersInput
+}
+
+"Occupancy configuration for a single room."
+input SearchHotelRoomInput {
+    "Number of adults in this room."
+    adultsCode: Int!
+    "Ages of children in this room. Provide an empty array if no children."
+    children: [Int!]!
+    "ISO 3166-1 alpha-2 nationality code for occupants (e.g. AE, KW). Optional."
+    passengerNationality: String
+    "ISO 3166-1 alpha-2 country of residence code for occupants. Optional."
+    passengerCountryOfResidence: String
+}
+
+"Optional filter criteria for hotel search. All fields are optional — omit to search without filters."
+input SearchHotelsFiltersInput {
+    "Minimum star rating to include (1–5). Omit for no minimum."
+    minRating: Int
+    "Maximum star rating to include (1–5). Omit for no maximum."
+    maxRating: Int
+    "Minimum total price filter."
+    minPrice: Float
+    "Maximum total price filter."
+    maxPrice: Float
+    "Property type filter (e.g. hotel, apartment, resort). Maps to DOTW fieldName=propertytype."
+    propertyType: String
+    "Meal plan type filter (e.g. BB, HB, FB, AI, RO, SC). Maps to DOTW fieldName=mealplantype."
+    mealPlanType: String
+    "Amenity codes to require (e.g. pool, wifi). Maps to DOTW fieldName=amenities."
+    amenities: [String!]
+    "Cancellation policy type (e.g. refundable, non-refundable). Maps to DOTW fieldName=cancellation."
+    cancellationPolicy: String
+}
+
+"Response from the searchHotels query."
+type SearchHotelsResponse {
+    "Whether the search succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "True if results were served from the 2.5-minute per-company search cache."
+    cached: Boolean!
+    "Search result data — present only when success is true."
+    data: SearchHotelsData
+}
+
+"Container for hotel search results."
+type SearchHotelsData {
+    "Hotels matching the search criteria with cheapest rate per meal plan per room type."
+    hotels: [HotelSearchResult!]!
+    "Total number of hotels returned."
+    total_count: Int!
+}
+
+"""
+A single hotel result from the DOTW searchhotels API.
+NOTE: Hotel name, city name, star rating, and image_url are NOT available from the DOTW searchhotels command.
+These metadata fields are returned by the getRoomRates query (Phase 5). Use hotel_code from this result
+as the hotel_code input to getRoomRates to obtain full hotel details.
+"""
+type HotelSearchResult {
+    "DOTW hotel ID. Pass this as hotel_code to getRoomRates (Phase 5) for full hotel details and rate blocking."
+    hotel_code: String!
+    "Room configurations with cheapest rate per meal plan."
+    rooms: [HotelRoomResult!]!
+}
+
+"Room occupancy result for a hotel — cheapest rate per meal plan from DOTW searchhotels."
+type HotelRoomResult {
+    "Number of adults this room accommodates."
+    adults: String!
+    "Number of children."
+    children: String!
+    "Child ages as a comma-separated string (from DOTW XML childrenages attribute)."
+    children_ages: String!
+    "Available room types with cheapest rate per meal plan."
+    room_types: [RoomTypeRate!]!
+}
+
+"A room type with its cheapest rate for a specific meal plan — all DOTW searchhotels fields included (B2B-03)."
+type RoomTypeRate {
+    "DOTW room type code."
+    code: String!
+    "Room type name."
+    name: String!
+    "Rate basis ID — maps to meal plan: 1331=RO, 1332=BB, 1333=HB, 1334=FB, 1335=AI, 1336=SC."
+    rate_basis_id: String!
+    "Currency code from DOTW rateType currencyid attribute (passed through as-is — no conversion)."
+    currency_id: String!
+    "True if this rate is non-refundable."
+    non_refundable: Boolean!
+    "Total fare before markup."
+    total: Float!
+    "Markup applied to the fare: original_fare, markup_percent, markup_amount, final_fare."
+    markup: RateMarkup!
+    "Total taxes."
+    total_taxes: Float!
+    "Minimum selling price (MSP) — never undercut this amount."
+    total_minimum_selling: Float!
+}
+
+"Markup breakdown for a rate — transparent pricing for WhatsApp display (MARKUP-03)."
+type RateMarkup {
+    "Original fare from DOTW before markup."
+    original_fare: Float!
+    "Markup percentage applied (from company credential markup_percent)."
+    markup_percent: Float!
+    "Markup amount added."
+    markup_amount: Float!
+    "Final fare after markup — this is the selling price."
+    final_fare: Float!
+}
+
+# =============================================================================
+# Phase 5: Rate Browsing (getRoomRates) & Rate Blocking (blockRates)
+# =============================================================================
+
+extend type Query {
+    """
+    Get detailed room rates for a specific hotel.
+
+    Returns all room types and meal plans with full cancellation policies,
+    allocationDetails tokens (required for blockRates), and transparent markup breakdown.
+
+    NOTE: DOTW getRooms command does not return hotel metadata (name, city, star rating,
+    image_url). These fields remain deferred (SEARCH-06 partial). Pass hotel_code from
+    searchHotels to this query; the caller must maintain hotel name from their own context.
+
+    Audit logged to dotw_audit_logs. NOT cached — rates change minute-to-minute and
+    allocationDetails tokens expire. Always returns fresh data from DOTW API.
+    """
+    getRoomRates(input: GetRoomRatesInput!): GetRoomRatesResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetRoomRates")
+}
+
+extend type Mutation {
+    """
+    Lock a selected hotel rate for 3 minutes via DOTW blocking.
+
+    Calls DOTW getRooms with blocking=true to reserve the rate, then creates a
+    dotw_prebooks record. Returns prebook_key (UUID) and countdown_timer_seconds.
+
+    BLOCK-08: A new blockRates call from the same (company, resayil_message_id) pair
+    automatically expires any previous active prebook — only one active prebook per
+    WhatsApp conversation at any time.
+
+    Rejects if allocation is < 60 seconds from expiry — prompt re-search in that case.
+    """
+    blockRates(input: BlockRatesInput!): BlockRatesResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwBlockRates")
+}
+
+# -----------------------------------------------------------------------------
+# Input Types
+# -----------------------------------------------------------------------------
+
+input GetRoomRatesInput {
+    "DOTW hotel identifier. Obtained from searchHotels response hotel_code field."
+    hotel_code: String!
+
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+
+    """
+    Room configuration. Reuses SearchHotelRoomInput from Phase 4.
+    Must match the room config used in the searchHotels call that produced this hotel_code.
+    """
+    rooms: [SearchHotelRoomInput!]!
+
+    "Optional currency code (e.g. KWD, USD). When omitted, DOTW account default applies."
+    currency: String
+}
+
+input BlockRatesInput {
+    "DOTW hotel identifier. Must match the hotel_code used in the getRoomRates call."
+    hotel_code: String!
+
+    """
+    Optional hotel name from caller context. DOTW getRooms does not return hotel metadata.
+    Caller should pass hotel name obtained from searchHotels or their hotel directory.
+    Stored in dotw_prebooks.hotel_name for booking reference. Falls back to empty string.
+    """
+    hotel_name: String
+
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+
+    "Room configuration. Must match the config used in getRoomRates."
+    rooms: [SearchHotelRoomInput!]!
+
+    "Room type code from getRoomRates response room_type_code field."
+    selected_room_type: String!
+
+    "Rate basis ID from getRoomRates response rate_basis_id field (e.g. 1332 = Bed & Breakfast)."
+    selected_rate_basis: String!
+
+    """
+    Opaque allocation token from getRoomRates response rate_details[].allocation_details field.
+    Pass this value verbatim — any modification will cause DOTW to reject the blocking call.
+    """
+    allocation_details: String!
+
+    "Optional currency code. When omitted, DOTW account default applies."
+    currency: String
+}
+
+# -----------------------------------------------------------------------------
+# Response Types
+# -----------------------------------------------------------------------------
+
+type GetRoomRatesResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Populated on failure. Null on success."
+    error: DotwError
+
+    "Always present. Contains trace_id, timestamp, company_id."
+    meta: DotwMeta!
+
+    "Always false — getRoomRates never caches results."
+    cached: Boolean!
+
+    "Populated on success. Null on failure."
+    data: GetRoomRatesData
+}
+
+type GetRoomRatesData {
+    "DOTW hotel identifier (echo of input hotel_code)."
+    hotel_code: String!
+
+    "All room types returned by DOTW for this hotel, dates, and room config."
+    rooms: [RoomRateResult!]!
+
+    "Total number of room types returned."
+    total_count: Int!
+}
+
+type RoomRateResult {
+    "DOTW room type code. Pass as selected_room_type to blockRates."
+    room_type_code: String!
+
+    "Human-readable room type name."
+    room_name: String!
+
+    "All rate details for this room type, one per meal plan / rate basis."
+    rate_details: [RateDetail!]!
+}
+
+type RateDetail {
+    """
+    Rate basis code. Mapping:
+    1331 = Room Only, 1332 = Bed & Breakfast, 1333 = Half Board,
+    1334 = Full Board, 1335 = All Inclusive, 1336 = Self Catering.
+    Pass as selected_rate_basis to blockRates.
+    """
+    rate_basis_id: String!
+
+    "Human-readable meal plan name (e.g. Bed & Breakfast, Half Board)."
+    rate_basis_name: String!
+
+    "Whether the rate is refundable. Non-refundable rates cannot be cancelled."
+    is_refundable: Boolean!
+
+    "Base fare from DOTW before markup (pre-markup price)."
+    total_fare: Float!
+
+    "Tax amount from DOTW."
+    total_taxes: Float!
+
+    "Total price inclusive of taxes, before markup."
+    total_price: Float!
+
+    "Transparent markup breakdown. Use markup.final_fare as the customer-facing price."
+    markup: RateMarkup!
+
+    """
+    Opaque allocation token from DOTW. Pass verbatim as allocation_details to blockRates.
+    Do not modify, encode, or truncate — token corruption causes DOTW to reject the block call.
+    """
+    allocation_details: String!
+
+    "Cancellation policy rules. Empty array if no policy data returned by DOTW."
+    cancellation_rules: [CancellationRule!]!
+
+    "Currency code of the rate as returned by DOTW (e.g. KWD, USD). Empty string if DOTW does not include currency in this rate. (RATE-05)"
+    original_currency: String!
+
+    "Exchange rate applied if DOTW performed currency conversion. Null when no conversion occurred. (RATE-05)"
+    exchange_rate: Float
+
+    "Currency code of the final customer-facing price after markup. Matches original_currency when no conversion. (RATE-05)"
+    final_currency: String!
+}
+
+type CancellationRule {
+    "Start of the cancellation penalty window (ISO 8601)."
+    from_date: String!
+
+    "End of the cancellation penalty window (ISO 8601)."
+    to_date: String!
+
+    "Cancellation charge amount in the booking currency."
+    charge: Float!
+
+    "Cancel charge (may differ from charge in some DOTW responses)."
+    cancel_charge: Float!
+}
+
+type BlockRatesResponse {
+    "Whether the blocking operation succeeded."
+    success: Boolean!
+
+    "Populated on failure. Null on success."
+    error: DotwError
+
+    "Always present. Contains trace_id, timestamp, company_id."
+    meta: DotwMeta!
+
+    "Always false — blockRates never caches results."
+    cached: Boolean!
+
+    "Populated on success. Null on failure."
+    data: BlockRatesData
+}
+
+type BlockRatesData {
+    "UUID prebook key. Pass to createPreBooking (Phase 6) to confirm the booking."
+    prebook_key: String!
+
+    "ISO 8601 timestamp when the rate lock expires (3 minutes from block call)."
+    expires_at: String!
+
+    "Seconds remaining until expiry at response time. Computed from expires_at."
+    countdown_timer_seconds: Int!
+
+    "DOTW hotel identifier (echo of input hotel_code)."
+    hotel_code: String!
+
+    "Hotel name from input or empty string if caller did not provide it."
+    hotel_name: String!
+
+    "Room type code that was locked."
+    room_type: String!
+
+    "Rate basis ID of the locked rate."
+    rate_basis: String!
+
+    "Total fare after markup applied (customer-facing price)."
+    total_fare: Float!
+
+    "Tax amount."
+    total_tax: Float!
+
+    "Transparent markup breakdown for the locked rate."
+    markup: RateMarkup!
+
+    "Whether the locked rate is refundable."
+    is_refundable: Boolean!
+
+    "Cancellation rules applicable to the locked rate."
+    cancellation_rules: [CancellationRule!]!
+}
+
+# ============================================================
+# Phase 6: Pre-Booking & Confirmation Workflow
+# ============================================================
+
+"""
+Passenger details for DOTW hotel booking confirmation.
+Salutation codes: 1=Mr, 2=Mrs, 3=Ms, 4=Dr, 5=Prof.
+"""
+input PassengerInput {
+    "Salutation code: 1=Mr, 2=Mrs, 3=Ms, 4=Dr, 5=Prof."
+    salutation: Int!
+
+    "Passenger first name."
+    firstName: String!
+
+    "Passenger last name / family name."
+    lastName: String!
+
+    "ISO 3166-1 alpha-2 nationality code (e.g. KW, AE, GB)."
+    nationality: String!
+
+    "ISO 3166-1 alpha-2 country of residence code."
+    residenceCountry: String!
+
+    "Guest email address for booking confirmation communication."
+    email: String!
+}
+
+"""
+Input for createPreBooking mutation.
+Converts a locked prebook (from blockRates) into a confirmed DOTW booking.
+"""
+input CreatePreBookingInput {
+    "UUID prebook key from blockRates response. Identifies the locked rate."
+    prebook_key: String!
+
+    "Check-in date in YYYY-MM-DD format. Must match the dates used in blockRates."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format. Must match the dates used in blockRates."
+    checkout: String!
+
+    """
+    Passenger details. One entry per adult per room.
+    Count must match total adults in the room configuration used in blockRates.
+    First passenger is treated as lead guest for email communication.
+    """
+    passengers: [PassengerInput!]!
+
+    """
+    Room configuration. Reuses SearchHotelRoomInput from Phase 4.
+    Required to reconstruct room occupancy (adultsCode, children) for DOTW confirmBooking call.
+    Must match the room configuration used in the original blockRates call.
+    """
+    rooms: [SearchHotelRoomInput!]!
+
+    """
+    Optional city/destination code for alternative hotel suggestions.
+    Used when rate is no longer available (ERROR-04) — enables searching 3 nearby alternatives.
+    Same city code as the original searchHotels call. Omit if alternatives are not needed.
+    """
+    destination: String
+}
+
+"Hotel booking itinerary details returned on successful DOTW confirmation."
+type BookingItinerary {
+    "DOTW hotel identifier."
+    hotel_code: String!
+
+    "Hotel name from prebook context."
+    hotel_name: String!
+
+    "Check-in date (YYYY-MM-DD)."
+    checkin: String!
+
+    "Check-out date (YYYY-MM-DD)."
+    checkout: String!
+
+    "Room type code."
+    room_type: String!
+
+    "Rate basis name (e.g. Bed and Breakfast, Half Board)."
+    rate_basis: String!
+
+    "Total fare with markup applied (customer-facing price)."
+    total_fare: Float!
+
+    "Currency code (e.g. KWD, USD)."
+    currency: String!
+
+    "Whether the booking is refundable."
+    is_refundable: Boolean!
+
+    "Lead passenger full name (salutation + firstName + lastName)."
+    lead_guest_name: String!
+
+    "UUID customer reference generated for DOTW. Use for booking amendments or disputes."
+    customer_reference: String!
+
+    "Secondary DOTW confirmation number if provided. Empty string when not returned."
+    confirmation_number: String!
+}
+
+"Data payload on successful createPreBooking response."
+type CreatePreBookingData {
+    "DOTW booking confirmation code (bookingCode from confirmBooking response)."
+    booking_confirmation_code: String!
+
+    "Booking status (e.g. confirmed)."
+    booking_status: String!
+
+    "Booking itinerary details for WhatsApp display."
+    itinerary_details: BookingItinerary!
+
+    """
+    Alternative hotels suggested when rate was unavailable (ERROR-04/ERROR-06).
+    Empty array on successful booking. Up to 3 results from searchHotels with same destination.
+    """
+    alternatives: [HotelSearchResult!]!
+}
+
+"Response envelope for createPreBooking mutation."
+type CreatePreBookingResponse {
+    "True when booking was confirmed successfully."
+    success: Boolean!
+
+    "Structured error when booking failed."
+    error: DotwError
+
+    "Request metadata: trace_id, company_id, timestamp."
+    meta: DotwMeta!
+
+    "Always false — booking is a side-effecting mutation, never cached."
+    cached: Boolean!
+
+    "Booking data on success. Null on failure."
+    data: CreatePreBookingData
+}
+
+extend type Mutation {
+    """
+    Confirm a hotel booking using a locked prebook_key from blockRates.
+    Validates passenger details, calls DOTW confirmBooking, creates dotw_bookings record.
+    Returns confirmation code and itinerary on success, or specific error with alternatives on failure.
+    """
+    createPreBooking(input: CreatePreBookingInput! @spread): CreatePreBookingResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwCreatePreBooking")
+}
+
+# =============================================================================
+# Phase 9: Booking Operations (BOOK-01..05, VALID-02)
+# =============================================================================
+
+"Input for the saveBooking mutation — same passenger/room structure as createPreBooking plus optional special requests."
+input SaveBookingInput {
+    "UUID prebook key from blockRates response."
+    prebook_key: String!
+
+    "Check-in date in YYYY-MM-DD format."
+    checkin: String!
+
+    "Check-out date in YYYY-MM-DD format."
+    checkout: String!
+
+    "Passenger details, one per adult per room."
+    passengers: [PassengerInput!]!
+
+    "Room configuration matching blockRates call."
+    rooms: [SearchHotelRoomInput!]!
+
+    "Optional city/destination code for alternative suggestions."
+    destination: String
+
+    "Optional special requests to pass to the hotel."
+    specialRequests: [String!]
+}
+
+"Input for the bookItinerary mutation — takes the itinerary code returned by saveBooking."
+input BookItineraryInput {
+    "Itinerary code from saveBooking response."
+    itinerary_code: String!
+}
+
+"Input for the getBookingDetails query."
+input GetBookingDetailsInput {
+    "DOTW booking confirmation code."
+    booking_code: String!
+}
+
+"Input for the searchBookings query — at least one field must be provided."
+input SearchBookingsInput {
+    "Start of the date range to search (YYYY-MM-DD). Optional."
+    from_date: String
+
+    "End of the date range to search (YYYY-MM-DD). Optional."
+    to_date: String
+
+    "Customer reference to search for. Optional."
+    customer_reference: String
+}
+
+"Data returned by saveBooking — the itinerary code to pass to bookItinerary."
+type SaveBookingData {
+    "Itinerary code (from DOTW savebooking response) — pass to bookItinerary."
+    itinerary_code: String!
+
+    "DOTW hotel identifier echoed from the prebook."
+    hotel_code: String!
+
+    "True when rate was non-refundable (APR booking)."
+    is_apr: Boolean!
+}
+
+"Data returned by bookItinerary — the final confirmed booking code."
+type BookItineraryData {
+    "DOTW booking confirmation code (final reference after bookitinerary call)."
+    booking_code: String!
+
+    "Booking status returned by DOTW."
+    booking_status: String!
+}
+
+"Full booking details returned by getBookingDetails."
+type BookingDetails {
+    "DOTW booking confirmation code."
+    booking_code: String!
+
+    "DOTW hotel identifier."
+    hotel_code: String!
+
+    "Check-in date (YYYY-MM-DD)."
+    from_date: String!
+
+    "Check-out date (YYYY-MM-DD)."
+    to_date: String!
+
+    "Current booking status (e.g. confirmed, cancelled)."
+    status: String!
+
+    "Customer reference used when booking was created."
+    customer_reference: String!
+
+    "Total amount charged."
+    total_amount: Float!
+
+    "Currency code of the booking."
+    currency: String!
+
+    "Passenger details as a JSON-encoded string (DOTW returns varying structures)."
+    passengers: String!
+}
+
+"A single booking summary from searchBookings results."
+type BookingSummary {
+    "DOTW booking confirmation code."
+    booking_code: String!
+
+    "Customer reference used at booking time."
+    customer_reference: String!
+
+    "Current booking status."
+    status: String!
+
+    "DOTW hotel identifier."
+    hotel_id: String!
+
+    "Check-in date."
+    from_date: String!
+
+    "Check-out date."
+    to_date: String!
+
+    "Total amount charged."
+    total_amount: Float!
+
+    "Currency code."
+    currency: String!
+}
+
+"Container for searchBookings results."
+type SearchBookingsData {
+    "List of bookings matching the search criteria."
+    bookings: [BookingSummary!]!
+
+    "Total number of bookings returned."
+    total_count: Int!
+}
+
+"Response envelope for saveBooking mutation."
+type SaveBookingResponse {
+    "Whether the save operation succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — saveBooking is a side-effecting mutation, never cached."
+    cached: Boolean!
+
+    "Saved booking data on success. Null on failure."
+    data: SaveBookingData
+}
+
+"Response envelope for bookItinerary mutation."
+type BookItineraryResponse {
+    "Whether the itinerary booking succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — bookItinerary is a side-effecting mutation, never cached."
+    cached: Boolean!
+
+    "Booking confirmation data on success. Null on failure."
+    data: BookItineraryData
+}
+
+"Response envelope for getBookingDetails query."
+type GetBookingDetailsResponse {
+    "Whether the query succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — getBookingDetails never caches results."
+    cached: Boolean!
+
+    "Full booking details on success. Null on failure."
+    data: BookingDetails
+}
+
+"Response envelope for searchBookings query."
+type SearchBookingsResponse {
+    "Whether the search succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — searchBookings never caches results."
+    cached: Boolean!
+
+    "Search results on success. Null on failure."
+    data: SearchBookingsData
+}
+
+extend type Mutation {
+    "Save a hotel booking as an itinerary for APR (non-refundable) rates. Returns itinerary_code to pass to bookItinerary."
+    saveBooking(input: SaveBookingInput! @spread): SaveBookingResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwSaveBooking")
+
+    "Confirm a previously saved itinerary (from saveBooking). Completes the APR booking flow."
+    bookItinerary(input: BookItineraryInput! @spread): BookItineraryResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwBookItinerary")
+}
+
+extend type Query {
+    "Get full details of an existing DOTW booking by booking code."
+    getBookingDetails(input: GetBookingDetailsInput! @spread): GetBookingDetailsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetBookingDetails")
+
+    "Search DOTW bookings by date range and/or customer reference. At least one filter required."
+    searchBookings(input: SearchBookingsInput! @spread): SearchBookingsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwSearchBookings")
+}
+
+# =============================================================================
+# Phase 9: Cancellation Operations (CANCEL-01..03)
+# =============================================================================
+
+"Input for the checkCancellation query — retrieve cancellation charge before committing."
+input CheckCancellationInput {
+    "DOTW booking confirmation code to check cancellation charge for."
+    booking_code: String!
+}
+
+"Input for the cancelBooking mutation — confirm cancellation with the penalty amount from checkCancellation."
+input CancelBookingInput {
+    "DOTW booking confirmation code to cancel."
+    booking_code: String!
+
+    "Penalty amount returned by checkCancellation. Must be passed back verbatim to confirm cancellation."
+    penalty_applied: Float!
+}
+
+"Input for the deleteItinerary mutation — remove a saved (unconfirmed) APR itinerary."
+input DeleteItineraryInput {
+    "Itinerary code returned from saveBooking (APR flow only)."
+    itinerary_code: String!
+}
+
+"Data returned by checkCancellation — the charge incurred if cancellation is confirmed."
+type CancellationChargeData {
+    "DOTW booking confirmation code (echo of input)."
+    booking_code: String!
+
+    "Cancellation charge amount. Pass this as penalty_applied to cancelBooking."
+    charge: Float!
+
+    "Currency of the cancellation charge. Empty string if DOTW does not return currency in cancel query."
+    currency: String!
+
+    "True when charge is 0.0 — indicates the booking is outside the penalty deadline (free cancellation)."
+    is_outside_deadline: Boolean!
+}
+
+"Data returned by cancelBooking — result of confirmed cancellation."
+type CancelBookingData {
+    "DOTW booking confirmation code (echo of input)."
+    booking_code: String!
+
+    "True when the cancellation was successfully processed by DOTW."
+    cancelled: Boolean!
+
+    "Penalty amount that was applied (echo of input penalty_applied)."
+    penalty_applied: Float!
+
+    """
+    Number of products remaining on the itinerary after cancellation.
+    0 = full cancellation, >0 = partial cancellation (some rooms/products still active).
+    Maps to DOTW productsLeftOnItinerary field.
+    """
+    products_left_on_itinerary: Int!
+}
+
+"Data returned by deleteItinerary — confirmation of itinerary deletion."
+type DeleteItineraryData {
+    "Itinerary code that was deleted (echo of input)."
+    itinerary_code: String!
+
+    "True when the itinerary was successfully deleted."
+    deleted: Boolean!
+}
+
+"Response envelope for the checkCancellation query."
+type CheckCancellationResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — checkCancellation is never cached."
+    cached: Boolean!
+
+    "Cancellation charge data on success. Null on failure."
+    data: CancellationChargeData
+}
+
+"Response envelope for the cancelBooking mutation."
+type CancelBookingResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — cancelBooking is a side-effecting mutation, never cached."
+    cached: Boolean!
+
+    "Cancellation result data on success. Null on failure."
+    data: CancelBookingData
+}
+
+"Response envelope for the deleteItinerary mutation."
+type DeleteItineraryResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+
+    "Structured error — present only when success is false."
+    error: DotwError
+
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+
+    "Always false — deleteItinerary is a side-effecting mutation, never cached."
+    cached: Boolean!
+
+    "Deletion result data on success. Null on failure."
+    data: DeleteItineraryData
+}
+
+extend type Query {
+    """
+    Check the cancellation charge for a confirmed DOTW booking without committing the cancellation.
+
+    Calls DOTW cancelbooking with confirm=no. Returns the penalty charge that will be applied
+    if cancelBooking is called. Use the returned charge value as penalty_applied in cancelBooking.
+
+    This is step 1 of the two-step DOTW cancellation flow (CANCEL-01).
+    """
+    checkCancellation(input: CheckCancellationInput! @spread): CheckCancellationResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwCheckCancellation")
+}
+
+extend type Mutation {
+    """
+    Confirm cancellation of a DOTW hotel booking with the penalty amount from checkCancellation.
+
+    Calls DOTW cancelbooking with confirm=yes and penaltyApplied. APR (non-refundable) bookings
+    are rejected before any DOTW call is made (VALID-02). Returns cancelled=true and
+    products_left_on_itinerary on success.
+
+    This is step 2 of the two-step DOTW cancellation flow (CANCEL-02).
+    """
+    cancelBooking(input: CancelBookingInput! @spread): CancelBookingResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwCancelBooking")
+
+    """
+    Delete a saved (unconfirmed) itinerary from the APR flow.
+
+    Calls DOTW deleteitinerary command to remove an itinerary created by saveBooking
+    that has not yet been confirmed via bookItinerary. Only applicable for APR bookings.
+    Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).
+    """
+    deleteItinerary(input: DeleteItineraryInput! @spread): DeleteItineraryResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\DotwDeleteItinerary")
+}
+
+# =============================================================================
+# Phase 9: Lookup/Reference Operations (LOOKUP-01..07)
+# =============================================================================
+
+"A simple code/name pair returned by DOTW reference lookup queries."
+type DotwCodeItem {
+    "DOTW reference code — use as a filter value in search or booking requests."
+    code: String!
+
+    "Human-readable name for display purposes."
+    name: String!
+}
+
+"An amenity/leisure/business facility item returned by the getAmenityIds query."
+type DotwAmenityItem {
+    "DOTW amenity code — use in hotel search amenity filters."
+    code: String!
+
+    "Human-readable amenity name."
+    name: String!
+
+    "Category of the amenity: 'amenity', 'leisure', or 'business'."
+    category: String!
+}
+
+# --- Data containers ---
+
+"Container for getAllCountries query results."
+type GetAllCountriesData {
+    "All DOTW internal country codes."
+    countries: [DotwCodeItem!]!
+    "Total number of countries returned."
+    total_count: Int!
+}
+
+"Container for getServingCountries query results."
+type GetServingCountriesData {
+    "Countries for which DOTW has hotel inventory."
+    countries: [DotwCodeItem!]!
+    "Total number of serving countries returned."
+    total_count: Int!
+}
+
+"Container for getHotelClassifications query results."
+type GetHotelClassificationsData {
+    "Hotel star rating classification codes."
+    classifications: [DotwCodeItem!]!
+    "Total number of classifications returned."
+    total_count: Int!
+}
+
+"Container for getLocationIds query results."
+type GetLocationIdsData {
+    "Location filtering codes for hotel search."
+    locations: [DotwCodeItem!]!
+    "Total number of locations returned."
+    total_count: Int!
+}
+
+"Container for getAmenityIds query results (merged from 3 DOTW commands)."
+type GetAmenityIdsData {
+    "Amenity, leisure, and business facility codes merged into one list."
+    amenities: [DotwAmenityItem!]!
+    "Total number of amenity items returned across all categories."
+    total_count: Int!
+}
+
+"Container for getPreferenceIds query results."
+type GetPreferenceIdsData {
+    "Hotel preference codes."
+    preferences: [DotwCodeItem!]!
+    "Total number of preference codes returned."
+    total_count: Int!
+}
+
+"Container for getChainIds query results."
+type GetChainIdsData {
+    "Hotel chain affiliation codes."
+    chains: [DotwCodeItem!]!
+    "Total number of chain codes returned."
+    total_count: Int!
+}
+
+# --- Response envelopes ---
+
+"Response from the getAllCountries query."
+type GetAllCountriesResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Country list data on success. Null on failure."
+    data: GetAllCountriesData
+}
+
+"Response from the getServingCountries query."
+type GetServingCountriesResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Serving country list data on success. Null on failure."
+    data: GetServingCountriesData
+}
+
+"Response from the getHotelClassifications query."
+type GetHotelClassificationsResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Hotel classification data on success. Null on failure."
+    data: GetHotelClassificationsData
+}
+
+"Response from the getLocationIds query."
+type GetLocationIdsResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Location codes data on success. Null on failure."
+    data: GetLocationIdsData
+}
+
+"Response from the getAmenityIds query."
+type GetAmenityIdsResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Amenity data on success. Null on failure."
+    data: GetAmenityIdsData
+}
+
+"Response from the getPreferenceIds query."
+type GetPreferenceIdsResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Preference codes data on success. Null on failure."
+    data: GetPreferenceIdsData
+}
+
+"Response from the getChainIds query."
+type GetChainIdsResponse {
+    "Whether the operation succeeded."
+    success: Boolean!
+    "Structured error — present only when success is false."
+    error: DotwError
+    "Per-request tracing metadata — always present."
+    meta: DotwMeta!
+    "Always false — lookup queries are not cached."
+    cached: Boolean!
+    "Chain codes data on success. Null on failure."
+    data: GetChainIdsData
+}
+
+# --- Query definitions ---
+
+extend type Query {
+    "Get all DOTW internal country codes. Use nationality/residenceCountry values from this list when building booking passenger details. (LOOKUP-01)"
+    getAllCountries: GetAllCountriesResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetAllCountries")
+
+    "Get countries for which DOTW has hotel inventory. Use to populate destination country selection in search UI. (LOOKUP-02)"
+    getServingCountries: GetServingCountriesResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetServingCountries")
+
+    "Get hotel star rating classification codes. Use as minRating/maxRating filter values in searchHotels. (LOOKUP-03)"
+    getHotelClassifications: GetHotelClassificationsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetHotelClassifications")
+
+    "Get location filtering codes for hotel search. Use as location filters to narrow results to specific areas. (LOOKUP-04)"
+    getLocationIds: GetLocationIdsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetLocationIds")
+
+    "Get amenity, leisure, and business facility codes merged from three DOTW commands. Use as amenity filter values in searchHotels. (LOOKUP-05, LOOKUP-06, LOOKUP-07)"
+    getAmenityIds: GetAmenityIdsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetAmenityIds")
+
+    "Get hotel preference codes from DOTW. Use as preference filter values in hotel search requests. (LOOKUP-05 preference subset)"
+    getPreferenceIds: GetPreferenceIdsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetPreferenceIds")
+
+    "Get hotel chain affiliation codes from DOTW. Use to filter search results to specific hotel chains. (LOOKUP-07 chain subset)"
+    getChainIds: GetChainIdsResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\DotwGetChainIds")
+}

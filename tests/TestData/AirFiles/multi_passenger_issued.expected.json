@@ -1,0 +1,119 @@
+{
+    "description": "Multi-passenger issued ticket with detailed flight segments and taxes",
+    "passenger_count": 2,
+    "passengers": {
+        "0": {
+            "client_name": "ALRASHIDI/HESSAH MRS",
+            "reference": "3049982244",
+            "status": "issued",
+            "price": 66.000,
+            "total": 194.300,
+            "currency": "KWD",
+            "ticket_number": "T-K157-3049982244",
+            "agent_name": "COMO TRAVEL AND TOURISM",
+            "agent_email": "maged@citytravelers.co",
+            "agent_amadeus_id": "0012MI",
+            "created_at": "2025-06-21 04:49:04",
+            "task_flight_details": [
+                {
+                    "airport_from": "KWI",
+                    "airport_to": "DOH", 
+                    "flight_number": "QR1077",
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 04:35:00",
+                    "arrival_time": "2025-07-30 06:05:00",
+                    "class": "S"
+                },
+                {
+                    "airport_from": "DOH",
+                    "airport_to": "MUC",
+                    "flight_number": "QR0057", 
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 09:10:00",
+                    "arrival_time": "2025-07-30 14:10:00", 
+                    "class": "S"
+                },
+                {
+                    "airport_from": "MUC",
+                    "airport_to": "DOH",
+                    "flight_number": "QR0058",
+                    "airline": "QR", 
+                    "departure_time": "2025-08-07 16:10:00",
+                    "arrival_time": "2025-08-07 22:45:00",
+                    "class": "S"
+                },
+                {
+                    "airport_from": "DOH", 
+                    "airport_to": "KWI",
+                    "flight_number": "QR1076",
+                    "airline": "QR",
+                    "departure_time": "2025-08-08 01:30:00", 
+                    "arrival_time": "2025-08-08 03:05:00",
+                    "class": "S"
+                }
+            ],
+            "taxes_record": " KWD58.400   YQ AC; KWD13.600   YR VB; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD10.200   G4 AF; KWD1.000    PZ AV; KWD10.200   QA AP; KWD1.700    R9 SE; KWD3.100    DE SE; KWD13.000   OY CB; KWD8.850    RA EB",
+            "additional_validations": [
+                {"type": "not_empty", "field": "reference"},
+                {"type": "numeric", "field": "price"},
+                {"type": "not_empty", "field": "ticket_number"}
+            ]
+        },
+        "1": {
+            "client_name": "ALRASHIDI/MESHARI MR",
+            "reference": "3049982245",
+            "status": "issued",
+            "price": 66.000,
+            "total": 194.300,
+            "currency": "KWD",
+            "ticket_number": "T-K157-3049982245",
+            "agent_name": "COMO TRAVEL AND TOURISM",
+            "agent_email": "maged@citytravelers.co",
+            "agent_amadeus_id": "0012MI",
+            "task_flight_details": [
+                {
+                    "airport_from": "KWI",
+                    "airport_to": "DOH", 
+                    "flight_number": "QR1077",
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 04:35:00",
+                    "arrival_time": "2025-07-30 06:05:00",
+                    "class": "S"
+                },
+                {
+                    "airport_from": "DOH",
+                    "airport_to": "MUC",
+                    "flight_number": "QR0057", 
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 09:10:00",
+                    "arrival_time": "2025-07-30 14:10:00", 
+                    "class": "S"
+                },
+                {
+                    "airport_from": "MUC",
+                    "airport_to": "DOH",
+                    "flight_number": "QR0058",
+                    "airline": "QR", 
+                    "departure_time": "2025-08-07 16:10:00",
+                    "arrival_time": "2025-08-07 22:45:00",
+                    "class": "S"
+                },
+                {
+                    "airport_from": "DOH", 
+                    "airport_to": "KWI",
+                    "flight_number": "QR1076",
+                    "airline": "QR",
+                    "departure_time": "2025-08-08 01:30:00", 
+                    "arrival_time": "2025-08-08 03:05:00",
+                    "class": "S"
+                }
+            ],
+            "taxes_record": " KWD58.400   YQ AC; KWD13.600   YR VB; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD10.200   G4 AF; KWD1.000    PZ AV; KWD10.200   QA AP; KWD1.700    R9 SE; KWD3.100    DE SE; KWD13.000   OY CB; KWD8.850    RA EB",
+            "additional_validations": [
+                {"type": "not_empty", "field": "reference"},
+                {"type": "numeric", "field": "price"},
+                {"type": "not_empty", "field": "ticket_number"}
+            ]
+        }
+    }
+}

@@ -1,0 +1,69 @@
+{
+    "description": "test read file information",
+    "passenger_count": 2,
+    "passengers": [
+        {
+            "client_name": "ALEDAN/TAIBAH MRS",
+            "reference": "1813526976",
+            "status": "emd",
+            "price": 19,
+            "currency": "KWD",
+            "ticket_number": "TMCD229-1813526976",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "9966SD",
+            "task_flight_details": [
+                {
+                    "departure_time": "2025-04-03 10:00:00",
+                    "airport_from": "KWI",
+                    "arrival_time": "2025-04-03 14:45:00",
+                    "duration_time": "4h 45m",
+                    "airport_to": "LHR",
+                    "flight_number": "KU0101",
+                    "flight_meal": "BM",
+                    "airline": "KU"
+                },
+                {
+                    "departure_time": "2025-04-07 16:45:00",
+                    "airport_from": "LHR",
+                    "arrival_time": "2025-04-08 00:55:00",
+                    "airport_to": "KWI",
+                    "flight_number": "KU0102",
+                    "flight_meal": "M",
+                    "airline": "KU"
+                }
+            ]
+        },
+        {
+            "client_name": "ALENEZI/KHALEDAH MRS",
+            "reference": "1813526977",
+            "status": "emd",
+            "price": 21,
+            "currency": "KWD",
+            "ticket_number": "TMCD229-1813526977",
+            "agent_amadeus_id": "9966SD",
+            "task_flight_details": [
+                {
+                    "departure_time": "2025-04-03 10:00:00",
+                    "airport_from": "KWI",
+                    "arrival_time": "2025-04-03 14:45:00",
+                    "duration_time": "4h 45m",
+                    "airport_to": "LHR",
+                    "flight_number": "KU0101",
+                    "flight_meal": "BM",
+                    "airline": "KU"
+                },
+                {
+                    "departure_time": "2025-04-07 16:45:00",
+                    "airport_from": "LHR",
+                    "arrival_time": "2025-04-08 00:55:00",
+                    "airport_to": "KWI",
+                    "flight_number": "KU0102",
+                    "flight_meal": "M",
+                    "airline": "KU"
+                }
+            ],
+            "additional_validations": []
+        }
+    ]
+}

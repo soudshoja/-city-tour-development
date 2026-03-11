@@ -1,0 +1,1 @@
+<?php /**PATH /home/soudshoja/soud-laravel/resources/views/payment/pdf/failure.blade.php ENDPATH**/ ?>

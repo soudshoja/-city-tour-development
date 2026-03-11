@@ -1,0 +1,861 @@
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+    <div class="flex justify-between items-center gap-5 my-3 ">
+        <div class="flex items-center gap-5 ">
+            <h2 class="text-3xl font-bold">Invoices List</h2>
+            <div data-tooltip="Number of invoices"
+                class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
+                <span class="text-xl font-bold text-white"><?php echo e($invoices->total()); ?></span>
+            </div>
+        </div>
+        <div class="flex items-center gap-5">
+            <div data-tooltip-left="Reload"
+                class="refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="currentColor"
+                        d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                    <path fill="currentColor"
+                        d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z"
+                        opacity=".5" />
+                </svg>
+            </div>
+
+            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('create', App\Models\Invoice::class)): ?>
+            <a href="<?php echo e(route('invoices.create')); ?>">
+                <div data-tooltip-left="Create new invoice"
+                    class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff"
+                            d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
+                </div>
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="panel rounded-lg">
+        <?php if (isset($component)) { $__componentOriginal9b33c063a2222f59546ad2a2a9a94bc6 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9b33c063a2222f59546ad2a2a9a94bc6 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.search','data' => ['action' => route('invoices.index'),'searchParam' => 'search','placeholder' => 'Quick search for invoices']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('search'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('invoices.index')),'searchParam' => 'search','placeholder' => 'Quick search for invoices']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9b33c063a2222f59546ad2a2a9a94bc6)): ?>
+<?php $attributes = $__attributesOriginal9b33c063a2222f59546ad2a2a9a94bc6; ?>
+<?php unset($__attributesOriginal9b33c063a2222f59546ad2a2a9a94bc6); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9b33c063a2222f59546ad2a2a9a94bc6)): ?>
+<?php $component = $__componentOriginal9b33c063a2222f59546ad2a2a9a94bc6; ?>
+<?php unset($__componentOriginal9b33c063a2222f59546ad2a2a9a94bc6); ?>
+<?php endif; ?>
+
+        <div class="my-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75V5.25a2.25 2.25 0 0 1 2.25-2.25h15a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25zM18 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-xs font-medium text-blue-600 dark:text-blue-300">Total Net</div>
+                    <div class="text-lg font-semibold text-blue-700 dark:text-blue-200"><?php echo e(number_format($totalNet, 3)); ?> KWD</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 7h6M9 11h6m-8 4h10M5 21l1.5-1.5L8 21l1.5-1.5L11 21l1.5-1.5L14 21l1.5-1.5L17 21l1.5-1.5L20 21V3a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300">Total Sales</div>
+                    <div class="text-lg font-semibold text-emerald-700 dark:text-emerald-200"><?php echo e(number_format($totalSales, 3)); ?> KWD</div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end">
+                <div class="p-4 w-full max-w-xs">
+                    <form method="GET" action="<?php echo e(route('invoices.index')); ?>" class="flex flex-row items-end gap-2" id="invoice-filter-form">
+                        <div class="flex flex-col justify-end">
+                            <label class="text-xs font-semibold text-gray-600 mb-1">Filter By</label>
+                            <select name="date_field" class="border rounded px-2 py-1 text-sm min-w-[150px]">
+                                <option value="created_at" <?php echo e(request('date_field') == 'created_at' ? 'selected' : ''); ?>>Created Date</option>
+                                <option value="invoice_date" <?php echo e(request('date_field') == 'invoice_date' ? 'selected' : ''); ?>>Invoice Date</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <label class="text-xs font-semibold text-gray-600 mb-1">Date Range</label>
+                            <input type="text" id="date-range" class="border rounded px-2 py-1 text-sm min-w-[240px]" placeholder="Select date range" autocomplete="off" />
+                            <input type="hidden" name="from_date" id="from_date" value="<?php echo e(request('from_date')); ?>">
+                            <input type="hidden" name="to_date" id="to_date" value="<?php echo e(request('to_date')); ?>">
+                        </div>
+                        <div class="flex flex-row items-end gap-1 pt-5">
+                            <a href="<?php echo e(route('invoices.index')); ?>" class="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-300 flex items-center">Clear</a>
+                            <button type="submit" class="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 border border-blue-700 flex items-center">Apply</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="dataTable-wrapper">
+            <div class="dataTable-container h-max">
+                <table class="table-hover whitespace-nowrap dataTable-table">
+                    <thead>
+                        <tr class="p-3 text-center text-md font-bold text-gray-500">
+                            <th>Actions</th>
+                            <th>Invoice Number</th>
+                            <th>Agent name</th>
+                            <th>Client name</th>
+                            <th>Status</th>
+                            <th>Payment Type</th>
+                            <th>Net Amount</th>
+                            <th>Profit</th>
+                            <th>Invoice Amount</th>
+                            <th>Service Charges</th>
+                            <th>Client Pay</th>
+                            <th>
+                                <a href="<?php echo e(request()->fullUrlWithQuery([
+                                    'sortBy' => 'created_at',
+                                    'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                ])); ?>"
+                                    class="flex items-center gap-2 text-md dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                    Created Date
+                                    <?php if(request('sortBy') !== 'created_at'): ?>
+                                    <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                        fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                    </svg>
+                                    <?php else: ?>
+                                    <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                        fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                        <?php if(request('sortOrder', 'desc') === 'asc'): ?>
+                                        <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                        <?php else: ?>
+                                        <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                        <?php endif; ?>
+                                    </svg>
+                                    <?php endif; ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="<?php echo e(request()->fullUrlWithQuery([
+                                    'sortBy' => 'invoice_date',
+                                    'sortOrder' => (request('sortBy') === 'invoice_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                ])); ?>"
+                                    class="flex items-center gap-2 text-left text-md dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                    Invoice Date
+                                    <?php if(request('sortBy') !== 'invoice_date'): ?>
+                                    <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                        fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                    </svg>
+                                    <?php else: ?>
+                                    <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                        fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                        <?php if(request('sortOrder', 'desc') === 'asc'): ?>
+                                        <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                        <?php else: ?>
+                                        <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                        <?php endif; ?>
+                                    </svg>
+                                    <?php endif; ?>
+                                </a>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if($invoices->isEmpty()): ?>
+                        <tr>
+                            <td colspan="11" class="text-center p-3 text-sm font-semibold text-gray-500">
+                                No data for now.... Create new!</td>
+                        </tr>
+                        <?php else: ?>
+                        <?php $__currentLoopData = $invoices; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $invoice): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php
+                            $invoiceDetail = ($invoice->invoiceDetails ?? collect())->first();
+                            $tasksPayload = ($invoice->invoiceDetails ?? collect())->map(function ($detail) use ($invoice) {
+                                $task = $detail->task;
+                                return [
+                                    'id' => $task?->id,
+                                    'reference' => $task?->reference ? 'Task #'.$task->reference : '-',
+                                    'type' => $task?->type ? ucfirst($task->type) : '-',
+                                    'client' => $task?->client?->full_name ?? '-',
+                                    'supplier' => $task?->supplier?->name ?? '-',
+                                    'amount' => $detail->task_price ?? 0,
+                                    'currency' => $invoice->currency ?? '-',
+                                ];
+                            })->values()->toArray();
+                        ?>
+                        <tr data-price="<?php echo e($invoice->total); ?>"
+                            data-tasks='<?php echo json_encode($tasksPayload, 15, 512) ?>'
+                            data-supplier-id="<?php echo e($invoiceDetail?->task?->supplier?->id ?? ''); ?>"
+                            data-branch-id="<?php echo e($invoice->agent?->branch?->id ?? ''); ?>"
+                            data-agent-id="<?php echo e($invoice->agent_id ?? ''); ?>"
+                            data-status="<?php echo e($invoice->status ?? ''); ?>"
+                            data-type="<?php echo e($invoiceDetail?->task?->type ?? ''); ?>"
+                            data-client-id="<?php echo e($invoice->client?->id ?? ''); ?>"
+                            data-task-id="<?php echo e($invoice->id ?? ''); ?>" class="taskRow">
+                            <td class="p-3 text-center text-sm">
+                                <div class="flex items-center justify-center gap-2">
+                                    <a data-tooltip="View Invoice" target="_blank"
+                                        href="<?php echo e(route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])); ?>"
+                                        class="viewInvoice <?php echo e($invoice->payment_type ? 'text-blue-500 hover:underline' : 'text-gray-400 cursor-not-allowed'); ?>"
+                                        <?php if (! ($invoice->payment_type)): ?> onclick="return false;" <?php endif; ?>>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                            height="20" viewBox="0 0 24 24">
+                                            <g fill="none" stroke="currentColor" stroke-width="1">
+                                                <path
+                                                    d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5"></path>
+                                                <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
+                                            </g>
+                                        </svg>
+                                    </a>
+                                    <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('accountantEdit', $invoice)): ?>
+                                    <?php if($invoice->status !== 'unpaid'): ?>
+                                    <a data-tooltip="Edit Invoice"
+                                        href="<?php echo e(route('invoice.accountant.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])); ?>"
+                                        class="text-sm font-medium text-blue-600 hover:underline">
+
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-green-500 dark:stroke-green-700">
+                                            <path d="M18.18 8.03933L18.6435 7.57589C19.4113 6.80804 20.6563 6.80804 21.4241 7.57589C22.192 8.34374 22.192 9.58868 21.4241 10.3565L20.9607 10.82M18.18 8.03933C18.18 8.03933 18.238 9.02414 19.1069 9.89309C19.9759 10.762 20.9607 10.82 20.9607 10.82M18.18 8.03933L13.9194 12.2999C13.6308 12.5885 13.4865 12.7328 13.3624 12.8919C13.2161 13.0796 13.0906 13.2827 12.9882 13.4975C12.9014 13.6797 12.8368 13.8732 12.7078 14.2604L12.2946 15.5L12.1609 15.901M20.9607 10.82L16.7001 15.0806C16.4115 15.3692 16.2672 15.5135 16.1081 15.6376C15.9204 15.7839 15.7173 15.9094 15.5025 16.0118C15.3203 16.0986 15.1268 16.1632 14.7396 16.2922L13.5 16.7054L13.099 16.8391M13.099 16.8391L12.6979 16.9728C12.5074 17.0363 12.2973 16.9867 12.1553 16.8447C12.0133 16.7027 11.9637 16.4926 12.0272 16.3021L12.1609 15.901M13.099 16.8391L12.1609 15.901" stroke="" stroke-width="1.5" />
+                                            <path d="M8 13H10.5"  stroke-width="1.5" stroke-linecap="round" />
+                                            <path d="M8 9H14.5" stroke-width="1.5" stroke-linecap="round" />
+                                            <path d="M8 17H9.5" stroke-width="1.5" stroke-linecap="round" />
+                                            <path d="M19.8284 3.17157C18.6569 2 16.7712 2 13 2H11C7.22876 2 5.34315 2 4.17157 3.17157C3 4.34315 3 6.22876 3 10V14C3 17.7712 3 19.6569 4.17157 20.8284C5.34315 22 7.22876 22 11 22H13C16.7712 22 18.6569 22 19.8284 20.8284C20.7715 19.8853 20.9554 18.4796 20.9913 16" stroke-width="1.5" stroke-linecap="round" />
+                                        </svg>
+                                    </a>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
+                                    <?php if($invoice->refund && $invoice->status !== 'paid'): ?>
+                                    <a data-tooltip="View/Edit Refund"
+                                        href="<?php echo e(route('refunds.edit', [$invoice->refund->id])); ?>" class="text-sm font-medium text-blue-600 hover:underline">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                            <path fill="none" stroke="#00ab55" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42" opacity=".5" />
+                                        </svg>
+                                    </a>
+                                    <?php elseif(in_array($invoice->status, ['unpaid', 'partial'], true)): ?>
+                                    <a data-tooltip="Edit Invoice"
+                                        href="<?php echo e(route('invoice.edit', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])); ?>"
+                                        class="text-sm font-medium text-blue-600 hover:underline">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                            <path fill="none" stroke="#00ab55" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42" opacity=".5" />
+                                        </svg>
+                                    </a>
+                                    <?php endif; ?>
+                                    <?php if(($invoice->status === 'paid' && !$invoice->refund) || $invoice->status === 'paid by refund'): ?>
+                                    <div x-data="{ viewVoucherModal_<?php echo e($invoice->id); ?>: false }" class="group">
+                                        <div data-tooltip="View Voucher">
+                                            <svg @click="viewVoucherModal_<?php echo e($invoice->id); ?> = true"
+                                                width="20" height="20" viewBox="0 0 24 24"
+                                                fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                    d="M15.3929 4.05365L14.8912 4.61112L15.3929 4.05365ZM19.3517 7.61654L18.85 8.17402L19.3517 7.61654ZM21.654 10.1541L20.9689 10.4592V10.4592L21.654 10.1541ZM3.17157 20.8284L3.7019 20.2981H3.7019L3.17157 20.8284ZM20.8284 20.8284L20.2981 20.2981L20.2981 20.2981L20.8284 20.8284ZM14 21.25H10V22.75H14V21.25ZM2.75 14V10H1.25V14H2.75ZM21.25 13.5629V14H22.75V13.5629H21.25ZM14.8912 4.61112L18.85 8.17402L19.8534 7.05907L15.8947 3.49618L14.8912 4.61112ZM22.75 13.5629C22.75 11.8745 22.7651 10.8055 22.3391 9.84897L20.9689 10.4592C21.2349 11.0565 21.25 11.742 21.25 13.5629H22.75ZM18.85 8.17402C20.2034 9.3921 20.7029 9.86199 20.9689 10.4592L22.3391 9.84897C21.9131 8.89241 21.1084 8.18853 19.8534 7.05907L18.85 8.17402ZM10.0298 2.75C11.6116 2.75 12.2085 2.76158 12.7405 2.96573L13.2779 1.5653C12.4261 1.23842 11.498 1.25 10.0298 1.25V2.75ZM15.8947 3.49618C14.8087 2.51878 14.1297 1.89214 13.2779 1.5653L12.7405 2.96573C13.2727 3.16993 13.7215 3.55836 14.8912 4.61112L15.8947 3.49618ZM10 21.25C8.09318 21.25 6.73851 21.2484 5.71085 21.1102C4.70476 20.975 4.12511 20.7213 3.7019 20.2981L2.64124 21.3588C3.38961 22.1071 4.33855 22.4392 5.51098 22.5969C6.66182 22.7516 8.13558 22.75 10 22.75V21.25ZM1.25 14C1.25 15.8644 1.24841 17.3382 1.40313 18.489C1.56076 19.6614 1.89288 20.6104 2.64124 21.3588L3.7019 20.2981C3.27869 19.8749 3.02502 19.2952 2.88976 18.2892C2.75159 17.2615 2.75 15.9068 2.75 14H1.25ZM14 22.75C15.8644 22.75 17.3382 22.7516 18.489 22.5969C19.6614 22.4392 20.6104 22.1071 21.3588 21.3588L20.2981 20.2981C19.8749 20.7213 19.2952 20.975 18.2892 21.1102C17.2615 21.2484 15.9068 21.25 14 21.25V22.75ZM21.25 14C21.25 15.9068 21.2484 17.2615 21.1102 18.2892C20.975 19.2952 20.7213 19.8749 20.2981 20.2981L21.3588 21.3588C22.1071 20.6104 22.4392 19.6614 22.5969 18.489C22.7516 17.3382 22.75 15.8644 22.75 14H21.25ZM2.75 10C2.75 8.09318 2.75159 6.73851 2.88976 5.71085C3.02502 4.70476 3.27869 4.12511 3.7019 3.7019L2.64124 2.64124C1.89288 3.38961 1.56076 4.33855 1.40313 5.51098C1.24841 6.66182 1.25 8.13558 1.25 10H2.75ZM10.0298 1.25C8.15538 1.25 6.67442 1.24842 5.51887 1.40307C4.34232 1.56054 3.39019 1.8923 2.64124 2.64124L3.7019 3.7019C4.12453 3.27928 4.70596 3.02525 5.71785 2.88982C6.75075 2.75158 8.11311 2.75 10.0298 2.75V1.25Z"
+                                                    class="fill-black group-hover:fill-blue-600" />
+                                                <path opacity="0.5"
+                                                    d="M13 2.5V5C13 7.35702 13 8.53553 13.7322 9.26777C14.4645 10 15.643 10 18 10H22"
+                                                    stroke="#1C274C" stroke-width="1.5" />
+                                            </svg>
+                                        </div>
+                                        <div x-cloak x-show="viewVoucherModal_<?php echo e($invoice->id); ?>"
+                                            class="fixed inset-0 z-20 bg-gray-800 bg-opacity-50 flex items-center justify-center overflow-y-auto p-4">
+                                            <div @click.away="viewVoucherModal_<?php echo e($invoice->id); ?>=false"
+                                                class="bg-white rounded-md border-2 max-w-4xl max-h-[80vh] overflow-y-auto shadow-lg">
+                                                <div class="flex justify-between gap-4 p-4">
+                                                    <p class="text-lg font-semibold">
+                                                        Voucher
+                                                    </p>
+                                                    <button type="button"
+                                                        @click="viewVoucherModal_<?php echo e($invoice->id); ?> = false"
+                                                        class="text-red-500 font-bold text-xl">
+                                                        &times;
+                                                    </button>
+                                                </div>
+                                                <hr>
+                                                <div class="py-6 px-10 flex flex-col gap-4">
+                                                    <?php $__currentLoopData = $invoice->invoiceDetails; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $invoiceDetail): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <?php if(strtolower($invoiceDetail->task->type) === 'flight'): ?>
+                                                    <a href="<?php echo e(route('tasks.pdf.flight', ['taskId' => $invoiceDetail->task->id])); ?>" target="_blank">
+                                                        <div class="w-full max-w-2xl mx-auto bg-white rounded-2xl overflow-hidden shadow-lg border-2 border-blue-700 flex flex-row">
+                                                            <div class="bg-blue-700 text-white w-1/4 p-4 flex flex-col justify-between">
+                                                                <div>
+                                                                    <h2 class="text-xl font-bold"><?php echo e($invoice->currency); ?> <?php echo e($invoiceDetail->task_price); ?></h2>
+                                                                    <p class="text-xs uppercase font-semibold">Travel Voucher</p>
+                                                                </div>
+                                                                <div class="text-sm">
+                                                                    <p class="font-medium">Flight Booking Issued</p>
+                                                                    <!-- <p class="text-xs italic block leading-tight break-words w-full max-w-[120px] whitespace-normal">
+                                                                        "Generated by City Tour" </p> -->
+                                                                    <p class="text-xs italic block leading-tight">"Generated by City Tour"</p>
+                                                                </div>
+                                                            </div>
+                                                            <div class="relative w-0 z-20">
+                                                                <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full z-30"></div>
+                                                                <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full z-30"></div>
+                                                            </div>
+                                                            <div class="flex-1 bg-gradient-to-r from-blue-100 via-white to-koromiko-100 p-6 space-y-4">
+                                                                <div class="flex justify-between items-center">
+                                                                    <div class="text-left">
+                                                                        <h3 class="text-xl font-bold tracking-wider">
+                                                                            <?php echo e($invoiceDetail->task->flightDetails->airport_from ?? 'N/A'); ?>
+
+                                                                            <span class="mx-2 text-blue-700">
+                                                                                ✈
+                                                                            </span>
+                                                                            <?php echo e($invoiceDetail->task->flightDetails->airport_to ?? 'N/A'); ?>
+
+                                                                        </h3>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="border-t-2 border-dashed border-gray-400"></div>
+                                                                <div class="grid grid-cols-1 sm:grid-cols-2 text-sm gap-y-2 gap-x-10 text-gray-800">
+                                                                    <div><strong>Name:</strong> <?php echo e($invoiceDetail->task->client?->full_name ?? 'N/A'); ?></div>
+                                                                    <div><strong>Flight:</strong> <?php echo e($invoiceDetail->task->flightDetails->flight_number ?? 'N/A'); ?></div>
+                                                                    <div><strong>Date:</strong> <?php echo e($invoiceDetail->task->flightDetails->readable_departure_time ?? 'N/A'); ?></div>
+                                                                    <div><strong>Reference:</strong> <?php echo e($invoiceDetail->task->reference); ?></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                    <?php elseif(strtolower($invoiceDetail->task->type) === 'hotel'): ?>
+                                                    <a href="<?php echo e(route('tasks.pdf.hotel', ['taskId' => $invoiceDetail->task->id])); ?>" target="_blank">
+                                                        <div class="bg-[#fdfaf6] rounded-xl border-[3px] border-[#d4b996] shadow-md p-5 max-w-lg mx-auto relative font-[Georgia,serif]">
+                                                            <h2 class="text-center text-2xl text-[#355070] tracking-wide font-semibold mb-2">Hotel Reservation</h2>
+                                                            <p class="text-center text-sm text-gray-700 italic mb-4">A gift from <span class="text-koromiko-700"><?php echo e($invoiceDetail->task->supplier->name); ?></span></p>
+                                                            <div class="text-center text-lg font-bold text-[#355070] border-y border-dashed border-gray-400 py-2 uppercase whitespace-normal break-words px-2 max-w-full">
+                                                                <?php echo e($invoiceDetail->task->hotelDetails->hotel->name ?? 'n/a'); ?>
+
+                                                            </div>
+                                                            <div class="flex justify-between items-center mt-6 gap-6">
+                                                                <div class="bg-white rounded-xl shadow px-4 py-3 text-center border border-gray-300 flex flex-col justify-center items-center">
+                                                                    <p class="text-xs text-gray-500 mb-1 leading-none"><?php echo e($invoiceDetail->task->hotelDetails->date_check_in); ?></p>
+                                                                    <p class="text-4xl font-bold text-blue-900 leading-tight"><?php echo e($invoiceDetail->task->hotelDetails->day_check_in); ?></p>
+                                                                    <p class="text-xs text-gray-500 mt-1 leading-none"><?php echo e($invoiceDetail->task->hotelDetails->year_check_in); ?></p>
+                                                                </div>
+                                                                <div class="h-24 border-l border-gray-300"></div>
+                                                                <div class="relative flex-1 rounded-md bg-[#fffaf2] border border-koromiko-200 p-4 shadow-inner overflow-hidden">
+                                                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-koromiko-400 rounded-l-md"></div>
+                                                                    <div class="relative z-10 text-sm text-gray-800 space-y-1">
+                                                                        <p><span class="font-semibold">Client:</span> <?php echo e($invoiceDetail->task->client->full_name); ?></p>
+                                                                        <p><span class="font-semibold">Reference:</span> <?php echo e($invoiceDetail->task->reference ?? 'N/A'); ?></p>
+                                                                        <p><span class="font-semibold">Room:</span> <?php echo e($invoiceDetail->task->hotelDetails->room_type ?? 'N/A'); ?></p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                    <?php else: ?>
+                                                    <div>
+                                                        <p>Task type not supported</p>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if(auth()->check()): ?>
+                                    <button type="button" data-tooltip="Send Email" data-invoice-number="<?php echo e($invoice->invoice_number); ?>"
+                                        data-company-id="<?php echo e($companyId); ?>" data-agent-email="<?php echo e($invoice->agent->email ?? ''); ?>"
+                                        data-client-email="<?php echo e($invoice->client->email ?? ''); ?>" onclick="openQuickEmailModal(this)" class="text-indigo-500 hover:text-indigo-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                        </svg>
+                                    </button>
+                                    <?php endif; ?>
+                                    <?php if(in_array(Auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::ACCOUNTANT, \App\Models\Role::COMPANY])): ?>
+                                    <form action="<?php echo e(route('invoice.delete', $invoice->id)); ?>" method="POST" class="inline-block">
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('DELETE'); ?>
+                                        <button type="submit" data-tooltip="Delete Invoice" class="group p-1 rounded hover:bg-red-50" @click.stop onclick="return confirm('Are you sure you want to delete this invoice? This action cannot be undone.')">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-red-500 group-hover:stroke-red-700">
+                                                <path d="M20.5001 6H3.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                <path d="M18.8332 8.5L18.3732 15.3991C18.1962 18.054 18.1077 19.3815 17.2427 20.1907C16.3777 21 15.0473 21 12.3865 21H11.6132C8.95235 21 7.62195 21 6.75694 20.1907C5.89194 19.3815 5.80344 18.054 5.62644 15.3991L5.1665 8.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                <path d="M9.5 11L10 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                <path d="M14.5 11L14 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                <path d="M6.5 6C6.55588 6 6.58382 6 6.60915 5.99936C7.43259 5.97849 8.15902 5.45491 8.43922 4.68032C8.44784 4.65649 8.45667 4.62999 8.47434 4.57697L8.57143 4.28571C8.65431 4.03708 8.69575 3.91276 8.75071 3.8072C8.97001 3.38607 9.37574 3.09364 9.84461 3.01877C9.96213 3 10.0932 3 10.3553 3H13.6447C13.9068 3 14.0379 3 14.1554 3.01877C14.6243 3.09364 15.03 3.38607 15.2493 3.8072C15.3043 3.91276 15.3457 4.03708 15.4286 4.28571L15.5257 4.57697C15.5433 4.62992 15.5522 4.65651 15.5608 4.68032C15.841 5.45491 16.5674 5.97849 17.3909 5.99936C17.4162 6 17.4441 6 17.5 6" stroke="" stroke-width="1.5" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php if(auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT])): ?>
+                                    <a href="<?php echo e(route('invoice.details', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number])); ?>"
+                                        class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> <?php echo e($invoice->invoice_number); ?>
+
+                                    </a>
+                                <?php else: ?>
+                                    <?php echo e($invoice->invoice_number); ?>
+
+                                <?php endif; ?>
+                            </td>
+
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php if(auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::AGENT])): ?>
+                                    <a href="<?php echo e(route('agents.show', $invoice->agent->id)); ?>" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                        <?php echo e($invoice->agent->name); ?>
+
+                                    </a>
+                                <?php else: ?>
+                                    <?php echo e($invoice->agent->name); ?>
+
+                                <?php endif; ?>
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php if(auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::AGENT])): ?>
+                                    <a href="<?php echo e(route('clients.show', $invoice->client->id)); ?>" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                        <?php echo e($invoice->client->full_name); ?>
+
+                                    </a>
+                                <?php else: ?>
+                                    <?php echo e($invoice->client->full_name); ?>
+
+                                <?php endif; ?>
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php if(in_array($invoice->status, ['paid', 'refunded'])): ?>
+                                    <a href="<?php echo e(route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id])); ?>" target="_blank">
+                                        <span class="badge badge-outline-success"><?php echo e($invoice->status); ?></span>
+                                    </a> 
+                                <?php elseif($invoice->status === 'paid by refund'): ?>
+                                    <span class="badge badge-outline-success"><?php echo e($invoice->status); ?></span>
+                                <?php else: ?>
+                                    <span class="badge badge-outline-danger"><?php echo e($invoice->status); ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php echo e($invoice->payment_type ? ucwords($invoice->payment_type) : 'N/A'); ?>
+
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php echo e(number_format($invoice->invoiceDetails->sum('supplier_price'), 3)); ?> <?php echo e($invoice->currency); ?>
+
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php echo e(number_format($invoice->invoiceDetails->sum('profit'), 3)); ?> <?php echo e($invoice->currency); ?>
+
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php if($invoice->status === 'paid' && !$invoice->refund && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash')): ?>
+                                    <button type="button" class="underline text-blue-600 hover:text-blue-800"
+                                        data-number="<?php echo e($invoice->invoice_number); ?>" data-amount="<?php echo e($invoice->amount); ?>" onclick="openEditModal('amount', this)">
+                                        <?php echo e($invoice->amount); ?> <?php echo e($invoice->currency); ?>
+
+                                    </button>
+                                <?php else: ?>
+                                    <?php echo e(number_format($invoice->amount, 3)); ?> <?php echo e($invoice->currency); ?>
+
+                                <?php endif; ?>
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php echo e(number_format($invoice->invoicePartials->sum('service_charge'), 3)); ?> <?php echo e($invoice->currency); ?>
+
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php echo e(number_format($invoice->client_pay, 3)); ?> <?php echo e($invoice->currency); ?>
+
+                            </td>
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php echo e($invoice->created_at); ?>
+
+                            </td>
+
+                            <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                <?php if($invoice->status === 'paid'): ?>
+                                    <button type="button" class="underline text-blue-600 hover:text-blue-800" data-number="<?php echo e($invoice->invoice_number); ?>"
+                                        data-date="<?php echo e(\Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d')); ?>" onclick="openEditModal('date', this)">
+                                        <?php echo e($invoice->invoice_date); ?>
+
+                                    </button>
+                                <?php else: ?>
+                                    <?php echo e($invoice->invoice_date); ?>
+
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div id="editModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
+                <div class="bg-white rounded-md shadow-lg w-full max-w-md">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <h3 id="editModalTitle" class="font-semibold">Edit</h3>
+                        <button type="button" class="text-gray-500" onclick="closeEditModal()">&times;</button>
+                    </div>
+                    <form id="editForm" method="POST" action="">
+                        <?php echo csrf_field(); ?>
+                        <?php echo method_field('PUT'); ?>
+                        <div class="p-4 space-y-4">
+                            <p id="editLabel" class="text-sm text-gray-600">Amount per Task</p>
+                            <div id="taskAmountsContainer"></div>
+                            <div class="flex items-center justify-between border-t pt-3">
+                                <div class="text-xs text-gray-500">New invoice total</div>
+                                <div class="text-base font-bold"><span id="total-payment-display">0.00</span></div>
+                            </div>
+                        </div>
+                        <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 sticky bottom-0">
+                            <button type="button" class="px-3 py-2 text-sm rounded border hover:bg-gray-100" onclick="closeEditModal()">Cancel</button>
+                            <button type="submit" class="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <?php if (isset($component)) { $__componentOriginal41032d87daf360242eb88dbda6c75ed1 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal41032d87daf360242eb88dbda6c75ed1 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.pagination','data' => ['data' => $invoices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('pagination'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['data' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($invoices)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal41032d87daf360242eb88dbda6c75ed1)): ?>
+<?php $attributes = $__attributesOriginal41032d87daf360242eb88dbda6c75ed1; ?>
+<?php unset($__attributesOriginal41032d87daf360242eb88dbda6c75ed1); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal41032d87daf360242eb88dbda6c75ed1)): ?>
+<?php $component = $__componentOriginal41032d87daf360242eb88dbda6c75ed1; ?>
+<?php unset($__componentOriginal41032d87daf360242eb88dbda6c75ed1); ?>
+<?php endif; ?>
+        </div>
+    </div>
+    <div id="quickEmailModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden" onclick="handleQuickEmailBackdropClick(event)">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Send Invoice via Email</h2>
+                <button type="button" onclick="closeQuickEmailModal()" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+            </div>
+
+            <form id="quickEmailForm" class="space-y-4">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" id="quickEmailInvoiceNumber" name="invoice_number">
+                <input type="hidden" id="quickEmailCompanyId" name="company_id">
+                
+                <div class="space-y-3">
+                    <p class="text-sm text-gray-600">Select recipients for invoice <strong id="quickEmailInvoiceDisplay"></strong></p>
+                    <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" name="send_to_agent" id="quick_send_to_agent" value="1" 
+                            class="form-checkbox h-5 w-5 text-indigo-600 rounded" checked>
+                        <div class="ml-3">
+                            <span class="block font-medium text-gray-800">Agent</span>
+                            <span class="block text-sm text-gray-500" id="quickAgentEmail">-</span>
+                        </div>
+                    </label>
+                    <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" name="send_to_client" id="quick_send_to_client" value="1"
+                            class="form-checkbox h-5 w-5 text-indigo-600 rounded">
+                        <div class="ml-3">
+                            <span class="block font-medium text-gray-800">Client</span>
+                            <span class="block text-sm text-gray-500" id="quickClientEmail">-</span>
+                        </div>
+                    </label>
+                    <div class="pt-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Additional Email Addresses</label>
+                        <input type="text" name="custom_emails" id="quick_custom_emails" 
+                            class="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                            placeholder="email1@example.com, email2@example.com">
+                        <p class="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
+                    </div>
+                </div>
+                <div id="quickEmailSuccessMessage" class="hidden p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm"></div>
+                <div id="quickEmailErrorMessage" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm"></div>
+                <div class="flex justify-between pt-4">
+                    <button type="button" onclick="closeQuickEmailModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="quickSubmitSendEmail"
+                        class="px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition flex items-center">
+                        <span id="quickSendEmailBtnText">Send Email</span>
+                        <span id="quickSendEmailSpinner" class="hidden ml-2">
+                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        flatpickr("#date-range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            defaultDate: [
+                "<?php echo e(request('from_date')); ?>",
+                "<?php echo e(request('to_date')); ?>"
+            ].filter(Boolean)
+        });
+
+        document.getElementById('invoice-filter-form').addEventListener('submit', function(e) {
+            const range = document.getElementById('date-range').value.split(' to ');
+            document.getElementById('from_date').value = range[0] ? range[0].trim() : '';
+            document.getElementById('to_date').value = range[1] ? range[1].trim() : range[0];
+        });
+
+        const companyId = "<?php echo e($companyId ?? ''); ?>";
+        const updateDateUrl = "<?php echo e(route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM'])); ?>";
+        const updateAmountUrl = "<?php echo e(route('invoice.updateAmount', ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM'])); ?>";
+
+        function openEditModal(kind, btn) {
+            const modal = document.getElementById('editModal');
+            const form = document.getElementById('editForm');
+            const titleEl = document.getElementById('editModalTitle');
+            const labelEl = document.getElementById('editLabel');
+            const container = document.getElementById('taskAmountsContainer');
+            const totalRow = document.getElementById('total-payment-display')?.closest('.flex');
+            const number = btn.dataset.number;
+
+            if (kind === 'date') {
+                titleEl.textContent = 'Update Invoice Date';
+                labelEl.textContent = 'Invoice Date';
+                container.innerHTML = `
+                    <input type="date" name="invdate" class="w-full border rounded px-3 py-2 text-sm" value="${btn.dataset.date}" required>`;
+
+                if (totalRow) totalRow.classList.add('hidden');
+                form.action = updateDateUrl.replace('COMPANY_ID', encodeURIComponent(companyId)).replace('INVOICE_NUM', encodeURIComponent(number));
+            } else if (kind === 'amount') {
+                titleEl.textContent = 'Update Invoice Amounts';
+                labelEl.textContent = 'Amount per Invoice';
+
+                const invoiceNumber = btn.dataset.number;
+                const tasks = JSON.parse(btn.closest('tr').dataset.tasks);
+                container.innerHTML = '';
+
+                let total = 0;
+                let gridWrapper = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+                for (const t of tasks) {
+                    total += parseFloat(t.amount || 0);
+                    gridWrapper += `
+                        <div class="rounded-lg border shadow-sm p-3 bg-white hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm font-semibold">${t.reference}</div>
+                                <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-gray-100">${t.type}</span>
+                            </div>
+                            <div class="mt-1 text-xs text-gray-600">
+                                <div><span class="font-medium">Client:</span> ${t.client}</div>
+                                <div><span class="font-medium">Supplier:</span> ${t.supplier}</div>
+                            </div>
+                            <div class="mt-3">
+                                <label class="block text-xs text-gray-600 mb-1">Amount (${t.currency})</label>
+                                <input type="number" name="tasks[${t.id}]" value="${t.amount}"
+                                    class="task-input w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    oninput="calculateTotalPayment()" required>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                gridWrapper += `</div>`;
+                container.insertAdjacentHTML('beforeend', gridWrapper);
+                if (totalRow) totalRow.classList.remove('hidden');
+                const totalEl = document.getElementById('total-payment-display');
+                if (totalEl) totalEl.textContent = total.toFixed(2);
+
+                form.action = updateAmountUrl.replace('COMPANY_ID', encodeURIComponent(companyId)).replace('INVOICE_NUM', encodeURIComponent(invoiceNumber));
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.onclick = (e) => {
+                if (e.target === modal) closeEditModal();
+            };
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function calculateTotalPayment() {
+            let total = 0;
+            document.querySelectorAll('.task-input').forEach(input => {
+                const v = parseFloat(input.value);
+                if (!isNaN(v)) total += v;
+            });
+            const totalEl = document.getElementById('total-payment-display');
+            if (totalEl) totalEl.textContent = total.toFixed(2);
+        }
+
+        function openQuickEmailModal(btn) {
+            const modal = document.getElementById('quickEmailModal');
+            const invoiceNumber = btn.dataset.invoiceNumber;
+            const companyId = btn.dataset.companyId;
+            const agentEmail = btn.dataset.agentEmail || '';
+            const clientEmail = btn.dataset.clientEmail || '';
+
+            document.getElementById('quickEmailInvoiceNumber').value = invoiceNumber;
+            document.getElementById('quickEmailCompanyId').value = companyId;
+            document.getElementById('quickEmailInvoiceDisplay').textContent = invoiceNumber;
+
+            document.getElementById('quickAgentEmail').textContent = agentEmail || 'No email available';
+            document.getElementById('quickClientEmail').textContent = clientEmail || 'No email available';
+
+            resetQuickEmailForm();
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeQuickEmailModal() {
+            const modal = document.getElementById('quickEmailModal');
+            modal.classList.add('hidden');
+            resetQuickEmailForm();
+        }
+
+        function resetQuickEmailForm() {
+            const agentEmail = document.getElementById('quickAgentEmail').textContent;
+            document.getElementById('quick_send_to_agent').checked = agentEmail && agentEmail !== 'No email available';
+            document.getElementById('quick_send_to_client').checked = false;
+            document.getElementById('quick_custom_emails').value = '';
+
+            document.getElementById('quickEmailSuccessMessage').classList.add('hidden');
+            document.getElementById('quickEmailErrorMessage').classList.add('hidden');
+
+            const submitBtn = document.getElementById('quickSubmitSendEmail');
+            const btnText = document.getElementById('quickSendEmailBtnText');
+            const spinner = document.getElementById('quickSendEmailSpinner');
+            
+            if (submitBtn) submitBtn.disabled = false;
+            if (btnText) btnText.textContent = 'Send Email';
+            if (spinner) spinner.classList.add('hidden');
+        }
+
+        function handleQuickEmailBackdropClick(event) {
+            if (event.target.id === 'quickEmailModal') {
+                closeQuickEmailModal();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const quickEmailForm = document.getElementById('quickEmailForm');
+            if (quickEmailForm) {
+                quickEmailForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const invoiceNumber = document.getElementById('quickEmailInvoiceNumber').value;
+                    const companyId = document.getElementById('quickEmailCompanyId').value;
+                    const sendToAgent = document.getElementById('quick_send_to_agent').checked;
+                    const sendToClient = document.getElementById('quick_send_to_client').checked;
+                    const customEmails = document.getElementById('quick_custom_emails').value;
+                    
+                    const agentEmail = document.getElementById('quickAgentEmail').textContent;
+                    const clientEmail = document.getElementById('quickClientEmail').textContent;
+                    
+                    const recipients = [];
+                    if (sendToAgent && agentEmail && agentEmail !== 'No email available') {
+                        recipients.push(agentEmail);
+                    }
+                    if (sendToClient && clientEmail && clientEmail !== 'No email available') {
+                        recipients.push(clientEmail);
+                    }
+                    if (customEmails) {
+                        customEmails.split(',').forEach(email => {
+                            const trimmed = email.trim();
+                            if (trimmed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+                                recipients.push(trimmed);
+                            }
+                        });
+                    }
+                    
+                    const successMsg = document.getElementById('quickEmailSuccessMessage');
+                    const errorMsg = document.getElementById('quickEmailErrorMessage');
+                    const submitBtn = document.getElementById('quickSubmitSendEmail');
+                    const btnText = document.getElementById('quickSendEmailBtnText');
+                    const spinner = document.getElementById('quickSendEmailSpinner');
+                    
+                    if (recipients.length === 0) {
+                        errorMsg.textContent = 'Please select at least one recipient or enter a valid email address.';
+                        errorMsg.classList.remove('hidden');
+                        successMsg.classList.add('hidden');
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    btnText.textContent = 'Sending...';
+                    spinner.classList.remove('hidden');
+                    successMsg.classList.add('hidden');
+                    errorMsg.classList.add('hidden');
+                    
+                    try {
+                        const url = `/invoice/${companyId}/${invoiceNumber}/send-email`;
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                recipients: recipients,
+                                send_to_agent: sendToAgent,
+                                send_to_client: sendToClient,
+                                custom_emails: customEmails
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            successMsg.textContent = result.message;
+                            successMsg.classList.remove('hidden');
+                            errorMsg.classList.add('hidden');
+                            
+                            setTimeout(() => {
+                                closeQuickEmailModal();
+                            }, 2000);
+                        } else {
+                            throw new Error(result.message || 'Failed to send email');
+                        }
+                    } catch (error) {
+                        errorMsg.textContent = error.message || 'An error occurred while sending the email.';
+                        errorMsg.classList.remove('hidden');
+                        successMsg.classList.add('hidden');
+                    } finally {
+                        submitBtn.disabled = false;
+                        btnText.textContent = 'Send Email';
+                        spinner.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    </script>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?><?php /**PATH /home/soudshoja/soud-laravel/resources/views/invoice/index.blade.php ENDPATH**/ ?>

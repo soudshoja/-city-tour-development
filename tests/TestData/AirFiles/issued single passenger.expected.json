@@ -1,0 +1,31 @@
+{
+    "description": "normal file",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "status": "issued",
+            "price": 583,
+            "total": 645.1,
+            "currency": "KWD",
+            "ticket_number": "T-K229-2833184703",
+            "agent_email": "maged@citytravelers.co",
+            "agent_amadeus_id": "0012MI",
+            "task_flight_details": [
+                {
+                    "airport_from": "KWI",
+                    "airport_to": "BCN",
+                    "flight_number": "KU0135",
+                    "airline": "KU",
+                    "departure_time": "2025-07-02 07:55:00"
+                },
+                {
+                    "airport_from": "BCN",
+                    "airport_to": "KWI",
+                    "flight_number": "KU0136",
+                    "airline": "KU",
+                    "departure_time": "2025-07-08 14:55:00"
+                }
+            ]
+        }
+    ]
+}

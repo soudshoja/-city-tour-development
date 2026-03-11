@@ -1,0 +1,657 @@
+{
+  "best_practices": [
+    {
+      "title": "Passenger Nationality and Country of Residence Validation",
+      "description": "Nationality and residence checks are mandatory for all customers. These fields are required in SearchHotels, GetRooms, ConfirmBooking, and saveBooking requests.",
+      "implementation": "Use the getallcountries command from the Internal Codes section to get the list of valid country codes (DOTW internal codes)",
+      "priority": "CRITICAL"
+    },
+    {
+      "title": "Passenger Name Formatting",
+      "description": "Names must follow strict formatting rules enforced by suppliers",
+      "rules": [
+        "Minimum 2 characters, maximum 25 characters per name",
+        "No duplicate names allowed for multiple passengers",
+        "No white spaces, numbers, or special characters",
+        "Multi-word names should be trimmed of extra white spaces",
+        "All passenger names (including children) must be passed in savebooking/confirmbooking"
+      ],
+      "example": "Full Name: James Lee Happy Traveler becomes firstName=JamesLee, lastName=HappyTraveler",
+      "priority": "CRITICAL"
+    },
+    {
+      "title": "Tariff Notes Display",
+      "description": "The <tariffNotes> tag in getRooms response must be displayed to customers as it contains critical information from suppliers",
+      "content": "Can include cancellation policies, meal plans, children bedding policies, and other restrictions",
+      "priority": "HIGH"
+    },
+    {
+      "title": "Payment Guarantee Information on Vouchers",
+      "description": "The <paymentGuaranteedBy> tag from confirmBooking response must be displayed on the customer voucher",
+      "example": "Format: 'Payment is guaranteed by: DOTW, as per final booking form reference No: HTL-AE2-7159****'",
+      "priority": "HIGH"
+    },
+    {
+      "title": "Minimum Stay Policy Handling",
+      "description": "Handle minStay and dateApplyMinStay elements returned in search results",
+      "logic": "If minStay is empty = no minimum stay rule. If populated = minimum number of nights required",
+      "options": [
+        "Filter out rooms with minimum stay > requested nights (can be done by DOTW)",
+        "Display minimum stay requirement to customer before booking",
+        "Implement validation to prevent booking violating minimum stay"
+      ],
+      "priority": "HIGH"
+    },
+    {
+      "title": "Occupancy Restrictions for Children",
+      "description": "Hotel occupancy has specific constraints for children",
+      "constraints": [
+        "Maximum of 2 children per adult declared in occupancy",
+        "Maximum 4 children per room total",
+        "Accepted child age range: 1-12 years"
+      ],
+      "priority": "HIGH"
+    },
+    {
+      "title": "Allocation Details Management",
+      "description": "Allocation details must be correctly passed through the booking flow",
+      "workflow": "getAllocation details from getRooms (with blocking) response → Pass in confirmBooking/saveBooking request with exact values",
+      "impact": "Incorrect allocation details will cause booking confirmation failures",
+      "priority": "CRITICAL"
+    },
+    {
+      "title": "Advance Purchase Rates (APR) Handling",
+      "description": "APRs are non-refundable rates marked with 'nonrefundable=YES' attribute",
+      "characteristics": [
+        "Paid upfront from existing credit",
+        "Cannot be deleted or modified",
+        "Very competitive pricing",
+        "Comes with nonrefundable flag in response"
+      ],
+      "priority": "MEDIUM"
+    },
+    {
+      "title": "Minimum Selling Price (MSP) Compliance",
+      "description": "For B2C or Tech Platform distributions, MSP must be enforced",
+      "requirements": [
+        "Obtain MinimumSelling and PriceMinimumSelling elements from response",
+        "Display MSP or higher price to end customer (mandatory)",
+        "Cannot undercut MSP (hotel chain requirement)",
+        "Non-negotiable for direct connectivity with hotel chains"
+      ],
+      "priority": "CRITICAL"
+    },
+    {
+      "title": "SearchHotels Performance Optimization",
+      "description": "Use hotelID-based searches instead of city-wide searches for better performance",
+      "optimization": "Group hotels by 50 per request to reduce response time",
+      "example": "For 700 hotels in Dubai, send 14 requests with 50 hotelIds each instead of single request",
+      "expected_improvement": "Response time guaranteed under 8 seconds on average",
+      "priority": "HIGH"
+    },
+    {
+      "title": "Static Data Download",
+      "description": "Use dedicated static data download method for inventory initialization",
+      "reference": "See Startup guide/Static Data Download Guide section in documentation",
+      "usage": "Obtain hotel inventory for initial setup and periodic updates",
+      "priority": "MEDIUM"
+    },
+    {
+      "title": "Price and Cancellation Policy Source",
+      "description": "Always obtain pricing and policy information from getRooms response",
+      "workflow": "When hotel selected from availability list → Send getRooms (without roomTypeSelected node) → Extract accurate price and cancellation policy",
+      "impact": "Using other sources can result in incorrect policies",
+      "priority": "HIGH"
+    },
+    {
+      "title": "SSL Certificate Validation",
+      "description": "All API connections use strict SSL validation",
+      "configuration": "strictSSL should be set to true in requests",
+      "endpoint": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+      "priority": "CRITICAL"
+    }
+  ],
+  "pitfalls": [
+    {
+      "pitfall": "Not Validating Passenger Nationality/Residence",
+      "consequence": "Booking confirmation rejection",
+      "solution": "Always validate against getallcountries before submission",
+      "severity": "CRITICAL"
+    },
+    {
+      "pitfall": "Using Formatted Price Instead of Raw Value for Charges",
+      "consequence": "Incorrect charge amounts in cancellation, customer disputes",
+      "example": "Using <formatted>123.45</formatted> instead of raw value 123.0245",
+      "solution": "Always extract the numeric value, not the formatted string",
+      "severity": "CRITICAL"
+    },
+    {
+      "pitfall": "Not Passing All Passenger Names in Confirmation",
+      "consequence": "Supplier rejection during final booking confirmation",
+      "solution": "Include all passengers (adults and children) in savebooking/confirmbooking with proper formatting",
+      "severity": "HIGH"
+    },
+    {
+      "pitfall": "Ignoring Tariff Notes and Payment Guarantee Information",
+      "consequence": "Customer dissatisfaction, disputes about undisclosed policies",
+      "solution": "Display both tariff notes and payment guarantee details prominently",
+      "severity": "HIGH"
+    },
+    {
+      "pitfall": "Allowing Bookings that Violate Minimum Stay Policy",
+      "consequence": "Booking rejection at supplier level",
+      "detection": "Check minStay element and validate against requested nights",
+      "severity": "HIGH"
+    },
+    {
+      "pitfall": "Exceeding Child-to-Adult Ratio",
+      "consequence": "Booking rejection for violating occupancy rules",
+      "rules": "Max 2 children per adult, max 4 per room, ages 1-12",
+      "severity": "HIGH"
+    },
+    {
+      "pitfall": "Sending Incorrect Allocation Details to ConfirmBooking",
+      "consequence": "Confirmation failure despite successful blocking",
+      "solution": "Copy allocation details exactly as returned from getRooms blocking response",
+      "severity": "CRITICAL"
+    },
+    {
+      "pitfall": "Not Implementing SearchHotels by HotelID Optimization",
+      "consequence": "Slow response times (> 8 seconds average), customer timeouts",
+      "solution": "Group hotels in batches of 50 for each request",
+      "severity": "MEDIUM"
+    },
+    {
+      "pitfall": "Undercutting Minimum Selling Price",
+      "consequence": "Contract violation with hotel chains, account suspension",
+      "solution": "Always validate and enforce MSP from API response",
+      "severity": "CRITICAL"
+    },
+    {
+      "pitfall": "Displaying Pricing from Wrong Source",
+      "consequence": "Incorrect rates shown to customer (stale or inaccurate data)",
+      "solution": "Always use getRooms response as single source of truth for pricing",
+      "severity": "HIGH"
+    },
+    {
+      "pitfall": "Not Including Passenger Name Formatting Validation",
+      "consequence": "Supplier rejection due to name format rules",
+      "rules": "2-25 chars, no spaces/numbers/special chars, unique per passenger",
+      "severity": "CRITICAL"
+    },
+    {
+      "pitfall": "Incorrect Cancellation Charge Passing",
+      "consequence": "Refund disputes, customer overcharging",
+      "process": "1st call (confirm=no) gets charge → 2nd call (confirm=yes) must pass exact charge in penaltyApplied",
+      "severity": "HIGH"
+    }
+  ],
+  "optimization_tips": [
+    {
+      "area": "SearchHotels Performance",
+      "technique": "Batch hotelIDs into groups of 50",
+      "benefit": "Reduces response time to under 8 seconds average",
+      "implementation": "For N hotels, create ceil(N/50) separate requests with hotelId filters"
+    },
+    {
+      "area": "API Response Time",
+      "technique": "Use hotelID-based search instead of city-wide search",
+      "benefit": "Significantly faster responses for targeted hotel searches",
+      "tradeoff": "Requires knowing hotel IDs upfront (use static data download)"
+    },
+    {
+      "area": "Data Management",
+      "technique": "Implement static data download for hotel inventory",
+      "benefit": "Reduces repeated searchHotels calls for basic info, faster UI loading",
+      "frequency": "Periodic updates as per supplier schedule"
+    },
+    {
+      "area": "Occupancy Validation",
+      "technique": "Pre-validate occupancy against constraints before API call",
+      "benefit": "Catch invalid configurations early, improve UX",
+      "rules": "Max 2 children/adult, max 4/room, ages 1-12"
+    },
+    {
+      "area": "Booking Flow Efficiency",
+      "technique": "Cache allocation details and room availability between steps",
+      "benefit": "Reduces need for repeated getRooms calls",
+      "lifecycle": "Valid for current session only"
+    },
+    {
+      "area": "Error Recovery",
+      "technique": "Implement retry logic with exponential backoff for timeouts",
+      "benefit": "Improves reliability under high load",
+      "recommend": "Max 3 retries with increasing delays"
+    }
+  ],
+  "error_handling": [
+    {
+      "error_type": "Booking Confirmation Rejection",
+      "common_causes": [
+        "Missing or invalid passengerNationality/passengerCountryOfResidence",
+        "Passenger names not properly formatted (spaces, special chars, invalid length)",
+        "Missing children passenger names in confirmation",
+        "Incorrect allocation details passed",
+        "Room configuration violates occupancy rules"
+      ],
+      "resolution": [
+        "Validate all passenger data before submission",
+        "Verify allocation details match getRooms response exactly",
+        "Check passenger name formatting rules: 2-25 chars, no spaces",
+        "Validate occupancy: max 2 children/adult, max 4/room",
+        "Ensure all passengers (adults and children) included"
+      ]
+    },
+    {
+      "error_type": "Rate/Price Mismatch",
+      "common_causes": [
+        "Using stale pricing from search instead of getRooms",
+        "Mismatched currency code",
+        "Rate basis mismatch between search and booking"
+      ],
+      "resolution": [
+        "Always use getRooms response as source of truth for pricing",
+        "Verify currency code is consistent throughout flow",
+        "Confirm rateBasis matches between steps"
+      ]
+    },
+    {
+      "error_type": "Occupancy Not Available",
+      "common_causes": [
+        "Minimum stay requirement not met",
+        "Child age outside 1-12 range",
+        "Too many children per adult/room",
+        "Room capacity exceeded"
+      ],
+      "resolution": [
+        "Check minStay element and validate against booking dates",
+        "Verify child ages are 1-12",
+        "Enforce max 2 children per adult, max 4 per room",
+        "Validate total occupancy against room capacity"
+      ]
+    },
+    {
+      "error_type": "API Timeout",
+      "common_causes": [
+        "SearchHotels request too large (> 50 hotelIds)",
+        "Network latency",
+        "Server overload"
+      ],
+      "resolution": [
+        "Split searchHotels into batches of 50 hotelIds maximum",
+        "Implement timeout with retry logic (3x with exponential backoff)",
+        "Monitor and log response times for optimization"
+      ]
+    },
+    {
+      "error_type": "Authentication Failure",
+      "common_causes": [
+        "Invalid username/password",
+        "Incorrect MD5 password hash",
+        "Missing or invalid customer ID"
+      ],
+      "resolution": [
+        "Verify credentials are correct",
+        "Confirm password is MD5 hashed",
+        "Check customer ID is valid in system"
+      ]
+    },
+    {
+      "error_type": "Cancellation Charge Mismatch",
+      "common_causes": [
+        "Using formatted price instead of raw numeric value",
+        "Not passing penalty from first cancellation step to second"
+      ],
+      "resolution": [
+        "Extract raw numeric value from response, not <formatted> tag",
+        "In confirmbooking (confirm=yes), pass exact charge from previous step in penaltyApplied"
+      ]
+    },
+    {
+      "error_type": "Minimum Selling Price Violation",
+      "common_causes": [
+        "Displaying price below MSP to customer",
+        "Not implementing MSP check for B2C platforms"
+      ],
+      "resolution": [
+        "Always check MinimumSelling and PriceMinimumSelling elements",
+        "Enforce MSP >= displayed price to customers",
+        "Implement audit logging for compliance"
+      ]
+    }
+  ],
+  "test_flows": [
+    {
+      "flow_name": "Single Room Booking - Complete Flow",
+      "description": "Full booking workflow for 1 room with 2 adults, 0 children",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "searchhotels per city code",
+          "method": "POST",
+          "endpoint": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+          "request_params": {
+            "command": "searchhotels",
+            "fromDate": "2025-12-09",
+            "toDate": "2025-12-10",
+            "rooms": 1,
+            "adultsCode": 2,
+            "children": 0,
+            "rateBasis": -1,
+            "currency": "required",
+            "passengerNationality": "required",
+            "passengerCountryOfResidence": "required"
+          },
+          "validation": "Check for rooms with rates, verify minStay and tariffNotes present"
+        },
+        {
+          "step": 2,
+          "operation": "getRooms simple",
+          "method": "POST",
+          "endpoint": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+          "request_params": {
+            "command": "getrooms",
+            "productId": "from step 1 response",
+            "fromDate": "2025-12-09",
+            "toDate": "2025-12-10",
+            "adultsCode": 2,
+            "currency": "same as step 1"
+          },
+          "validation": "Verify rates match, check for paymentGuaranteedBy, capture allocationDetails"
+        },
+        {
+          "step": 3,
+          "operation": "getRooms with blocking",
+          "method": "POST",
+          "endpoint": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+          "request_params": {
+            "command": "getrooms",
+            "productId": "from step 1 response",
+            "roomTypeSelected": {
+              "code": "from step 2",
+              "selectedRateBasis": "from step 2",
+              "allocationDetails": "from step 2"
+            }
+          },
+          "validation": "Confirm allocation details returned, verify room still available"
+        },
+        {
+          "step": 4,
+          "operation": "confirmbooking",
+          "method": "POST",
+          "endpoint": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+          "request_params": {
+            "command": "confirmbooking",
+            "productId": "from step 1",
+            "roomTypeCode": "from step 2",
+            "selectedRateBasis": "from step 3",
+            "allocationDetails": "from step 3 - EXACT match required",
+            "adultsCode": 2,
+            "actualAdults": 2,
+            "passengersDetails": [
+              {
+                "leading": "yes",
+                "salutation": "required",
+                "firstName": "JamesLee",
+                "lastName": "HappyTraveler"
+              },
+              {
+                "leading": "no",
+                "salutation": "required",
+                "firstName": "JaneDoe",
+                "lastName": "SmartTraveler"
+              }
+            ]
+          },
+          "validation": "Verify booking confirmed, capture booking reference, check paymentGuaranteedBy in response"
+        }
+      ],
+      "assertions": [
+        "All responses contain status=OK or success indicator",
+        "Passenger names properly formatted (no spaces, 2-25 chars)",
+        "Allocation details unchanged between getRooms and confirmBooking",
+        "Payment guarantee information present in final response",
+        "Booking reference generated successfully"
+      ]
+    },
+    {
+      "flow_name": "Multi-Room Booking - 2 Rooms with Mixed Occupancy",
+      "description": "Booking 2 rooms: Room 1 (2 adults), Room 2 (2 adults + 1 child age 10)",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "searchhotels 2 rooms",
+          "method": "POST",
+          "request_params": {
+            "command": "searchhotels",
+            "rooms": 2,
+            "room1": {
+              "adultsCode": 2,
+              "children": 0
+            },
+            "room2": {
+              "adultsCode": 2,
+              "children": 1,
+              "childAge": 10
+            }
+          },
+          "validation": "Verify both room types available, check child age is 1-12"
+        },
+        {
+          "step": 2,
+          "operation": "GetRooms 2 rooms",
+          "method": "POST",
+          "request_params": {
+            "command": "getrooms",
+            "rooms": 2,
+            "productId": "from step 1"
+          },
+          "validation": "Compare rates for both rooms, verify tariffNotes for each"
+        },
+        {
+          "step": 3,
+          "operation": "GetRooms_Block 2 rooms",
+          "method": "POST",
+          "request_params": {
+            "command": "getrooms",
+            "roomTypeSelected": "for both rooms from step 2"
+          },
+          "validation": "Allocation details captured for both rooms"
+        },
+        {
+          "step": 4,
+          "operation": "Confirmbooking Req 2 rooms",
+          "method": "POST",
+          "request_params": {
+            "command": "confirmbooking",
+            "rooms": 2,
+            "room1": {
+              "adultsCode": 2,
+              "actualAdults": 2,
+              "passengers": 2
+            },
+            "room2": {
+              "adultsCode": 2,
+              "actualAdults": 2,
+              "actualChildren": 1,
+              "childAge": 10,
+              "passengers": 3
+            }
+          },
+          "validation": "All 5 passengers included with proper formatting, occupancy rules respected"
+        }
+      ],
+      "assertions": [
+        "Child age 10 is within 1-12 range",
+        "Max 2 children per adult satisfied for both rooms",
+        "Total children (1) <= 4 per room",
+        "Both rooms contain proper passenger details",
+        "Allocation details for both rooms passed correctly"
+      ]
+    },
+    {
+      "flow_name": "Cancellation Flow - Complete Process",
+      "description": "Test cancellation with penalty charges",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "cancelbooking - confirm=no",
+          "method": "POST",
+          "request_params": {
+            "command": "cancelbooking",
+            "bookingType": 1,
+            "bookingCode": "from confirmation",
+            "confirm": "no"
+          },
+          "validation": "Extract <charge> value (raw number, not formatted), check if penalty applies"
+        },
+        {
+          "step": 2,
+          "operation": "cancelbooking - confirm=yes",
+          "method": "POST",
+          "request_params": {
+            "command": "cancelbooking",
+            "bookingType": 1,
+            "bookingCode": "same as step 1",
+            "confirm": "yes",
+            "penaltyApplied": "exact value from step 1 <charge>"
+          },
+          "validation": "Verify penalty amount matches exactly, cancellation processed"
+        }
+      ],
+      "assertions": [
+        "Raw numeric charge value extracted (not formatted string)",
+        "Penalty value from step 1 passed exactly to step 2",
+        "Cancellation completed successfully"
+      ]
+    },
+    {
+      "flow_name": "Static Data Download",
+      "description": "Download hotel inventory for offline reference",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "static data download xml request",
+          "method": "POST",
+          "request_params": {
+            "command": "searchhotels",
+            "filters": {
+              "country": 364,
+              "noPrice": true
+            },
+            "fields": [
+              "hotelName",
+              "address",
+              "cityName",
+              "rating",
+              "hotelAmenities",
+              "hotelImages"
+            ]
+          },
+          "validation": "Verify all hotel attributes returned, no pricing data (noPrice=true)"
+        }
+      ],
+      "assertions": [
+        "Complete hotel inventory retrieved",
+        "No pricing data included",
+        "All requested fields populated",
+        "Can be cached for offline reference"
+      ]
+    },
+    {
+      "flow_name": "SearchHotels by HotelID - Optimized Performance",
+      "description": "Optimized search using hotel ID batching",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "searchhotels per hotelID",
+          "method": "POST",
+          "note": "This is 1 of 14 requests for 700 hotels",
+          "request_params": {
+            "command": "searchhotels",
+            "filters": {
+              "hotelId": [
+                "31234",
+                "30674",
+                "31245",
+                "30985",
+                "31567"
+              ]
+            }
+          },
+          "validation": "Response time monitored, should be < 8 seconds per batch of 50"
+        },
+        {
+          "step": 2,
+          "note": "Repeat step 1 with next 50 hotelIds until all 700 processed"
+        }
+      ],
+      "assertions": [
+        "Each request contains max 50 hotelIds",
+        "Response time < 8 seconds average per request",
+        "All 700 hotels retrieved in 14 requests"
+      ]
+    }
+  ],
+  "rate_limiting": {
+    "general_guidance": "DOTW documentation does not explicitly specify rate limits; refer to supplier SLA",
+    "performance_targets": {
+      "searchHotels_optimized": "< 8 seconds average response time",
+      "searchHotels_city_wide": "up to 30+ seconds possible",
+      "getrooms": "< 5 seconds typical",
+      "confirmbooking": "< 5 seconds typical"
+    },
+    "recommendations": {
+      "batch_strategy": "Use hotel ID batching (50 per request) to stay under rate limits",
+      "retry_logic": "Implement exponential backoff: 1s, 2s, 4s max 3 attempts",
+      "timeout_handling": "Set socket timeout 30s minimum, read timeout 60s",
+      "concurrent_requests": "No explicit limit documented; recommend <= 5 concurrent to be safe",
+      "caching": "Cache static data and allocation details within session to reduce API calls"
+    }
+  },
+  "special_considerations": {
+    "currency_handling": {
+      "requirement": "Currency code required in all requests",
+      "source": "Use getcurrenciesids method to get valid codes",
+      "consistency": "Must be same currency throughout booking flow",
+      "note": "Currency code is numeric (e.g., 769 for AED)"
+    },
+    "occupancy_rules": {
+      "child_definition": "Ages 1-12 years only",
+      "per_adult_limit": "Maximum 2 children per adult declared",
+      "per_room_limit": "Maximum 4 children per room",
+      "validation": "Must validate before API call to provide better UX"
+    },
+    "date_handling": {
+      "format": "YYYY-MM-DD (e.g., 2025-12-09)",
+      "timezone": "Use hotel local time unless specified",
+      "minimum_stay": "Always check minStay and dateApplyMinStay in response"
+    },
+    "ssl_certificates": {
+      "requirement": "Strict SSL validation required",
+      "endpoint": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+      "certificate_pinning": "Consider for production to prevent MITM attacks"
+    },
+    "authentication": {
+      "method": "XML-based with username/password/id fields",
+      "password_encoding": "MD5 hash as per documentation",
+      "source_parameter": "Fixed value 1 for API access",
+      "product_parameter": "hotel for hotel bookings"
+    },
+    "special_requests": {
+      "format": "specialRequests element with count attribute",
+      "empty_bookings": "Send with count=0 if no special requests",
+      "content_examples": "Bedding preferences, smoking/non-smoking, late checkin"
+    },
+    "bedding_preferences": {
+      "parameter": "beddingPreference with numeric code",
+      "default": "0 (no preference)",
+      "variants": "Twin beds, double bed, etc. (codes from documentation)"
+    },
+    "payment_methods": {
+      "prepayment": "Advance Purchase Rates (APR) - non-refundable",
+      "postpayment": "Check paymentGuaranteedBy for payment terms",
+      "guarantee": "Payment guarantee provided by DOTW for booking"
+    }
+  }
+}

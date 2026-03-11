@@ -1,0 +1,26 @@
+{
+    "description": "test read refund files p2",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALFAILAKAWI\/KHALED MR",
+            "reference": "3580878630",
+            "status": "refund",
+            "refund_date": "2025-03-26",
+            "price": 135,
+            "currency": "KWD",
+            "exchange_currency": "KWD",
+            "original_price": 135.0,
+            "original_currency": "KWD",
+            "total": 260.10,
+            "surcharge": 0.0,
+            "penalty_fee": 0.0,
+            "tax": 125.10,
+            "ticket_number": "R-607-3580878630",
+            "original_ticket_number": "T-E607-3580878630",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "0010MA"
+        }
+    ]
+}

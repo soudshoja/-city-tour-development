@@ -1,0 +1,225 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Charge;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
+
+class GatewayConfigService
+{
+    /**
+     * Fetches the configuration for the Tap payment gateway
+     *
+     * @return array
+     */
+    public function getTapConfig(): array
+    {
+        $configFromService = Config::get('services.tap');
+
+        if($configFromService === null) {
+            Log::warning('Tap does not have any configuration yet. Please contact your support team.');
+            return [
+                'status' => 'error',
+                'message' => 'Tap payment gateway is not configured. Please contact your support team.'
+            ];
+        }
+
+        $config = [
+            'status'  => 'success',
+            'message' => 'Tap configuration loaded successfully',
+            'data'    => $configFromService,
+        ];
+
+        $tapCharge = Charge::where('name', 'like', '%tap%')
+                           ->where('is_active', true)
+                           ->first();
+
+        if ($tapCharge && $tapCharge->api_key) {
+
+            $config = [
+                'status' => 'success',
+                'message' => 'Tap configuration loaded successfully',
+                'data' => [
+                    'secret' => $tapCharge->api_key,
+                    'url'    => $configFromService['url'],
+                ]
+            ];
+
+            Log::info('Tap gateway config loaded from DB', [
+                'company_id' => $tapCharge->company_id,
+                'url'        => $config['data']['url'],
+                'secret'     => $config['data']['secret'],
+            ]);
+
+            return $config;
+        }
+        
+        Log::info('Tap gateway config loaded from config/services.php', [
+            'url'    => $config['data']['url'] ?? null,
+            'secret' => $config['data']['secret'] ?? null,
+        ]);
+
+        return $config;
+    }
+
+    /**
+     * Fetches the configuration for the MyFatoorah payment gateway
+     *
+     * @return array
+     */
+    public function getMyFatoorahConfig(): array
+    {
+        $configFromService = Config::get('services.myfatoorah');
+
+        if($configFromService === null) {
+
+            Log::warning('MyFatoorah does not have any configuration yet. Please contact your support team.');
+
+            return [
+                'status' => 'error',
+                'message' => 'MyFatoorah payment gateway is not configured. Please contact your support team.'
+            ];
+        }
+
+        $config = [
+            'status'  => 'success',
+            'message' => 'MyFatoorah configuration loaded successfully',
+            'data'    => $configFromService,
+        ];
+
+        Log::info('MyFatoorah gateway config loaded from config/services.php', [
+            'base_url' => $config['data']['base_url'] ?? null,
+            'api_key'  => $config['data']['api_key'] ?? null,
+        ]);
+
+        $myFatoorahCharge = Charge::where('name', 'like', '%myfatoorah%')
+                                  ->where('is_active', true)
+                                  ->first();
+
+        if ($myFatoorahCharge && $myFatoorahCharge->api_key) {
+            $config = [
+                'status' => 'success',
+                'message' => 'MyFatoorah configuration loaded successfully',
+                'data' => [
+                    'api_key' => $myFatoorahCharge->api_key,
+                    'base_url' => $configFromService['base_url'],
+                ]  
+            ];
+
+            Log::info('MyFatoorah gateway config loaded from DB', [
+                'company_id' => $myFatoorahCharge->company_id,
+                'base_url'   => $config['data']['base_url'],
+                'api_key'    => $config['data']['api_key'],
+            ]);
+
+            return $config;
+        }
+        
+        return $config;
+    }
+
+    public function getHesabeConfig(): array 
+    {                
+
+        $configFromService = Config::get('services.hesabe');
+
+        if($configFromService === null) {
+            Log::warning('Hesabe does not have any configuration yet. Please contact your support team.');
+
+            return [
+                'status' => 'error',
+                'message' => 'Hesabe payment gateway is not configured. Please contact your support team.'
+            ];
+        }
+
+        $config = [
+            'status' => 'success',
+            'message' => 'Hesabe configuration loaded successfully.',
+            'data' => $configFromService,
+        ];
+
+        Log::info('Hesabe gateway config loaded from config/services.php', [
+            'base_url' => $config['data']['base_url'] ?? null,
+            'api_key' => $config['data']['api_key'] ?? null,
+        ]);
+
+        $hesabeCharge = Charge::where('name', 'like', '%hesabe%')
+            ->where('is_active', true)
+            ->first();
+
+        if ($hesabeCharge && $hesabeCharge->api_key) {
+            $config = [
+                'status' => 'success',
+                'message' => 'Hesabe configuration loaded successfully.',
+                'data' => [
+                    'api_key' => $hesabeCharge->api_key,
+                    'base_url' => $configFromService['base_url'],
+                    'access_code' => $configFromService['access_code'],
+                    'merchant_code' => $configFromService['merchant_code'],
+                    'iv_key' => $configFromService['iv_key'],
+                ]
+            ];
+
+            Log::info('Hesabe gateway config loaded from database.', [
+                'company_id' => $hesabeCharge->company_id,
+                'base_url' => $config['data']['base_url'],
+                'api_key' => $config['data']['api_key'],
+            ]);
+
+            return $config;
+        }
+
+        return $config;
+    }
+
+    public function getUPaymentConfig(): array 
+    {                
+        $configFromService = Config::get('services.uPayment');
+
+        if($configFromService === null) {
+            Log::warning('UPayment does not have any configuration yet. Please contact your support team.');
+
+            return [
+                'status' => 'error',
+                'message' => 'UPayment payment gateway is not configured. Please contact your support team.'
+            ];
+        }
+
+        $config = [
+            'status' => 'success',
+            'message' => 'UPayment configuration loaded successfully.',
+            'data' => $configFromService,
+        ];
+
+        Log::info('UPayment gateway config loaded from config/services.php', [
+            'base_url' => $config['data']['base_url'] ?? null,
+            'api_key' => $config['data']['api_key'] ?? null,
+        ]);
+
+        $uPaymentCharge = Charge::where('name', 'like', '%upayment%')
+            ->where('is_active', true)
+            ->first();
+
+        if ($uPaymentCharge && $uPaymentCharge->api_key) {
+            $config = [
+                'status' => 'success',
+                'message' => 'UPayment configuration loaded successfully.',
+                'data' => [
+                    'api_key' => $uPaymentCharge->api_key,
+                    'base_url' => $configFromService['base_url'],
+                ]
+            ];
+
+            Log::info('UPayment gateway config loaded from database.', [
+                'company_id' => $uPaymentCharge->company_id,
+                'base_url' => $config['data']['base_url'],
+                'api_key' => $config['data']['api_key'],
+            ]);
+
+            return $config;
+        }
+
+        return $config;
+    }
+}

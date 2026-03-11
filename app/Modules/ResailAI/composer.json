@@ -1,0 +1,17 @@
+{
+    "name": "citytravelers/resailai-module",
+    "description": "ResailAI PDF Processing Module for Laravel",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "App\\Modules\\ResailAI\\": ""
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "App\\Modules\\ResailAI\\Providers\\ResailAIServiceProvider"
+            ]
+        }
+    }
+}

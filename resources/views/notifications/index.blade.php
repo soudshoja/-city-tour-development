@@ -1,0 +1,1 @@
+<!-- notification-index.blade.php -->

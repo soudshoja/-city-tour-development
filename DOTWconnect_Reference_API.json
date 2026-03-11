@@ -1,0 +1,424 @@
+{
+  "metadata": {
+    "title": "DOTWconnect Reference Data/Lookup API Methods",
+    "source": "DOTWconnect API Documentation",
+    "version": "4",
+    "last_updated": "2026-03-09",
+    "total_methods": 7,
+    "purpose": "Reference lookups for country codes, city codes, amenities, chains, classifications, and preferences"
+  },
+
+  "countries": {
+    "method": "getallcountries",
+    "category": "reference_lookup",
+    "description": "Retrieve all available countries with their internal codes and regional groupings",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "request": {
+      "command": "getallcountries",
+      "xml_structure": "<request command=\"getallcountries\">\n\t<return>\n\t\t<fields>\n\t\t\t<field>regionName</field>\n\t\t\t<field>regionCode</field>\n\t\t</fields>\n\t</return>\n</request>",
+      "parameters": [
+        {
+          "name": "fields",
+          "type": "optional",
+          "description": "Specify which fields to return (regionName, regionCode, etc.)"
+        }
+      ]
+    },
+
+    "response": {
+      "structure": "<result command=\"getallcountries\" date=\"\">\n\t<countries count=\"\">\n\t\t<country runno=\"\">\n\t\t\t<name></name>\n\t\t\t<code></code>\n\t\t\t<regionName></regionName>\n\t\t\t<regionCode></regionCode>\n\t\t</country>\n\t</countries>\n\t<successful>TRUE</successful>\n</result>",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Full country name (e.g., 'United States', 'United Kingdom')"
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "description": "Internal DOTWconnect country code (used throughout API)",
+          "important": true
+        },
+        {
+          "name": "regionName",
+          "type": "string",
+          "description": "Geographic region (e.g., 'Europe', 'Asia', 'North America')"
+        },
+        {
+          "name": "regionCode",
+          "type": "string",
+          "description": "Region identifier code"
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "description": "Total number of countries in response"
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Get country codes for filter in getservingcities",
+        "Populate country selection dropdowns",
+        "Validate country input in passenger data",
+        "Set passengerNationality in booking requests"
+      ],
+      "example_code": "const countries = await api.request({ command: 'getallcountries' }); // Use country.code in subsequent calls",
+      "notes": "These country codes are REQUIRED for many other API methods - always cache this data at application startup"
+    }
+  },
+
+  "cities": {
+    "method": "getservingcities",
+    "category": "reference_lookup",
+    "description": "Get serving cities by country, with optional filtering by deals, luxury status, and special offers",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "request": {
+      "command": "getservingcities",
+      "xml_structure": "<request command=\"getservingcities\">\n\t<return>\n\t\t<filters>\n\t\t\t<topDeals>true</topDeals>\n\t\t\t<luxury>true</luxury>\n\t\t\t<specialDeals>true</specialDeals>\n\t\t\t<countryCode></countryCode>\n\t\t\t<countryName></countryName>\n\t\t</filters>\n\t\t<fields>\n\t\t\t<field>countryName</field>\n\t\t\t<field>countryCode</field>\n\t\t</fields>\n\t</return>\n</request>",
+      "parameters": [
+        {
+          "name": "countryCode",
+          "type": "string",
+          "required": true,
+          "description": "Country code from getallcountries - filters cities to this country"
+        },
+        {
+          "name": "countryName",
+          "type": "string",
+          "required": false,
+          "description": "Alternative to countryCode - country name"
+        },
+        {
+          "name": "topDeals",
+          "type": "boolean",
+          "required": false,
+          "description": "Include top deals filter in results"
+        },
+        {
+          "name": "luxury",
+          "type": "boolean",
+          "required": false,
+          "description": "Filter to luxury accommodations"
+        },
+        {
+          "name": "specialDeals",
+          "type": "boolean",
+          "required": false,
+          "description": "Include special promotional deals"
+        }
+      ]
+    },
+
+    "response": {
+      "fields": [
+        {
+          "name": "cities",
+          "type": "container",
+          "description": "Container element for city list"
+        },
+        {
+          "name": "city",
+          "type": "object",
+          "attributes": ["runno"],
+          "children": [
+            {
+              "name": "name",
+              "type": "string",
+              "description": "City name (e.g., 'New York', 'London')"
+            },
+            {
+              "name": "code",
+              "type": "string",
+              "description": "Internal city code for use in hotel search filters",
+              "important": true
+            }
+          ]
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Get available cities for a selected country",
+        "Populate city selection dropdowns",
+        "Use city codes in hotel search requests",
+        "Support country/city drill-down navigation"
+      ],
+      "dependencies": [
+        "Requires country code from getallcountries"
+      ],
+      "example_code": "const cities = await api.request({ command: 'getservingcities', filters: { countryCode: 'US' } }); // Use city.code in searchhotels",
+      "notes": "City codes are REQUIRED for hotel search by city - do not use city names directly"
+    }
+  },
+
+  "hotel_class": {
+    "method": "gethotelclassificationids",
+    "category": "reference_lookup",
+    "description": "Retrieve hotel classification/rating codes (star ratings, quality levels)",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "request": {
+      "command": "gethotelclassificationids",
+      "xml_structure": "<request command=\"gethotelclassificationids\"></request>",
+      "parameters": []
+    },
+
+    "response": {
+      "fields": [
+        {
+          "name": "hotelclassifications",
+          "type": "container",
+          "description": "Container for classification list"
+        },
+        {
+          "name": "option",
+          "type": "object",
+          "attributes": ["runno", "value"],
+          "description": "Individual classification option with code and description"
+        },
+        {
+          "name": "successful",
+          "type": "boolean",
+          "description": "Request success indicator"
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Get available hotel star ratings or quality levels",
+        "Populate hotel class/rating filter dropdowns",
+        "Use classification codes in hotel search filters"
+      ],
+      "example_codes": [
+        "1-star, 2-star, 3-star, 4-star, 5-star",
+        "Budget, Standard, Superior, Deluxe, Luxury"
+      ],
+      "notes": "Classification system depends on specific property database and region"
+    }
+  },
+
+  "amenities": {
+    "method": "getamenitieids",
+    "alternative_names": ["room amenities", "hotel facilities"],
+    "category": "reference_lookup",
+    "description": "Available amenity codes for filtering hotels by facilities and services",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "request": {
+      "command": "getamenitieids",
+      "xml_structure": "<request command=\"getamenitieids\"></request>",
+      "parameters": []
+    },
+
+    "response": {
+      "structure": "<result command=\"getamenitieids\" date=\"\">\n\t<amenities>\n\t\t<option runno=\"\" value=\"\"></option>\n\t</amenities>\n\t<successful>TRUE</successful>\n</result>",
+      "fields": [
+        {
+          "name": "amenities",
+          "type": "container",
+          "description": "Container for amenity list"
+        },
+        {
+          "name": "option",
+          "type": "object",
+          "attributes": ["runno", "value"],
+          "description": "Individual amenity code and description",
+          "value_examples": [
+            "WiFi/Internet",
+            "Swimming Pool",
+            "Fitness Center/Gym",
+            "Restaurant",
+            "Bar",
+            "Parking",
+            "Air Conditioning",
+            "Balcony/Terrace",
+            "Mini Bar",
+            "Room Service"
+          ]
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Filter hotels by available amenities",
+        "Display amenity checkboxes in search interface",
+        "Apply multiple amenity filters simultaneously"
+      ],
+      "example_filters": [
+        "Must have: WiFi, Free Parking",
+        "Nice to have: Pool, Gym, Restaurant"
+      ],
+      "notes": "Use amenity codes in searchhotels filters - support multiple selections"
+    }
+  },
+
+  "chains": {
+    "method": "getchainids",
+    "alternative_names": ["hotel chains", "chain brands"],
+    "category": "reference_lookup",
+    "description": "Hotel chain codes for filtering by specific hotel brands and chains",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "request": {
+      "command": "getchainids",
+      "xml_structure": "No special request parameters",
+      "parameters": []
+    },
+
+    "response": {
+      "structure": "<result command=\"getchainids\" date=\"\">\n\t<chains>\n\t\t<option runno=\"\" value=\"\"></option>\n\t</chains>\n\t<successful>TRUE</successful>\n</result>",
+      "fields": [
+        {
+          "name": "chains",
+          "type": "container",
+          "description": "Container for chain list"
+        },
+        {
+          "name": "option",
+          "type": "object",
+          "attributes": ["runno", "value"],
+          "description": "Individual hotel chain with code and name",
+          "common_values": [
+            "Marriott International",
+            "Hilton Hotels",
+            "Hyatt Hotels",
+            "InterContinental Hotels Group (IHG)",
+            "Accor",
+            "Choice Hotels",
+            "Wyndham Hotels",
+            "Best Western"
+          ]
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Filter hotels by specific hotel chains",
+        "Build hotel chain selection dropdowns",
+        "Support chain-specific loyalty programs"
+      ],
+      "example_filters": [
+        "Chain contains: 'Marriott'",
+        "Popular chains: Hilton, Hyatt, Intercontinental"
+      ],
+      "notes": "Supports multiple chain selection in hotel search filters"
+    }
+  },
+
+  "preferences": {
+    "method": "getleisureids",
+    "alternative_names": ["leisure codes", "preference types"],
+    "category": "reference_lookup",
+    "description": "Leisure and preference type codes for specifying traveler interests",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "response": {
+      "fields": [
+        {
+          "name": "leisures",
+          "type": "container",
+          "description": "Container for leisure preference list"
+        },
+        {
+          "name": "option",
+          "type": "object",
+          "attributes": ["runno", "value"],
+          "description": "Individual leisure/preference type",
+          "common_values": [
+            "Business Travel",
+            "Leisure/Vacation",
+            "Adventure",
+            "Relaxation/Spa",
+            "Family Vacation",
+            "Honeymoon",
+            "Group Travel",
+            "Solo Travel",
+            "Cultural Tourism",
+            "Beach Resort"
+          ]
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Specify traveler preferences and interests",
+        "Enable personalized hotel recommendations",
+        "Store guest preferences for future bookings"
+      ],
+      "notes": "Used for guest profiling and preference-based recommendations"
+    }
+  },
+
+  "locations": {
+    "method": "getlocationids",
+    "alternative_names": ["location codes", "geographic regions"],
+    "category": "reference_lookup",
+    "description": "Location and region codes for granular geographic filtering within cities",
+    "endpoint_type": "GET/POST",
+    "authentication": "Required",
+
+    "response": {
+      "fields": [
+        {
+          "name": "locations",
+          "type": "container",
+          "description": "Container for location list"
+        },
+        {
+          "name": "option",
+          "type": "object",
+          "attributes": ["runno", "value"],
+          "description": "Individual location/district/neighborhood code"
+        }
+      ]
+    },
+
+    "usage": {
+      "primary_uses": [
+        "Filter hotels by specific neighborhoods or districts",
+        "Enable location-based hotel recommendations",
+        "Support granular geographic searches within cities"
+      ],
+      "notes": "Provides finer geographic granularity than city-level filtering"
+    }
+  },
+
+  "filtering_patterns": {
+    "description": "Common patterns for using reference data in hotel searches",
+    "single_filter": {
+      "pattern": "Filter by single criteria",
+      "example": "Show 5-star hotels in New York with WiFi"
+    },
+    "multi_filter": {
+      "pattern": "Combine multiple filters",
+      "example": "Show 4-5 star Marriott/Hilton hotels in London with Pool and WiFi"
+    },
+    "complex_filter": {
+      "pattern": "Advanced filtering with conditions",
+      "example": "Filter by price range AND amenities AND chain AND location"
+    }
+  },
+
+  "integration_notes": {
+    "caching_strategy": "Cache all reference lookups at application startup - these change infrequently",
+    "error_handling": "Check 'successful' flag in responses - typical format: { successful: true, fieldName: [...] }",
+    "authentication": "All reference methods require valid API credentials",
+    "rate_limiting": "No special rate limits for reference lookups - safe to call frequently",
+    "data_consistency": "Use codes from responses (not names) for filtering and subsequent requests"
+  }
+}

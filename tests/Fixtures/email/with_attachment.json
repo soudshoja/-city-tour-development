@@ -1,0 +1,82 @@
+{
+    "email_type": "itinerary_with_documents",
+    "from": "support@travelagency.com",
+    "to": "traveler@gmail.com",
+    "subject": "Your Complete Travel Itinerary - Booking XYZ789",
+    "date": "2025-02-09T09:15:00Z",
+    "body": "Dear Traveler,\n\nThank you for booking with us. Please find your complete travel itinerary below and attached documents.\n\nBooking Number: XYZ789\nTrip Duration: March 15 - April 2, 2025\nTotal Cost: USD 3,750.00\n\nAttached Documents:\n1. E-Ticket PDF\n2. Hotel Confirmation\n3. Car Rental Agreement\n4. Travel Insurance Certificate\n5. Important Travel Tips\n\nFlight Schedule:\n- Outbound: AA100 on Mar 15 from JFK to LAX, Departing 14:30\n- Return: AA250 on Apr 2 from LAX to JFK, Departing 10:00\n\nHotel:\nBeach Resort Hotel, Los Angeles\nCheck-in: March 15, Check-out: April 2\nRoom Type: Deluxe Suite\n\nCar Rental:\nCompany: Hertz\nPickup: LAX Airport, March 15\nDropoff: LAX Airport, April 2\nVehicle: Sedan\n\nFor questions, contact our support team.\n\nHappy travels!",
+    "attachments": [
+        {
+            "filename": "E-Ticket-XYZ789.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 256480,
+            "hash": "sha256:abc123def456"
+        },
+        {
+            "filename": "Hotel-Confirmation-123456.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 187230,
+            "hash": "sha256:ghi789jkl012"
+        },
+        {
+            "filename": "CarRental-Agreement.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 145670,
+            "hash": "sha256:mno345pqr678"
+        },
+        {
+            "filename": "Insurance-Certificate.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 98560,
+            "hash": "sha256:stu901vwx234"
+        },
+        {
+            "filename": "Travel-Tips.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 52340,
+            "hash": "sha256:yza567bcd890"
+        }
+    ],
+    "extracted_data": {
+        "booking_number": "XYZ789",
+        "trip_start_date": "2025-03-15",
+        "trip_end_date": "2025-04-02",
+        "total_cost": 3750.00,
+        "currency": "USD",
+        "flight": {
+            "outbound": {
+                "airline": "AA",
+                "flight_number": "AA100",
+                "departure_airport": "JFK",
+                "arrival_airport": "LAX",
+                "departure_date_time": "2025-03-15 14:30:00"
+            },
+            "return": {
+                "airline": "AA",
+                "flight_number": "AA250",
+                "departure_airport": "LAX",
+                "arrival_airport": "JFK",
+                "departure_date_time": "2025-04-02 10:00:00"
+            }
+        },
+        "accommodation": {
+            "hotel_name": "Beach Resort Hotel",
+            "location": "Los Angeles",
+            "check_in": "2025-03-15",
+            "check_out": "2025-04-02",
+            "room_type": "Deluxe Suite"
+        },
+        "car_rental": {
+            "company": "Hertz",
+            "pickup_location": "LAX Airport",
+            "pickup_date": "2025-03-15",
+            "dropoff_location": "LAX Airport",
+            "dropoff_date": "2025-04-02",
+            "vehicle_type": "Sedan"
+        },
+        "attachments_count": 5,
+        "attachment_types": ["E-Ticket", "Hotel Confirmation", "Car Rental Agreement", "Travel Insurance", "Travel Tips"]
+    },
+    "confidence_score": 0.98,
+    "processing_time_ms": 3420
+}

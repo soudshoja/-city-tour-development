@@ -1,0 +1,26 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/citycomm/tour.citycommerce.group/
+    - /bin/cp -R * $DEPLOYPATH
+
+    # Navigate to the deployment directory for Laravel commands
+    - cd $DEPLOYPATH
+
+    # Ensure permissions are correct after copying (important for Laravel)
+    - find . -type f -exec chmod 644 {} \; # Files
+    - find . -type d -exec chmod 755 {} \; # Directories
+    - chmod -R 775 storage
+    - chmod -R 775 bootstrap/cache
+
+    - ~/composer.phar install --no-dev --prefer-dist
+
+    - php artisan down
+
+    - php artisan migrate --force
+
+    - php artisan lighthouse:cache
+
+    - php artisan optimize:clear
+
+    - php artisan up

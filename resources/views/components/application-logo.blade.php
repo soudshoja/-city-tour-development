@@ -1,0 +1,16 @@
+@props([
+    'companyLogo' => asset('images/UserPic.svg'),
+    'width' => '100',
+    'height' => '75',
+    'class' => '',
+    'alt' => 'Logo'
+])
+
+<img 
+    id="logo" 
+    src="{{ $companyLogo }}" 
+    alt="{{ $alt }}" 
+    width="{{ $width }}" 
+    height="{{ $height }}"
+    {{ $attributes->merge(['class' => $class]) }}
+>

@@ -1,0 +1,953 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Models\Role;
+use Illuminate\Http\Request;
+use App\Models\Company;
+use App\Models\Branch;
+use App\Models\Agent;
+use App\Models\Invoice;
+use App\Models\Client;
+use App\Models\Account;
+use App\Models\Supplier;
+use App\Models\JournalEntry;
+use App\Models\Transaction;
+use App\Models\Payment;
+use App\Models\CoaCategory;
+use App\Exports\LedgerExport;
+use App\Services\EncryptionService;
+use Carbon\Carbon;
+
+class AccountingController extends Controller
+{
+    public function index()
+    {
+        Gate::authorize('viewAny', Account::class);
+
+        $user = Auth::user();
+
+        if ($user->role_id != Role::ADMIN) {
+            if ($user->role_id != Role::COMPANY) {
+                return abort(403, 'Unauthorized action.');
+            } else {
+                $company = Company::where('user_id', $user->id)->with([
+                    'branches.agents.clients.invoices.invoiceDetails.JournalEntrys' => function ($query) {}
+                ])->first();
+            }
+        } else {
+            $companies = Company::all();
+        }
+
+
+        $suppliers = Supplier::all();
+        $accounts = Account::where('company_id', $company->id)
+            ->select(['id', 'name'])
+            ->get();
+
+        //    $accountsArray = $accounts->map(function ($account) {
+        //     return [
+        //         'id' => $account->id,
+        //         'name' => $account->name,
+        //     ];
+        // })->toArray(); // Convert the collection to an array
+        $accountsArray = [];
+        $company->load([
+            'branches.agents.clients.invoices.invoiceDetails.task.supplier',
+        ]);
+
+
+        foreach ($accounts as $account) {
+            if ($account->name === 'Accounts Receivable') {
+                foreach ($company->branches as $branch) { // Loop through branches
+                    foreach ($branch->agents as $agent) { // Loop through agents in each branch
+                        foreach ($agent->clients as $client) {
+                            $accountsArray[] = [
+                                'id' => 'account-' . $account->id . ':client-' . $client->id,
+                                'name' => 'Client: ' . $client->full_name,
+                            ];
+                        }
+                    }
+                }
+            } elseif ($account->name === 'Accounts Payable') {
+                foreach ($suppliers as $supplier) { // Loop through invoice details
+                    $accountsArray[] = [
+                        'id' => 'account-' . $account->id . ':supplier-' . $supplier->id, // Ensure unique key
+                        'name' => 'Supplier: ' . $supplier->name, // Use supplier's name
+                    ];
+                }
+            } elseif ($account->name === 'Income') {
+                foreach ($company->branches as $branch) { // Loop through branches
+                    foreach ($branch->agents as $agent) { // Loop through agents in each branch
+                        $accountsArray[] = [
+                            'id' => 'account-' . $account->id . ':agent-' . $agent->id, // Ensure unique key
+                            'name' => 'Agent: ' . $agent->name, // Access the agent's name or other properties
+                        ];
+                    }
+                }
+            } else {
+                // For other account names, you can keep them simple
+                $accountsArray[] = [
+                    'id' => 'account-' . $account->id, // Ensure unique key
+                    'name' => $account->name,
+                ];
+            }
+        }
+
+
+        // Prepare data for JournalEntrys (to replace transactions)
+        $JournalEntrys = [];
+        $groupedJournalEntrys = [];
+
+        foreach ($company->branches as $branch) {
+            foreach ($branch->agents as $agent) {
+                foreach ($agent->clients as $client) {
+                    foreach ($client->invoices as $invoice) {
+                        foreach ($invoice->invoiceDetails as $invoiceDetail) {
+                            // Retrieve the task associated with this invoiceDetail
+                            $task = $invoiceDetail->task; // assuming each invoiceDetail has a related task
+                            $taskName = $task ? $task->reference . '-' . $task->additional_info . '-' . $task->venue . '-' . $task->type : null;
+                            foreach ($invoiceDetail->JournalEntrys as $JournalEntry) {
+                                $groupedJournalEntrys[$taskName][]  = [
+                                    'JournalEntry_id' => $JournalEntry->id,
+                                    'JournalEntry_name' => $JournalEntry->name,
+                                    'client_name' => $client->full_name,
+                                    'supplier_name' => $task->supplier->name,
+                                    'credit' => $JournalEntry->credit,
+                                    'debit' => $JournalEntry->debit,
+                                    'balance' => $JournalEntry->balance,
+                                    'transaction_date' => $JournalEntry->created_at,
+                                    'description' => $JournalEntry->description,
+                                    'branch_name' => $branch->name,
+                                    'agent_name' => $agent->name,
+                                    'type' => $JournalEntry->type,
+                                    'invoice_number' => $invoice->invoice_number,
+                                    'status' => $invoice->status,
+                                    'task_name' => $taskName,
+
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // Pass the data to the view
+        return view('accounting.index', [
+            'groupedJournalEntrys' => $groupedJournalEntrys,
+            'company' => $company,
+            'accounts' => $accountsArray,
+            'branches' => $company->branches,
+            'JournalEntrys' => $JournalEntrys, // To display in the table
+        ]);
+    }
+
+    public function filterLedgers(Request $request)
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $accountIdInput = $request->input('account');
+        $branchId = $request->input('branch');
+
+        // Parse the account ID format
+        $parsedAccount = [];
+        if (preg_match('/^account-(\d+)(?::(client|supplier|agent)-(\d+))?$/', $accountIdInput, $matches)) {
+            $parsedAccount['account_id'] = $matches[1];
+            $parsedAccount['related_type'] = $matches[2] ?? null;
+            $parsedAccount['related_id'] = $matches[3] ?? null;
+        }
+
+        if (empty($parsedAccount)) {
+            return response()->json(['error' => 'Invalid account ID format'], 400);
+        }
+
+        // Build the query with conditional filters
+        $ledgersQuery = JournalEntry::query()
+            ->when($fromDate, fn($query) => $query->where('transaction_date', '>=', $fromDate))
+            ->when($toDate, fn($query) => $query->where('transaction_date', '<=', $toDate))
+            ->when($parsedAccount['account_id'], fn($query) => $query->where('account_id', $parsedAccount['account_id']))
+            ->when($branchId, callback: fn($query) => $query->where('branch_id', $branchId));
+
+        // Add conditions for related entities
+        if ($parsedAccount['related_type'] && $parsedAccount['related_id']) {
+            switch ($parsedAccount['related_type']) {
+                case 'client':
+                    $ledgersQuery->where('type_reference_id', $parsedAccount['related_id']);
+                    break;
+                case 'supplier':
+                    $ledgersQuery->where('type_reference_id', $parsedAccount['related_id']);
+                    break;
+                case 'agent':
+                    $ledgersQuery->where('type_reference_id', $parsedAccount['related_id']);
+                    break;
+            }
+        }
+
+        $ledgers = $ledgersQuery->get();
+
+        // Map results with additional context if necessary
+        $result = $ledgers->map(fn($ledger) => [
+            'invoice_number' => $ledger->invoice ? $ledger->invoice->invoice_number : null,
+            'transaction_date' => $ledger->transaction_date,
+            'description' => $ledger->description,
+            'agent_name' => $ledger->invoice->agent->name,
+            'branch_name' => $ledger->branch->name,
+            'JournalEntry_name' => $ledger->name ?? null,
+            'debit' => $ledger->debit,
+            'credit' => $ledger->credit,
+        ]);
+
+        return response()->json($result);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        // Extract ledgers and totals from the request
+        $ledgers = $request->input('ledgers');
+        $totalDebit = $request->input('total_debit');
+        $totalCredit = $request->input('total_credit');
+
+        // Export the data along with totals to Excel
+        return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'JournalEntryReport.xlsx');
+    }
+
+    public function showCompanySummary()
+    {
+        Gate::authorize('viewAny', Account::class);
+
+        $user = Auth::user();
+
+        if ($user->role_id != Role::COMPANY && $user->company == null) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        // Retrieve the company associated with the user and load its branches with agents, clients, invoices, and general ledgers
+        $company = Company::where('user_id', $user->id)
+            ->with([
+                'branches.agents.clients.invoices.transactions' // Eager load everything in one go
+            ])
+            ->first();
+
+        $accounts = Account::all(['id', 'name']);
+
+        $JournalEntrys = JournalEntry::where('company_id', $company->id)->get();
+        // Process summary for branches, agents, clients, and invoices
+        $companySummary = $company->branches->map(function ($branch) {
+            $branch->total_credits = 0;
+            $branch->total_debits = 0;
+            $branch->balance = 0;
+
+            // Iterate over agents and clients to calculate totals
+            $branch->agents->each(function ($agent) use ($branch) {
+                $agent->total_credits = 0;
+                $agent->total_debits = 0;
+                $agent->balance = 0;
+
+                // Iterate over clients to calculate totals
+                $agent->clients->each(function ($client) use ($agent) {
+                    $client->total_credits = 0;
+                    $client->total_debits = 0;
+                    $client->balance = 0;
+
+                    // Iterate over invoices to calculate totals
+                    $client->invoices->each(function ($invoice) use ($client) {
+                        $invoice->total_credits = $invoice->transactions->where('transaction_type', 'credit')->sum('amount');
+                        $invoice->total_debits =  $invoice->transactions->where('transaction_type', 'debit')->sum('amount');
+                        $invoice->balance = $invoice->total_credits - $invoice->total_debits;
+
+                        $client->total_credits += $invoice->total_credits;
+                        $client->total_debits += $invoice->total_debits;
+                        $client->balance += $invoice->balance;
+                    });
+
+                    $agent->total_credits += $client->total_credits;
+                    $agent->total_debits += $client->total_debits;
+                    $agent->balance += $client->balance;
+                });
+
+                $branch->total_credits += $agent->total_credits;
+                $branch->total_debits += $agent->total_debits;
+                $branch->balance += $agent->balance;
+            });
+
+            return $branch;
+        });
+
+        return view('accounting.summary', compact('company', 'accounts', 'JournalEntrys', 'companySummary'));
+    }
+
+    public function getAccountsByCompanyReceivable(Request $request)
+    {
+        $accounts = Account::where('company_id', $request->company_id)
+            ->whereIn('level', [4])
+            ->where(function ($query) {
+
+                $query->whereHas('parent', function ($query) {
+                    $query->where('level', 1)
+                        ->whereIn('name', ['Assets', 'Income']);
+                })
+
+                    ->orWhereHas('parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Assets', 'Income']);
+                    })
+
+                    ->orWhereHas('parent.parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Assets', 'Income']);
+                    });
+            })
+            ->orderBy('level') // Order by level in ascending order
+            ->get();
+
+        return response()->json(['accounts' => $accounts]);
+    }
+
+    public function getAccountsByCompanyPayable(Request $request)
+    {
+        $accounts = Account::where('company_id', $request->company_id)
+            ->whereIn('level', [4])
+            ->where(function ($query) {
+
+                $query->whereHas('parent', function ($query) {
+                    $query->where('level', 1)
+                        ->whereIn('name', ['Liabilities', 'Expenses']);
+                })
+
+                    ->orWhereHas('parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Liabilities', 'Expenses']);
+                    })
+
+                    ->orWhereHas('parent.parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Liabilities', 'Expenses']);
+                    });
+            })
+            ->orderBy('level') // Order by level in ascending order
+            ->get();
+
+        return response()->json(['accounts' => $accounts]);
+    }
+
+    public function getBranchByCompany(Request $request)
+    {
+        $branches = Branch::where('company_id', $request->company_id)->get();
+
+        if ($branches->isEmpty()) {
+            return response()->json(['message' => 'No branches found for this company'], 404);
+        }
+
+        return response()->json(['branches' => $branches]);
+    }
+
+    public function getAgentByBranchCompany(Request $request)
+    {
+        $agents = Agent::where('company_id', $request->company_id)
+            ->where('branch_id', $request->branch_id)
+            ->get();
+
+        if ($agents->isEmpty()) {
+            return response()->json(['message' => 'No agents found for this branch and company'], 404);
+        }
+
+        return response()->json(['agents' => $agents]);
+    }
+
+    public function getSupplierByCompany(Request $request)
+    {
+        // Get all parent account IDs where the name contains "Payable"
+        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+
+        // Retrieve suppliers linked to the selected company and parent accounts
+        $suppliers = Account::where('company_id', $request->company_id)
+            ->whereIn('parent_id', $parentIds)
+            ->whereNotNull('name') // Ensure name exists for suppliers
+            ->get();
+
+        if ($suppliers->isEmpty()) {
+            return response()->json(['message' => 'No suppliers found for this company'], 404);
+        }
+
+        return response()->json(['suppliers' => $suppliers]);
+    }
+
+    public function getAgentClientByCompany(Request $request)
+    {
+        // Get all parent account IDs where the name contains "Receivable"
+        $parentIds = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+
+        // Retrieve agents linked to the selected company and parent accounts
+        $agents = Account::where('company_id', $request->company_id)
+            ->whereIn('parent_id', $parentIds)
+            ->whereNotNull('name') // Ensure name exists for agents
+            ->get();
+
+        if ($agents->isEmpty()) {
+            return response()->json(['message' => 'No client or agents found for this company'], 404);
+        }
+
+        return response()->json(['agents' => $agents]);
+    }
+
+    public function getBankAccountByCompany(Request $request)
+    {
+        $companyId = $request->company_id;
+
+        // Log company ID (optional)
+        \Log::info("Fetching Bank Accounts for Company ID: " . $companyId);
+
+        // Get parent account IDs where the name contains "Bank Accounts" and belongs to the selected company
+        $parentIds = Account::where('name', 'LIKE', '%Bank Accounts%')
+            ->where('company_id', $companyId)
+            ->pluck('id');
+
+        \Log::info("Parent Account IDs: " . json_encode($parentIds));
+
+        // Fetch bank accounts under these parent IDs and the selected company
+        $bankaccounts = Account::whereIn('parent_id', $parentIds)
+            ->where('company_id', $companyId)
+            ->get();
+
+        \Log::info("Retrieved Bank Accounts: " . json_encode($bankaccounts));
+
+        if ($bankaccounts->isEmpty()) {
+            return response()->json(['message' => 'No bank account has been set for this company'], 404);
+        }
+
+        return response()->json(['bankaccounts' => $bankaccounts]);
+    }
+
+
+    public function getInvoicesByJournalEntry(Request $request)
+    {
+
+        // Retrieve general ledger entries for the given company
+        $ledgerEntries = JournalEntry::where('company_id', $request->company_id)
+            ->pluck('invoice_id'); // Get associated invoice IDs
+
+        if ($ledgerEntries->isEmpty()) {
+            return response()->json(['message' => 'No invoice record found for this company'], 404);
+        }
+
+        // Retrieve invoices linked to the general ledger entries
+        $invoices = Invoice::whereIn('id', $ledgerEntries)->get();
+
+        if ($invoices->isEmpty()) {
+            return response()->json(['message' => 'No invoices found for this company'], 404);
+        }
+
+        return response()->json(['invoices' => $invoices]);
+    }
+
+    public function createPayableDetail()
+    {
+        Gate::authorize('viewAny', CoaCategory::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $companies = Company::find($companyId);
+            } else {
+                $companies = Company::all();
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companies = Company::find($user->company->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companies = Company::find($user->accountant->branch->company_id);
+        } else {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $branches = collect();
+        $accounts = collect();
+        $bankAccounts = collect();
+        $JournalEntrysPayable = collect();
+
+        if ($companyId) {
+            $accountsPayable = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->first();
+
+
+            if ($accountsPayable) {
+                $descendantIds = $this->getAllDescendantIds($accountsPayable->id);
+
+                $accounts = Account::where('company_id', $companyId)
+                    ->whereIn('id', $descendantIds)
+                    ->doesntHave('children')
+                    ->orderBy('name')
+                    ->get();
+            }
+
+            $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
+                ->where('company_id', $companyId)
+                ->where('debit', '>', 0)
+                ->with(['invoice', 'referenceAccount'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('type');
+
+            $branches = Branch::where('company_id', $companyId)->get();
+
+            $assets = Account::where('name', 'Assets')->where('company_id', $companyId)->first();
+            if ($assets) {
+                $bankParent = Account::where('parent_id', $assets->id)
+                    ->where('name', 'Bank Accounts')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if ($bankParent) {
+                    $bankAccounts = Account::where('parent_id', $bankParent->id)
+                        ->where('company_id', $companyId)
+                        ->get();
+                }
+            }
+        }
+
+        return view('accounting.payable-create', compact(
+            'companies',
+            'JournalEntrysPayable',
+            'companyId',
+            'branches',
+            'accounts',
+            'bankAccounts'
+        ));
+    }
+
+    /**
+     * Get all descendant account IDs recursively
+     */
+    private function getAllDescendantIds($parentId): array
+    {
+        $ids = [];
+        $children = Account::where('parent_id', $parentId)->pluck('id')->toArray();
+
+        foreach ($children as $childId) {
+            $ids[] = $childId;
+            $ids = array_merge($ids, $this->getAllDescendantIds($childId));
+        }
+
+        return $ids;
+    }
+
+    public function storePayableDetail(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ACCOUNTANT, Role::ADMIN])) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'account_id' => 'required|integer',
+            'branch_id' => 'required|integer',
+            'bank_account' => 'required|integer',
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.001',
+            'type' => 'required|in:payable,expenses',
+        ]);
+
+        $companyId = getCompanyId($user);
+        $amount = $request->amount;
+
+        $bankAccount = Account::find($request->bank_account);
+        if (!$bankAccount) {
+            return redirect()->back()->with('error', 'Bank account not found.');
+        }
+
+        $selectedAccount = Account::find($request->account_id);
+        if (!$selectedAccount) {
+            return redirect()->back()->with('error', 'Account not found.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $prefix = $request->type === 'payable' ? 'PY' : 'EX';
+            $lastTransaction = Transaction::where('company_id', $companyId)
+                ->where('reference_number', 'like', $prefix . '-%')
+                ->orderByDesc('id')
+                ->first();
+
+            $nextNumber = 1;
+            if ($lastTransaction) {
+                $lastNumber = (int) str_replace($prefix . '-', '', $lastTransaction->reference_number);
+                $nextNumber = $lastNumber + 1;
+            }
+            $referenceNumber = $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+            $transaction = Transaction::create([
+                'entity_id' => $companyId,
+                'entity_type' => 'company',
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'transaction_type' => 'debit', // Money going OUT
+                'amount' => $amount,
+                'date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'description' => $request->description,
+                'reference_number' => $referenceNumber,
+                'reference_type' => 'Payment', // Money going OUT
+                'name' => $bankAccount->name,
+                'transaction_date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+            ]);
+
+            $baseData = [
+                'transaction_id' => $transaction->id,
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'transaction_date' => $request->transaction_date,
+                'type' => $request->type,
+                'type_reference_id' => $selectedAccount->id,
+            ];
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $selectedAccount->id,
+                'description' => $request->description . ' (Sent payment from ' . strtoupper($bankAccount->name) . ' to ' . strtoupper($selectedAccount->name) . ')',
+                'name' => $selectedAccount->name,
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => $amount,
+            ]));
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $bankAccount->id,
+                'description' => $request->description . ' (Deducted from ' . strtoupper($bankAccount->name) . ' to ' . strtoupper($selectedAccount->name) . ')',
+                'name' => $bankAccount->name,
+                'debit' => 0,
+                'credit' => $amount,
+                'balance' => 0,
+            ]));
+
+            DB::commit();
+
+            return redirect()->route('payable-details.payable-create')
+                ->with('success', 'Entry added successfully! Reference: ' . $referenceNumber);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Payable Entry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    public function createReceivableDetail()
+    {
+        Gate::authorize('viewAny', CoaCategory::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $companies = Company::find($companyId);
+            } else {
+                $companies = Company::all();
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companies = Company::find($user->company->id);
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companies = Company::find($user->accountant->branch->company_id);
+        } else {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $suppliers = collect();
+        $clients = collect();
+        $branches = collect();
+        $accounts = collect();
+        $agentsClients = collect();
+        $bankAccounts = collect();
+        $invoices = collect();
+        $JournalEntrysReceivable = collect();
+
+        if ($companyId) {
+            $parentIds = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->pluck('id');
+            $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+
+            $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
+                ->where('company_id', $companyId)
+                ->with(['invoice', 'referenceAccount'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('type');
+
+            $parentIdClients = Account::where('name', 'Accounts Receivable')
+                ->where('company_id', $companyId)
+                ->pluck('id');
+            $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+
+            // Load branches
+            $branches = Branch::where('company_id', $companyId)->get();
+
+            $accounts = Account::where('company_id', $companyId)
+                ->whereIn('level', [3, 4, 5])
+                ->get();
+
+            $agents = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
+            $clientsList = Client::where('company_id', $companyId)->get();
+
+            $agentsClients = $agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name, 'type' => 'agent'])
+                ->merge($clientsList->map(fn($c) => [
+                    'id' => $c->id,
+                    'name' => trim($c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name),
+                    'type' => 'client'
+                ]));
+
+            $assets = Account::where('name', 'Assets')->where('company_id', $companyId)->first();
+            $bankAccounts = collect();
+
+            if ($assets) {
+                $bankParent = Account::where('parent_id', $assets->id)
+                    ->where('name', 'Bank Accounts')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if ($bankParent) {
+                    $bankAccounts = Account::where('parent_id', $bankParent->id)
+                        ->where('company_id', $companyId)
+                        ->get();
+                }
+            }
+
+            $invoices = Invoice::whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+                ->with('client')
+                ->latest()
+                ->get();
+        }
+
+        return view('accounting.receivable-create', compact(
+            'companies',
+            'suppliers',
+            'clients',
+            'JournalEntrysReceivable',
+            'companyId',
+            'branches',
+            'accounts',
+            'agentsClients',
+            'bankAccounts',
+            'invoices'
+        ));
+    }
+
+    public function storeReceivableDetail(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ACCOUNTANT, Role::ADMIN])) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'account_id' => 'required|integer',
+            'branch_id' => 'required|integer',
+            'bank_account' => 'required|integer',
+            'invoice_id' => 'nullable|integer',
+            'description' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.001',
+            'type' => 'required|in:receivable,income',
+        ]);
+
+        $companyId = getCompanyId($user);
+        $amount = $request->amount;
+
+        $bankAccount = Account::find($request->bank_account);
+        if (!$bankAccount) {
+            return redirect()->back()->with('error', 'Bank account not found.');
+        }
+
+        $selectedAccount = Account::find($request->account_id);
+        if (!$selectedAccount) {
+            return redirect()->back()->with('error', 'Account not found.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $prefix = $request->type === 'receivable' ? 'RV' : 'IN';
+            $lastTransaction = Transaction::where('company_id', $companyId)
+                ->where('reference_number', 'like', $prefix . '-%')
+                ->orderByDesc('id')
+                ->first();
+
+            $nextNumber = 1;
+            if ($lastTransaction) {
+                $lastNumber = (int) str_replace($prefix . '-', '', $lastTransaction->reference_number);
+                $nextNumber = $lastNumber + 1;
+            }
+            $referenceNumber = $prefix . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+            $transaction = Transaction::create([
+                'entity_id' => $companyId,
+                'entity_type' => 'company',
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'transaction_type' => 'credit',
+                'amount' => $amount,
+                'date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'description' => $request->description,
+                'invoice_id' => $request->invoice_id,
+                'reference_number' => $referenceNumber,
+                'reference_type' => 'Receipt',
+                'name' => $bankAccount->name,
+                'transaction_date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+            ]);
+
+            $baseData = [
+                'transaction_id' => $transaction->id,
+                'company_id' => $companyId,
+                'branch_id' => $request->branch_id,
+                'invoice_id' => $request->invoice_id,
+                'transaction_date' => $request->transaction_date,
+                'type' => $request->type,
+                'type_reference_id' => $selectedAccount->id,
+            ];
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $bankAccount->id,
+                'description' => $request->description . ' (Received to ' . strtoupper($bankAccount->name) . ' from ' . strtoupper($request->name) . ')',
+                'name' => $bankAccount->name,
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => $amount,
+            ]));
+
+            JournalEntry::create(array_merge($baseData, [
+                'account_id' => $selectedAccount->id,
+                'description' => $request->description . ' (Cleared & added to ' . strtoupper($bankAccount->name) . ' from ' . strtoupper($request->name) . ')',
+                'name' => $request->name,
+                'debit' => 0,
+                'credit' => $amount,
+                'balance' => 0,
+            ]));
+
+            DB::commit();
+
+            return redirect()->route('receivable-details.receivable-create')
+                ->with('success', 'Entry added successfully! Reference: ' . $referenceNumber);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Receivable Entry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    public function createBankPayment()
+    {
+        $user = Auth::user();
+
+        if ($user->role_id != Role::ADMIN) {
+            if ($user->role_id != Role::COMPANY) {
+                return abort(403, 'Unauthorized action.');
+            } else {
+                $companies = Company::where('user_id', $user->id)->get();
+            }
+        } else {
+            $companies = Company::all();
+        }
+
+        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
+        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+
+        $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
+            ->orderByDesc('created_at')  // Sort by date in descending order
+            ->get()
+            ->groupBy('type');
+
+        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
+        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+
+        return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
+    }
+
+    public function storeBankPayment(Request $request)
+    {
+        $user = Auth::user();
+
+        if ($user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'account_id' => 'required|integer',
+            'branch_id' => 'required|integer',
+            'transaction_id' => 'nullable|integer',
+            'description' => 'required|string|max:255',
+            'debit' => 'nullable|numeric',
+            'credit' => 'nullable|numeric',
+            'balance' => 'nullable|numeric',
+            'invoice_id' => 'nullable|integer',
+            'voucher_number' => 'nullable|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'type' => 'required|string|max:255',
+            'invoice_detail_id' => 'nullable|integer',
+            'type_reference_id' => 'nullable|integer',
+        ]);
+
+        $encryptionService = new EncryptionService();
+        $type_reference_number = $encryptionService->generateEncryptedNumber();
+
+        $validated['type_reference_id'] = $type_reference_number;
+
+        //Account
+        if ($user->role_id === 1) {
+            $validated['company_id'] = 'required|integer';
+        } else {
+            $validated['company_id'] = $user->company->id;
+        }
+        $accountName = Account::find($request->account_id);
+        $bankaccountId = Account::find($request->bank_account);
+        $bankaccountName = $bankaccountId->name;
+
+        //Account_From (company_bank)
+        if ($user->role_id === 1) {
+            $companyName = Company::find($request->company_id)?->name;
+        } else {
+            $companyName = Company::find($user->company->id)?->name;
+        }
+
+        if ($request->has('amount')) {
+            $validated['debit'] = $request->amount;
+            $validated['credit'] = "0.00";
+            $validated['balance'] = $request->amount;
+        }
+        $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['name'] = $companyName;
+        JournalEntry::create($validated);
+
+        //update actual_balance 
+        Account::where('id', $request->bank_account)
+            ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
+
+
+        //Account_To (supplier_name)
+        if ($request->has('amount')) {
+            $validated['debit'] = "0.00";
+            $validated['credit'] = $request->amount;
+            $validated['balance'] = "0.00";
+        }
+
+        $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['name'] = $accountName->name;
+        JournalEntry::create($validated);
+
+        //update actual_balance 
+        Account::where('id', $request->bank_account)
+            ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+
+        return redirect()->route('bank-payment.create')
+            ->with('success', 'Entry added successfully!');
+    }
+}

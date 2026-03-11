@@ -1,0 +1,22 @@
+{
+    "document_type": "ocr",
+    "extraction_status": "success",
+    "extracted_data": {
+        "raw_text": "Booking Confirmation\nConfirmation Number: BK-123456\nPassenger: Jane Doe\nEmail: jane.doe@email.com\nDeparture: New York JFK\nArrival: Paris CDG\nDate: March 15, 2025\nTime: 14:30\nClass: Business\nPrice: $2450.00",
+        "structured_data": {
+            "confirmation_number": "BK-123456",
+            "passenger_name": "Jane Doe",
+            "email": "jane.doe@email.com",
+            "origin": "New York JFK",
+            "destination": "Paris CDG",
+            "travel_date": "2025-03-15",
+            "travel_time": "14:30",
+            "cabin_class": "Business",
+            "amount": 2450.00,
+            "currency": "USD"
+        }
+    },
+    "confidence_score": 0.95,
+    "language_detected": "en",
+    "processing_time_ms": 1560
+}

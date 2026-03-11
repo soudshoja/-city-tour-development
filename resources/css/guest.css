@@ -1,0 +1,140 @@
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/** body **/
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-size: clamp(13px, 1vw, 16px);
+    line-height: 1.2;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden; /* Prevent horizontal overflow */
+    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+}
+
+html.light,
+body.light {
+    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
+    color: #000000;
+}
+
+html.dark,
+body.dark {
+    background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
+    color: #ffffff !important;
+}
+/* Tooltip container */
+[data-tooltip] {
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
+}
+
+/* Tooltip text style */
+[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    /* transform: translateX(-50%); */
+    background-color: #0e1726;
+    left: 100%;
+    margin-left: 10px;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999; /* Ensure the tooltip is on top */
+}
+
+[data-tooltip-left]{
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
+}
+
+[data-tooltip-left]::before {
+    content: attr(data-tooltip-left);
+    /* content: 'test'; */
+    position: absolute;
+    background-color: #0e1726;
+    right: 100%;
+    margin-right: 10px;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999; /* Ensure the tooltip is on top */
+}
+
+[data-tooltip-left]:hover::before,
+[data-tooltip-left]:focus::before 
+{
+    opacity: 1;
+}
+
+/* Tooltip arrow */
+/* [data-tooltip]::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999; // Ensure the tooltip is on top 
+} */
+/* Show tooltip on hover */
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
+/* Dark mode tooltip */
+html.dark [data-tooltip]::before {
+    background-color: #0e1726; /* Fixed solid dark background */
+    color: #fff;
+}
+
+html.dark [data-tooltip]::after {
+    border-color: #0e1726 transparent transparent transparent; /* Matches tooltip background */
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+/**** mobile classes ****/
+
+@media screen and (max-width: 426px) and (min-width: 319px) {
+    .hide-on-mobile {
+        display: none !important;
+    }
+
+    .padding-mobile {
+        padding: 15px 0px !important;
+    }
+}
+
+@media screen and (max-width: 426px) and (min-width: 319px) {
+    input {
+        font-size: 12px !important;
+    }
+}

@@ -939,3 +939,4 @@ Route::middleware(['auth', 'dotw_audit_access'])
     });
 
 require __DIR__.'/auth.php';
+require __DIR__.'/resailai-admin.php';

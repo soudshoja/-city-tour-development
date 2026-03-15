@@ -163,8 +163,8 @@
                             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                                 @foreach($rows as $row)
                                 @php
-                                $task = \App\Models\Task::find($row->task_id ?? null);
-                                $payment = \App\Models\Payment::find($row->payment_id ?? null);
+                                $task = $row->task;
+                                $payment = $row->payment;
                                 @endphp
                                 <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
                                     <td class="px-5 py-2.5 text-gray-400 dark:text-gray-500 font-mono text-xs">#{{ $row->row_number }}</td>

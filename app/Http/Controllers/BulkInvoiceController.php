@@ -345,7 +345,7 @@ class BulkInvoiceController extends Controller
         $bulkUpload = BulkUpload::where('id', $id)
             ->where('company_id', $companyId)
             ->where('status', 'validated')
-            ->with(['rows.client'])
+            ->with(['rows.client', 'rows.task', 'rows.payment'])
             ->firstOrFail();
 
         // Separate valid rows from flagged rows
@@ -476,7 +476,7 @@ class BulkInvoiceController extends Controller
         $invoices = collect([]);
         if ($bulkUpload->status === 'completed' && ! empty($bulkUpload->invoice_ids)) {
             $invoices = Invoice::whereIn('id', $bulkUpload->invoice_ids)
-                ->with('client')
+                ->with(['client', 'agent.branch'])
                 ->get();
         }
 

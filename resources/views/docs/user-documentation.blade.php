@@ -1405,6 +1405,80 @@
                     <p class="text-gray-600 dark:text-gray-400 mb-4">
                         Navigate to <strong>Finances &rarr; Accounting Summary</strong> to view a company-wide financial overview with totals for each account category (Assets, Liabilities, Revenue, Expenses). Use this to get a quick snapshot of your company's financial health.
                     </p>
+
+                    <h3 class="text-lg font-semibold mb-3 mt-6">Receivable Details</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        The <strong>Receivable Details</strong> page is used to record money received from agents or clients. Navigate to <strong>Finances &rarr; Receivable</strong>. The page has a <strong>two-column layout</strong>: the left side shows all existing receivable and income transactions, and the right side has the form to add a new record.
+                    </p>
+                    <h4 class="font-semibold text-sm mb-2">How to Add a Receivable Record</h4>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">1</span>
+                        <p class="text-sm">Select the <strong>Branch</strong> and <strong>Account Name</strong> (from your Chart of Accounts under Accounts Receivable).</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">2</span>
+                        <p class="text-sm">Select the <strong>Agent/Client Name</strong> who made the payment, and the <strong>Company's Bank Account</strong> where the money was deposited.</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">3</span>
+                        <p class="text-sm">Optionally link to an <strong>Invoice Number</strong> if this payment is for a specific invoice.</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">4</span>
+                        <p class="text-sm">Set the <strong>Transaction Date</strong>, enter a <strong>Description</strong>, and the <strong>Amount</strong>.</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-4">
+                        <span class="step-number">5</span>
+                        <p class="text-sm">Choose the <strong>Type</strong>: <strong>Receivable</strong> (money owed by client) or <strong>Income</strong> (general income). Click <strong>"Submit"</strong>. The system generates a reference number (RV-xxxxxx for Receivable, IN-xxxxxx for Income) and creates the journal entries automatically.</p>
+                    </div>
+                    <div class="doc-gif-wrap mb-6"><span class="gif-badge">GIF</span><img src="{{ asset('docs/gifs/receivable-details.gif') }}" alt="Receivable Details" class="doc-gif"></div>
+
+                    <h3 class="text-lg font-semibold mb-3">Payable Details</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        The <strong>Payable Details</strong> page is used to record money paid out to suppliers or for expenses. Navigate to <strong>Finances &rarr; Payable</strong>. Like Receivable, it has a <strong>two-column layout</strong>: the left side lists existing payable and expense transactions, and the right side has the form to add a new record.
+                    </p>
+                    <h4 class="font-semibold text-sm mb-2">How to Add a Payable Record</h4>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">1</span>
+                        <p class="text-sm">Select the <strong>Branch</strong> and <strong>Supplier Account</strong> (from your Chart of Accounts under Accounts Payable).</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">2</span>
+                        <p class="text-sm">Select the <strong>Bank Account</strong> the payment will be deducted from.</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-2">
+                        <span class="step-number">3</span>
+                        <p class="text-sm">Set the <strong>Transaction Date</strong>, enter a <strong>Description</strong>, and the <strong>Amount</strong>.</p>
+                    </div>
+                    <div class="flex items-start gap-3 mb-4">
+                        <span class="step-number">4</span>
+                        <p class="text-sm">Choose the <strong>Type</strong>: <strong>Payable</strong> (money owed to supplier) or <strong>Expenses</strong> (general expense). Click <strong>"Submit"</strong>. The system generates a reference number (PY-xxxxxx for Payable, EX-xxxxxx for Expenses) and creates the journal entries automatically.</p>
+                    </div>
+                    <div class="doc-gif-wrap mb-6"><span class="gif-badge">GIF</span><img src="{{ asset('docs/gifs/payable-details.gif') }}" alt="Payable Details" class="doc-gif"></div>
+
+                    <h3 class="text-lg font-semibold mb-3">Lock Management</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        <strong>Lock Management</strong> lets you lock financial records (invoices) to prevent modifications after a period is closed. Once locked, records cannot be edited or deleted until unlocked. Navigate to <strong>Finances &rarr; Lock Management</strong>.
+                    </p>
+                    <p class="text-gray-600 dark:text-gray-400 mb-3">
+                        The page shows a dashboard with stats (total records, locked count, unlocked count, percentage locked) and a <strong>monthly breakdown</strong> where you can lock or unlock records month by month.
+                    </p>
+
+                    <h4 class="font-semibold text-sm mb-2">Locking Records</h4>
+                    <p class="text-gray-600 dark:text-gray-400 mb-3">There are two ways to lock records:</p>
+                    <ul class="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1 mb-4">
+                        <li><strong>Lock by Month</strong> &mdash; Click the <strong>lock button</strong> on a month card to lock all unlocked records for that month. The card shows a progress bar and a "Closed" badge when 100% locked.</li>
+                        <li><strong>Bulk Lock by Date</strong> &mdash; Click <strong>"Bulk lock by date"</strong> to lock records across a date range. Select the from/to dates, choose which record types to lock (Invoices), and filter by status (Paid, Unpaid, Partial).</li>
+                    </ul>
+
+                    <h4 class="font-semibold text-sm mb-2">Unlocking Records</h4>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        To unlock records, click the <strong>unlock button</strong> on a month card. You must provide a <strong>reason for unlocking</strong> &mdash; this is required and logged in the system for audit purposes. Only unlock when necessary, such as correcting an error in a closed period.
+                    </p>
+                    <div class="warn-box mb-4">
+                        <p class="text-sm"><i class="fas fa-exclamation-triangle mr-1"></i> <strong>Locking is recommended</strong> after each month-end to protect your financial records from accidental changes. Once a period is closed and verified, lock it to maintain data integrity.</p>
+                    </div>
+                    <div class="doc-gif-wrap mb-4"><span class="gif-badge">GIF</span><img src="{{ asset('docs/gifs/lock-management.gif') }}" alt="Lock Management" class="doc-gif"></div>
                 </section>
                 @endcan
 
@@ -1767,7 +1841,7 @@
                     { id: 'reminders', title: 'Reminders', keywords: 'reminder overdue due date follow up' },
                     { id: 'outstanding', title: 'Outstanding Payments', keywords: 'outstanding unpaid balance pending' },
                     { id: 'auto-billing', title: 'Auto Billing', keywords: 'auto billing automatic invoice' },
-                    { id: 'accounting', title: 'Accounting', keywords: 'coa chart accounts voucher receipt payment journal' },
+                    { id: 'accounting', title: 'Accounting', keywords: 'coa chart accounts voucher receipt payment journal receivable payable lock management' },
                     { id: 'currency-exchange', title: 'Currency Exchange', keywords: 'currency exchange rate foreign' },
                     { id: 'reports', title: 'Reports', keywords: 'report sales profit agent financial commission' },
                     { id: 'faq', title: 'FAQ', keywords: 'faq question help' },

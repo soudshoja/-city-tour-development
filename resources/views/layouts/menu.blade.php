@@ -308,7 +308,7 @@
             </menuitem>
             @endcan
             <menuitem>
-            <a href="#"
+            <a href="{{ route('docs.user-documentation') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a>
             </menuitem>
             <menuitem>

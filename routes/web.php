@@ -891,6 +891,9 @@ Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhoo
 Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');
+Route::get('/docs/user', function () {
+    return view('docs.user-documentation');
+})->name('docs.user-documentation');
 Route::get('/docs/postman/download', function () {
     $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
     if (!file_exists($filePath)) {

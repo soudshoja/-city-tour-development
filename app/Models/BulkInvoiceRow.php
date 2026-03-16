@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * BulkUploadRow Model
+ * BulkInvoiceRow Model
  *
- * Represents a single row from a bulk invoice upload with validation status and matched entities.
+ * Represents a single row from a bulk invoice with validation status and matched entities.
  */
-class BulkUploadRow extends Model
+class BulkInvoiceRow extends Model
 {
     use HasFactory;
 
@@ -20,7 +20,7 @@ class BulkUploadRow extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'bulk_upload_id',
+        'bulk_invoice_id',
         'row_number',
         'status',
         'task_id',
@@ -45,11 +45,11 @@ class BulkUploadRow extends Model
     ];
 
     /**
-     * Get the bulk upload that owns the row.
+     * Get the bulk invoice that owns the row.
      */
-    public function bulkUpload()
+    public function bulkInvoice()
     {
-        return $this->belongsTo(BulkUpload::class);
+        return $this->belongsTo(BulkInvoice::class);
     }
 
     /**

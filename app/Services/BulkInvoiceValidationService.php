@@ -11,12 +11,12 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Bulk Upload Validation Service
+ * Bulk Invoice Validation Service
  *
- * Validates Excel upload data for bulk invoice creation.
+ * Validates Excel data for bulk invoice creation.
  * Checks headers, row data, task/client/supplier existence, and business rules.
  */
-class BulkUploadValidationService
+class BulkInvoiceValidationService
 {
     /**
      * Expected headers in Excel template
@@ -132,9 +132,9 @@ class BulkUploadValidationService
         $payment = null;
 
         // Log the row being validated
-        Log::info("[BULK UPLOAD] Validating row {$rowNumber}", [
+        Log::info("[BULK INVOICE] Validating row {$rowNumber}", [
             'company_id' => $companyId,
-            'row_data' => $row,
+            'row_number' => $rowNumber,
         ]);
 
         // 1. Validate invoice_date (required)
@@ -167,7 +167,7 @@ class BulkUploadValidationService
             $matchingClients = $clientsQuery->get();
 
             if ($matchingClients->count() === 0) {
-                Log::warning("[BULK UPLOAD] Client not found", [
+                Log::warning("[BULK INVOICE] Client not found", [
                     'row' => $rowNumber,
                     'client_mobile' => $row['client_mobile'],
                     'company_id' => $companyId,
@@ -196,7 +196,7 @@ class BulkUploadValidationService
             }
 
             if ($matched['client_id']) {
-                Log::info("[BULK UPLOAD] Client found", [
+                Log::info("[BULK INVOICE] Client found", [
                     'row' => $rowNumber,
                     'client_id' => $client->id,
                     'client_name' => $client->full_name ?? 'N/A',
@@ -231,7 +231,7 @@ class BulkUploadValidationService
 
             $task = $matchingTasks->first();
 
-            Log::info("[BULK UPLOAD] Task search", [
+            Log::info("[BULK INVOICE] Task search", [
                 'row' => $rowNumber,
                 'search_value' => $ref,
                 'company_id' => $companyId,
@@ -242,7 +242,7 @@ class BulkUploadValidationService
             ]);
 
             if ($matchingTasks->count() === 0) {
-                Log::warning("[BULK UPLOAD] Task not found", [
+                Log::warning("[BULK INVOICE] Task not found", [
                     'row' => $rowNumber,
                     'task_reference' => $row['task_reference'],
                     'task_status' => $row['task_status'] ?? null,
@@ -263,7 +263,7 @@ class BulkUploadValidationService
                 $errorMsg .= " (IDs: {$taskIds})";
                 $errors[] = $errorMsg;
             } else {
-                Log::info("[BULK UPLOAD] Task found", [
+                Log::info("[BULK INVOICE] Task found", [
                     'row' => $rowNumber,
                     'task_id' => $task->id,
                     'task_reference' => $task->reference,
@@ -313,7 +313,7 @@ class BulkUploadValidationService
         }
 
         // 5. Validate selling_price (required numeric)
-        if (empty($row['selling_price']) && $row['selling_price'] !== '0') {
+        if (empty($row['selling_price']) && $row['selling_price'] !== '0' && $row['selling_price'] !== 0) {
             $errors[] = "Row {$rowNumber}: selling_price is required";
         } elseif (! is_numeric($row['selling_price'])) {
             $errors[] = "Row {$rowNumber}: selling_price \"{$row['selling_price']}\" must be a number";
@@ -344,14 +344,14 @@ class BulkUploadValidationService
             $payment = $paymentQuery->first();
 
             if (! $payment) {
-                Log::warning("[BULK UPLOAD] Payment not found", [
+                Log::warning("[BULK INVOICE] Payment not found", [
                     'row' => $rowNumber,
                     'payment_reference' => $row['payment_reference'],
                     'company_id' => $companyId,
                 ]);
                 $errors[] = "Row {$rowNumber}: payment_reference \"{$row['payment_reference']}\" not found";
             } else {
-                Log::info("[BULK UPLOAD] Payment found", [
+                Log::info("[BULK INVOICE] Payment found", [
                     'row' => $rowNumber,
                     'payment_id' => $payment->id,
                     'voucher_number' => $payment->voucher_number ?? 'N/A',
@@ -390,7 +390,7 @@ class BulkUploadValidationService
             $status = 'flagged';
         }
 
-        Log::info("[BULK UPLOAD] Row validation result", [
+        Log::info("[BULK INVOICE] Row validation result", [
             'row' => $rowNumber,
             'status' => $status,
             'errors_count' => count($errors),

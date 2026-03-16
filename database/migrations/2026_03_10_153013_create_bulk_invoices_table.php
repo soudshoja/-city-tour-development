@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('bulk_uploads', function (Blueprint $table) {
+        Schema::create('bulk_invoices', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('agent_id');
@@ -39,6 +39,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('bulk_uploads');
+        Schema::dropIfExists('bulk_invoices');
     }
 };

@@ -17,7 +17,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h1 class="text-lg font-bold text-white">Preview Bulk Upload</h1>
+                            <h1 class="text-lg font-bold text-white">Preview Bulk Invoice</h1>
                             <p class="text-violet-100 text-xs">Review your data before creating invoices</p>
                         </div>
                     </div>
@@ -55,26 +55,26 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $bulkUpload->original_filename }}</h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Uploaded {{ $bulkUpload->created_at->diffForHumans() }}</p>
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $bulkInvoice->original_filename }}</h3>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Uploaded {{ $bulkInvoice->created_at->diffForHumans() }}</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-5 gap-3">
                     <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl px-4 py-3 text-center">
-                        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $bulkUpload->total_rows }}</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $bulkInvoice->total_rows }}</p>
                         <p class="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-0.5">Total Rows</p>
                     </div>
                     <div class="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 text-center ring-1 ring-green-100 dark:ring-green-800/40">
-                        <p class="text-xl font-bold text-green-600 dark:text-green-400">{{ $bulkUpload->valid_rows }}</p>
+                        <p class="text-xl font-bold text-green-600 dark:text-green-400">{{ $bulkInvoice->valid_rows }}</p>
                         <p class="text-[10px] font-medium text-green-600 dark:text-green-400 uppercase tracking-wider mt-0.5">Valid</p>
                     </div>
                     <div class="bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 text-center ring-1 ring-red-100 dark:ring-red-800/40">
-                        <p class="text-xl font-bold text-red-500 dark:text-red-400">{{ $bulkUpload->error_rows }}</p>
+                        <p class="text-xl font-bold text-red-500 dark:text-red-400">{{ $bulkInvoice->error_rows }}</p>
                         <p class="text-[10px] font-medium text-red-500 dark:text-red-400 uppercase tracking-wider mt-0.5">Errors</p>
                     </div>
                     <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl px-4 py-3 text-center ring-1 ring-amber-100 dark:ring-amber-800/40">
-                        <p class="text-xl font-bold text-amber-500 dark:text-amber-400">{{ $bulkUpload->flagged_rows }}</p>
+                        <p class="text-xl font-bold text-amber-500 dark:text-amber-400">{{ $bulkInvoice->flagged_rows }}</p>
                         <p class="text-[10px] font-medium text-amber-500 dark:text-amber-400 uppercase tracking-wider mt-0.5">Flagged</p>
                     </div>
                     <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl px-4 py-3 text-center ring-1 ring-blue-100 dark:ring-blue-800/40">
@@ -83,13 +83,13 @@
                     </div>
                 </div>
 
-                @if($bulkUpload->error_rows > 0)
-                <a href="{{ route('bulk-invoices.error-report', $bulkUpload->id) }}"
+                @if($bulkInvoice->error_rows > 0)
+                <a href="{{ route('bulk-invoices.error-report', $bulkInvoice->id) }}"
                     class="mt-4 flex items-center gap-2.5 px-4 py-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 font-medium transition-colors">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Download Error Report ({{ $bulkUpload->error_rows }} {{ Str::plural('error', $bulkUpload->error_rows) }})
+                    Download Error Report ({{ $bulkInvoice->error_rows }} {{ Str::plural('error', $bulkInvoice->error_rows) }})
                 </a>
                 @endif
             </div>
@@ -314,7 +314,7 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-1">
                         This will create <strong class="text-gray-900 dark:text-white">{{ count($invoiceGroups) }} invoice(s)</strong> for
                         <strong class="text-gray-900 dark:text-white">{{ $clientCount }} client(s)</strong> from
-                        <strong class="text-gray-900 dark:text-white">{{ $bulkUpload->valid_rows }} task(s)</strong>.
+                        <strong class="text-gray-900 dark:text-white">{{ $bulkInvoice->valid_rows }} task(s)</strong>.
                     </p>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 text-center">This action cannot be undone.</p>
                     @if($flaggedRows->isNotEmpty())
@@ -325,7 +325,7 @@
                 </div>
                 <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 flex gap-3 justify-end">
                     <button @click="showApproveModal = false" class="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition">Cancel</button>
-                    <form method="POST" action="{{ route('bulk-invoices.approve', $bulkUpload->id) }}">
+                    <form method="POST" action="{{ route('bulk-invoices.approve', $bulkInvoice->id) }}">
                         @csrf
                         <button type="submit" class="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl shadow-sm transition">Confirm Approval</button>
                     </form>
@@ -360,11 +360,11 @@
                     </div>
                     <h3 class="text-lg font-bold text-center text-gray-900 dark:text-white mb-2">Reject Upload</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-2">This will discard the upload. No invoices will be created.</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 text-center font-mono">{{ $bulkUpload->original_filename }}</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 text-center font-mono">{{ $bulkInvoice->original_filename }}</p>
                 </div>
                 <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 flex gap-3 justify-end">
                     <button @click="showRejectModal = false" class="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition">Cancel</button>
-                    <form method="POST" action="{{ route('bulk-invoices.reject', $bulkUpload->id) }}">
+                    <form method="POST" action="{{ route('bulk-invoices.reject', $bulkInvoice->id) }}">
                         @csrf
                         <button type="submit" class="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl shadow-sm transition">Reject Upload</button>
                     </form>

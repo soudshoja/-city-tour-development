@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * BulkUpload Model
+ * BulkInvoice Model
  *
- * Tracks bulk invoice upload sessions including validation status and row counts.
+ * Tracks bulk invoice sessions including validation status and row counts.
  */
-class BulkUpload extends Model
+class BulkInvoice extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -51,7 +51,7 @@ class BulkUpload extends Model
     ];
 
     /**
-     * Get the company that owns the bulk upload.
+     * Get the company that owns the bulk invoice.
      */
     public function company()
     {
@@ -59,7 +59,7 @@ class BulkUpload extends Model
     }
 
     /**
-     * Get the agent that created the bulk upload.
+     * Get the agent that created the bulk invoice.
      */
     public function agent()
     {
@@ -67,7 +67,7 @@ class BulkUpload extends Model
     }
 
     /**
-     * Get the user that created the bulk upload.
+     * Get the user that created the bulk invoice.
      */
     public function user()
     {
@@ -75,11 +75,11 @@ class BulkUpload extends Model
     }
 
     /**
-     * Get the rows for the bulk upload.
+     * Get the rows for the bulk invoice.
      */
     public function rows()
     {
-        return $this->hasMany(BulkUploadRow::class);
+        return $this->hasMany(BulkInvoiceRow::class);
     }
 
     /**

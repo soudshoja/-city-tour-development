@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\BulkUpload;
+use App\Models\BulkInvoice;
 use App\Models\Task;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -15,20 +15,20 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * BulkUploadErrorReportExport
+ * BulkInvoiceErrorReportExport
  *
- * Exports validation errors and flagged rows from a bulk upload.
+ * Exports validation errors and flagged rows from a bulk invoice.
  * Three-section layout: Upload Data | Matched Results | Issues, separated by visual dividers.
  */
-class BulkUploadErrorReportExport implements FromArray, WithEvents, WithHeadings, WithStyles
+class BulkInvoiceErrorReportExport implements FromArray, WithEvents, WithHeadings, WithStyles
 {
-    protected BulkUpload $bulkUpload;
+    protected BulkInvoice $bulkInvoice;
 
     protected int $dataRowCount = 0;
 
-    public function __construct(BulkUpload $bulkUpload)
+    public function __construct(BulkInvoice $bulkInvoice)
     {
-        $this->bulkUpload = $bulkUpload;
+        $this->bulkInvoice = $bulkInvoice;
     }
 
     /**
@@ -63,11 +63,11 @@ class BulkUploadErrorReportExport implements FromArray, WithEvents, WithHeadings
     }
 
     /**
-     * Build data rows from error + flagged BulkUploadRows.
+     * Build data rows from error + flagged BulkInvoiceRows.
      */
     public function array(): array
     {
-        $rows = $this->bulkUpload->rows()
+        $rows = $this->bulkInvoice->rows()
             ->whereIn('status', ['error', 'flagged'])
             ->orderBy('row_number')
             ->get();
@@ -160,14 +160,14 @@ class BulkUploadErrorReportExport implements FromArray, WithEvents, WithHeadings
         $data[] = array_fill(0, 17, '');
 
         // Summary section
-        $errorCount = $this->bulkUpload->error_rows;
-        $flaggedCount = $this->bulkUpload->flagged_rows;
-        $validCount = $this->bulkUpload->valid_rows;
-        $totalCount = $this->bulkUpload->total_rows;
+        $errorCount = $this->bulkInvoice->error_rows;
+        $flaggedCount = $this->bulkInvoice->flagged_rows;
+        $validCount = $this->bulkInvoice->valid_rows;
+        $totalCount = $this->bulkInvoice->total_rows;
 
         $data[] = ['REPORT SUMMARY', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         $data[] = ['', 'Total Rows', $totalCount, '', 'Valid', $validCount, '', 'Errors', $errorCount, '', 'Flagged', $flaggedCount, '', '', '', '', ''];
-        $data[] = ['', 'File', $this->bulkUpload->original_filename, '', 'Uploaded', $this->bulkUpload->created_at?->format('d M Y, H:i'), '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['', 'File', $this->bulkInvoice->original_filename, '', 'Uploaded', $this->bulkInvoice->created_at?->format('d M Y, H:i'), '', '', '', '', '', '', '', '', '', '', ''];
 
         return $data;
     }

@@ -2,7 +2,7 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
 
-            @if($bulkUpload->status === 'completed')
+            @if($bulkInvoice->status === 'completed')
             <div class="bg-gradient-to-r from-green-500 to-emerald-600 px-6 sm:px-8 py-5 relative overflow-hidden">
                 <div class="absolute inset-0 opacity-10">
                     <svg class="w-full h-full" viewBox="0 0 400 200" fill="none">
@@ -18,11 +18,11 @@
                     </div>
                     <div>
                         <h1 class="text-lg font-bold text-white">Invoices Created Successfully</h1>
-                        <p class="text-green-100 text-xs">{{ $bulkUpload->original_filename }}</p>
+                        <p class="text-green-100 text-xs">{{ $bulkInvoice->original_filename }}</p>
                     </div>
                 </div>
             </div>
-            @elseif($bulkUpload->status === 'failed')
+            @elseif($bulkInvoice->status === 'failed')
             <div class="bg-gradient-to-r from-red-500 to-rose-600 px-6 sm:px-8 py-5 relative overflow-hidden">
                 <div class="absolute inset-0 opacity-10">
                     <svg class="w-full h-full" viewBox="0 0 400 200" fill="none">
@@ -38,11 +38,11 @@
                     </div>
                     <div>
                         <h1 class="text-lg font-bold text-white">Invoice Creation Failed</h1>
-                        <p class="text-red-100 text-xs">{{ $bulkUpload->original_filename }}</p>
+                        <p class="text-red-100 text-xs">{{ $bulkInvoice->original_filename }}</p>
                     </div>
                 </div>
             </div>
-            @elseif($bulkUpload->status === 'processing')
+            @elseif($bulkInvoice->status === 'processing')
             <div class="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 sm:px-8 py-5 relative overflow-hidden">
                 <div class="absolute inset-0 opacity-10">
                     <svg class="w-full h-full" viewBox="0 0 400 200" fill="none">
@@ -67,11 +67,11 @@
 
             <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100 dark:divide-gray-700 border-b border-gray-100 dark:border-gray-700">
                 <div class="px-6 py-5 text-center">
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $bulkUpload->total_rows }}</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $bulkInvoice->total_rows }}</p>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider font-medium">Total Rows</p>
                 </div>
                 <div class="px-6 py-5 text-center">
-                    <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $bulkUpload->valid_rows }}</p>
+                    <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $bulkInvoice->valid_rows }}</p>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider font-medium">Valid</p>
                 </div>
                 <div class="px-6 py-5 text-center">
@@ -85,7 +85,7 @@
             </div>
 
             <div class="p-6 sm:p-8">
-                @if($bulkUpload->status === 'failed')
+                @if($bulkInvoice->status === 'failed')
                 <div class="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 rounded-xl p-5 mb-6">
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-800/40 flex items-center justify-center shrink-0 mt-0.5">
@@ -95,8 +95,8 @@
                         </div>
                         <div class="min-w-0">
                             <p class="font-semibold text-red-800 dark:text-red-300 text-sm">Error Details</p>
-                            @if(is_array($bulkUpload->error_summary) && isset($bulkUpload->error_summary['job_failure']))
-                            <p class="text-sm text-red-600 dark:text-red-400 mt-1 break-words">{{ $bulkUpload->error_summary['job_failure'] }}</p>
+                            @if(is_array($bulkInvoice->error_summary) && isset($bulkInvoice->error_summary['job_failure']))
+                            <p class="text-sm text-red-600 dark:text-red-400 mt-1 break-words">{{ $bulkInvoice->error_summary['job_failure'] }}</p>
                             @endif
                             <p class="text-xs text-red-400 dark:text-red-500 mt-3">Please contact support or try uploading the file again.</p>
                         </div>
@@ -104,7 +104,7 @@
                 </div>
                 @endif
 
-                @if($bulkUpload->status === 'processing')
+                @if($bulkInvoice->status === 'processing')
                 <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl p-5 mb-6" id="processing-alert">
                     <div class="flex items-center gap-3">
                         <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@
                 <script>
                     (function() {
                         const MAX_REFRESHES = 12;
-                        const KEY = 'bulk_refresh_{{ $bulkUpload->id }}';
+                        const KEY = 'bulk_refresh_{{ $bulkInvoice->id }}';
                         let refreshCount = parseInt(sessionStorage.getItem(KEY) || '0');
                         const alertEl = document.getElementById('processing-alert');
 
@@ -162,7 +162,7 @@
                     <div class="space-y-3">
                         @foreach($invoices as $invoice)
                         @php
-                        $companyId = $invoice->agent->branch->company_id ?? $bulkUpload->company_id;
+                        $companyId = $invoice->agent->branch->company_id ?? $bulkInvoice->company_id;
                         @endphp
                         <div class="group border border-gray-100 dark:border-gray-700 rounded-xl p-4 hover:border-blue-200 dark:hover:border-blue-700 hover:shadow-sm transition-all bg-white dark:bg-gray-800/50">
                             <div class="flex items-center justify-between">
@@ -212,21 +212,21 @@
                 </div>
 
                 <script>
-                    sessionStorage.removeItem('bulk_refresh_{{ $bulkUpload->id }}');
+                    sessionStorage.removeItem('bulk_refresh_{{ $bulkInvoice->id }}');
                 </script>
                 @endif
 
-                @if($bulkUpload->error_rows > 0 || $bulkUpload->flagged_rows > 0)
+                @if($bulkInvoice->error_rows > 0 || $bulkInvoice->flagged_rows > 0)
                 <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl px-4 py-3 mb-6">
                     <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        @if($bulkUpload->error_rows > 0)
-                        <span class="font-medium text-red-600 dark:text-red-400">{{ $bulkUpload->error_rows }}</span> error row(s) skipped{{ $bulkUpload->flagged_rows > 0 ? ',' : '.' }}
+                        @if($bulkInvoice->error_rows > 0)
+                        <span class="font-medium text-red-600 dark:text-red-400">{{ $bulkInvoice->error_rows }}</span> error row(s) skipped{{ $bulkInvoice->flagged_rows > 0 ? ',' : '.' }}
                         @endif
-                        @if($bulkUpload->flagged_rows > 0)
-                        <span class="font-medium text-amber-600 dark:text-amber-400">{{ $bulkUpload->flagged_rows }}</span> flagged row(s) skipped.
+                        @if($bulkInvoice->flagged_rows > 0)
+                        <span class="font-medium text-amber-600 dark:text-amber-400">{{ $bulkInvoice->flagged_rows }}</span> flagged row(s) skipped.
                         @endif
                     </p>
                 </div>
@@ -236,24 +236,24 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                         <div>
                             <p class="text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">Upload ID</p>
-                            <p class="text-gray-700 dark:text-gray-300 mt-1 font-mono">#{{ $bulkUpload->id }}</p>
+                            <p class="text-gray-700 dark:text-gray-300 mt-1 font-mono">#{{ $bulkInvoice->id }}</p>
                         </div>
                         <div>
                             <p class="text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">Uploaded</p>
-                            <p class="text-gray-700 dark:text-gray-300 mt-1">{{ $bulkUpload->created_at->format('d M Y, H:i') }}</p>
+                            <p class="text-gray-700 dark:text-gray-300 mt-1">{{ $bulkInvoice->created_at->format('d M Y, H:i') }}</p>
                         </div>
                         <div>
                             <p class="text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">Status</p>
                             <p class="mt-1">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium
-                                    {{ $bulkUpload->status === 'completed' ? 'bg-green-50 dark:bg-green-800/30 text-green-700 dark:text-green-400' : ($bulkUpload->status === 'failed' ? 'bg-red-50 dark:bg-red-800/30 text-red-700 dark:text-red-400' : 'bg-blue-50 dark:bg-blue-800/30 text-blue-700 dark:text-blue-400') }}">
-                                    {{ ucfirst($bulkUpload->status) }}
+                                    {{ $bulkInvoice->status === 'completed' ? 'bg-green-50 dark:bg-green-800/30 text-green-700 dark:text-green-400' : ($bulkInvoice->status === 'failed' ? 'bg-red-50 dark:bg-red-800/30 text-red-700 dark:text-red-400' : 'bg-blue-50 dark:bg-blue-800/30 text-blue-700 dark:text-blue-400') }}">
+                                    {{ ucfirst($bulkInvoice->status) }}
                                 </span>
                             </p>
                         </div>
                         <div>
                             <p class="text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">File</p>
-                            <p class="text-gray-700 dark:text-gray-300 mt-1 truncate" title="{{ $bulkUpload->original_filename }}">{{ $bulkUpload->original_filename }}</p>
+                            <p class="text-gray-700 dark:text-gray-300 mt-1 truncate" title="{{ $bulkInvoice->original_filename }}">{{ $bulkInvoice->original_filename }}</p>
                         </div>
                     </div>
                 </div>

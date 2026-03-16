@@ -60,7 +60,7 @@
                                             </tr>
                                             <tr>
                                                 <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">File:</td>
-                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ $bulkUpload->original_filename ?? 'N/A' }}</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ $bulkInvoice->original_filename ?? 'N/A' }}</td>
                                             </tr>
                                         </table>
                                     </td>
@@ -77,7 +77,7 @@
                                     <td style="padding:{{ ($isPdf ?? false) ? '10px 15px' : '15px 20px' }};">
                                         <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '12px' : '15px' }};font-weight:bold;color:#004c9e;">Invoice Delivery Summary</p>
                                         <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">
-                                            <strong>{{ $invoices->count() }}</strong> invoice{{ $invoices->count() !== 1 ? 's have' : ' has' }} been created from the bulk upload.
+                                            <strong>{{ $invoices->count() }}</strong> invoice{{ $invoices->count() !== 1 ? 's have' : ' has' }} been created from the bulk invoice.
                                             All invoice PDFs are attached to this email.
                                         </p>
                                     </td>

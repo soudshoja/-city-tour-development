@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('bulk_upload_rows', function (Blueprint $table) {
+        Schema::create('bulk_invoice_rows', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('bulk_upload_id');
+            $table->unsignedBigInteger('bulk_invoice_id');
             $table->unsignedInteger('row_number');
             $table->enum('status', ['valid', 'error', 'flagged']);
             $table->unsignedBigInteger('task_id')->nullable();
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('flag_reason')->nullable();
             $table->timestamps();
 
-            $table->foreign('bulk_upload_id')->references('id')->on('bulk_uploads')->onDelete('cascade');
+            $table->foreign('bulk_invoice_id')->references('id')->on('bulk_invoices')->onDelete('cascade');
             $table->foreign('task_id')->references('id')->on('tasks')->onDelete('set null');
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
             $table->foreign('supplier_id')->references('id')->on('suppliers')->onDelete('set null');
@@ -38,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('bulk_upload_rows');
+        Schema::dropIfExists('bulk_invoice_rows');
     }
 };

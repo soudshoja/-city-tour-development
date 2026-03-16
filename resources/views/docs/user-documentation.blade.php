@@ -52,8 +52,14 @@
             color: #fff; font-size: 11px; font-weight: 600; padding: 3px 10px;
             border-radius: 20px; pointer-events: none; z-index: 1; letter-spacing: 0.5px;
         }
-        .doc-gif { border-radius: 0.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.12); width: 100%; }
+        .doc-gif { border-radius: 0.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.12); width: 100%; max-width: 100%; height: auto; }
         .dark .doc-gif { border-color: #374151; }
+        @media (max-width: 639px) {
+            .info-box, .warn-box { padding: 0.75rem 1rem; }
+            section h2 { font-size: 1.25rem; }
+            section h3 { font-size: 1rem; }
+            .doc-gif-wrap .gif-badge { top: 8px; right: 8px; font-size: 10px; padding: 2px 8px; }
+        }
     </style>
 </head>
 
@@ -97,19 +103,19 @@
     </div>
 
     <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-1 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center gap-2">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0">
                     <i class="fas fa-bars text-gray-600 dark:text-gray-300"></i>
                 </button>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary-500" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 sm:h-8 sm:w-8 text-primary-500 flex-shrink-0 hidden sm:block" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
                 </svg>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">User Documentation</h1>
-                <span class="text-xs bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-full font-semibold uppercase">{{ $roleName }}</span>
+                <h1 class="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">User Documentation</h1>
+                <span class="text-xs bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-2 py-0.5 sm:py-1 rounded-full font-semibold uppercase flex-shrink-0">{{ $roleName }}</span>
             </div>
-            <div class="flex items-center space-x-3">
-                <a href="{{ route('dashboard') }}" class="text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400">
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <a href="{{ route('dashboard') }}" class="hidden sm:inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 whitespace-nowrap">
                     <i class="fas fa-arrow-left mr-1"></i> Back to App
                 </a>
                 <button @click="toggleDarkMode()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
@@ -166,7 +172,7 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         <div class="lg:grid lg:grid-cols-12 lg:gap-8">
 
             <div class="hidden lg:block lg:col-span-3">
@@ -201,10 +207,10 @@
                 </nav>
             </div>
 
-            <div class="mt-8 lg:mt-0 lg:col-span-9">
+            <div class="mt-4 sm:mt-8 lg:mt-0 lg:col-span-9 min-w-0">
 
-                <div id="welcome" class="bg-gradient-to-r from-primary-600 to-primary-500 rounded-xl shadow-lg p-8 mb-12 text-white">
-                    <h1 class="text-3xl sm:text-4xl font-extrabold mb-3">
+                <div id="welcome" class="bg-gradient-to-r from-primary-600 to-primary-500 rounded-xl shadow-lg p-5 sm:p-8 mb-8 sm:mb-12 text-white">
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-3">
                         @if($isAdmin) System Administration @elseif($isCompany) Company Management @elseif($isAgent) Agent Workspace @elseif($isAccountant) Accountant Toolkit @elseif($isBranch) Branch Operations @else Getting Started @endif
                     </h1>
                     <p class="text-sm opacity-75 font-medium uppercase tracking-wide mb-1">User Guide &mdash; {{ ucfirst($roleName) }} Role</p>

@@ -66,6 +66,21 @@
         </div>
         @endcan
 
+        @can('create', App\Models\Invoice::class)
+        <div class="flex flex-col items-center ">
+            <a href="{{ route('bulk-invoices.index') }}">
+                <div class="relative">
+                    <div data-tooltip="Bulk Invoice Upload"
+                        class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5v11M8 12h2v2H8v-2m0 4h8v-2H8v2m8-10h-4v-2h4v2m-4 4h4v-2h-4v2Z"/>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+        </div>
+        @endcan
+
         <div class="flex flex-col items-center"
             x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">
 

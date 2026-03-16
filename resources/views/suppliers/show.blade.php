@@ -160,8 +160,8 @@
                                 $status = strtolower($task->status);
                                 $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
                                 if ($supplierType === 'hotel') {
-                                    $debit = $task->journalEntries->first()->debit ?? 0;
-                                    $credit = $task->journalEntries->first()->credit ?? 0;
+                                    $debit = $task->journalEntries->first()?->debit ?? 0;
+                                    $credit = $task->journalEntries->first()?->credit ?? 0;
                                     $balance += $debit - $credit;
                                 }
                             @endphp

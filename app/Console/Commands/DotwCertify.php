@@ -36,7 +36,7 @@ class DotwCertify extends Command
     private string $logFile;
 
     // Test state (shared across steps — booking codes stored here for use in cancellation tests)
-    /** @var array<string, mixed> @phpstan-ignore-next-line */
+    /** @var array<string, mixed> */
     private array $state = [];
 
     // Results tracker
@@ -194,8 +194,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -322,10 +320,6 @@ class DotwCertify extends Command
                     <productId>'.$hotelId.'</productId>
                 </bookingDetails>
                 <return>
-                    <fields>
-                        <roomField>cancellation</roomField>
-                        <roomField>name</roomField>
-                    </fields>
                 </return>
             ');
 
@@ -448,8 +442,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>3</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -657,8 +649,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>3</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -867,8 +857,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -967,8 +955,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>3</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -1140,8 +1126,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>3</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -1244,8 +1228,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>2</resultsPerPage>
-                <page>1</page>
             </return>
         '), '13a-search');
 
@@ -1321,9 +1303,6 @@ class DotwCertify extends Command
                 <productId>'.$hotelId.'</productId>
             </bookingDetails>
             <return>
-                <fields>
-                    <roomField>name</roomField>
-                </fields>
             </return>
         '), '13c-block');
 
@@ -1365,7 +1344,7 @@ class DotwCertify extends Command
                     <room runno="0">
                         <adultsCode>1</adultsCode>
                         <children no="0"/>
-                        <rateBasis>1331</rateBasis>
+                        <rateBasis>-1</rateBasis>
                         <passengerNationality>66</passengerNationality>
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                     </room>
@@ -1383,8 +1362,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -1514,9 +1491,6 @@ class DotwCertify extends Command
                 <productId>'.$hotelId.'</productId>
             </bookingDetails>
             <return>
-                <fields>
-                    <roomField>name</roomField>
-                </fields>
             </return>
         ');
 
@@ -1652,8 +1626,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>20</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -1769,7 +1741,7 @@ class DotwCertify extends Command
                     <room runno="0">
                         <adultsCode>1</adultsCode>
                         <children no="0"/>
-                        <rateBasis>1331</rateBasis>
+                        <rateBasis>-1</rateBasis>
                         <passengerNationality>66</passengerNationality>
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                     </room>
@@ -1787,8 +1759,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -1905,9 +1875,6 @@ class DotwCertify extends Command
                 <productId>'.$hotelId.'</productId>
             </bookingDetails>
             <return>
-                <fields>
-                    <roomField>name</roomField>
-                </fields>
             </return>
         ');
 
@@ -2103,8 +2070,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>20</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -2242,8 +2207,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -2368,9 +2331,6 @@ class DotwCertify extends Command
                 <productId>'.$hotelId.'</productId>
             </bookingDetails>
             <return>
-                <fields>
-                    <roomField>name</roomField>
-                </fields>
             </return>
         ');
 
@@ -2501,8 +2461,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -2624,8 +2582,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>10</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -2684,8 +2640,6 @@ class DotwCertify extends Command
                              xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                         <city>364</city>
                     </filters>
-                    <resultsPerPage>20</resultsPerPage>
-                    <page>1</page>
                 </return>
             ');
             $fallbackResponse = $this->post($fallbackXml, '16a-fallback-search');
@@ -2779,9 +2733,6 @@ class DotwCertify extends Command
                 <productId>'.$aprHotelId.'</productId>
             </bookingDetails>
             <return>
-                <fields>
-                    <roomField>name</roomField>
-                </fields>
             </return>
         ');
 
@@ -2904,8 +2855,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -3005,112 +2954,12 @@ class DotwCertify extends Command
             }
         }
 
-        // If page 1 found nothing, try page 2 with 3 more hotels
-        if (! $cancelRestricted && ! $amendRestricted) {
-            $this->log('  → Page 1 scan found no restricted rates; trying page 2');
-            $page2Xml = $this->buildRequest('searchhotels', '
-                <bookingDetails>
-                    <fromDate>'.$fromDate.'</fromDate>
-                    <toDate>'.$toDate.'</toDate>
-                    <currency>769</currency>
-                    <rooms no="1">
-                        <room runno="0">
-                            <adultsCode>2</adultsCode>
-                            <children no="0"/>
-                            <rateBasis>-1</rateBasis>
-                            <passengerNationality>66</passengerNationality>
-                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
-                        </room>
-                    </rooms>
-                </bookingDetails>
-                <return>
-                    <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
-                             xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
-                        <city>364</city>
-                    </filters>
-                    <resultsPerPage>5</resultsPerPage>
-                    <page>2</page>
-                </return>
-            ');
-            $page2Response = $this->post($page2Xml, '17a-page2-search');
-            if ($page2Response && $this->assertSuccess($page2Response, '17a-page2')) {
-                $page2Hotels = $page2Response->hotels->hotel ?? null;
-                if ($page2Hotels && count($page2Hotels) > 0) {
-                    $p2List = [];
-                    foreach ($page2Hotels as $h) {
-                        $p2List[] = $h;
-                        if (count($p2List) >= 3) {
-                            break;
-                        }
-                    }
-                    foreach ($p2List as $scanHotel) {
-                        $hotelId = (string) $scanHotel['hotelid'];
-                        $rateBasisId = (string) ($scanHotel->rooms->room[0]->roomType->rateBases->rateBasis[0]['id'] ?? '-1');
-                        $browseXml = $this->buildRequest('getrooms', '
-                            <bookingDetails>
-                                <fromDate>'.$fromDate.'</fromDate>
-                                <toDate>'.$toDate.'</toDate>
-                                <currency>769</currency>
-                                <rooms no="1">
-                                    <room runno="0">
-                                        <adultsCode>2</adultsCode>
-                                        <children no="0"/>
-                                        <rateBasis>'.$rateBasisId.'</rateBasis>
-                                        <passengerNationality>66</passengerNationality>
-                                        <passengerCountryOfResidence>66</passengerCountryOfResidence>
-                                    </room>
-                                </rooms>
-                                <productId>'.$hotelId.'</productId>
-                            </bookingDetails>
-                            <return>
-                                <fields>
-                                    <roomField>cancellation</roomField>
-                                </fields>
-                            </return>
-                        ');
-                        $browseResponse = $this->post($browseXml, "17b-p2-rooms-h{$hotelId}");
-                        if (! $browseResponse || ! $this->assertSuccess($browseResponse, '17b-p2')) {
-                            continue;
-                        }
-                        $browseRoom = $browseResponse->hotel->rooms->room[0] ?? null;
-                        if (! $browseRoom) {
-                            continue;
-                        }
-                        foreach ($browseRoom->roomType ?? [] as $rt) {
-                            foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
-                                $cancelRules = $rb->cancellationRules ?? null;
-                                if (! $cancelRules || count($cancelRules->rule ?? []) === 0) {
-                                    continue;
-                                }
-                                foreach ($cancelRules->rule as $i => $rule) {
-                                    $cr = strtolower((string) ($rule->cancelRestricted ?? 'no'));
-                                    $ar = strtolower((string) ($rule->amendRestricted ?? 'no'));
-                                    $this->log("  [17b-p2] Hotel {$hotelId} Rule {$i}: cancelRestricted={$cr} | amendRestricted={$ar}");
-                                    if ($cr === 'yes') {
-                                        $cancelRestricted = true;
-                                        $restrictedHotelId = $hotelId;
-                                    }
-                                    if ($ar === 'yes') {
-                                        $amendRestricted = true;
-                                        $restrictedHotelId = $hotelId;
-                                    }
-                                }
-                            }
-                        }
-                        if ($cancelRestricted || $amendRestricted) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
         if ($cancelRestricted) {
             $this->pass('17b', "cancelRestricted=yes detected on Hotel {$restrictedHotelId} — hide/disable cancel button in UI");
         } elseif ($amendRestricted) {
             $this->pass('17b', "amendRestricted=yes detected on Hotel {$restrictedHotelId} — hide/disable amend button in UI");
         } else {
-            $this->skipTest(17, 'No cancelRestricted/amendRestricted flags found after scanning 6 hotels (2 pages) — run against a hotel with restricted cancellation/amendment rules');
+            $this->skipTest(17, 'No cancelRestricted/amendRestricted flags found after scanning 3 hotels — run against a hotel with restricted cancellation/amendment rules');
 
             return;
         }
@@ -3151,8 +3000,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>20</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -3278,8 +3125,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>5</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -3363,9 +3208,6 @@ class DotwCertify extends Command
                 <productId>'.$hotelId.'</productId>
             </bookingDetails>
             <return>
-                <fields>
-                    <roomField>name</roomField>
-                </fields>
             </return>
         ');
 
@@ -3472,8 +3314,6 @@ class DotwCertify extends Command
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
                 </filters>
-                <resultsPerPage>20</resultsPerPage>
-                <page>1</page>
             </return>
         ');
 
@@ -3784,10 +3624,6 @@ class DotwCertify extends Command
                     <productId>'.$hotelId.'</productId>
                 </bookingDetails>
                 <return>
-                    <fields>
-                        <roomField>cancellation</roomField>
-                        <roomField>name</roomField>
-                    </fields>
                 </return>
             ');
 

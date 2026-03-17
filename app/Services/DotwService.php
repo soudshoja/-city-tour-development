@@ -195,8 +195,6 @@ class DotwService
      *                         - rooms: Array with occupancy details
      *                         - city: City code
      *                         - filters: Optional filter conditions (rating, price, chain, etc.)
-     *                         - resultsPerPage: Results per page (default 20)
-     *                         - page: Page number (default 1)
      * @param  string|null  $resayilMessageId  WhatsApp message_id from X-Resayil-Message-ID header (MSG-02)
      * @param  string|null  $resayilQuoteId  Quoted message_id from X-Resayil-Quote-ID header (MSG-03)
      * @param  int|null  $companyId  Company context override (null = use constructor companyId)
@@ -1087,16 +1085,12 @@ class DotwService
     </bookingDetails>
     <return>
       %s
-      <resultsPerPage>%d</resultsPerPage>
-      <page>%d</page>
     </return>',
             htmlspecialchars($params['fromDate'] ?? ''),
             htmlspecialchars($params['toDate'] ?? ''),
             htmlspecialchars($params['currency'] ?? ''),
             $roomsXml,
-            $filtersXml,
-            (int) ($params['resultsPerPage'] ?? 20),
-            (int) ($params['page'] ?? 1)
+            $filtersXml
         );
     }
 
@@ -1153,6 +1147,10 @@ class DotwService
             $fieldsXml .= '</fields>';
         }
 
+        // Blocking requests must NOT include roomField in the return section —
+        // DOTW certification requirement: only browse requests should request roomField data
+        $returnContent = $blocking ? '' : $fieldsXml;
+
         return sprintf(
             '<bookingDetails>
       <fromDate>%s</fromDate>
@@ -1169,7 +1167,7 @@ class DotwService
             htmlspecialchars($params['currency'] ?? ''),
             $roomsXml,
             htmlspecialchars((string) ($params['productId'] ?? '')),
-            $fieldsXml
+            $returnContent
         );
     }
 
@@ -1304,7 +1302,7 @@ class DotwService
                 $index,
                 (int) ($room['adultsCode'] ?? 2),
                 $childrenXml,
-                (int) ($room['rateBasis'] ?? self::RATE_BASIS_ALL),
+                (int) ($room['rateBasis'] ?? -1),
                 htmlspecialchars((string) ($room['passengerNationality'] ?? '')),
                 htmlspecialchars((string) ($room['passengerCountryOfResidence'] ?? ''))
             );

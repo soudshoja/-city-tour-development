@@ -42,9 +42,9 @@ class OpenAIClient implements AIClientInterface
             return;
         }
 
-        $this->apiUrl = config('ai.providers.openai.url');
-        $this->apiKey = config('ai.providers.openai.key');
-        $this->model = config('ai.providers.openai.model');
+        $this->apiUrl = config('ai.providers.openai.url') ?? '';
+        $this->apiKey = config('ai.providers.openai.key') ?? '';
+        $this->model = config('ai.providers.openai.model') ?? '';
 
         if(config('app.env') !== 'testing'){
             if (empty($this->apiUrl) || empty($this->apiKey)) {

@@ -26,6 +26,7 @@ export default defineConfig({
                 "resources/js/jsbyNisma.js",
                 "resources/js/app.js",
                 "resources/js/tools.js",
+                "resources/css/agent/index.css",
             ],
             refresh: true,
         }),

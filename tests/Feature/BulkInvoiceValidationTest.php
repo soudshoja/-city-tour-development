@@ -17,6 +17,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\BulkInvoiceValidationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BulkInvoiceValidationTest extends TestCase
@@ -152,7 +153,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Header Validation ───────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_validates_correct_headers()
     {
         $headers = [
@@ -167,7 +168,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertEmpty($result['extra']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_missing_required_headers()
     {
         $headers = ['invoice_date', 'client_name']; // Missing most required headers
@@ -182,7 +183,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('payment_reference', $result['missing']);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_extra_headers_with_warning()
     {
         $headers = [
@@ -200,7 +201,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Valid Row ───────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_validates_row_with_all_correct_data()
     {
         $result = $this->service->validateRow($this->validRow(), 1, $this->company->id);
@@ -215,7 +216,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Required Fields ─────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_requires_invoice_date()
     {
         $result = $this->service->validateRow(
@@ -228,7 +229,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('Row 1: invoice_date is required', $result['errors']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_client_name()
     {
         $result = $this->service->validateRow(
@@ -241,7 +242,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('Row 1: client_name is required', $result['errors']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_client_mobile()
     {
         $result = $this->service->validateRow(
@@ -254,7 +255,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('Row 2: client_mobile is required', $result['errors']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_task_reference()
     {
         $result = $this->service->validateRow(
@@ -267,7 +268,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('Row 3: task_reference is required', $result['errors']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_task_status()
     {
         $result = $this->service->validateRow(
@@ -280,7 +281,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('Row 4: task_status is required', $result['errors']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_selling_price()
     {
         $result = $this->service->validateRow(
@@ -293,7 +294,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertContains('Row 5: selling_price is required', $result['errors']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_payment_reference()
     {
         $result = $this->service->validateRow(
@@ -308,7 +309,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Date Format ─────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_validates_invoice_date_format()
     {
         $result = $this->service->validateRow(
@@ -321,7 +322,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertFalse($hasDateError);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_invalid_invoice_date_format()
     {
         $result = $this->service->validateRow(
@@ -338,7 +339,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Client Matching ─────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_errors_when_client_mobile_not_found()
     {
         $result = $this->service->validateRow(
@@ -354,7 +355,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertNull($result['matched']['client_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_errors_when_client_name_does_not_match_phone()
     {
         $result = $this->service->validateRow(
@@ -369,7 +370,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_matches_client_with_flexible_name()
     {
         // Client full_name is "John Doe", searching with just "John Doe" should match
@@ -384,7 +385,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Task Matching ───────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_validates_task_exists_by_reference()
     {
         $result = $this->service->validateRow(
@@ -399,7 +400,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_task_not_already_invoiced()
     {
         $invoice = Invoice::factory()->create([
@@ -419,7 +420,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_task_has_agent_assigned()
     {
         // Create task without agent
@@ -446,7 +447,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_task_client_mismatch()
     {
         // Create a different client
@@ -483,7 +484,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Task Status Enum ────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_validates_task_status_enum()
     {
         $validStatuses = ['pending', 'issued', 'confirmed', 'reissued', 'refund', 'void', 'emd'];
@@ -500,7 +501,7 @@ class BulkInvoiceValidationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_invalid_task_status()
     {
         $result = $this->service->validateRow(
@@ -517,7 +518,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Selling Price ───────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_rejects_non_numeric_selling_price()
     {
         $result = $this->service->validateRow(
@@ -532,7 +533,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_negative_selling_price()
     {
         $result = $this->service->validateRow(
@@ -549,7 +550,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Payment ─────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_errors_on_unknown_payment_reference()
     {
         $result = $this->service->validateRow(
@@ -564,7 +565,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_errors_when_payment_not_completed()
     {
         $pendingPayment = $this->createPayment([
@@ -593,7 +594,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_errors_when_payment_belongs_to_different_client()
     {
         $otherClient = Client::create([
@@ -630,7 +631,7 @@ class BulkInvoiceValidationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_flags_insufficient_payment_balance()
     {
         // Create payment with very small credit balance
@@ -661,7 +662,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Row Validation: Multiple Errors ─────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_collects_multiple_errors_per_row()
     {
         $row = [
@@ -682,7 +683,7 @@ class BulkInvoiceValidationTest extends TestCase
 
     // ─── Validate All ────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_validates_all_rows_and_aggregates_counts()
     {
         // Create a second task for flagged row
@@ -731,7 +732,7 @@ class BulkInvoiceValidationTest extends TestCase
         $this->assertCount(3, $result['rows']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_duplicate_tasks_in_validate_all()
     {
         $rows = [

@@ -1114,7 +1114,7 @@ class DotwCertify extends Command
             ['input' => 'J',                           'expected' => 'J',                       'expectedValid' => false, 'note' => 'Too short (1 char) — INVALID'],
             ['input' => 'JohnAlexanderMaximilian123',  'expected' => 'JohnAlexanderMaximilian',  'expectedValid' => true,  'note' => 'Digits stripped; 23 chars → VALID (≤25)'],
             ['input' => 'James Lee',                   'expected' => 'JamesLee',                 'expectedValid' => true,  'note' => 'Space stripped → "JamesLee" (8 chars) — VALID'],
-            ["input" => "O'Brien",                     'expected' => 'OBrien',                   'expectedValid' => true,  'note' => "Apostrophe stripped → \"OBrien\" (6 chars) — VALID"],
+            ['input' => "O'Brien",                     'expected' => 'OBrien',                   'expectedValid' => true,  'note' => 'Apostrophe stripped → "OBrien" (6 chars) — VALID'],
             ['input' => '123',                         'expected' => '',                         'expectedValid' => false, 'note' => 'All digits → empty after sanitize — INVALID'],
         ];
 
@@ -1794,11 +1794,13 @@ class DotwCertify extends Command
     {
         $this->startTest(6, 'Cancel 2-room booking within cancellation deadline — cancel with penalty');
 
-        $fromDate = now()->addDays(2)->format('Y-m-d');
-        $toDate = now()->addDays(3)->format('Y-m-d');
+        // Use 60+ days out: close enough to be within the cancellation penalty window for most hotels,
+        // far enough out that sandbox does not return error 60 (deadline expired) on the cancel call.
+        $fromDate = now()->addDays(60)->format('Y-m-d');
+        $toDate = now()->addDays(61)->format('Y-m-d');
 
-        // Step 6a: searchhotels with 2 rooms
-        $this->step('6a', 'searchhotels — near-future date (within cancel deadline), 2 rooms');
+        // Step 6a: searchhotels with 2 rooms — scan multiple hotels to find one with 2+ room types
+        $this->step('6a', 'searchhotels — 60-day future date (within cancel penalty window), 2 rooms');
         $searchXml = $this->buildRequest('searchhotels', '
             <bookingDetails>
                 <fromDate>'.$fromDate.'</fromDate>
@@ -1841,19 +1843,28 @@ class DotwCertify extends Command
             return;
         }
 
-        $hotel = $hotels[0];
-        $hotelId = (string) $hotel['hotelid'];
+        // Scan all returned hotels to find one with at least 2 room types
+        $hotel = null;
+        $rooms = [];
+        foreach ($hotels as $candidateHotel) {
+            $candidateRooms = $candidateHotel->rooms->room ?? [];
+            if (count($candidateRooms) >= 2) {
+                $hotel = $candidateHotel;
+                $rooms = $candidateRooms;
+                break;
+            }
+        }
 
-        $rooms = $hotel->rooms->room ?? [];
-        if (count($rooms) < 2) {
-            $this->skipTest(6, 'Hotel returned fewer than 2 room types — run against a hotel with multiple room types to test multi-room cancel');
+        if ($hotel === null) {
+            $this->skipTest(6, 'No hotel with 2+ room types found in search results — run against production or a city with multi-room hotels');
 
             return;
         }
 
+        $hotelId = (string) $hotel['hotelid'];
         $rbId0 = (string) $rooms[0]->roomType->rateBases->rateBasis[0]['id'];
         $rbId1 = (string) $rooms[1]->roomType->rateBases->rateBasis[0]['id'];
-        $this->pass('6a', "Hotel: {$hotelId}");
+        $this->pass('6a', "Hotel: {$hotelId} (has ".count($rooms).' room types)');
 
         // Step 6b: getRooms browse — 2 rooms
         $this->step('6b', 'getRooms (browse) — both rooms');
@@ -2512,11 +2523,14 @@ class DotwCertify extends Command
     {
         $this->startTest(15, 'Special Promotions — detect specials and specialsApplied on rateBasis');
 
-        $fromDate = now()->addDays(90)->format('Y-m-d');
-        $toDate = now()->addDays(91)->format('Y-m-d');
+        // DOTW-provided hotel with confirmed active specials/promotions.
+        // Hotel 2344175 = The S Hotel Al Barsha, Dubai — DOTW confirmed specials available for these dates/occupancy.
+        $hotelId = '2344175';
+        $fromDate = '2026-05-14';
+        $toDate = '2026-05-15';
 
-        // Step 15a: searchhotels
-        $this->step('15a', 'searchhotels — Dubai, 2 adults, 1 night');
+        // Step 15a: searchhotels — direct hotel ID filter (city Dubai=364, hotel 2344175, 2A+2C ages 8+12)
+        $this->step('15a', 'searchhotels — Hotel 2344175 (The S Hotel Al Barsha, Dubai), 2A+2C ages 8,12, 14-15 May 2026');
         $searchXml = $this->buildRequest('searchhotels', '
             <bookingDetails>
                 <fromDate>'.$fromDate.'</fromDate>
@@ -2525,7 +2539,10 @@ class DotwCertify extends Command
                 <rooms no="1">
                     <room runno="0">
                         <adultsCode>2</adultsCode>
-                        <children no="0"/>
+                        <children no="2">
+                            <child runno="0">8</child>
+                            <child runno="1">12</child>
+                        </children>
                         <rateBasis>-1</rateBasis>
                         <passengerNationality>66</passengerNationality>
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
@@ -2536,6 +2553,15 @@ class DotwCertify extends Command
                 <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
                     <city>364</city>
+                    <c:condition>
+                        <a:condition>
+                            <fieldName>hotelid</fieldName>
+                            <fieldTest>in</fieldTest>
+                            <fieldValues>
+                                <fieldValue>2344175</fieldValue>
+                            </fieldValues>
+                        </a:condition>
+                    </c:condition>
                 </filters>
             </return>
         ');
@@ -2547,17 +2573,16 @@ class DotwCertify extends Command
 
         $hotels = $response->hotels->hotel ?? null;
         if (! $hotels || count($hotels) === 0) {
-            $this->skipTest(15, 'No hotel inventory in this environment — run against production or use a city with live hotels');
+            $this->skipTest(15, 'Hotel 2344175 not found in sandbox — run against production (DOTW confirmed this hotel has specials for 14-15 May 2026)');
 
             return;
         }
 
         $hotel = $hotels[0];
-        $hotelId = (string) $hotel['hotelid'];
         $room = $hotel->rooms->room[0];
         $rateBasis = $room->roomType->rateBases->rateBasis[0];
         $rateBasisId = (string) $rateBasis['id'];
-        $this->pass('15a', "Hotel: {$hotelId}");
+        $this->pass('15a', "Hotel: {$hotelId} (The S Hotel Al Barsha)");
 
         // Step 15b: getRooms browse requesting specials field
         $this->step('15b', 'getRooms (browse) — request specials roomField, inspect specialsApplied');
@@ -2569,7 +2594,10 @@ class DotwCertify extends Command
                 <rooms no="1">
                     <room runno="0">
                         <adultsCode>2</adultsCode>
-                        <children no="0"/>
+                        <children no="2">
+                            <child runno="0">8</child>
+                            <child runno="1">12</child>
+                        </children>
                         <rateBasis>'.$rateBasisId.'</rateBasis>
                         <passengerNationality>66</passengerNationality>
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
@@ -2617,7 +2645,7 @@ class DotwCertify extends Command
         }
 
         if (! $specialsFound) {
-            $this->skipTest(15, 'No specials or specialsApplied found on this hotel/rate — run against a hotel with active specials/promotions');
+            $this->skipTest(15, 'No specials or specialsApplied found on Hotel 2344175 for 14-15 May 2026 — DOTW confirmed this hotel has specials; check if specials have expired or run against production');
 
             return;
         }
@@ -2693,9 +2721,9 @@ class DotwCertify extends Command
             }
         }
 
-        // Fallback: try rateBasis=-1 with 20 results if rateBasis=1331 found no APR
+        // Fallback 1: try rateBasis=-1 with wider Dubai search
         if ($aprHotelId === null) {
-            $this->log('  → rateBasis=1331 found no APR rates; trying wider search (rateBasis=-1, 20 results)');
+            $this->log('  → rateBasis=1331 found no APR rates; trying wider Dubai search (rateBasis=-1)');
             $fallbackXml = $this->buildRequest('searchhotels', '
                 <bookingDetails>
                     <fromDate>'.$fromDate.'</fromDate>
@@ -2740,8 +2768,63 @@ class DotwCertify extends Command
             }
         }
 
+        // Fallback 2: try DOTW-provided hotel 809755 (Conrad London St James) — luxury hotels often have APR rates
         if ($aprHotelId === null) {
-            $this->skipTest(16, 'No nonrefundable=yes rates found in search results (tried rateBasis=1331 + rateBasis=-1 fallback) — run against a property with APR rates');
+            $this->log('  → Dubai APR search failed; trying DOTW-provided hotel 809755 (Conrad London St James)');
+            $conradXml = $this->buildRequest('searchhotels', '
+                <bookingDetails>
+                    <fromDate>'.$fromDate.'</fromDate>
+                    <toDate>'.$toDate.'</toDate>
+                    <currency>769</currency>
+                    <rooms no="1">
+                        <room runno="0">
+                            <adultsCode>2</adultsCode>
+                            <children no="0"/>
+                            <rateBasis>-1</rateBasis>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                        </room>
+                    </rooms>
+                </bookingDetails>
+                <return>
+                    <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
+                             xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
+                        <c:condition>
+                            <a:condition>
+                                <fieldName>hotelid</fieldName>
+                                <fieldTest>in</fieldTest>
+                                <fieldValues>
+                                    <fieldValue>809755</fieldValue>
+                                </fieldValues>
+                            </a:condition>
+                        </c:condition>
+                    </filters>
+                </return>
+            ');
+            $conradResponse = $this->post($conradXml, '16a-conrad-search');
+            if ($conradResponse && $this->assertSuccess($conradResponse, '16a-conrad')) {
+                $conradHotels = $conradResponse->hotels->hotel ?? null;
+                if ($conradHotels && count($conradHotels) > 0) {
+                    foreach ($conradHotels as $hotel) {
+                        $hotelId = (string) $hotel['hotelid'];
+                        foreach ($hotel->rooms->room ?? [] as $room) {
+                            foreach ($room->roomType->rateBases->rateBasis ?? [] as $rb) {
+                                $nonref = strtolower((string) ($rb->rateType['nonrefundable'] ?? 'no'));
+                                if ($nonref === 'yes') {
+                                    $aprHotelId = $hotelId;
+                                    $aprRateBasisId = (string) $rb['id'];
+                                    $aprRtCode = (string) $room->roomType['roomtypecode'];
+                                    break 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($aprHotelId === null) {
+            $this->skipTest(16, 'No nonrefundable=yes rates found (tried Dubai rateBasis=1331, Dubai rateBasis=-1, hotel 809755) — run against a property with APR rates');
 
             return;
         }
@@ -2948,20 +3031,17 @@ class DotwCertify extends Command
 
         $this->pass('17a', 'Found '.count($hotels).' hotel(s) — scanning all for cancelRestricted/amendRestricted');
 
-        // Step 17b: getRooms browse with cancellation field — scan first 3 hotels from page 1
-        $this->step('17b', 'getRooms (browse) — request cancellation field for up to 3 hotels, check cancelRestricted/amendRestricted');
+        // Step 17b: getRooms browse with cancellation field — scan ALL returned hotels
+        $this->step('17b', 'getRooms (browse) — request cancellation field for all hotels, check cancelRestricted/amendRestricted');
 
         $cancelRestricted = false;
         $amendRestricted = false;
         $restrictedHotelId = null;
 
-        // Build a list of candidate hotels to scan (first 3 from page 1, then try page 2)
+        // Scan ALL returned hotels (no limit — DOTW says pagination not active so this is the full set)
         $hotelList = [];
         foreach ($hotels as $hotel) {
             $hotelList[] = $hotel;
-            if (count($hotelList) >= 3) {
-                break;
-            }
         }
 
         foreach ($hotelList as $scanHotel) {
@@ -2994,6 +3074,7 @@ class DotwCertify extends Command
             $browseResponse = $this->post($browseXml, "17b-rooms-h{$hotelId}");
             if (! $browseResponse || ! $this->assertSuccess($browseResponse, '17b')) {
                 $this->log("  → Hotel {$hotelId}: browse failed, skipping");
+
                 continue;
             }
 
@@ -3030,12 +3111,66 @@ class DotwCertify extends Command
             }
         }
 
+        // Fallback: try DOTW-provided hotel 809755 (Conrad London St James) — luxury hotels have restricted policies
+        if (! $cancelRestricted && ! $amendRestricted) {
+            $this->log('  → Dubai scan found no restricted rates; trying DOTW-provided hotel 809755 (Conrad London St James)');
+            $conradBrowseXml = $this->buildRequest('getrooms', '
+                <bookingDetails>
+                    <fromDate>'.$fromDate.'</fromDate>
+                    <toDate>'.$toDate.'</toDate>
+                    <currency>769</currency>
+                    <rooms no="1">
+                        <room runno="0">
+                            <adultsCode>2</adultsCode>
+                            <children no="0"/>
+                            <rateBasis>-1</rateBasis>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                        </room>
+                    </rooms>
+                    <productId>809755</productId>
+                </bookingDetails>
+                <return>
+                    <fields>
+                        <roomField>cancellation</roomField>
+                    </fields>
+                </return>
+            ');
+            $conradBrowseResponse = $this->post($conradBrowseXml, '17b-rooms-h809755');
+            if ($conradBrowseResponse && $this->assertSuccess($conradBrowseResponse, '17b-conrad')) {
+                $conradBrowseRoom = $conradBrowseResponse->hotel->rooms->room[0] ?? null;
+                if ($conradBrowseRoom) {
+                    foreach ($conradBrowseRoom->roomType ?? [] as $rt) {
+                        foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
+                            $cancelRules = $rb->cancellationRules ?? null;
+                            if (! $cancelRules || count($cancelRules->rule ?? []) === 0) {
+                                continue;
+                            }
+                            foreach ($cancelRules->rule as $i => $rule) {
+                                $cr = strtolower((string) ($rule->cancelRestricted ?? 'no'));
+                                $ar = strtolower((string) ($rule->amendRestricted ?? 'no'));
+                                $this->log("  [17b] Hotel 809755 (Conrad) Rule {$i}: cancelRestricted={$cr} | amendRestricted={$ar}");
+                                if ($cr === 'yes') {
+                                    $cancelRestricted = true;
+                                    $restrictedHotelId = '809755';
+                                }
+                                if ($ar === 'yes') {
+                                    $amendRestricted = true;
+                                    $restrictedHotelId = '809755';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if ($cancelRestricted) {
             $this->pass('17b', "cancelRestricted=yes detected on Hotel {$restrictedHotelId} — hide/disable cancel button in UI");
         } elseif ($amendRestricted) {
             $this->pass('17b', "amendRestricted=yes detected on Hotel {$restrictedHotelId} — hide/disable amend button in UI");
         } else {
-            $this->skipTest(17, 'No cancelRestricted/amendRestricted flags found after scanning 3 hotels — run against a hotel with restricted cancellation/amendment rules');
+            $this->skipTest(17, 'No cancelRestricted/amendRestricted flags found after scanning all hotels and hotel 809755 — run against a hotel with restricted cancellation/amendment rules');
 
             return;
         }
@@ -3052,10 +3187,10 @@ class DotwCertify extends Command
         $this->startTest(18, 'Minimum Stay — detect minStay and dateApplyMinStay on rateBasis');
 
         $fromDate = now()->addDays(105)->format('Y-m-d');
-        $toDate = now()->addDays(107)->format('Y-m-d');  // 2 nights
+        $toDate = now()->addDays(109)->format('Y-m-d');  // 4 nights — longer stay increases minStay trigger chance
 
-        // Step 18a: searchhotels — 2 nights to allow minStay detection, use 20 results
-        $this->step('18a', 'searchhotels — Dubai, 2 adults, 2 nights, 20 results');
+        // Step 18a: searchhotels — 4 nights to allow minStay detection
+        $this->step('18a', 'searchhotels — Dubai, 2 adults, 4 nights');
         $searchXml = $this->buildRequest('searchhotels', '
             <bookingDetails>
                 <fromDate>'.$fromDate.'</fromDate>
@@ -3091,21 +3226,16 @@ class DotwCertify extends Command
             return;
         }
 
-        $this->pass('18a', 'Found '.count($hotels).' hotel(s) — scanning first 5 for minStay');
+        $this->pass('18a', 'Found '.count($hotels).' hotel(s) — scanning all for minStay');
 
-        // Step 18b: getRooms browse with minStay field — scan first 5 hotels
-        $this->step('18b', 'getRooms (browse) — request minStay roomField for up to 5 hotels');
+        // Step 18b: getRooms browse with minStay field — scan ALL returned hotels
+        $this->step('18b', 'getRooms (browse) — request minStay roomField for all hotels');
 
         $minStayFound = '';
         $dateApplyMinStayFound = '';
         $minStayHotelId = null;
-        $scanCount = 0;
 
         foreach ($hotels as $hotel) {
-            if ($scanCount >= 5) {
-                break;
-            }
-            $scanCount++;
             $hotelId = (string) $hotel['hotelid'];
             $rateBasisId = (string) ($hotel->rooms->room[0]->roomType->rateBases->rateBasis[0]['id'] ?? '-1');
 
@@ -3135,6 +3265,7 @@ class DotwCertify extends Command
             $browseResponse = $this->post($browseXml, "18b-rooms-h{$hotelId}");
             if (! $browseResponse || ! $this->assertSuccess($browseResponse, '18b')) {
                 $this->log("  → Hotel {$hotelId}: browse failed, skipping");
+
                 continue;
             }
 
@@ -3157,11 +3288,55 @@ class DotwCertify extends Command
             }
         }
 
+        // Fallback: try DOTW-provided hotel 809755 (Conrad London St James) — resort/luxury hotels often have minStay
+        if (empty($minStayFound)) {
+            $this->log('  → Dubai scan found no minStay; trying DOTW-provided hotel 809755 (Conrad London St James)');
+            $conradMinStayXml = $this->buildRequest('getrooms', '
+                <bookingDetails>
+                    <fromDate>'.$fromDate.'</fromDate>
+                    <toDate>'.$toDate.'</toDate>
+                    <currency>769</currency>
+                    <rooms no="1">
+                        <room runno="0">
+                            <adultsCode>2</adultsCode>
+                            <children no="0"/>
+                            <rateBasis>-1</rateBasis>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                        </room>
+                    </rooms>
+                    <productId>809755</productId>
+                </bookingDetails>
+                <return>
+                    <fields>
+                        <roomField>minStay</roomField>
+                    </fields>
+                </return>
+            ');
+            $conradMinStayResponse = $this->post($conradMinStayXml, '18b-rooms-h809755');
+            if ($conradMinStayResponse && $this->assertSuccess($conradMinStayResponse, '18b-conrad')) {
+                $conradRoom = $conradMinStayResponse->hotel->rooms->room[0] ?? null;
+                if ($conradRoom) {
+                    foreach ($conradRoom->roomType ?? [] as $rt) {
+                        foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
+                            $ms = (string) ($rb->minStay ?? '');
+                            if (! empty($ms) && $ms !== '0') {
+                                $minStayFound = $ms;
+                                $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
+                                $minStayHotelId = '809755';
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (! empty($minStayFound)) {
             $this->pass('18b', "Hotel {$minStayHotelId}: minStay={$minStayFound} nights | dateApplyMinStay={$dateApplyMinStayFound}");
             $this->log('  ✔  VERIFICATION: Block bookings where nights < minStay and arrival date matches dateApplyMinStay');
         } else {
-            $this->skipTest(18, 'No minStay constraint found after scanning 5 hotels — run against a hotel with minimum stay requirements');
+            $this->skipTest(18, 'No minStay constraint found after scanning all hotels and hotel 809755 — run against a hotel with minimum stay requirements');
 
             return;
         }
@@ -3407,8 +3582,9 @@ class DotwCertify extends Command
 
         // Scan all returned hotels for propertyFees at rateBasis level (DOTW V4 spec)
         $feeFound = false;
+        $feeHotelId = null;
         foreach ($hotels as $hotel) {
-            $hotelId = (string) $hotel['hotelid'];
+            $hid = (string) $hotel['hotelid'];
             foreach ($hotel->rooms->room ?? [] as $room) {
                 foreach ($room->roomType->rateBases->rateBasis ?? [] as $rateBasis) {
                     $propertyFees = $rateBasis->propertyFees ?? null;
@@ -3416,24 +3592,87 @@ class DotwCertify extends Command
                         foreach ($propertyFees->propertyFee as $fee) {
                             $included = (string) ($fee['includedinprice'] ?? 'No');
                             $name = (string) ($fee['name'] ?? 'unnamed');
-                            $currency = (string) ($fee['currencyshort'] ?? '');
-                            $this->pass('20a', "Hotel {$hotelId} fee: {$name} | includedinprice: {$included}");
+                            $this->pass('20a', "Hotel {$hid} fee: {$name} | includedinprice: {$included}");
                             $this->log('  VERIFICATION: '.($included === 'Yes'
                                 ? 'Fee already included in price — display as included'
                                 : 'Fee payable at property — display separately to customer'));
                         }
                         $feeFound = true;
+                        $feeHotelId = $hid;
                         break 3;
                     }
                 }
             }
         }
 
+        // Fallback: try DOTW-provided hotel 809755 (Conrad London St James) — UK hotels may have property fees
         if (! $feeFound) {
-            $this->skipTest(20, 'No propertyFees found in this environment — run against a hotel/rate with mandatory property fees');
+            $this->log('  → No propertyFees in Dubai results; trying DOTW-provided hotel 809755 (Conrad London St James)');
+            $conradFeeXml = $this->buildRequest('searchhotels', '
+                <bookingDetails>
+                    <fromDate>'.$fromDate.'</fromDate>
+                    <toDate>'.$toDate.'</toDate>
+                    <currency>769</currency>
+                    <rooms no="1">
+                        <room runno="0">
+                            <adultsCode>2</adultsCode>
+                            <children no="0"/>
+                            <rateBasis>-1</rateBasis>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                        </room>
+                    </rooms>
+                </bookingDetails>
+                <return>
+                    <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
+                             xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
+                        <c:condition>
+                            <a:condition>
+                                <fieldName>hotelid</fieldName>
+                                <fieldTest>in</fieldTest>
+                                <fieldValues>
+                                    <fieldValue>809755</fieldValue>
+                                </fieldValues>
+                            </a:condition>
+                        </c:condition>
+                    </filters>
+                </return>
+            ');
+            $conradFeeResponse = $this->post($conradFeeXml, '20a-conrad-search');
+            if ($conradFeeResponse && $this->assertSuccess($conradFeeResponse, '20a-conrad')) {
+                $conradFeeHotels = $conradFeeResponse->hotels->hotel ?? null;
+                if ($conradFeeHotels && count($conradFeeHotels) > 0) {
+                    foreach ($conradFeeHotels as $hotel) {
+                        $hid = (string) $hotel['hotelid'];
+                        foreach ($hotel->rooms->room ?? [] as $room) {
+                            foreach ($room->roomType->rateBases->rateBasis ?? [] as $rateBasis) {
+                                $propertyFees = $rateBasis->propertyFees ?? null;
+                                if ($propertyFees !== null && (int) ($propertyFees['count'] ?? 0) > 0) {
+                                    foreach ($propertyFees->propertyFee as $fee) {
+                                        $included = (string) ($fee['includedinprice'] ?? 'No');
+                                        $name = (string) ($fee['name'] ?? 'unnamed');
+                                        $this->pass('20a', "Hotel {$hid} (Conrad London) fee: {$name} | includedinprice: {$included}");
+                                        $this->log('  VERIFICATION: '.($included === 'Yes'
+                                            ? 'Fee already included in price — display as included'
+                                            : 'Fee payable at property — display separately to customer'));
+                                    }
+                                    $feeFound = true;
+                                    $feeHotelId = $hid;
+                                    break 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (! $feeFound) {
+            $this->skipTest(20, 'No propertyFees found in Dubai results or hotel 809755 — run against a hotel/rate with mandatory property fees');
 
             return;
         }
+        unset($feeHotelId);
 
         $this->log('  ✔  VERIFICATION: propertyFees must be displayed to customer — paid at property, not included in DOTW rate');
         $this->endTest(20, true);

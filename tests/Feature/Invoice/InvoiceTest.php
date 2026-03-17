@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Invoice;
 
 use App\Models\Account;
 use App\Models\Agent;
@@ -41,10 +41,12 @@ class InvoiceTest extends TestCase
 
     public function test_admin_cannot_view_invoice_list()
     {
+        /** @var User $user */
         $user = User::factory()->create([
             'role_id' => Role::ADMIN
         ]);
 
+        /** @var User $userCompany */
         $userCompany = User::factory()->create([
             'role_id' => Role::COMPANY
         ]);
@@ -64,7 +66,7 @@ class InvoiceTest extends TestCase
     
     public function test_invoice_page_displayed_for_company(): void
     {
-
+        /** @var User $user */
         $user = User::factory()->create([
             'role_id' => Role::COMPANY
         ]);
@@ -92,6 +94,7 @@ class InvoiceTest extends TestCase
 
     public function test_invoice_page_displayed_for_branch()
     {
+        /** @var User $userCompany */
         $userCompany = User::factory()->create([
             'role_id' => Role::COMPANY
         ]);
@@ -100,6 +103,7 @@ class InvoiceTest extends TestCase
             'user_id' => $userCompany->id
         ]);
 
+        /** @var User $userBranch */
         $userBranch = User::factory()->create([
             'role_id' => Role::BRANCH
         ]);
@@ -123,6 +127,7 @@ class InvoiceTest extends TestCase
     
     public function test_invoice_page_displayed_for_agent()
     {
+        /** @var User $userCompany */
         $userCompany = User::factory()->create([
             'role_id' => Role::COMPANY
         ]);
@@ -131,6 +136,7 @@ class InvoiceTest extends TestCase
             'user_id' => $userCompany->id
         ]);
 
+        /** @var User $userBranch */
         $userBranch = User::factory()->create([
             'role_id' => Role::BRANCH
         ]);
@@ -140,6 +146,7 @@ class InvoiceTest extends TestCase
             'company_id' => $company->id
         ]);
 
+        /** @var User $user */
         $user = User::factory()->create([
             'role_id' => Role::AGENT
         ]);
@@ -163,6 +170,7 @@ class InvoiceTest extends TestCase
 
     public function test_company_invoice_list_is_isolated()
     {
+        /** @var User $userA */
         $userA    = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyA = Company::factory()->create(['user_id' => $userA->id]);
         $branchA  = Branch::factory()->create(['user_id' => $userA->id, 'company_id' => $companyA->id]);
@@ -192,6 +200,7 @@ class InvoiceTest extends TestCase
             ]);
         }        
 
+        /** @var User $userB */
         $userB    = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyB = Company::factory()->create(['user_id' => $userB->id]);
         $branchB  = Branch::factory()->create(['user_id' => $userB->id, 'company_id' => $companyB->id]);

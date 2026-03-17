@@ -32,7 +32,7 @@
     "src": "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-fe_O1x9H.css",
+    "file": "assets/app-DgFfJY7L.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "names": [
@@ -48,7 +48,7 @@
     ]
   },
   "resources/css/guest.css": {
-    "file": "assets/guest-D_ljbE1-.css",
+    "file": "assets/guest-BvqEYt4D.css",
     "src": "resources/css/guest.css",
     "isEntry": true,
     "names": [
@@ -64,7 +64,7 @@
     ]
   },
   "resources/css/payment-link/index.css": {
-    "file": "assets/index-D9KYeHBy.css",
+    "file": "assets/index-cquyAx6G.css",
     "src": "resources/css/payment-link/index.css",
     "isEntry": true,
     "names": [
@@ -87,12 +87,28 @@
       "agent-loss.css"
     ]
   },
+  "resources/css/settings/index.css": {
+    "file": "assets/index-Dr-yukRO.css",
+    "src": "resources/css/settings/index.css",
+    "isEntry": true,
+    "names": [
+      "index.css"
+    ]
+  },
   "resources/css/settings/main.css": {
-    "file": "assets/main-CaKOCMxJ.css",
+    "file": "assets/main-CIGT1Mcn.css",
     "src": "resources/css/settings/main.css",
     "isEntry": true,
     "names": [
       "main.css"
+    ]
+  },
+  "resources/css/settings/notification.css": {
+    "file": "assets/notification-DZLU-9PS.css",
+    "src": "resources/css/settings/notification.css",
+    "isEntry": true,
+    "names": [
+      "notification.css"
     ]
   },
   "resources/css/system-setting/hotel.css": {
@@ -120,7 +136,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-OPfIHqbf.js",
+    "file": "assets/app-BsjHT-VU.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true

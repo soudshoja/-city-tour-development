@@ -8,8 +8,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use App\Modules\ResailAI\Services\ProcessingAdapter;
 use App\Modules\ResailAI\Services\TaskWebhookBridge;
+use App\Models\DocumentProcessingLog;
 use App\Models\FileUpload;
-use App\Models\ResailaiCredential;
 
 class CallbackController extends Controller
 {
@@ -26,40 +26,64 @@ class CallbackController extends Controller
     }
 
     /**
-     * Handle ResailAI callback
+     * Handle ResailAI callback.
      *
-     * @param Request $request
+     * Accepts both nested (extraction_result.tasks[]) and flat (fields at top level) payload formats.
+     * Supports multi-task callbacks — one document may produce multiple extracted tasks.
+     *
+     * @param  Request  $request
      * @return JsonResponse
      */
     public function handle(Request $request): JsonResponse
     {
         try {
-            // Validate input
+            // Validate input — accept both nested and flat callback formats
             $validated = $request->validate([
-                'document_id' => 'required|uuid',
-                'status' => 'required|in:success,error,pending',
-                'supplier_id' => 'nullable|integer',
-                'company_id' => 'nullable|integer',
-                'agent_id' => 'nullable|integer',
-                'branch_id' => 'nullable|integer',
-                'file_url' => 'nullable|string|url',
-                'extraction_result' => 'nullable|array',
-                'error' => 'nullable|array',
-                'error.code' => 'required_if:status,error|string',
-                'error.message' => 'required_if:status,error|string',
+                'document_id'            => 'required|uuid',
+                'status'                 => 'required|in:success,error,pending',
+                'supplier_id'            => 'nullable|integer',
+                'company_id'             => 'nullable|integer',
+                'agent_id'               => 'nullable|integer',
+                'branch_id'              => 'nullable|integer',
+                'file_url'               => 'nullable|string|url',
+                'extraction_result'      => 'nullable|array',
+                'error'                  => 'nullable|array',
+                'error.code'             => 'required_if:status,error|string',
+                'error.message'          => 'required_if:status,error|string',
+                // Flat format fields (top-level task data when extraction_result is not used)
+                'reference'              => 'nullable|string',
+                'type'                   => 'nullable|string|in:flight,hotel,visa,insurance',
+                'price'                  => 'nullable|numeric',
+                'total'                  => 'nullable|numeric',
+                'tax'                    => 'nullable|numeric',
+                'exchange_currency'      => 'nullable|string',
+                'client_name'            => 'nullable|string',
+                'task_flight_details'    => 'nullable|array',
+                'task_hotel_details'     => 'nullable|array',
+                'task_visa_details'      => 'nullable|array',
+                'task_insurance_details' => 'nullable|array',
             ]);
 
             $documentId = $validated['document_id'];
-            $status = $validated['status'];
+            $status     = $validated['status'];
             $supplierId = $validated['supplier_id'] ?? null;
-            $companyId = $validated['company_id'] ?? null;
+            $companyId  = $validated['company_id'] ?? null;
 
             Log::info('[ResailAI] Callback received', [
                 'document_id' => $documentId,
-                'status' => $status,
+                'status'      => $status,
                 'supplier_id' => $supplierId,
-                'company_id' => $companyId,
+                'company_id'  => $companyId,
             ]);
+
+            // Record callback receipt in DocumentProcessingLog
+            $log = DocumentProcessingLog::where('document_id', $documentId)->first();
+            if ($log) {
+                $log->update([
+                    'callback_received_at' => now(),
+                    'status'               => 'processing',
+                ]);
+            }
 
             // Check if feature flag is enabled for this supplier/company
             if ($supplierId && $companyId) {
@@ -67,10 +91,10 @@ class CallbackController extends Controller
                     Log::warning('[ResailAI] PDF processing not enabled for supplier/company', [
                         'document_id' => $documentId,
                         'supplier_id' => $supplierId,
-                        'company_id' => $companyId,
+                        'company_id'  => $companyId,
                     ]);
                     return response()->json([
-                        'message' => 'PDF processing not enabled',
+                        'message'     => 'PDF processing not enabled',
                         'document_id' => $documentId,
                     ], 200);
                 }
@@ -78,74 +102,99 @@ class CallbackController extends Controller
 
             // Handle error status
             if ($status === 'error') {
-                $errorCode = $validated['error']['code'] ?? 'UNKNOWN';
+                $errorCode    = $validated['error']['code'] ?? 'UNKNOWN';
                 $errorMessage = $validated['error']['message'] ?? 'Unknown error';
 
                 Log::error('[ResailAI] Extraction failed', [
-                    'document_id' => $documentId,
-                    'error_code' => $errorCode,
+                    'document_id'  => $documentId,
+                    'error_code'   => $errorCode,
                     'error_message' => $errorMessage,
                 ]);
 
                 // Update FileUpload status to error
                 $this->updateFileUploadStatus($documentId, 'error', $errorMessage);
 
+                // Update DocumentProcessingLog with error details
+                if ($log) {
+                    $log->update([
+                        'status'               => 'failed',
+                        'error_code'           => $errorCode,
+                        'error_message'        => $errorMessage,
+                        'callback_received_at' => now(),
+                    ]);
+                }
+
                 return response()->json([
-                    'message' => 'Extraction failed',
+                    'message'     => 'Extraction failed',
                     'document_id' => $documentId,
-                    'error' => [
-                        'code' => $errorCode,
+                    'error'       => [
+                        'code'    => $errorCode,
                         'message' => $errorMessage,
                     ],
                 ], 200);
             }
 
-            // Handle success status - process extraction results
-            if ($status === 'success' && isset($validated['extraction_result'])) {
-                $extractionResult = $validated['extraction_result'];
+            // Handle success status — flatten payload and create tasks
+            if ($status === 'success') {
+                // Flatten the callback payload into individual task payloads
+                $taskPayloads = $this->processingAdapter->flattenExtractionResult($validated);
 
-                Log::info('[ResailAI] Processing extraction result', [
-                    'document_id' => $documentId,
-                    'has_tasks' => isset($extractionResult['tasks']) ? count($extractionResult['tasks']) : 0,
-                ]);
-
-                // Transform extraction result via ProcessingAdapter
-                $processedResult = $this->processingAdapter->processExtractionResult($extractionResult);
-
-                // Call TaskWebhookBridge to process and create tasks
-                $bridgeResult = $this->taskWebhookBridge->processExtraction($processedResult);
-
-                if ($bridgeResult['success']) {
-                    // Update FileUpload status to completed
-                    $this->updateFileUploadStatus($documentId, 'completed');
-
-                    Log::info('[ResailAI] Task created successfully', [
+                if (empty($taskPayloads)) {
+                    Log::warning('[ResailAI] No tasks found in extraction result', [
                         'document_id' => $documentId,
-                        'response' => $bridgeResult['response'],
                     ]);
 
-                    return response()->json([
-                        'message' => 'Task created successfully',
-                        'document_id' => $documentId,
-                        'data' => $bridgeResult['response'],
-                    ], 200);
-                } else {
-                    $errorMessage = $bridgeResult['error'] ?? 'Unknown error during task creation';
-
-                    Log::error('[ResailAI] Task creation failed', [
-                        'document_id' => $documentId,
-                        'error' => $errorMessage,
-                    ]);
-
-                    // Update FileUpload status to error
-                    $this->updateFileUploadStatus($documentId, 'error', $errorMessage);
+                    $this->updateFileUploadStatus($documentId, 'error', 'No tasks in extraction result');
 
                     return response()->json([
-                        'message' => 'Task creation failed',
+                        'message'     => 'No tasks found in extraction result',
                         'document_id' => $documentId,
-                        'error' => $errorMessage,
                     ], 200);
                 }
+
+                $results    = [];
+                $allSuccess = true;
+
+                foreach ($taskPayloads as $taskPayload) {
+                    $bridgeResult = $this->taskWebhookBridge->processExtraction($taskPayload);
+
+                    if ($bridgeResult['success']) {
+                        $results[] = $bridgeResult['response'] ?? [];
+                        Log::info('[ResailAI] Task created successfully', [
+                            'document_id' => $documentId,
+                            'task_result' => $bridgeResult['response'] ?? [],
+                        ]);
+                    } else {
+                        $allSuccess = false;
+                        $results[]  = ['error' => $bridgeResult['error'] ?? 'Unknown error'];
+                        Log::error('[ResailAI] Task creation failed for one extraction', [
+                            'document_id' => $documentId,
+                            'error'       => $bridgeResult['error'] ?? 'Unknown',
+                        ]);
+                    }
+                }
+
+                $finalStatus = $allSuccess ? 'completed' : 'error';
+                $this->updateFileUploadStatus($documentId, $finalStatus);
+
+                // Update DocumentProcessingLog with completion info
+                if ($log) {
+                    $log->update([
+                        'status'               => $allSuccess ? 'completed' : 'failed',
+                        'extraction_result'    => $validated['extraction_result'] ?? null,
+                        'completed_at'         => now(),
+                        'processing_duration_ms' => $log->started_at
+                            ? $log->started_at->diffInMilliseconds(now())
+                            : null,
+                    ]);
+                }
+
+                return response()->json([
+                    'message'         => $allSuccess ? 'All tasks created successfully' : 'Some tasks failed',
+                    'document_id'     => $documentId,
+                    'tasks_processed' => count($taskPayloads),
+                    'data'            => $results,
+                ], 200);
             }
 
             // Handle pending status
@@ -154,11 +203,10 @@ class CallbackController extends Controller
                     'document_id' => $documentId,
                 ]);
 
-                // Update FileUpload status to pending
                 $this->updateFileUploadStatus($documentId, 'pending');
 
                 return response()->json([
-                    'message' => 'Processing pending',
+                    'message'     => 'Processing pending',
                     'document_id' => $documentId,
                 ], 200);
             }
@@ -169,7 +217,7 @@ class CallbackController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Callback processed',
+                'message'     => 'Callback processed',
                 'document_id' => $documentId,
             ], 200);
 
@@ -177,7 +225,7 @@ class CallbackController extends Controller
             Log::warning('[ResailAI] Callback validation failed', $e->errors());
 
             return response()->json([
-                'error' => 'Validation failed',
+                'error'    => 'Validation failed',
                 'messages' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
@@ -193,11 +241,11 @@ class CallbackController extends Controller
     }
 
     /**
-     * Update FileUpload status
+     * Update FileUpload status.
      *
-     * @param string $documentId FileUpload ID
-     * @param string $status New status
-     * @param string|null $errorMessage Error message if any
+     * @param  string       $documentId    FileUpload ID (UUID)
+     * @param  string       $status        New status value
+     * @param  string|null  $errorMessage  Error message if applicable
      * @return void
      */
     private function updateFileUploadStatus(string $documentId, string $status, ?string $errorMessage = null): void
@@ -211,12 +259,12 @@ class CallbackController extends Controller
 
             Log::info('[ResailAI] FileUpload status updated', [
                 'file_upload_id' => $fileUpload->id,
-                'status' => $status,
+                'status'         => $status,
             ]);
         } else {
             Log::warning('[ResailAI] FileUpload not found for status update', [
                 'document_id' => $documentId,
-                'status' => $status,
+                'status'      => $status,
             ]);
         }
     }

@@ -22,15 +22,26 @@ return new class extends Migration
 
     public function down(): void
     {
+        // MySQL prevents dropping indexes used by foreign key constraints.
+        // Drop the FK first, then indexes, then re-add the FK.
         Schema::table('invoices', function (Blueprint $table) {
+            $table->dropForeign(['agent_id']);
+            $table->dropForeign(['client_id']);
+        });
+
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->dropIndex(['agent_id', 'status']);
+            $table->dropIndex(['client_id', 'status']);
+            $table->dropIndex(['status', 'due_date']);
             $table->dropIndex(['status']);
             $table->dropIndex(['invoice_date']);
             $table->dropIndex(['due_date']);
             $table->dropIndex(['created_at']);
+        });
 
-            $table->dropIndex(['agent_id', 'status']);
-            $table->dropIndex(['client_id', 'status']);
-            $table->dropIndex(['status', 'due_date']);
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->foreign('agent_id')->references('id')->on('agents')->onDelete('cascade');
+            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
         });
     }
 };

@@ -2256,6 +2256,48 @@ body.dark {
     --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
     --tw-gradient-to: #ef1262 var(--tw-gradient-to-position);
 }
+.btn-cancel {
+    @apply rounded-lg shadow-md;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+}
+
+.btn-cancel:hover {
+    background-color: #f3f4f6;
+}
+
+.dark .btn-cancel {
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+.dark .btn-cancel:hover {
+    background-color: #334155;
+}
+
+.btn-primary {
+    @apply rounded-lg shadow-md;
+    background-color: #2563eb;
+    color: #ffffff;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: background-color 0.15s;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.dark .btn-primary {
+    background-color: #3b82f6;
+}
+
+.dark .btn-primary:hover {
+    background-color: #2563eb;
+}
 .badge {
     position: relative;
     margin-top: 0.25rem;

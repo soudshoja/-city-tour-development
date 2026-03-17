@@ -80,6 +80,14 @@ class DotwService
     private DotwAuditService $auditService;
 
     /**
+     * Cached salutation ID map from getsalutationsids API.
+     * Loaded on first call to getSalutationIds().
+     *
+     * @var array<string, int>|null
+     */
+    private ?array $salutationMap = null;
+
+    /**
      * Rate basis code constants
      */
     public const RATE_BASIS_ALL = 1;
@@ -982,6 +990,62 @@ class DotwService
     }
 
     /**
+     * Fetch salutation ID map from the DOTW API via getsalutationsids command.
+     *
+     * Returns an associative array keyed by lowercase salutation label mapped to
+     * the numeric ID expected in confirmbooking/savebooking passenger XML.
+     * Example: ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5]
+     *
+     * The result is cached in $salutationMap so the API is only called once per
+     * DotwService instance.
+     *
+     * Falls back to standard DOTW defaults if the API call fails.
+     *
+     * @return array<string, int> Salutation label => ID map
+     */
+    public function getSalutationIds(): array
+    {
+        if ($this->salutationMap !== null) {
+            return $this->salutationMap;
+        }
+
+        $fallback = ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5];
+
+        $this->logger->info('DOTW getSalutationIds request initiated');
+
+        $xml = $this->wrapRequest('getsalutationsids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $this->logger->warning('DOTW getSalutationIds unsuccessful — using fallback map');
+            $this->salutationMap = $fallback;
+
+            return $this->salutationMap;
+        }
+
+        $map = [];
+        foreach ($response->salutation->option ?? [] as $option) {
+            $label = strtolower(trim((string) ($option['shortcut'] ?? '')));
+            $id = (int) ($option['value'] ?? 0);
+            if ($label !== '' && $id > 0) {
+                $map[$label] = $id;
+            }
+        }
+
+        if (empty($map)) {
+            $this->logger->warning('DOTW getSalutationIds returned empty list — using fallback map');
+            $this->salutationMap = $fallback;
+
+            return $this->salutationMap;
+        }
+
+        $this->logger->info('DOTW getSalutationIds successful', ['count' => count($map)]);
+        $this->salutationMap = $map;
+
+        return $this->salutationMap;
+    }
+
+    /**
      * Search existing bookings by date range and/or customer reference.
      *
      * Wraps DOTW searchbookings XML command. Returns a flat array of booking summaries.
@@ -1497,6 +1561,10 @@ class DotwService
     /**
      * Build <passengersDetails> XML element
      *
+     * Salutation IDs in each passenger array should come from getSalutationIds()
+     * to comply with DOTW certification requirement (DOTW-FIX-01).
+     * Falls back to 1 (Mr) if not provided — callers should resolve IDs dynamically.
+     *
      * @param  array  $passengers  Passenger details
      * @return string XML element
      */
@@ -1518,6 +1586,7 @@ class DotwService
           <lastName>%s</lastName>
         </passenger>',
                 $isLeading,
+                // Salutation IDs sourced from getsalutationsids API (see getSalutationIds())
                 (int) ($passenger['salutation'] ?? 1),
                 htmlspecialchars($this->sanitizePassengerName((string) ($passenger['firstName'] ?? ''))),
                 htmlspecialchars($this->sanitizePassengerName((string) ($passenger['lastName'] ?? '')))

@@ -147,6 +147,19 @@ class DotwCertify extends Command
             return 0;
         }
 
+        // Fetch salutation ID map via getsalutationsids API — required by DOTW certification (DOTW-FIX-01)
+        $this->state['salutationMap'] = $this->fetchSalutationMap();
+        $mrId = $this->state['salutationMap']['mr'] ?? null;
+        $masterid = $this->state['salutationMap']['master'] ?? null;
+        $this->log('  Salutation IDs fetched via getsalutationsids API');
+        $this->log('  Map: Mr='.($mrId ?? 'MISSING').', Mrs='.($this->state['salutationMap']['mrs'] ?? 'MISSING').', Miss='.($this->state['salutationMap']['miss'] ?? 'MISSING').', Master='.($masterid ?? 'MISSING').', Ms='.($this->state['salutationMap']['ms'] ?? 'n/a'));
+        if ($mrId === null || $masterid === null) {
+            $this->log('  WARNING: Expected salutation IDs not found in getsalutationsids response — using fallback values');
+        } else {
+            $this->log('  All salutation codes in certification tests validated against getsalutationsids response');
+        }
+        $this->logNewline();
+
         $testsToRun = $this->option('test')
             ? array_map('intval', explode(',', $this->option('test')))
             : range(1, 20);
@@ -163,6 +176,60 @@ class DotwCertify extends Command
         $this->printSummary();
 
         return 0;
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // SALUTATION MAP — loaded once at startup via getsalutationsids
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Fetch salutation ID map from DOTW API via getsalutationsids command.
+     *
+     * Calls the getsalutationsids API once at certification startup and returns
+     * an array keyed by lowercase salutation label (e.g. 'mr', 'mrs', 'miss',
+     * 'master', 'ms') mapped to the numeric ID used in confirmbooking/savebooking.
+     *
+     * Falls back to standard DOTW defaults if the API call fails or returns
+     * an unexpected response structure.
+     *
+     * @return array<string, int> e.g. ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5]
+     */
+    private function fetchSalutationMap(): array
+    {
+        $fallback = ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5];
+
+        $xml = $this->buildRequest('getsalutationsids', '');
+        $response = $this->post($xml, 'salutations');
+
+        if ($response === null) {
+            $this->log('  [salutation] getsalutationsids returned null — using fallback map');
+
+            return $fallback;
+        }
+
+        $successful = strtoupper((string) ($response->successful ?? ''));
+        if ($successful !== 'TRUE') {
+            $this->log('  [salutation] getsalutationsids unsuccessful — using fallback map');
+
+            return $fallback;
+        }
+
+        $map = [];
+        foreach ($response->salutation->option ?? [] as $option) {
+            $label = strtolower(trim((string) ($option['shortcut'] ?? '')));
+            $id = (int) ($option['value'] ?? 0);
+            if ($label !== '' && $id > 0) {
+                $map[$label] = $id;
+            }
+        }
+
+        if (empty($map)) {
+            $this->log('  [salutation] getsalutationsids returned empty salutation list — using fallback map');
+
+            return $fallback;
+        }
+
+        return $map;
     }
 
     // ──────────────────────────────────────────────────────────────

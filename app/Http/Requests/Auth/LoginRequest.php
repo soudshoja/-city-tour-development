@@ -31,7 +31,7 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
             'g-recaptcha-response' => ['required', 'recaptchav3:login,0.7'],
-        ];
+         ];
     }
 
     /**

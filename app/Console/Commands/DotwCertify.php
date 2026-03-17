@@ -2422,6 +2422,15 @@ class DotwCertify extends Command
         // actualAdults/actualChildren come from original search values
         $this->step('14d', 'confirmbooking — validForOccupancy adultsCode/extraBed, original actualAdults/actualChildren');
         $extraBedXml = $bookExtraBed > 0 ? "<extraBed>{$bookExtraBed}</extraBed>" : '<extraBed>0</extraBed>';
+
+        // DOTW changedOccupancy dual-source pattern:
+        // adultsCode + children  = from validForOccupancy (pricing occupancy)
+        // actualAdults + actualChildren = from original search (real occupancy)
+        $this->log("  VERIFICATION XML: <adultsCode>{$bookAdultsCode}</adultsCode> (from validForOccupancy)");
+        $this->log('  VERIFICATION XML: <actualAdults>3</actualAdults> (from original search)');
+        $this->log("  VERIFICATION XML: {$bookChildrenXml} (from validForOccupancy)");
+        $this->log('  VERIFICATION XML: <actualChildren no="1"><actualChild runno="0">12</actualChild></actualChildren> (from original search)');
+
         $confirmXml = $this->buildRequest('confirmbooking', '
             <bookingDetails>
                 <fromDate>'.$fromDate.'</fromDate>

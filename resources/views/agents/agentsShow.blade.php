@@ -29,13 +29,13 @@
         </div>
 
         <div class="flex flex-col md:flex-row gap-5">
-            <div class="w-1/3">
-                <div class="h-[300px] bg-slate-400 bg-gradient-to-br dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg border border-gray-400 dark:border-gray-700 p-6 flex flex-col justify-between">
+            <div class="w-full md:w-1/3">
+                <div class="h-auto md:h-[300px] bg-slate-400 bg-gradient-to-br dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg border border-gray-400 dark:border-gray-700 p-6 flex flex-col justify-between">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center gap-4">
                             <x-application-logo class="h-12 w-12 rounded-full object-cover ring-2 dark:ring-gray-700" />
                             <div>
-                                <h2 class="text-lg font-semibold text-white">{{ $agent->name }}</h2>
+                                <h2 class="text-base font-semibold text-white break-words">{{ $agent->name }}</h2>
                                 <p class="text-md text-gray-300 dark:text-gray-400">{{ $agent->branch->company->name }}</p>
                             </div>
                         </div>
@@ -84,11 +84,11 @@
                 </div>
             </div>
 
-            <div class="w-2/3">
-                <div class="h-[300px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 panel p-6 flex flex-col text-left rounded-lg shadow-lg">
+            <div class="w-full md:w-2/3">
+                <div class="h-auto md:h-[300px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 panel p-6 flex flex-col text-left rounded-lg shadow-lg">
                     <div class="flex justify-between items-center mb-4">
                         <h5 class="text-lg font-semibold dark:text-white-light">Bonus Records</h5>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <form method="GET" id="agentBonusFilterForm" action="{{ route('agents.show', $agent->id) }}"
                                 class="flex items-center gap-1 bg-white/60 z-20 dark:bg-gray-800/40 px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
 
@@ -174,8 +174,8 @@
                         </p>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto custom-scrollbar rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800 shadow-lg">
-                        <table class="w-full text-sm">
+                    <div class="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800 shadow-lg">
+                        <table class="bg-white w-full text-sm">
                             <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                 <tr>
                                     <th class="py-2 px-4 font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[11px]">Payment Ref</th>
@@ -331,7 +331,7 @@
         </div>
 
         <div class="mt-10">
-            <div class="flex gap-1 mb-0 bg-slate-400 px-2 pt-2 rounded-t-lg">
+            <div class="flex gap-1 mb-0 bg-slate-400 px-2 pt-2 rounded-t-lg overflow-x-auto">
                 <button @click="setTab('client-list')" class="tab-shape main-tab main-tab-active" :class="{ 'main-tab-active': activeTab === 'client-list', 'main-tab-inactive': activeTab !== 'client-list' }">
                     <div class="main-tab-content-wrapper">
                         Clients
@@ -366,7 +366,7 @@
                     @if($clients->isEmpty())
                     <p class="text-gray-600">No clients for this agent.</p>
                     @else
-                    <div class="flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
+                    <div class="flex-1 overflow-x-auto rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
                         <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg">
                             <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                 <tr class="py-3 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">
@@ -543,7 +543,7 @@
                     @if($invoices->isEmpty())
                     <p class="text-gray-600">No invoices for this agent.</p>
                     @else
-                    <div class="max-h-100 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800" x-data="{ openRow: null }">
+                    <div class="max-h-100 overflow-x-auto overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800" x-data="{ openRow: null }">
                        <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg">
                             <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                 <tr class="text-center">

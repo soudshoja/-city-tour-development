@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Mail;
@@ -137,7 +138,7 @@ class ProfileController extends Controller
         }
 
         $companyLogo = $company?->logo ? asset('storage/' . $company->logo) : asset('images/UserPic.svg');
-
+        
         return view('profile.edit', [
             'user' => $user,
             'userPhone' => $phone,
@@ -459,20 +460,32 @@ class ProfileController extends Controller
     /**
      * Show the form to confirm the verification code.
      */
-    public function showConfirmCodeForm()
-    {
-        // Ensure a valid code request exists, otherwise redirect back with error
-        $tokenExists = PasswordUpdateToken::where('user_id', auth()->id())
-            ->where('expires_at', '>=', now())
-            ->exists();
+        public function showConfirmCodeForm()
+        {
+            // Ensure a valid code request exists, otherwise redirect back with error
+            $tokenExists = PasswordUpdateToken::where('user_id', auth()->id())
+                ->where('expires_at', '>=', now())
+                ->exists();
 
-        if (! $tokenExists) {
-            return redirect()->route('profile.edit', ['tab' => 'Security'])
-                ->withErrors(['code' => 'Please request a verification code first.']);
+            if (!$tokenExists) {
+                return redirect()->route('profile.edit', ['tab' => 'Security'])
+                    ->withErrors(['code' => 'Please request a verification code first.']);
+            }
+            
+            $token = DB::table('password_update_tokens')
+            ->where('user_id', auth()->id())
+            ->latest('created_at')
+            ->first();
+
+            $otpRemaining = 0;
+            if ($token && $token->expires_at) {
+                    $otpRemaining = max(0, (int) now()->diffInSeconds($token->expires_at, false));
+            }
+
+            return view('profile.password.confirm-password-code', [
+                'otpRemaining' => $otpRemaining,
+            ]);
         }
-
-        return view('profile.password.confirm-password-code');
-    }
 
     /**
      * Show the form to update the password.

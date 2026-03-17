@@ -22,7 +22,9 @@
                         <div class="flex items-center gap-2 text-sm text-gray-500">
                             Code expires in
                         </div>
-                        <span id="countdown" class="text-2xl font-bold tabular-nums text-blue-600 mt-1">10:00</span>
+                        <span id="countdown" class="text-2xl font-bold tabular-nums text-blue-600 mt-1">
+                            {{ $otpRemaining > 0 ? gmdate('i:s', $otpRemaining) : '00:00' }}
+                        </span>                    
                     </div>
                 </div>
 
@@ -62,35 +64,35 @@
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-    const countdownEl = document.getElementById('countdown');
-    if (!countdownEl) return;
+            const countdownEl = document.getElementById('countdown');
+            if (!countdownEl) return;
 
-    let totalSeconds = 10 * 60; // 10 minutes
+            let totalSeconds = {{ $otpRemaining }}; // 10 minutes based on db timestamp
 
-    const timer = setInterval(() => {
-        totalSeconds--;
+            const timer = setInterval(() => {
+                totalSeconds--;
 
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-        // Turn red when under 2 minutes
-        if (totalSeconds <= 120) {
-            countdownEl.classList.add('text-red-600');
-        }
+                // Turn red when under 2 minutes
+                if (totalSeconds <= 120) {
+                    countdownEl.classList.add('text-red-600');
+                }
 
-        if (totalSeconds <= 0) {
-            clearInterval(timer);
-            countdownEl.textContent = 'Expired';
-            countdownEl.classList.remove('text-red-500');
-            countdownEl.classList.add('text-red-700', 'font-bold');
+                if (totalSeconds <= 0) {
+                    clearInterval(timer);
+                    countdownEl.textContent = 'Expired';
+                    countdownEl.classList.remove('text-red-500');
+                    countdownEl.classList.add('text-red-700', 'font-bold');
 
-            // Disable the verify button and input
-            document.getElementById('code').disabled = true;
-            document.querySelector('button.btn-primary').disabled = true;
-            document.querySelector('button.btn-primary').classList.add('opacity-50', 'cursor-not-allowed');
-        }
-    }, 1000);
-});
+                    // Disable the verify button and input
+                    document.getElementById('code').disabled = true;
+                    document.querySelector('button.btn-primary').disabled = true;
+                    document.querySelector('button.btn-primary').classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }, 1000);
+        });
     </script>
 </x-app-layout>

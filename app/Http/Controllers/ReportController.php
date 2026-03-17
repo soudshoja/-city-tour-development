@@ -2699,6 +2699,8 @@ class ReportController extends Controller
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
             'date_preset' => 'nullable|string',
+            'travel_from' => 'nullable|date',
+            'travel_to' => 'nullable|date',
         ]);
 
         $user = Auth::user();
@@ -2710,6 +2712,8 @@ class ReportController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $datePreset = $request->input('date_preset');
+        $travelFrom = $request->input('travel_from');
+        $travelTo = $request->input('travel_to');
 
         if (empty($statuses)) {
             $statuses = ['issued', 'reissued', 'refund', 'payment_voucher'];
@@ -2793,6 +2797,22 @@ class ReportController extends Controller
 
         $mainStatuses = array_diff($taskStatuses, ['void', 'confirmed']);
 
+        // Travel date filter: queries departure_time (flights), check_in (hotels)
+        // Other task types pass through unfiltered
+        $applyTravelDateFilter = function ($query) use ($travelFrom, $travelTo) {
+            if ($travelFrom || $travelTo) {
+                $query->where(function ($q) use ($travelFrom, $travelTo) {
+                    $q->whereHas('flightDetail', function ($fq) use ($travelFrom, $travelTo) {
+                        if ($travelFrom) $fq->whereDate('departure_time', '>=', $travelFrom);
+                        if ($travelTo) $fq->whereDate('departure_time', '<=', $travelTo);
+                    })->orWhereHas('hotelDetails', function ($hq) use ($travelFrom, $travelTo) {
+                        if ($travelFrom) $hq->whereDate('check_in', '>=', $travelFrom);
+                        if ($travelTo) $hq->whereDate('check_in', '<=', $travelTo);
+                    })->orWhereNotIn('type', ['flight', 'hotel']);
+                });
+            }
+        };
+
         try {
             $allTasks = collect();
 
@@ -2819,6 +2839,8 @@ class ReportController extends Controller
                 if ($dateTo) {
                     $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
+
+                $applyTravelDateFilter($taskQuery);
 
                 // Apply void exclusion (hide issued/reissued that have matching void)
                 // Skip if void is selected
@@ -2908,6 +2930,8 @@ class ReportController extends Controller
                     $voidOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
 
+                $applyTravelDateFilter($voidOnlyQuery);
+
                 $voidOnlyTasks = $voidOnlyQuery->get();
                 $allTasks = $allTasks->merge($voidOnlyTasks);
             }
@@ -2936,6 +2960,8 @@ class ReportController extends Controller
                 if ($dateTo) {
                     $confirmedOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
+
+                $applyTravelDateFilter($confirmedOnlyQuery);
 
                 $confirmedOnlyTasks = $confirmedOnlyQuery->get();
                 $allTasks = $allTasks->merge($confirmedOnlyTasks);
@@ -3075,7 +3101,9 @@ class ReportController extends Controller
             'totalCredit',
             'dateFrom',
             'dateTo',
-            'datePreset'
+            'datePreset',
+            'travelFrom',
+            'travelTo'
         ));
     }
 
@@ -3091,6 +3119,8 @@ class ReportController extends Controller
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
             'date_preset' => 'nullable|string',
+            'travel_from' => 'nullable|date',
+            'travel_to' => 'nullable|date',
         ]);
 
         $user = Auth::user();
@@ -3102,6 +3132,8 @@ class ReportController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $datePreset = $request->input('date_preset');
+        $travelFrom = $request->input('travel_from');
+        $travelTo = $request->input('travel_to');
 
         if (empty($statuses)) {
             $statuses = ['issued', 'reissued', 'refund', 'payment_voucher'];
@@ -3184,6 +3216,22 @@ class ReportController extends Controller
 
         $mainStatuses = array_diff($taskStatuses, ['void', 'confirmed']);
 
+        // Travel date filter: queries departure_time (flights), check_in (hotels)
+        // Other task types (visa, car, esim, rail, insurance) pass through unfiltered
+        $applyTravelDateFilter = function ($query) use ($travelFrom, $travelTo) {
+            if ($travelFrom || $travelTo) {
+                $query->where(function ($q) use ($travelFrom, $travelTo) {
+                    $q->whereHas('flightDetail', function ($fq) use ($travelFrom, $travelTo) {
+                        if ($travelFrom) $fq->whereDate('departure_time', '>=', $travelFrom);
+                        if ($travelTo) $fq->whereDate('departure_time', '<=', $travelTo);
+                    })->orWhereHas('hotelDetails', function ($hq) use ($travelFrom, $travelTo) {
+                        if ($travelFrom) $hq->whereDate('check_in', '>=', $travelFrom);
+                        if ($travelTo) $hq->whereDate('check_in', '<=', $travelTo);
+                    })->orWhereNotIn('type', ['flight', 'hotel']);
+                });
+            }
+        };
+
         $mergedData = collect();
 
         try {
@@ -3212,6 +3260,8 @@ class ReportController extends Controller
                 if ($dateTo) {
                     $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
+
+                $applyTravelDateFilter($taskQuery);
 
                 // Apply void exclusion (hide issued/reissued that have matching void)
                 // Skip if void is selected
@@ -3301,6 +3351,8 @@ class ReportController extends Controller
                     $voidOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
 
+                $applyTravelDateFilter($voidOnlyQuery);
+
                 $voidOnlyTasks = $voidOnlyQuery->get();
                 $allTasks = $allTasks->merge($voidOnlyTasks);
             }
@@ -3329,6 +3381,8 @@ class ReportController extends Controller
                 if ($dateTo) {
                     $confirmedOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
+
+                $applyTravelDateFilter($confirmedOnlyQuery);
 
                 $confirmedOnlyTasks = $confirmedOnlyQuery->get();
                 $allTasks = $allTasks->merge($confirmedOnlyTasks);

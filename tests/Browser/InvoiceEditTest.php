@@ -37,18 +37,48 @@ class InvoiceEditTest extends DuskTestCase
     protected Charge $charge;
     protected PaymentMethod $paymentMethod;
 
+    protected static bool $migrated = false;
+    protected static string $hashedPassword;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->artisan('migrate:fresh');
-        $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
+        // Only migrate once for the entire test file (not every test)
+        if (! static::$migrated) {
+            $this->artisan('migrate:fresh');
+            $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
+            static::$hashedPassword = bcrypt('password');
+            static::$migrated = true;
+        }
+
+        // Clean tables between tests instead of full migration
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        DB::table('invoice_details')->delete();
+        DB::table('invoice_partials')->delete();
+        DB::table('credits')->delete();
+        DB::table('invoices')->delete();
+        DB::table('invoice_sequence')->delete();
+        DB::table('payment_methods')->delete();
+        DB::table('charges')->delete();
+        DB::table('tasks')->delete();
+        DB::table('clients')->delete();
+        DB::table('suppliers')->delete();
+        DB::table('agents')->delete();
+        DB::table('agent_type')->delete();
+        DB::table('branches')->delete();
+        DB::table('companies')->delete();
+        DB::table('model_has_roles')->delete();
+        DB::table('role_has_permissions')->delete();
+        DB::table('roles')->where('name', 'company')->delete();
+        DB::table('users')->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         // ─── Create base data ───────────────────────────────────────────
 
         $this->companyUser = User::factory()->create([
             'role_id' => Role::COMPANY,
-            'password' => bcrypt('password'),
+            'password' => static::$hashedPassword,
         ]);
 
         $this->company = Company::factory()->create([
@@ -169,17 +199,22 @@ class InvoiceEditTest extends DuskTestCase
         ]);
     }
 
+    protected function visitEditPage(Browser $browser): Browser
+    {
+        return $browser->loginAs($this->companyUser)
+            ->visit(route('invoice.edit', [
+                'companyId' => $this->company->id,
+                'invoiceNumber' => $this->invoice->invoice_number,
+            ]))
+            ->waitFor('#invoiceNumber', 10);
+    }
+
     // ─── EDIT PAGE LOADS ────────────────────────────────────────────────
 
     public function test_edit_page_loads_with_invoice_data(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertInputValue('#invoiceNumber', 'INV-2026-00100')
                 ->assertSee('TST-EDIT-001')
                 ->assertSee('Payment Type')
@@ -190,12 +225,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_edit_page_shows_invoice_amounts(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('150')
                 ->assertSee('Payment Type')
                 ->assertSee('N/A')
@@ -208,12 +238,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_can_change_invoice_date(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Change invoice date using JS (native date inputs don't work with type())
             $browser->script("document.getElementById('invdate').value = '2026-03-15'");
@@ -221,7 +246,7 @@ class InvoiceEditTest extends DuskTestCase
 
             // Submit the date form
             $browser->script("document.getElementById('invoice-date-form').submit()");
-            $browser->pause(3000);
+            $browser->pause(1500);
 
             // Verify page reloaded with new date
             $browser->assertInputValue('#invdate', '2026-03-15')
@@ -234,12 +259,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_can_add_task_to_invoice(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Add Task button
             $browser->click('#openTaskModalButton')
@@ -283,12 +303,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('TST-EDIT-001')
                 ->assertSee('TST-EDIT-002');
 
@@ -303,7 +318,7 @@ class InvoiceEditTest extends DuskTestCase
 
             // Handle native confirm() dialog
             $browser->acceptDialog();
-            $browser->pause(3000);
+            $browser->pause(1500);
 
             $browser->screenshot('task-deleted-from-edit');
         });
@@ -313,12 +328,7 @@ class InvoiceEditTest extends DuskTestCase
     {
         // Invoice has only 1 task, delete should fail
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('TST-EDIT-001');
 
             // Try to delete the only task
@@ -329,7 +339,7 @@ class InvoiceEditTest extends DuskTestCase
                     if (deleteBtn) deleteBtn.click();
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Handle confirmation
             $browser->script("
@@ -337,7 +347,7 @@ class InvoiceEditTest extends DuskTestCase
                     document.querySelector('.swal2-confirm').click();
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Task should still be there (cannot delete last task)
             $browser->assertSee('TST-EDIT-001')
@@ -350,12 +360,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_can_change_invoice_price(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Find the invoice price input field and change value
             $browser->waitFor('[id^="invprice-table-"]', 5)
@@ -368,7 +373,7 @@ class InvoiceEditTest extends DuskTestCase
                 const saveBtn = document.querySelector('[id^=\"invprice-table-\"]').closest('td, div').querySelector('button, [onclick*=\"saveTaskPrice\"]');
                 if (saveBtn) saveBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             $browser->screenshot('invoice-price-changed');
         });
@@ -379,12 +384,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_can_select_full_payment_type(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Full Payment button
             $browser->script("
@@ -392,7 +392,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Full Payment'));
                 if (fullBtn) fullBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             $browser->screenshot('full-payment-selected');
         });
@@ -401,12 +401,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_can_select_partial_payment_type(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Partial Payment button
             $browser->script("
@@ -414,7 +409,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Partial Payment'));
                 if (partialBtn) partialBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Partial modal should appear
             $browser->screenshot('partial-payment-selected');
@@ -424,12 +419,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_can_select_split_payment_type(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Split Payment button
             $browser->script("
@@ -437,7 +427,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Split Payment'));
                 if (splitBtn) splitBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             $browser->screenshot('split-payment-selected');
         });
@@ -448,12 +438,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_full_payment_choose_gateway_shows_charges(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Full Payment
             $browser->script("
@@ -461,7 +446,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Full Payment'));
                 if (fullBtn) fullBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Select payment gateway
             $browser->script("
@@ -477,7 +462,7 @@ class InvoiceEditTest extends DuskTestCase
                     }
                 }
             ");
-            $browser->pause(3000);
+            $browser->pause(1500);
 
             // After selecting gateway, charges should be displayed
             // The gateway fee calculation should show on the page
@@ -488,12 +473,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_full_payment_choose_gateway_and_method(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Full Payment
             $browser->script("
@@ -501,7 +481,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Full Payment'));
                 if (fullBtn) fullBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Select gateway (Tap)
             $browser->script("
@@ -517,7 +497,7 @@ class InvoiceEditTest extends DuskTestCase
                     }
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Select payment method (KNET)
             $browser->script("
@@ -533,7 +513,7 @@ class InvoiceEditTest extends DuskTestCase
                     }
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             $browser->screenshot('full-payment-gateway-and-method');
         });
@@ -542,12 +522,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_full_payment_save(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Full Payment
             $browser->script("
@@ -555,7 +530,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Full Payment'));
                 if (fullBtn) fullBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Select gateway
             $browser->script("
@@ -571,7 +546,7 @@ class InvoiceEditTest extends DuskTestCase
                     }
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Click Save Payment
             $browser->script("
@@ -579,7 +554,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button')].find(el => el.textContent.includes('Save Payment'));
                 if (saveBtn) saveBtn.click();
             ");
-            $browser->pause(5000);
+            $browser->pause(3000);
 
             // Payment type should now show as Full
             $browser->screenshot('full-payment-saved');
@@ -605,12 +580,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Payment type should show "Full"
             $browser->assertSee('Full')
@@ -622,7 +592,7 @@ class InvoiceEditTest extends DuskTestCase
                     el.textContent.includes('Change') && !el.textContent.includes('Change Type'));
                 if (changeLink) changeLink.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             $browser->screenshot('change-gateway-modal');
         });
@@ -647,12 +617,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click "Change Type" link
             $browser->script("
@@ -660,7 +625,7 @@ class InvoiceEditTest extends DuskTestCase
                     el.textContent.includes('Change Type'));
                 if (changeTypeLink) changeTypeLink.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Confirm change type action (might have a confirmation modal)
             $browser->script("
@@ -668,7 +633,7 @@ class InvoiceEditTest extends DuskTestCase
                     document.querySelector('.swal2-confirm').click();
                 }
             ");
-            $browser->pause(3000);
+            $browser->pause(1500);
 
             // After change type, payment type should reset to N/A
             $browser->screenshot('payment-type-changed');
@@ -680,12 +645,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_partial_payment_set_installments(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Partial Payment
             $browser->script("
@@ -693,7 +653,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Partial Payment'));
                 if (partialBtn) partialBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Wait for partial modal
             $browser->waitFor('#partialPaymentModal', 5);
@@ -707,7 +667,7 @@ class InvoiceEditTest extends DuskTestCase
                     splitInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Should see 2 installment rows
             $browser->screenshot('partial-payment-installments');
@@ -717,12 +677,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_partial_payment_fill_installment_details(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Partial Payment
             $browser->script("
@@ -730,7 +685,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Partial Payment'));
                 if (partialBtn) partialBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             $browser->waitFor('#partialPaymentModal', 5);
 
@@ -743,7 +698,7 @@ class InvoiceEditTest extends DuskTestCase
                     splitInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Fill installment 1: date, amount, gateway
             $browser->script("
@@ -782,12 +737,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Split Payment
             $browser->script("
@@ -795,7 +745,7 @@ class InvoiceEditTest extends DuskTestCase
                     [...document.querySelectorAll('button, label')].find(el => el.textContent.includes('Split Payment'));
                 if (splitBtn) splitBtn.click();
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Wait for split modal
             $browser->waitFor('#splitPaymentModal', 5);
@@ -809,7 +759,7 @@ class InvoiceEditTest extends DuskTestCase
                     splitInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             ");
-            $browser->pause(2000);
+            $browser->pause(1000);
 
             // Should show 2 split rows with client selection
             $browser->screenshot('split-payment-setup');
@@ -830,12 +780,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Look for credit option
             $browser->script("
@@ -844,7 +789,7 @@ class InvoiceEditTest extends DuskTestCase
                         el.textContent.trim() === 'Credit' || el.textContent.includes('credit'));
                 if (creditBtn) creditBtn.click();
             ");
-            $browser->pause(3000);
+            $browser->pause(1500);
 
             $browser->screenshot('credit-payment-available');
         });
@@ -855,12 +800,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_send_email_modal_opens(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Click Send Invoice Email button
             $browser->script("
@@ -880,12 +820,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_send_email_with_custom_email(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Open email modal
             $browser->script("
@@ -913,7 +848,7 @@ class InvoiceEditTest extends DuskTestCase
                 const submitBtn = document.querySelector('#submitSendEmail');
                 if (submitBtn) submitBtn.click();
             ");
-            $browser->pause(5000);
+            $browser->pause(3000);
 
             $browser->screenshot('email-sent');
         });
@@ -937,12 +872,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Invoice date should still be editable
             $browser->assertPresent('#invdate');
@@ -952,7 +882,7 @@ class InvoiceEditTest extends DuskTestCase
             $browser->pause(500);
 
             $browser->script("document.getElementById('invoice-date-form').submit()");
-            $browser->pause(3000);
+            $browser->pause(1500);
 
             $browser->assertInputValue('#invdate', '2026-03-20')
                 ->screenshot('date-editable-after-payment-type');
@@ -975,12 +905,7 @@ class InvoiceEditTest extends DuskTestCase
         ]);
 
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000);
+            $this->visitEditPage($browser);
 
             // Invoice price input should exist
             $browser->assertPresent('[id^="invprice-table-"]');
@@ -999,12 +924,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_all_payment_type_buttons_visible(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('Full Payment')
                 ->assertSee('Partial Payment')
                 ->assertSee('Split Payment')
@@ -1016,12 +936,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_payment_gateway_dropdown_visible(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('Choose Payment Gateway')
                 ->assertSee('Save Payment')
                 ->screenshot('gateway-dropdown-visible');
@@ -1033,12 +948,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_invoice_shows_correct_currency(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('KWD')
                 ->screenshot('currency-displayed');
         });
@@ -1049,12 +959,7 @@ class InvoiceEditTest extends DuskTestCase
     public function test_send_invoice_email_button_exists(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->loginAs($this->companyUser)
-                ->visit(route('invoice.edit', [
-                    'companyId' => $this->company->id,
-                    'invoiceNumber' => $this->invoice->invoice_number,
-                ]))
-                ->pause(2000)
+            $this->visitEditPage($browser)
                 ->assertSee('Send Invoice Email')
                 ->screenshot('send-email-button-exists');
         });

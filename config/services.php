@@ -95,7 +95,7 @@ return [
 
     'uPayment' => [
         'api_key' => env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_KEY') : env('UPAYMENT_SANDBOX_KEY'),
-        'base_url' => rtrim(env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_URL') : env('UPAYMENT_SANDBOX_URL'), '/') . '/v1',
+        'base_url' => rtrim((env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_URL') : env('UPAYMENT_SANDBOX_URL')) ?? '', '/') . '/v1',
     ],
 
     'hesabe' => [

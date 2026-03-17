@@ -79,22 +79,17 @@ jobs:
         done
         echo 'MySQL is ready!'
 
-    - name: Create Map Database and Grant Permissions
+    - name: Create Additional Databases and Grant Permissions
       run: |
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "CREATE DATABASE IF NOT EXISTS map_data_citytour CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "CREATE DATABASE IF NOT EXISTS city_tour_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "GRANT ALL PRIVILEGES ON map_data_citytour.* TO 'laravel_user'@'%';"
+        mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "GRANT ALL PRIVILEGES ON city_tour_test.* TO 'laravel_user'@'%';"
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "FLUSH PRIVILEGES;"
 
     - name: Verify Database Connection
       run: |
         mysql -h 127.0.0.1 -P 3306 -u laravel_user -plaravel_user_password -e "SHOW DATABASES;"
-
-    # - name: Run Database Migrations
-      # run: |
-      #   echo "Running main database migrations..."
-      #   php artisan migrate --force
-      #   echo "Running map database migrations..."
-      #   php artisan migrate --database=mysql_map --force || echo "Map migrations completed with warnings (this may be normal)"
 
     - name: Run Tests
       run: php artisan test --stop-on-failure
@@ -106,6 +101,10 @@ jobs:
 
     - name: Update ChromeDriver
       run: php artisan dusk:chrome-driver --detect
+
+    - name: Prepare Dusk Environment
+      run: |
+        php artisan key:generate --env=dusk.testing
 
     - name: Start Laravel Server for Dusk
       run: php artisan serve --no-reload &

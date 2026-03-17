@@ -29,6 +29,7 @@ class InvoiceCreationTest extends DuskTestCase
     protected Task $task;
 
     protected static bool $migrated = false;
+    protected static string $hashedPassword;
 
     protected function setUp(): void
     {
@@ -38,19 +39,34 @@ class InvoiceCreationTest extends DuskTestCase
         if (! static::$migrated) {
             $this->artisan('migrate:fresh');
             $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
+            static::$hashedPassword = bcrypt('password');
             static::$migrated = true;
         }
 
-        // Clean only invoice-related tables between tests
+        // Clean tables between tests
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
         DB::table('invoice_details')->delete();
         DB::table('invoice_partials')->delete();
         DB::table('credits')->delete();
         DB::table('invoices')->delete();
+        DB::table('invoice_sequence')->delete();
+        DB::table('tasks')->delete();
+        DB::table('clients')->delete();
+        DB::table('suppliers')->delete();
+        DB::table('agents')->delete();
+        DB::table('agent_type')->delete();
+        DB::table('branches')->delete();
+        DB::table('companies')->delete();
+        DB::table('model_has_roles')->delete();
+        DB::table('role_has_permissions')->delete();
+        DB::table('roles')->where('name', 'company')->delete();
+        DB::table('users')->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         // Create company user
         $this->companyUser = User::factory()->create([
             'role_id' => Role::COMPANY,
-            'password' => bcrypt('password'),
+            'password' => static::$hashedPassword,
         ]);
 
         $this->company = Company::factory()->create([
@@ -132,7 +148,7 @@ class InvoiceCreationTest extends DuskTestCase
                 ->visit(route('invoices.create'))
                 ->assertSee('Choose Agent')
                 ->assertSee('Choose Client')
-                ->pause(2000); // Wait for page JS to load
+                ->waitFor('#select-agent', 10);
 
             // Note: Branch selection skipped — known UI issue to be fixed later
 
@@ -204,6 +220,7 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
+                ->waitFor('#select-agent', 10)
                 ->assertSee('Choose Agent')
                 ->assertSee('Choose Client')
                 ->assertSee('Add Task')
@@ -224,9 +241,8 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000)
+                ->waitFor('#select-agent', 10)
                 ->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->assertVisible('#agentModal')
                 ->assertSee('Agent Management')
@@ -243,20 +259,18 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // First select an agent
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Then open client modal
             $browser->click('#openClientModalButton')
-                ->pause(500)
                 ->waitFor('#clientModal', 5)
                 ->assertVisible('#clientModal')
                 ->assertSee('Client Management')
@@ -272,20 +286,18 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // First select an agent
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Open task modal
             $browser->click('#openTaskModalButton')
-                ->pause(500)
                 ->waitFor('#taskModal', 5)
                 ->assertVisible('#taskModal')
                 ->assertSee('TST-DUSK-001')
@@ -301,7 +313,7 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000)
+                ->waitFor('#generate-invoice-btn', 10)
                 ->click('#generate-invoice-btn')
                 ->pause(1000)
                 ->assertSee('Agent ID is missing')
@@ -317,16 +329,15 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // Open agent modal and select
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Hidden input should have the agent ID
             $browser->assertInputValue('#agentId', $this->agent->id)
@@ -342,25 +353,23 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // Select agent first
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Select client
             $browser->click('#openClientModalButton')
-                ->pause(500)
                 ->waitFor('#clientModal', 5)
                 ->with('#clientList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Hidden input should have the client ID
             $browser->assertInputValue('#receiverId', $this->client->id)
@@ -392,11 +401,10 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($agent2, $client2) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // Select first agent
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->assertVisible('#agentModal')
                 ->assertSee($this->agent->name)
@@ -444,25 +452,23 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // Select agent
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Add task
             $browser->click('#openTaskModalButton')
-                ->pause(500)
                 ->waitFor('#taskModal', 5)
                 ->with('#taskListBody', function (Browser $modal) {
                     $modal->click('tr:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Task reference should appear in the invoice details table
             $browser->assertSee('TST-DUSK-001')
@@ -478,7 +484,7 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#invoiceNumber', 10);
 
             // Invoice number input should have a value
             $invoiceNumber = $browser->inputValue('#invoiceNumber');
@@ -497,7 +503,7 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#invoiceDate', 10);
 
             $invoiceDate = $browser->inputValue('#invoiceDate');
             $this->assertEquals(now()->format('Y-m-d'), $invoiceDate);
@@ -526,16 +532,14 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // Select agent first
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(1000)
                 ->waitUntilMissing('#agentModal', 5);
 
             // Open task modal
@@ -558,25 +562,23 @@ class InvoiceCreationTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->loginAs($this->companyUser)
                 ->visit(route('invoices.create'))
-                ->pause(2000);
+                ->waitFor('#select-agent', 10);
 
             // Select agent
             $browser->click('#select-agent')
-                ->pause(500)
                 ->waitFor('#agentModal', 5)
                 ->with('#agentList', function (Browser $modal) {
                     $modal->click('li:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Add task
             $browser->click('#openTaskModalButton')
-                ->pause(500)
                 ->waitFor('#taskModal', 5)
                 ->with('#taskListBody', function (Browser $modal) {
                     $modal->click('tr:first-child');
                 })
-                ->pause(500);
+                ->pause(300);
 
             // Type the invoice price
             $browser->waitFor('[id^="invprice-table-"]', 5)

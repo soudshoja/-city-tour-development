@@ -950,4 +950,17 @@ Route::group([
 });
 
 Route::get('/hesabe/get-payment/{token}', [PaymentController::class, 'getHesabePayment'])->name('hesabe.get-payment');
+
+Route::get('locale/{lang}', function ($lang) {
+    if (in_array($lang, config('app.available_locales', ['en', 'ar']))) {
+        session()->put('locale', $lang);
+
+        if (auth()->check()) {
+            auth()->user()->update(['locale' => $lang]);
+        }
+    }
+
+    return redirect()->back();
+})->name('locale.switch');
+
 require __DIR__ . '/auth.php';

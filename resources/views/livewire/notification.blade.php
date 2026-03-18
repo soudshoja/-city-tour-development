@@ -4,7 +4,7 @@
         <button
             class="relative pb-2 font-semibold transition-all duration-300 ease-in-out {{ $filter == 'all' ? 'text-black dark:text-white border-b-2 border-blue-800' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300' }}"
             wire:click="updateFilter('all')">
-            All
+            {{ __('navigation.all') }}
             <span class="ml-2 text-xs bg-blue-100/50 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
                 {{ $totalCount }}
             </span>
@@ -13,7 +13,7 @@
         <button
             class="relative pb-2 font-semibold transition-all duration-300 ease-in-out {{ $filter == 'read' ? 'text-black dark:text-white border-b-2 border-green-800' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300' }}"
             wire:click="updateFilter('read')">
-            Read
+            {{ __('navigation.read') }}
             <span class="ml-2 text-xs bg-green-100/50 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full">
                 {{ $readCount }}
             </span>
@@ -22,7 +22,7 @@
         <button
             class="relative pb-2 font-semibold transition-all duration-300 ease-in-out {{ $filter == 'unread' ? 'text-black dark:text-white border-b-2 border-red-800' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300' }}"
             wire:click="updateFilter('unread')">
-            Unread
+            {{ __('navigation.unread') }}
             <span class="ml-2 text-xs bg-red-100/50 dark:bg-red-900/50 text-red-500 dark:text-red-400 px-2 py-0.5 rounded-full">
                 {{ $unreadCount }}
             </span>
@@ -69,14 +69,14 @@
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
-                        Approve Assignment
+                        {{ __('navigation.approve_assignment') }}
                     </a>
                     <a href="{{ $notificationData['actions']['deny_url'] ?? '#' }}" 
                        class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
-                        Deny
+                        {{ __('navigation.deny') }}
                     </a>
                 </div>
             @elseif($requestToken)
@@ -87,7 +87,7 @@
                 @if($processedRequest)
                     <div class="mt-3 p-2 rounded-md {{ $processedRequest->status === 'approved' ? 'bg-green-100 text-green-800' : ($processedRequest->status === 'denied' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800') }}">
                         <span class="text-sm font-medium">
-                            Status: {{ ucfirst($processedRequest->status) }}
+                            {{ __('navigation.status') }}: {{ ucfirst($processedRequest->status) }}
                             @if($processedRequest->processed_at)
                                 - {{ \Carbon\Carbon::parse($processedRequest->processed_at)->diffForHumans() }}
                             @endif
@@ -99,15 +99,15 @@
             <!-- Client Details for Assignment Requests -->
             @if(isset($notificationData['client_name']))
                 <div class="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs">
-                    <strong>Client:</strong> {{ $notificationData['client_name'] }}<br>
+                    <strong>{{ __('general.client') }}:</strong> {{ $notificationData['client_name'] }}<br>
                     @if(isset($notificationData['client_phone']))
-                        <strong>Phone:</strong> {{ $notificationData['client_phone'] }}<br>
+                        <strong>{{ __('navigation.phone') }}:</strong> {{ $notificationData['client_phone'] }}<br>
                     @endif
                     @if(isset($notificationData['requesting_agent_name']))
-                        <strong>Requested by:</strong> {{ $notificationData['requesting_agent_name'] }}<br>
+                        <strong>{{ __('navigation.requested_by') }}:</strong> {{ $notificationData['requesting_agent_name'] }}<br>
                     @endif
                     @if(isset($notificationData['reason']))
-                        <strong>Reason:</strong> {{ $notificationData['reason'] }}
+                        <strong>{{ __('navigation.reason') }}:</strong> {{ $notificationData['reason'] }}
                     @endif
                 </div>
             @endif
@@ -126,7 +126,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                         </svg>
-                        View Client
+                        {{ __('navigation.view_client') }}
                     </a>
                 </div>
             @endif
@@ -137,7 +137,7 @@
             <div class="mt-2 text-right">
                 <button wire:click="markAsRead({{ $notification->id }})" 
                         class="text-xs text-blue-600 hover:text-blue-800 underline">
-                    Mark as read
+                    {{ __('navigation.mark_as_read') }}
                 </button>
             </div>
         @endif

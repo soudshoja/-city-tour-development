@@ -4,21 +4,21 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="main-set-loading-text">Loading agent charge settings...</span>
+        <span class="main-set-loading-text">{{ __('settings.loading_agent_charges') }}...</span>
     </div>
 
     <div x-show="!loading" x-cloak>
         <div class="main-set-header">
             <div class="main-set-header-content">
-                <h3>Agent Extra Charge Settings</h3>
-                <p>Configure who bears extra charges (gateway fees) for profit calculation</p> {{--  + supplier surcharges --}}
+                <h3>{{ __('settings.agent_extra_charge_settings') }}</h3>
+                <p>{{ __('settings.agent_extra_charge_description') }}</p> {{--  + supplier surcharges --}}
             </div>
             @can('bulkManageAgentCharges', 'App\Models\Setting')
             <button @click="showBulkModal = true" class="main-set-btn main-set-btn-primary">
                 <svg class="main-set-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
-                Bulk Update
+                {{ __('general.bulk_update') }}
             </button>
             @endcan
         </div>
@@ -29,13 +29,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <div class="main-set-info-text">
-                    <p>How profit calculation works:</p>
+                    <p>{{ __('settings.profit_calculation_works') }}:</p>
                     <ul>
-                        <li><strong>Profit = Markup - Agent's Charge Deduction</strong></li>
-                        <li><strong>Extra Charges</strong> = Gateway Fees</li> {{-- (service_charge) + Supplier Surcharges --}}
-                        <li><strong>Company Bears All:</strong> Agent keeps full markup as profit</li>
-                        <li><strong>Agent Bears All:</strong> Full extra charges deducted from agent's profit</li>
-                        <li><strong>Split:</strong> Charges shared based on percentage setting</li>
+                        <li><strong>{{ __('general.profit') }} = {{ __('general.markup') }} - {{ __('settings.agent_charge_deduction') }}</strong></li>
+                        <li><strong>{{ __('general.extra_charges') }}</strong> = {{ __('general.gateway_fees') }}</li> {{-- (service_charge) + Supplier Surcharges --}}
+                        <li><strong>{{ __('settings.company_bears_all') }}:</strong> {{ __('settings.company_bears_all_description') }}</li>
+                        <li><strong>{{ __('settings.agent_bears_all') }}:</strong> {{ __('settings.agent_bears_all_description') }}</li>
+                        <li><strong>{{ __('general.split') }}:</strong> {{ __('settings.split_charges') }}</li>
                     </ul>
                 </div>
             </div>
@@ -43,7 +43,7 @@
 
         @if(auth()->user()->role_id != \App\Models\Role::AGENT)
         <div class="main-set-search-container">
-            <input type="text" x-model="searchQuery" placeholder="Search agents..." class="main-set-search-input">
+            <input type="text" x-model="searchQuery" placeholder="{{ __('settings.search_agents') }}" class="main-set-search-input">
         </div>
         @endif
 
@@ -56,13 +56,13 @@
                             <input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="main-set-checkbox">
                         </th>
                         @endcan
-                        <th>Agent</th>
+                        <th>{{ __('general.agent') }}</th>
                         <!-- <th>Branch</th> -->
-                        <th>Type</th>
-                        <th>Extra Charge Bearer</th>
-                        <th>Agent %</th>
-                        <th>Status</th>
-                        <th style="text-align: right;">Actions</th>
+                        <th>{{ __('general.type') }}</th>
+                        <th>{{ __('general.extra_charge_bearer') }}</th>
+                        <th>{{ __('general.agent_percentage') }}</th>
+                        <th>{{ __('general.status') }}</th>
+                        <th style="text-align: right;">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,12 +96,12 @@
                                 <span class="main-set-text-sm main-set-text-gray-600" x-text="getAgentPercentageDisplay(agent.id)"></span>
                             </td>
                             <td>
-                                <span x-show="getAgentSetting(agent.id)?.id" class="main-set-status-configured">Configured</span>
-                                <span x-show="!getAgentSetting(agent.id)?.id" class="main-set-status-default">Default</span>
+                                <span x-show="getAgentSetting(agent.id)?.id" class="main-set-status-configured">{{ __('settings.configured') }}</span>
+                                <span x-show="!getAgentSetting(agent.id)?.id" class="main-set-status-default">{{ __('settings.default') }}</span>
                             </td>
                             <td style="text-align: right;">
                                 <button @click="openEditModal(agent)" class="main-set-edit-link">
-                                    @can('manageAgentCharges', 'App\Models\Setting') Edit @else View @endcan
+                                    @can('manageAgentCharges', 'App\Models\Setting') {{ __('general.edit') }} @else {{ __('general.view') }} @endcan
                                 </button>
                             </td>
                         </tr>
@@ -115,7 +115,7 @@
                 <svg class="main-set-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                 </svg>
-                <p class="main-set-empty-text">No agents found</p>
+                <p class="main-set-empty-text">{{ __('settings.no_agents_found') }}</p>
             </div>
         </template>
     </div>
@@ -130,9 +130,9 @@
                         <div class="main-set-modal-header-top">
                             <div>
                                 <h3 class="main-set-modal-title">
-                                    @can('manageAgentCharges', 'App\Models\Setting') Edit @else View @endcan Charge Settings
+                                    @can('manageAgentCharges', 'App\Models\Setting') {{ __('general.edit') }} @else {{ __('general.view') }} @endcan {{ __('settings.charge_settings') }}
                                 </h3>
-                                <p class="main-set-modal-subtitle">Configure who bears extra charges for <span x-text="editingAgent?.name"></span></p>
+                                <p class="main-set-modal-subtitle">{{ __('settings.configure_who_bears_for') }} <span x-text="editingAgent?.name"></span></p>
                             </div>
                             <button type="button" @click="showEditModal = false" class="main-set-modal-close">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +142,7 @@
                         </div>
 
                         <div class="main-set-mb-4">
-                            <label class="main-set-form-label">Who Bears Extra Charges?</label>
+                            <label class="main-set-form-label">{{ __('settings.who_bears_extra_charges') }}</label>
                             <div class="main-set-radio-group">
                                 <label class="main-set-radio-option @cannot('manageAgentCharges', 'App\Models\Setting') pointer-events-none @endcannot"
                                        :class="{'main-set-radio-option-active': editingSetting.charge_bearer === 'company'}">
@@ -153,8 +153,8 @@
                                            @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                            class="main-set-radio-input">
                                     <div class="main-set-radio-label-wrapper">
-                                        <span class="main-set-radio-label-title">Company Bears All</span>
-                                        <p class="main-set-radio-label-desc">Agent keeps full markup as profit</p>
+                                        <span class="main-set-radio-label-title">{{ __('settings.company_bears_all') }}</span>
+                                        <p class="main-set-radio-label-desc">{{ __('settings.company_bears_all_description') }}</p>
                                     </div>
                                 </label>
                                 <label class="main-set-radio-option @cannot('manageAgentCharges', 'App\Models\Setting') pointer-events-none @endcannot"
@@ -166,8 +166,8 @@
                                            @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                            class="main-set-radio-input">
                                     <div class="main-set-radio-label-wrapper">
-                                        <span class="main-set-radio-label-title">Agent Bears All</span>
-                                        <p class="main-set-radio-label-desc">Full charges deducted from profit</p>
+                                        <span class="main-set-radio-label-title">{{ __('settings.agent_bears_all') }}</span>
+                                        <p class="main-set-radio-label-desc">{{ __('settings.agent_bears_all_description') }}</p>
                                     </div>
                                 </label>
                                 <label class="main-set-radio-option @cannot('manageAgentCharges', 'App\Models\Setting') pointer-events-none @endcannot"
@@ -179,15 +179,15 @@
                                            @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                            class="main-set-radio-input">
                                     <div class="main-set-radio-label-wrapper">
-                                        <span class="main-set-radio-label-title">Split</span>
-                                        <p class="main-set-radio-label-desc">Share charges by percentage</p>
+                                        <span class="main-set-radio-label-title">{{ __('general.split') }}</span>
+                                        <p class="main-set-radio-label-desc">{{ __('settings.split_description') }}</p>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
                         <div x-show="editingSetting.charge_bearer === 'split'" class="main-set-percentage-section">
-                            <label class="main-set-form-label main-set-mb-2">Agent Percentage</label>
+                            <label class="main-set-form-label main-set-mb-2">{{ __('settings.agent_percentage') }}</label>
                             <div class="main-set-percentage-wrapper">
                                 <input type="number"
                                        x-model="editingSetting.agent_percentage"
@@ -199,18 +199,18 @@
                                        class="main-set-number-input">
                                 <span class="main-set-percentage-symbol">%</span>
                                 <span class="main-set-percentage-divider">|</span>
-                                <span class="main-set-percentage-info">Company: <span x-text="editingSetting.company_percentage"></span>%</span>
+                                <span class="main-set-percentage-info">{{ __('general.company') }}: <span x-text="editingSetting.company_percentage"></span>%</span>
                             </div>
-                            <p class="main-set-percentage-note">Agent and company percentages must sum to 100%</p>
+                            <p class="main-set-percentage-note">{{ __('settings.percentage_must_sum') }}</p>
                         </div>
 
                         <div class="main-set-mb-4">
-                            <label class="main-set-form-label">Notes (optional)</label>
+                            <label class="main-set-form-label">{{ __('settings.notes_optional') }}</label>
                             <textarea x-model="editingSetting.notes"
                                       rows="2"
                                       @cannot('manageAgentCharges', 'App\Models\Setting') disabled @endcannot
                                       class="main-set-textarea"
-                                      placeholder="Any notes about this setting..."></textarea>
+                                      placeholder="{{ __('settings.notes_placeholder') }}"></textarea>
                         </div>
                     </div>
 
@@ -218,7 +218,7 @@
                         <button type="button"
                                 @click="showEditModal = false"
                                 class="main-set-btn main-set-btn-secondary">
-                            @can('manageAgentCharges', 'App\Models\Setting') Cancel @else Close @endcan
+                            @can('manageAgentCharges', 'App\Models\Setting') {{ __('general.cancel') }} @else {{ __('general.close') }} @endcan
                         </button>
                         <div class="main-set-modal-footer-right">
                             @can('manageAgentCharges', 'App\Models\Setting')
@@ -226,13 +226,13 @@
                                     x-show="editingSetting.id"
                                     @click="deleteSetting"
                                     class="main-set-btn main-set-btn-danger">
-                                Reset to Default
+                                {{ __('settings.reset_to_default') }}
                             </button>
                             <button type="submit"
                                     :disabled="saving"
                                     class="main-set-btn main-set-btn-primary">
-                                <span x-show="!saving">Save</span>
-                                <span x-show="saving">Saving...</span>
+                                <span x-show="!saving">{{ __('general.save') }}</span>
+                                <span x-show="saving">{{ __('settings.saving') }}</span>
                             </button>
                             @endcan
                         </div>
@@ -252,8 +252,8 @@
                     <div class="main-set-modal-header">
                         <div class="main-set-modal-header-top">
                             <div>
-                                <h3 class="main-set-modal-title">Bulk Update Charge Settings</h3>
-                                <p class="main-set-modal-subtitle">Update extra charge settings for multiple agents at once</p>
+                                <h3 class="main-set-modal-title">{{ __('settings.bulk_update_charge_settings') }}</h3>
+                                <p class="main-set-modal-subtitle">{{ __('settings.bulk_update_charge_description') }}</p>
                             </div>
                             <button type="button" @click="showBulkModal = false" class="main-set-modal-close">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,52 +263,52 @@
                         </div>
 
                         <div x-show="selectedAgents.length === 0" class="main-set-alert-warning">
-                            <p class="main-set-alert-warning-text">Please select agents from the table first</p>
+                            <p class="main-set-alert-warning-text">{{ __('settings.select_agents_first') }}</p>
                         </div>
 
                         <div x-show="selectedAgents.length > 0">
                             <p class="main-set-text-sm main-set-text-gray-600 main-set-mb-4">
-                                Updating settings for <strong x-text="selectedAgents.length"></strong> selected agent(s)
+                                {{ __('settings.updating_settings_for') }} <strong x-text="selectedAgents.length"></strong> {{ __('settings.selected_agents') }}
                             </p>
 
                             <div class="main-set-mb-4">
-                                <label class="main-set-form-label">Who Bears Extra Charges?</label>
+                                <label class="main-set-form-label">{{ __('settings.who_bears_extra_charges') }}</label>
                                 <select x-model="bulkSetting.charge_bearer" class="main-set-select">
-                                    <option value="company">Company Bears All</option>
-                                    <option value="agent">Agent Bears All</option>
-                                    <option value="split">Split</option>
+                                    <option value="company">{{ __('settings.company_bears_all') }}</option>
+                                    <option value="agent">{{ __('settings.agent_bears_all') }}</option>
+                                    <option value="split">{{ __('general.split') }}</option>
                                 </select>
                             </div>
 
                             <div x-show="bulkSetting.charge_bearer === 'split'" class="main-set-percentage-section">
-                                <label class="main-set-form-label main-set-mb-2">Agent Percentage</label>
+                                <label class="main-set-form-label main-set-mb-2">{{ __('settings.agent_percentage') }}</label>
                                 <div class="main-set-percentage-wrapper">
                                     <input type="number"  x-model="bulkSetting.agent_percentage"  min="0"  max="100"  step="0.01"
                                            @input="bulkSetting.company_percentage = 100 - bulkSetting.agent_percentage"
                                            class="main-set-number-input">
                                     <span class="main-set-percentage-symbol">%</span>
                                     <span class="main-set-percentage-divider">|</span>
-                                    <span class="main-set-percentage-info">Company: <span x-text="bulkSetting.company_percentage"></span>%</span>
+                                    <span class="main-set-percentage-info">{{ __('general.company') }}: <span x-text="bulkSetting.company_percentage"></span>%</span>
                                 </div>
-                                <p class="main-set-percentage-note">Agent and company percentages must sum to 100%</p>
+                                <p class="main-set-percentage-note">{{ __('settings.percentage_must_sum') }}</p>
                             </div>
 
                             <div class="main-set-mb-4">
-                                <label class="main-set-form-label">Notes (optional)</label>
+                                <label class="main-set-form-label">{{ __('settings.notes_optional') }}</label>
                                 <textarea x-model="bulkSetting.notes" rows="2" class="main-set-textarea"
-                                          placeholder="Any notes about this setting..."></textarea>
+                                          placeholder="{{ __('settings.notes_placeholder') }}"></textarea>
                             </div>
                         </div>
                     </div>
 
                     <div class="main-set-modal-footer">
                         <button type="button" @click="showBulkModal = false" class="main-set-btn main-set-btn-secondary">
-                            Cancel
+                            {{ __('general.cancel') }}
                         </button>
                         <button type="submit" :disabled="saving || selectedAgents.length === 0"
                                 class="main-set-btn main-set-btn-primary">
-                            <span x-show="!saving">Update All</span>
-                            <span x-show="saving">Updating...</span>
+                            <span x-show="!saving">{{ __('settings.update_all') }}</span>
+                            <span x-show="saving">{{ __('settings.updating') }}</span>
                         </button>
                     </div>
                 </form>
@@ -417,12 +417,12 @@
 
             getAgentTypeName(typeId) {
                 const types = {
-                    1: 'Salary',
-                    2: 'Commission',
-                    3: 'Both-A',
-                    4: 'Both-B'
+                    1: '{{ __('general.salary') }}',
+                    2: '{{ __('general.commission') }}',
+                    3: '{{ __('general.both_a') }}',
+                    4: '{{ __('general.both_b') }}'
                 };
-                return types[typeId] || 'Unknown';
+                return types[typeId] || '{{ __('general.unknown') }}';
             },
 
             getAgentTypeBadgeClass(typeId) {
@@ -437,11 +437,11 @@
 
             getBearerLabel(bearer) {
                 const labels = {
-                    'company': 'Company',
-                    'agent': 'Agent',
-                    'split': 'Split'
+                    'company': '{{ __('general.company') }}',
+                    'agent': '{{ __('general.agent') }}',
+                    'split': '{{ __('general.split') }}'
                 };
-                return labels[bearer] || 'Company';
+                return labels[bearer] || '{{ __('general.company') }}';
             },
 
             getBearerBadgeClass(bearer) {
@@ -518,7 +518,7 @@
             },
 
             async deleteSetting() {
-                if (!confirm('Reset this agent to default settings (Company Bears All)?')) return;
+                if (!confirm('{{ __('settings.reset_confirm') }}')) return;
 
                 this.saving = true;
 

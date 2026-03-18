@@ -1,5 +1,5 @@
 <x-app-layout>
-    <h1 class="text-center mb-2 font-semibold text-xl">Paid Accounts Payable & Receivable Report</h1>
+    <h1 class="text-center mb-2 font-semibold text-xl">{{ __('general.paid_account_receivable_report') }}</h1>
 
     <div class="flex justify-center items-center bg-gray-100">
         <form method="GET" action="{{ route('reports.paid-report') }}"
@@ -8,22 +8,22 @@
             <!-- Input Fields Section -->
             <div class="grid grid-cols-12 gap-4">
                 <div class="flex flex-col col-span-6 lg:col-span-2">
-                    <label for="start_date" class="font-medium text-sm mb-1">Start Date:</label>
+                    <label for="start_date" class="font-medium text-sm mb-1">{{ __('report.start_date') }}:</label>
                     <input type="date" name="start_date" id="start_date"
                         value="{{ $startDate ? date('Y-m-d', strtotime($startDate)) : '' }}"
                         class="border rounded px-2 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                 </div>
                 <div class="flex flex-col col-span-6 lg:col-span-2">
-                    <label for="end_date" class="font-medium text-sm mb-1">End Date:</label>
+                    <label for="end_date" class="font-medium text-sm mb-1">{{ __('report.end_date') }}:</label>
                     <input type="date" name="end_date" id="end_date"
                         value="{{ $endDate ? date('Y-m-d', strtotime($endDate)) : '' }}"
                         class="border rounded px-2 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                 </div>
                 <div class="flex flex-col col-span-6 lg:col-span-2">
-                    <label for="branch_id" class="font-medium text-sm mb-1">Filter by Branch:</label>
+                    <label for="branch_id" class="font-medium text-sm mb-1">{{ __('report.filter_by_branch') }}:</label>
                     <select name="branch_id" id="branch_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
-                        <option value="">All Branches</option>
+                        <option value="">{{ __('report.all_branches') }}</option>
                         @foreach ($branches as $branch)
                             <option value="{{ $branch->id }}" {{ $branchId == $branch->id ? 'selected' : '' }}>
                                 {{ ucfirst($branch->name) }}
@@ -32,7 +32,7 @@
                     </select>
                 </div>
                 <div class="flex flex-col col-span-6 lg:col-span-3">
-                    <label for="account_id" class="font-medium text-sm mb-1">Filter by Account:</label>
+                    <label for="account_id" class="font-medium text-sm mb-1">{{ __('report.filter_by_account') }}:</label>
                     <select name="account_id" id="account_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                         @foreach ($allAccounts as $account)
@@ -46,15 +46,14 @@
                     $selectedType = request()->input('type_id', '');
                 @endphp
                 <div class="flex flex-col col-span-6 lg:col-span-3">
-                    <label for="type_id" class="font-medium text-sm mb-1">Filter by Type:</label>
+                    <label for="type_id" class="font-medium text-sm mb-1">{{ __('report.filter_by_type') }}:</label>
                     <select name="type_id" id="type_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
-                        <option value="" disabled {{ empty($selectedType) ? 'selected' : '' }}>Select Report Type
+                        <option value="" disabled {{ empty($selectedType) ? 'selected' : '' }}>{{ __('report.select_report_type') }}
                         </option>
-                        <option value="payable" {{ $selectedType == 'payable' ? 'selected' : '' }}>Payable only
+                        <option value="payable" {{ $selectedType == 'payable' ? 'selected' : '' }}>{{ __('report.payable_only') }}
                         </option>
-                        <option value="receivable" {{ $selectedType == 'receivable' ? 'selected' : '' }}>Receivable
-                            only</option>
+                        <option value="receivable" {{ $selectedType == 'receivable' ? 'selected' : '' }}>{{ __('report.receivable_only') }}</option>
                     </select>
                 </div>
             </div>
@@ -63,11 +62,11 @@
            <div class="flex justify-end gap-3 mt-6">
                 <button type="button" onclick="resetReportFilters()"
                     class="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-100 transition-all duration-150">
-                    Reset
+                    {{ __('general.reset') }}
                 </button>
                 <button id="submit-account-filter" type="submit"
                     class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-all duration-150">
-                    Filter
+                    {{ __('general.filter') }}
                 </button>
             </div>
 
@@ -76,21 +75,21 @@
                 <div class="border w-full p-2 rounded">
 
                     @if ($startDate && $endDate)
-                        <p>Report for the period: {{ $startDate }} to {{ $endDate }}</p>
+                        <p>{{ __('report.report_for_period') }}: {{ $startDate }} to {{ $endDate }}</p>
                     @elseif (!$startDate && !$endDate)
-                        <p>Showing all transactions (no date filter applied).</p>
+                        <p>{{ __('report.showing_all_transactions') }} ({{ __('report.no_date_filter_applied') }}).</p>
                     @endif
 
                     @if ($branchId)
-                        <p>Filtered by Branch: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
+                        <p>{{ __('report.filtered_by_branch') }}: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
                     @endif
                     @if ($supplierId)
-                        <p>Filtered by Supplier:
+                        <p>{{ __('report.filtered_by_supplier') }}:
                             {{ \App\Models\Supplier::find($supplierId)->name ?? 'Unknown Supplier' }}
                         </p>
                     @endif
                     @if ($selectedType)
-                        <p>Filtered by Type: {{ ucfirst($selectedType) }}</p>
+                        <p>{{ __('report.filtered_by_type') }}: {{ ucfirst($selectedType) }}</p>
                     @endif
 
 
@@ -106,7 +105,7 @@
         </header> --}}
         <div id="account_payable"
             class="{{ $selectedType == 'payable' ? '' : ($selectedType == 'receivable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
-            <h2 class="font-bold">Accounts Payable Transactions <span class="font-normal">(Account ID:
+            <h2 class="font-bold">{{ __('report.accounts_payable_transactions') }} <span class="font-normal">({{ __('report.account_id') }}:
                     {{ $accountPayable->code ?? 'CI12300' }})</span></h2>
 
             @php
@@ -122,11 +121,11 @@
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
                         <tr>
-                            <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
+                            <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">{{ __('general.transaction_date') }}</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">{{ __('general.description') }}</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">{{ __('general.debit') }}</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">{{ __('general.credit') }}</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">{{ __('general.balance') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -144,19 +143,19 @@
                                     <p><strong>{{ $transaction->description }}</strong>
                                     </p>
                                     @if (!empty($transaction->task?->additional_info))
-                                        <p>Additional info: {{ $transaction->task->additional_info }}</p>
+                                        <p>{{ __('general.additional_info') }}: {{ $transaction->task->additional_info }}</p>
                                     @endif
 
                                     @if (!empty($transaction->task?->reference))
-                                        <p>Ref: {{ $transaction->task->reference }}</p>
+                                        <p>{{ __('general.reference') }}: {{ $transaction->task->reference }}</p>
                                     @endif
 
                                     @if (!empty($transaction->task?->client_name))
-                                        <p>Client: {{ $transaction->task->client_name }}</p>
+                                        <p>{{ __('general.client') }}: {{ $transaction->task->client_name }}</p>
                                     @endif
 
                                     @if (!empty($transaction->task?->flightDetails?->departure_time))
-                                        <p>Flight details:
+                                        <p>{{ __('general.flight_details') }}:
                                             {{ \Carbon\Carbon::parse($transaction->task->flightDetails->departure_time)->format('Y-m-d H:i') }}
                                             -
                                             {{ \Carbon\Carbon::parse($transaction->task->flightDetails->arrival_time)->format('Y-m-d H:i') }}
@@ -172,13 +171,13 @@
                                     @endphp
 
                                     @if (!empty($roomDetails))
-                                        <p><strong>Hotel details:</strong></p>
+                                        <p><strong>{{ __('general.hotel_details') }}:</strong></p>
                                         <ul>
-                                            <li>Name: {{ $roomDetails['name'] ?? 'n/a' }}</li>
-                                            <li>Info: {{ $roomDetails['info'] ?? 'n/a' }}</li>
-                                            <li>Type: {{ $roomDetails['type'] ?? 'n/a' }}</li>
-                                            <li>Check-in: {{ $hotelDetails->check_in ?? 'n/a' }}</li>
-                                            <li>Check-out: {{ $hotelDetails->check_out ?? 'n/a' }}
+                                            <li>{{ __('general.name') }}: {{ $roomDetails['name'] ?? 'n/a' }}</li>
+                                            <li>{{ __('general.info') }}: {{ $roomDetails['info'] ?? 'n/a' }}</li>
+                                            <li>{{ __('general.type') }}: {{ $roomDetails['type'] ?? 'n/a' }}</li>
+                                            <li>{{ __('general.check_in') }}: {{ $hotelDetails->check_in ?? 'n/a' }}</li>
+                                            <li>{{ __('general.check_out') }}: {{ $hotelDetails->check_out ?? 'n/a' }}
                                             </li>
                                         </ul>
                                     @endif
@@ -199,22 +198,22 @@
                     </tbody>
                 </table>
             @else
-                <p class="text-red-500">No Accounts Payable transactions found for the selected period.</p>
+                <p class="text-red-500">{{ __('report.no_account_payable') }}.</p>
             @endif
         </div>
         <div id="account_receivable"
             class="{{ $selectedType == 'receivable' ? '' : ($selectedType == 'payable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
-            <h2 class="font-bold">Accounts Receivable Transactions <span class="font-normal">(Account ID:
+            <h2 class="font-bold">{{ __('report.accounts_receivable_transaction') }} <span class="font-normal">({{ __('report.account_id') }}:
                     {{ $receivableAccount->code ?? 'CI12301' }})</span></h2>
             @if ($receivableTransactions->isNotEmpty())
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
                         <tr>
-                            <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
+                            <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">{{ __('general.transaction_date') }}</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">{{ __('general.description') }}</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">{{ __('general.debit') }}</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">{{ __('general.credit') }}</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">{{ __('general.balance') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -234,7 +233,7 @@
                                     </p>
                                     @if ($transaction->invoice && !empty($transaction->invoice->invoice_number))
                                         <p>
-                                            <small>Ref:
+                                            <small>{{ __('general.reference') }}:
                                                 {{ $transaction->type_reference_id ?? $transaction->invoice->invoice_number }}
                                                 <a target="_blank"
                                                     href="{{ route('invoice.show', ['companyId' => $transaction->company_id, 'invoiceNumber' => $transaction->invoice->invoice_number]) }}"
@@ -261,27 +260,34 @@
                     </tbody>
                 </table>
             @else
-                <p class="text-red-500">No Accounts Receivable transactions found for the selected period.</p>
+                <p class="text-red-500">{{ __('report.no_account_receivable') }}.</p>
             @endif
         </div>
 
         <div class="p-3 mt-4 border shadow">
             <h2 class="flex justify-start">
-                <h2 class="font-bold">Outstanding Balances</h2>
+                <h2 class="font-bold">{{ __('report.outstanding_balance') }}s</h2>
             </h2>
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
-                    <h3>Accounts Payable</h3>
-                    <p><strong>Outstanding Balance: {{ number_format($totalAllPayable, 2) }}</strong></p>
+                    <h3>{{ __('report.accounts_payable') }}</h3>
+                    <p><strong>{{ __('report.outstanding_balance') }}: {{ number_format($totalAllPayable, 2) }}</strong></p>
                 </div>
                 <div class="border w-full p-2 rounded">
-                    <h3>Accounts Receivable</h3>
-                    <p><strong>Outstanding Balance: {{ number_format($totalAllReceivable, 2) }}</strong></p>
+                    <h3>{{ __('report.accounts_receivable') }}</h3>
+                    <p><strong>{{ __('report.outstanding_balance') }}: {{ number_format($totalAllReceivable, 2) }}</strong></p>
                 </div>
             </div>
         </div>
     </div>
     <script>
+        const __translations = {
+            loading: "{{ __('general.loading') }}",
+            filter: "{{ __('general.filter') }}",
+            no_accounts: "{{ __('general.no_accounts_available') }}",
+            error_loading: "{{ __('general.error_loading_accounts') }}"
+        };
+
         let filterType = document.getElementById('type_id');
         let filterButton = document.getElementById('submit-account-filter');
         let accountSelect = document.getElementById('account_id');
@@ -290,8 +296,8 @@
             let type_id = event.target.value;
 
             // Show loading while fetching
-            accountSelect.innerHTML = '<option value="" disabled>Loading...</option>';
-            filterButton.innerHTML = 'Loading...';
+            accountSelect.innerHTML = '<option value="" disabled>' + __translations.loading + '</option>';
+            filterButton.innerHTML = __translations.loading;
             filterButton.classList.add('cursor-not-allowed');
             filterButton.disabled = true;
 
@@ -307,7 +313,7 @@
                     accountSelect.innerHTML = ''; // Clear all existing options
 
                     if (data.length === 0) {
-                        accountSelect.innerHTML = '<option value="">No accounts available</option>';
+                        accountSelect.innerHTML = '<option value="">' + __translations.no_accounts + '</option>';
                         return;
                     }
 
@@ -325,11 +331,11 @@
                     });
                 })
                 .catch(error => {
-                    accountSelect.innerHTML = '<option value="">Error loading accounts</option>';
+                    accountSelect.innerHTML = '<option value="">' + __translations.error_loading + '</option>';
                     console.error(error);
                 })
                 .finally(() => {
-                    filterButton.innerHTML = 'Filter';
+                    filterButton.innerHTML = __translations.filter;
                     filterButton.classList.remove('cursor-not-allowed');
                     filterButton.disabled = false;
                 });

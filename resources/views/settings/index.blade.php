@@ -3,9 +3,9 @@
         @vite(['resources/css/settings/main.css', 'resources/css/settings/index.css', 'resources/css/settings/notification.css', 'resources/css/settings/agent-loss.css'])
     @endpush
     <nav class="setting-breadcrumb">
-        <a href="{{ route('dashboard') }}" class="setting-breadcrumb-link">Dashboard</a>
+        <a href="{{ route('dashboard') }}" class="setting-breadcrumb-link">{{ __('general.dashboard') }}</a>
         <span class="setting-breadcrumb-sep">&gt;</span>
-        <span class="setting-breadcrumb-current">Settings</span>
+        <span class="setting-breadcrumb-current">{{ __('general.settings') }}</span>
     </nav>
 
     <div class="setting-container">
@@ -47,7 +47,7 @@
                             <path d="M16 13L16 9" stroke-width="1.5" stroke-linecap="round" />
                             <path d="M5 13L5 9" stroke-width="1.5" stroke-linecap="round" />
                         </svg>
-                        Payment
+                        {{ __('settings.payment') }}
                     </button>
 
                     <!-- Terms & Regulation -->
@@ -58,7 +58,7 @@
                         <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
-                        Terms & Regulation
+                        {{ __('settings.terms_regulations') }}
                     </button>
 
                     @can('viewAny', 'App\Models\Charge')
@@ -69,7 +69,7 @@
                         <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                         </svg>
-                        Payment Gateways
+                        {{ __('settings.payment_gateways') }}
                     </button>
                     @endcan
 
@@ -81,7 +81,7 @@
                         <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                         </svg>
-                        Payment Methods
+                        {{ __('settings.payment_methods') }}
                     </button>
                     @endcan
 
@@ -93,7 +93,7 @@
                         <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
-                        Agent Charges
+                        {{ __('settings.agent_charges') }}
                     </button>
                     @endcan
 
@@ -105,7 +105,7 @@
                         <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
                         </svg>
-                        Agent Loss
+                        {{ __('settings.agent_loss') }}
                     </button>
                     @endcan
 
@@ -117,7 +117,7 @@
                         <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                         </svg>
-                        Notifications
+                        {{ __('settings.notifications') }}
                     </button>
                     @endcan
                 </nav>
@@ -202,13 +202,13 @@
                 companyId: "{{ $companyId }}",
                 sidebarOpen: false,
                 tabLabels: {
-                    'payment': 'Payment',
-                    'terms': 'Terms & Regulation',
-                    'charges': 'Payment Gateways',
-                    'payment-methods': 'Payment Methods',
-                    'agent-charges': 'Agent Charges',
-                    'agent-loss': 'Agent Loss',
-                    'notifications': 'Notifications',
+                    'payment': '{{ __('settings.payment') }}',
+                    'terms': '{{ __('settings.terms_regulations') }}',
+                    'charges': '{{ __('settings.payment_gateways') }}',
+                    'payment-methods': '{{ __('settings.payment_methods') }}',
+                    'agent-charges': '{{ __('settings.agent_charges') }}',
+                    'agent-loss': '{{ __('settings.agent_loss') }}',
+                    'notifications': '{{ __('settings.notifications') }}',
                 },
 
                 init() {

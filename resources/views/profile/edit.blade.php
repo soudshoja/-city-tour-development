@@ -1,11 +1,11 @@
 <x-app-layout>
     <div class="grid grid-cols-1">
         <div class="flex flex-col items-start">
-            <h2 class="text-2xl md:text-3xl font-bold">Profile</h2>
+            <h2 class="text-2xl md:text-3xl font-bold">{{ __('profile.profile') }}</h2>
             <nav class="flex items-center space-x-2 rtl:space-x-reverse text-sm mb-4 sm:mb-6 overflow-x-auto">
-                <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">Dashboard</a>
+                <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 transition whitespace-nowrap">{{ __('general.dashboard') }}</a>
                 <span class="text-gray-400">&gt;</span>
-                <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">{{ $user->name }}'s Profile</span>
+                <span class="text-blue-600 font-medium truncate max-w-[200px] sm:max-w-none">{{ __('profile.users_profile', ['name' => $user->name]) }}</span>
             </nav>
         </div>
 
@@ -13,22 +13,22 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100">
             @php
                 $tabs = [
-                    ['label' => 'Account Information', 'value' => 'Account', 'icon' => 'user'],
-                    ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
-                    ['label' => 'IATA Settings', 'value' => 'Iata', 'icon' => 'globe'],
+                    ['label' => __('profile.account_information'), 'value' => 'Account', 'icon' => 'user'],
+                    ['label' => __('profile.change_password'), 'value' => 'Security', 'icon' => 'shield'],
+                    ['label' => __('profile.iata_settings'), 'value' => 'Iata', 'icon' => 'globe'],
                 ];
 
                 $typeId = optional($user->agent)->type_id;
                 if ($user->role_id == 4 && $typeId) {
                     if (in_array($typeId, [1, 2])) {
-                        $tabs[] = ['label' => $typeId == 1 ? 'Profit' : 'Commission', 'value' => 'Commission', 'icon' => 'hand-money'];
+                        $tabs[] = ['label' => $typeId == 1 ? __('profile.profit') : __('profile.commission'), 'value' => 'Commission', 'icon' => 'hand-money'];
                     } elseif (in_array($typeId, [3, 4])) {
-                        $tabs[] = ['label' => 'Commission, Profit & Loss', 'value' => 'Commission', 'icon' => 'hand-money'];
+                        $tabs[] = ['label' => __('profile.commission_profit'), 'value' => 'Commission', 'icon' => 'hand-money'];
                     }
                 }
 
                 if($filteredBonuses && $filteredBonuses->isNotEmpty())
-                    $tabs[] = ['label' => 'Bonus', 'value' => 'Bonus', 'icon' => 'credit-card'];
+                    $tabs[] = ['label' => __('profile.bonus'), 'value' => 'Bonus', 'icon' => 'credit-card'];
             @endphp
 
             <div class="flex h-[45rem]" x-data="{

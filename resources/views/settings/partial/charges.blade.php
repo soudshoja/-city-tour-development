@@ -4,13 +4,13 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="ml-2 text-gray-600">Loading charges...</span>
+        <span class="ml-2 text-gray-600">{{ __('settings.loading_payment_gateways') }}</span>
     </div>
 
     <div x-show="!chargeLoading" x-cloak>
         <div class="flex justify-between items-center mb-6">
             <div class="flex items-center gap-3">
-                <h3 class="text-lg font-semibold text-gray-800">Payment Gateways</h3>
+                <h3 class="text-lg font-semibold text-gray-800">{{ __('settings.payment_gateways') }}</h3>
                 <span x-show="charges.length > 0" class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-blue-600 rounded-full" x-text="charges.length"></span>
             </div>
             @can('create', 'App\Models\Charge')
@@ -18,7 +18,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
-                Add Gateway
+                {{ __('settings.add_gateway') }}
             </button>
             @endcan
         </div>
@@ -29,11 +29,11 @@
                 <table class="w-full">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Gateway Name</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Paid By</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Charges</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('settings.gateway_name') }}</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('settings.paid_by') }}</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('settings.charges') }}</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('settings.status') }}</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('settings.actions') }}</th>
                         </tr>
                     </thead>
                     <template x-if="charges.length === 0">
@@ -42,8 +42,8 @@
                                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                                 </svg>
-                                <p class="mt-2">No payment gateways configured</p>
-                                <button @click="showCreateModal = true" class="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium">Add your first gateway</button>
+                                <p class="mt-2">{{ __('settings.no_payment_gateways') }}</p>
+                                <button @click="showCreateModal = true" class="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium">{{ __('settings.add_first_gateway') }}</button>
                             </td>
                         </tr>
                     </template>
@@ -58,7 +58,7 @@
                                         </svg>
                                         <span class="font-medium text-gray-900" x-text="charge.name"></span>
                                         <span x-show="charge.is_system_default" class="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-800 rounded-full">
-                                            System
+                                            {{ __('settings.system') }}
                                         </span>
                                     </div>
                                 </td>
@@ -69,28 +69,28 @@
                                         <div class="text-xs space-y-0.5">
                                             @can('update', 'App\Models\Charge')
                                             <div class="flex items-center gap-1.5">
-                                                <span class="text-gray-500 w-20">Contract:</span>
+                                                <span class="text-gray-500 w-20">{{ __('settings.contract') }}:</span>
                                                 <span class="font-medium text-gray-800" x-text="parseFloat(charge.amount || 0).toFixed(2) + (charge.charge_type === 'Percent' ? '%' : ' KWD')"></span>
                                             </div>
                                             @endcan
                                             <div class="flex items-center gap-1.5">
-                                                <span class="text-gray-500 w-20">Back Office:</span>
+                                                <span class="text-gray-500 w-20">{{ __('settings.back_office') }}:</span>
                                                 <span class="font-medium text-gray-800" x-text="parseFloat(charge.self_charge || 0).toFixed(2) + (charge.charge_type === 'Percent' ? '%' : ' KWD')"></span>
                                             </div>
                                             <template x-if="charge.extra_charge && parseFloat(charge.extra_charge) > 0">
                                                 <div class="flex items-center gap-1.5">
-                                                    <span class="text-gray-500 w-20">Extra:</span>
+                                                    <span class="text-gray-500 w-20">{{ __('settings.extra') }}:</span>
                                                     <span class="font-medium text-gray-800" x-text="parseFloat(charge.extra_charge).toFixed(3) + ' KWD'"></span>
                                                 </div>
                                             </template>
                                         </div>
                                     </template>
                                     <template x-if="charge.methods && charge.methods.length > 0">
-                                        <span class="text-xs text-gray-500 italic">See payment methods below</span>
+                                        <span class="text-xs text-gray-500 italic">{{ __('settings.see_payment_methods_below') }}</span>
                                     </template>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span :class="charge.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="charge.is_active ? 'Active' : 'Inactive'"></span>
+                                    <span :class="charge.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="charge.is_active ? '{{ __('settings.active') }}' : '{{ __('settings.inactive') }}'"></span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <button @click.stop="openSettingsModal(charge)" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Settings">
@@ -111,24 +111,24 @@
                                             <div class="text-xs space-y-0.5">
                                                 @can('update', 'App\Models\Charge')
                                                 <div class="flex items-center gap-1.5">
-                                                    <span class="text-gray-500 w-20">Contract:</span>
+                                                    <span class="text-gray-500 w-20">{{ __('settings.contract') }}:</span>
                                                     <span class="font-medium text-gray-800" x-text="parseFloat(method.service_charge || 0).toFixed(2) + (method.charge_type === 'Percent' ? '%' : ' KWD')"></span>
                                                 </div>
                                                 @endcan
                                                 <div class="flex items-center gap-1.5">
-                                                    <span class="text-gray-500 w-20">Back Office:</span>
+                                                    <span class="text-gray-500 w-20">{{ __('settings.back_office') }}:</span>
                                                     <span class="font-medium text-gray-800" x-text="parseFloat(method.self_charge || 0).toFixed(2) + (method.charge_type === 'Percent' ? '%' : ' KWD')"></span>
                                                 </div>
                                                 <template x-if="method.extra_charge && parseFloat(method.extra_charge) > 0">
                                                     <div class="flex items-center gap-1.5">
-                                                        <span class="text-gray-500 w-20">Extra:</span>
+                                                        <span class="text-gray-500 w-20">{{ __('settings.extra') }}:</span>
                                                         <span class="font-medium text-gray-800" x-text="parseFloat(method.extra_charge).toFixed(3) + ' KWD'"></span>
                                                     </div>
                                                 </template>
                                             </div>
                                         </td>
                                         <td class="px-4 py-3">
-                                            <span :class="(charge.is_active && method.is_active) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="(charge.is_active && method.is_active) ? 'Active' : 'Inactive'"></span>
+                                            <span :class="(charge.is_active && method.is_active) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-medium rounded-full" x-text="(charge.is_active && method.is_active) ? '{{ __('settings.active') }}' : '{{ __('settings.inactive') }}'"></span>
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             <button @click.stop="openEditMethodModal(method, charge)" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
@@ -144,7 +144,7 @@
                             <template x-if="expandedCharge === charge.id && (!charge.methods || charge.methods.length === 0)">
                                 <tr class="bg-white">
                                     <td colspan="5" class="px-4 py-3 pl-10 text-sm text-gray-400 italic">
-                                        No payment methods for this gateway
+                                        {{ __('settings.no_payment_methods') }}
                                     </td>
                                 </tr>
                             </template>
@@ -160,7 +160,7 @@
     <div x-cloak x-show="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
         <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" @click.away="showCreateModal = false">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-bold text-gray-800">Create New Gateway</h2>
+                <h2 class="text-lg font-bold text-gray-800">{{ __('settings.create_new_gateway') }}</h2>
                 <button @click="showCreateModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -174,8 +174,8 @@
 
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Gateway Name</label>
-                            <input type="text" name="name" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter gateway name" required>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.gateway_name') }}</label>
+                            <input type="text" name="name" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{ __('settings.enter_gateway_name') }}" required>
                         </div>
 
                         <input type="hidden" name="type" value="Payment Gateway">
@@ -183,13 +183,13 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                    Contract Charge
+                                    {{ __('settings.contract_charge') }}
                                     <div class="group relative">
                                         <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                            Actual gateway fee (API charge)
+                                            {{ __('settings.actual_gateway_fee') }}
                                         </div>
                                     </div>
                                 </label>
@@ -197,13 +197,13 @@
                             </div>
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                    Back Office Charge
+                                    {{ __('settings.back_office_charge') }}
                                     <div class="group relative">
                                         <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                            What you charge client (Contract + Markup). Must be ≥ Contract Charge
+                                            {{ __('settings.back_office_charge_tooltip') }}
                                         </div>
                                     </div>
                                 </label>
@@ -213,13 +213,13 @@
 
                         <div>
                             <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                Extra Charge (Flat Rate)
+                                {{ __('settings.extra_charge_flat_rate') }}
                                 <div class="group relative">
                                     <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                        Additional flat fee (in KWD) added to charges
+                                        {{ __('settings.extra_charge_tooltip') }}
                                     </div>
                                 </div>
                             </label>
@@ -228,38 +228,38 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Paid By</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.paid_by') }}</label>
                                 <select name="paid_by" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                    <option value="">Select...</option>
-                                    <option value="Company">Company</option>
-                                    <option value="Client">Client</option>
+                                    <option value="">{{ __('settings.select') }}...</option>
+                                    <option value="Company">{{ __('general.company') }}</option>
+                                    <option value="Client">{{ __('settings.client') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Charge Type</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.charge_type') }}</label>
                                 <select name="charge_type" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                    <option value="">Select...</option>
-                                    <option value="Flat Rate">Flat Rate</option>
-                                    <option value="Percent">Percent</option>
+                                    <option value="">{{ __('settings.select') }}...</option>
+                                    <option value="Flat Rate">{{ __('settings.flatrate') }}</option>
+                                    <option value="Percent">{{ __('settings.percent') }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <input type="text" name="description" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.description') }}</label>
+                            <input type="text" name="description" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{ __('settings.optional_description') }}">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">API Key <span class="text-gray-400 font-normal">(Optional)</span></label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.api_key') }} <span class="text-gray-400 font-normal">({{ __('settings.optional') }})</span></label>
                             <textarea name="api_key" rows="3" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your secret key (optional for custom gateways)"></textarea>
                         </div>
 
                         <div class="bg-gray-50 rounded-lg p-4 space-y-3">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm font-medium text-gray-700">Active</p>
-                                    <p class="text-xs text-gray-400">Enable this gateway</p>
+                                    <p class="text-sm font-medium text-gray-700">{{ __('settings.active') }}</p>
+                                    <p class="text-xs text-gray-400">{{ __('settings.enable_this_gateway') }}</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="is_active" value="1" class="sr-only peer" checked>
@@ -268,8 +268,8 @@
                             </div>
                             <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                 <div>
-                                    <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
-                                    <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                    <p class="text-sm font-medium text-gray-700">{{ __('settings.can_charge_invoice') }}</p>
+                                    <p class="text-xs text-gray-400">{{ __('settings.can_charge_invoice_description') }}</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" checked>
@@ -279,8 +279,8 @@
                             @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
                             <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                 <div>
-                                    <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
-                                    <p class="text-xs text-gray-400">Allow payment link generation</p>
+                                    <p class="text-sm font-medium text-gray-700">{{ __('settings.can_generate_link') }}</p>
+                                    <p class="text-xs text-gray-400">{{ __('settings.allow_payment_link_generation') }}</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer">
@@ -294,8 +294,8 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Create Gateway</button>
+                        <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">{{ __('settings.cancel') }}</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">{{ __('settings.create_new_gateway') }}</button>
                     </div>
                 </form>
             </div>
@@ -308,7 +308,7 @@
         <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col overflow-visible" @click.away="showSettingsModal = false">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-800">Gateway Settings</h2>
+                    <h2 class="text-lg font-bold text-gray-800">{{ __('settings.gateway_api_settings') }}</h2>
                     <p class="text-sm text-gray-500" x-text="editingCharge?.name"></p>
                 </div>
                 <button @click="showSettingsModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
@@ -331,13 +331,13 @@
                                 @can('update', 'App\Models\Charge')
                                 <div>
                                     <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                        Contract Charge
+                                        {{ __('settings.contract_charge') }}
                                         <div class="group relative inline-block">
                                             <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
                                             <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
-                                                Actual gateway fee (API charge)
+                                                {{ __('settings.actual_gateway_fee') }}
                                             </div>
                                         </div>
                                     </label>
@@ -346,14 +346,14 @@
                                 @endcan
                                 <div>
                                     <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                        Back Office Charge
+                                        {{ __('settings.back_office_charge') }}
                                         @can('update', 'App\Models\Charge')
                                         <div class="group relative inline-block">
                                             <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
                                             <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
-                                                What you charge client (Contract + Markup). Must be &ge; Contract Charge
+                                                {{ __('settings.back_office_charge_tooltip') }}
                                             </div>
                                         </div>
                                         @endcan
@@ -364,13 +364,13 @@
 
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                    Extra Charge (Flat Rate)
+                                    {{ __('settings.extra_charge_flat_rate') }}
                                     <div class="group relative inline-block">
                                         <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-normal">
-                                            Additional flat fee (in KWD) added to charges
+                                            {{ __('settings.extra_charge_tooltip') }}
                                         </div>
                                     </div>
                                 </label>
@@ -379,24 +379,24 @@
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Paid By</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.paid_by') }}</label>
                                     <select name="paid_by" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.paid_by" @cannot('update', 'App\Models\Charge') disabled @endcannot>
-                                        <option value="Company">Company</option>
-                                        <option value="Client">Client</option>
+                                        <option value="Company">{{ __('general.company') }}</option>
+                                        <option value="Client">{{ __('settings.client') }}</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Charge Type</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.charge_type') }}</label>
                                     <select name="charge_type" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingCharge.charge_type" @cannot('update', 'App\Models\Charge') disabled @endcannot>
-                                        <option value="Flat Rate">Flat Rate</option>
-                                        <option value="Percent">Percent</option>
+                                        <option value="Flat Rate">{{ __('settings.flatrate') }}</option>
+                                        <option value="Percent">{{ __('settings.percent') }}</option>
                                     </select>
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <input type="text" name="description" :value="editingCharge?.description" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description" @cannot('update', 'App\Models\Charge') disabled @endcannot>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.description') }}</label>
+                                <input type="text" name="description" :value="editingCharge?.description" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{ __('settings.optional_description') }}" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                             </div>
 
                             <hr class="border-gray-200">
@@ -404,7 +404,7 @@
                             <!-- API Configuration -->
                             @can('update', 'App\Models\Charge')
                             <div x-show="editingCharge?.is_system_default">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.api_key') }}</label>
                                 <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
                             </div>
                             @endcan
@@ -412,8 +412,8 @@
                             <div class="bg-gray-50 rounded-lg p-4 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700">Active</p>
-                                        <p class="text-xs text-gray-400">Enable or disable this gateway</p>
+                                        <p class="text-sm font-medium text-gray-700">{{ __('settings.active') }}</p>
+                                        <p class="text-xs text-gray-400">{{ __('settings.enable_this_gateway') }}</p>
                                     </div>
                                     <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
                                         <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active" @cannot('update', 'App\Models\Charge') disabled @endcannot>
@@ -422,8 +422,8 @@
                                 </div>
                                 <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
-                                        <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                        <p class="text-sm font-medium text-gray-700">{{ __('settings.can_charge_invoice') }}</p>
+                                        <p class="text-xs text-gray-400">{{ __('settings.can_charge_invoice_description') }}</p>
                                     </div>
                                     <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
                                         <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice" @cannot('update', 'App\Models\Charge') disabled @endcannot>
@@ -433,8 +433,8 @@
                                 @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
                                 <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
-                                        <p class="text-xs text-gray-400">Allow payment link generation</p>
+                                        <p class="text-sm font-medium text-gray-700">{{ __('settings.can_generate_link') }}</p>
+                                        <p class="text-xs text-gray-400">{{ __('settings.allow_payment_link_generation') }}</p>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer" :checked="editingCharge?.can_generate_link">
@@ -446,9 +446,9 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-3 mt-6">
-                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') Cancel @else Close @endcan</button>
+                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') {{ __('settings.cancel') }} @else {{ __('settings.close') }} @endcan</button>
                             @can('update', 'App\Models\Charge')
-                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">{{ __('settings.save_changes') }}</button>
                             @endcan
                         </div>
                     </form>
@@ -464,7 +464,7 @@
                         <div class="space-y-4">
                             @can('update', 'App\Models\Charge')
                             <div x-show="editingCharge?.is_system_default">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.api_key') }}</label>
                                 <textarea name="api_key" rows="4" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter new API key to replace existing" x-model="editingCharge.api_key"></textarea>
                             </div>
                             @endcan
@@ -472,8 +472,8 @@
                             <div class="bg-gray-50 rounded-lg p-4 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700">Active</p>
-                                        <p class="text-xs text-gray-400">Enable or disable this gateway</p>
+                                        <p class="text-sm font-medium text-gray-700">{{ __('settings.active') }}</p>
+                                        <p class="text-xs text-gray-400">{{ __('settings.enable_this_gateway') }}</p>
                                     </div>
                                     <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
                                         <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingCharge?.is_active" @cannot('update', 'App\Models\Charge') disabled @endcannot>
@@ -482,8 +482,8 @@
                                 </div>
                                 <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700">Can Charge Invoice</p>
-                                        <p class="text-xs text-gray-400">Allow charging invoices with this gateway</p>
+                                        <p class="text-sm font-medium text-gray-700">{{ __('settings.can_charge_invoice') }}</p>
+                                        <p class="text-xs text-gray-400">{{ __('settings.can_charge_invoice_description') }}</p>
                                     </div>
                                     <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
                                         <input type="checkbox" name="can_charge_invoice" value="1" class="sr-only peer" :checked="editingCharge?.can_charge_invoice" @cannot('update', 'App\Models\Charge') disabled @endcannot>
@@ -493,8 +493,8 @@
                                 @if(auth()->user()->role_id === \App\Models\Role::ADMIN && auth()->user()->hasRole('admin'))
                                 <div class="flex items-center justify-between border-t border-gray-200 pt-3">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-700">Can Generate Link</p>
-                                        <p class="text-xs text-gray-400">Allow payment link generation</p>
+                                        <p class="text-sm font-medium text-gray-700">{{ __('settings.can_generate_link') }}</p>
+                                        <p class="text-xs text-gray-400">{{ __('settings.allow_payment_link_generation') }}</p>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" name="can_generate_link" value="1" class="sr-only peer" :checked="editingCharge?.can_generate_link">
@@ -506,9 +506,9 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-3 mt-6">
-                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') Cancel @else Close @endcan</button>
+                            <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') {{ __('settings.cancel') }} @else {{ __('settings.close') }} @endcan</button>
                             @can('update', 'App\Models\Charge')
-                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">{{ __('settings.save_changes') }}</button>
                             @endcan
                         </div>
                     </form>
@@ -522,7 +522,7 @@
         <div class="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" @click.away="showEditMethodModal = false">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-800">@can('update', 'App\Models\Charge') Edit Payment Method @else Payment Method @endcan</h2>
+                    <h2 class="text-lg font-bold text-gray-800">@can('update', 'App\Models\Charge') {{ __('settings.edit_payment_method') }} @else {{ __('settings.payment_method') }} @endcan</h2>
                     <p class="text-sm text-gray-500" x-text="editingMethod?.english_name"></p>
                 </div>
                 <button @click="showEditMethodModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
@@ -540,11 +540,11 @@
                     <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Arabic Name</label>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">{{ __('settings.arabic_name') }}</label>
                                 <input type="text" :value="editingMethod?.arabic_name" class="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-sm text-gray-600" readonly>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-500 mb-1">English Name</label>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">{{ __('settings.english_name') }}</label>
                                 <input type="text" :value="editingMethod?.english_name" class="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-sm text-gray-600" readonly>
                             </div>
                         </div>
@@ -553,13 +553,13 @@
                             @can('update', 'App\Models\Charge')
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                    Contract Charge
+                                    {{ __('settings.contract_charge') }}
                                     <div class="group relative">
                                         <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                            Actual gateway fee (API charge)
+                                            {{ __('settings.actual_gateway_fee') }}
                                         </div>
                                     </div>
                                 </label>
@@ -568,14 +568,14 @@
                             @endcan
                             <div>
                                 <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                    Back Office Charge
+                                    {{ __('settings.back_office_charge') }}
                                     @can('update', 'App\Models\Charge')
                                     <div class="group relative">
                                         <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                            What you charge client (Contract + Markup). Must be &ge; Contract Charge
+                                            {{ __('settings.back_office_charge_tooltip') }}
                                         </div>
                                     </div>
                                     @endcan
@@ -586,13 +586,13 @@
 
                         <div>
                             <label class="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                                Extra Charge (Flat Rate)
+                                {{ __('settings.extra_charge_flat_rate') }}
                                 <div class="group relative">
                                     <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <div class="invisible group-hover:visible absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                                        Additional flat fee (in KWD) added to charges
+                                        {{ __('settings.extra_charge_tooltip') }}
                                     </div>
                                 </div>
                             </label>
@@ -601,31 +601,31 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Paid By</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.paid_by') }}</label>
                                 <select name="paid_by" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingMethod.paid_by" @cannot('update', 'App\Models\Charge') disabled @endcannot>
-                                    <option value="Company">Company</option>
-                                    <option value="Client">Client</option>
+                                    <option value="Company">{{ __('general.company') }}</option>
+                                    <option value="Client">{{ __('settings.client') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Charge Type</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.charge_type') }}</label>
                                 <select name="charge_type" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="editingMethod.charge_type" @cannot('update', 'App\Models\Charge') disabled @endcannot>
-                                    <option value="Flat Rate">Flat Rate</option>
-                                    <option value="Percent">Percent</option>
+                                    <option value="Flat Rate">{{ __('settings.flatrate') }}</option>
+                                    <option value="Percent">{{ __('settings.percent') }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <input type="text" name="description" :value="editingMethod?.description" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional description" @cannot('update', 'App\Models\Charge') disabled @endcannot>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.description') }}</label>
+                            <input type="text" name="description" :value="editingMethod?.description" class="w-full border @can('update', 'App\Models\Charge') border-gray-300 @else border-gray-200 bg-gray-50 @endcan px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{ __('settings.optional_description') }}" @cannot('update', 'App\Models\Charge') disabled @endcannot>
                         </div>
 
                         <div class="bg-gray-50 rounded-lg p-4" x-show="editingMethodCharge?.is_active">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm font-medium text-gray-700">Active</p>
-                                    <p class="text-xs text-gray-400">Enable this payment method</p>
+                                    <p class="text-sm font-medium text-gray-700">{{ __('settings.active') }}</p>
+                                    <p class="text-xs text-gray-400">{{ __('settings.enable_this_payment_method') }}</p>
                                 </div>
                                 <label class="relative inline-flex items-center @cannot('update', 'App\Models\Charge') pointer-events-none opacity-60 @else cursor-pointer @endcannot">
                                     <input type="checkbox" name="is_active" value="1" class="sr-only peer" :checked="editingMethod?.is_active" @cannot('update', 'App\Models\Charge') disabled @endcannot>
@@ -636,9 +636,9 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <button type="button" @click="showEditMethodModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') Cancel @else Close @endcan</button>
+                        <button type="button" @click="showEditMethodModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@can('update', 'App\Models\Charge') {{ __('settings.cancel') }} @else {{ __('settings.close') }} @endcan</button>
                         @can('update', 'App\Models\Charge')
-                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save Changes</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">{{ __('settings.save_changes') }}</button>
                         @endcan
                     </div>
                 </form>

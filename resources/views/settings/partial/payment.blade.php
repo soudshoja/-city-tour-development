@@ -5,15 +5,15 @@
 
     <div x-show="loaded" x-cloak>
         <div class="mb-6">
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Payment Settings</h2>
-            <p class="text-sm text-gray-500 mt-1">Configure default payment settings</p>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ __('settings.payment_settings') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ __('settings.payment_settings_description') }}</p>
         </div>
 
         <div class="space-y-4">
             <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div>
-                    <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Payment WhatsApp Notification</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Send WhatsApp notification to client upon successful payment</p>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('settings.payment_whatsapp_notification') }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('settings.payment_whatsapp_notification_description') }}</p>
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="payment-whatsapp-notification" x-model="paymentWhatsappSetting" @change="updateSetting('payment_whatsapp_notification', $event.target.checked)" class="sr-only peer">
@@ -79,7 +79,7 @@
                     if (customSuccessAlert) {
                         customSuccessAlert.classList.remove('hidden');
                         const successMsg = customSuccessAlert.querySelector('p');
-                        if (successMsg) successMsg.innerHTML = 'WhatsApp notification setting updated successfully';
+                        if (successMsg) successMsg.innerHTML = '{{ __('settings.whatsapp_notification_updated') }}';
                         setTimeout(() => customSuccessAlert.classList.add('hidden'), 3000);
                     }
                 } catch (error) {

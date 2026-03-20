@@ -1,0 +1,36 @@
+/.phpunit.cache
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+/.fleet
+/.idea
+/.vscode
+
+# Claude Code - keep local only
+CLAUDE.md
+.claude/
+.planning/
+
+# Sensitive files
+RESET_IT_PASSWORD.md
+reset_it_password.sql
+n8n/credentials/
+
+# Playwright MCP logs/screenshots
+.playwright-mcp/
+
+# Misc
+clear_cache.sh
+clear_cache_production.py
+*.log

@@ -35,6 +35,7 @@ class DotwAIBooking extends Model
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_EXPIRED = 'expired';
+    public const STATUS_CANCELLATION_PENDING = 'cancellation_pending';
 
     /**
      * Track type constants.

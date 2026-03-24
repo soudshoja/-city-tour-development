@@ -668,6 +668,124 @@ class MessageBuilderService
     }
 
     /**
+     * Format a cancellation pending / preview message (Phase 20 -- confirm=no step).
+     *
+     * Shows the penalty amount and asks the user for explicit confirmation to proceed.
+     *
+     * Example output:
+     * ```
+     * معاينة الإلغاء | Cancellation Preview
+     * ──────────────────────────────
+     * Hotel | الفندق: Hilton Dubai Creek
+     * Dates | التواريخ: 2026-04-10 → 2026-04-15
+     * DOTW Ref | المرجع: DOTW-12345678
+     *
+     * Penalty | رسوم الإلغاء: KWD 45.000
+     * Refund | المبلغ المسترد: KWD 180.000
+     *
+     * هل تريد المتابعة بالإلغاء؟ | Do you want to proceed with cancellation?
+     * Reply YES to confirm | أجب YES للتأكيد
+     * ```
+     *
+     * @param array $data Keys: hotel_name, check_in, check_out, penalty_amount,
+     *                    currency, booking_ref, refund_amount
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatCancellationPending(array $data): string
+    {
+        $lines = [];
+        $lines[] = "معاينة الإلغاء | Cancellation Preview";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "Hotel | الفندق: " . ($data['hotel_name'] ?? 'N/A');
+
+        if (!empty($data['check_in']) || !empty($data['check_out'])) {
+            $lines[] = "Dates | التواريخ: " . ($data['check_in'] ?? '') . " → " . ($data['check_out'] ?? '');
+        }
+
+        if (!empty($data['booking_ref'])) {
+            $lines[] = "DOTW Ref | المرجع: " . $data['booking_ref'];
+        }
+
+        $lines[] = "";
+
+        $currency      = $data['currency'] ?? 'KWD';
+        $penaltyAmount = number_format((float) ($data['penalty_amount'] ?? 0), 3);
+        $refundAmount  = number_format((float) ($data['refund_amount'] ?? 0), 3);
+
+        if ((float) ($data['penalty_amount'] ?? 0) > 0) {
+            $lines[] = "Penalty | رسوم الإلغاء: {$currency} {$penaltyAmount}";
+        } else {
+            $lines[] = "Penalty | رسوم الإلغاء: Free | مجاني";
+        }
+
+        $lines[] = "Refund | المبلغ المسترد: {$currency} {$refundAmount}";
+
+        $lines[] = "";
+        $lines[] = self::SEPARATOR;
+        $lines[] = "هل تريد المتابعة بالإلغاء؟";
+        $lines[] = "Do you want to proceed with cancellation?";
+        $lines[] = "أجب YES للتأكيد | Reply YES to confirm";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Format a cancellation confirmed message (Phase 20 -- confirm=yes step).
+     *
+     * Includes the mandatory DOTW delay warning (CANC-02 locked decision).
+     *
+     * Example output:
+     * ```
+     * تم الإلغاء | Cancellation Confirmed
+     * ──────────────────────────────
+     * Hotel | الفندق: Hilton Dubai Creek
+     * DOTW Ref | المرجع: DOTW-12345678
+     * Penalty | رسوم الإلغاء: KWD 45.000
+     *
+     * يرجى العلم: قد يستغرق تأكيد الإلغاء من DOTW وقتاً إضافياً للظهور على البوابة
+     * Please note: DOTW cancellation confirmation may take additional time to reflect on the portal
+     * ```
+     *
+     * @param array $data Keys: hotel_name, booking_ref, penalty_amount, currency,
+     *                    is_free_cancellation (bool)
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatCancellationConfirmed(array $data): string
+    {
+        $lines = [];
+        $lines[] = "تم الإلغاء | Cancellation Confirmed";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "Hotel | الفندق: " . ($data['hotel_name'] ?? 'N/A');
+
+        if (!empty($data['booking_ref'])) {
+            $lines[] = "DOTW Ref | المرجع: " . $data['booking_ref'];
+        }
+
+        $lines[] = "";
+
+        $currency = $data['currency'] ?? 'KWD';
+        $isFree   = (bool) ($data['is_free_cancellation'] ?? false);
+
+        if ($isFree) {
+            $lines[] = "Penalty | رسوم الإلغاء: Free | مجاني";
+        } else {
+            $penaltyAmount = number_format((float) ($data['penalty_amount'] ?? 0), 3);
+            $lines[] = "Penalty | رسوم الإلغاء: {$currency} {$penaltyAmount}";
+        }
+
+        $lines[] = "";
+        $lines[] = self::SEPARATOR;
+
+        // CANC-02 locked decision: always include DOTW delay warning
+        $lines[] = "يرجى العلم: قد يستغرق تأكيد الإلغاء من DOTW وقتاً إضافياً للظهور على البوابة";
+        $lines[] = "Please note: DOTW cancellation confirmation may take additional time to reflect on the portal";
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * Get Arabic translation for meal type.
      *
      * @param string $mealType English meal type label

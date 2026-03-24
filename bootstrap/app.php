@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AccountantView;
 use App\Modules\ResailAI\Middleware\VerifyResailAIToken;
+use App\Modules\DotwAI\Http\Middleware\ResolveDotwAIContext;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'accountant' => AccountantView::class,
             'dotw_audit_access' => \App\Http\Middleware\DotwAuditAccess::class,
             'verify.resailai.token' => VerifyResailAIToken::class,
+            'dotwai.resolve' => ResolveDotwAIContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

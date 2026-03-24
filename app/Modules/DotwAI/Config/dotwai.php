@@ -104,4 +104,25 @@ return [
     'prebook_expiry_minutes'   => env('DOTWAI_PREBOOK_EXPIRY', 30),
     'payment_link_expiry_hours' => env('DOTWAI_PAYMENT_LINK_EXPIRY', 48),
     'default_payment_gateway'  => env('DOTWAI_DEFAULT_GATEWAY', 'myfatoorah'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhook Configuration (Phase 21 Plan 02)
+    |--------------------------------------------------------------------------
+    |
+    | webhook_url: URL to POST lifecycle events to (e.g., n8n workflow endpoint).
+    |   Empty string = webhooks disabled.
+    |
+    | webhook_events: List of lifecycle events that trigger webhook dispatch.
+    |   Add/remove event types to control which events fire webhooks.
+    |
+    */
+    'webhook_url' => env('DOTWAI_WEBHOOK_URL', ''),
+
+    'webhook_events' => [
+        'payment_completed',
+        'reminder_due',
+        'deadline_passed',
+        'booking_confirmed',
+    ],
 ];

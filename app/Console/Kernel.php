@@ -46,6 +46,13 @@ class Kernel extends ConsoleKernel
             ->dailyAt('02:00')
             ->withoutOverlapping();
 
+        // Process DOTW AI booking deadlines daily at 3 AM
+        // Dispatches SendReminderJob (3/2/1 day reminders) and AutoInvoiceDeadlineJob (past deadlines)
+        $schedule->command('dotwai:process-deadlines')
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Make sure to run the queue worker
         $schedule->command('queue:work --queue=api_sync --stop-when-empty')
             ->everyMinute()

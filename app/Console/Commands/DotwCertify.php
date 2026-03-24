@@ -433,12 +433,12 @@ class DotwCertify extends Command
                             <passengerCountryOfResidence>66</passengerCountryOfResidence>
                             <passengersDetails>
                                 <passenger leading="yes">
-                                    <salutation>1</salutation>
+                                    <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                     <firstName>Soud</firstName>
                                     <lastName>Shoja</lastName>
                                 </passenger>
                                 <passenger leading="no">
-                                    <salutation>1</salutation>
+                                    <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                     <firstName>James</firstName>
                                     <lastName>Brown</lastName>
                                 </passenger>
@@ -649,17 +649,17 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>4</salutation>
+                                <salutation>'.$this->state['salutationMap']['master'].'</salutation>
                                 <firstName>Charlie</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
@@ -856,22 +856,22 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>4</salutation>
+                                <salutation>'.$this->state['salutationMap']['master'].'</salutation>
                                 <firstName>Charlie</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>4</salutation>
+                                <salutation>'.$this->state['salutationMap']['master'].'</salutation>
                                 <firstName>Oliver</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
@@ -1612,7 +1612,7 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
@@ -1633,12 +1633,12 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>2</salutation>
+                                <salutation>'.$this->state['salutationMap']['mrs'].'</salutation>
                                 <firstName>Sarah</firstName>
                                 <lastName>Jones</lastName>
                             </passenger>
@@ -1717,8 +1717,8 @@ class DotwCertify extends Command
                 'actualAdults' => 2,
                 'children' => [],
                 'passengers' => [
-                    ['salutation' => '1', 'firstName' => 'John', 'lastName' => 'Smith'],
-                    ['salutation' => '1', 'firstName' => 'James', 'lastName' => 'Brown'],
+                    ['salutation' => $this->state['salutationMap']['mr'], 'firstName' => 'John', 'lastName' => 'Smith'],
+                    ['salutation' => $this->state['salutationMap']['mr'], 'firstName' => 'James', 'lastName' => 'Brown'],
                 ],
             ],
         ], requireCancellable: true);
@@ -2006,7 +2006,7 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
@@ -2027,12 +2027,12 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>2</salutation>
+                                <salutation>'.$this->state['salutationMap']['mrs'].'</salutation>
                                 <firstName>Sarah</firstName>
                                 <lastName>Jones</lastName>
                             </passenger>
@@ -2172,8 +2172,8 @@ class DotwCertify extends Command
                 'actualAdults' => 2,
                 'children' => [],
                 'passengers' => [
-                    ['salutation' => '1', 'firstName' => 'John', 'lastName' => 'Smith'],
-                    ['salutation' => '1', 'firstName' => 'James', 'lastName' => 'Brown'],
+                    ['salutation' => $this->state['salutationMap']['mr'], 'firstName' => 'John', 'lastName' => 'Smith'],
+                    ['salutation' => $this->state['salutationMap']['mr'], 'firstName' => 'James', 'lastName' => 'Brown'],
                 ],
             ],
         ], requireCancellable: true);
@@ -2260,6 +2260,7 @@ class DotwCertify extends Command
 
         $fromDate = now()->addDays(85)->format('Y-m-d');
         $toDate = now()->addDays(86)->format('Y-m-d');
+        $originalAdults = 3;
 
         // Step 14a: searchhotels — 3 adults + 1 child (age 12) to maximise changedOccupancy chance
         $this->step('14a', 'searchhotels — Dubai, 3 adults + 1 child (age 12), 1 night');
@@ -2438,7 +2439,7 @@ class DotwCertify extends Command
         // adultsCode + children  = from validForOccupancy (pricing occupancy)
         // actualAdults + actualChildren = from original search (real occupancy)
         $this->log("  VERIFICATION XML: <adultsCode>{$bookAdultsCode}</adultsCode> (from validForOccupancy)");
-        $this->log('  VERIFICATION XML: <actualAdults>3</actualAdults> (from original search)');
+        $this->log('  VERIFICATION XML: <actualAdults>'.$originalAdults.'</actualAdults> (from original search)');
         $this->log("  VERIFICATION XML: {$bookChildrenXml} (from validForOccupancy)");
         $this->log('  VERIFICATION XML: <actualChildren no="1"><actualChild runno="0">12</actualChild></actualChildren> (from original search)');
 
@@ -2456,7 +2457,7 @@ class DotwCertify extends Command
                         <selectedRateBasis>'.$browseRbId.'</selectedRateBasis>
                         <allocationDetails>'.htmlspecialchars($blockAllocation).'</allocationDetails>
                         <adultsCode>'.$bookAdultsCode.'</adultsCode>
-                        <actualAdults>3</actualAdults>
+                        <actualAdults>'.$originalAdults.'</actualAdults>
                         '.$bookChildrenXml.'
                         <actualChildren no="1">
                             <actualChild runno="0">12</actualChild>
@@ -2466,22 +2467,22 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>Michael</firstName>
                                 <lastName>Jones</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>4</salutation>
+                                <salutation>'.$this->state['salutationMap']['master'].'</salutation>
                                 <firstName>Charlie</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
@@ -2935,12 +2936,12 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
@@ -3503,12 +3504,12 @@ class DotwCertify extends Command
                         <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         <passengersDetails>
                             <passenger leading="yes">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>John</firstName>
                                 <lastName>Smith</lastName>
                             </passenger>
                             <passenger leading="no">
-                                <salutation>1</salutation>
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
                                 <firstName>James</firstName>
                                 <lastName>Brown</lastName>
                             </passenger>
@@ -3709,7 +3710,7 @@ class DotwCertify extends Command
             ])->withHeaders([
                 'Content-Type' => 'text/xml; charset=utf-8',
                 'Connection' => 'close',
-                'Accept-Encoding' => 'gzip',
+                'Accept-Encoding' => 'gzip, deflate',
             ])->withBody($xml)->post($this->baseUrl);
 
             $body = $response->body();
@@ -4240,6 +4241,7 @@ class DotwCertify extends Command
   <password>{$this->passwordMd5}</password>
   <id>{$this->companyCode}</id>
   <source>1</source>
+  <product>hotel</product>
   <request command=\"getservingcountries\"></request>
 </customer>";
 

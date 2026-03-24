@@ -98,7 +98,7 @@ return [
     |
     */
     'rate_basis_codes' => [
-        'ALL' => 1,              // All Rates
+        'ALL' => -1,             // All Rates (best available)
         'ROOM_ONLY' => 1331,     // Room Only
         'BB' => 1332,            // Bed & Breakfast
         'HB' => 1333,            // Half Board

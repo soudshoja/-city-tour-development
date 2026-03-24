@@ -90,7 +90,7 @@ class DotwService
     /**
      * Rate basis code constants
      */
-    public const RATE_BASIS_ALL = 1;
+    public const RATE_BASIS_ALL = -1;
 
     public const RATE_BASIS_ROOM_ONLY = 1331;
 

@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 ## Current Position
 
 Phase: 18 (1 of 5 in v2.0 DOTW AI Module)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-24 — Completed 18-01 (Module scaffold, phone resolution, hotel import, fuzzy matching)
+Last activity: 2026-03-24 — Completed 18-02 (Search endpoints, HotelSearchService, MessageBuilderService)
 
-Progress: [##░░░░░░░░] 7% (v2.0 milestone — 1/15 plans)
+Progress: [###░░░░░░░] 13% (v2.0 milestone — 2/15 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (v1.0 + v2.0 milestones)
+- Total plans completed: 10 (v1.0 + v2.0 milestones)
 - Average duration: N/A (not tracked for previous milestones)
 - Total execution time: N/A
 
@@ -29,10 +29,10 @@ Progress: [##░░░░░░░░] 7% (v2.0 milestone — 1/15 plans)
 |-------|-------|-------|----------|
 | 15 | 2 | - | - |
 | 16 | 3 | - | - |
-| 18 | 1 | 7m | 7m |
+| 18 | 2 | 13m | 6.5m |
 
 **Recent Trend:**
-- Last 5 plans: 15-02, 16-01, 16-02, 16-03, 18-01
+- Last 5 plans: 16-01, 16-02, 16-03, 18-01, 18-02
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -54,6 +54,10 @@ Recent decisions affecting current work:
 - [18-01]: DotwAIResponse uses static methods with default bilingual messages per error code
 - [18-01]: Track determination: markup_percent > 0 = B2C, 0 = B2B
 - [18-01]: LIKE + Levenshtein two-tier fuzzy matching (threshold 3)
+- [18-02]: DotwService instantiated with companyId for per-company credential resolution (not DI)
+- [18-02]: MessageBuilderService all-static methods (pure functions, no state)
+- [18-02]: Dual-level filtering: API-level (hotel IDs, stars) + post-search (meal, price, refundable, name)
+- [18-02]: Browse-only for hotel details (blocking=false) -- rate blocking deferred to Phase 19
 
 ### Pending Todos
 
@@ -68,5 +72,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-24
-Stopped at: Completed 18-01-PLAN.md (Module scaffold, phone resolution, hotel import, fuzzy matching)
+Stopped at: Completed 18-02-PLAN.md (Search endpoints, HotelSearchService, MessageBuilderService)
 Resume file: None

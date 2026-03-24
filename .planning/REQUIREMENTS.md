@@ -12,12 +12,12 @@
 - [x] **FOUND-06**: Module provides default AI system message template (Arabic/English bilingual) with tool descriptions auto-generated from endpoint metadata
 
 ## Search (SRCH)
-- [ ] **SRCH-01**: `search_hotels` endpoint accepts city, dates, occupancy, filters and returns flat hotel list with pre-formatted WhatsApp message
-- [ ] **SRCH-02**: `get_hotel_details` endpoint returns rooms, rates, cancellation policies, meal plans, specials for a specific hotel
-- [ ] **SRCH-03**: `get_cities` endpoint returns available destinations
-- [ ] **SRCH-04**: Search results cached per phone number so client can reference by option number ("book option 1")
-- [ ] **SRCH-05**: Multi-room/family scenarios supported (distribute occupancy across rooms)
-- [ ] **SRCH-06**: Filters: star rating, meal type, price range, refundable only, hotel name
+- [x] **SRCH-01**: `search_hotels` endpoint accepts city, dates, occupancy, filters and returns flat hotel list with pre-formatted WhatsApp message
+- [x] **SRCH-02**: `get_hotel_details` endpoint returns rooms, rates, cancellation policies, meal plans, specials for a specific hotel
+- [x] **SRCH-03**: `get_cities` endpoint returns available destinations
+- [x] **SRCH-04**: Search results cached per phone number so client can reference by option number ("book option 1")
+- [x] **SRCH-05**: Multi-room/family scenarios supported (distribute occupancy across rooms)
+- [x] **SRCH-06**: Filters: star rating, meal type, price range, refundable only, hotel name
 
 ## B2B Booking (B2B)
 - [ ] **B2B-01**: Agent with credit line can book directly — no upfront payment, tracked in accounting
@@ -95,12 +95,12 @@
 | FOUND-04 | Phase 18 | Complete (18-01) |
 | FOUND-05 | Phase 18 | Complete (18-01) |
 | FOUND-06 | Phase 18 | Complete (18-01) |
-| SRCH-01 | Phase 18 | Pending |
-| SRCH-02 | Phase 18 | Pending |
-| SRCH-03 | Phase 18 | Pending |
-| SRCH-04 | Phase 18 | Pending |
-| SRCH-05 | Phase 18 | Pending |
-| SRCH-06 | Phase 18 | Pending |
+| SRCH-01 | Phase 18 | Complete (18-02) |
+| SRCH-02 | Phase 18 | Complete (18-02) |
+| SRCH-03 | Phase 18 | Complete (18-02) |
+| SRCH-04 | Phase 18 | Complete (18-02) |
+| SRCH-05 | Phase 18 | Complete (18-02) |
+| SRCH-06 | Phase 18 | Complete (18-02) |
 | EVNT-02 | Phase 18 | Complete (18-01) |
 | EVNT-03 | Phase 18 | Complete (18-01) |
 | B2B-01 | Phase 19 | Pending |

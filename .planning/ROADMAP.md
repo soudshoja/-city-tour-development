@@ -131,7 +131,7 @@ Plans:
 
 Plans:
 - [x] 18-01-PLAN.md -- Module scaffold, config, migrations, models, phone resolution, hotel import, fuzzy matching
-- [ ] 18-02-PLAN.md -- Search endpoints (search_hotels, get_hotel_details, get_cities), caching, WhatsApp formatting
+- [x] 18-02-PLAN.md -- Search endpoints (search_hotels, get_hotel_details, get_cities), caching, WhatsApp formatting
 - [ ] 18-03-PLAN.md -- Integration and unit test suite for all module components
 
 ---
@@ -205,7 +205,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 4. Testing & Packaging | v1.0 Skills | 1/1 | Complete | 2026-03-09 |
 | 15. ResailAI PDF | v1.0 ResailAI | 2/2 | Complete | 2026-03-17 |
 | 16. DOTW Cert Fixes | v1.0 DOTW Cert | 3/3 | Complete | 2026-03-17 |
-| 18. Foundation + Search | v2.0 DOTW AI | 1/3 | In Progress | - |
+| 18. Foundation + Search | v2.0 DOTW AI | 2/3 | In Progress | - |
 | 19. B2B + B2C Booking | v2.0 DOTW AI | 0/? | Not started | - |
 | 20. Cancellation + Accounting | v2.0 DOTW AI | 0/? | Not started | - |
 | 21. Lifecycle + History | v2.0 DOTW AI | 0/? | Not started | - |

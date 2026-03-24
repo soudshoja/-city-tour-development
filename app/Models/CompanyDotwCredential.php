@@ -52,6 +52,8 @@ class CompanyDotwCredential extends Model
         'dotw_company_code',
         'markup_percent',
         'is_active',
+        'b2b_enabled',
+        'b2c_enabled',
     ];
 
     /**
@@ -75,6 +77,8 @@ class CompanyDotwCredential extends Model
     protected $casts = [
         'markup_percent' => 'float',
         'is_active' => 'boolean',
+        'b2b_enabled' => 'boolean',
+        'b2c_enabled' => 'boolean',
     ];
 
     /**

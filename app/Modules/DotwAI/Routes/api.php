@@ -57,4 +57,9 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
 
     // Statement endpoint (Phase 20)
     Route::get('statement', [StatementController::class, 'getStatement']);
+
+    // Booking status, history, and voucher resend endpoints (Phase 21)
+    Route::get('booking_status', [BookingController::class, 'bookingStatus']);
+    Route::get('booking_history', [BookingController::class, 'bookingHistory']);
+    Route::post('resend_voucher', [BookingController::class, 'resendVoucher']);
 });

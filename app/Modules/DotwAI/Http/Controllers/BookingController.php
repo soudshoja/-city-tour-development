@@ -4,20 +4,25 @@ declare(strict_types=1);
 
 namespace App\Modules\DotwAI\Http\Controllers;
 
+use App\Modules\DotwAI\Http\Requests\BookingHistoryRequest;
+use App\Modules\DotwAI\Http\Requests\BookingStatusRequest;
 use App\Modules\DotwAI\Http\Requests\CancelBookingRequest;
 use App\Modules\DotwAI\Http\Requests\ConfirmBookingRequest;
 use App\Modules\DotwAI\Http\Requests\PaymentLinkRequest;
 use App\Modules\DotwAI\Http\Requests\PrebookRequest;
+use App\Modules\DotwAI\Http\Requests\ResendVoucherRequest;
 use App\Modules\DotwAI\Models\DotwAIBooking;
 use App\Modules\DotwAI\Services\BookingService;
 use App\Modules\DotwAI\Services\CancellationService;
 use App\Modules\DotwAI\Services\DotwAIResponse;
 use App\Modules\DotwAI\Services\MessageBuilderService;
 use App\Modules\DotwAI\Services\PaymentBridgeService;
+use App\Modules\DotwAI\Services\VoucherService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Booking controller for the DotwAI module.
@@ -399,6 +404,235 @@ class BookingController extends Controller
             return DotwAIResponse::error(
                 DotwAIResponse::DOTW_API_ERROR,
                 'Unexpected error: ' . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Get the current status of a booking including cancellation policy,
+     * deadline, and current penalty.
+     *
+     * GET /api/dotwai/booking_status
+     *
+     * Identifies booking by prebook_key or booking_code, scoped to the
+     * requesting phone number (agent or customer).
+     *
+     * @see HIST-01 booking_status endpoint returns deadline, cancellation policy, penalty, status
+     */
+    public function bookingStatus(BookingStatusRequest $request): JsonResponse
+    {
+        try {
+            /** @var \App\Modules\DotwAI\DTOs\DotwAIContext $context */
+            $context = $request->attributes->get('dotwai_context');
+
+            $phone        = $request->input('phone');
+            $prebookKey   = $request->input('prebook_key');
+            $bookingCode  = $request->input('booking_code');
+
+            // Find booking by prebook_key OR booking_code, scoped to caller's phone
+            $booking = DotwAIBooking::where('company_id', $context->companyId)
+                ->where(function ($q) use ($prebookKey, $bookingCode) {
+                    if ($prebookKey) {
+                        $q->where('prebook_key', $prebookKey);
+                    }
+                    if ($bookingCode) {
+                        $q->orWhere('booking_ref', $bookingCode);
+                    }
+                })
+                ->where(function ($q) use ($phone) {
+                    $q->where('agent_phone', $phone)
+                        ->orWhere('client_phone', $phone);
+                })
+                ->first();
+
+            if ($booking === null) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::PREBOOK_NOT_FOUND,
+                    'Booking not found for this phone number',
+                );
+            }
+
+            $cancellationRules = $booking->cancellation_rules ?? [];
+            $penalty = (float) ($cancellationRules[0]['penalty'] ?? $cancellationRules[0]['charge'] ?? 0);
+
+            $statusMessage = MessageBuilderService::formatBookingStatusMessage([
+                'hotel_name'            => $booking->hotel_name,
+                'check_in'              => $booking->check_in,
+                'check_out'             => $booking->check_out,
+                'status'                => $booking->status,
+                'booking_ref'           => $booking->booking_ref ?? $booking->prebook_key,
+                'cancellation_deadline' => $booking->cancellation_deadline,
+                'is_refundable'         => $booking->is_refundable,
+                'current_penalty'       => $penalty,
+            ]);
+
+            return DotwAIResponse::success([
+                'booking_id'            => $booking->id,
+                'prebook_key'           => $booking->prebook_key,
+                'booking_ref'           => $booking->booking_ref,
+                'status'                => $booking->status,
+                'hotel_name'            => $booking->hotel_name,
+                'check_in'              => $booking->check_in?->format('Y-m-d'),
+                'check_out'             => $booking->check_out?->format('Y-m-d'),
+                'cancellation_deadline' => $booking->cancellation_deadline,
+                'is_refundable'         => $booking->is_refundable,
+                'current_penalty'       => $penalty,
+                'whatsappMessage'       => $statusMessage,
+            ], $statusMessage);
+        } catch (Throwable $e) {
+            Log::channel('dotw')->error('[DotwAI] bookingStatus exception', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return DotwAIResponse::error(
+                DotwAIResponse::DOTW_API_ERROR,
+                'Unexpected error: ' . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * List bookings for an agent or customer with optional status/date filters.
+     *
+     * GET /api/dotwai/booking_history
+     *
+     * Returns a paginated list of bookings scoped to the requesting phone number.
+     * Optional filters: status, from_date, to_date.
+     *
+     * @see HIST-02 booking_history endpoint with status/date filters and pagination
+     */
+    public function bookingHistory(BookingHistoryRequest $request): JsonResponse
+    {
+        try {
+            /** @var \App\Modules\DotwAI\DTOs\DotwAIContext $context */
+            $context = $request->attributes->get('dotwai_context');
+
+            $phone    = $request->input('phone');
+            $status   = $request->input('status');
+            $fromDate = $request->input('from_date');
+            $toDate   = $request->input('to_date');
+            $page     = (int) ($request->input('page') ?? 1);
+            $perPage  = (int) min($request->input('per_page') ?? 20, 50);
+
+            // Find bookings for this agent or customer
+            $query = DotwAIBooking::where('company_id', $context->companyId)
+                ->where(function ($q) use ($phone) {
+                    $q->where('agent_phone', $phone)
+                        ->orWhere('client_phone', $phone);
+                });
+
+            // Apply optional filters
+            if (!empty($status)) {
+                $query->where('status', $status);
+            }
+            if (!empty($fromDate)) {
+                $query->whereDate('check_in', '>=', $fromDate);
+            }
+            if (!empty($toDate)) {
+                $query->whereDate('check_out', '<=', $toDate);
+            }
+
+            // Paginate, most recent first
+            $paginator = $query->orderByDesc('created_at')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            $bookings = collect($paginator->items());
+
+            $historyMessage = MessageBuilderService::formatBookingHistoryMessage(
+                $bookings->all(),
+                $paginator->total(),
+            );
+
+            return DotwAIResponse::success([
+                'total'    => $paginator->total(),
+                'page'     => $page,
+                'per_page' => $perPage,
+                'bookings' => $bookings->map(fn (DotwAIBooking $b) => [
+                    'prebook_key' => $b->prebook_key,
+                    'booking_ref' => $b->booking_ref,
+                    'hotel_name'  => $b->hotel_name,
+                    'check_in'    => $b->check_in?->format('Y-m-d'),
+                    'check_out'   => $b->check_out?->format('Y-m-d'),
+                    'status'      => $b->status,
+                    'created_at'  => $b->created_at?->toIso8601String(),
+                ])->values()->all(),
+                'whatsappMessage' => $historyMessage,
+            ], $historyMessage);
+        } catch (Throwable $e) {
+            Log::channel('dotw')->error('[DotwAI] bookingHistory exception', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return DotwAIResponse::error(
+                DotwAIResponse::DOTW_API_ERROR,
+                'Unexpected error: ' . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Re-send a booking voucher via WhatsApp.
+     *
+     * POST /api/dotwai/resend_voucher
+     *
+     * Finds the confirmed booking by prebook_key (scoped to phone), then
+     * calls VoucherService::resendVoucher to re-deliver the confirmation.
+     *
+     * Only confirmed bookings can have their voucher resent.
+     *
+     * @see HIST-03 resend_voucher endpoint
+     */
+    public function resendVoucher(ResendVoucherRequest $request): JsonResponse
+    {
+        try {
+            /** @var \App\Modules\DotwAI\DTOs\DotwAIContext $context */
+            $context = $request->attributes->get('dotwai_context');
+
+            $phone      = $request->input('phone');
+            $prebookKey = $request->input('prebook_key');
+
+            // Find booking scoped to caller's phone
+            $booking = DotwAIBooking::where('company_id', $context->companyId)
+                ->where('prebook_key', $prebookKey)
+                ->where(function ($q) use ($phone) {
+                    $q->where('agent_phone', $phone)
+                        ->orWhere('client_phone', $phone);
+                })
+                ->first();
+
+            if ($booking === null) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::PREBOOK_NOT_FOUND,
+                    'Booking not found for this phone number',
+                );
+            }
+
+            if ($booking->status !== DotwAIBooking::STATUS_CONFIRMED) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::BOOKING_FAILED,
+                    'Voucher can only be resent for confirmed bookings',
+                    "يمكن إعادة إرسال الفاتورة فقط للحجوزات المؤكدة.\nVoucher can only be resent for confirmed bookings.",
+                );
+            }
+
+            $voucherService = new VoucherService();
+            $voucherService->resendVoucher($booking);
+
+            $confirmMessage = MessageBuilderService::formatVoucherResendConfirmation($booking);
+
+            return DotwAIResponse::success([
+                'booking_ref'     => $booking->booking_ref,
+                'whatsappMessage' => $confirmMessage,
+            ], $confirmMessage);
+        } catch (Throwable $e) {
+            Log::channel('dotw')->error('[DotwAI] resendVoucher exception', [
+                'prebook_key' => $request->input('prebook_key') ?? null,
+                'error'       => $e->getMessage(),
+            ]);
+
+            return DotwAIResponse::error(
+                DotwAIResponse::DOTW_API_ERROR,
+                'Failed to resend voucher: ' . $e->getMessage(),
             );
         }
     }

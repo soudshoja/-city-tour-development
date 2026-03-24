@@ -146,7 +146,12 @@ Plans:
   3. B2C customer receives a payment link with markup applied (configurable per company, MSP enforced), and after payment the system re-blocks the rate and auto-confirms with DOTW
   4. Confirmed bookings create a task, invoice, and voucher automatically for both tracks
   5. get_company_balance returns accurate credit limit, used, and available amounts for B2B agents
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 19-01-PLAN.md -- Core booking infrastructure: DotwAIBooking model, BookingService, CreditService, BookingController (prebook, confirm, balance)
+- [ ] 19-02-PLAN.md -- Payment integration: PaymentBridgeService, PaymentCallbackController, ConfirmBookingAfterPaymentJob, payment_link endpoint
+- [ ] 19-03-PLAN.md -- Voucher delivery + test suite: VoucherService, WhatsApp voucher formatting, booking flow tests
 
 ---
 
@@ -206,7 +211,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 15. ResailAI PDF | v1.0 ResailAI | 2/2 | Complete | 2026-03-17 |
 | 16. DOTW Cert Fixes | v1.0 DOTW Cert | 3/3 | Complete | 2026-03-17 |
 | 18. Foundation + Search | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
-| 19. B2B + B2C Booking | v2.0 DOTW AI | 0/? | Not started | - |
+| 19. B2B + B2C Booking | 1/3 | In Progress|  | - |
 | 20. Cancellation + Accounting | v2.0 DOTW AI | 0/? | Not started | - |
 | 21. Lifecycle + History | v2.0 DOTW AI | 0/? | Not started | - |
 | 22. Dashboard | v2.0 DOTW AI | 0/? | Not started | - |
@@ -215,3 +220,4 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 *Roadmap created: 2026-03-09*
 *v2.0 DOTW AI Module phases added: 2026-03-24*
 *Phase 18 plans created: 2026-03-24*
+*Phase 19 plans created: 2026-03-24*

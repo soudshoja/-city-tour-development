@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: DOTW AI Module
+status: completed
+stopped_at: Completed 19-01-PLAN.md (B2B/B2C Booking Infrastructure)
+last_updated: "2026-03-24T14:48:09.939Z"
+last_activity: 2026-03-24 — Completed 18-03 (DotwAI Module Test Suite)
+progress:
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 22
+  completed_plans: 20
+  percent: 98
+---
+
 # Project State
 
 ## Project Reference
@@ -14,7 +30,7 @@ Plan: 3 of 3 in current phase (phase complete)
 Status: Phase 18 Complete
 Last activity: 2026-03-24 — Completed 18-03 (DotwAI Module Test Suite)
 
-Progress: [####░░░░░░] 20% (v2.0 milestone — 3/15 plans)
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -36,6 +52,7 @@ Progress: [####░░░░░░] 20% (v2.0 milestone — 3/15 plans)
 - Trend: Stable
 
 *Updated after each plan completion*
+| Phase 19-b2b-b2c-booking P01 | 9 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -60,6 +77,9 @@ Recent decisions affecting current work:
 - [18-02]: Browse-only for hotel details (blocking=false) -- rate blocking deferred to Phase 19
 - [18-03]: Mockery overload pattern for DotwService mocking (new DotwService() interception)
 - [18-03]: skipPermissionSeeder=true on all DotwAI tests for isolation from permission system
+- [Phase 19-b2b-b2c-booking]: sanitizePassengerName is private in DotwService -- BookingService has own helper with identical logic for module self-containment
+- [Phase 19-b2b-b2c-booking]: Search cache has only hotel summaries -- prebook always re-calls getRooms(blocking=true) regardless of option_number or hotel_id input
+- [Phase 19-b2b-b2c-booking]: CreditService::getClientIdForCompany resolves via Agent->branch->company_id chain (Company model has no clients() relationship)
 
 ### Pending Todos
 
@@ -73,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24
-Stopped at: Completed 18-03-PLAN.md (DotwAI Module Test Suite -- Phase 18 complete)
+Last session: 2026-03-24T14:48:09.935Z
+Stopped at: Completed 19-01-PLAN.md (B2B/B2C Booking Infrastructure)
 Resume file: None

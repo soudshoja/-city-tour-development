@@ -20,20 +20,20 @@
 - [x] **SRCH-06**: Filters: star rating, meal type, price range, refundable only, hotel name
 
 ## B2B Booking (B2B)
-- [ ] **B2B-01**: Agent with credit line can book directly — no upfront payment, tracked in accounting
+- [x] **B2B-01**: Agent with credit line can book directly — no upfront payment, tracked in accounting
 - [ ] **B2B-02**: Agent without credit line gets payment link via WhatsApp before confirmation
-- [ ] **B2B-03**: `prebook_hotel` locks rate using option number from cached search results
-- [ ] **B2B-04**: `confirm_booking` accepts passenger details and confirms with DOTW
-- [ ] **B2B-05**: `get_company_balance` returns credit limit, used, available for B2B agents
-- [ ] **B2B-06**: Company credit deduction uses pessimistic locking (prevent concurrent overdraw)
+- [x] **B2B-03**: `prebook_hotel` locks rate using option number from cached search results
+- [x] **B2B-04**: `confirm_booking` accepts passenger details and confirms with DOTW
+- [x] **B2B-05**: `get_company_balance` returns credit limit, used, available for B2B agents
+- [x] **B2B-06**: Company credit deduction uses pessimistic locking (prevent concurrent overdraw)
 - [ ] **B2B-07**: Booking creates voucher and sends via WhatsApp after confirmation
 
 ## B2C Booking (B2C)
 - [ ] **B2C-01**: `payment_link` generates MyFatoorah/KNET payment URL sent via WhatsApp
 - [ ] **B2C-02**: After payment webhook received, Laravel re-blocks rate and confirms with DOTW automatically
-- [ ] **B2C-03**: Configurable markup per company (default 20%) applied to all B2C prices
+- [x] **B2C-03**: Configurable markup per company (default 20%) applied to all B2C prices
 - [ ] **B2C-04**: Booking creates invoice + task + voucher automatically after confirmation
-- [ ] **B2C-05**: MSP enforced — selling price never below DOTW minimum selling price
+- [x] **B2C-05**: MSP enforced — selling price never below DOTW minimum selling price
 
 ## Cancellation (CANC)
 - [ ] **CANC-01**: `cancel_booking` shows penalty amount before confirming (2-step)
@@ -103,18 +103,18 @@
 | SRCH-06 | Phase 18 | Complete (18-02), Tested (18-03) |
 | EVNT-02 | Phase 18 | Complete (18-01), Tested (18-03) |
 | EVNT-03 | Phase 18 | Complete (18-01), Tested (18-03) |
-| B2B-01 | Phase 19 | Pending |
+| B2B-01 | Phase 19 | Complete |
 | B2B-02 | Phase 19 | Pending |
-| B2B-03 | Phase 19 | Pending |
-| B2B-04 | Phase 19 | Pending |
-| B2B-05 | Phase 19 | Pending |
-| B2B-06 | Phase 19 | Pending |
+| B2B-03 | Phase 19 | Complete |
+| B2B-04 | Phase 19 | Complete |
+| B2B-05 | Phase 19 | Complete |
+| B2B-06 | Phase 19 | Complete |
 | B2B-07 | Phase 19 | Pending |
 | B2C-01 | Phase 19 | Pending |
 | B2C-02 | Phase 19 | Pending |
-| B2C-03 | Phase 19 | Pending |
+| B2C-03 | Phase 19 | Complete |
 | B2C-04 | Phase 19 | Pending |
-| B2C-05 | Phase 19 | Pending |
+| B2C-05 | Phase 19 | Complete |
 | CANC-01 | Phase 20 | Pending |
 | CANC-02 | Phase 20 | Pending |
 | CANC-03 | Phase 20 | Pending |

@@ -871,6 +871,156 @@ class MessageBuilderService
     }
 
     /**
+     * Format a booking status message showing cancellation policy, deadline, and penalty.
+     *
+     * Example output:
+     * ```
+     * حالة الحجز | Booking Status
+     * ──────────────────────────────
+     * الفندق | Hotel: Hilton Dubai Creek
+     * التاريخ | Date: 2026-04-10 to 2026-04-15
+     * رقم الحجز | Booking Ref: DOTW-12345678
+     * الحالة | Status: confirmed
+     *
+     * قابل للاسترداد | Refundable
+     * آخر موعد الإلغاء | Cancellation Deadline: 2026-04-05
+     * الأيام المتبقية | Days Left: 3
+     * الغرامة الحالية | Current Penalty: 0
+     * ```
+     *
+     * @param array<string, mixed> $data Keys: hotel_name, check_in, check_out, status,
+     *                                   booking_ref, cancellation_deadline, is_refundable,
+     *                                   current_penalty
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatBookingStatusMessage(array $data): string
+    {
+        $lines = [];
+        $lines[] = "حالة الحجز | Booking Status";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "الفندق | Hotel: " . ($data['hotel_name'] ?? 'N/A');
+
+        $checkIn  = $data['check_in'];
+        $checkOut = $data['check_out'];
+        if ($checkIn instanceof \DateTimeInterface) {
+            $checkIn = $checkIn->format('Y-m-d');
+        }
+        if ($checkOut instanceof \DateTimeInterface) {
+            $checkOut = $checkOut->format('Y-m-d');
+        }
+        $lines[] = "التاريخ | Date: {$checkIn} to {$checkOut}";
+        $lines[] = "رقم الحجز | Booking Ref: " . ($data['booking_ref'] ?? 'N/A');
+        $lines[] = "الحالة | Status: " . ($data['status'] ?? 'N/A');
+        $lines[] = "";
+
+        $isRefundable = (bool) ($data['is_refundable'] ?? true);
+        $deadline = $data['cancellation_deadline'] ?? null;
+
+        if ($isRefundable && $deadline !== null) {
+            $deadlineFormatted = $deadline instanceof \DateTimeInterface
+                ? $deadline->format('Y-m-d')
+                : (string) $deadline;
+
+            $daysLeft = (int) now()->diffInDays($deadline, false);
+
+            $lines[] = "قابل للاسترداد | Refundable";
+            $lines[] = "آخر موعد الإلغاء | Cancellation Deadline: {$deadlineFormatted}";
+            $lines[] = "الأيام المتبقية | Days Left: " . abs($daysLeft);
+        } else {
+            $lines[] = "غير قابل للاسترداد | Non-Refundable";
+        }
+
+        $lines[] = "الغرامة الحالية | Current Penalty: " . ($data['current_penalty'] ?? 0);
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Format a booking history list message for WhatsApp delivery.
+     *
+     * Example output:
+     * ```
+     * سجل الحجوزات | Booking History
+     * ──────────────────────────────
+     *
+     * • Hilton Dubai Creek
+     *   2026-04-10 to 2026-04-15
+     *   Status: confirmed
+     *
+     * ──────────────────────────────
+     * إجمالي | Total: 2 booking(s)
+     * ```
+     *
+     * @param array<int, DotwAIBooking> $bookings Booking records to list
+     * @param int                       $total    Total count across all pages
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatBookingHistoryMessage(array $bookings, int $total): string
+    {
+        if (empty($bookings)) {
+            return "لا توجد حجوزات | No bookings found";
+        }
+
+        $lines = [];
+        $lines[] = "سجل الحجوزات | Booking History";
+        $lines[] = self::SEPARATOR;
+
+        foreach ($bookings as $booking) {
+            $checkIn  = $booking instanceof DotwAIBooking
+                ? $booking->check_in?->format('Y-m-d')
+                : ($booking['check_in'] ?? '');
+            $checkOut = $booking instanceof DotwAIBooking
+                ? $booking->check_out?->format('Y-m-d')
+                : ($booking['check_out'] ?? '');
+            $hotelName = $booking instanceof DotwAIBooking ? $booking->hotel_name : ($booking['hotel_name'] ?? 'N/A');
+            $status    = $booking instanceof DotwAIBooking ? $booking->status : ($booking['status'] ?? 'N/A');
+
+            $lines[] = "";
+            $lines[] = "• {$hotelName}";
+            $lines[] = "  {$checkIn} to {$checkOut}";
+            $lines[] = "  Status: {$status}";
+        }
+
+        $lines[] = "";
+        $lines[] = self::SEPARATOR;
+        $lines[] = "إجمالي | Total: {$total} booking(s)";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Format a voucher resend confirmation message for WhatsApp.
+     *
+     * Sent after successfully re-sending the booking voucher to confirm
+     * the resend action was completed.
+     *
+     * Example output:
+     * ```
+     * تم إعادة إرسال الفاتورة | Voucher Resent
+     * ──────────────────────────────
+     * الفندق | Hotel: Hilton Dubai Creek
+     * رقم الحجز | Booking Ref: DOTW-12345678
+     *
+     * تحقق من رسائلك | Check your messages
+     * ```
+     *
+     * @param DotwAIBooking $booking The confirmed booking whose voucher was resent
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatVoucherResendConfirmation(DotwAIBooking $booking): string
+    {
+        return implode("\n", [
+            "تم إعادة إرسال الفاتورة | Voucher Resent",
+            self::SEPARATOR,
+            "الفندق | Hotel: " . ($booking->hotel_name ?? 'N/A'),
+            "رقم الحجز | Booking Ref: " . ($booking->booking_ref ?? $booking->confirmation_no ?? 'N/A'),
+            "",
+            "تحقق من رسائلك | Check your messages",
+        ]);
+    }
+
+    /**
      * Get Arabic translation for meal type.
      *
      * @param string $mealType English meal type label

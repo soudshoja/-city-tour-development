@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\DotwAI\Http\Controllers\BookingController;
 use App\Modules\DotwAI\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,4 +38,9 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
     Route::post('search_hotels', [SearchController::class, 'searchHotels']);
     Route::post('get_hotel_details', [SearchController::class, 'getHotelDetails']);
     Route::get('get_cities', [SearchController::class, 'getCities']);
+
+    // Booking endpoints (Phase 19)
+    Route::post('prebook_hotel', [BookingController::class, 'prebookHotel']);
+    Route::post('confirm_booking', [BookingController::class, 'confirmBooking']);
+    Route::get('balance', [BookingController::class, 'getCompanyBalance']);
 });

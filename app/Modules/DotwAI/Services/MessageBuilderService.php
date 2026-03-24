@@ -264,6 +264,155 @@ class MessageBuilderService
     }
 
     /**
+     * Format a prebook confirmation message (Phase 19 -- after rate lock, before confirm).
+     *
+     * Example output:
+     * ```
+     * تم حجز الفندق | Booking Reserved
+     * ──────────────────────────────
+     * Hotel: Hilton Dubai Creek
+     * Dates: 2026-04-10 → 2026-04-15
+     * Price: KWD 225.000
+     * Status: Refundable | قابل للاسترداد
+     * Cancellation Deadline: 2026-04-05
+     * Booking Ref: DOTWAI-550E8400-...
+     * ```
+     *
+     * @param array $prebook Prebook result array from BookingService::prebook
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatPrebookConfirmation(array $prebook): string
+    {
+        $lines = [];
+        $lines[] = "تم تثبيت الحجز | Booking Reserved";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "Hotel | الفندق: " . ($prebook['hotel_name'] ?? 'N/A');
+        $lines[] = "Dates | التواريخ: " . ($prebook['check_in'] ?? '') . " → " . ($prebook['check_out'] ?? '');
+
+        $currency = $prebook['currency'] ?? 'KWD';
+        $price = number_format((float) ($prebook['display_total_fare'] ?? 0), 3);
+        $lines[] = "Price | السعر: {$currency} {$price}";
+
+        $isRefundable = $prebook['is_refundable'] ?? true;
+        $isApr = $prebook['is_apr'] ?? false;
+        if ($isRefundable) {
+            $lines[] = "Status | الحالة: Refundable | قابل للاسترداد";
+        } else {
+            $label = $isApr ? 'Non-Refundable (APR) | غير قابل للاسترداد (سعر مسبق)' : 'Non-Refundable | غير قابل للاسترداد';
+            $lines[] = "Status | الحالة: {$label}";
+        }
+
+        $deadline = $prebook['cancellation_deadline'] ?? null;
+        $lines[] = "Cancellation Deadline | آخر موعد للإلغاء: " . ($deadline ?? 'N/A');
+
+        $lines[] = "Booking Ref | رقم الحجز: " . ($prebook['prebook_key'] ?? 'N/A');
+
+        $lines[] = self::SEPARATOR;
+
+        $needsPayment = $prebook['needs_payment'] ?? false;
+        if ($needsPayment) {
+            $lines[] = "للمتابعة يرجى الدفع أولاً";
+            $lines[] = "To proceed, payment is required.";
+        } else {
+            $lines[] = "للتأكيد يرجى تقديم بيانات النزلاء";
+            $lines[] = "To confirm, please provide guest details.";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Format a booking confirmation message (Phase 19 -- after successful DOTW confirmation).
+     *
+     * Example output:
+     * ```
+     * تم تأكيد الحجز | Booking Confirmed
+     * ──────────────────────────────
+     * Confirmation No: DOTW-12345678
+     * Hotel: Hilton Dubai Creek
+     * Dates: 2026-04-10 → 2026-04-15
+     * Guests: Mr. John Smith
+     * ```
+     *
+     * @param array $confirmation Confirmation data from BookingService
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatBookingConfirmation(array $confirmation): string
+    {
+        $lines = [];
+        $lines[] = "تم تأكيد الحجز | Booking Confirmed";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "Confirmation No | رقم التأكيد: " . ($confirmation['confirmation_no'] ?? 'N/A');
+
+        if (!empty($confirmation['booking_ref'])) {
+            $lines[] = "DOTW Ref | المرجع: " . $confirmation['booking_ref'];
+        }
+
+        $lines[] = "Hotel | الفندق: " . ($confirmation['hotel_name'] ?? 'N/A');
+        $lines[] = "Dates | التواريخ: " . ($confirmation['check_in'] ?? '') . " → " . ($confirmation['check_out'] ?? '');
+
+        $guests = $confirmation['guest_details'] ?? [];
+        if (!empty($guests)) {
+            $lines[] = "";
+            $lines[] = "Guests | النزلاء:";
+            foreach ($guests as $guest) {
+                $salutation = $guest['salutation'] ?? 'Mr';
+                $name = trim(($guest['first_name'] ?? '') . ' ' . ($guest['last_name'] ?? ''));
+                $lines[] = "  - {$salutation}. {$name}";
+            }
+        }
+
+        if (!empty($confirmation['payment_guaranteed_by'])) {
+            $lines[] = "";
+            $lines[] = "Payment Guaranteed By | ضامن الدفع: " . $confirmation['payment_guaranteed_by'];
+        }
+
+        $lines[] = "";
+        $lines[] = self::SEPARATOR;
+        $lines[] = "سيتم إرسال الفاوتشر قريباً";
+        $lines[] = "Voucher will be sent shortly.";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Format a credit balance summary message (Phase 19 -- B2B balance query).
+     *
+     * Example output:
+     * ```
+     * رصيد الائتمان | Credit Balance
+     * ──────────────────────────────
+     * Credit Limit: KWD 5,000.000
+     * Used: KWD 1,250.000
+     * Available: KWD 3,750.000
+     * ```
+     *
+     * @param array $balance Balance data from CreditService::getBalance
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatBalanceSummary(array $balance): string
+    {
+        $lines = [];
+        $lines[] = "رصيد الائتمان | Credit Balance";
+        $lines[] = self::SEPARATOR;
+
+        $currency = config('dotwai.display_currency', 'KWD');
+        $limit     = number_format((float) ($balance['credit_limit'] ?? 0), 3);
+        $used      = number_format((float) ($balance['used_credit'] ?? 0), 3);
+        $available = number_format((float) ($balance['available_credit'] ?? 0), 3);
+
+        $lines[] = "Credit Limit | الحد الائتماني: {$currency} {$limit}";
+        $lines[] = "Used | المستخدم: {$currency} {$used}";
+        $lines[] = "Available | المتاح: {$currency} {$available}";
+
+        $lines[] = self::SEPARATOR;
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * Build suggested follow-up actions for WhatsApp options.
      *
      * Returns context-appropriate suggestions that the AI agent

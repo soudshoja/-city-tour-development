@@ -39,6 +39,7 @@ class DotwAIResponse
     public const PREBOOK_EXPIRED = 'PREBOOK_EXPIRED';
     public const INSUFFICIENT_CREDIT = 'INSUFFICIENT_CREDIT';
     public const PAYMENT_REQUIRED = 'PAYMENT_REQUIRED';
+    public const PAYMENT_FAILED = 'PAYMENT_FAILED';
     public const BOOKING_FAILED = 'BOOKING_FAILED';
     public const RATE_UNAVAILABLE = 'RATE_UNAVAILABLE';
     public const ALREADY_CONFIRMED = 'ALREADY_CONFIRMED';
@@ -102,6 +103,10 @@ class DotwAIResponse
         self::PAYMENT_REQUIRED => [
             'whatsappMessage' => "يلزم الدفع قبل تأكيد الحجز.\nPayment is required before confirmation.",
             'suggestedAction' => 'Provide the user with the payment link to complete the booking.',
+        ],
+        self::PAYMENT_FAILED => [
+            'whatsappMessage' => "عذرا، لم تنجح عملية الدفع. يرجى المحاولة مرة أخرى.\nSorry, the payment was not successful. Please try again.",
+            'suggestedAction' => 'Ask the user to retry the payment or use a different payment method.',
         ],
         self::BOOKING_FAILED => [
             'whatsappMessage' => "عذرا، لم نتمكن من تأكيد الحجز مع الفندق. يرجى المحاولة مرة أخرى.\nSorry, the booking could not be confirmed with the hotel. Please try again.",

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\DotwAI\Http\Controllers\BookingController;
+use App\Modules\DotwAI\Http\Controllers\PaymentCallbackController;
 use App\Modules\DotwAI\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,9 @@ Route::get('api/dotwai/health', function () {
         'timestamp' => now()->toIso8601String(),
     ]);
 });
+
+// Payment callback from MyFatoorah -- no dotwai.resolve middleware (comes from gateway, not WhatsApp)
+Route::any('api/dotwai/payment_callback', [PaymentCallbackController::class, 'handleCallback']);
 
 // All DotwAI endpoints require phone resolution
 Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {

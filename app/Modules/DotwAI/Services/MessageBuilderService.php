@@ -555,6 +555,119 @@ class MessageBuilderService
     }
 
     /**
+     * Format a full booking voucher for WhatsApp delivery (Phase 19 -- post-confirmation).
+     *
+     * Bilingual Arabic/English voucher with all booking details including
+     * paymentGuaranteedBy (locked CONTEXT.md decision: always include when present).
+     *
+     * Example output:
+     * ```
+     * BOOKING CONFIRMATION | تأكيد الحجز
+     * ══════════════════════════════
+     *
+     * Booking Reference: DOTW-12345678
+     * الرقم المرجعي: DOTW-12345678
+     * ──────────────────────────────
+     *
+     * Hotel | الفندق: Hilton Dubai Creek
+     * Check-in | تسجيل الدخول: 10 Apr 2026
+     * Check-out | تسجيل الخروج: 15 Apr 2026
+     * ──────────────────────────────
+     *
+     * Guest(s) | الضيوف:
+     * - Mr John Smith
+     * ──────────────────────────────
+     *
+     * Total | المجموع: KWD 225.000
+     * Status | الحالة: Confirmed | مؤكد
+     * Payment Guaranteed By: City Travelers Agency
+     * ──────────────────────────────
+     *
+     * Free cancellation until 05 Apr 2026
+     * الإلغاء المجاني حتى 05 Apr 2026
+     * ══════════════════════════════
+     * City Travelers | سيتي ترافلرز
+     * ```
+     *
+     * @param DotwAIBooking $booking The confirmed booking
+     * @return string Formatted WhatsApp voucher message
+     */
+    public static function formatVoucherMessage(DotwAIBooking $booking): string
+    {
+        $doubleRule = "══════════════════════════════";
+
+        $lines = [];
+        $lines[] = "BOOKING CONFIRMATION | تأكيد الحجز";
+        $lines[] = $doubleRule;
+        $lines[] = "";
+
+        // Booking reference
+        $confirmationNo = $booking->confirmation_no ?? 'N/A';
+        $lines[] = "Booking Reference: {$confirmationNo}";
+        $lines[] = "الرقم المرجعي: {$confirmationNo}";
+        $lines[] = self::SEPARATOR;
+        $lines[] = "";
+
+        // Hotel and dates
+        $lines[] = "Hotel | الفندق: " . ($booking->hotel_name ?? 'N/A');
+        $lines[] = "Check-in | تسجيل الدخول: " . ($booking->check_in?->format('d M Y') ?? 'N/A');
+        $lines[] = "Check-out | تسجيل الخروج: " . ($booking->check_out?->format('d M Y') ?? 'N/A');
+        $lines[] = self::SEPARATOR;
+        $lines[] = "";
+
+        // Guest list
+        $lines[] = "Guest(s) | الضيوف:";
+        $guestDetails = $booking->guest_details ?? [];
+        if (!empty($guestDetails)) {
+            foreach ($guestDetails as $guest) {
+                $salutation = $guest['salutation'] ?? '';
+                $firstName  = $guest['first_name'] ?? '';
+                $lastName   = $guest['last_name'] ?? '';
+                $name = trim("{$salutation} {$firstName} {$lastName}");
+                $lines[] = "- " . ($name ?: 'Guest');
+            }
+        } else {
+            $lines[] = "- Guest";
+        }
+        $lines[] = self::SEPARATOR;
+        $lines[] = "";
+
+        // Price and status
+        $currency = $booking->display_currency ?? 'KWD';
+        $fare     = number_format((float) ($booking->display_total_fare ?? 0), 3);
+        $lines[] = "Total | المجموع: {$currency} {$fare}";
+        $lines[] = "Status | الحالة: Confirmed | مؤكد";
+
+        if (!empty($booking->payment_guaranteed_by)) {
+            $lines[] = "Payment Guaranteed By: " . $booking->payment_guaranteed_by;
+        }
+
+        $lines[] = self::SEPARATOR;
+        $lines[] = "";
+
+        // Cancellation policy
+        $isRefundable         = $booking->is_refundable ?? true;
+        $isApr                = $booking->is_apr ?? false;
+        $cancellationDeadline = $booking->cancellation_deadline;
+
+        if ($isRefundable && !$isApr && $cancellationDeadline !== null) {
+            $formattedDeadline = $cancellationDeadline->format('d M Y');
+            $lines[] = "Free cancellation until {$formattedDeadline}";
+            $lines[] = "الإلغاء المجاني حتى {$formattedDeadline}";
+        } elseif (!$isRefundable || $isApr) {
+            $lines[] = "Non-Refundable (APR) | غير قابل للاسترداد";
+        } else {
+            $lines[] = "See cancellation policy | راجع سياسة الإلغاء";
+        }
+
+        $lines[] = "";
+        $lines[] = $doubleRule;
+        $lines[] = "City Travelers | سيتي ترافلرز";
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * Get Arabic translation for meal type.
      *
      * @param string $mealType English meal type label

@@ -43,4 +43,7 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
     Route::post('prebook_hotel', [BookingController::class, 'prebookHotel']);
     Route::post('confirm_booking', [BookingController::class, 'confirmBooking']);
     Route::get('balance', [BookingController::class, 'getCompanyBalance']);
+
+    // Payment link endpoint (Phase 19-02)
+    Route::post('payment_link', [BookingController::class, 'paymentLink']);
 });

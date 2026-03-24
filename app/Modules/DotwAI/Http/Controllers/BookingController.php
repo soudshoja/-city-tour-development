@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\DotwAI\Http\Controllers;
 
 use App\Modules\DotwAI\Http\Requests\ConfirmBookingRequest;
+use App\Modules\DotwAI\Http\Requests\PaymentLinkRequest;
 use App\Modules\DotwAI\Http\Requests\PrebookRequest;
 use App\Modules\DotwAI\Models\DotwAIBooking;
 use App\Modules\DotwAI\Services\BookingService;
 use App\Modules\DotwAI\Services\DotwAIResponse;
 use App\Modules\DotwAI\Services\MessageBuilderService;
+use App\Modules\DotwAI\Services\PaymentBridgeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -35,6 +37,7 @@ class BookingController extends Controller
 {
     public function __construct(
         private readonly BookingService $bookingService,
+        private readonly PaymentBridgeService $paymentBridge,
     ) {}
 
     /**
@@ -184,6 +187,109 @@ class BookingController extends Controller
             );
         } catch (\Throwable $e) {
             Log::channel('dotw')->error('[DotwAI] confirmBooking exception', [
+                'prebook_key' => $request->prebook_key ?? null,
+                'error'       => $e->getMessage(),
+            ]);
+
+            return DotwAIResponse::error(
+                DotwAIResponse::DOTW_API_ERROR,
+                'Unexpected error: ' . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Generate a MyFatoorah payment link for a prebooked DOTW hotel.
+     *
+     * POST /api/dotwai/payment_link
+     *
+     * Creates a Payment record for accounting traceability, calls the
+     * MyFatoorah ExecutePayment API directly (so the module owns the
+     * CallBackUrl), tags the payment with a UserDefinedField so the
+     * callback controller can look up the booking.
+     *
+     * Idempotent: returns the existing link if payment_status is still 'pending'.
+     *
+     * @see B2B-02 B2B agent without credit receives payment link via WhatsApp
+     * @see B2C-01 B2C customer receives payment link with markup applied
+     */
+    public function paymentLink(PaymentLinkRequest $request): JsonResponse
+    {
+        try {
+            /** @var \App\Modules\DotwAI\DTOs\DotwAIContext $context */
+            $context = $request->attributes->get('dotwai_context');
+
+            // Find the booking
+            $booking = DotwAIBooking::where('prebook_key', $request->prebook_key)->first();
+
+            if ($booking === null) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::PREBOOK_NOT_FOUND,
+                    "Booking not found: {$request->prebook_key}",
+                );
+            }
+
+            // B2B credit track does not need a payment link
+            if ($booking->track === DotwAIBooking::TRACK_B2B) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::TRACK_DISABLED,
+                    'B2B credit bookings do not require a payment link. Use confirm_booking instead.',
+                    "حجز الائتمان لا يحتاج دفعة مسبقة. استخدم confirm_booking بدلاً من ذلك.\nB2B credit bookings do not require payment. Use confirm_booking.",
+                );
+            }
+
+            // Idempotency: return existing link if still pending
+            if (! empty($booking->payment_link) && $booking->payment_status === 'pending') {
+                $paymentData = [
+                    'payment_url' => $booking->payment_link,
+                    'expiry'      => null,
+                    'amount'      => (float) $booking->display_total_fare,
+                    'currency'    => $booking->display_currency ?? 'KWD',
+                ];
+                $whatsappMessage = MessageBuilderService::formatPaymentLink($paymentData, $booking);
+
+                return DotwAIResponse::success(
+                    $paymentData,
+                    $whatsappMessage,
+                    ['Complete payment', 'Cancel booking'],
+                );
+            }
+
+            // Check booking is not expired
+            if ($booking->isExpired()) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::PREBOOK_EXPIRED,
+                    "Booking {$request->prebook_key} has expired",
+                );
+            }
+
+            // Check not already confirmed
+            if ($booking->status === DotwAIBooking::STATUS_CONFIRMED) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::ALREADY_CONFIRMED,
+                    'This booking is already confirmed',
+                );
+            }
+
+            // Generate payment link via PaymentBridgeService
+            $result = $this->paymentBridge->createPaymentLink($booking);
+
+            if (isset($result['error']) && $result['error'] === true) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::DOTW_API_ERROR,
+                    $result['message'] ?? 'Failed to create payment link',
+                );
+            }
+
+            $whatsappMessage = MessageBuilderService::formatPaymentLink($result, $booking);
+
+            return DotwAIResponse::success(
+                $result,
+                $whatsappMessage,
+                ['Complete payment', 'Cancel booking'],
+            );
+        } catch (\Throwable $e) {
+            Log::channel('dotw')->error('[DotwAI] paymentLink exception', [
                 'prebook_key' => $request->prebook_key ?? null,
                 'error'       => $e->getMessage(),
             ]);

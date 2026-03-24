@@ -21,7 +21,7 @@
 
 ## B2B Booking (B2B)
 - [x] **B2B-01**: Agent with credit line can book directly — no upfront payment, tracked in accounting
-- [ ] **B2B-02**: Agent without credit line gets payment link via WhatsApp before confirmation
+- [x] **B2B-02**: Agent without credit line gets payment link via WhatsApp before confirmation
 - [x] **B2B-03**: `prebook_hotel` locks rate using option number from cached search results
 - [x] **B2B-04**: `confirm_booking` accepts passenger details and confirms with DOTW
 - [x] **B2B-05**: `get_company_balance` returns credit limit, used, available for B2B agents
@@ -29,10 +29,10 @@
 - [ ] **B2B-07**: Booking creates voucher and sends via WhatsApp after confirmation
 
 ## B2C Booking (B2C)
-- [ ] **B2C-01**: `payment_link` generates MyFatoorah/KNET payment URL sent via WhatsApp
-- [ ] **B2C-02**: After payment webhook received, Laravel re-blocks rate and confirms with DOTW automatically
+- [x] **B2C-01**: `payment_link` generates MyFatoorah/KNET payment URL sent via WhatsApp
+- [x] **B2C-02**: After payment webhook received, Laravel re-blocks rate and confirms with DOTW automatically
 - [x] **B2C-03**: Configurable markup per company (default 20%) applied to all B2C prices
-- [ ] **B2C-04**: Booking creates invoice + task + voucher automatically after confirmation
+- [x] **B2C-04**: Booking creates invoice + task + voucher automatically after confirmation
 - [x] **B2C-05**: MSP enforced — selling price never below DOTW minimum selling price
 
 ## Cancellation (CANC)
@@ -104,16 +104,16 @@
 | EVNT-02 | Phase 18 | Complete (18-01), Tested (18-03) |
 | EVNT-03 | Phase 18 | Complete (18-01), Tested (18-03) |
 | B2B-01 | Phase 19 | Complete |
-| B2B-02 | Phase 19 | Pending |
+| B2B-02 | Phase 19 | Complete |
 | B2B-03 | Phase 19 | Complete |
 | B2B-04 | Phase 19 | Complete |
 | B2B-05 | Phase 19 | Complete |
 | B2B-06 | Phase 19 | Complete |
 | B2B-07 | Phase 19 | Pending |
-| B2C-01 | Phase 19 | Pending |
-| B2C-02 | Phase 19 | Pending |
+| B2C-01 | Phase 19 | Complete |
+| B2C-02 | Phase 19 | Complete |
 | B2C-03 | Phase 19 | Complete |
-| B2C-04 | Phase 19 | Pending |
+| B2C-04 | Phase 19 | Complete |
 | B2C-05 | Phase 19 | Complete |
 | CANC-01 | Phase 20 | Pending |
 | CANC-02 | Phase 20 | Pending |

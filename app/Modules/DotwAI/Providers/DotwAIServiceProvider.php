@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\DotwAI\Providers;
 
 use App\Modules\DotwAI\Commands\ImportHotelsCommand;
+use App\Modules\DotwAI\Commands\ProcessDeadlinesCommand;
 use App\Modules\DotwAI\Commands\SyncStaticDataCommand;
 use Illuminate\Support\ServiceProvider;
 
@@ -46,6 +47,7 @@ class DotwAIServiceProvider extends ServiceProvider
             $this->commands([
                 ImportHotelsCommand::class,
                 SyncStaticDataCommand::class,
+                ProcessDeadlinesCommand::class,
             ]);
         }
     }

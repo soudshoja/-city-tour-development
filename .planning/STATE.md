@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
 status: planning
-stopped_at: Completed 21-lifecycle-history-01-PLAN.md
-last_updated: "2026-03-24T23:10:09.790Z"
+stopped_at: Completed 21-lifecycle-history-02-PLAN.md
+last_updated: "2026-03-24T23:16:39.418Z"
 last_activity: 2026-03-24 — Completed Phase 19 (B2B/B2C Booking)
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 100
 ---
 
@@ -57,6 +57,7 @@ Progress: [████████████████████] 100% (p
 | Phase 19-b2b-b2c-booking P03 | 9min | 2 tasks | 5 files |
 | Phase 20-cancellation-accounting P01 | 260 | 2 tasks | 8 files |
 | Phase 21-lifecycle-history P01 | 15 | 3 tasks | 11 files |
+| Phase 21-lifecycle-history P02 | 12 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 21-lifecycle-history]: ProcessDeadlinesCommand is a pure dispatcher — all lifecycle side effects in queue jobs (SendReminderJob, AutoInvoiceDeadlineJob)
 - [Phase 21-lifecycle-history]: reminder_sent_at and auto_invoiced_at are idempotency markers — NULL on job failure allows scheduler retry next cycle
 - [Phase 21-lifecycle-history]: AccountingService::createAutoInvoiceForDeadline uses company_id from booking directly (no DotwAIContext) since there is no HTTP context in queue jobs
+- [Phase 21-lifecycle-history]: APR auto-invoice failure does not fail the booking — stays confirmed, error logged for reconciliation
+- [Phase 21-lifecycle-history]: WebhookDispatchJob retries 4 times with backoff 30s/2m/5m, 10s HTTP timeout per attempt
+- [Phase 21-lifecycle-history]: Webhook events are config-gated: empty webhook_url disables all webhooks; per-event gating via webhook_events array in dotwai config
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T23:10:09.750Z
-Stopped at: Completed 21-lifecycle-history-01-PLAN.md
+Last session: 2026-03-24T23:16:39.408Z
+Stopped at: Completed 21-lifecycle-history-02-PLAN.md
 Resume file: None

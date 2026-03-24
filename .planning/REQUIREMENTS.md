@@ -56,10 +56,10 @@
 - [x] **ACCT-05**: Company credit limit management for B2B agents
 
 ## Booking History & Vouchers (HIST)
-- [ ] **HIST-01**: `booking_status` returns booking details, cancellation policy, deadline, current penalty
-- [ ] **HIST-02**: `get_booking_history` lists bookings filtered by status/date for agent or client
-- [ ] **HIST-03**: `resend_voucher` re-sends booking confirmation via WhatsApp
-- [ ] **HIST-04**: DOTW voucher/PDF retrieved if API supports, otherwise generated locally
+- [x] **HIST-01**: `booking_status` returns booking details, cancellation policy, deadline, current penalty
+- [x] **HIST-02**: `get_booking_history` lists bookings filtered by status/date for agent or client
+- [x] **HIST-03**: `resend_voucher` re-sends booking confirmation via WhatsApp
+- [x] **HIST-04**: DOTW voucher/PDF retrieved if API supports, otherwise generated locally
 
 ## Monitoring Dashboard (DASH)
 - [ ] **DASH-01**: Livewire dashboard showing incoming API call logs (requests, responses, errors) — no n8n branding
@@ -69,7 +69,7 @@
 - [ ] **DASH-05**: DOTW calls with no output / empty responses flagged for investigation
 
 ## Events & Integration (EVNT)
-- [ ] **EVNT-01**: Laravel pushes async events to automation webhook: payment_completed, reminder_due, deadline_passed, booking_confirmed
+- [x] **EVNT-01**: Laravel pushes async events to automation webhook: payment_completed, reminder_due, deadline_passed, booking_confirmed
 - [x] **EVNT-02**: Every REST response includes `whatsappMessage` (pre-formatted) and `whatsappOptions`
 - [x] **EVNT-03**: Error responses include WhatsApp-ready text with `suggestedAction` for AI
 
@@ -129,11 +129,11 @@
 | LIFE-03 | Phase 21 | Complete |
 | LIFE-04 | Phase 21 | Complete |
 | LIFE-05 | Phase 21 | Complete |
-| HIST-01 | Phase 21 | Pending |
-| HIST-02 | Phase 21 | Pending |
-| HIST-03 | Phase 21 | Pending |
-| HIST-04 | Phase 21 | Pending |
-| EVNT-01 | Phase 21 | Pending |
+| HIST-01 | Phase 21 | Complete |
+| HIST-02 | Phase 21 | Complete |
+| HIST-03 | Phase 21 | Complete |
+| HIST-04 | Phase 21 | Complete |
+| EVNT-01 | Phase 21 | Complete |
 | DASH-01 | Phase 22 | Pending |
 | DASH-02 | Phase 22 | Pending |
 | DASH-03 | Phase 22 | Pending |

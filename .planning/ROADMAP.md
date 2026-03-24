@@ -43,7 +43,7 @@
 - [x] **Phase 18: Foundation + Search** - Self-contained module with hotel import, fuzzy matching, city/hotel search, and WhatsApp message formatting
 - [x] **Phase 19: B2B + B2C Booking** - Complete booking pipeline for both tracks: credit line, payment links, prebook, confirm, voucher delivery (completed 2026-03-24)
 - [x] **Phase 20: Cancellation + Accounting** - Two-step cancellation with penalty handling and hybrid accounting integration (completed 2026-03-24)
-- [ ] **Phase 21: Lifecycle + History** - Automated reminders, auto-invoicing, booking history, voucher resend, and event webhooks
+- [x] **Phase 21: Lifecycle + History** - Automated reminders, auto-invoicing, booking history, voucher resend, and event webhooks (completed 2026-03-24)
 - [ ] **Phase 22: Dashboard** - Livewire monitoring dashboard for API calls, booking lifecycle, and error tracking
 
 ## Phase Details
@@ -221,7 +221,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 18. Foundation + Search | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 19. B2B + B2C Booking | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 20. Cancellation + Accounting | v2.0 DOTW AI | 2/2 | Complete | 2026-03-24 |
-| 21. Lifecycle + History | 1/2 | In Progress|  | - |
+| 21. Lifecycle + History | 2/2 | Complete   | 2026-03-24 | - |
 | 22. Dashboard | v2.0 DOTW AI | 0/? | Not started | - |
 
 ---

@@ -127,6 +127,36 @@ class CreditService
     }
 
     /**
+     * Get a company's credit transaction history in reverse-chronological order.
+     *
+     * Returns all Credit records for the given company and client, ordered by
+     * most recent first. Useful for auditing and WhatsApp-based credit history queries.
+     *
+     * @see ACCT-05 Credit history endpoint for agents
+     *
+     * @param int $clientId  The client's ID
+     * @param int $companyId The company ID
+     * @return array<int, array{date: string, type: string, amount: float, description: string}>
+     */
+    public function getCreditHistory(int $clientId, int $companyId): array
+    {
+        return Credit::where('company_id', $companyId)
+            ->where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function (Credit $credit): array {
+                return [
+                    'date'        => $credit->created_at?->format('Y-m-d H:i:s') ?? '',
+                    'type'        => $credit->type,
+                    'amount'      => (float) $credit->amount,
+                    'description' => $credit->description ?? '',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Resolve the default client ID for a company.
      *
      * Looks up the first client associated with the company via agents.

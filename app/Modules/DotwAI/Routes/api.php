@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\DotwAI\Http\Controllers\BookingController;
 use App\Modules\DotwAI\Http\Controllers\PaymentCallbackController;
 use App\Modules\DotwAI\Http\Controllers\SearchController;
+use App\Modules\DotwAI\Http\Controllers\StatementController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -53,4 +54,7 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
 
     // Cancellation endpoint (Phase 20)
     Route::post('cancel_booking', [BookingController::class, 'cancelBooking']);
+
+    // Statement endpoint (Phase 20)
+    Route::get('statement', [StatementController::class, 'getStatement']);
 });

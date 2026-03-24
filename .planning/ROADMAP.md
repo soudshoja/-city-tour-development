@@ -216,7 +216,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 16. DOTW Cert Fixes | v1.0 DOTW Cert | 3/3 | Complete | 2026-03-17 |
 | 18. Foundation + Search | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 19. B2B + B2C Booking | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
-| 20. Cancellation + Accounting | v2.0 DOTW AI | 0/2 | Planning complete | - |
+| 20. Cancellation + Accounting | 1/2 | In Progress|  | - |
 | 21. Lifecycle + History | v2.0 DOTW AI | 0/? | Not started | - |
 | 22. Dashboard | v2.0 DOTW AI | 0/? | Not started | - |
 

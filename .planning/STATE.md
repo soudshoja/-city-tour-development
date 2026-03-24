@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
-status: completed
-stopped_at: Completed 19-03-PLAN.md (VoucherService and Test Suite)
-last_updated: "2026-03-24T15:13:40.172Z"
-last_activity: 2026-03-24 — Completed 18-03 (DotwAI Module Test Suite)
+status: planning
+stopped_at: Completed 20-cancellation-accounting-01-PLAN.md
+last_updated: "2026-03-24T15:42:03.878Z"
+last_activity: 2026-03-24 — Completed Phase 19 (B2B/B2C Booking)
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 22
-  completed_plans: 22
-  percent: 98
+  total_plans: 24
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -55,6 +55,7 @@ Progress: [████████████████████] 100% (p
 | Phase 19-b2b-b2c-booking P01 | 9 | 2 tasks | 11 files |
 | Phase 19-b2b-b2c-booking P02 | 5min | 2 tasks | 8 files |
 | Phase 19-b2b-b2c-booking P03 | 9min | 2 tasks | 5 files |
+| Phase 20-cancellation-accounting P01 | 260 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase 19-b2b-b2c-booking]: ConfirmBookingAfterPaymentJob::failed() only marks booking failed, no auto-refund -- admin handles manually
 - [Phase 19-b2b-b2c-booking]: Text-based WhatsApp vouchers (not PDF attachments) chosen for maximum reliability
 - [Phase 19-b2b-b2c-booking]: formatVoucherMessage always includes paymentGuaranteedBy when present (per locked CONTEXT.md)
+- [Phase 20-cancellation-accounting]: DOTW API called before DB::transaction; HTTP cannot roll back so DOTW first, then Eloquent writes inside transaction
+- [Phase 20-cancellation-accounting]: AccountingService skips JournalEntry if accounts not found but still creates Invoice for admin reconciliation
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24
-Stopped at: Phase 19 complete, ready to plan Phase 20
+Last session: 2026-03-24T15:42:03.874Z
+Stopped at: Completed 20-cancellation-accounting-01-PLAN.md
 Resume file: None

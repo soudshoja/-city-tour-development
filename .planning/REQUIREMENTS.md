@@ -36,10 +36,10 @@
 - [x] **B2C-05**: MSP enforced — selling price never below DOTW minimum selling price
 
 ## Cancellation (CANC)
-- [ ] **CANC-01**: `cancel_booking` shows penalty amount before confirming (2-step)
-- [ ] **CANC-02**: Cancellation confirmation sent via WhatsApp with warning about DOTW confirmation
-- [ ] **CANC-03**: Cancellation with penalty > 0 creates journal entry + invoice
-- [ ] **CANC-04**: Free cancellation (penalty = 0) updates CRM/booking status only, no journal entry
+- [x] **CANC-01**: `cancel_booking` shows penalty amount before confirming (2-step)
+- [x] **CANC-02**: Cancellation confirmation sent via WhatsApp with warning about DOTW confirmation
+- [x] **CANC-03**: Cancellation with penalty > 0 creates journal entry + invoice
+- [x] **CANC-04**: Free cancellation (penalty = 0) updates CRM/booking status only, no journal entry
 
 ## Lifecycle Automation (LIFE)
 - [ ] **LIFE-01**: Cancellation deadline date stored from DOTW getRooms response per booking
@@ -49,10 +49,10 @@
 - [ ] **LIFE-05**: Scheduler/cron job checks upcoming deadlines daily and dispatches reminders + auto-invoicing
 
 ## Accounting (ACCT)
-- [ ] **ACCT-01**: Hybrid approach — all cancellations tracked in CRM, journal entries only for money movement
+- [x] **ACCT-01**: Hybrid approach — all cancellations tracked in CRM, journal entries only for money movement
 - [ ] **ACCT-02**: Company statement generation to match with DOTW portal
-- [ ] **ACCT-03**: No journal entry created until money moves or liability is confirmed
-- [ ] **ACCT-04**: JournalEntry creation from queue/scheduler uses explicit company_id (not auth global scope)
+- [x] **ACCT-03**: No journal entry created until money moves or liability is confirmed
+- [x] **ACCT-04**: JournalEntry creation from queue/scheduler uses explicit company_id (not auth global scope)
 - [ ] **ACCT-05**: Company credit limit management for B2B agents
 
 ## Booking History & Vouchers (HIST)
@@ -115,14 +115,14 @@
 | B2C-03 | Phase 19 | Complete |
 | B2C-04 | Phase 19 | Complete |
 | B2C-05 | Phase 19 | Complete |
-| CANC-01 | Phase 20 | Pending |
-| CANC-02 | Phase 20 | Pending |
-| CANC-03 | Phase 20 | Pending |
-| CANC-04 | Phase 20 | Pending |
-| ACCT-01 | Phase 20 | Pending |
+| CANC-01 | Phase 20 | Complete |
+| CANC-02 | Phase 20 | Complete |
+| CANC-03 | Phase 20 | Complete |
+| CANC-04 | Phase 20 | Complete |
+| ACCT-01 | Phase 20 | Complete |
 | ACCT-02 | Phase 20 | Pending |
-| ACCT-03 | Phase 20 | Pending |
-| ACCT-04 | Phase 20 | Pending |
+| ACCT-03 | Phase 20 | Complete |
+| ACCT-04 | Phase 20 | Complete |
 | ACCT-05 | Phase 20 | Pending |
 | LIFE-01 | Phase 21 | Pending |
 | LIFE-02 | Phase 21 | Pending |

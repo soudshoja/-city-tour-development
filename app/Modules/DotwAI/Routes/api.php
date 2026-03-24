@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\DotwAI\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -12,7 +13,11 @@ use Illuminate\Support\Facades\Route;
 | All routes are prefixed with /api/dotwai/.
 | The 'dotwai.resolve' middleware resolves phone numbers to company context.
 |
-| Search and booking endpoints are added in Plan 02.
+| Phase 18 endpoints:
+| - GET  /api/dotwai/health          — Health check (no middleware)
+| - POST /api/dotwai/search_hotels   — Search hotels by city/name/filters
+| - POST /api/dotwai/get_hotel_details — Get room details for a hotel
+| - GET  /api/dotwai/get_cities      — Get city list for a country
 |
 */
 
@@ -21,14 +26,15 @@ Route::get('api/dotwai/health', function () {
     return response()->json([
         'status' => 'ok',
         'module' => 'dotwai',
+        'version' => '1.0',
         'timestamp' => now()->toIso8601String(),
     ]);
 });
 
-// Protected routes -- phone resolution middleware
+// All DotwAI endpoints require phone resolution
 Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
-    // Endpoints added in Plan 02:
-    // - POST /search (search_hotels)
-    // - POST /hotel-details (get_hotel_details)
-    // - GET  /cities (get_cities)
+    // Search endpoints (Phase 18)
+    Route::post('search_hotels', [SearchController::class, 'searchHotels']);
+    Route::post('get_hotel_details', [SearchController::class, 'getHotelDetails']);
+    Route::get('get_cities', [SearchController::class, 'getCities']);
 });

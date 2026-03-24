@@ -786,6 +786,91 @@ class MessageBuilderService
     }
 
     /**
+     * Format a cancellation deadline reminder message (Phase 21 -- lifecycle reminders).
+     *
+     * Sent at 3, 2, and 1 days before the cancellation deadline for refundable
+     * bookings. Bilingual AR/EN to serve both Arabic and English-speaking users.
+     *
+     * Example output:
+     * ```
+     * ⏰ تذكير من سياحتك | Booking Reminder
+     * ──────────────────────────────
+     * الفندق | Hotel: Hilton Dubai Creek
+     * التاريخ | Date: 2026-04-10 إلى | to 2026-04-15
+     * آخر موعد الإلغاء | Cancellation Deadline: 2026-04-05
+     * الأيام المتبقية | Days Left: 2
+     * الغرامة الحالية | Current Penalty: 100%
+     *
+     * إلغاء الآن لتجنب الرسوم | Cancel now to avoid charges
+     * ```
+     *
+     * @param DotwAIBooking $booking  The booking with upcoming deadline
+     * @param int           $daysLeft Days remaining until cancellation deadline
+     * @return string Formatted WhatsApp reminder message
+     */
+    public static function formatReminderMessage(DotwAIBooking $booking, int $daysLeft): string
+    {
+        $penalty = 'TBD';
+
+        if (!empty($booking->cancellation_rules) && is_array($booking->cancellation_rules)) {
+            $penalty = $booking->cancellation_rules[0]['penalty'] ?? 'TBD';
+        }
+
+        $deadline = $booking->cancellation_deadline?->format('Y-m-d') ?? 'N/A';
+        $checkIn  = $booking->check_in?->format('Y-m-d') ?? '';
+        $checkOut = $booking->check_out?->format('Y-m-d') ?? '';
+
+        return implode("\n", [
+            "⏰ تذكير من سياحتك | Booking Reminder",
+            self::SEPARATOR,
+            "الفندق | Hotel: " . ($booking->hotel_name ?? 'N/A'),
+            "التاريخ | Date: {$checkIn} إلى | to {$checkOut}",
+            "آخر موعد الإلغاء | Cancellation Deadline: {$deadline}",
+            "الأيام المتبقية | Days Left: {$daysLeft}",
+            "الغرامة الحالية | Current Penalty: {$penalty}",
+            "",
+            "إلغاء الآن لتجنب الرسوم | Cancel now to avoid charges",
+        ]);
+    }
+
+    /**
+     * Format a deadline-passed confirmation message (Phase 21 -- after auto-invoice).
+     *
+     * Sent after the cancellation deadline passes and the booking is auto-invoiced.
+     * Informs the user their booking is now fully confirmed with no free cancellation.
+     *
+     * Example output:
+     * ```
+     * ✅ تم تأكيد حجزك | Your booking is confirmed
+     * ──────────────────────────────
+     * الفندق | Hotel: Hilton Dubai Creek
+     * التاريخ | Date: 2026-04-10 إلى | to 2026-04-15
+     * رقم الحجز | Booking Ref: DOTW-12345678
+     *
+     * شكراً لاختيارك سياحتك | Thank you for booking with us
+     * ```
+     *
+     * @param DotwAIBooking $booking The booking after deadline has passed
+     * @return string Formatted WhatsApp deadline-passed message
+     */
+    public static function formatDeadlinePassedMessage(DotwAIBooking $booking): string
+    {
+        $checkIn  = $booking->check_in?->format('Y-m-d') ?? '';
+        $checkOut = $booking->check_out?->format('Y-m-d') ?? '';
+        $ref      = $booking->booking_ref ?? $booking->confirmation_no ?? 'N/A';
+
+        return implode("\n", [
+            "✅ تم تأكيد حجزك | Your booking is confirmed",
+            self::SEPARATOR,
+            "الفندق | Hotel: " . ($booking->hotel_name ?? 'N/A'),
+            "التاريخ | Date: {$checkIn} إلى | to {$checkOut}",
+            "رقم الحجز | Booking Ref: {$ref}",
+            "",
+            "شكراً لاختيارك سياحتك | Thank you for booking with us",
+        ]);
+    }
+
+    /**
      * Get Arabic translation for meal type.
      *
      * @param string $mealType English meal type label

@@ -2553,10 +2553,9 @@ class DotwCertify extends Command
             <return>
                 <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
                          xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
-                    <city>364</city>
                     <c:condition>
                         <a:condition>
-                            <fieldName>hotelid</fieldName>
+                            <fieldName>hotelId</fieldName>
                             <fieldTest>in</fieldTest>
                             <fieldValues>
                                 <fieldValue>2344175</fieldValue>

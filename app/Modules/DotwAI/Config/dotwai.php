@@ -87,4 +87,21 @@ return [
     'default_nationality' => env('DOTWAI_DEFAULT_NATIONALITY', '66'),
     'default_residence' => env('DOTWAI_DEFAULT_RESIDENCE', '66'),
     'display_currency' => env('DOTWAI_DISPLAY_CURRENCY', 'KWD'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Booking Settings (Phase 19)
+    |--------------------------------------------------------------------------
+    |
+    | prebook_expiry_minutes: How long a prebooked rate is held before
+    |   the user must search again (default 30 minutes).
+    | payment_link_expiry_hours: How long a payment link remains valid
+    |   for gateway/B2C flows (default 48 hours).
+    | default_payment_gateway: Which payment gateway to use when generating
+    |   payment links (default myfatoorah).
+    |
+    */
+    'prebook_expiry_minutes'   => env('DOTWAI_PREBOOK_EXPIRY', 30),
+    'payment_link_expiry_hours' => env('DOTWAI_PAYMENT_LINK_EXPIRY', 48),
+    'default_payment_gateway'  => env('DOTWAI_DEFAULT_GATEWAY', 'myfatoorah'),
 ];

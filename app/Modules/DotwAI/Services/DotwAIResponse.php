@@ -34,6 +34,15 @@ class DotwAIResponse
     public const DOTW_API_ERROR = 'DOTW_API_ERROR';
     public const VALIDATION_ERROR = 'VALIDATION_ERROR';
 
+    // Booking-specific error codes (Phase 19)
+    public const PREBOOK_NOT_FOUND = 'PREBOOK_NOT_FOUND';
+    public const PREBOOK_EXPIRED = 'PREBOOK_EXPIRED';
+    public const INSUFFICIENT_CREDIT = 'INSUFFICIENT_CREDIT';
+    public const PAYMENT_REQUIRED = 'PAYMENT_REQUIRED';
+    public const BOOKING_FAILED = 'BOOKING_FAILED';
+    public const RATE_UNAVAILABLE = 'RATE_UNAVAILABLE';
+    public const ALREADY_CONFIRMED = 'ALREADY_CONFIRMED';
+
     /**
      * Default Arabic/English error messages and suggested actions per error code.
      *
@@ -75,6 +84,36 @@ class DotwAIResponse
         self::VALIDATION_ERROR => [
             'whatsappMessage' => "عذرا، البيانات المدخلة غير صحيحة.\nSorry, the input data is invalid.",
             'suggestedAction' => 'Check the request parameters and try again.',
+        ],
+
+        // Booking-specific defaults (Phase 19)
+        self::PREBOOK_NOT_FOUND => [
+            'whatsappMessage' => "عذرا، لم يتم العثور على الحجز.\nSorry, booking not found.",
+            'suggestedAction' => 'Verify the prebook_key and try again.',
+        ],
+        self::PREBOOK_EXPIRED => [
+            'whatsappMessage' => "عذرا، انتهت صلاحية الحجز. يرجى البحث مجددا.\nSorry, booking has expired. Please search again.",
+            'suggestedAction' => 'Ask the user to initiate a new search.',
+        ],
+        self::INSUFFICIENT_CREDIT => [
+            'whatsappMessage' => "عذرا، رصيد الائتمان غير كافٍ لإتمام هذا الحجز.\nSorry, insufficient credit balance for this booking.",
+            'suggestedAction' => 'Inform the agent of their current balance and ask them to top up.',
+        ],
+        self::PAYMENT_REQUIRED => [
+            'whatsappMessage' => "يلزم الدفع قبل تأكيد الحجز.\nPayment is required before confirmation.",
+            'suggestedAction' => 'Provide the user with the payment link to complete the booking.',
+        ],
+        self::BOOKING_FAILED => [
+            'whatsappMessage' => "عذرا، لم نتمكن من تأكيد الحجز مع الفندق. يرجى المحاولة مرة أخرى.\nSorry, the booking could not be confirmed with the hotel. Please try again.",
+            'suggestedAction' => 'Retry or ask the user to search for alternative options.',
+        ],
+        self::RATE_UNAVAILABLE => [
+            'whatsappMessage' => "عذرا، هذا السعر لم يعد متاحًا. يرجى البحث مجددًا.\nSorry, this rate is no longer available. Please search again.",
+            'suggestedAction' => 'Ask the user to initiate a new search to see current rates.',
+        ],
+        self::ALREADY_CONFIRMED => [
+            'whatsappMessage' => "هذا الحجز مؤكد بالفعل.\nThis booking is already confirmed.",
+            'suggestedAction' => 'Return the existing confirmation details to the user.',
         ],
     ];
 

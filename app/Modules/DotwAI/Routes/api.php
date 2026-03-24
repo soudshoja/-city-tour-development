@@ -50,4 +50,7 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
 
     // Payment link endpoint (Phase 19-02)
     Route::post('payment_link', [BookingController::class, 'paymentLink']);
+
+    // Cancellation endpoint (Phase 20)
+    Route::post('cancel_booking', [BookingController::class, 'cancelBooking']);
 });

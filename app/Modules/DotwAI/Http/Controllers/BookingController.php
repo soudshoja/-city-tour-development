@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\DotwAI\Http\Controllers;
 
+use App\Modules\DotwAI\Http\Requests\CancelBookingRequest;
 use App\Modules\DotwAI\Http\Requests\ConfirmBookingRequest;
 use App\Modules\DotwAI\Http\Requests\PaymentLinkRequest;
 use App\Modules\DotwAI\Http\Requests\PrebookRequest;
 use App\Modules\DotwAI\Models\DotwAIBooking;
 use App\Modules\DotwAI\Services\BookingService;
+use App\Modules\DotwAI\Services\CancellationService;
 use App\Modules\DotwAI\Services\DotwAIResponse;
 use App\Modules\DotwAI\Services\MessageBuilderService;
 use App\Modules\DotwAI\Services\PaymentBridgeService;
@@ -38,6 +40,7 @@ class BookingController extends Controller
     public function __construct(
         private readonly BookingService $bookingService,
         private readonly PaymentBridgeService $paymentBridge,
+        private readonly CancellationService $cancellationService,
     ) {}
 
     /**
@@ -331,6 +334,66 @@ class BookingController extends Controller
         } catch (\Throwable $e) {
             Log::channel('dotw')->error('[DotwAI] getCompanyBalance exception', [
                 'error' => $e->getMessage(),
+            ]);
+
+            return DotwAIResponse::error(
+                DotwAIResponse::DOTW_API_ERROR,
+                'Unexpected error: ' . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Cancel a confirmed DOTW hotel booking (2-step flow).
+     *
+     * POST /api/dotwai/cancel_booking
+     *
+     * Step 1 (confirm=no): Calls DOTW to preview penalty, transitions booking to
+     *   cancellation_pending, and returns the penalty/refund amounts for user confirmation.
+     *
+     * Step 2 (confirm=yes): Executes DOTW cancellation with the acknowledged penalty,
+     *   creates Invoice + JournalEntry records if penalty > 0, refunds B2B credit line
+     *   for the net amount.
+     *
+     * @see CANC-01 2-step cancellation with penalty visibility
+     * @see CANC-02 WhatsApp message includes DOTW delay warning
+     * @see CANC-03 Penalty > 0 triggers accounting entries
+     * @see CANC-04 Free cancellation (penalty = 0) updates status only
+     */
+    public function cancelBooking(CancelBookingRequest $request): JsonResponse
+    {
+        try {
+            /** @var \App\Modules\DotwAI\DTOs\DotwAIContext $context */
+            $context = $request->attributes->get('dotwai_context');
+
+            $result = $this->cancellationService->cancel($context, $request->validated());
+
+            if (isset($result['error']) && $result['error'] === true) {
+                return DotwAIResponse::error(
+                    $result['code'],
+                    $result['message'] ?? 'Cancellation failed',
+                );
+            }
+
+            // Build WhatsApp message based on which step completed
+            $messageData = $result['_message_data'] ?? [];
+
+            $whatsappMessage = $result['step'] === 'confirmed'
+                ? MessageBuilderService::formatCancellationConfirmed($messageData)
+                : MessageBuilderService::formatCancellationPending($messageData);
+
+            // Remove internal message data key before returning to client
+            unset($result['_message_data']);
+
+            $whatsappOptions = $result['step'] === 'confirmed'
+                ? ['View booking details']
+                : ['Confirm cancellation', 'Keep my booking'];
+
+            return DotwAIResponse::success($result, $whatsappMessage, $whatsappOptions);
+        } catch (\Throwable $e) {
+            Log::channel('dotw')->error('[DotwAI] cancelBooking exception', [
+                'prebook_key' => $request->prebook_key ?? null,
+                'error'       => $e->getMessage(),
             ]);
 
             return DotwAIResponse::error(

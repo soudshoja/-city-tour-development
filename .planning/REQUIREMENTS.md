@@ -89,20 +89,20 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 18 | Complete (18-01) |
-| FOUND-02 | Phase 18 | Complete (18-01) |
-| FOUND-03 | Phase 18 | Complete (18-01) |
-| FOUND-04 | Phase 18 | Complete (18-01) |
-| FOUND-05 | Phase 18 | Complete (18-01) |
-| FOUND-06 | Phase 18 | Complete (18-01) |
-| SRCH-01 | Phase 18 | Complete (18-02) |
-| SRCH-02 | Phase 18 | Complete (18-02) |
-| SRCH-03 | Phase 18 | Complete (18-02) |
-| SRCH-04 | Phase 18 | Complete (18-02) |
-| SRCH-05 | Phase 18 | Complete (18-02) |
-| SRCH-06 | Phase 18 | Complete (18-02) |
-| EVNT-02 | Phase 18 | Complete (18-01) |
-| EVNT-03 | Phase 18 | Complete (18-01) |
+| FOUND-01 | Phase 18 | Complete (18-01), Tested (18-03) |
+| FOUND-02 | Phase 18 | Complete (18-01), Tested (18-03) |
+| FOUND-03 | Phase 18 | Complete (18-01), Tested (18-03) |
+| FOUND-04 | Phase 18 | Complete (18-01), Tested (18-03) |
+| FOUND-05 | Phase 18 | Complete (18-01), Tested (18-03) |
+| FOUND-06 | Phase 18 | Complete (18-01), Tested (18-03) |
+| SRCH-01 | Phase 18 | Complete (18-02), Tested (18-03) |
+| SRCH-02 | Phase 18 | Complete (18-02), Tested (18-03) |
+| SRCH-03 | Phase 18 | Complete (18-02), Tested (18-03) |
+| SRCH-04 | Phase 18 | Complete (18-02), Tested (18-03) |
+| SRCH-05 | Phase 18 | Complete (18-02), Tested (18-03) |
+| SRCH-06 | Phase 18 | Complete (18-02), Tested (18-03) |
+| EVNT-02 | Phase 18 | Complete (18-01), Tested (18-03) |
+| EVNT-03 | Phase 18 | Complete (18-01), Tested (18-03) |
 | B2B-01 | Phase 19 | Pending |
 | B2B-02 | Phase 19 | Pending |
 | B2B-03 | Phase 19 | Pending |

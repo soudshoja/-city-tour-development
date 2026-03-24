@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 
 ## Current Position
 
-Phase: 18 (1 of 5 in v2.0 DOTW AI Module)
-Plan: 2 of 3 in current phase
-Status: Executing
-Last activity: 2026-03-24 — Completed 18-02 (Search endpoints, HotelSearchService, MessageBuilderService)
+Phase: 18 (1 of 5 in v2.0 DOTW AI Module) -- COMPLETE
+Plan: 3 of 3 in current phase (phase complete)
+Status: Phase 18 Complete
+Last activity: 2026-03-24 — Completed 18-03 (DotwAI Module Test Suite)
 
-Progress: [###░░░░░░░] 13% (v2.0 milestone — 2/15 plans)
+Progress: [####░░░░░░] 20% (v2.0 milestone — 3/15 plans)
 
 ## Performance Metrics
 
@@ -29,10 +29,10 @@ Progress: [###░░░░░░░] 13% (v2.0 milestone — 2/15 plans)
 |-------|-------|-------|----------|
 | 15 | 2 | - | - |
 | 16 | 3 | - | - |
-| 18 | 2 | 13m | 6.5m |
+| 18 | 3 | 21m | 7m |
 
 **Recent Trend:**
-- Last 5 plans: 16-01, 16-02, 16-03, 18-01, 18-02
+- Last 5 plans: 16-02, 16-03, 18-01, 18-02, 18-03
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -58,6 +58,8 @@ Recent decisions affecting current work:
 - [18-02]: MessageBuilderService all-static methods (pure functions, no state)
 - [18-02]: Dual-level filtering: API-level (hotel IDs, stars) + post-search (meal, price, refundable, name)
 - [18-02]: Browse-only for hotel details (blocking=false) -- rate blocking deferred to Phase 19
+- [18-03]: Mockery overload pattern for DotwService mocking (new DotwService() interception)
+- [18-03]: skipPermissionSeeder=true on all DotwAI tests for isolation from permission system
 
 ### Pending Todos
 
@@ -72,5 +74,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-24
-Stopped at: Completed 18-02-PLAN.md (Search endpoints, HotelSearchService, MessageBuilderService)
+Stopped at: Completed 18-03-PLAN.md (DotwAI Module Test Suite -- Phase 18 complete)
 Resume file: None

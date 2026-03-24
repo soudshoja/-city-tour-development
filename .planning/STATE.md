@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
 status: planning
-stopped_at: Completed 20-cancellation-accounting-01-PLAN.md
-last_updated: "2026-03-24T15:42:03.878Z"
+stopped_at: Completed 21-lifecycle-history-01-PLAN.md
+last_updated: "2026-03-24T23:10:09.790Z"
 last_activity: 2026-03-24 — Completed Phase 19 (B2B/B2C Booking)
 progress:
   total_phases: 11
-  completed_phases: 9
-  total_plans: 24
-  completed_plans: 23
+  completed_phases: 10
+  total_plans: 26
+  completed_plans: 25
   percent: 100
 ---
 
@@ -56,6 +56,7 @@ Progress: [████████████████████] 100% (p
 | Phase 19-b2b-b2c-booking P02 | 5min | 2 tasks | 8 files |
 | Phase 19-b2b-b2c-booking P03 | 9min | 2 tasks | 5 files |
 | Phase 20-cancellation-accounting P01 | 260 | 2 tasks | 8 files |
+| Phase 21-lifecycle-history P01 | 15 | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase 19-b2b-b2c-booking]: formatVoucherMessage always includes paymentGuaranteedBy when present (per locked CONTEXT.md)
 - [Phase 20-cancellation-accounting]: DOTW API called before DB::transaction; HTTP cannot roll back so DOTW first, then Eloquent writes inside transaction
 - [Phase 20-cancellation-accounting]: AccountingService skips JournalEntry if accounts not found but still creates Invoice for admin reconciliation
+- [Phase 21-lifecycle-history]: ProcessDeadlinesCommand is a pure dispatcher — all lifecycle side effects in queue jobs (SendReminderJob, AutoInvoiceDeadlineJob)
+- [Phase 21-lifecycle-history]: reminder_sent_at and auto_invoiced_at are idempotency markers — NULL on job failure allows scheduler retry next cycle
+- [Phase 21-lifecycle-history]: AccountingService::createAutoInvoiceForDeadline uses company_id from booking directly (no DotwAIContext) since there is no HTTP context in queue jobs
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T15:42:03.874Z
-Stopped at: Completed 20-cancellation-accounting-01-PLAN.md
+Last session: 2026-03-24T23:10:09.750Z
+Stopped at: Completed 21-lifecycle-history-01-PLAN.md
 Resume file: None

@@ -42,18 +42,18 @@
 - [x] **CANC-04**: Free cancellation (penalty = 0) updates CRM/booking status only, no journal entry
 
 ## Lifecycle Automation (LIFE)
-- [ ] **LIFE-01**: Cancellation deadline date stored from DOTW getRooms response per booking
-- [ ] **LIFE-02**: Auto-reminders via WhatsApp: 3 days, 2 days, 1 day before cancellation deadline
-- [ ] **LIFE-03**: After deadline passes without cancellation: auto-create invoice + send voucher via WhatsApp + accounting entries
-- [ ] **LIFE-04**: Non-refundable (APR) bookings: auto-invoice immediately on confirmation
-- [ ] **LIFE-05**: Scheduler/cron job checks upcoming deadlines daily and dispatches reminders + auto-invoicing
+- [x] **LIFE-01**: Cancellation deadline date stored from DOTW getRooms response per booking
+- [x] **LIFE-02**: Auto-reminders via WhatsApp: 3 days, 2 days, 1 day before cancellation deadline
+- [x] **LIFE-03**: After deadline passes without cancellation: auto-create invoice + send voucher via WhatsApp + accounting entries
+- [x] **LIFE-04**: Non-refundable (APR) bookings: auto-invoice immediately on confirmation
+- [x] **LIFE-05**: Scheduler/cron job checks upcoming deadlines daily and dispatches reminders + auto-invoicing
 
 ## Accounting (ACCT)
 - [x] **ACCT-01**: Hybrid approach — all cancellations tracked in CRM, journal entries only for money movement
-- [ ] **ACCT-02**: Company statement generation to match with DOTW portal
+- [x] **ACCT-02**: Company statement generation to match with DOTW portal
 - [x] **ACCT-03**: No journal entry created until money moves or liability is confirmed
 - [x] **ACCT-04**: JournalEntry creation from queue/scheduler uses explicit company_id (not auth global scope)
-- [ ] **ACCT-05**: Company credit limit management for B2B agents
+- [x] **ACCT-05**: Company credit limit management for B2B agents
 
 ## Booking History & Vouchers (HIST)
 - [ ] **HIST-01**: `booking_status` returns booking details, cancellation policy, deadline, current penalty
@@ -120,15 +120,15 @@
 | CANC-03 | Phase 20 | Complete |
 | CANC-04 | Phase 20 | Complete |
 | ACCT-01 | Phase 20 | Complete |
-| ACCT-02 | Phase 20 | Pending |
+| ACCT-02 | Phase 20 | Complete (20-02) |
 | ACCT-03 | Phase 20 | Complete |
 | ACCT-04 | Phase 20 | Complete |
-| ACCT-05 | Phase 20 | Pending |
-| LIFE-01 | Phase 21 | Pending |
-| LIFE-02 | Phase 21 | Pending |
-| LIFE-03 | Phase 21 | Pending |
-| LIFE-04 | Phase 21 | Pending |
-| LIFE-05 | Phase 21 | Pending |
+| ACCT-05 | Phase 20 | Complete (20-02) |
+| LIFE-01 | Phase 21 | Complete |
+| LIFE-02 | Phase 21 | Complete |
+| LIFE-03 | Phase 21 | Complete |
+| LIFE-04 | Phase 21 | Complete |
+| LIFE-05 | Phase 21 | Complete |
 | HIST-01 | Phase 21 | Pending |
 | HIST-02 | Phase 21 | Pending |
 | HIST-03 | Phase 21 | Pending |

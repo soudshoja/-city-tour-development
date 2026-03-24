@@ -26,7 +26,7 @@
 - [x] **B2B-04**: `confirm_booking` accepts passenger details and confirms with DOTW
 - [x] **B2B-05**: `get_company_balance` returns credit limit, used, available for B2B agents
 - [x] **B2B-06**: Company credit deduction uses pessimistic locking (prevent concurrent overdraw)
-- [ ] **B2B-07**: Booking creates voucher and sends via WhatsApp after confirmation
+- [x] **B2B-07**: Booking creates voucher and sends via WhatsApp after confirmation
 
 ## B2C Booking (B2C)
 - [x] **B2C-01**: `payment_link` generates MyFatoorah/KNET payment URL sent via WhatsApp
@@ -109,7 +109,7 @@
 | B2B-04 | Phase 19 | Complete |
 | B2B-05 | Phase 19 | Complete |
 | B2B-06 | Phase 19 | Complete |
-| B2B-07 | Phase 19 | Pending |
+| B2B-07 | Phase 19 | Complete |
 | B2C-01 | Phase 19 | Complete |
 | B2C-02 | Phase 19 | Complete |
 | B2C-03 | Phase 19 | Complete |

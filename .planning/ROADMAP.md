@@ -149,9 +149,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 19-01-PLAN.md -- Core booking infrastructure: DotwAIBooking model, BookingService, CreditService, BookingController (prebook, confirm, balance)
-- [ ] 19-02-PLAN.md -- Payment integration: PaymentBridgeService, PaymentCallbackController, ConfirmBookingAfterPaymentJob, payment_link endpoint
-- [ ] 19-03-PLAN.md -- Voucher delivery + test suite: VoucherService, WhatsApp voucher formatting, booking flow tests
+- [x] 19-01-PLAN.md -- Core booking infrastructure: DotwAIBooking model, BookingService, CreditService, BookingController (prebook, confirm, balance)
+- [x] 19-02-PLAN.md -- Payment integration: PaymentBridgeService, PaymentCallbackController, ConfirmBookingAfterPaymentJob, payment_link endpoint
+- [x] 19-03-PLAN.md -- Voucher delivery + test suite: VoucherService, WhatsApp voucher formatting, booking flow tests
 
 ---
 
@@ -165,7 +165,11 @@ Plans:
   3. Cancellation confirmation is sent via WhatsApp with a warning that DOTW cancellation confirmation may take additional time
   4. Company statements can be generated to reconcile against the DOTW portal
   5. No journal entry is created until money actually moves or liability is confirmed -- queue/scheduler jobs use explicit company_id (not auth scope)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- CancellationService, AccountingService, cancel_booking endpoint, WhatsApp formatters, hybrid accounting
+- [ ] 20-02-PLAN.md -- StatementService, credit history, statement endpoint, and full test suite
 
 ---
 
@@ -211,8 +215,8 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 15. ResailAI PDF | v1.0 ResailAI | 2/2 | Complete | 2026-03-17 |
 | 16. DOTW Cert Fixes | v1.0 DOTW Cert | 3/3 | Complete | 2026-03-17 |
 | 18. Foundation + Search | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
-| 19. B2B + B2C Booking | 3/3 | Complete    | 2026-03-24 | - |
-| 20. Cancellation + Accounting | v2.0 DOTW AI | 0/? | Not started | - |
+| 19. B2B + B2C Booking | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
+| 20. Cancellation + Accounting | v2.0 DOTW AI | 0/2 | Planning complete | - |
 | 21. Lifecycle + History | v2.0 DOTW AI | 0/? | Not started | - |
 | 22. Dashboard | v2.0 DOTW AI | 0/? | Not started | - |
 
@@ -221,3 +225,4 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 *v2.0 DOTW AI Module phases added: 2026-03-24*
 *Phase 18 plans created: 2026-03-24*
 *Phase 19 plans created: 2026-03-24*
+*Phase 20 plans created: 2026-03-24*

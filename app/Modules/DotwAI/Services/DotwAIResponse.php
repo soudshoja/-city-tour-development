@@ -36,6 +36,7 @@ class DotwAIResponse
 
     // Booking-specific error codes (Phase 19)
     public const PREBOOK_NOT_FOUND = 'PREBOOK_NOT_FOUND';
+
     public const PREBOOK_EXPIRED = 'PREBOOK_EXPIRED';
     public const INSUFFICIENT_CREDIT = 'INSUFFICIENT_CREDIT';
     public const PAYMENT_REQUIRED = 'PAYMENT_REQUIRED';
@@ -43,6 +44,10 @@ class DotwAIResponse
     public const BOOKING_FAILED = 'BOOKING_FAILED';
     public const RATE_UNAVAILABLE = 'RATE_UNAVAILABLE';
     public const ALREADY_CONFIRMED = 'ALREADY_CONFIRMED';
+
+    // Cancellation-specific error codes (Phase 20)
+    public const CANCELLATION_NOT_ALLOWED = 'CANCELLATION_NOT_ALLOWED';
+    public const CANCELLATION_FAILED = 'CANCELLATION_FAILED';
 
     /**
      * Default Arabic/English error messages and suggested actions per error code.
@@ -119,6 +124,16 @@ class DotwAIResponse
         self::ALREADY_CONFIRMED => [
             'whatsappMessage' => "هذا الحجز مؤكد بالفعل.\nThis booking is already confirmed.",
             'suggestedAction' => 'Return the existing confirmation details to the user.',
+        ],
+
+        // Cancellation-specific defaults (Phase 20)
+        self::CANCELLATION_NOT_ALLOWED => [
+            'whatsappMessage' => "عذرا، لا يمكن إلغاء هذا الحجز في وضعه الحالي.\nSorry, this booking cannot be cancelled in its current status.",
+            'suggestedAction' => 'Verify the booking status. Only confirmed or cancellation_pending bookings can be cancelled.',
+        ],
+        self::CANCELLATION_FAILED => [
+            'whatsappMessage' => "عذرا، حدث خطأ أثناء معالجة طلب الإلغاء. يرجى المحاولة مرة أخرى.\nSorry, an error occurred while processing the cancellation. Please try again.",
+            'suggestedAction' => 'Retry the cancellation. If the error persists, contact technical support.',
         ],
     ];
 

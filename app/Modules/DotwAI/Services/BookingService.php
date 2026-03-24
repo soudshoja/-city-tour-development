@@ -7,9 +7,13 @@ namespace App\Modules\DotwAI\Services;
 use App\Models\Agent;
 use App\Modules\DotwAI\DTOs\DotwAIContext;
 use App\Modules\DotwAI\Models\DotwAIBooking;
+use App\Modules\DotwAI\Services\AccountingService;
+use App\Modules\DotwAI\Services\WebhookEventService;
 use App\Services\DotwService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Booking orchestration service for the DotwAI module.
@@ -285,6 +289,27 @@ class BookingService
             'client_email'        => $email,
         ]);
 
+        $booking->refresh();
+
+        // APR (non-refundable) bookings: auto-invoice immediately (no reminder cycle)
+        if ($booking->is_apr) {
+            $this->invoiceAPRBooking($booking);
+            Log::info('[DotwAI] APR booking auto-invoiced on confirmation', [
+                'booking_id' => $booking->id,
+                'hotel' => $booking->hotel_name,
+            ]);
+        }
+
+        // Dispatch webhook event
+        WebhookEventService::dispatchEvent('booking_confirmed', [
+            'booking_id'  => $booking->id,
+            'booking_ref' => $booking->booking_ref,
+            'hotel_name'  => $booking->hotel_name,
+            'check_in'    => $booking->check_in,
+            'check_out'   => $booking->check_out,
+            'track'       => $booking->track,
+        ]);
+
         return $this->buildConfirmationResponse($booking->fresh());
     }
 
@@ -380,6 +405,27 @@ class BookingService
             'status'              => DotwAIBooking::STATUS_CONFIRMED,
         ]);
 
+        $booking->refresh();
+
+        // APR (non-refundable) bookings: auto-invoice immediately (no reminder cycle)
+        if ($booking->is_apr) {
+            $this->invoiceAPRBooking($booking);
+            Log::info('[DotwAI] APR booking auto-invoiced on confirmation', [
+                'booking_id' => $booking->id,
+                'hotel' => $booking->hotel_name,
+            ]);
+        }
+
+        // Dispatch webhook event
+        WebhookEventService::dispatchEvent('booking_confirmed', [
+            'booking_id'  => $booking->id,
+            'booking_ref' => $booking->booking_ref,
+            'hotel_name'  => $booking->hotel_name,
+            'check_in'    => $booking->check_in,
+            'check_out'   => $booking->check_out,
+            'track'       => $booking->track,
+        ]);
+
         return $this->buildConfirmationResponse($booking->fresh());
     }
 
@@ -407,6 +453,33 @@ class BookingService
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Auto-invoice an APR (non-refundable) booking immediately on confirmation.
+     *
+     * APR bookings do not go through the reminder cycle — revenue is
+     * recognized immediately on confirmation. If invoicing fails, the
+     * booking is still confirmed; the error is logged for admin reconciliation.
+     *
+     * @param DotwAIBooking $booking Confirmed APR booking
+     * @return void
+     */
+    private function invoiceAPRBooking(DotwAIBooking $booking): void
+    {
+        try {
+            DB::transaction(function () use ($booking) {
+                $accountingService = new AccountingService();
+                $accountingService->createAutoInvoiceForDeadline($booking);
+                $booking->update(['auto_invoiced_at' => now()]);
+            });
+        } catch (Throwable $e) {
+            Log::error('[DotwAI] APR auto-invoice failed', [
+                'booking_id' => $booking->id,
+                'error'      => $e->getMessage(),
+            ]);
+            // Don't throw; booking is already confirmed, keep it
+        }
+    }
 
     /**
      * Normalize a phone number to digits only.

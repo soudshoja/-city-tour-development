@@ -42,7 +42,7 @@
 
 - [x] **Phase 18: Foundation + Search** - Self-contained module with hotel import, fuzzy matching, city/hotel search, and WhatsApp message formatting
 - [x] **Phase 19: B2B + B2C Booking** - Complete booking pipeline for both tracks: credit line, payment links, prebook, confirm, voucher delivery (completed 2026-03-24)
-- [ ] **Phase 20: Cancellation + Accounting** - Two-step cancellation with penalty handling and hybrid accounting integration
+- [x] **Phase 20: Cancellation + Accounting** - Two-step cancellation with penalty handling and hybrid accounting integration (completed 2026-03-24)
 - [ ] **Phase 21: Lifecycle + History** - Automated reminders, auto-invoicing, booking history, voucher resend, and event webhooks
 - [ ] **Phase 22: Dashboard** - Livewire monitoring dashboard for API calls, booking lifecycle, and error tracking
 
@@ -168,8 +168,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- CancellationService, AccountingService, cancel_booking endpoint, WhatsApp formatters, hybrid accounting
-- [ ] 20-02-PLAN.md -- StatementService, credit history, statement endpoint, and full test suite
+- [x] 20-01-PLAN.md -- CancellationService, AccountingService, cancel_booking endpoint, WhatsApp formatters, hybrid accounting
+- [x] 20-02-PLAN.md -- StatementService, credit history, statement endpoint, and full test suite
 
 ---
 
@@ -183,7 +183,11 @@ Plans:
   3. Non-refundable (APR) bookings are auto-invoiced immediately on confirmation with no reminder cycle
   4. booking_status returns current details including cancellation policy, deadline, and penalty; get_booking_history lists bookings with status/date filters
   5. Laravel pushes async events (payment_completed, reminder_due, deadline_passed, booking_confirmed) to the automation webhook for n8n consumption
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Scheduler command, reminder/deadline jobs, lifecycle service, message formatters
+- [ ] 21-02-PLAN.md — APR auto-invoice, booking_status/history/resend endpoints, webhook dispatch job and event service
 
 ---
 
@@ -216,13 +220,15 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 16. DOTW Cert Fixes | v1.0 DOTW Cert | 3/3 | Complete | 2026-03-17 |
 | 18. Foundation + Search | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 19. B2B + B2C Booking | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
-| 20. Cancellation + Accounting | 1/2 | In Progress|  | - |
-| 21. Lifecycle + History | v2.0 DOTW AI | 0/? | Not started | - |
+| 20. Cancellation + Accounting | v2.0 DOTW AI | 2/2 | Complete | 2026-03-24 |
+| 21. Lifecycle + History | v2.0 DOTW AI | 0/2 | Planned | - |
 | 22. Dashboard | v2.0 DOTW AI | 0/? | Not started | - |
 
 ---
+
 *Roadmap created: 2026-03-09*
 *v2.0 DOTW AI Module phases added: 2026-03-24*
 *Phase 18 plans created: 2026-03-24*
 *Phase 19 plans created: 2026-03-24*
 *Phase 20 plans created: 2026-03-24*
+*Phase 21 plans created: 2026-03-25*

@@ -91,6 +91,8 @@ class DotwAIBooking extends Model
         'rooms_data',
         'payment_guaranteed_by',
         'special_requests',
+        'reminder_sent_at',
+        'auto_invoiced_at',
     ];
 
     protected $casts = [
@@ -104,6 +106,8 @@ class DotwAIBooking extends Model
         'is_apr'              => 'boolean',
         'cancellation_deadline' => 'datetime',
         'voucher_sent_at'     => 'datetime',
+        'reminder_sent_at'    => 'datetime',
+        'auto_invoiced_at'    => 'datetime',
         'guest_details'       => 'array',
         'changed_occupancy'   => 'array',
         'cancellation_rules'  => 'array',

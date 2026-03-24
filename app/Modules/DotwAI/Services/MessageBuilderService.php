@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\DotwAI\Services;
 
+use App\Modules\DotwAI\Models\DotwAIBooking;
+
 /**
  * WhatsApp message formatting service for DotwAI module.
  *
@@ -447,6 +449,109 @@ class MessageBuilderService
                 "Get help",
             ],
         };
+    }
+
+    /**
+     * Format a payment link message for WhatsApp delivery (Phase 19 -- payment-required tracks).
+     *
+     * Example output:
+     * ```
+     * مطلوب الدفع | Payment Required
+     * ──────────────────────────────
+     * Hotel | الفندق: Hilton Dubai Creek
+     * Dates | التواريخ: 2026-04-10 → 2026-04-15
+     * Amount | المبلغ: KWD 225.000
+     *
+     * Pay here | ادفع هنا:
+     * https://myfatoorah.com/...
+     *
+     * Link expires | ينتهي الرابط: 2026-04-12 14:30:00
+     * ```
+     *
+     * @param array       $paymentData Payment data from PaymentBridgeService::createPaymentLink
+     * @param DotwAIBooking $booking   The booking record for hotel/date context
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatPaymentLink(array $paymentData, DotwAIBooking $booking): string
+    {
+        $lines = [];
+        $lines[] = "مطلوب الدفع | Payment Required";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "Hotel | الفندق: " . ($booking->hotel_name ?? 'N/A');
+        $lines[] = "Dates | التواريخ: "
+            . ($booking->check_in?->format('Y-m-d') ?? '')
+            . " → "
+            . ($booking->check_out?->format('Y-m-d') ?? '');
+
+        $currency = $paymentData['currency'] ?? $booking->display_currency ?? 'KWD';
+        $amount   = number_format((float) ($paymentData['amount'] ?? $booking->display_total_fare ?? 0), 3);
+        $lines[] = "Amount | المبلغ: {$currency} {$amount}";
+
+        $lines[] = "";
+        $lines[] = "ادفع هنا | Pay here:";
+        $lines[] = $paymentData['payment_url'] ?? '';
+
+        if (! empty($paymentData['expiry'])) {
+            $lines[] = "";
+            $lines[] = "ينتهي الرابط | Link expires: " . $paymentData['expiry'];
+        }
+
+        $lines[] = "";
+        $lines[] = self::SEPARATOR;
+        $lines[] = "يُرجى إتمام الدفع لتأكيد الحجز";
+        $lines[] = "Please complete payment to confirm your booking.";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Format a booking failure / refund-initiated message for WhatsApp (Phase 19).
+     *
+     * Example output:
+     * ```
+     * فشل الحجز | Booking Failed
+     * ──────────────────────────────
+     * Hotel | الفندق: Hilton Dubai Creek
+     * Dates | التواريخ: 2026-04-10 → 2026-04-15
+     *
+     * Reason | السبب: Rate no longer available
+     * تم بدء استرداد المبلغ. | Refund has been initiated.
+     * ```
+     *
+     * @param DotwAIBooking $booking The failed booking
+     * @param string        $reason  Failure reason key: 'rate_unavailable' | 'booking_failed'
+     * @return string Formatted WhatsApp message
+     */
+    public static function formatBookingFailed(DotwAIBooking $booking, string $reason): string
+    {
+        $lines = [];
+        $lines[] = "فشل الحجز | Booking Failed";
+        $lines[] = self::SEPARATOR;
+
+        $lines[] = "Hotel | الفندق: " . ($booking->hotel_name ?? 'N/A');
+        $lines[] = "Dates | التواريخ: "
+            . ($booking->check_in?->format('Y-m-d') ?? '')
+            . " → "
+            . ($booking->check_out?->format('Y-m-d') ?? '');
+
+        $lines[] = "";
+
+        $reasonText = match ($reason) {
+            'rate_unavailable' => "Rate no longer available | السعر لم يعد متاحاً",
+            'booking_failed'   => "Hotel could not confirm booking | الفندق لم يتمكن من تأكيد الحجز",
+            default            => "Booking could not be completed | لم يتم إتمام الحجز",
+        };
+
+        $lines[] = "Reason | السبب: {$reasonText}";
+        $lines[] = "";
+        $lines[] = "تم بدء استرداد المبلغ. | Refund has been initiated.";
+        $lines[] = "";
+        $lines[] = self::SEPARATOR;
+        $lines[] = "سيتواصل معك فريقنا قريباً";
+        $lines[] = "Our team will contact you shortly.";
+
+        return implode("\n", $lines);
     }
 
     /**

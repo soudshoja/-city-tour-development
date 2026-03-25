@@ -47,7 +47,9 @@ class DotwAdminIndex extends Component
     public function mount(string $tab = 'dashboard'): void
     {
         $this->activeTab = $tab;
-        $this->loadCredentials();
+        if ($tab !== 'documentation') {
+            $this->loadCredentials();
+        }
     }
 
     public function updated($propertyName): void

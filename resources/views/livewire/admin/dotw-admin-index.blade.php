@@ -107,17 +107,17 @@
 
         {{-- Tab: Dashboard --}}
         <div x-show="activeTab === 'dashboard'" x-cloak>
-            @livewire(\App\Http\Livewire\Admin\DotwDashboardTab::class)
+            @livewire('admin.dotw-dashboard-tab')
         </div>
 
         {{-- Tab: Bookings --}}
         <div x-show="activeTab === 'bookings'" x-cloak>
-            @livewire(\App\Http\Livewire\Admin\DotwBookingLifecycleTab::class)
+            @livewire('admin.dotw-booking-lifecycle-tab')
         </div>
 
         {{-- Tab: Errors --}}
         <div x-show="activeTab === 'errors'" x-cloak>
-            @livewire(\App\Http\Livewire\Admin\DotwErrorTrackerTab::class)
+            @livewire('admin.dotw-error-tracker-tab')
         </div>
 
         {{-- Tab 1: Credentials --}}

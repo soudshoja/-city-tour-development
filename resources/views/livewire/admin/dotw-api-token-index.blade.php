@@ -143,5 +143,4 @@
             </table>
         </div>
 
-    </div>
 </div>

@@ -10,6 +10,7 @@ use App\Services\IataEasyPayService;
 use Exception;
 use Illuminate\View\Component;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 class AppLayout extends Component
@@ -19,29 +20,17 @@ class AppLayout extends Component
      */
     public function render(): View
     {
-        $user = auth()->user();
-        $color = null;
-        $companyId = null;
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        if($user->role_id == Role::ADMIN) {
-            $color = 'border-koromiko-300';
-            $companyId = 1;
-        } elseif($user->role_id == Role::COMPANY) {
-            $color = 'border-blue-500';
-            $companyId = $user->company->id;
-        } elseif($user->role_id == Role::BRANCH) {
-            $color = 'border-brown-500';
-            $companyId = $user->branch->company->id;
-        } elseif($user->role_id == Role::AGENT) {
-            $color = 'border-purple-500';
-            $companyId = $user->agent->branch->company->id;
-        } elseif($user->role_id == Role::ACCOUNTANT) {
-            $color = 'border-red-500';
-            $companyId = $user->accountant->branch->company->id;
-        } else {
-            $color = 'border-gray-500';
-            $companyId = 1;
-        }
+        $color = match ($user->role_id) {
+            Role::ADMIN => 'border-koromiko-300',
+            Role::COMPANY => 'border-blue-500',
+            Role::BRANCH => 'border-brown-500',
+            Role::AGENT => 'border-purple-500',
+            Role::ACCOUNTANT => 'border-red-500',
+            default => 'border-gray-500',
+        };
 
         $currencyExchange = $this->currencySidebar();
 
@@ -114,7 +103,6 @@ class AppLayout extends Component
             $wallets = collect($data['wallets'] ?? [])->where('status', 'OPEN')->values();
             $iataBalance = $wallets->sum('balance');
             $walletName = $wallets->pluck('name')->join(', ');
-
         } catch (Throwable $e) {
             $error = $e->getMessage();
         }

@@ -7,6 +7,7 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Protection;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -14,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *
  * Generates Excel template for bulk invoice uploads.
  * Links existing tasks to clients and creates invoices with payments.
+ * Header row is protected to prevent accidental edits.
  */
 class BulkInvoiceTemplateExport implements FromArray, ShouldAutoSize, WithHeadings, WithStyles
 {
@@ -37,7 +39,6 @@ class BulkInvoiceTemplateExport implements FromArray, ShouldAutoSize, WithHeadin
      */
     public function array(): array
     {
-        // Return empty rows as this is a template
         return [];
     }
 
@@ -48,9 +49,11 @@ class BulkInvoiceTemplateExport implements FromArray, ShouldAutoSize, WithHeadin
     {
         return [
             'invoice_date',
+            'client_name',
             'client_mobile',
             'task_reference',
             'task_status',
+            'passenger_name',
             'selling_price',
             'payment_reference',
             'notes',
@@ -58,10 +61,21 @@ class BulkInvoiceTemplateExport implements FromArray, ShouldAutoSize, WithHeadin
     }
 
     /**
-     * Apply styles to the sheet.
+     * Apply styles and sheet protection.
+     * Header row (row 1) is locked; data rows (2-1000) are unlocked for editing.
      */
     public function styles(Worksheet $sheet)
     {
+        // Enable sheet protection (password: simple deterrent, not real security)
+        $sheet->getProtection()->setSheet(true);
+        $sheet->getProtection()->setPassword('bulk');
+        $sheet->getProtection()->setInsertRows(true);
+
+        // Unlock data rows (A2:G1000) so users can type freely
+        $sheet->getStyle('A2:I1000')->getProtection()->setLocked(Protection::PROTECTION_UNPROTECTED);
+
+        // Header row stays locked by default (Protection::PROTECTION_INHERIT = locked when sheet is protected)
+
         return [
             1 => [
                 'font' => [

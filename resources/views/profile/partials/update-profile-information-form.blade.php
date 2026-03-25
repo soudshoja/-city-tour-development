@@ -2,132 +2,131 @@
 
 
     <div class="bg-white dark:bg-gray-800 rounded-lg  grid grid-cols-1 md:grid-cols-2  items-center">
-
-        {{-- LEFT COLUMN (Profile Info) --}}
-        <div class="flex flex-col justify-center">
+        <div class="flex flex-col justify-center mb-5">
             <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                {{ __('Profile Information') }}
+                {{ __('profile.profile_information') }}
             </h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                {{ __("Update your account's profile information and email address.") }}
+                {{ __('profile.profile_description') }}
             </p>
         </div>
-
-
-
     </div>
 
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
         @csrf
     </form>
     <form method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data">
-    @csrf
-    @method('patch')
+        @csrf
+        @method('patch')
+        
+        <!-- Image Upload (Applicable for Company-role)-->
+        @if ($user->role_id == \App\Models\Role::COMPANY)
+        <div class="flex justify-center">
+            <div class="flex flex-col items-center space-y-4">
+                <!-- Logo Preview -->
+                <div id="logo-preview-container"
+                    class="h-24 w-24 border-2 border-gray-300 flex items-center justify-center
+                            rounded-md overflow-hidden bg-gray-50 dark:bg-gray-700">
+                    @if ($user->company && $user->company->logo)
+                        <x-application-logo width="40" height="40" alt="Company Logo"
+                        class="h-full w-full p-4 object-cover rounded-full"/>
+                    @else
+                    <span id="logo-placeholder" class="text-gray-400 text-3xl">+</span>
+                    @endif
+                </div>
 
-    {{-- RIGHT COLUMN (Logo Upload) --}}
-    @if ($user->role_id == \App\Models\Role::COMPANY)
-    <div class="flex justify-end justify-end pr-6">
-        <div class="flex flex-col items-center space-y-4">
-            <!-- Logo Preview -->
-            <div id="logo-preview-container"
-                class="h-24 w-24 border-2 border-gray-300 flex items-center justify-center
-                        rounded-md overflow-hidden bg-gray-50 dark:bg-gray-700">
-                @if ($user->company && $user->company->logo)
-                <img id="logo-preview" src="{{ asset('storage/' . $user->company->logo) }}"
-                    alt="Company Logo"
-                    class="h-full w-full object-cover">
-                @else
-                <span id="logo-placeholder" class="text-gray-400 text-3xl">+</span>
-                @endif
+                <!-- File Upload Button -->
+                <div class="flex justify-center">
+                    <input id="logo" name="logo" type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" onchange="previewLogo(event)" />
+                    <x-input-error class="mt-2" :messages="$errors->get('logo')" />
+                </div>
             </div>
-
-            <!-- File Upload Button -->
-            <div>
-                <input id="logo" name="logo" type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" onchange="previewLogo(event)" />
-                <x-input-error class="mt-2" :messages="$errors->get('logo')" />
-            </div>
+            <input type="hidden" id="logo_processed" name="logo_processed" />
         </div>
-        <input type="hidden" id="logo_processed" name="logo_processed" />
-    </div>
-    @endif
+        @endif
+
         <div>
-            <x-input-label for="name" :value="__('Name')" />
+            <x-input-label for="name" :value="__('profile.name')" />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)"
                 required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
-        @if ($userEmail)
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" name="email" type="email"
-                class="mt-1 block w-full" :value="old('email', $userEmail)" required autocomplete="username" />
-            <x-input-error class="mt-2" :messages="$errors->get('email')" />
+        <div class="flex gap-4">
+            <div class="flex-1">
+                @if ($userEmail)
+                <div class="mt-4">
+                    <x-input-label for="email" :value="__('profile.email')" />
+                    <x-text-input id="email" name="email" type="email"
+                        class="mt-1 block w-full" :value="old('email', $userEmail)" required autocomplete="username" />
+                    <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
-            @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
-            {{-- <div>
-                        <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
-                            {{ __('Your email address is unverified.') }}
-
-            <button form="send-verification"
-                class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                {{ __('Click here to re-send the verification email.') }}
-            </button>
-            </p>
-
-            @if (session('status') === 'verification-link-sent')
-            <p class="mt-2 font-medium text-sm text-green-600 dark:text-green-400">
-                {{ __('A new verification link has been sent to your email address.') }}
-            </p>
-            @endif
-        </div> --}}
-        @endif
+                </div>
+                @endif
+            </div>
+            <div class="flex-1">
+                @if ($userPhone)
+                <div class="mt-4">
+                    <x-input-label for="phone" :value="__('profile.phone_number')" />
+                    <x-text-input id="phone" name="phone" type="text"
+                        class="mt-1 block w-full" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
+                    <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+                </div>
+                @endif
+            </div>            
         </div>
-        @endif
-        @if ($userPhone)
-        <div class="mt-4">
-            <x-input-label for="phone" :value="__('Phone Number')" />
-            <x-text-input id="phone" name="phone" type="text"
-                class="mt-1 block w-full" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
-            <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+        
+        <div class="flex gap-4 mt-4">
+            <div class="flex-1">
+                <x-input-label for="role" :value="__('profile.role')" />
+                <x-text-input readonly id="role" name="role" type="text" class="mt-1 block w-full bg-gray-100"
+                    :value="old('role', ucfirst($user->role->name) ?? 'No role assigned')" required autofocus autocomplete="role" />
+                <x-input-error class="mt-2" :messages="$errors->get('role')" />
+            </div>
+
+            <div class="flex-1">
+                <x-input-label for="created_at" :value="__('profile.registered_date')" />
+                <x-text-input readonly id="created_at" name="created_at" type="text"
+                    class="mt-1 block w-full bg-gray-100" :value="$user->created_at ? $user->created_at->format('l, F j, Y g:i A') : ''" autofocus />
+                <x-input-error class="mt-2" :messages="$errors->get('created_at')" />
+            </div>
         </div>
-        @endif
 
         @if ($user->role_id == \App\Models\Role::COMPANY)
         <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <x-input-label for="facebook" :value="__('Facebook Page Link')" />
+                <x-input-label for="facebook" :value="__('profile.facebook_page_link')" />
                 <x-text-input id="facebook" name="facebook" type="url" placeholder="https://www.facebook.com/"
                     class="mt-1 block w-full"
-                    :value="old('facebook', optional($user->company)->facebook)" autocomplete="off" />
+                    :value="old('facebook', optional($company ?? $user->company)->facebook)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('facebook')" />
             </div>
             <div>
-                <x-input-label for="instagram" :value="__('Instagram Profile Link')" />
+                <x-input-label for="instagram" :value="__('profile.instagram_profile_link')" />
                 <x-text-input id="instagram" name="instagram" type="url" placeholder="https://www.instagram.com/"
                     class="mt-1 block w-full"
-                    :value="old('instagram', optional($user->company)->instagram)" autocomplete="off" />
+                    :value="old('instagram', optional($company ?? $user->company)->instagram)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('instagram')" />
             </div>
             <div>
-                <x-input-label for="snapchat" :value="__('Snapchat Profile Link')" />
+                <x-input-label for="snapchat" :value="__('profile.snapchat_profile_link')" />
                 <x-text-input id="snapchat" name="snapchat" type="url" placeholder="https://www.snapchat.com/add/"
                     class="mt-1 block w-full"
-                    :value="old('snapchat', optional($user->company)->snapchat)" autocomplete="off" />
+                    :value="old('snapchat', optional($company ?? $user->company)->snapchat)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('snapchat')" />
             </div>
             <div>
-                <x-input-label for="tiktok" :value="__('TikTok Profile Link')" />
+                <x-input-label for="tiktok" :value="__('profile.tiktok_profile_link')" />
                 <x-text-input id="tiktok" name="tiktok" type="url" placeholder="https://www.tiktok.com/"
                     class="mt-1 block w-full"
-                    :value="old('tiktok', optional($user->company)->tiktok)" autocomplete="off" />
+                    :value="old('tiktok', optional($company ?? $user->company)->tiktok)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('tiktok')" />
             </div>
             <div>
-                <x-input-label for="whatsapp" :value="__('WhatsApp Link')" />
+                <x-input-label for="whatsapp" :value="__('profile.whatsapp_link')" />
                 <x-text-input id="whatsapp" name="whatsapp" type="url" placeholder="https://wa.me/"
                     class="mt-1 block w-full"
-                    :value="old('whatsapp', optional($user->company)->whatsapp)" autocomplete="off" />
+                    :value="old('whatsapp', optional($company ?? $user->company)->whatsapp)" autocomplete="off" />
                 <x-input-error class="mt-2" :messages="$errors->get('whatsapp')" />
             </div>
         </div>
@@ -167,28 +166,13 @@
         </p>
         </div> --}}
 
-        <div class="mt-4">
-            <x-input-label for="role" :value="__('Role')" />
-            <x-text-input readonly id="role" name="role" type="text" class="mt-1 block w-full bg-gray-100"
-                :value="old('role', ucfirst($user->role->name) ?? 'No role assigned')" required autofocus autocomplete="role" />
-            <x-input-error class="mt-2" :messages="$errors->get('role')" />
-        </div>
-
-        <div class="mt-4">
-            <x-input-label for="created_at" :value="__('Registered Date')" />
-            <x-text-input readonly id="created_at" name="created_at" type="text"
-                class="mt-1 block w-full bg-gray-100" :value="$user->created_at ? $user->created_at->format('l, F j, Y g:i A') : ''" autofocus />
-            <x-input-error class="mt-2" :messages="$errors->get('created_at')" />
-        </div>
-
-
         @if (session('status') === 'profile-updated')
         <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)"
-            class="text-sm text-gray-600 dark:text-gray-400">{{ __('Saved.') }}</p>
+            class="text-sm text-gray-600 dark:text-gray-400">{{ __('profile.saved') }}</p>
         @endif
 
         <div class="flex justify-end p-6">
-            <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
+            <button type="submit" class="btn-primary">{{ __('profile.save') }}</button>
         </div>
     </form>
 
@@ -207,11 +191,11 @@
                 const img = new Image();
                 img.onload = async function() {
                     if (img.width > 700 || img.height > 400) {
-                        alert('Image must be at most 700x400 pixels.');
+                        alert('{{ __('profile.image_size_error') }}');
                         input.value = '';
                         return;
                     }
-                    container.innerHTML = '<span class="text-gray-400 text-sm">Removing background...</span>';
+                    container.innerHTML = '<span class="text-gray-400 text-sm">{{ __('profile.removing_background') }}</span>';
 
                     const formData = new FormData();
                     formData.append('image_file', file);
@@ -248,7 +232,7 @@
                         reader2.readAsDataURL(blob);
 
                     } catch (error) {
-                        alert('Could not remove background: ' + error.message);
+                        alert('{{ __('profile.background_removal_failed') }}: ' + error.message);
                         container.innerHTML = '<span class="text-gray-400 text-3xl">+</span>';
                         input.value = '';
                         processedLogoBase64 = null;
@@ -269,7 +253,7 @@
             const fileInput = document.getElementById('logo');
             if (fileInput.value && !processedLogoBase64) {
                 e.preventDefault();
-                alert('Please wait for the background to be removed from your logo before saving.');
+                alert('{{ __('profile.wait_for_background_removal') }}');
             }
 
             // ⚡ Remove original file from submission if processed exists

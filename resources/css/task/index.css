@@ -338,6 +338,83 @@ input[type="date"] {
     transform: translateX(20px);
 }
 
+.task-menu-btn {
+    @apply p-2 rounded-full bg-gray-100 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none flex items-center justify-center
+}
+
+.task-action-menu {
+    @apply fixed z-[9999] w-44 rounded-md bg-white shadow-lg border border-gray-200;
+}
+
+.task-action-menu-list {
+    @apply py-1 text-sm text-gray-700 dark:text-gray-200;
+}
+
+.task-action-menu-item {
+    @apply flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800;
+}
+
+.task-action-menu-item-icon {
+    @apply w-4 h-4 mr-2;
+}
+
+.task-action-menu-item-full {
+    @apply flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800;
+}
+
+/* ==================== Financial Modal ==================== */
+.financial-modal-overlay {
+    @apply fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800/60;
+}
+
+.financial-modal-form {
+    @apply inline-flex flex-col gap-4 items-stretch w-full sm:max-w-md mx-4 bg-white rounded-md border p-6 relative;
+}
+
+.financial-modal-close {
+    @apply absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl;
+}
+
+.financial-modal-header {
+    @apply mb-2;
+}
+
+.financial-modal-title {
+    @apply text-xl font-bold text-gray-800;
+}
+
+.financial-modal-description {
+    @apply text-gray-600 italic text-xs mt-1;
+}
+
+.financial-modal-fields {
+    @apply space-y-3;
+}
+
+.financial-input {
+    @apply border p-2 border-gray-300 rounded-md w-full;
+}
+
+.financial-input-readonly {
+    @apply border border-gray-300 p-2 rounded-md w-full bg-gray-100;
+}
+
+.financial-textarea {
+    @apply border border-gray-300 p-2 rounded-md w-full;
+}
+
+.financial-modal-footer {
+    @apply mt-4 flex items-center justify-between gap-3;
+}
+
+.financial-cancel-btn {
+    @apply px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700;
+}
+
+.financial-submit-btn {
+    @apply px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white;
+}
+
 @media (max-width: 640px) {
     .filter-modal-content {
         width: 95vw;
@@ -414,4 +491,68 @@ input[type="date"] {
     .group:focus .group-focus\:block {
         display: block;
     }
+}
+
+/* ==================== Grouped Table Cells ==================== */
+.task-group-cell {
+    @apply p-3 text-sm align-top;
+}
+
+.task-group-cell .group-item {
+    @apply flex items-start gap-1.5 py-0.5;
+}
+
+.task-group-cell .group-label {
+    @apply text-[11px] font-semibold text-gray-400 uppercase tracking-wide shrink-0 min-w-[60px];
+}
+
+.task-group-cell .group-value {
+    @apply text-[13px] font-medium text-gray-800 dark:text-gray-200 break-words;
+}
+
+.task-group-cell .group-value-primary {
+    @apply text-[13px] font-bold text-gray-900 dark:text-gray-100;
+}
+
+.task-group-cell .group-divider {
+    @apply border-t border-gray-100 dark:border-gray-700 my-1;
+}
+
+.task-group-cell .group-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
+}
+
+/* Status badge colors */
+.badge-issued { @apply bg-green-100 text-green-700; }
+.badge-confirmed { @apply bg-blue-100 text-blue-700; }
+.badge-refund { @apply bg-red-100 text-red-700; }
+.badge-reissued { @apply bg-purple-100 text-purple-700; }
+.badge-void { @apply bg-gray-200 text-gray-500; }
+.badge-ticketed { @apply bg-teal-100 text-teal-700; }
+.badge-emd { @apply bg-yellow-100 text-yellow-700; }
+.badge-default { @apply bg-gray-100 text-gray-600; }
+
+/* Type indicator pill */
+.type-pill {
+    @apply inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider;
+}
+.type-flight { @apply bg-sky-100 text-sky-700; }
+.type-hotel { @apply bg-amber-100 text-amber-700; }
+.type-visa { @apply bg-violet-100 text-violet-700; }
+.type-insurance { @apply bg-emerald-100 text-emerald-700; }
+.type-default { @apply bg-gray-100 text-gray-600; }
+
+/* Payment method pill */
+.payment-pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600;
+}
+
+/* Ensure grouped header cells align properly */
+.grouped-th {
+    @apply text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3;
+}
+
+/* Auto-hide group column when all children are hidden */
+[data-group-column].group-all-hidden {
+    display: none !important;
 }

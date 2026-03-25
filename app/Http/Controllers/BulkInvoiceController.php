@@ -3,20 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Exports\BulkInvoiceTemplateExport;
-use App\Exports\BulkUploadErrorReportExport;
-use App\Http\Requests\BulkInvoiceUploadRequest;
+use App\Exports\BulkInvoiceErrorReportExport;
 use App\Imports\BulkInvoiceImport;
 use App\Jobs\CreateBulkInvoicesJob;
-use App\Models\BulkUpload;
-use App\Models\BulkUploadRow;
+use App\Models\BulkInvoice;
+use App\Models\BulkInvoiceRow;
 use App\Models\Invoice;
-use App\Services\BulkUploadValidationService;
-use Illuminate\Http\JsonResponse;
+use App\Services\BulkInvoiceValidationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -34,54 +33,62 @@ class BulkInvoiceController extends Controller
      */
     public function index()
     {
+        Gate::authorize('create', Invoice::class);
         $user = Auth::user();
         $isAgent = $user->role_id == \App\Models\Role::AGENT;
-        $agents = [];
+        $agents = collect();
+        $selectedAgentId = null;
 
-        // Get available agents based on user role
-        if (!$isAgent) {
-            if ($user->role_id == \App\Models\Role::COMPANY) {
-                $agents = \App\Models\Agent::whereHas('branch', function($q) use ($user) {
-                    $q->where('company_id', $user->company->id);
-                })->with('user')->get();
-            } elseif ($user->role_id == \App\Models\Role::BRANCH) {
-                $agents = \App\Models\Agent::where('branch_id', $user->branch->id)
-                    ->with('user')->get();
-            } elseif ($user->role_id == \App\Models\Role::ACCOUNTANT) {
-                $agents = \App\Models\Agent::where('branch_id', $user->accountant->branch->id)
-                    ->with('user')->get();
-            } elseif ($user->role_id == \App\Models\Role::ADMIN) {
-                $companyId = session('company_id', 1);
-                $agents = \App\Models\Agent::whereHas('branch', function($q) use ($companyId) {
-                    $q->where('company_id', $companyId);
-                })->with('user')->get();
+        // For agent role, load their own agent record; otherwise load agents for dropdown
+        if ($isAgent) {
+            $agent = $user->agent;
+            if ($agent) {
+                $agent->load('user', 'branch');
+                $agents = collect([$agent]);
+                $selectedAgentId = $agent->id;
             }
+        } elseif ($user->role_id == \App\Models\Role::COMPANY) {
+            $agents = \App\Models\Agent::whereHas('branch', function ($q) use ($user) {
+                $q->where('company_id', $user->company->id);
+            })->with('user')->get();
+        } elseif ($user->role_id == \App\Models\Role::BRANCH) {
+            $agents = \App\Models\Agent::where('branch_id', $user->branch->id)
+                ->with('user')->get();
+        } elseif ($user->role_id == \App\Models\Role::ACCOUNTANT) {
+            $agents = \App\Models\Agent::where('branch_id', $user->accountant->branch->id)
+                ->with('user')->get();
+        } elseif ($user->role_id == \App\Models\Role::ADMIN) {
+            $companyId = session('company_id', 1);
+            $agents = \App\Models\Agent::whereHas('branch', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            })->with('user')->get();
         }
 
-        // Format agents for searchable dropdown
-        $agentsForDropdown = $agents->map(function($agent) {
+        // Format agents for searchable dropdown (skip for agent role)
+        $agentsForDropdown = collect($agents)->map(function ($agent) {
             return [
                 'id' => $agent->id,
-                'name' => ($agent->user->name ?? 'Agent #'.$agent->id) .
-                         ($agent->branch ? ' (' . ($agent->branch->name ?? 'Branch #'.$agent->branch_id) . ')' : '')
+                'name' => ($agent->user->name ?? 'Agent #' . $agent->id) .
+                    ($agent->branch ? ' (' . ($agent->branch->name ?? 'Branch #' . $agent->branch_id) . ')' : '')
             ];
         });
 
         return view('bulk-invoice.upload', [
             'isAgent' => $isAgent,
             'agents' => $agentsForDropdown,
+            'selectedAgentId' => $selectedAgentId,
         ]);
     }
 
     /**
-     * @var BulkUploadValidationService
+     * @var BulkInvoiceValidationService
      */
     protected $validationService;
 
     /**
      * Create a new controller instance.
      */
-    public function __construct(BulkUploadValidationService $validationService)
+    public function __construct(BulkInvoiceValidationService $validationService)
     {
         $this->validationService = $validationService;
     }
@@ -112,17 +119,25 @@ class BulkInvoiceController extends Controller
      * 2. Parse Excel to array
      * 3. Validate headers
      * 4. Validate all rows
-     * 5. Create BulkUpload and BulkUploadRow records
+     * 5. Create BulkInvoice and BulkInvoiceRow records
      * 6. Redirect to preview page
      */
-    public function upload(BulkInvoiceUploadRequest $request): JsonResponse|RedirectResponse
+    public function upload(Request $request): RedirectResponse
     {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ], [
+            'file.required' => 'Please select an Excel file to upload.',
+            'file.mimes' => 'The file must be an Excel file (.xlsx, .xls) or CSV (.csv).',
+            'file.max' => 'The file must not exceed 10MB.',
+        ]);
+
         try {
             // Get context
             $user = Auth::user();
             $companyId = getCompanyId($user);
 
-            Log::info('[BULK UPLOAD] Upload started', [
+            Log::info('[BULK INVOICE] Upload started', [
                 'user_id' => $user->id,
                 'user_role' => $user->role_id,
                 'company_id' => $companyId,
@@ -133,25 +148,21 @@ class BulkInvoiceController extends Controller
             if ($user->role_id == \App\Models\Role::AGENT) {
                 // Agent user - use their own agent_id
                 $agentId = $user->agent?->id;
-                Log::info('[BULK UPLOAD] Using agent user', ['agent_id' => $agentId]);
+                Log::info('[BULK INVOICE] Using agent user', ['agent_id' => $agentId]);
             } else {
                 // Company/Branch/Accountant/Admin - get from request (agent selector)
                 $agentId = $request->input('agent_id');
-                Log::info('[BULK UPLOAD] Using selected agent', ['agent_id' => $agentId]);
+                Log::info('[BULK INVOICE] Using selected agent', ['agent_id' => $agentId]);
 
                 // Validate agent_id is provided
                 if (! $agentId) {
-                    return response()->json([
-                        'error' => 'Please select an agent to create invoices for.',
-                    ], 422);
+                    return redirect()->back()->withErrors(['error' => 'Please select an agent to create invoices for.'])->withInput();
                 }
 
                 // Validate agent belongs to user's scope
                 $agent = \App\Models\Agent::find($agentId);
                 if (! $agent || $agent->branch->company_id != $companyId) {
-                    return response()->json([
-                        'error' => 'Invalid agent selection.',
-                    ], 422);
+                    return redirect()->back()->withErrors(['error' => 'Invalid agent selection.'])->withInput();
                 }
             }
 
@@ -160,9 +171,9 @@ class BulkInvoiceController extends Controller
 
             // Store file to disk for audit
             $timestamp = time();
-            $filename = $timestamp.'_'.$file->getClientOriginalName();
+            $filename = $timestamp . '_' . $file->getClientOriginalName();
             $storedPath = Storage::disk('local')->putFileAs(
-                'bulk-uploads/'.$companyId,
+                'bulk-invoices/' . $companyId,
                 $file,
                 $filename
             );
@@ -170,18 +181,23 @@ class BulkInvoiceController extends Controller
             // Parse Excel file
             $rows = Excel::toArray(new BulkInvoiceImport, $file)[0];
 
+            // Filter out completely empty rows (template may contain formatted but empty cells)
+            $rows = array_values(array_filter($rows, function ($row) {
+                return collect($row)->contains(function ($value) {
+                    return ! is_null($value) && trim((string) $value) !== '';
+                });
+            }));
+
             // Validate headers
             if (empty($rows)) {
-                return response()->json([
-                    'error' => 'The uploaded file is empty or has no data rows.',
-                ], 422);
+                return redirect()->back()->withErrors(['error' => 'The uploaded file is empty or has no data rows.'])->withInput();
             }
 
             $headerResult = $this->validationService->validateHeaders(array_keys($rows[0]));
 
             if (! $headerResult['valid']) {
-                // Create failed BulkUpload record for audit
-                BulkUpload::create([
+                // Create failed BulkInvoice record for audit
+                BulkInvoice::create([
                     'company_id' => $companyId,
                     'agent_id' => $agentId,
                     'user_id' => $user->id,
@@ -197,18 +213,15 @@ class BulkInvoiceController extends Controller
                     ],
                 ]);
 
-                return response()->json([
-                    'error' => 'Invalid Excel headers.',
-                    'missing_headers' => $headerResult['missing'],
-                    'extra_headers' => $headerResult['extra'],
-                ], 422);
+                $missingList = implode(', ', $headerResult['missing']);
+                return redirect()->back()->withErrors(['error' => "Invalid Excel headers. Missing: {$missingList}"])->withInput();
             }
 
             // Validate all rows
-            $results = $this->validationService->validateAll($rows, $companyId);
+            $results = $this->validationService->validateAll($rows, $companyId, (int) $agentId);
 
-            // Create BulkUpload record
-            $bulkUpload = BulkUpload::create([
+            // Create BulkInvoice record
+            $bulkInvoice = BulkInvoice::create([
                 'company_id' => $companyId,
                 'agent_id' => $agentId,
                 'user_id' => $user->id,
@@ -222,11 +235,11 @@ class BulkInvoiceController extends Controller
                 'error_summary' => $this->buildErrorSummary($results['rows']),
             ]);
 
-            // Create BulkUploadRow records (bulk insert for performance)
+            // Create BulkInvoiceRow records (bulk insert for performance)
             $rowRecords = [];
             foreach ($results['rows'] as $index => $rowResult) {
                 $rowRecords[] = [
-                    'bulk_upload_id' => $bulkUpload->id,
+                    'bulk_invoice_id' => $bulkInvoice->id,
                     'row_number' => $index + 1,
                     'status' => $rowResult['status'],
                     'task_id' => $rowResult['matched']['task_id'] ?? null,
@@ -241,21 +254,19 @@ class BulkInvoiceController extends Controller
                 ];
             }
 
-            BulkUploadRow::insert($rowRecords);
+            BulkInvoiceRow::insert($rowRecords);
 
             // Redirect to preview page on successful validation
-            return redirect()->route('bulk-invoices.preview', $bulkUpload->id)
+            return redirect()->route('bulk-invoices.preview', $bulkInvoice->id)
                 ->with('message', "Upload validated: {$results['valid']} valid rows, {$results['errors']} errors, {$results['flagged']} flagged.");
         } catch (\Exception $e) {
-            Log::error('Bulk upload failed: '.$e->getMessage(), [
+            Log::error('Bulk invoice failed: ' . $e->getMessage(), [
                 'user_id' => Auth::id(),
-                'file' => $file?->getClientOriginalName() ?? 'unknown',
+                'file' => $request->file('file')?->getClientOriginalName() ?? 'unknown',
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'error' => 'Failed to process upload. Please try again.',
-            ], 500);
+            return redirect()->back()->withErrors(['error' => 'Failed to process upload. Please try again.'])->withInput();
         }
     }
 
@@ -287,7 +298,7 @@ class BulkInvoiceController extends Controller
     }
 
     /**
-     * Download error report for a specific bulk upload.
+     * Download error report for a specific bulk invoice.
      *
      * Returns an Excel file containing all error and flagged rows with:
      * - Original row data
@@ -295,7 +306,7 @@ class BulkInvoiceController extends Controller
      * - Flag reasons
      * - Color-coded rows (red for errors, yellow for flagged)
      *
-     * @param  int  $id  The bulk upload ID
+     * @param  int  $id  The bulk invoice ID
      */
     public function downloadErrorReport(int $id): BinaryFileResponse|RedirectResponse
     {
@@ -303,22 +314,22 @@ class BulkInvoiceController extends Controller
             $user = Auth::user();
             $companyId = getCompanyId($user);
 
-            // Find the bulk upload scoped to agent's company (multi-tenant isolation)
-            $bulkUpload = BulkUpload::where('id', $id)
+            // Find the bulk invoice scoped to agent's company (multi-tenant isolation)
+            $bulkInvoice = BulkInvoice::where('id', $id)
                 ->where('company_id', $companyId)
                 ->firstOrFail();
 
             // Check if there are errors to report
-            if ($bulkUpload->error_rows === 0 && $bulkUpload->flagged_rows === 0) {
+            if ($bulkInvoice->error_rows === 0 && $bulkInvoice->flagged_rows === 0) {
                 return redirect()->back()->with('message', 'No errors or flagged rows to export.');
             }
 
             // Generate filename
-            $filename = 'error-report-'.Str::slug($bulkUpload->original_filename, '-').'-'.$bulkUpload->id.'.xlsx';
+            $filename = 'error-report-' . Str::slug($bulkInvoice->original_filename, '-') . '-' . $bulkInvoice->id . '.xlsx';
 
-            return Excel::download(new BulkUploadErrorReportExport($bulkUpload), $filename);
+            return Excel::download(new BulkInvoiceErrorReportExport($bulkInvoice), $filename);
         } catch (\Exception $e) {
-            \Log::error('Error downloading error report: '.$e->getMessage(), [
+            Log::error('Error downloading error report: ' . $e->getMessage(), [
                 'id' => $id,
                 'user_id' => Auth::id(),
             ]);
@@ -328,27 +339,27 @@ class BulkInvoiceController extends Controller
     }
 
     /**
-     * Preview the invoices to be created from a validated bulk upload.
+     * Preview the invoices to be created from a validated bulk invoice.
      *
      * Displays grouped invoice cards by client and date, plus flagged rows section.
      *
-     * @param  int  $id  The bulk upload ID
+     * @param  int  $id  The bulk invoice ID
      */
     public function preview(int $id): View
     {
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        // Load BulkUpload scoped by company_id AND status='validated' with eager loading
-        $bulkUpload = BulkUpload::where('id', $id)
+        // Load BulkInvoice scoped by company_id AND status='validated' with eager loading
+        $bulkInvoice = BulkInvoice::where('id', $id)
             ->where('company_id', $companyId)
             ->where('status', 'validated')
-            ->with(['rows.client'])
+            ->with(['rows.client', 'rows.task', 'rows.payment'])
             ->firstOrFail();
 
         // Separate valid rows from flagged rows
-        $validRows = $bulkUpload->rows->where('status', 'valid');
-        $flaggedRows = $bulkUpload->rows->where('status', 'flagged');
+        $validRows = $bulkInvoice->rows->where('status', 'valid');
+        $flaggedRows = $bulkInvoice->rows->where('status', 'flagged');
 
         // Group valid rows by composite key (client_id + invoice_date)
         $invoiceGroups = $validRows->groupBy(function ($row) {
@@ -361,16 +372,16 @@ class BulkInvoiceController extends Controller
         // Count unique clients
         $clientCount = $validRows->pluck('client_id')->unique()->count();
 
-        return view('bulk-invoice.preview', compact('bulkUpload', 'invoiceGroups', 'flaggedRows', 'clientCount'));
+        return view('bulk-invoice.preview', compact('bulkInvoice', 'invoiceGroups', 'flaggedRows', 'clientCount'));
     }
 
     /**
-     * Approve bulk upload and mark it for processing.
+     * Approve bulk invoice and mark it for processing.
      *
      * Uses conditional update to prevent race conditions (double-click, concurrent requests).
      * Only updates if status is still 'validated'.
      *
-     * @param  int  $id  The bulk upload ID
+     * @param  int  $id  The bulk invoice ID
      */
     public function approve(int $id): RedirectResponse
     {
@@ -378,7 +389,7 @@ class BulkInvoiceController extends Controller
         $companyId = getCompanyId($user);
 
         // Conditional update to prevent race conditions
-        $updated = BulkUpload::where('id', $id)
+        $updated = BulkInvoice::where('id', $id)
             ->where('company_id', $companyId)
             ->where('status', 'validated')
             ->update(['status' => 'processing']);
@@ -387,22 +398,38 @@ class BulkInvoiceController extends Controller
             return redirect()->back()->withErrors(['error' => 'Upload already processed or no longer in validated status.']);
         }
 
-        // Dispatch job AFTER status update committed (afterCommit prevents job
-        // from running before 'processing' status is visible in database)
-        CreateBulkInvoicesJob::dispatch($id)
-            ->onQueue('invoices')
-            ->afterCommit();
+        // Run invoice creation synchronously for immediate feedback
+        try {
+            CreateBulkInvoicesJob::dispatchSync($id);
 
-        return redirect()->route('bulk-invoices.success', $id)
-            ->with('message', 'Invoices are being created in the background.');
+            return redirect()->route('bulk-invoices.success', $id)
+                ->with('message', 'All invoices have been created successfully!');
+        } catch (\Exception $e) {
+            Log::error('[BULK INVOICE] Invoice creation failed', [
+                'bulk_invoice_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Update status to failed
+            BulkInvoice::where('id', $id)->update([
+                'status' => 'failed',
+                'error_summary' => [
+                    'job_failure' => $e->getMessage(),
+                    'failed_at' => now()->toDateTimeString(),
+                ],
+            ]);
+
+            return redirect()->route('bulk-invoices.success', $id)
+                ->withErrors(['error' => 'Failed to create invoices: ' . $e->getMessage()]);
+        }
     }
 
     /**
-     * Reject bulk upload and mark it as discarded.
+     * Reject bulk invoice and mark it as discarded.
      *
      * Uses conditional update to prevent race conditions.
      *
-     * @param  int  $id  The bulk upload ID
+     * @param  int  $id  The bulk invoice ID
      */
     public function reject(int $id): RedirectResponse
     {
@@ -410,7 +437,7 @@ class BulkInvoiceController extends Controller
         $companyId = getCompanyId($user);
 
         // Conditional update to prevent race conditions
-        $updated = BulkUpload::where('id', $id)
+        $updated = BulkInvoice::where('id', $id)
             ->where('company_id', $companyId)
             ->where('status', 'validated')
             ->update(['status' => 'rejected']);
@@ -419,29 +446,29 @@ class BulkInvoiceController extends Controller
             return redirect()->back()->withErrors(['error' => 'Upload already processed or no longer in validated status.']);
         }
 
-        return redirect()->route('dashboard')->with('message', 'Upload rejected and discarded.');
+        return redirect()->route('bulk-invoices.index')->with('success', 'Upload rejected and discarded successfully.');
     }
 
     /**
-     * Show success page after bulk upload approval.
+     * Show success page after bulk invoice approval.
      *
      * Displays upload summary with invoice/client counts.
      * Loads actual created invoices when processing is complete.
      *
-     * @param  int  $id  The bulk upload ID
+     * @param  int  $id  The bulk invoice ID
      */
     public function success(int $id): View
     {
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        // Load BulkUpload scoped by company_id
-        $bulkUpload = BulkUpload::where('id', $id)
+        // Load BulkInvoice scoped by company_id
+        $bulkInvoice = BulkInvoice::where('id', $id)
             ->where('company_id', $companyId)
             ->firstOrFail();
 
         // Load valid rows for counting
-        $validRows = $bulkUpload->rows()->where('status', 'valid')->with('client')->get();
+        $validRows = $bulkInvoice->rows()->where('status', 'valid')->with('client')->get();
 
         // Group by composite key to count invoices (same logic as preview)
         $invoiceGroups = $validRows->groupBy(function ($row) {
@@ -456,14 +483,17 @@ class BulkInvoiceController extends Controller
 
         // Load actual invoices if processing is complete
         $invoices = collect([]);
-        if ($bulkUpload->status === 'completed' && ! empty($bulkUpload->invoice_ids)) {
-            $invoices = Invoice::whereIn('id', $bulkUpload->invoice_ids)
-                ->with('client')
+        if ($bulkInvoice->status === 'completed' && ! empty($bulkInvoice->invoice_ids)) {
+            $invoices = Invoice::whereIn('id', $bulkInvoice->invoice_ids)
+                ->with(['client', 'agent.branch'])
                 ->get();
         }
 
         return view('bulk-invoice.success', compact(
-            'bulkUpload', 'invoiceCount', 'clientCount', 'invoices'
+            'bulkInvoice',
+            'invoiceCount',
+            'clientCount',
+            'invoices'
         ));
     }
 }

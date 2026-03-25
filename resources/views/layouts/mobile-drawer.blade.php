@@ -71,7 +71,7 @@
         <div class="mobile-drawer-header">
             <a href="{{ route('dashboard') }}" class="mobile-drawer-logo">
                 <x-application-logo width="40" height="40" class="rounded-full" />
-                <span class="mobile-drawer-brand">{{ $companyName ?? config('app.name') }}</span>
+                <span class="mobile-drawer-brand">{{ $companyName }}</span>
             </a>
             <button @click="mobileDrawerOpen = false" class="mobile-drawer-close">
                 <x-icons.close class="w-6 h-6" />

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
@@ -9,9 +10,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToCompany;
 
     protected $fillable = [
+        'company_id',
         'client_id',
         'agent_id',
         'voucher_number',
@@ -47,6 +49,7 @@ class Payment extends Model
         'language',
         'completed',
         'is_disabled',
+        'is_imported',
     ];
 
     protected $casts = [
@@ -57,8 +60,14 @@ class Payment extends Model
         'tax' => 'decimal:3',
         'completed' => 'boolean',
         'is_disabled' => 'boolean',
+        'is_imported' => 'boolean',
         'send_payment_receipt' => 'boolean',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
 
     public function client()
     {
@@ -74,7 +83,7 @@ class Payment extends Model
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
-    
+
     public function transactions(): MorphMany
     {
         return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');
@@ -122,7 +131,7 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function credit() 
+    public function credit()
     {
         return $this->hasMany(Credit::class, 'payment_id');
     }

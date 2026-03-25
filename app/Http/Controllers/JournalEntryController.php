@@ -24,11 +24,12 @@ class JournalEntryController extends Controller
 
     public function show(Request $request, $accountId)
     {
-        // Get date filters from request or fallback to current month
         $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
         $dateTo = $request->input('date_to', now()->endOfMonth()->toDateString());
 
-        // Fetch journal entries for this account and date range
+        $account = Account::findOrFail($accountId);
+        $openingBalance = (float) ($account->opening_balance ?? 0);
+
         $journalEntries = JournalEntry::with(['account', 'transaction', 'task', 'task.flightDetails', 'task.hotelDetails'])
             ->where('account_id', $accountId)
             ->whereDate('transaction_date', '>=', $dateFrom)
@@ -36,15 +37,13 @@ class JournalEntryController extends Controller
             ->orderBy('transaction_date', 'asc')
             ->get();
 
-        // Optional: apply custom transformation (like calculating running balance)
-        $journalEntries = $this->getJournalEntries($journalEntries);
+        $journalEntries = $this->getJournalEntries($journalEntries, $openingBalance);
 
-        // Return the Blade view with all required data
-        return view('journal_entries.show', compact('journalEntries', 'dateFrom', 'dateTo', 'accountId'));
+        return view('journal_entries.show', compact('journalEntries', 'dateFrom', 'dateTo', 'accountId', 'account', 'openingBalance'));
     }
 
 
-    public function getJournalEntries($journalEntries)
+    public function getJournalEntries($journalEntries, float $startingBalance = 0)
     {
         $assets = Account::where('name', 'Assets')->first();
         $liabilities = Account::where('name', 'Liabilities')->first();
@@ -56,7 +55,7 @@ class JournalEntryController extends Controller
             return redirect()->back()->with('error', 'One or more accounts not found');
         }
 
-        $runningBalance = 0;
+        $runningBalance = $startingBalance;
         foreach ($journalEntries as $journalEntry) {
             if ($journalEntry->account->root_id == $assets->id) {
                 $runningBalance += $journalEntry->debit - $journalEntry->credit;

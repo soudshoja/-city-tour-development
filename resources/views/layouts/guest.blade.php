@@ -18,7 +18,7 @@
     <!-- Scripts -->
     @vite(['resources/css/guest.css'])
 
-    {{-- RecaptchaV3 initJs disabled --}}
+    {!! RecaptchaV3::initJs() !!}
 
 </head>
 

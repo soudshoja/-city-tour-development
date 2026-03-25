@@ -68,4 +68,11 @@ class ReportPolicy
 
         return $user->can('view client report');
     }
+
+    public function viewPaymentGatewaysReport(User $user)
+    {
+        if($user->hasRole('admin')) return true;
+
+        return $user->can('view payment gateways report');
+    }
 }

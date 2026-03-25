@@ -32,6 +32,12 @@ export function searchableDropdown({
                 this.select(this.all[0]);
             }
 
+            window.addEventListener('dropdown-opened', (e) => {
+                if (e.detail && e.detail.name !== name) {
+                    this.open = false;
+                }
+            });
+
             window.addEventListener('reset-dropdowns', () => {
                 if (!this.hasChanged) {
                     this.selectedId = this.originalId;
@@ -93,6 +99,7 @@ export function searchableDropdown({
         },
 
         focusSearch($refs) {
+            window.dispatchEvent(new CustomEvent('dropdown-opened', { detail: { name } }));
             this.open = true;
             this.search = '';
 

@@ -31,6 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'verify.resailai.token' => VerifyResailAIToken::class,
             'dotwai.resolve' => ResolveDotwAIContext::class,
         ]);
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

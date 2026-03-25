@@ -64,9 +64,9 @@
             </div>
         </div>
 
-        <div class="panel bg-white rounded-lg shadow p-4">
+        <div class="">
             <!-- Tabs Navigation -->
-            <div class="flex gap-1 mb-0 bg-slate-100 px-2 pt-2 rounded-t-lg">
+            <div class="flex gap-1 mb-0 bg-slate-400 px-2 pt-2 rounded-t-lg">
                 <!-- Invoices Tab -->
                 <button
                     @click="activeTab = 'invoice'"

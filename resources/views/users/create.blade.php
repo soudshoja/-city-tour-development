@@ -478,113 +478,134 @@
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Agent</h2>
                                     </div>
 
-                                    <form action="{{ route('agents.store') }}" method="POST"
-                                        class="w-full">
+                                    <div x-data="{
+                                        name:'', email:'', dial_code:'', phone:'',
+                                        password:'', amadeus_id:'',
+                                        typeOpen:false, branchOpen:false,
+                                        type_id:'', branch_id:'',
+                                        selectedTypeName:'', selectedBranchName:''
+                                    }">
+
+                                        <form action="{{ route('agents.store') }}" method="POST" class="w-full">
                                         @csrf
 
-                                        <div class="mb-4 flex items-center relative">
-                                            <input type="text" name="name" class="custom-input"
-                                                placeholder="Agent Name *">
-                                            <span class="tooltip-container ml-2 cursor-pointer">
-                                                <span class="tooltip-icon">!</span>
-                                                <span class="tooltip">Enter the agent's full name.</span>
-                                            </span>
-                                        </div>
-
-                                        <div class="grid grid-cols-2 gap-4">
+                                            <!-- Name -->
                                             <div class="mb-4 flex items-center relative">
-                                                <input type="email" name="email" class="custom-input"
-                                                    placeholder="Agent Email *">
+                                                <input type="text" name="name" x-model="name"
+                                                    class="custom-input" placeholder="Agent Name *">
                                                 <span class="tooltip-container ml-2 cursor-pointer">
                                                     <span class="tooltip-icon">!</span>
-                                                    <span class="tooltip">Provide a valid email for agent
-                                                        communication.</span>
+                                                    <span class="tooltip">Enter the agent's full name.</span>
                                                 </span>
                                             </div>
 
-                                            <div class="mb-4 flex gap-2 items-center relative">
-                                                <div class="relative">
-                                                    <select name="dial_code" id="dial_code"
-                                                        class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
-                                                        @foreach ($countries as $country)
-                                                        <option value="{{ $country->dialing_code }}">
-                                                            {{ $country->name }} ({{ $country->dialing_code }})
-                                                        </option>
+                                            <!-- Email + Phone -->
+                                            <div class="grid grid-cols-2 gap-4">
+
+                                                <div class="mb-4 flex items-center relative">
+                                                    <input type="email" name="email" x-model="email"
+                                                        class="custom-input" placeholder="Agent Email *">
+                                                </div>
+
+                                                <div class="mb-4 flex gap-2 items-center relative">
+
+                                                    <div class="relative">
+                                                        <select name="dial_code" x-model="dial_code"
+                                                            class="custom-input w-50 px-2 pr-8 border rounded-md appearance-none">
+                                                            @foreach ($countries as $country)
+                                                                <option value="{{ $country->dialing_code }}">
+                                                                    {{ $country->name }} ({{ $country->dialing_code }})
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                                            ▼
+                                                        </span>
+                                                    </div>
+
+                                                    <input type="tel" name="phone" x-model="phone"
+                                                        class="custom-input" placeholder="Agent Number *">
+                                                </div>
+                                            </div>
+
+                                            <!-- Password + Amadeus -->
+                                            <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                                <input type="password" name="password" x-model="password"
+                                                    class="custom-input" placeholder="Agent Password *">
+
+                                                <input type="text" name="amadeus_id" x-model="amadeus_id"
+                                                    class="custom-input" placeholder="Amadeus ID">
+
+                                            </div>
+
+                                            <!-- Agent Type Select -->
+                                            <div class="flex w-full my-3 gap-5">
+                                                <div class="relative w-full border rounded-lg">
+                                                    <div @click="typeOpen=!typeOpen"
+                                                        class="px-4 py-2 cursor-pointer">
+                                                        <span x-text="selectedTypeName || 'Select Agent Type'"></span>
+                                                    </div>
+
+                                                    <div x-show="typeOpen"
+                                                        x-transition
+                                                        @click.outside="typeOpen=false"
+                                                        class="absolute w-full bg-white shadow rounded-md grid grid-cols-2 gap-2 p-3 z-50">
+
+                                                        @foreach ($agentTypes as $type)
+                                                        <div
+                                                            @click="
+                                                                type_id='{{ $type->id }}';
+                                                                selectedTypeName='{{ $type->name }}';
+                                                                typeOpen=false
+                                                            "
+                                                            class="px-4 py-3 border rounded-lg cursor-pointer hover:bg-gray-100">
+                                                            {{ $type->name }}
+                                                        </div>
                                                         @endforeach
-                                                        <!-- Add more country codes as needed -->
-                                                    </select>
-                                                    <!-- Custom dropdown arrow -->
-                                                    <span
-                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
-                                                        ▼
-                                                    </span>
-                                                </div>
 
-                                                <input type="tel" name="phone" class="custom-input"
-                                                    placeholder="Agent Number *">
-                                                <span class="tooltip-container ml-2 cursor-pointer">
-                                                    <span class="tooltip-icon">!</span>
-                                                    <span class="tooltip">Enter the agent's contact number.</span>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div class="flex gap-2 items-center relative">
-                                                <input type="password" name="password" class="custom-input" required
-                                                    placeholder="Agent Password *" autocomplete="on">
-                                                <span class="tooltip-container ml-2 cursor-pointer">
-                                                    <span class="tooltip-icon">!</span>
-                                                    <span class="tooltip">Password must be at least 8 characters long and
-                                                        include numbers.</span>
-                                                </span>
-                                            </div>
-                                            <div class="flex items-center relative">
-                                                <input type="text" placeholder="Amadeus ID " name="amadeus_id" class="custom-input">
-                                                <!-- <span class="tooltip-container ml-2 cursor-pointer">
-                                                    <span class="tooltip-icon">!</span>
-                                                    <span class="tooltip">Enter the Amadeus ID for the agent.</span>
-                                                </span> -->
-                                            </div>
-                                        </div>
-
-                                        <div class="flex w-full my-3 gap-5">
-                                            <div class="custom-select w-full border rounded-lg relative">
-                                                <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">
-                                                    Select Agent Type</div>
-                                                <div
-                                                    class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid grid-cols-2 gap-2 py-3">
-                                                    @foreach ($agentTypes as $type)
-                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                        data-value="{{ $type->id }}">
-                                                        {{ $type->name }}
                                                     </div>
-                                                    @endforeach
-                                                </div>
-                                                <input type="hidden" name="type_id" id="selectedType">
-                                            </div>
 
-                                            <div class="custom-select w-full border rounded-lg relative">
-                                                <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">
-                                                    Select Branch</div>
-                                                <div
-                                                    class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                                    @foreach ($branches as $branch)
-                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                        data-value="{{ $branch->id }}">
-                                                        {{ $branch->name }}
+                                                    <input type="hidden" name="type_id" :value="type_id">
+                                                </div>
+
+                                                <!-- Branch Select -->
+                                                <div class="relative w-full border rounded-lg">
+                                                    <div @click="branchOpen=!branchOpen"
+                                                        class="px-4 py-2 cursor-pointer">
+                                                        <span x-text="selectedBranchName || 'Select Branch'"></span>
                                                     </div>
-                                                    @endforeach
-                                                </div>
-                                                <input type="hidden" name="branch_id" id="selectedBranch">
-                                            </div>
-                                        </div>
 
-                                        <button type="submit"
-                                            class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
-                                            Submit
-                                        </button>
-                                    </form>
+                                                    <div x-show="branchOpen"
+                                                        x-transition
+                                                        @click.outside="branchOpen=false"
+                                                        class="absolute w-full bg-white shadow rounded-md grid {{ count($branches)==1?'grid-cols-1':'grid-cols-2' }} gap-2 p-3 z-50">
+
+                                                        @foreach ($branches as $branch)
+                                                        <div
+                                                            @click="
+                                                                branch_id='{{ $branch->id }}';
+                                                                selectedBranchName='{{ $branch->name }}';
+                                                                branchOpen=false
+                                                            "
+                                                            class="px-4 py-3 border rounded-lg cursor-pointer hover:bg-gray-100">
+                                                            {{ $branch->name }}
+                                                        </div>
+                                                        @endforeach
+
+                                                    </div>
+
+                                                    <input type="hidden" name="branch_id" :value="branch_id">
+                                                </div>
+                                            </div>
+
+                                            <!-- Submit -->
+                                            <button type="submit"
+                                                class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
+                                                Submit
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
 
@@ -778,7 +799,7 @@
                                             <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
                                             @else
                                             <select
-                                                class="custom-select w-full border rounded-lg px-4 py-2 dark:text-white dark:bg-gray-700"
+                                                class="custom-input w-full border rounded-lg px-4 py-2 dark:text-white dark:bg-gray-700"
                                                 name="agent_id" id="agent_id">
                                                 <option value="" disabled> Select Agent </option>
                                                 @foreach ($agents as $agent)
@@ -855,68 +876,23 @@
             }
         }
 
-
-
-        // Custom select dropdowns (Agent Type & Branch)
-        document.querySelectorAll('.custom-select').forEach((selectWrapper) => {
-            const trigger = selectWrapper.querySelector('.select-trigger');
-            const options = selectWrapper.querySelector('.select-options');
-            const hiddenInput = selectWrapper.querySelector('input[type="hidden"]');
-
-            if (!trigger || !options) return;
-
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Close any other open dropdowns first
-                document.querySelectorAll('.custom-select .select-options').forEach((el) => {
-                    if (el !== options) el.style.display = 'none';
-                });
-                // Toggle using style.display (CSS class sets display:none which overrides Tailwind hidden)
-                options.style.display = (options.style.display === 'grid') ? 'none' : 'grid';
-            });
-
-            options.querySelectorAll('.select-option').forEach((option) => {
-                option.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    trigger.textContent = option.textContent.trim();
-                    if (hiddenInput) hiddenInput.value = option.getAttribute('data-value');
-                    options.querySelectorAll('.select-option').forEach(o => o.classList.remove('selected'));
-                    option.classList.add('selected');
-                    options.style.display = 'none';
-                });
-            });
-        });
-
-        // Close custom dropdowns when clicking outside
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.custom-select .select-options').forEach((el) => {
-                el.style.display = 'none';
-            });
-        });
-
         const countrySelect = document.getElementById("country-select");
         const phoneInput = document.getElementById("phone");
 
-        if (!countrySelect || !phoneInput) {
-            console.error("Country select or phone input not found in the DOM.");
-            return;
+        if (countrySelect && phoneInput) {
+            countrySelect.addEventListener("change", function() {
+                const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+                let dialCode = selectedOption.getAttribute("data-dial-code");
+
+                if (dialCode) {
+                    dialCode = dialCode.replace(/[^+\d]/g, "");
+                    phoneInput.value = phoneInput.value.replace(/^\+\d+/, "").trim();
+                    phoneInput.value = dialCode + "";
+                    phoneInput.focus();
+                }
+            });
         }
 
-        countrySelect.addEventListener("change", function() {
-            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
-            let dialCode = selectedOption.getAttribute("data-dial-code");
-
-            if (dialCode) {
-                dialCode = dialCode.replace(/[^+\d]/g, ""); // Keep only + and digits
-
-                // Remove any existing dial code from the phone input
-                phoneInput.value = phoneInput.value.replace(/^\+\d+/, "").trim();
-
-                // Set the new dial code
-                phoneInput.value = dialCode + "";
-                phoneInput.focus();
-            }
-        });
     });
 
     (function () {

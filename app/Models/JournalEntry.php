@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Http\Traits\Lockable;
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class JournalEntry extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Lockable, BelongsToCompany;
 
     protected $fillable = [
         'transaction_id',
@@ -40,18 +42,17 @@ class JournalEntry extends Model
         'original_currency',
         'original_amount',
         'receipt_reference_number',
+        'is_locked',
+        'locked_by',
+        'locked_at',
+    ];
+
+    protected $casts = [
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     public const ADDITIONAL_INVOICE_CHARGE = 'Additional Invoice Charge';
-
-    protected static function booted()
-    {
-        static::addGlobalScope('company', function ($query) {
-            if (auth()->check() && auth()->user()->company != null) {
-                $query->where('company_id', auth()->user()->company->id);
-            }
-        });
-    }
 
     // public static function boot()
     // {

@@ -25,6 +25,8 @@ class Agent extends Model
         'commission',
         'salary',
         'target',
+        'profit_account_id',
+        'loss_account_id',
     ];
 
     public function branch()
@@ -50,10 +52,12 @@ class Agent extends Model
 
     public function clientQuery()
     {
-        return Client::where('agent_id', $this->id)
-            ->orWhereHas('agents', function ($query) {
-                $query->where('agent_id', $this->id);
-            });
+        return Client::where(function ($q) {
+            $q->where('agent_id', $this->id)
+                ->orWhereHas('agents', function ($query) {
+                    $query->where('agent_id', $this->id);
+                });
+        });
     }
 
     public function user()
@@ -69,6 +73,16 @@ class Agent extends Model
     public function refundClients()
     {
         return $this->hasMany(RefundClient::class);
+    }
+
+    public function profitAccount()
+    {
+        return $this->belongsTo(Account::class, 'profit_account_id');
+    }
+
+    public function lossAccount()
+    {
+        return $this->belongsTo(Account::class, 'loss_account_id');
     }
 
     /**

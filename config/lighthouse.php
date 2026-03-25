@@ -28,9 +28,6 @@ return [
          * make sure to return spec-compliant responses in case an error is thrown.
          */
         'middleware' => [
-            \App\GraphQL\Middleware\DotwTraceMiddleware::class,
-            \App\GraphQL\Middleware\ResayilContextMiddleware::class,
-
             // Ensures the request is not vulnerable to cross-site request forgery.
             // Nuwave\Lighthouse\Http\Middleware\EnsureXHR::class,
 
@@ -64,7 +61,7 @@ return [
     |
     */
 
-    'guards' => ['sanctum'],
+    'guards' => null,
 
     /*
     |--------------------------------------------------------------------------

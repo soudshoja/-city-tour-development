@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Mail;
@@ -39,7 +40,17 @@ class ProfileController extends Controller
     public function edit(Request $request)
     {
         $user = $request->user();
-        $month = $request->input('month') ? Carbon::parse($request->input('month'))->startOfMonth() : now()->startOfMonth();
+        if ($request->input('filter_month') && $request->input('filter_year')) {
+            $month = Carbon::createFromDate(
+                $request->input('filter_year'),
+                $request->input('filter_month'),
+                1
+            )->startOfMonth();
+        } elseif ($request->input('month')) {
+            $month = Carbon::parse($request->input('month'))->startOfMonth();
+        } else {
+            $month = now()->startOfMonth();
+        }        
         $viewType = $request->input('view_type', 'invoice');
 
         $phone = null;
@@ -47,6 +58,7 @@ class ProfileController extends Controller
         $commissionData['commissions'] = collect();
         $totalCommission = 0;
         $totalProfit = 0;
+        $totalLoss = 0;
 
         $filterBonus = now()->startOfMonth();
         $bonuses = collect();
@@ -94,17 +106,30 @@ class ProfileController extends Controller
                 if (in_array($typeId, [2, 3, 4])) {
                     $totalCommission = number_format($commissionData['totalCommission'], 3);
                 }
+                
+                $start = $month->copy()->startOfMonth();
+                $end = $month->copy()->endOfmonth();
+
+                $totalLoss = number_format(
+                    JournalEntry::where('account_id', $profile->loss_account_id)
+                        ->whereBetween('transaction_date', [$start, $end])
+                        ->sum('debit'),
+                    3
+                );
 
                 $filterBonusMonth = (int) request('filter_month', now()->month);
                 $filterBonusYear  = (int) request('filter_year', now()->year);
                 $filterBonus = Carbon::createFromDate($filterBonusYear, $filterBonusMonth, 1)->startOfMonth();
 
                 $bonuses = BonusAgent::where('agent_id', $profile->id)
-                    ->whereMonth('created_at', $filterBonus->month)
-                    ->whereYear('created_at', $filterBonus->year)
-                    ->with('transaction')
-                    ->orderByDesc('created_at')
-                    ->get();
+                ->with('transaction')
+                ->orderByDesc('created_at')
+                ->get();
+                break;
+
+            case Role::ADMIN:
+                $companyId = getCompanyId($user);
+                $company = $companyId ? Company::find($companyId) : null;
                 break;
 
             default:
@@ -113,7 +138,7 @@ class ProfileController extends Controller
         }
 
         $companyLogo = $company?->logo ? asset('storage/' . $company->logo) : asset('images/UserPic.svg');
-
+        
         return view('profile.edit', [
             'user' => $user,
             'userPhone' => $phone,
@@ -123,9 +148,11 @@ class ProfileController extends Controller
             'totalProfit' => $totalProfit,
             'month' => $month,
             'companyLogo' => $companyLogo,
+            'company' => $company,
             'viewType' => $viewType,
-            'hasBonus' => $bonuses ?? false,
+            'filteredBonuses' => $bonuses ?? collect(),
             'filterBonus' => $filterBonus,
+            'totalLoss' => $totalLoss,
         ]);
     }
 
@@ -184,6 +211,13 @@ class ProfileController extends Controller
                 $path = $request->file('logo')->store('logos', 'public_storage');
                 $company->logo = $path;
             }
+
+            // Save social media links
+            if ($request->filled('facebook')) $company->facebook = $request->input('facebook');
+            if ($request->filled('instagram')) $company->instagram = $request->input('instagram');
+            if ($request->filled('snapchat')) $company->snapchat = $request->input('snapchat');
+            if ($request->filled('tiktok')) $company->tiktok = $request->input('tiktok');
+            if ($request->filled('whatsapp')) $company->whatsapp = $request->input('whatsapp');
 
             $company->save();
         }
@@ -270,22 +304,6 @@ class ProfileController extends Controller
 
             if ($request->has('address') && $request->input('address') !== $company->address) {
                 $updateData['address'] = $request->input('address');
-            }
-
-            if ($request->filled('facebook')) {
-                $updateData['facebook'] = $request->input('facebook');
-            }
-            if ($request->filled('instagram')) {
-                $updateData['instagram'] = $request->input('instagram');
-            }
-            if ($request->filled('snapchat')) {
-                $updateData['snapchat'] = $request->input('snapchat');
-            }
-            if ($request->filled('tiktok')) {
-                $updateData['tiktok'] = $request->input('tiktok');
-            }
-            if ($request->filled('whatsapp')) {
-                $updateData['whatsapp'] = $request->input('whatsapp');
             }
 
             if (!empty($updateData)) {
@@ -442,20 +460,32 @@ class ProfileController extends Controller
     /**
      * Show the form to confirm the verification code.
      */
-    public function showConfirmCodeForm()
-    {
-        // Ensure a valid code request exists, otherwise redirect back with error
-        $tokenExists = PasswordUpdateToken::where('user_id', auth()->id())
-            ->where('expires_at', '>=', now())
-            ->exists();
+        public function showConfirmCodeForm()
+        {
+            // Ensure a valid code request exists, otherwise redirect back with error
+            $tokenExists = PasswordUpdateToken::where('user_id', auth()->id())
+                ->where('expires_at', '>=', now())
+                ->exists();
 
-        if (! $tokenExists) {
-            return redirect()->route('profile.edit', ['tab' => 'Security'])
-                ->withErrors(['code' => 'Please request a verification code first.']);
+            if (!$tokenExists) {
+                return redirect()->route('profile.edit', ['tab' => 'Security'])
+                    ->withErrors(['code' => 'Please request a verification code first.']);
+            }
+            
+            $token = DB::table('password_update_tokens')
+            ->where('user_id', auth()->id())
+            ->latest('created_at')
+            ->first();
+
+            $otpRemaining = 0;
+            if ($token && $token->expires_at) {
+                    $otpRemaining = max(0, (int) now()->diffInSeconds($token->expires_at, false));
+            }
+
+            return view('profile.password.confirm-password-code', [
+                'otpRemaining' => $otpRemaining,
+            ]);
         }
-
-        return view('profile.password.confirm-password-code');
-    }
 
     /**
      * Show the form to update the password.
@@ -556,7 +586,15 @@ class ProfileController extends Controller
 
         $paginated = $query->paginate(5, ['*'], 'commission');
 
-        $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent) {
+        // Get per-invoice loss from journal entries
+        $invoiceLosses = JournalEntry::where('account_id', $agent->loss_account_id)
+            ->whereBetween('transaction_date', [$start, $end])
+            ->whereNotNull('invoice_id')
+            ->selectRaw('invoice_id, SUM(debit) as total_loss')
+            ->groupBy('invoice_id')
+            ->pluck('total_loss', 'invoice_id');
+
+        $mapped = $paginated->getCollection()->map(function ($invoice) use ($agent, $invoiceLosses) {
             $invoiceProfit = $invoice->invoiceDetails->sum('profit');
             $invoiceCommission = in_array($agent->type_id, [2, 3, 4])
                 ? $invoice->invoiceDetails->sum('commission')
@@ -570,6 +608,7 @@ class ProfileController extends Controller
                 'company_id' => $invoice->agent->branch->company_id,
                 'task_count' => $invoice->invoiceDetails->count(),
                 'total_profit' => $invoiceProfit,
+                'total_loss' => $invoiceLosses[$invoice->id] ?? 0,
                 'total_commission' => $invoiceCommission,
                 'tasks' => $invoice->invoiceDetails->map(fn($detail) => [
                     'task_reference' => $detail->task->reference ?? 'N/A',
@@ -604,9 +643,15 @@ class ProfileController extends Controller
         $totalProfit = $allDetails->sum('profit');
         $totalCommission = in_array($agent->type_id, [2, 3, 4]) ? $allDetails->sum('commission') : 0;
 
+        // Get per-task loss from journal entries
+        $taskLosses = JournalEntry::where('account_id', $agent->loss_account_id)
+            ->whereBetween('transaction_date', [$start, $end])
+            ->whereNotNull('invoice_detail_id')
+            ->pluck('debit', 'invoice_detail_id');
+
         $paginated = $query->paginate(5, ['*'], 'commission');
 
-        $mapped = $paginated->getCollection()->map(function ($detail) use ($agent) {
+        $mapped = $paginated->getCollection()->map(function ($detail) use ($agent, $taskLosses) {
             $task = $detail->task;
             $invoice = $detail->invoice;
 
@@ -615,7 +660,8 @@ class ProfileController extends Controller
                 'task_reference' => $task?->reference ?? 'N/A',
                 'passenger_name' => $task?->passenger_name ?? 'N/A',
                 'transaction_date' => $invoice->invoice_date,
-                'task_profit' => $detail->profit ?? 0,
+                'task_profit' => ($detail->profit ?? 0) > 0 ? $detail->profit : 0,
+                'task_loss' => $taskLosses[$detail->id] ?? 0,
                 'net_commission' => in_array($agent->type_id, [2, 3, 4]) ? ($detail->commission ?? 0) : 0,
                 'invoice' => [
                     'id' => $invoice->id,

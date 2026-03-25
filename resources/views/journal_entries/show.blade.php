@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="container mx-auto p-4">
-        <h1 class="text-center font-semibold text-xl mb-4">Ledger</h1>
+        <h1 class="text-center font-semibold text-xl mb-4">Ledger - {{ $account->name }}</h1>
 
         @php
         $defaultFrom = \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d');
@@ -48,7 +48,7 @@
         </div>
 
         <div class="mt-4 bg-white p-4 rounded shadow">
-            @if($journalEntries->isEmpty())
+            @if($journalEntries->isEmpty() && $openingBalance == 0)
             <p class="text-gray-600">No journal entries found for this account and date range.</p>
             @else
             <div class="overflow-x-auto">
@@ -70,6 +70,23 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @if($openingBalance != 0)
+                        <tr class="border-t bg-blue-50 font-medium">
+                            <td class="py-2 px-4 text-center">-</td>
+                            <td class="py-2 px-4 text-center">{{ $account->opening_balance_date?->format('Y-m-d') ?? '-' }}</td>
+                            @if($showIssueColumn)
+                            <td class="py-2 px-4 text-center">-</td>
+                            @endif
+                            <td class="py-2 px-4 text-left">-</td>
+                            <td class="py-2 px-4 text-left">-</td>
+                            <td class="py-2 px-4 text-left text-blue-700">Opening Balance</td>
+                            <td class="py-2 px-4 text-center">{{ $account->name }}</td>
+                            <td class="py-2 px-4 text-center">-</td>
+                            <td class="py-2 px-4 text-center">-</td>
+                            <td class="py-2 px-4 text-center text-blue-700">{{ number_format($openingBalance, 2) }}</td>
+                        </tr>
+                        @endif
+
                         @foreach ($journalEntries as $entry)
 
                         <tr class="border-t hover:bg-gray-50">

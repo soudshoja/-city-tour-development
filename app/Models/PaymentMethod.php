@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 
 class PaymentMethod extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
         'charge_id',
@@ -24,6 +23,7 @@ class PaymentMethod extends Model
         'currency',
         'service_charge',
         'self_charge',
+        'extra_charge',
         'paid_by',
         'charge_type',
         'description',
@@ -54,37 +54,5 @@ class PaymentMethod extends Model
     {
         return $this->belongsToMany(Payment::class, 'payment_link_payment_method')
             ->withTimestamps();
-    }
-
-    protected static ?int $resolvedCompanyId = null;
-
-    protected static function resolveCompanyId(): ?int
-    {
-        if (static::$resolvedCompanyId !== null) {
-            return static::$resolvedCompanyId;
-        }
-
-        $user = Auth::user();
-
-        if (!$user) {
-            return null;
-        }
-
-        static::$resolvedCompanyId = getCompanyId($user);
-
-        return static::$resolvedCompanyId;
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('company', function (Builder $q) {
-            // Only apply scope if user is authenticated
-            if (Auth::check()) {
-                $id = static::resolveCompanyId();
-                if ($id !== null) {
-                    $q->where($q->qualifyColumn('company_id'), $id);
-                }
-            }
-        });
     }
 }

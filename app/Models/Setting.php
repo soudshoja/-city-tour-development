@@ -33,6 +33,11 @@ class Setting extends Model
 
     public function setValueAttribute($value)
     {
+        if (is_null($value)) {
+            $this->attributes['value'] = null;
+            return;
+        }
+
         switch ($this->type) {
             case 'integer':
                 $this->attributes['value'] = (string) (int) $value;
@@ -56,5 +61,14 @@ class Setting extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public static function getByKey(int $companyId, string $key, $default = null)
+    {
+        $setting = self::where('company_id', $companyId)
+            ->where('key', $key)
+            ->first();
+
+        return $setting ? $setting->value : $default;
     }
 }

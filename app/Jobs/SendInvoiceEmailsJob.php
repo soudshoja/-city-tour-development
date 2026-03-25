@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\BulkInvoicesMail;
-use App\Models\BulkUpload;
+use App\Models\BulkInvoice;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -48,78 +48,78 @@ class SendInvoiceEmailsJob implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param  int  $bulkUploadId  The bulk upload ID to send emails for
+     * @param  int  $bulkInvoiceId  The bulk invoice ID to send emails for
      */
-    public function __construct(public int $bulkUploadId) {}
+    public function __construct(public int $bulkInvoiceId) {}
 
     /**
      * Execute the job.
      */
     public function handle(): void
     {
-        // Load BulkUpload with eager loading
-        $bulkUpload = BulkUpload::with('agent.branch.company')->findOrFail($this->bulkUploadId);
+        // Load BulkInvoice with eager loading
+        $bulkInvoice = BulkInvoice::with('agent.branch.company')->findOrFail($this->bulkInvoiceId);
 
         // Guard clause: verify status is 'completed'
-        if ($bulkUpload->status !== 'completed') {
-            Log::warning('SendInvoiceEmailsJob skipped - BulkUpload not completed', [
-                'bulk_upload_id' => $this->bulkUploadId,
-                'status' => $bulkUpload->status,
+        if ($bulkInvoice->status !== 'completed') {
+            Log::warning('SendInvoiceEmailsJob skipped - BulkInvoice not completed', [
+                'bulk_invoice_id' => $this->bulkInvoiceId,
+                'status' => $bulkInvoice->status,
             ]);
 
             return;
         }
 
         // Guard clause: verify invoice_ids is not empty
-        if (empty($bulkUpload->invoice_ids) || ! is_array($bulkUpload->invoice_ids)) {
+        if (empty($bulkInvoice->invoice_ids) || ! is_array($bulkInvoice->invoice_ids)) {
             Log::warning('SendInvoiceEmailsJob skipped - No invoice IDs found', [
-                'bulk_upload_id' => $this->bulkUploadId,
-                'invoice_ids' => $bulkUpload->invoice_ids,
+                'bulk_invoice_id' => $this->bulkInvoiceId,
+                'invoice_ids' => $bulkInvoice->invoice_ids,
             ]);
 
             return;
         }
 
         // Get company and agent
-        $company = $bulkUpload->agent?->branch?->company;
-        $agent = $bulkUpload->agent;
+        $company = $bulkInvoice->agent?->branch?->company;
+        $agent = $bulkInvoice->agent;
 
         // Set log context
         Log::withContext([
-            'bulk_upload_id' => $this->bulkUploadId,
-            'company_id' => $bulkUpload->company_id,
+            'bulk_invoice_id' => $this->bulkInvoiceId,
+            'company_id' => $bulkInvoice->company_id,
         ]);
 
         Log::info('Starting bulk invoice email delivery', [
-            'filename' => $bulkUpload->original_filename,
-            'invoice_count' => count($bulkUpload->invoice_ids),
+            'filename' => $bulkInvoice->original_filename,
+            'invoice_count' => count($bulkInvoice->invoice_ids),
         ]);
 
         // Send to accountant (company email)
         if ($company && $company->email) {
             Mail::to($company->email)
-                ->queue(new BulkInvoicesMail($this->bulkUploadId));
+                ->queue(new BulkInvoicesMail($this->bulkInvoiceId));
 
             Log::info('Queued bulk invoice email to accountant', [
                 'email' => $company->email,
             ]);
         } else {
             Log::warning('No company email found, skipping accountant notification', [
-                'company_id' => $bulkUpload->company_id,
+                'company_id' => $bulkInvoice->company_id,
             ]);
         }
 
         // Send to uploading agent
         if ($agent && $agent->email) {
             Mail::to($agent->email)
-                ->queue(new BulkInvoicesMail($this->bulkUploadId));
+                ->queue(new BulkInvoicesMail($this->bulkInvoiceId));
 
             Log::info('Queued bulk invoice email to agent', [
                 'email' => $agent->email,
             ]);
         } else {
             Log::warning('No agent email found, skipping agent notification', [
-                'agent_id' => $bulkUpload->agent_id,
+                'agent_id' => $bulkInvoice->agent_id,
             ]);
         }
 
@@ -129,16 +129,16 @@ class SendInvoiceEmailsJob implements ShouldQueue
     /**
      * Handle a job failure.
      *
-     * Email delivery failure is non-critical. The bulk upload succeeded,
+     * Email delivery failure is non-critical. The bulk invoice succeeded,
      * only the notification failed. We log the error but do NOT update
-     * BulkUpload status.
+     * BulkInvoice status.
      *
      * @param  Throwable  $exception  The exception that caused the failure
      */
     public function failed(Throwable $exception): void
     {
         Log::error('SendInvoiceEmailsJob failed', [
-            'bulk_upload_id' => $this->bulkUploadId,
+            'bulk_invoice_id' => $this->bulkInvoiceId,
             'exception' => $exception->getMessage(),
         ]);
     }

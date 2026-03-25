@@ -110,49 +110,20 @@ class ClientController extends Controller
             $search = $request->search;
             $clients = $clients->where(function ($query) use ($search) {
                 $searchTerm = '%' . strtolower($search) . '%';
-                $query->where('first_name', 'LIKE', $searchTerm)
-                    ->orWhere('middle_name', 'LIKE', $searchTerm)
-                    ->orWhere('last_name', 'LIKE', $searchTerm)
+                $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm])
+                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm])
                     ->orWhere('email', 'LIKE', $searchTerm)
-                    ->orWhere('phone', 'LIKE', $searchTerm)
+                    ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", [$searchTerm])
                     ->orWhere('civil_no', 'LIKE', $searchTerm)
                     ->orWhereHas('agent', function ($q) use ($searchTerm) {
                         $q->where('name', 'LIKE', $searchTerm);
                     });
-
-                // Handle multi-word search for name combinations
-                if (str_word_count($search) > 1) {
-                    $searchWords = explode(' ', trim($search));
-                    $query->orWhere(function ($nameQuery) use ($searchWords) {
-                        $firstWord = $searchWords[0];
-                        $lastWord = end($searchWords);
-                        $middleWords = array_slice($searchWords, 1, -1);
-
-                        // For 2 words: first_name + last_name
-                        if (count($searchWords) == 2) {
-                            $nameQuery->where(function ($q) use ($firstWord, $lastWord) {
-                                $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-                            });
-                        }
-                        // For 3+ words: first_name + middle_name(s) + last_name
-                        else if (count($searchWords) >= 3) {
-                            $nameQuery->where(function ($q) use ($firstWord, $middleWords, $lastWord) {
-                                $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-
-                                // Add middle name conditions
-                                foreach ($middleWords as $middleWord) {
-                                    $q->where('middle_name', 'LIKE', '%' . $middleWord . '%');
-                                }
-                            });
-                        }
-                    });
-                }
             });
         }
 
-        $clients = $clients->orderByDesc('created_at')->paginate(20)->withQueryString();
+        $clients = $clients->orderByDesc('created_at');
+
+        $clients = $clients->paginate(20)->withQueryString();
         $fullClients = $fullClients->orderByDesc('created_at')->get();
 
         if ($user->role_id == Role::AGENT) {
@@ -992,16 +963,20 @@ class ClientController extends Controller
 
     public function addCredit(Payment $payment)
     {
-        $client = Client::findOrFail($payment->client_id);
-        $agent = Agent::find($payment->agent_id);
+        $existingCredit = Credit::where('payment_id', $payment->id)
+            ->where('type', Credit::TOPUP)
+            ->exists();
 
-        if (!$client) {
+        if ($existingCredit) {
+            Log::warning('Duplicate addCredit attempt blocked', ['payment_id' => $payment->id]);
             return [
                 'status' => 'error',
-                'message' => 'Client not found',
+                'message' => 'Credit has already been added for this payment.',
             ];
         }
 
+        $client = Client::findOrFail($payment->client_id);
+        $agent = Agent::findOrFail($payment->agent_id);
         $companyId = $agent->branch->company->id;
 
         // STEP 1: Get charge configuration and calculate fee
@@ -1009,17 +984,25 @@ class ClientController extends Controller
             ->where('company_id', $companyId)
             ->first();
 
-        $chargeResult = ChargeService::calculate(
-            $payment->amount,
-            $companyId,
-            $payment->payment_method_id,
-            $payment->payment_gateway
-        );
-        $accountingFee = $chargeResult['accountingFee'];
-        $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
+        if ($payment->gateway_fee && $payment->gateway_fee > 0) {
+            // Imported payment: fee already set from the external gateway
+            $gatewayFee = $payment->service_charge ?? 0;
+            $accountingFee = $payment->gateway_fee;
+            $paidBy = $payment->paymentMethod?->paid_by ?? 'Company';
+        } else {
+            $chargeResult = ChargeService::calculate(
+                $payment->amount,
+                $companyId,
+                $payment->payment_method_id,
+                $payment->payment_gateway
+            );
+            $gatewayFee = $chargeResult['gatewayFee'];
+            $accountingFee = $chargeResult['accountingFee'];
+            $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
 
-        $payment->gateway_fee = $accountingFee;
-        $payment->save();
+            $payment->gateway_fee = $accountingFee;
+            $payment->save();
+        }
 
         // STEP 2: Calculate amounts based on WHO PAYS FEE
         if ($paidBy === 'Company') {
@@ -1036,7 +1019,7 @@ class ClientController extends Controller
             'payment_id' => $payment->id,
             'paid_by' => $paidBy,
             'payment_amount' => $payment->amount,
-            'gateway_fee' => $chargeResult['gatewayFee'],
+            'gateway_fee' => $gatewayFee,
             'accounting_fee' => $accountingFee,
             'asset_amount' => $assetAmount,
             'client_credit' => $clientCreditAmount,
@@ -1106,7 +1089,7 @@ class ClientController extends Controller
                 'payment_id' => $payment->id,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
-                'transaction_date' => now(),
+                'transaction_date' => $payment->payment_date ?? now(),
             ]);
 
             // ENTRY 1: DEBIT Asset (Payment Gateway Bank)
@@ -1116,7 +1099,7 @@ class ClientController extends Controller
                     'company_id' => $companyId,
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankPaymentFee->id,
-                    'transaction_date' => now(),
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $assetAmount,
                     'credit' => 0,
@@ -1139,7 +1122,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankCOAFee->id,
                     'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => now(),
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
                     'debit' => $accountingFee,
                     'credit' => 0,
@@ -1161,7 +1144,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $incomeAccount->id,
                     'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => now(),
+                    'transaction_date' => $payment->payment_date ?? now(),
                     'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                     'debit' => 0,
                     'credit' => $accountingFee,
@@ -1181,7 +1164,7 @@ class ClientController extends Controller
                 'branch_id' => $agent->branch->id,
                 'company_id' => $companyId,
                 'account_id' => $clientAdvancePaymentGateway->id,
-                'transaction_date' => now(),
+                'transaction_date' => $payment->payment_date ?? now(),
                 'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                 'debit' => 0,
                 'credit' => $clientCreditAmount,
@@ -1203,7 +1186,7 @@ class ClientController extends Controller
                 'data' => [
                     'client_id' => $client->id,
                     'credit' => $clientCreditAmount,
-                    'gateway_fee' => $chargeResult['gatewayFee'],
+                    'gateway_fee' => $gatewayFee,
                     'accounting_fee' => $accountingFee,
                     'paid_by' => $paidBy,
                     'asset_amount' => $assetAmount,
@@ -1724,7 +1707,7 @@ class ClientController extends Controller
 
 
     // AJAX
-    
+
     public function searchClient(Request $request)
     {
         $searchTerm = $request->input('search', '');
@@ -1737,12 +1720,12 @@ class ClientController extends Controller
         switch ($user->role_id) {
             case Role::ADMIN:
                 $clientQuery = $clientQuery->where('company_id', $companyId);
-            break;
+                break;
             case Role::COMPANY:
 
                 $clientQuery = $clientQuery->where('company_id', $companyId);
 
-            break;
+                break;
             case Role::BRANCH:
 
                 $branchesId = Branch::where('company_id', $companyId)->pluck('id')->toArray();
@@ -1750,39 +1733,45 @@ class ClientController extends Controller
                 $agentIds = Agent::whereIn('branch_id', $branchesId)->pluck('id')->toArray();
                 $clientQuery = $clientQuery->whereIn('agent_id', $agentIds);
 
-            break;
+                break;
             case Role::AGENT:
 
                 $clientQuery = $user->agent->clientQuery();
 
-            break;
+                break;
             case Role::ACCOUNTANT:
 
                 $clientQuery = $clientQuery->where('company_id', $companyId);
 
-            break;
+                break;
             default:
 
-            Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: ' . $user->id);
+                Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: ' . $user->id);
 
-            return response()->json([], 403);
+                return response()->json([], 403);
+        }
+
+        $agentId = $request->input('agent_id') ?: $request->input('id');
+        if ($agentId) {
+            $clientQuery->where('agent_id', $agentId);
         }
 
         if ($searchTerm) {
-            $clientQuery->where(function($query) use ($searchTerm) {
-            $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
-                  ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
+            $clientQuery->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
             });
         }
 
         $clients = $clientQuery
-                ->select('id', 'phone')
-                ->selectRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) as name")
-                ->orderBy('first_name', 'asc')
-                ->limit(50)
-                ->get();
+            ->select('id', 'phone', 'country_code', 'first_name', 'middle_name', 'last_name')
+            ->selectRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) as name")
+            ->orderBy('first_name', 'asc')
+            ->limit(50)
+            ->get();
 
         return response()->json($clients);
     }

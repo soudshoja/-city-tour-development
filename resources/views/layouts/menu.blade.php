@@ -77,6 +77,11 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
             </menuitem>
             @endcan
+            @can('manageLocks', 'App\Models\User')
+            <menuitem><a href="{{ route('lock-management.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Lock Management</a>
+            </menuitem>
+            @endcan
         </menu>
         </menuitem>
 
@@ -258,6 +263,14 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client Report</a>
             </menuitem>
             @endcan
+            @can('viewPaymentGatewaysReport', 'App\Models\Report')
+            <menuitem>
+            <a href="{{ route('reports.payment-gateways') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow break-words whitespace-normal">
+                Payment Gateways Report
+            </a>
+            </menuitem>
+            @endcan 
         </menu>
         </menuitem>
 
@@ -295,7 +308,7 @@
             </menuitem>
             @endcan
             <menuitem>
-            <a href="#"
+            <a href="{{ route('docs.user-documentation') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a>
             </menuitem>
             <menuitem>

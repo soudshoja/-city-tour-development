@@ -85,6 +85,7 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view settlement', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view creditors', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view daily sales', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'view payment method groups', 'group' => 'charges']);
         Permission::firstOrCreate(['name' => 'manage payment method groups', 'group' => 'charges']);
         Permission::firstOrCreate(['name' => 'view task report', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'setting company invoice', 'group' => 'setting']);
@@ -93,5 +94,13 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view auto billing', 'group' => 'auto billing']);
         Permission::firstOrCreate(['name' => 'update auto billing', 'group' => 'auto billing']);
         Permission::firstOrCreate(['name' => 'delete auto billing', 'group' => 'auto billing']);
+        Permission::firstOrCreate(['name' => 'view payment gateways report', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'manage locks', 'group' => 'lock management']);
+        Permission::firstOrCreate(['name' => 'view agent charges', 'group' => 'setting']);
+        Permission::firstOrCreate(['name' => 'manage agent charges', 'group' => 'setting']);
+        Permission::firstOrCreate(['name' => 'view agent loss', 'group' => 'setting']);
+        Permission::firstOrCreate(['name' => 'manage agent loss', 'group' => 'setting']);
+        Permission::firstOrCreate(['name' => 'view notification', 'group' => 'setting']);
+        Permission::firstOrCreate(['name' => 'manage notification', 'group' => 'setting']);
     }
 }

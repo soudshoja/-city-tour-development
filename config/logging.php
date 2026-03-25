@@ -185,13 +185,5 @@ return [
             'replace_placeholders' => true,
         ],
 
-        'dotw' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/dotw/dotw.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 60),
-            'replace_placeholders' => true,
-        ],
-
     ],
 ];

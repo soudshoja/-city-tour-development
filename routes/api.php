@@ -18,10 +18,6 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\APIController;
 use App\Services\MagicHolidayService;
 use App\Http\Webhooks\TaskWebhook;
-use App\Http\Controllers\Api\DocumentProcessingController;
-use App\Http\Controllers\Api\Webhooks\N8nCallbackController;
-use App\Http\Controllers\Admin\DotwCredentialController;
-use App\Modules\ResailAI\Http\Controllers\CallbackController;
 
 Route::post('/login2', [MobileController::class, 'login2']);
 Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -156,19 +152,6 @@ Route::post('/find-agent', [TaskController::class, 'findAgent']);
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
 Route::post('/task/webhook', [TaskWebhook::class, 'webhook'])->name('task.webhook');
 
-// Document Processing API (Phase 2 Wave 1)
-Route::post('/documents/process', [DocumentProcessingController::class, 'store'])
-    ->name('api.documents.process');
-
-// N8n Webhook Callback
-Route::post('/webhooks/n8n/extraction', [N8nCallbackController::class, 'handle'])
-    ->name('api.webhooks.n8n.callback');
-
-// ResailAI Webhook Callback (for PDF processing results)
-Route::post('/modules/resailai/callback', [CallbackController::class, 'handle'])
-    ->middleware('verify.resailai.token')
-    ->name('modules.resailai.callback');
-
 // Payment API routes for lazy-loaded content
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/{id}/partials', [PaymentController::class, 'getPartials']);
@@ -190,14 +173,5 @@ Route::group([
     Route::get('/latest', [CurrencyExchangeController::class, 'getLatestRates'])->name('latest');
     Route::post('/convert', [CurrencyExchangeController::class, 'convertCurrency'])->name('convert');
 });
-
-// DOTW v1.0 B2B — Admin credential management
-Route::prefix('admin/companies/{companyId}')->group(function () {
-    Route::post('/dotw-credentials', [DotwCredentialController::class, 'store']);
-    Route::get('/dotw-credentials', [DotwCredentialController::class, 'show']);
-});
-
-// ResailAI Admin Routes
-require __DIR__ . '/resailai-admin.php';
 
 require __DIR__ . '/auth.php';

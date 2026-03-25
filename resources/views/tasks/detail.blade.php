@@ -453,6 +453,15 @@
                     this.selectedForInvoice.push(taskId);
                 }
             },
+            
+            toggleSelectAll(checked) {
+                if (checked) {
+                    const selectableIds = @json($selectableId);
+                    this.selectedForInvoice = [...new Set([...this.selectedForInvoice, ...selectableIds])];
+                } else {
+                    this.selectedForInvoice = [];
+                }
+            },
 
             getInvoiceUrl() {
                 return `{{ route('invoices.create') }}?task_ids=` + this.selectedForInvoice.join(',');
@@ -605,7 +614,7 @@
                         <div class="px-4 py-3 flex-shrink-0">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
-                                    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Selected {{ Str::plural('Task', $tasks->count())}} </h3>
+                                    <h3 class="text-sm font-semibold  uppercase tracking-wider">Selected {{ Str::plural('Task', $tasks->count())}} </h3>
                                     <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{{ $tasks->count() }}</span>
                                 </div>
 
@@ -622,91 +631,117 @@
                             </div>
                         </div>
 
+                        @if($selectableCount > 0)
+                        <div class="px-4 py-2 border-t border-gray-100 flex items-center gap-6 flex-shrink-0 bg-gray-100">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    class="-ml-3 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                    :checked="selectedForInvoice.length === {{ $selectableCount }}"
+                                    x-effect="$el.indeterminate = selectedForInvoice.length > 0 && selectedForInvoice.length < {{ $selectableCount }}"
+                                    @change="toggleSelectAll($event.target.checked)"
+                                >
+                                <span class="text-[12px] uppercase tracking-wide text-gray-700">
+                                    Select all eligible
+                                </span>
+                            </label>
+
+                            <button
+                                x-show="selectedForInvoice.length > 0"
+                                @click="selectedForInvoice = []"
+                                class="ml-auto text-[11px] font-semibold px-2 py-1 rounded-full bg-red-100 border border-red-200 text-red-500 hover:text-red-700 hover:border-red-200 transition">
+                                Clear
+                            </button>
+                        </div>
+                        @endif
+
                         <div class="flex-1 overflow-y-auto min-h-0 hover-scrollbar">
                             @foreach($tasks as $task)
                             <div
                                 @click="selectedTaskId = {{ $task->id }}; bulkEditMode = false; showSidebar = false"
                                 :class="selectedTaskId === {{ $task->id }} && !bulkEditMode ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-gray-50 border-l-4 border-transparent'"
                                 class="cursor-pointer transition-all border-b border-gray-200">
-                                <div class="px-4 py-3">
-
-                                    @php
-                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference && !$task->invoiceDetail;
-                                    @endphp
+                                <div class="px-4 py-3 pl-8">
                                     <div class="flex justify-between items-start">
                                         <div class="flex items-start gap-2 flex-1">
 
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
-                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $canInvoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $task->can_invoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
-                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
-                                                    {{ $canInvoice ? '' : 'disabled' }}>
+                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $task->can_invoice ? 'true' : 'false' }})"
+                                                    {{ $task->can_invoice ? '' : 'disabled' }}>
                                             </div>
-                                            <div class="flex-1 min-w-0">
+                                            <div class="flex-1 min-w-0 pl-2">
                                                 <div class="flex items-center gap-2 flex-wrap">
                                                     <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
                                                     @if($task->invoiceDetail)
-                                                        @if($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid')
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="Cannot be edited - Invoice is paid">
-                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                                                            </svg>
-                                                            Paid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
-                                                        </span>
-                                                        @else
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" title="Already invoiced - Changes won't affect invoice">
-                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                                            </svg>
-                                                            Unpaid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
-                                                        </span>
-                                                        @endif
+                                                    @if($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid')
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="Cannot be edited - Invoice is paid">
+                                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                                        </svg>
+                                                        Paid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
+                                                    </span>
+                                                    @else
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" title="Already invoiced - Changes won't affect invoice">
+                                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                                        </svg>
+                                                        Unpaid: {{ $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number }}
+                                                    </span>
+                                                    @endif
                                                     @endif
                                                 </div>
                                                 <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
+
+                                                <div class="mt-2">
+                                                    <p class="text-sm font-semibold text-gray-700">
+                                                        {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             @php
-                                            $missing = [];
-                                            if (!$task->client_id) $missing[] = 'Client';
-                                            if (!$task->agent_id) $missing[] = 'Agent';
-                                            if (!$task->company_id) $missing[] = 'Company';
-                                            if (!$task->supplier_id) $missing[] = 'Supplier';
-                                            if (!$task->type) $missing[] = 'Type';
-                                            if (!$task->status) $missing[] = 'Status';
-                                            if (!$task->reference) $missing[] = 'Reference';
-                                            if (!$task->total) $missing[] = 'Total';
+                                                $missing = [];
+                                                if (!$task->client_id) $missing[] = 'Client';
+                                                if (!$task->agent_id) $missing[] = 'Agent';
+                                                if (!$task->company_id) $missing[] = 'Company';
+                                                if (!$task->supplier_id) $missing[] = 'Supplier';
+                                                if (!$task->type) $missing[] = 'Type';
+                                                if (!$task->status) $missing[] = 'Status';
+                                                if (!$task->reference) $missing[] = 'Reference';
+                                                if (!$task->total) $missing[] = 'Total';
 
-                                            $missingCount = count($missing);
+                                                $missingCount = count($missing);
 
-                                            // Check if task is already invoiced first
-                                            if ($task->invoiceDetail) {
-                                                if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
+                                                // Check if task is already invoiced first
+                                                if ($task->invoiceDetail) {
+                                                    if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
+                                                        $dotColor = 'bg-red-500';
+                                                        $glowColor = 'bg-red-400/40';
+                                                        $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                        $tooltipText = 'Paid Invoice: ' . $invoiceNum;
+                                                    } else {
+                                                        $dotColor = 'bg-orange-500';
+                                                        $glowColor = 'bg-orange-400/40';
+                                                        $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                        $tooltipText = 'Unpaid Invoice: ' . $invoiceNum;
+                                                    }
+                                                } elseif ($missingCount === 0) {
+                                                    $dotColor = 'bg-green-500';
+                                                    $glowColor = 'bg-green-400/40';
+                                                    $tooltipText = 'Ready for invoice';
+                                                } elseif ($missingCount === 1) {
+                                                    $dotColor = 'bg-yellow-500';
+                                                    $glowColor = 'bg-yellow-400/40';
+                                                    $tooltipText = 'Missing: ' . $missing[0];
+                                                } else {
                                                     $dotColor = 'bg-red-500';
                                                     $glowColor = 'bg-red-400/40';
-                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
-                                                    $tooltipText = 'Paid Invoice: ' . $invoiceNum;
-                                                } else {
-                                                    $dotColor = 'bg-orange-500';
-                                                    $glowColor = 'bg-orange-400/40';
-                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
-                                                    $tooltipText = 'Unpaid Invoice: ' . $invoiceNum;
+                                                    $tooltipText = 'Missing: ' . implode(' | ', $missing);
                                                 }
-                                            } elseif ($missingCount === 0) {
-                                            $dotColor = 'bg-green-500';
-                                            $glowColor = 'bg-green-400/40';
-                                            $tooltipText = 'Ready for invoice';
-                                            } elseif ($missingCount === 1) {
-                                            $dotColor = 'bg-yellow-500';
-                                            $glowColor = 'bg-yellow-400/40';
-                                            $tooltipText = 'Missing: ' . $missing[0];
-                                            } else {
-                                            $dotColor = 'bg-red-500';
-                                            $glowColor = 'bg-red-400/40';
-                                            $tooltipText = 'Missing: ' . implode(' | ', $missing);
-                                            }
                                             @endphp
                                             <div class="relative flex items-center justify-center group flex-shrink-0">
                                                 <span class="relative flex h-2.5 w-2.5">
@@ -716,13 +751,6 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div class="mt-2 pl-6">
-                                        <p class="text-sm font-semibold text-gray-700">
-                                            {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
-                                        </p>
-                                    </div>
-
                                 </div>
                             </div>
                             @endforeach
@@ -759,6 +787,29 @@
                                 @endif
                             </div>
                         </div>
+                        @if($selectableCount > 0)
+                        <div class="px-4 py-2 border-t border-gray-100 flex items-center gap-6 flex-shrink-0 bg-gray-100">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    class="-ml-3 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                    :checked="selectedForInvoice.length === {{ $selectableCount }}"
+                                    x-effect="$el.indeterminate = selectedForInvoice.length > 0 && selectedForInvoice.length < {{ $selectableCount }}"
+                                    @change="toggleSelectAll($event.target.checked)"
+                                >
+                                <span class="text-[12px] uppercase tracking-wide font-semibold text-gray-700">
+                                    Select all eligible
+                                </span>
+                            </label>
+
+                            <button
+                                x-show="selectedForInvoice.length > 0"
+                                @click="selectedForInvoice = []"
+                                class="ml-auto text-[11px] font-semibold px-2 py-1 rounded-full bg-red-100 border border-red-200 text-red-500 hover:text-red-700 hover:border-red-200 transition">
+                                Clear
+                            </button>
+                        </div>
+                        @endif
 
                         <div class="flex-1 overflow-y-auto min-h-0 hover-scrollbar">
                             @foreach($tasks as $task)
@@ -766,23 +817,20 @@
                                 @click="selectedTaskId = {{ $task->id }}; bulkEditMode = false; showSidebar = false"
                                 :class="selectedTaskId === {{ $task->id }} && !bulkEditMode ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-gray-50 border-l-4 border-transparent'"
                                 class="cursor-pointer transition-all border-b border-gray-200">
-                                <div class="px-4 py-3">
+                                <div class="px-4 py-3 pl-8">
 
-                                    @php
-                                    $canInvoice = $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference && !$task->invoiceDetail;
-                                    @endphp
                                     <div class="flex justify-between items-start">
-                                        <div class="flex items-start gap-2 flex-1">
+                                        <div class="flex items-start gap-2 flex-1 pl-2">
 
                                             <div class="pt-0.5" @click.stop>
                                                 <input
                                                     type="checkbox"
-                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $canInvoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
+                                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $task->can_invoice ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' }}"
                                                     :checked="selectedForInvoice.includes({{ $task->id }})"
-                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $canInvoice ? 'true' : 'false' }})"
-                                                    {{ $canInvoice ? '' : 'disabled' }}>
+                                                    @change="toggleInvoiceSelection({{ $task->id }}, {{ $task->can_invoice ? 'true' : 'false' }})"
+                                                    {{ $task->can_invoice ? '' : 'disabled' }}>
                                             </div>
-                                            <div class="flex-1 min-w-0">
+                                            <div class="flex-1 min-w-0 pl-2">
                                                 <div class="flex items-center gap-2 flex-wrap">
                                                     <p class="text-sm font-medium text-gray-900">{{ $task->reference }}</p>
                                                     @if($task->invoiceDetail)
@@ -804,49 +852,53 @@
                                                     @endif
                                                 </div>
                                                 <p class="text-xs text-gray-500 mt-1 uppercase">{{ $task->client->name ?? $task->client_name ?? 'No Client' }}</p>
+                                                <div class="mt-2">
+                                                    <p class="text-sm font-semibold text-gray-700">
+                                                        {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             @php
-                                            $missing = [];
+                                                $missing = [];
 
-                                            // Always check these (your invoice requirements)
-                                            if (!$task->client_id) $missing[] = 'Client';
-                                            if (!$task->agent_id) $missing[] = 'Agent';
-                                            if (!$task->company_id) $missing[] = 'Company';
-                                            if (!$task->supplier_id) $missing[] = 'Supplier';
-                                            if (!$task->type) $missing[] = 'Type';
-                                            if (!$task->status) $missing[] = 'Status';
-                                            if (!$task->reference) $missing[] = 'Reference';
-                                            if (!$task->total) $missing[] = 'Total';
+                                                if (!$task->client_id) $missing[] = 'Client';
+                                                if (!$task->agent_id) $missing[] = 'Agent';
+                                                if (!$task->company_id) $missing[] = 'Company';
+                                                if (!$task->supplier_id) $missing[] = 'Supplier';
+                                                if (!$task->type) $missing[] = 'Type';
+                                                if (!$task->status) $missing[] = 'Status';
+                                                if (!$task->reference) $missing[] = 'Reference';
+                                                if (!$task->total) $missing[] = 'Total';
 
-                                            $missingCount = count($missing);
+                                                $missingCount = count($missing);
 
-                                            // Check if task is already invoiced first
-                                            if ($task->invoiceDetail) {
-                                                if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
+                                                // Check if task is already invoiced first
+                                                if ($task->invoiceDetail) {
+                                                    if ($task->invoiceDetail->invoice && $task->invoiceDetail->invoice->status == 'paid') {
+                                                        $dotColor = 'bg-red-500';
+                                                        $glowColor = 'bg-red-400/40';
+                                                        $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                        $tooltipText = 'Paid Invoice: ' . $invoiceNum;
+                                                    } else {
+                                                        $dotColor = 'bg-orange-500';
+                                                        $glowColor = 'bg-orange-400/40';
+                                                        $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
+                                                        $tooltipText = 'Unpaid Invoice: ' . $invoiceNum;
+                                                    }
+                                                } elseif ($missingCount === 0) {
+                                                    $dotColor = 'bg-green-500';
+                                                    $glowColor = 'bg-green-400/40';
+                                                    $tooltipText = 'Ready for invoice';
+                                                } elseif ($missingCount === 1) {
+                                                    $dotColor = 'bg-yellow-500';
+                                                    $glowColor = 'bg-yellow-400/40';
+                                                    $tooltipText = 'Missing: ' . $missing[0];
+                                                } else {
                                                     $dotColor = 'bg-red-500';
                                                     $glowColor = 'bg-red-400/40';
-                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
-                                                    $tooltipText = 'Paid Invoice: ' . $invoiceNum;
-                                                } else {
-                                                    $dotColor = 'bg-orange-500';
-                                                    $glowColor = 'bg-orange-400/40';
-                                                    $invoiceNum = $task->invoiceDetail->invoice->invoice_number ?? $task->invoiceDetail->invoice_number;
-                                                    $tooltipText = 'Unpaid Invoice: ' . $invoiceNum;
+                                                    $tooltipText = 'Missing: ' . implode(' | ', $missing);
                                                 }
-                                            } elseif ($missingCount === 0) {
-                                            $dotColor = 'bg-green-500';
-                                            $glowColor = 'bg-green-400/40';
-                                            $tooltipText = 'Ready for invoice';
-                                            } elseif ($missingCount === 1) {
-                                            $dotColor = 'bg-yellow-500';
-                                            $glowColor = 'bg-yellow-400/40';
-                                            $tooltipText = 'Missing: ' . $missing[0];
-                                            } else {
-                                            $dotColor = 'bg-red-500';
-                                            $glowColor = 'bg-red-400/40';
-                                            $tooltipText = 'Missing: ' . implode(' | ', $missing);
-                                            }
                                             @endphp
                                             <div class="relative flex items-center justify-center group flex-shrink-0">
                                                 <span class="relative flex h-2.5 w-2.5">
@@ -860,18 +912,10 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div class="mt-2 pl-6">
-                                        <p class="text-sm font-semibold text-gray-700">
-                                            {{ $task->currency ?? 'KWD' }} {{ number_format($task->total, 3) }}
-                                        </p>
-                                    </div>
-
                                 </div>
                             </div>
                             @endforeach
                         </div>
-
                     </div>
                 </div>
 
@@ -1497,7 +1541,7 @@
 
                                     <div x-show="singleEditMode"
                                         x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
-                                        class="relative bg-white rounded-lg shadow-xl w-full max-w-7xl overflow-hidden"
+                                        class="relative bg-white rounded-lg shadow-xl w-full max-w-7xl"
                                         @click.stop>
 
                                         <form action="{{ route('tasks.update', $task->id) }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
@@ -1505,7 +1549,7 @@
                                             @method('PUT')
 
                                             <!-- Header -->
-                                            <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
+                                            <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 rounded-t-lg flex items-start justify-between flex-shrink-0">
                                                 <div class="flex-1 min-w-0 pr-2">
                                                     <h2 class="text-lg sm:text-xl font-bold text-gray-800">Edit Task Details</h2>
                                                     <p class="text-gray-600 italic text-xs mt-1">
@@ -1573,16 +1617,16 @@
                                                                     $selectedOriginalTask = $task->originalTask;
                                                                     @endphp
 
-                                                                    <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                     <x-ajax-searchable-dropdown
-                                                                            name="original_task_id"
-                                                                            :selectedId="$task->original_task_id"
-                                                                            :selectedName="$selectedOriginalTask
-                                                                            ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
-                                                                            : null"
-                                                                            :dataId="$task->id"
-                                                                            :ajaxUrl="route('tasks.search-original-tasks')"
-                                                                            placeholder="Search and select original task" />
+                                                                        name="original_task_id"
+                                                                        :selectedId="$task->original_task_id"
+                                                                        :selectedName="$selectedOriginalTask?->reference"
+                                                                        :dataId="$task->id"
+                                                                        :ajaxUrl="route('tasks.search-original-tasks')"
+                                                                        placeholder="Search original task"
+                                                                        displayColumn="reference"
+                                                                        :columns="['reference', 'client_name']"
+                                                                        label="Original Task" />
                                                                 </div>
                                                             </div>
                                                             @endif
@@ -1609,25 +1653,29 @@
 
                                                             <!-- Client & Agent -->
                                                             <div class="flex flex-col sm:flex-row gap-4">
-                                                                <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input'}}">
-                                                                    <label class="block text-sm font-medium text-gray-700">Client</label>
-                                                                    <x-searchable-dropdown
-                                                                        name="client_id"
-                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
-                                                                        :maxResults="50"
-                                                                        :selectedId="$task->client_id"
-                                                                        :selectedName="$task->client ? $task->client->full_name . ' - ' . $task->client->phone : null"
-                                                                        placeholder="Select Client" />
-                                                                </div>
-
                                                                 <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input'}}">
                                                                     <label class="block text-sm font-medium text-gray-700">Agent</label>
                                                                     <x-searchable-dropdown
                                                                         name="agent_id"
+                                                                        id="agent_id"
                                                                         :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
                                                                         :selectedId="$task->agent_id"
                                                                         :selectedName="$task->agent->name ?? null"
                                                                         placeholder="Select Agent" />
+                                                                </div>
+
+                                                                <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input'}}">
+                                                                    <x-ajax-searchable-dropdown
+                                                                        name="client_id"
+                                                                        :ajaxUrl="route('clients.ajax.search')"
+                                                                        :selectedId="$task->client_id"
+                                                                        :selectedName="$task->client ? $task->client->full_name : null"
+                                                                        :dataId="$task->agent_id ?? ''"
+                                                                        watchDropdown="agent_id"
+                                                                        placeholder="Search for client"
+                                                                        displayColumn="full_name"
+                                                                        :columns="['full_name', 'phone_number']"
+                                                                        label="Client" />
                                                                 </div>
                                                             </div>
 
@@ -1723,7 +1771,7 @@
                                                         <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ ucfirst($task->type) }} Details</h3>
 
                                                         @if($task->type === 'hotel' && $task->hotelDetails)
-                                                        @include('tasks.partial.hotel-details-form', ['task' => $task, 'hotels' => $hotels])
+                                                        @include('tasks.partial.hotel-details-form', ['task' => $task])
                                                         @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
                                                         @include('tasks.partial.flight-details-form', ['task' => $task])
                                                         @elseif($task->type === 'insurance' && $task->insuranceDetails)
@@ -1967,14 +2015,14 @@
 
             <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
                 <div x-show="bulkEditMode"
-                    class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden"
+                    class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl"
                     @click.stop>
 
                     <form action="{{ route('tasks.bulk-update') }}" method="POST" class="flex flex-col" style="max-height: 90vh;">
                         @csrf
 
                         <!-- Header -->
-                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-start justify-between flex-shrink-0">
+                        <div class="px-4 sm:px-6 py-4 bg-slate-50 border-b border-gray-200 rounded-t-lg flex items-start justify-between flex-shrink-0">
                             <div class="flex-1 min-w-0 pr-2">
                                 <h2 class="text-lg sm:text-xl font-bold text-gray-800">Bulk Edit All Tasks</h2>
                                 <p class="text-gray-600 italic text-xs mt-1">Changes will apply to all {{ $tasks->count() }} selected tasks</p>
@@ -1984,27 +2032,32 @@
                             </button>
                         </div>
 
-                        <!-- Form Content - Scrollable -->
-                        <div class="p-4 sm:p-6 overflow-y-auto flex-1">
+                        <!-- Form Content -->
+                        <div class="p-4 sm:p-6 flex-1">
                             @foreach($tasks as $task)
                             <input type="hidden" name="task_ids[]" value="{{ $task->id }}">
                             @endforeach
 
                             <div class="space-y-5">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                                    <x-searchable-dropdown
-                                        name="bulk_client_id"
-                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
-                                        placeholder="Select Client" />
-                                </div>
-
-                                <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
                                     <x-searchable-dropdown
                                         name="bulk_agent_id"
+                                        id="bulk_agent_id"
                                         :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
                                         placeholder="Select Agent" />
+                                </div>
+
+                                <div>
+                                    <x-ajax-searchable-dropdown
+                                        name="bulk_client_id"
+                                        :ajaxUrl="route('clients.ajax.search')"
+                                        dataId=""
+                                        watchDropdown="bulk_agent_id"
+                                        placeholder="Search for client"
+                                        displayColumn="full_name"
+                                        :columns="['full_name', 'phone_number']"
+                                        label="Client" />
                                 </div>
 
                                 <div>

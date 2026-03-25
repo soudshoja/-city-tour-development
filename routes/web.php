@@ -1,55 +1,60 @@
 <?php
 
-use App\Http\Controllers\AccountingController;
-use App\Http\Controllers\AdminUsersController;
-use App\Http\Controllers\AgentController; // Add this line if you create a SearchController
 use App\Http\Controllers\Auth\TwoFAController;
-use App\Http\Controllers\AutoBillingController;
-use App\Http\Controllers\BankPaymentController;
-use App\Http\Controllers\BranchController;
-use App\Http\Controllers\BulkInvoiceController;
-use App\Http\Controllers\ChargeController;
-use App\Http\Controllers\ChatController;
-use App\Http\Controllers\ClientController;
-use App\Http\Controllers\CoaController;
-use App\Http\Controllers\CompanyController;
-use App\Http\Controllers\CreditController;
-use App\Http\Controllers\CurrencyExchangeController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ExportController;
-use App\Http\Controllers\HotelController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\JournalEntryController;
-use App\Http\Controllers\MyFatoorahController;
-use App\Http\Controllers\OpenAiController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ReceiptVoucherController;
-use App\Http\Controllers\RefundController;
-use App\Http\Controllers\ReminderController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\ResayilController;
+use App\Http\Controllers\SearchController; // Add this line if you create a SearchController
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AgentController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\BulkInvoiceController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\SearchController;
-use App\Http\Controllers\SettingController;
-use App\Http\Controllers\SupplierCompanyController;
-use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\SupplierCredentialController;
-use App\Http\Controllers\SupplierProcedureController;
-use App\Http\Controllers\SystemExchangeRateController;
-use App\Http\Controllers\SystemSettingController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TBOController;
-use App\Http\Controllers\TermController;
-use App\Http\Controllers\ToDoListController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\UserSettingController;
 use App\Http\Controllers\VersionController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\AdminUsersController;
+use App\Http\Controllers\AutoBillingController;
+use App\Http\Controllers\ChargeController;
+use App\Http\Controllers\HotelController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\CoaController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\ToDoListController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\CurrencyExchangeController;
+use App\Http\Controllers\SupplierCompanyController;
+use App\Http\Controllers\SupplierCredentialController;
+use App\Http\Controllers\SystemExchangeRateController;
+use App\Http\Controllers\TBOController;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
-use Illuminate\Support\Facades\Route;
+use App\Models\Task;
+use App\Models\Charge;
+use Google\ApiCore\Testing\ProtobufMessageComparator;
+use App\Http\Controllers\BankPaymentController;
+use App\Http\Controllers\ReceiptVoucherController;
+use App\Http\Controllers\CreditController;
+use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\MyFatoorahController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\ResayilController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\SupplierProcedureController;
+use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\TermController;
+use App\Http\Controllers\SystemSettingController;
+use App\Http\Controllers\UserSettingController;
+use App\Http\Controllers\LockManagementController;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 Route::middleware(['auth'])->group(function () {
@@ -69,6 +74,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update', [ProfileController::class, 'updatePassword'])->name('update');
     });
 
+
     // ROUTE THAT DOESN'T HAVE CONTROLLER
     Route::get('pin', function () {
         return view('auth.pin');
@@ -78,12 +84,23 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('dashboard');
     })->name('verify2fa');
 
+
     // 2FA
     Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
     Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
+
+    Route::group([
+        'prefix' => 'lock-management',
+        'as' => 'lock-management.',
+    ], function () {
+        Route::get('/', [LockManagementController::class, 'index'])->name('index');
+        Route::post('/lock-by-period', [LockManagementController::class, 'lockByPeriod'])->name('lock-by-period');
+        Route::post('/lock-by-month', [LockManagementController::class, 'lockByMonth'])->name('lock-by-month');
+        Route::post('/unlock-by-month', [LockManagementController::class, 'unlockByMonth'])->name('unlock-by-month');
+    });
 
     // Admin users
     Route::group([
@@ -206,7 +223,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update-multi', [TaskController::class, 'updateMulti'])->name('updateMulti');
         Route::get('/{task}/details', [TaskController::class, 'getTaskDetails'])->name('getDetails');
         Route::post('/{task}/update-details', [TaskController::class, 'updateTaskDetails'])->name('updateDetails');
-
     });
 
     // SUPPLIERS
@@ -229,6 +245,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/magic/webhook-initiate/{id}', [SupplierController::class, 'magicReserveWebhook'])->name('magic-webhook');
         Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date');
         Route::get('/', [SupplierController::class, 'index'])->name('index');
+
 
         Route::group([
             'prefix' => 'tbo',
@@ -285,6 +302,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/import', [CoaController::class, 'importAccounts'])->name('import');
         Route::post('/delegate-price', [CoaController::class, 'delegatePriceAmadeus'])->name('delegate-price');
         Route::delete('/{id}', [CoaController::class, 'deleteTransaction'])->name('deleteTransaction');
+        Route::get('/opening-balances', [CoaController::class, 'openingBalances'])->name('opening-balances');
+        Route::post('/opening-balances', [CoaController::class, 'saveOpeningBalances'])->name('opening-balances.save');
     });
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
@@ -327,6 +346,7 @@ Route::middleware(['auth'])->group(function () {
     Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);
     Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
 
+
     // open api
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
     Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
@@ -349,6 +369,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/myfatoorah/pay-now', [MyFatoorahController::class, 'index'])->name('myfatoorah.paynow');
     Route::get('checkout', [MyFatoorahController::class, 'checkout'])->name('myfatoorah.checkout');
 
+
+
     Route::get('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'exchangeRates'])->name('suppliers.exchange-rates');
     Route::post('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'updateExchangeRates'])->name('suppliers.exchange-rates.update');
     //TRANSACTION
@@ -358,6 +380,7 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', [TransactionController::class, 'index'])->name('index');
     });
+
 
     //JOURNAL ENTRY
     Route::group([
@@ -401,6 +424,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
         Route::match(['get', 'post'], '/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
         Route::match(['get', 'post'], '/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
+        Route::match(['get', 'post'], '/payment-gateways', [ReportController::class, 'paymentGateways'])->name('payment-gateways');
+        Route::get('/payment-gateways/pdf', [ReportController::class, 'paymentGatewaysReportPdf'])->name('payment-gateways.pdf');
+
+        // Trial Balance
+        Route::get('/trial-balance', [ReportController::class, 'trialBalance'])->name('trial-balance');
+        Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf'])->name('trial-balance.pdf');
+        Route::get('/trial-balance/export', [ReportController::class, 'trialBalanceExport'])->name('trial-balance.export');
+        Route::get('/trial-balance/validation', [ReportController::class, 'trialBalanceValidation'])->name('trial-balance.validation');
 
         Route::group([
             'prefix' => 'ajax',
@@ -420,6 +451,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/link', [InvoiceController::class, 'link'])->name('link');
         Route::post('/clientAdd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
     });
+
 
     Route::group([
         'prefix' => 'invoice',
@@ -471,6 +503,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details');
+        Route::post('/{invoice}/lock', [InvoiceController::class, 'lockInvoice'])->name('lock');
+        Route::post('/{invoice}/unlock', [InvoiceController::class, 'unlockInvoice'])->name('unlock');
+        Route::get('/{invoice}/loss-bearer', [InvoiceController::class, 'getLossBearer'])->name('loss-bearer.get');
+        Route::put('/{invoice}/loss-bearer', [InvoiceController::class, 'updateLossBearer'])->name('loss-bearer.update');
     });
 
     // Bulk Invoice Upload Routes
@@ -507,6 +543,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/eligible-tasks', [RefundController::class, 'getEligibleTasks'])->name('eligible-tasks');
     });
 
+
     Route::group([
         'prefix' => 'payment',
         'as' => 'payment.',
@@ -516,6 +553,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/transactions', [PaymentController::class, 'getTransactions'])->name('transactions');
         Route::put('/{id}/items', [PaymentController::class, 'updatePaymentItems'])->name('items.update');
         Route::patch('/{id}/receipt', [PaymentController::class, 'updateReceipt'])->name('receipt.update');
+        Route::get('/transaction/{transactionId}/check-status', [PaymentController::class, 'checkTransactionStatus'])->name('transaction.check-status');
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
@@ -543,6 +581,8 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
             Route::post('/import/invoice', [PaymentController::class, 'importFromInvoice'])->name('import.invoice');
             Route::post('/import/payment', [PaymentController::class, 'importFromPayment'])->name('import.payment');
+            Route::post('/import/file', [PaymentController::class, 'importPaymentFile'])->name('import.file');
+            Route::post('/import/assign-client/{paymentId}', [PaymentController::class, 'assignClientToImport'])->name('import.assign-client');
             Route::post('/payment-activation/{paymentId}', [PaymentController::class, 'paymentLinkActivation'])->name('payment.activation');
             Route::post('/multi-initiate', [PaymentController::class, 'multiPaymentLinkInitiate'])->name('multi-initiate')->withoutMiddleware(['auth']);
         });
@@ -630,6 +670,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
         Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
         Route::put('/{id}/credentials', [ChargeController::class, 'updateCredentials'])->name('credentials.update');
+        Route::post('/calculate-charge', [ChargeController::class, 'calculateCharge'])->name('calculate-charge');
+
     });
 
     //Auto Billing
@@ -691,6 +733,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-charges', [SettingController::class, 'storeAgentCharge'])->name('agent-charges.store');
         Route::post('/agent-charges/bulk-update', [SettingController::class, 'bulkUpdateAgentCharges'])->name('agent-charges.bulk-update');
         Route::delete('/agent-charges/{id}', [SettingController::class, 'deleteAgentCharge'])->name('agent-charges.delete');
+        Route::get('/agent-loss', [SettingController::class, 'getAgentLoss'])->name('agent-loss');
+        Route::post('/agent-loss', [SettingController::class, 'storeAgentLoss'])->name('agent-loss.store');
+        Route::post('/agent-loss/bulk-update', [SettingController::class, 'bulkUpdateAgentLoss'])->name('agent-loss.bulk-update');
+        Route::delete('/agent-loss/{id}', [SettingController::class, 'deleteAgentLoss'])->name('agent-loss.delete');
+        Route::get('/notifications', [SettingController::class, 'getNotificationSettings'])->name('notifications');
+        Route::post('/notifications', [SettingController::class, 'updateNotificationSetting'])->name('notifications.update');
+        Route::get('/agent-notifications', [SettingController::class, 'getAgentNotifications'])->name('agent-notifications');
+        Route::post('/agent-notifications', [SettingController::class, 'storeAgentNotification'])->name('agent-notifications.store');
+        Route::post('/agent-notifications/bulk-update', [SettingController::class, 'bulkUpdateAgentNotifications'])->name('agent-notifications.bulk-update');
+        Route::delete('/agent-notifications/{id}', [SettingController::class, 'deleteAgentNotification'])->name('agent-notifications.delete');
     });
 
     Route::group([
@@ -704,7 +756,7 @@ Route::middleware(['auth'])->group(function () {
     //Payment Method
     Route::group([
         'prefix' => 'payment-method',
-        'as' => 'payment-method.',
+        'as'     => 'payment-method.',
     ], function () {
         Route::get('/', [PaymentMethodController::class, 'index'])->name('index');
         Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
@@ -734,18 +786,15 @@ Route::middleware(['auth'])->group(function () {
         ], function () {
             Route::get('/search', [HotelController::class, 'searchHotel'])->name('search');
         });
-
     });
-
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {
-    $fullPath = 'city_travelers/'.$path;
-    if (! Storage::exists($fullPath)) {
+    $fullPath = 'city_travelers/' . $path;
+    if (!Storage::exists($fullPath)) {
         abort(404, 'File not found');
     }
-
-    return response()->file(storage_path('app/'.$fullPath));
+    return response()->file(storage_path('app/' . $fullPath));
 })->where('path', '.*');
 
 Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
@@ -760,9 +809,10 @@ Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.
 
 Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
 
+
 // search for invoice creation
 
-// branch
+// branch 
 Route::get('/search-branch', [InvoiceController::class, 'searchBranch'])->name('search.branch');
 Route::post('/select-branch', [InvoiceController::class, 'selectBranch'])->name('select.branch');
 
@@ -774,7 +824,8 @@ Route::post('/select-agent', [InvoiceController::class, 'selectAgent'])->name('s
 Route::get('/search-client', [InvoiceController::class, 'searchClient'])->name('search.client');
 Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name('select.client');
 
-// items
+
+// items 
 Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
 Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
 
@@ -809,6 +860,7 @@ Route::group([
     Route::post('/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('decline-reconcile');
 });
 
+
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');
 Route::get('/download-agent', [ExportController::class, 'downloadAgent'])->name('download.agent');
@@ -826,6 +878,7 @@ route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.s
 route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
 route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
 
+
 // Route to show the test form
 Route::get('/payment/test', function () {
     return view('payment_test');
@@ -835,28 +888,25 @@ Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, '
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
-Route::get('/docs/dotw', [\App\Http\Controllers\Docs\DotwDocumentationController::class, 'index'])->name('docs.dotw-hub');
-Route::get('/docs/dotw/{doc}', [\App\Http\Controllers\Docs\DotwDocumentationController::class, 'show'])->name('docs.dotw-page');
 Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');
-Route::get('/docs/n8n', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'hub'])->name('docs.n8n-hub');
-Route::get('/docs/n8n-user-guide', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'userGuide'])->name('docs.n8n-user-guide');
-Route::get('/docs/n8n-processing', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'index'])->name('docs.n8n-processing');
-Route::get('/docs/n8n-complete', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'complete'])->name('docs.n8n-complete');
-Route::get('/docs/n8n-changelog', [\App\Http\Controllers\Docs\N8nDocumentationController::class, 'changelog'])->name('docs.n8n-changelog');
-Route::get('/docs/n8n-testing', [\App\Http\Controllers\N8nTestingDocumentationController::class, 'index'])->name('docs.n8n-testing');
+Route::get('/docs/user', function () {
+    return view('docs.user-documentation');
+})->name('docs.user-documentation');
 Route::get('/docs/postman/download', function () {
     $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
-    if (! file_exists($filePath)) {
+    if (!file_exists($filePath)) {
         abort(404, 'Postman collection file not found');
     }
-
     return response()->download($filePath, 'Task_Webhook_API.postman_collection.json');
 })->name('docs.postman.download');
 
+
+
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
 Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
+
 
 Route::group([
     'prefix' => 'resayil',
@@ -901,6 +951,18 @@ Route::group([
 
 Route::get('/hesabe/get-payment/{token}', [PaymentController::class, 'getHesabePayment'])->name('hesabe.get-payment');
 
+Route::get('locale/{lang}', function ($lang) {
+    if (in_array($lang, config('app.available_locales', ['en', 'ar']))) {
+        session()->put('locale', $lang);
+
+        if (auth()->check()) {
+            auth()->user()->update(['locale' => $lang]);
+        }
+    }
+
+    return redirect()->back();
+})->name('locale.switch');
+
 // Manual Intervention Dashboard (Phase 2 Wave 3 + Phase 4 Group B)
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Manual Intervention
@@ -938,5 +1000,5 @@ Route::middleware(['auth', 'dotw_audit_access'])
         Route::redirect('api-tokens', '/admin/dotw', 301)->name('api-tokens');
     });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 require __DIR__.'/resailai-admin.php';

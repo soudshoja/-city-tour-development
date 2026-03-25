@@ -24,6 +24,11 @@
                 </button>
             </form>
 
+            <a href="{{ route('coa.opening-balances') }}"
+                class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition">
+                Opening Balances
+            </a>
+
             <button id="openModalBtn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded">
                 Import/Export Accounts
             </button>

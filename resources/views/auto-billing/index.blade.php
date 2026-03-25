@@ -146,15 +146,16 @@
                                                                     <label class="block text-sm font-medium text-gray-700">
                                                                         Client <span class="text-red-500">*</span>
                                                                     </label>
-                                                                    <x-searchable-dropdown
+                                                                    <x-ajax-searchable-dropdown
                                                                         name="client_id"
-                                                                        :items="$clients->map(fn($c) => [
-                                                                            'id' => $c->id,
-                                                                            'name' => $c->full_name . ' - ' . $c->phone
-                                                                        ])->values()"
-                                                                        placeholder="Select Client"
+                                                                        :ajaxUrl="route('clients.ajax.search')"
                                                                         :selectedId="$rule->client->id ?? null"
-                                                                        :selectedName="$rule->client->full_name . ' - ' . $rule->client->phone ?? null" />
+                                                                        :selectedName="$rule->client->full_name ?? null"
+                                                                        :dataId="$rule->agent_id ?? ''"
+                                                                        watchDropdown="agent_id"
+                                                                        placeholder="Search for client"
+                                                                        displayColumn="full_name"
+                                                                        :columns="['full_name', 'phone_number']" />
                                                                 </div>
                                                             </div>
                                                             <div class="flex flex-col sm:flex-row gap-4">
@@ -316,13 +317,14 @@
                                     <label class="block text-sm font-medium text-gray-700">
                                         Client <span class="text-red-500">*</span>
                                     </label>
-                                    <x-searchable-dropdown
+                                    <x-ajax-searchable-dropdown
                                         name="client_id"
-                                        :items="$clients->map(fn($c) => [
-                                            'id' => $c->id,
-                                            'name' => $c->full_name . ' - ' . $c->phone
-                                        ])->values()"
-                                        placeholder="Select Client" />
+                                        :ajaxUrl="route('clients.ajax.search')"
+                                        dataId=""
+                                        watchDropdown="agent_id"
+                                        placeholder="Search for client"
+                                        displayColumn="full_name"
+                                        :columns="['full_name', 'phone_number']" />
                                     <p class="text-xs text-gray-500 mt-1">Choose the specific client for this rule</p>
                                 </div>
                             </div>

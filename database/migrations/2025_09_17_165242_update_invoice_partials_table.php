@@ -14,18 +14,6 @@ return new class extends Migration
             $table->dropColumn('has_payment_link');
             $table->foreignId('charge_id')->after('type')->nullable()->references('id')->on('charges');
         });
-
-        $invoicePartials = InvoicePartial::all();
-
-        foreach($invoicePartials as $partial){
-            $chargeId = Charge::where('name', $partial->payment_gateway)->value('id');
-
-            if($chargeId){
-                $partial->charge_id = $chargeId;
-                $partial->save();
-            }
-        }
-
     }
 
     public function down(): void

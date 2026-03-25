@@ -34,10 +34,6 @@
         })
         .catch(error => console.error("Error fetching version:", error));
 
-    // Clean up any corrupted darkMode value written by docs pages (docs now use docsTheme key)
-    if (localStorage.getItem('darkMode') === 'false') {
-        localStorage.removeItem('darkMode');
-    }
     // Check localStorage for the dark mode setting before the page is fully loaded
     if (localStorage.getItem('darkMode') === 'true') {
         document.documentElement.classList.add('dark');

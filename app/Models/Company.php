@@ -64,11 +64,6 @@ class Company extends Model
         return $this->hasMany(TaskRules::class);
     }
 
-    public function documentProcessingLogs()
-    {
-        return $this->hasMany(DocumentProcessingLog::class);
-    }
-
     /**
      * Get the main/default branch for this company
      * Returns the first branch or creates one if none exists
@@ -76,7 +71,7 @@ class Company extends Model
     public function getMainBranch()
     {
         $mainBranch = $this->branches()->first();
-
+        
         if (!$mainBranch) {
             // Create a default main branch if none exists
             $mainBranch = $this->branches()->create([
@@ -87,7 +82,7 @@ class Company extends Model
                 'user_id' => $this->user_id,
             ]);
         }
-
+        
         return $mainBranch;
     }
 }

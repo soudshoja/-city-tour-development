@@ -327,6 +327,16 @@
                                     class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                                     placeholder="Enter order reference">
                             </div>
+
+                            <!-- Tap: Charge ID -->
+                            <div x-show="gateway === 'tap'" class="mt-4" x-cloak>
+                                <label for="import_charge_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Existing Charge ID
+                                </label>
+                                <input type="text" name="import_charge_id" id="import_charge_id"
+                                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                    placeholder="Enter charge ID">
+                            </div>
                         </div>
 
                         <div class="flex justify-between pt-4 mt-4">
@@ -352,14 +362,7 @@
                 $prefill = session('prefill_data');
                 @endphp
 
-                @if ($prefill)
-                <input type="hidden" name="payment_gateway" value="{{ $prefill['payment_gateway'] }}">
-                <input type="hidden" name="payment_method" value="{{ $prefill['payment_method'] }}">
-                <input type="hidden" name="amount" value="{{ $prefill['amount'] }}">
-                <input type="hidden" name="client_id" value="{{ $prefill['client_id'] }}">
-                <input type="hidden" name="agent_id" value="{{ $prefill['agent_id'] }}">
-                <input type="hidden" name="notes" value="{{ $prefill['notes'] }}">
-                @endif
+                <input type="hidden" name="payment_gateway" value="{{ old('payment_gateway', $prefill['payment_gateway'] ?? '') }}">
                 <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
@@ -367,87 +370,78 @@
                 <input type="hidden" name="auth_code" value="{{ old('auth_code', $prefill['auth_code'] ?? '') }}">
                 <input type="hidden" name="payment_reference" value="{{ old('payment_reference', $prefill['payment_reference'] ?? '') }}">
                 <input type="hidden" name="track_id" value="{{ old('track_id', $prefill['track_id'] ?? '') }}">
+                <input type="hidden" name="actual_gateway_fee" value="{{ old('actual_gateway_fee', '') }}">
+                <input type="hidden" name="payment_method_name" value="{{ old('payment_method_name', '') }}">
+                <input type="hidden" name="transaction_date" value="{{ old('transaction_date', '') }}">
 
                 <!-- Client & Agent -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    @php
-                    $selectedClient = null;
-                    $clientPlaceholder = $selectedClient ? $selectedClient->full_name : 'Select a Client';
-                    $selectedId = old('client_id', $selectedClient->id ?? null);
-                    $selectedName = old('client_name', $selectedClient->full_name ?? null);
-                    @endphp
                     <div>
-                        <label for="client_id" class="block text-sm font-medium text-gray-700 mb-1.5">Client</label>
-                        <x-searchable-dropdown
-                            name="client_id"
-                            id="client_id"
-                            :items="$clients->map(fn($c) => [
-                                'id' => $c->id,
-                                'name' => $c->full_name . ' - ' . $c->phone
-                            ])"
-                            :selectedId="$selectedId"
-                            :selectedName="$selectedName"
-                            placeholder="{{ $clientPlaceholder }}"
-                            class="block w-full" />
-                    </div>
-
-                    @php
-                    $selectedAgent = null;
-                    $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
-                    $selectedId = old('agent_id', $selectedAgent->id ?? null);
-                    $selectedName = old('agent_name', $selectedAgent->name ?? null);
-                    @endphp
-                    <div>
-                        <label for="agent_id" class="block text-sm font-medium text-gray-700 mb-1.5">Agent</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Agent</label>
                         <x-searchable-dropdown
                             name="agent_id"
                             id="agent_id"
                             :items="$agents->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                            :selectedId="$selectedId"
-                            :selectedName="$selectedName"
-                            placeholder="{{ $agentPlaceholder }}"
+                            :selectedId="old('agent_id')"
+                            :selectedName="old('agent_name')"
+                            placeholder="Select an Agent"
                             class="block w-full" />
+                    </div>
+
+                    <div>
+                        <x-ajax-searchable-dropdown
+                            name="client_id"
+                            :ajaxUrl="route('clients.ajax.search')"
+                            dataId=""
+                            watchDropdown="agent_id"
+                            :placeholder="'Search for client'"
+                            displayColumn="full_name"
+                            :columns="['full_name', 'phone_number']"
+                            label="Client" />
                     </div>
                 </div>
 
                 <!-- Payment Gateway -->
-                @php
-                $prefill = session('prefill_data');
-                $selectedGateway = $prefill['payment_gateway'] ?? old('payment_gateway');
-                @endphp
-
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
                     <div class="flex flex-wrap gap-8">
                         @foreach ($paymentMethodChose as $chose)
+                        @php
+                            $isChecked = in_array($chose->paymentMethod->id, old('payment_methods', [])) ||
+                                (old('payment_method_name') && strtolower($chose->paymentMethodGroup->name) === strtolower(old('payment_method_name'))) ||
+                                (!old('source') && strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet');
+                            $isImport = old('source') === 'import';
+                            $shouldGrey = $isImport && !$isChecked;
+                        @endphp
                         <div class="flex items-center gap-4">
                             <div class="flex">
-                                <input
-                                    type="checkbox"
-                                    name="payment_methods[]"
-                                    value="{{ $chose->paymentMethod->id }}"
-                                    id="payment_method_{{ $chose->paymentMethod->id }}"
-                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) || (strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet') ? 'checked' : '' }}
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <label for="payment_method_{{ $chose->paymentMethod->id }}" class="ml-2 text-sm text-gray-700">
+                                <input type="checkbox" name="payment_methods[]" value="{{ $chose->paymentMethod->id }}" id="payment_method_{{ $chose->paymentMethod->id }}"
+                                    {{ $isChecked ? 'checked' : '' }} {{ $isImport ? 'disabled' : '' }} class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded
+                                    {{ $isImport ? 'cursor-not-allowed' : '' }} {{ $shouldGrey ? 'opacity-40' : '' }}">
+                                @if ($isImport && $isChecked)
+                                    <input type="hidden" name="payment_methods[]" value="{{ $chose->paymentMethod->id }}">
+                                @endif
+                                <label for="payment_method_{{ $chose->paymentMethod->id }}" 
+                                    class="ml-2 text-sm {{ $shouldGrey ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700' }}">
                                     {{ $chose->paymentMethodGroup->name }}
                                 </label>
                             </div>
                         </div>
                         @endforeach
                     </div>
+                    @if(old('source') === 'import') <p class="text-xs text-gray-500 mt-1.5 italic">Payment method is locked for imported payments.</p> @endif
                 </div>
-
 
                 <!-- Amount & Currency (Quick Mode Only) -->
                 <div x-show="!advancedMode" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
                         <input type="number" name="amount" id="amount" step="0.001" min="0"
-                            value="{{ old('amount') }}"
+                            value="{{ old('amount') ? number_format((float) old('amount'), 3, '.', '') : '' }}"
                             placeholder="0.000"
                             :required="!advancedMode"
-                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
+                            {{ old('source') === 'import' ? 'readonly' : '' }}
+                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors {{ old('source') === 'import' ? 'bg-gray-100 cursor-not-allowed' : '' }}">
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
@@ -876,7 +870,6 @@
                         const data = await response.json();
                         if (data.success) {
                             this.templates = data.templates;
-                            console.log('Loaded templates:', this.templates);
                         }
                     } catch (error) {
                         console.error('Error loading templates:', error);
@@ -886,7 +879,6 @@
                 },
 
                 onLanguageChange() {
-                    console.log('Language changed to:', this.currentLang);
                     this.selectedTemplateId = '';
                     this.isEdited = false;
                     if (this.advancedMode) this.resetToDefault();
@@ -897,40 +889,26 @@
 
                     const template = this.templates.find(t => t.id == this.selectedTemplateId);
                     if (template) {
-                        this.content = template.content;
-                        this.originalContent = template.content;
-                        this.isEdited = false;
-                        this.countWords();
+                        this.applyTemplate(template.id, template.content);
                     }
                 },
 
-                resetToDefault() {
-                    console.log('Resetting to default for language:', this.currentLang);
-                    console.log('Filtered templates:', this.filteredTemplates);
+                applyTemplate(id, content) {
+                    this.selectedTemplateId = id;
+                    this.content = content;
+                    this.originalContent = content;
+                    this.isEdited = false;
+                    this.countWords();
+                },
 
+                resetToDefault() {
                     const defaultTemplate = this.filteredTemplates.find(t => t.is_default);
                     if (defaultTemplate) {
-                        console.log('Found default template:', defaultTemplate.title);
-                        this.selectedTemplateId = defaultTemplate.id;
-                        this.content = defaultTemplate.content;
-                        this.originalContent = defaultTemplate.content;
-                        this.isEdited = false;
-                        this.countWords();
+                        this.applyTemplate(defaultTemplate.id, defaultTemplate.content);
                     } else if (this.filteredTemplates.length > 0) {
-                        const firstTemplate = this.filteredTemplates[0];
-                        console.log('Using first template:', firstTemplate.title);
-                        this.selectedTemplateId = firstTemplate.id;
-                        this.content = firstTemplate.content;
-                        this.originalContent = firstTemplate.content;
-                        this.isEdited = false;
-                        this.countWords();
+                        this.applyTemplate(this.filteredTemplates[0].id, this.filteredTemplates[0].content);
                     } else {
-                        console.log('No templates available for this language');
-                        this.selectedTemplateId = '';
-                        this.content = '';
-                        this.originalContent = '';
-                        this.isEdited = false;
-                        this.countWords();
+                        this.applyTemplate('', '');
                     }
                 },
 
@@ -1007,26 +985,23 @@
                 e.stopPropagation();
             });
 
+            file.addEventListener('change', (e) => {
+                fileName.textContent = e.target.files[0].name;
+                file.innerHTML = '';
+                let img = document.createElement('img');
+                img.src = URL.createObjectURL(e.target.files[0]);
+                img.width = 100;
+                img.height = 100;
+                file.appendChild(img);
+
+                enableButton(taskPassportProcessBtn);
+            });
+
             taskPassportProcessBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 processFileWithAI();
             });
-        } else {
-            console.warn("Required elements not found: file, fileName, or taskPassportProcessBtn");
         }
-
-        file.addEventListener('change', (e) => {
-            fileName.textContent = e.target.files[0].name;
-            file.innerHTML = '';
-            let img = document.createElement('img');
-            img.src = URL.createObjectURL(e.target.files[0]);
-            console.log(img.src);
-            img.width = 100;
-            img.height = 100;
-            file.appendChild(img);
-
-            enableButton(taskPassportProcessBtn);
-        });
 
         dropHandler = (e) => {
             e.preventDefault();
@@ -1053,7 +1028,6 @@
         };
 
         dragOverHandler = (e) => {
-            console.log('File in drop area');
             e.preventDefault();
         }
 
@@ -1083,7 +1057,6 @@
                 .then(data => {
                     if (data.success) {
                         const client = data.data;
-                        console.log("Extracted client data:", client);
 
                         const nameInput = document.getElementById('nameTask');
                         if (nameInput) nameInput.value = client.first_name || '';
@@ -1124,7 +1097,6 @@
         }
 
         function disableButton(button) {
-            console.log('Disabling button:', button);
             if (!button.classList.contains('cursor-not-allowed') && !button.classList.contains('opacity-50')) {
                 button.classList.add('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
             }
@@ -1132,7 +1104,6 @@
         }
 
         function enableButton(button) {
-            console.log('Enabling button:', button);
             if (button.classList.contains('cursor-not-allowed') || button.classList.contains('opacity-50')) {
                 button.classList.remove('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
             }

@@ -394,6 +394,7 @@ class TaskTest extends TestCase
 
         // 5. Create Payment related to invoice
         $payment = Payment::factory()->create([
+            'company_id' => $this->company->id,
             'agent_id' => $this->agent->id,
             'client_id' => $this->client->id,
             'invoice_id' => $invoice->id,

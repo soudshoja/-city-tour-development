@@ -74,8 +74,8 @@
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date Range</label>
-                        <input type="text" id="date-range" 
-                            class="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 cursor-pointer" 
+                        <input type="text" id="date-range"
+                            class="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 cursor-pointer"
                             placeholder="Select date range" autocomplete="off" readonly />
                         <input type="hidden" name="date_from" id="date_from" value="{{ $dateFrom ?? '' }}">
                         <input type="hidden" name="date_to" id="date_to" value="{{ $dateTo ?? '' }}">
@@ -90,6 +90,15 @@
                         placeholder="Search suppliers..."
                         class="flex-1 min-w-[180px]"
                     />
+
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Travel Date</label>
+                        <input type="text" id="departure-date-range"
+                            class="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 cursor-pointer"
+                            placeholder="Departure / Check-in" autocomplete="off" readonly />
+                        <input type="hidden" name="travel_from" id="travel_from" value="{{ $travelFrom ?? '' }}">
+                        <input type="hidden" name="travel_to" id="travel_to" value="{{ $travelTo ?? '' }}">
+                    </div>
 
                     <x-multi-picker 
                         label="Statuses"
@@ -233,7 +242,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const fromDate = document.getElementById('date_from').value;
             const toDate = document.getElementById('date_to').value;
-            
+
             flatpickr("#date-range", {
                 mode: "range",
                 dateFormat: "Y-m-d",
@@ -249,6 +258,27 @@
                 onReady: function(selectedDates, dateStr, instance) {
                     if (fromDate && toDate) {
                         instance.element.value = fromDate + ' to ' + toDate;
+                    }
+                }
+            });
+
+            const travelFrom = document.getElementById('travel_from').value;
+            const travelTo = document.getElementById('travel_to').value;
+
+            flatpickr("#departure-date-range", {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                defaultDate: (travelFrom && travelTo) ? [travelFrom, travelTo] : null,
+                showMonths: 1,
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length === 2) {
+                        document.getElementById('travel_from').value = instance.formatDate(selectedDates[0], "Y-m-d");
+                        document.getElementById('travel_to').value = instance.formatDate(selectedDates[1], "Y-m-d");
+                    }
+                },
+                onReady: function(selectedDates, dateStr, instance) {
+                    if (travelFrom && travelTo) {
+                        instance.element.value = travelFrom + ' to ' + travelTo;
                     }
                 }
             });

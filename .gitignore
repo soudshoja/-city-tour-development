@@ -1,13 +1,21 @@
 /.phpunit.cache
 /node_modules
-/public/build
 /public/hot
+/public/uploads
 /public/storage
+/public/phpmyadmin
+/public/adminto
+/public/videos
 /storage/*.key
 /vendor
+.claude/*
 .env
+.env.testing
+.env.staging
 .env.backup
 .env.production
+.phpactor.json
+.phpunit.result.cache
 Homestead.json
 Homestead.yaml
 auth.json
@@ -16,21 +24,6 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
-
-# Claude Code - keep local only
-CLAUDE.md
-.claude/
-.planning/
-
-# Sensitive files
-RESET_IT_PASSWORD.md
-reset_it_password.sql
-n8n/credentials/
-
-# Playwright MCP logs/screenshots
-.playwright-mcp/
-
-# Misc
-clear_cache.sh
-clear_cache_production.py
-*.log
+/air-files
+composer.lock
+composer.lock

@@ -118,7 +118,7 @@
                                 <p>{{ $selectedCompany->phone }}</p>
                             </div>
                         </div>
-                         @else
+                        @else
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                             </div>
@@ -147,6 +147,12 @@
                             </div>
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
+                        @if($isRefund ?? false)
+                        <div class="mt-4">
+                            <input id="refundRemarks" type="text" name="refundRemarks" value="{{ $refundRemarks ?? '' }}"
+                                class="w-full form-input" placeholder="Refund Remarks" />
+                        </div>
+                        @endif
                     </div>
                     <div class="space-y-1 text-gray-900 dark:text-gray-400 mt-2">
                         <div class="flex items-center w-full">
@@ -154,6 +160,15 @@
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
+                        
+                        @if($isRefund ?? false)
+                        <div class="flex items-center w-full">
+                            <label for="RefundNumber" class="w-full text-sm font-semibold">Refund Number</label>
+                            <input id="RefundNumber" type="text" name="RefundNumber" value="{{ $refundNumber ?? ''}}"
+                                class="w-full form-input" placeholder="Refund Number" />
+                        </div>
+                        @endif
+
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}" />
@@ -178,70 +193,26 @@
                 <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
                     <div class="w-full">
                         <div class="flex items-center">
-                            <button type="button" id="openClientModalButton"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Client</span>
-                            </button>
-                            <input id="receiverId" type="hidden" name="receiverId" />
-                            <input id="agentId" type="hidden" name="agentId"
-                                value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
-                        </div>
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a
-                            client</p>
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
-                                placeholder="Client Name" disabled />
-                        </div>
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1"
-                                placeholder="Client Email" disabled />
-                        </div>
-                        <div class="mt-4 flex items-center">
-                            <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
-                                placeholder="Client Phone Number" disabled />
-                        </div>
-                    </div>
-
-                    <div class="w-full">
-                        <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                            <button id="select-agent" type="button" onclick="openAgentModal()"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
+                            <button id="select-agent" type="button" onclick="openAgentModal()" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
+                                    <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
                                 </svg><span class="pl-5">Choose Agent</span>
                             </button>
                             @else
-                            <button disabled id="select-agent" type="button"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                            city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
+                            <button disabled id="select-agent" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
+                                    <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
                                 </svg><span class="pl-5">Choose Agent</span>
                             </button>
                             @endcan
+                            <input id="agentId" type="hidden" name="agentId" value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
                         <div class="mt-4 flex items-center">
@@ -263,6 +234,30 @@
                                 disabled />
                         </div>
                     </div>
+
+                    <div class="w-full">
+                        <div class="flex items-center">
+                            <button type="button" id="openClientModalButton" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z" fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Client</span>
+                            </button>
+                            <input id="receiverId" type="hidden" name="receiverId" />
+                        </div>
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a client</p>
+                        <div class="mt-4 flex items-center">
+                            <input id="receiverName" type="text" name="receiverName" class="form-input flex-1" placeholder="Client Name" disabled />
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1" placeholder="Client Email" disabled />
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1" placeholder="Client Phone Number" disabled />
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mt-8">
@@ -271,15 +266,11 @@
                             <thead>
                                 <tr>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
-                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task Detail
-                                    </th>
+                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Passenger Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
@@ -349,7 +340,13 @@
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            <span id="button-text">Save</span>
+                            <span id="button-text">
+                                @if($isRefund ?? false)
+                                    Process Refund
+                                @else
+                                    Generate Invoice
+                                @endif
+                            </span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
@@ -672,10 +669,12 @@
         let allTasks = [];
         let filteredTasks = [];
         const itemsBody = document.getElementById('items-body');
-        const appUrl = @json($appUrl);
+        const appUrl = @json($appUrl ?? null);
         let toggle = false;
         let selectedPaymentLink = null;
         let netTotal = 0;
+        const isRefund = @json($isRefund ?? false);
+        const refundNumber = @json($refundNumber ?? null);
 
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -853,7 +852,7 @@
                 // If no items, display the "No Item Available" row
                 const noItemsRow = document.createElement('tr');
                 noItemsRow.innerHTML =
-                    '<td colspan="15" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                    '<td colspan="7" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                 itemsBody.appendChild(noItemsRow);
             } else {
                 // Iterate over items and create rows
@@ -864,75 +863,69 @@
                     row.classList.add('TrX');
 
                     row.innerHTML = `
-                    <td class="flex-grow">
-                    <p>${++count}</p>
-                    </td>
-                    <td class="flex-grow">
-                    <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
-                    </p>
-                    </td>
-                    <td>
-                    <p>${item.total} KWD</p>
-                    </td>
-                    <td>
-                        <input
-                            id="invprice-table-${item.id}"
-                            type="text"
-                            inputmode="decimal"
-                            pattern="\d*\.?\d*"
-                            class="border border-gray-300 rounded-md px-2 py-1 text-center w-28 min-w-[7rem] invoice-price-${item.id}"
-                            value="${item.invprice ?? ''}"
-                            oninput="updateField(${item.id}, 'invprice-table')"
-                        />
-                    </td>
-                    <td>
-                    <p>${item.client_name}</p>
-                    </td>
-                    <td>
-                    <p>${item.agent.name}</p>
-                    </td>
-                    <td>
-                    <p>${item.agent.branch.name}</p>
-                    </td>
-                    <td>
-                        <p>${item.supplier_name}</p>
-                    </td>
-                    <td>
-                        <p>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
-                    </td>
-                    <td>
-                    <div
-                        class="inline-flex items-center justify-evenly">
-                        <div 
-                            id="modal-open-button_${item.id}"
-                            data-tooltip-left="See Details">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
-                            <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
-                            <div class="flex justify-between text-center items-center p-4 border-b border-black">
-                                <h2 class="text-lg font-bold text-center text-gray-700">TASK DETAILS</h2>
-                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
+                        <td class="px-4 py-3">
+                            <p>${++count}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div>
+                                <b>${item.description}</b>
+                                <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                                    item.type === 'flight' ? 'bg-blue-100 text-blue-700' :
+                                    item.type === 'hotel'  ? 'bg-purple-100 text-purple-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                }">${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
                             </div>
-                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
-                        </dialog>
-
-
-                        <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip-left="Remove Item">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-
-                    </div>
-                    </td>
-                `;
+                            ${item.additional_info ? `<div class="text-gray-500 text-xs mt-0.5">Info: ${item.additional_info}</div>` : ''}
+                            ${item.supplier_name ? `<div class="text-gray-400 text-xs mt-0.5">${item.supplier_name}</div>` : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <p>${item.passenger_name || 'N/A'}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <p>${item.agent.name}</p>
+                            ${item.agent.branch?.name ? `<div class="text-gray-400 text-xs mt-0.5">${item.agent.branch.name}</div>` : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <p>${item.total} KWD</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <input
+                                id="invprice-table-${item.id}"
+                                type="text"
+                                inputmode="decimal"
+                                pattern="\\d*\\.?\\d*"
+                                class="border border-gray-300 rounded-md px-2 py-1 text-center w-28 min-w-[7rem] invoice-price-${item.id}"
+                                value="${item.invprice ?? ''}"
+                                oninput="updateField(${item.id}, 'invprice-table')"
+                            />
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="inline-flex items-center justify-evenly">
+                                <div id="modal-open-button_${item.id}" data-tooltip-left="See Details">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
+                                    <div class="flex justify-between text-center items-center p-4 border-b border-black">
+                                        <h2 class="text-lg font-bold text-center text-gray-700">TASK DETAILS</h2>
+                                        <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"></div>
+                                </dialog>
+                                <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip-left="Remove Item">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </td>
+                    `;
                     itemsBody.appendChild(row);
 
                     let taskDetails = document.getElementById('task-details_' + item.id);
@@ -948,8 +941,8 @@
                                         id="invprice-modal-${item.id}"
                                         class="invoice-price-${item.id}"
                                         type="number"
-                                        name="invprice",
-                                        placeholder="Enter Invoice Price",
+                                        name="invprice"
+                                        placeholder="Enter Invoice Price"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'invprice-modal')"
                                         value="${item.invprice ?? ''}"
@@ -957,16 +950,16 @@
                                     <input
                                         id="remark-${item.id}"
                                         type="text"
-                                        name="remark",
-                                        placeholder="Enter Remark",
+                                        name="remark"
+                                        placeholder="Enter Remark"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'remark')"
                                     >
                                     <input
                                         id="note-${item.id}"
                                         type="text"
-                                        name="note",
-                                        placeholder="Enter Note",
+                                        name="note"
+                                        placeholder="Enter Note"
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'note')"
                                     >
@@ -1303,6 +1296,12 @@
             document.getElementById('agentEmail').value = agentEmail;
             document.getElementById('agentPhone').value = agentPhone;
 
+            // Clear client selection when agent changes
+            document.getElementById('receiverId').value = '';
+            document.getElementById('receiverName').value = '';
+            document.getElementById('receiverEmail').value = '';
+            document.getElementById('receiverPhone').value = '';
+
             closeAgentModal();
             refreshTaskList();
         }
@@ -1327,7 +1326,6 @@
             selectTab.classList.add('hidden');
         });
 
-
         function selectTask(task) {
             items.push({
                 ...task,
@@ -1347,9 +1345,19 @@
             calculateSubtotal();
         }
 
+        function getAgentFilteredClients() {
+            const agentId = document.getElementById('agentId').value;
+            if (agentId) {
+                return clients.filter(c => String(c.agent_id) === String(agentId));
+            }
+            return clients;
+        }
+
         function openClientModal() {
             const modal = document.getElementById("clientModal");
             modal.classList.remove("hidden");
+            document.getElementById('clientSearchInput').value = '';
+            renderClientList(getAgentFilteredClients());
         }
 
         // Close Client Modal
@@ -1370,7 +1378,8 @@
 
         function filterClients() {
             const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
-            const filteredClients = clients.filter(client =>
+            const baseClients = getAgentFilteredClients();
+            const filteredClients = baseClients.filter(client =>
                 (client.first_name && client.first_name.toLowerCase().includes(searchValue)) ||
                 (client.middle_name && client.middle_name.toLowerCase().includes(searchValue)) ||
                 (client.last_name && client.last_name.toLowerCase().includes(searchValue)) ||
@@ -1394,12 +1403,10 @@
         function selectClient(client) {
             renderClientCredit(client);
             document.getElementById('receiverId').value = client.id;
-
             document.getElementById('receiverName').value = client.full_name;
             document.getElementById('receiverEmail').value = client.email;
-            document.getElementById('receiverPhone').value = client.phone;
+            document.getElementById('receiverPhone').value = client.phone_number;
             closeClientModal();
-
         }
 
         function openTaskModal() {
@@ -1603,12 +1610,15 @@
             document.body.appendChild(alert);
         }
 
-        // Generate invoice
+        // Generate invoice for task or refund
         async function generateInvoice() {
             isSaving = true;
             updateButtonState();
 
-            const invoiceUrl = "{{ route('invoice.store') }}";
+            const invoiceUrl = isRefund
+                ? "{{ route('refunds.store') }}"
+                : "{{ route('invoice.store') }}";
+
             const csrfToken = "{{ csrf_token() }}";
 
             const currencyElement = document.getElementById('currency');
@@ -1620,66 +1630,114 @@
             const agentIdElement = document.getElementById('agentId');
             const selectedBranch = document.getElementById('selectedBranch');
 
-            const currency = currencyElement ? currencyElement.value : null;
-            const invoiceNumber = invoiceNumberElement ? invoiceNumberElement.value : null;
-            const invdate = invdateElement ? invdateElement.value : null;
-            const duedate = duedateElement ? duedateElement.value : null;
-            const subTotal = subTotalElement ? subTotalElement.value : null;
-            const firstTask = (Array.isArray(items) && items.length) ? items[0] : null;
-            let clientId = clientIdElement?.value || firstTask?.client_id || firstTask?.client?.id || null;
-            if (clientIdElement && !clientIdElement.value && clientId) clientIdElement.value = clientId;
-            const agentId = agentIdElement ? agentIdElement.value : null;
-            const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
+            const currency = currencyElement?.value ?? null;
+            const invoiceNumber = invoiceNumberElement?.value ?? null;
+            const invdate = invdateElement?.value ?? null;
+            const duedate = duedateElement?.value ?? null;
+            const subTotal = subTotalElement?.value ?? null;
+
+            const firstTask = Array.isArray(items) && items.length ? items[0] : null;
+
+            let clientId =
+                clientIdElement?.value ||
+                firstTask?.client_id ||
+                firstTask?.client?.id ||
+                null;
+
+            if (clientIdElement && !clientIdElement.value && clientId) {
+                clientIdElement.value = clientId;
+            }
+
+            const agentId = agentIdElement?.value ?? null;
+            const selectedBranchValue = selectedBranch?.value ?? null;
             const tasks = items;
 
-            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', Array.isArray(items) ? items.length : 0);
+            console.log('DEBUG -> isRefund:', isRefund);
+            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', items.length);
 
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
 
+
             let errorMessages = [];
             const companyId = "{{ $companyId ?? '' }}";
 
-            // Validate all inputs and add specific messages
-            if (!currency) errorMessages.push("Currency is missing.");
-            if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
-            if (!invdate) errorMessages.push("Invoice date is missing.");
-            // if (!duedate) errorMessages.push("Due date is missing.");
-            if (!subTotal) errorMessages.push("Subtotal is missing.");
-            if (!clientId) errorMessages.push("Client ID is missing.");
-            if (!agentId) errorMessages.push("Agent ID is missing.");
+            if (!invdate) errorMessages.push("Invoice/Refund date is missing.");
             if (!items.length) errorMessages.push("No tasks have been selected.");
-            if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
 
-            // Check if there are any errors
+            // Invoice-specific validation
+            if (!isRefund) {
+                if (!currency) errorMessages.push("Currency is missing.");
+                if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
+                if (!subTotal) errorMessages.push("Subtotal is missing.");
+                if (!clientId) errorMessages.push("Client ID is missing.");
+                if (!agentId) errorMessages.push("Agent ID is missing.");
+                if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
+            }
+
             if (errorMessages.length > 0) {
-                // Create the error notification element
                 let errorNotification = document.createElement('div');
                 errorNotification.className =
                     "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
                 errorNotification.innerHTML = `
-                        <ul>
-                            ${errorMessages.map(message => `<li>${message}</li>`).join('')}
-                        </ul>
-                        <button type="button" class="close text-white ml-2" aria-label="Close"
-                            onclick="this.parentElement.style.display='none';">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    `;
-
-                // Append the error notification to the body
+                    <ul>
+                        ${errorMessages.map(message => `<li>${message}</li>`).join('')}
+                    </ul>
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                `;
                 document.body.appendChild(errorNotification);
-
-                // Reset button state or perform any cleanup
                 resetButtonState();
                 return;
             }
 
-            // Proceed with the form submission or further processing
             console.log("All required data is provided. Proceeding...");
 
+
+            const payload = isRefund
+                ? {
+                    date: invdate,
+                    client_id: clientId,
+                    remarks: document.getElementById('refundRemarks')?.value || null,
+                    tasks: items.map(item => {
+                        const originalInvoicePrice = Number(item.invprice ?? 0);
+                        const originalTaskCost = Number(item.total ?? 0);
+                        const originalTaskProfit = originalInvoicePrice - originalTaskCost;
+                        const refundFee = Number(item.refund_fee_to_client ?? originalInvoicePrice);
+                        const supplierCharge = Number(item.supplier_charge ?? 0);
+
+                        return {
+                            task_id: item.id,
+                            original_invoice_price: originalInvoicePrice,
+                            original_task_cost: originalTaskCost,
+                            original_task_profit: originalTaskProfit,
+                            refund_fee_to_client: refundFee,
+                            supplier_charge: supplierCharge,
+                            new_task_profit: originalTaskProfit - supplierCharge,
+                            total_refund_to_client: refundFee,
+                            remarks: item.remark ?? null,
+                            payment_gateway_option: item.payment_gateway_option ?? null,
+                            payment_method: item.payment_method ?? null,
+                        };
+                    }),
+                }
+                : {
+                    clientId,
+                    agentId,
+                    tasks,
+                    subTotal,
+                    invoiceNumber,
+                    currency,
+                    invdate,
+                    duedate,
+                };
+
+            console.log('REQUEST URL:', invoiceUrl);
+            console.log('REQUEST PAYLOAD:', payload);
+
             try {
-                console.log('invoiceUrl: ', invoiceUrl);
                 const response = await fetch(invoiceUrl, {
                     method: 'POST',
                     headers: {
@@ -1687,66 +1745,74 @@
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                     },
-                    body: JSON.stringify({
-                        clientId,
-                        agentId,
-                        tasks,
-                        subTotal,
-                        invoiceNumber,
-                        currency,
-                        invdate,
-                        duedate
-
-                    })
+                    body: JSON.stringify(payload),
                 });
 
                 if (!response.ok) {
-                    throw new Error("Failed to generate");
+                    throw new Error(`Failed to ${isRefund ? 'process refund' : 'generate invoice'}`);
                 }
 
                 const result = await response.json();
-                const {
-                    invoiceId: newInvoiceId,
-                    invoiceNumber: newInvoiceNumber
-                } = result;
+                console.log('RESPONSE:', result);
 
-                // Only update invoice number if this is a new invoice (no invoiceId before)
-                if (!invoiceId) {
-                    document.getElementById('invoiceNumber').value = newInvoiceNumber;
+
+                if (isRefund) {
+                    console.log('Refund processed successfully');
+                    isSaved = true;
+                    updateButtonState();
+                    
+                    if (result.redirect) {
+                        const url = new URL(result.redirect, window.location.origin);
+                        const rfNumber = document.getElementById('RefundNumber')?.value;
+                        const rfRemarks = document.getElementById('refundRemarks')?.value;
+                        
+                        if (rfNumber) url.searchParams.set('refund_number', rfNumber);
+                        if (rfRemarks) url.searchParams.set('refund_remarks', rfRemarks);
+                        
+                        location.href = url.toString();
+                    }
+                } else {
+                    // Invoice success
+                    const { invoiceId: newInvoiceId, invoiceNumber: newInvoiceNumber } = result;
+
+                    // Update hidden fields
+                    if (!invoiceId) {
+                        document.getElementById('invoiceNumber').value = newInvoiceNumber;
+                    }
+                    document.getElementById('invoiceId').value = newInvoiceId;
+
+                    isSaved = true;
+                    updateButtonState();
+
+                    setTimeout(() => {
+                        checkInvoiceId();
+                    }, 100);
+
+                    // Redirect to invoice edit page
+                    location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}"
+                        .replace(':companyId', companyId)
+                        .replace(':invoiceNumber', invoiceNumber || newInvoiceNumber);
                 }
-                document.getElementById('invoiceId').value = newInvoiceId;
-                const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
-
-                isSaved = true;
-                updateButtonState();
-
-                setTimeout(() => {
-                    checkInvoiceId();
-                }, 100);
-
-                location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(
-                    ":invoiceNumber", invoiceNumber
-                )
 
             } catch (error) {
-                console.error(error);
+                console.error('=== ERROR ===');
+                console.error('Error:', error);
+
                 let alert = document.createElement('div');
-                alert.innerHTML = ` 
-                        <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                            Error Generating Invoice
-                            <button type="button" class="close text-white ml-2" aria-label="Close"
-                                onclick="this.parentElement.style.display='none';">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        `
+                alert.innerHTML = `
+                    <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                        ${isRefund ? 'Error Processing Refund' : 'Error Generating Invoice'}
+                        <button type="button" class="close text-white ml-2" aria-label="Close"
+                            onclick="this.parentElement.style.display='none';">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                `;
                 document.body.appendChild(alert);
 
                 resetButtonState();
-            } finally {
-                // Reset button states
             }
-        };
+        }
 
         function resetButtonState() {
             isSaving = false;
@@ -1851,8 +1917,7 @@
                 noAgentsFound.classList.toggle('hidden', anyVisible);
             });
         });
-    </script>
-    <script>
+   
         document.getElementById('select-supplier-task')?.addEventListener('change', function() {
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);

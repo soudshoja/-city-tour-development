@@ -1,0 +1,23 @@
+{
+  "name": "DOTW - Payment Link",
+  "type": "n8n-nodes-base.httpRequest",
+  "typeVersion": 4.2,
+  "position": [250, 300],
+  "parameters": {
+    "method": "POST",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/payment_link",
+    "sendHeaders": true,
+    "headerParameters": {
+      "parameters": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "{\n  \"telephone\": \"+96550000000\",\n  \"prebook_key\": \"DOTWAI-xxx\",\n  \"customer_name\": \"John Doe\",\n  \"customer_email\": \"john@example.com\"\n}",
+    "options": {}
+  }
+}

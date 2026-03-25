@@ -1,0 +1,66 @@
+<customer>
+      <username>techventure26alphia</username>
+      <password>7a9caccc8b8aab8cb1f14daa3cef9944</password>
+      <id>2308675</id>
+      <source>1</source>
+      <product>hotel</product>
+      <request command="confirmbooking">
+                <bookingDetails>
+                    <fromDate>2026-05-28</fromDate>
+                    <toDate>2026-05-29</toDate>
+                    <currency>769</currency>
+                    <productId>1013275</productId>
+                    <sendCommunicationTo>test@citycommerce.group</sendCommunicationTo>
+                    <customerReference>CERT-TEST-004</customerReference>
+                    <rooms no="2">
+                        <room runno="0">
+                            <roomTypeCode>483146225</roomTypeCode>
+                            <selectedRateBasis>0</selectedRateBasis>
+                            <allocationDetails>1774336599000001B1000B0</allocationDetails>
+                            <adultsCode>1</adultsCode>
+                            <actualAdults>1</actualAdults>
+                            <children no="0"/>
+                            <actualChildren no="0"/>
+                            <extraBed>0</extraBed>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                            <passengersDetails>
+                                <passenger leading="yes">
+                                    <salutation>1</salutation>
+                                    <firstName>John</firstName>
+                                    <lastName>Smith</lastName>
+                                </passenger>
+                            </passengersDetails>
+                            <specialRequests count="0"></specialRequests>
+                            <beddingPreference>0</beddingPreference>
+                        </room>
+                        <room runno="1">
+                            <roomTypeCode>483146225</roomTypeCode>
+                            <selectedRateBasis>0</selectedRateBasis>
+                            <allocationDetails>1774336599000001B1000B2</allocationDetails>
+                            <adultsCode>2</adultsCode>
+                            <actualAdults>2</actualAdults>
+                            <children no="0"/>
+                            <actualChildren no="0"/>
+                            <extraBed>0</extraBed>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                            <passengersDetails>
+                                <passenger leading="yes">
+                                    <salutation>1</salutation>
+                                    <firstName>James</firstName>
+                                    <lastName>Brown</lastName>
+                                </passenger>
+                                <passenger leading="no">
+                                    <salutation>2</salutation>
+                                    <firstName>Sarah</firstName>
+                                    <lastName>Jones</lastName>
+                                </passenger>
+                            </passengersDetails>
+                            <specialRequests count="0"></specialRequests>
+                            <beddingPreference>0</beddingPreference>
+                        </room>
+                    </rooms>
+                </bookingDetails>
+            </request>
+    </customer>

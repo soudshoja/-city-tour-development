@@ -1,0 +1,31 @@
+<customer>
+      <username>techventure26alphia</username>
+      <password>7a9caccc8b8aab8cb1f14daa3cef9944</password>
+      <id>2308675</id>
+      <source>1</source>
+      <product>hotel</product>
+      <request command="getrooms">
+                    <bookingDetails>
+                        <fromDate>2026-04-23</fromDate>
+                        <toDate>2026-04-24</toDate>
+                        <currency>769</currency>
+                        <rooms no="1">
+                            <room runno="0">
+                                <adultsCode>2</adultsCode>
+                                <children no="0"></children>
+                                <rateBasis>1331</rateBasis>
+                                <passengerNationality>66</passengerNationality>
+                                <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                                <roomTypeSelected>
+                                    <code>483146225</code>
+                                    <selectedRateBasis>1331</selectedRateBasis>
+                                    <allocationDetails>1774336574000001B1000B2</allocationDetails>
+                                </roomTypeSelected>
+                            </room>
+                        </rooms>
+                        <productId>1013275</productId>
+                    </bookingDetails>
+                    <return>
+                    </return>
+                </request>
+    </customer>

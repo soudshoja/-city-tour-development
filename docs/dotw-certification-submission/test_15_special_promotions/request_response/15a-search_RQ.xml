@@ -1,0 +1,40 @@
+<customer>
+      <username>techventure26alphia</username>
+      <password>7a9caccc8b8aab8cb1f14daa3cef9944</password>
+      <id>2308675</id>
+      <source>1</source>
+      <product>hotel</product>
+      <request command="searchhotels">
+                <bookingDetails>
+                    <fromDate>2026-05-14</fromDate>
+                    <toDate>2026-05-15</toDate>
+                    <currency>769</currency>
+                    <rooms no="1">
+                        <room runno="0">
+                            <adultsCode>2</adultsCode>
+                            <children no="2">
+                                <child runno="0">8</child>
+                                <child runno="1">12</child>
+                            </children>
+                            <rateBasis>-1</rateBasis>
+                            <passengerNationality>66</passengerNationality>
+                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                        </room>
+                    </rooms>
+                </bookingDetails>
+                <return>
+                    <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
+                             xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
+                        <c:condition>
+                            <a:condition>
+                                <fieldName>hotelId</fieldName>
+                                <fieldTest>in</fieldTest>
+                                <fieldValues>
+                                    <fieldValue>2344175</fieldValue>
+                                </fieldValues>
+                            </a:condition>
+                        </c:condition>
+                    </filters>
+                </return>
+            </request>
+    </customer>

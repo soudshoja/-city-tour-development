@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="cancelbooking" tID="1774336609100002" ip="152.53.86.223" date="2026-03-24 07:16:50" version="4.0" elapsedTime="0.99142098426819">
+      <productsLeftOnItinerary>0</productsLeftOnItinerary>
+      <services>
+        <service runno="0" code="932563783">
+          <cancellationPenalty>
+            <penaltyApplied>13.1544<formatted>13.15</formatted></penaltyApplied>
+            <currency>769</currency>
+            <currencyShort>KWD</currencyShort>
+          </cancellationPenalty>
+        </service>
+      </services>
+      <successful>TRUE</successful>
+    </result>
+    
+  âœ”  [5f] Cancellation confirmed â€” bookingCode: 932563783 | penaltyApplied: 13.1544

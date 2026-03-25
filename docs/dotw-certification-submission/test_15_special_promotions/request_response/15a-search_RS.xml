@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="searchhotels" tID="1774336669100001" ip="152.53.86.223" date="2026-03-24 07:17:50" version="4.0" elapsedTime="0.3651270866394">
+      <hotels>
+        <hotel hotelid="2344175">
+          <rooms>
+            <room adults="2" children="2" childrenages="8,12" extrabeds="0">
+              <roomType roomtypecode="81081345">
+                <name>EXECUTIVE KING ROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>47.8547</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>58.7411</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>82.3282</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>106.369</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1429125705">
+                <name>ADJOINING, FAMILY SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>120.1613</total>
+                    <totalTaxes>12.6732</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">10.141</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>129.7748</total>
+                    <totalTaxes>13.691</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">10.9503</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+      </hotels>
+      <successful>TRUE</successful>
+    </result>
+    
+  âœ”  [15a] Hotel: 2344175 (The S Hotel Al Barsha)
+  [Step 15b] getRooms (browse) â€” request specials roomField, inspect specialsApplied

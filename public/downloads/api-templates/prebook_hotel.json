@@ -1,0 +1,23 @@
+{
+  "name": "DOTW - Prebook Hotel",
+  "type": "httpRequest",
+  "typeVersion": 4.2,
+  "position": [250, 300],
+  "parameters": {
+    "method": "POST",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/prebook_hotel",
+    "sendHeaders": true,
+    "headerParameters": {
+      "parameters": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "{\n  \"telephone\": \"+96550000000\",\n  \"option_number\": 1\n}",
+    "options": {}
+  }
+}

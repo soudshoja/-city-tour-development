@@ -1,11 +1,11 @@
 {
-  "name": "DOTW - Account Balance",
-  "type": "n8n-nodes-base.httpRequest",
+  "name": "DOTW - Get Cities",
+  "type": "httpRequest",
   "typeVersion": 4.2,
   "position": [250, 300],
   "parameters": {
     "method": "GET",
-    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/balance",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/get_cities",
     "sendHeaders": true,
     "headerParameters": {
       "parameters": [
@@ -21,6 +21,10 @@
         {
           "name": "telephone",
           "value": "+96550000000"
+        },
+        {
+          "name": "country_code",
+          "value": "AE"
         }
       ]
     },

@@ -1,11 +1,11 @@
 {
-  "name": "DOTW - Prebook Hotel",
-  "type": "n8n-nodes-base.httpRequest",
+  "name": "DOTW - Cancel Booking",
+  "type": "httpRequest",
   "typeVersion": 4.2,
   "position": [250, 300],
   "parameters": {
     "method": "POST",
-    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/prebook_hotel",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/cancel_booking",
     "sendHeaders": true,
     "headerParameters": {
       "parameters": [
@@ -17,7 +17,7 @@
     },
     "sendBody": true,
     "specifyBody": "json",
-    "jsonBody": "{\n  \"telephone\": \"+96550000000\",\n  \"option_number\": 1\n}",
+    "jsonBody": "{\n  \"telephone\": \"+96550000000\",\n  \"booking_reference\": \"DOTWAI-xxx\"\n}",
     "options": {}
   }
 }

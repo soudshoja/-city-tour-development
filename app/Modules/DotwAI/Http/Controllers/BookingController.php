@@ -636,4 +636,65 @@ class BookingController extends Controller
             );
         }
     }
+
+    /**
+     * Download a PDF voucher for a confirmed booking.
+     *
+     * For B2B bookings the PDF includes agent and agency company details.
+     *
+     * @param ResendVoucherRequest $request Same validation as resend (phone + prebook_key)
+     * @return \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+     */
+    public function downloadVoucher(ResendVoucherRequest $request)
+    {
+        try {
+            /** @var \App\Modules\DotwAI\DTOs\DotwAIContext $context */
+            $context = $request->attributes->get('dotwai_context');
+
+            $phone      = $request->input('phone');
+            $prebookKey = $request->input('prebook_key');
+
+            $booking = DotwAIBooking::where('company_id', $context->companyId)
+                ->where('prebook_key', $prebookKey)
+                ->where(function ($q) use ($phone) {
+                    $q->where('agent_phone', $phone)
+                        ->orWhere('client_phone', $phone);
+                })
+                ->first();
+
+            if ($booking === null) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::PREBOOK_NOT_FOUND,
+                    'Booking not found for this phone number',
+                );
+            }
+
+            if (! in_array($booking->status, [DotwAIBooking::STATUS_CONFIRMED, 'cancelled'])) {
+                return DotwAIResponse::error(
+                    DotwAIResponse::BOOKING_FAILED,
+                    'Voucher can only be generated for confirmed or completed bookings',
+                );
+            }
+
+            $voucherService = new VoucherService();
+            $pdfContent = $voucherService->generatePdf($booking);
+
+            $filename = 'voucher-' . ($booking->confirmation_no ?? $booking->prebook_key) . '.pdf';
+
+            return response($pdfContent, 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('dotw')->error('[DotwAI] downloadVoucher exception', [
+                'prebook_key' => $request->input('prebook_key') ?? null,
+                'error'       => $e->getMessage(),
+            ]);
+
+            return DotwAIResponse::error(
+                DotwAIResponse::DOTW_API_ERROR,
+                'Failed to generate voucher PDF: ' . $e->getMessage(),
+            );
+        }
+    }
 }

@@ -42,6 +42,7 @@ class DotwAIServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__ . '/../Routes/api.php');
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+        $this->loadViewsFrom(__DIR__ . '/../Views', 'dotwai');
 
         if ($this->app->runningInConsole()) {
             $this->commands([

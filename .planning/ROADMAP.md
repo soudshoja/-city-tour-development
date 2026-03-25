@@ -200,8 +200,12 @@ Plans:
   2. Outgoing DOTW API calls are monitored with timeouts, empty responses, and failures surfaced
   3. Each booking shows its full lifecycle (search, prebook, book, cancel) with timestamps in a single view
   4. Errors can be filtered by date, company, agent, and error type
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 3 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — DotwDashboardTab: stats cards, ApexCharts trend charts, recent API calls table (DASH-01, DASH-02)
+- [ ] 22-02-PLAN.md — DotwBookingLifecycleTab: horizontal stepper, expandable timeline rows, status/date filters (DASH-03)
+- [ ] 22-03-PLAN.md — DotwErrorTrackerTab + wire all tabs into DotwAdminIndex (DASH-04, DASH-05)
 
 ---
 
@@ -221,8 +225,8 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 18. Foundation + Search | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 19. B2B + B2C Booking | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 20. Cancellation + Accounting | v2.0 DOTW AI | 2/2 | Complete | 2026-03-24 |
-| 21. Lifecycle + History | 2/2 | Complete   | 2026-03-24 | - |
-| 22. Dashboard | v2.0 DOTW AI | 0/? | Not started | - |
+| 21. Lifecycle + History | 2/2 | Complete    | 2026-03-25 | - |
+| 22. Dashboard | v2.0 DOTW AI | 0/3 | Not started | - |
 
 ---
 
@@ -232,3 +236,4 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 *Phase 19 plans created: 2026-03-24*
 *Phase 20 plans created: 2026-03-24*
 *Phase 21 plans created: 2026-03-25*
+*Phase 22 plans created: 2026-03-25*

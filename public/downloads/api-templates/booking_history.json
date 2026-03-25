@@ -1,11 +1,11 @@
 {
-  "name": "DOTW - Download Voucher",
-  "type": "n8n-nodes-base.httpRequest",
+  "name": "DOTW - Booking History",
+  "type": "httpRequest",
   "typeVersion": 4.2,
   "position": [250, 300],
   "parameters": {
     "method": "GET",
-    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/download_voucher",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/booking_history",
     "sendHeaders": true,
     "headerParameters": {
       "parameters": [
@@ -23,8 +23,8 @@
           "value": "+96550000000"
         },
         {
-          "name": "booking_reference",
-          "value": "DOTWAI-xxx"
+          "name": "status",
+          "value": "confirmed"
         }
       ]
     },

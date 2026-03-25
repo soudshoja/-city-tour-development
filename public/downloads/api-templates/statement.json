@@ -1,11 +1,11 @@
 {
-  "name": "DOTW - Booking History",
-  "type": "n8n-nodes-base.httpRequest",
+  "name": "DOTW - Statement",
+  "type": "httpRequest",
   "typeVersion": 4.2,
   "position": [250, 300],
   "parameters": {
     "method": "GET",
-    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/booking_history",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/statement",
     "sendHeaders": true,
     "headerParameters": {
       "parameters": [
@@ -23,8 +23,12 @@
           "value": "+96550000000"
         },
         {
-          "name": "status",
-          "value": "confirmed"
+          "name": "from",
+          "value": "2026-01-01"
+        },
+        {
+          "name": "to",
+          "value": "2026-03-31"
         }
       ]
     },

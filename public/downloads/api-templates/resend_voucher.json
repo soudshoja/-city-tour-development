@@ -1,11 +1,11 @@
 {
-  "name": "DOTW - Cancel Booking",
-  "type": "n8n-nodes-base.httpRequest",
+  "name": "DOTW - Resend Voucher",
+  "type": "httpRequest",
   "typeVersion": 4.2,
   "position": [250, 300],
   "parameters": {
     "method": "POST",
-    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/cancel_booking",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/resend_voucher",
     "sendHeaders": true,
     "headerParameters": {
       "parameters": [

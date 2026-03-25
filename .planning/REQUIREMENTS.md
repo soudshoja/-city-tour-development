@@ -62,9 +62,9 @@
 - [x] **HIST-04**: DOTW voucher/PDF retrieved if API supports, otherwise generated locally
 
 ## Monitoring Dashboard (DASH)
-- [ ] **DASH-01**: Livewire dashboard showing incoming API call logs (requests, responses, errors) — no n8n branding
-- [ ] **DASH-02**: Outgoing DOTW API call monitoring (timeouts, empty responses, failures)
-- [ ] **DASH-03**: Booking lifecycle view (search → prebook → book → cancel with timestamps)
+- [x] **DASH-01**: Livewire dashboard showing incoming API call logs (requests, responses, errors) — no n8n branding
+- [x] **DASH-02**: Outgoing DOTW API call monitoring (timeouts, empty responses, failures)
+- [x] **DASH-03**: Booking lifecycle view (search → prebook → book → cancel with timestamps)
 - [ ] **DASH-04**: Error tracking with filters (date, company, agent, error type)
 - [ ] **DASH-05**: DOTW calls with no output / empty responses flagged for investigation
 
@@ -134,8 +134,8 @@
 | HIST-03 | Phase 21 | Complete |
 | HIST-04 | Phase 21 | Complete |
 | EVNT-01 | Phase 21 | Complete |
-| DASH-01 | Phase 22 | Pending |
-| DASH-02 | Phase 22 | Pending |
-| DASH-03 | Phase 22 | Pending |
+| DASH-01 | Phase 22 | Complete (22-01) |
+| DASH-02 | Phase 22 | Complete (22-01) |
+| DASH-03 | Phase 22 | Complete |
 | DASH-04 | Phase 22 | Pending |
 | DASH-05 | Phase 22 | Pending |

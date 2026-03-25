@@ -2,39 +2,34 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
-status: planning
-stopped_at: Completed 21-lifecycle-history-02-PLAN.md
-last_updated: "2026-03-24T23:16:39.418Z"
-last_activity: 2026-03-24 — Completed Phase 19 (B2B/B2C Booking)
+status: Executing Phase 22 — plans 22-01 complete, 22-02 pending, 22-03 pending
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-03-25T05:55:09Z"
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 11
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_plans: 29
+  completed_plans: 28
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-24)
+See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Enable travel agents and customers to search, book, and manage DOTW hotel reservations entirely through WhatsApp with AI-driven conversation, automated lifecycle, and full accounting
-**Current focus:** Phase 20 — Cancellation + Accounting
+**Current focus:** Phase 22 — dashboard
 
 ## Current Position
 
-Phase: 20 (4 of 5 in v2.0 DOTW AI Module)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-24 — Completed Phase 19 (B2B/B2C Booking)
-
-Progress: [████████████████████] 100% (plans) | 8/11 phases
+Phase: 22 (dashboard) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 10 (v1.0 + v2.0 milestones)
 - Average duration: N/A (not tracked for previous milestones)
 - Total execution time: N/A
@@ -48,6 +43,7 @@ Progress: [████████████████████] 100% (p
 | 18 | 3 | 21m | 7m |
 
 **Recent Trend:**
+
 - Last 5 plans: 16-02, 16-03, 18-01, 18-02, 18-03
 - Trend: Stable
 
@@ -58,6 +54,8 @@ Progress: [████████████████████] 100% (p
 | Phase 20-cancellation-accounting P01 | 260 | 2 tasks | 8 files |
 | Phase 21-lifecycle-history P01 | 15 | 3 tasks | 11 files |
 | Phase 21-lifecycle-history P02 | 12 | 2 tasks | 9 files |
+| Phase 22 P02 | 78 | 2 tasks | 2 files |
+| Phase 22 P01 | 348s (5.8m) | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -98,6 +96,8 @@ Recent decisions affecting current work:
 - [Phase 21-lifecycle-history]: APR auto-invoice failure does not fail the booking — stays confirmed, error logged for reconciliation
 - [Phase 21-lifecycle-history]: WebhookDispatchJob retries 4 times with backoff 30s/2m/5m, 10s HTTP timeout per attempt
 - [Phase 21-lifecycle-history]: Webhook events are config-gated: empty webhook_url disables all webhooks; per-event gating via webhook_events array in dotwai config
+- [Phase 21]: DOTW V4 API has NO voucher/PDF/invoice endpoint — local PDF generation via DomPDF is the only option
+- [Phase 21]: PDF voucher includes B2B agent + agency company details when track is b2b/b2b_gateway
 
 ### Pending Todos
 
@@ -106,10 +106,10 @@ None yet.
 ### Blockers/Concerns
 
 - DOTW tests 17+18 still need specific hotel IDs (from Phase 16) -- not blocking v2.0 work
-- Invoice/JournalEntry field requirements need verification during Phase 20 planning
 
 ## Session Continuity
 
-Last session: 2026-03-24T23:16:39.408Z
-Stopped at: Completed 21-lifecycle-history-02-PLAN.md
+Last session: 2026-03-25T05:53:50.418Z
+Stopped at: Completed 22-02-PLAN.md
+Resume file: None
 Resume file: None

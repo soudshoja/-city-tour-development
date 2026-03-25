@@ -203,8 +203,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 22-01-PLAN.md — DotwDashboardTab: stats cards, ApexCharts trend charts, recent API calls table (DASH-01, DASH-02)
-- [ ] 22-02-PLAN.md — DotwBookingLifecycleTab: horizontal stepper, expandable timeline rows, status/date filters (DASH-03)
+- [x] 22-01-PLAN.md — DotwDashboardTab: stats cards, ApexCharts trend charts, recent API calls table (DASH-01, DASH-02) [completed 2026-03-25]
+- [x] 22-02-PLAN.md — DotwBookingLifecycleTab: horizontal stepper, expandable timeline rows, status/date filters (DASH-03)
 - [ ] 22-03-PLAN.md — DotwErrorTrackerTab + wire all tabs into DotwAdminIndex (DASH-04, DASH-05)
 
 ---
@@ -226,7 +226,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 19. B2B + B2C Booking | v2.0 DOTW AI | 3/3 | Complete | 2026-03-24 |
 | 20. Cancellation + Accounting | v2.0 DOTW AI | 2/2 | Complete | 2026-03-24 |
 | 21. Lifecycle + History | 2/2 | Complete    | 2026-03-25 | - |
-| 22. Dashboard | v2.0 DOTW AI | 0/3 | Not started | - |
+| 22. Dashboard | v2.0 DOTW AI | 1/3 | In Progress | - |
 
 ---
 

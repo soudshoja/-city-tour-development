@@ -50,7 +50,6 @@ return new class extends Migration
 
             // Indexes for performance
             $table->index('hotel_code');
-            $table->index('customer_reference');
             $table->index('expired_at');
             $table->index('created_at');
         });

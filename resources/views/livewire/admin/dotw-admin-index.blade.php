@@ -308,7 +308,7 @@
         </div>
 
         {{-- Tab 4: Documentation --}}
-        <div x-show="activeTab === 'documentation'" x-cloak dir="ltr" style="direction: ltr !important; text-align: left !important;" class="text-left ltr:text-left">
+        <div x-show="activeTab === 'documentation'" x-cloak dir="ltr" style="direction: ltr !important; text-align: left !important; unicode-bidi: bidi-override !important;" class="text-left ltr:text-left">
             <div class="max-w-4xl">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">DOTW API Documentation</h2>
 

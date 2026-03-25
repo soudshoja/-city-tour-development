@@ -107,12 +107,12 @@
 
         {{-- Tab: Dashboard --}}
         <div x-show="activeTab === 'dashboard'" x-cloak>
-            @livewire(\App\Http\Livewire\Admin\DotwDashboardTab::class)
+            @livewire('admin.dotw-dashboard-tab')
         </div>
 
         {{-- Tab: Bookings --}}
         <div x-show="activeTab === 'bookings'" x-cloak>
-            @livewire(\App\Http\Livewire\Admin\DotwBookingLifecycleTab::class)
+            @livewire('admin.dotw-booking-lifecycle-tab')
         </div>
 
         {{-- Tab: Errors --}}
@@ -278,7 +278,7 @@
 
         {{-- Tab 2: Audit Logs --}}
         <div x-show="activeTab === 'audit-logs'" x-cloak>
-            @livewire(\App\Http\Livewire\Admin\DotwAuditLogIndex::class)
+            @livewire('admin.dotw-audit-log-index')
         </div>
 
         {{-- Tab 3: API Tokens (Super Admin only) --}}

@@ -308,7 +308,7 @@
         </div>
 
         {{-- Tab 4: Documentation --}}
-        <div x-show="activeTab === 'documentation'" x-cloak dir="ltr" class="text-left">
+        <div x-show="activeTab === 'documentation'" x-cloak dir="ltr" style="direction: ltr !important; text-align: left !important;" class="text-left ltr:text-left">
             <div class="max-w-4xl">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">DOTW API Documentation</h2>
 
@@ -337,19 +337,19 @@
                                 <p class="font-medium text-gray-800 dark:text-gray-200">Authentication:</p>
                                 <p class="text-gray-600 dark:text-gray-400 mt-2">All endpoints (except <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">/health</code> and <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">/payment_callback</code>) require a phone number to identify the client company.</p>
                                 <p class="text-gray-600 dark:text-gray-400 mt-2">Send the phone number in one of three ways:</p>
-                                <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mt-2 space-y-1 ml-2">
-                                    <li>In request body: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">{"telephone": "+96550000000"}</code></li>
-                                    <li>In query string: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">?telephone=+96550000000</code></li>
-                                    <li>In header: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">X-DotwAI-Phone: +96550000000</code></li>
+                                <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mt-2 space-y-1 ml-2 [direction:ltr] [text-align:left]">
+                                    <li style="text-align: left;">In request body: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">{"telephone": "+96550000000"}</code></li>
+                                    <li style="text-align: left;">In query string: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">?telephone=+96550000000</code></li>
+                                    <li style="text-align: left;">In header: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">X-DotwAI-Phone: +96550000000</code></li>
                                 </ul>
                             </div>
 
                             <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
                                 <p class="font-medium text-gray-800 dark:text-gray-200">Request Format:</p>
-                                <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mt-2 space-y-1 ml-2">
-                                    <li>Content-Type: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">application/json</code></li>
-                                    <li>Dates: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">YYYY-MM-DD</code> format</li>
-                                    <li>Timestamps: ISO 8601 format</li>
+                                <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mt-2 space-y-1 ml-2 [direction:ltr] [text-align:left]">
+                                    <li style="text-align: left;">Content-Type: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">application/json</code></li>
+                                    <li style="text-align: left;">Dates: <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">YYYY-MM-DD</code> format</li>
+                                    <li style="text-align: left;">Timestamps: ISO 8601 format</li>
                                 </ul>
                             </div>
 

@@ -9,7 +9,7 @@ use Livewire\Component;
 
 class DotwAdminIndex extends Component
 {
-    public string $activeTab = 'credentials';
+    public string $activeTab = 'dashboard';
 
     // Credentials form fields
     public string $dotw_username = '';
@@ -32,7 +32,7 @@ class DotwAdminIndex extends Component
         return Auth::user()->role_id === Role::ADMIN;
     }
 
-    public function mount(string $tab = 'credentials'): void
+    public function mount(string $tab = 'dashboard'): void
     {
         $this->activeTab = $tab;
         $this->loadCredentials();

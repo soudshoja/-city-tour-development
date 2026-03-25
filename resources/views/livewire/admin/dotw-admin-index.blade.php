@@ -245,7 +245,8 @@
         {{-- Tab 3: API Tokens (Super Admin only) --}}
         <div x-show="activeTab === 'api-tokens'" x-cloak>
             @if($isSuperAdmin)
-                @livewire(\App\Http\Livewire\Admin\DotwApiTokenIndex::class)
+                {{-- @livewire(\App\Http\Livewire\Admin\DotwApiTokenIndex::class) --}}
+                <p class="text-gray-500">API Tokens management coming soon...</p>
             @endif
         </div>
 

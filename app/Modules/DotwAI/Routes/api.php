@@ -62,4 +62,7 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
     Route::get('booking_status', [BookingController::class, 'bookingStatus']);
     Route::get('booking_history', [BookingController::class, 'bookingHistory']);
     Route::post('resend_voucher', [BookingController::class, 'resendVoucher']);
+
+    // PDF voucher download (Phase 21 - HIST-04)
+    Route::get('download_voucher', [BookingController::class, 'downloadVoucher']);
 });

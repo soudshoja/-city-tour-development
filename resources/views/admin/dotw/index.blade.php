@@ -1,3 +1,3 @@
 <x-app-layout>
-    @livewire(\App\Http\Livewire\Admin\DotwAdminIndex::class)
+    @livewire('admin.dotw-admin-index')
 </x-app-layout>

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Livewire;
 use App\Models\Role;
 use App\Models\Branch;
 use App\Models\Agent;
@@ -37,6 +38,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register Livewire components from App\Http\Livewire (Livewire 3 default is App\Livewire)
+        Livewire::component('admin.dotw-admin-index', \App\Http\Livewire\Admin\DotwAdminIndex::class);
+        Livewire::component('admin.dotw-dashboard-tab', \App\Http\Livewire\Admin\DotwDashboardTab::class);
+        Livewire::component('admin.dotw-booking-lifecycle-tab', \App\Http\Livewire\Admin\DotwBookingLifecycleTab::class);
+        Livewire::component('admin.dotw-error-tracker-tab', \App\Http\Livewire\Admin\DotwErrorTrackerTab::class);
+        Livewire::component('admin.dotw-audit-log-index', \App\Http\Livewire\Admin\DotwAuditLogIndex::class);
+        Livewire::component('admin.dotw-api-token-index', \App\Http\Livewire\Admin\DotwApiTokenIndex::class);
+
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Item::class, ItemPolicy::class);
         Gate::policy(Client::class, ClientPolicy::class);

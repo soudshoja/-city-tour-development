@@ -1,7 +1,7 @@
-<div wire:poll.30000ms="refreshMetrics">
+<div wire:poll.30000ms="refreshMetrics" x-data="{ countdown: 30 }" x-init="setInterval(() => { countdown = countdown <= 1 ? 30 : countdown - 1 }, 1000); $watch(() => $wire.bookingsToday, () => { countdown = 30 })">
     {{-- Section heading --}}
     <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">DOTW Module Overview</h2>
-    <p class="text-xs text-gray-400 dark:text-gray-500 -mt-4 mb-6">Refreshes every 30 seconds</p>
+    <p class="text-xs text-gray-400 dark:text-gray-500 -mt-4 mb-6"><span x-text="`Refreshes in ${countdown}s`"></span></p>
 
     {{-- Stats cards row (grid-cols-2 on md, grid-cols-4 on lg) --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -52,11 +52,11 @@
 
     {{-- Charts row (grid-cols-1 on md, grid-cols-2 on lg) --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div wire:ignore class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Bookings – Last 14 Days</h4>
             <div id="dotw-bookings-trend-chart"></div>
         </div>
-        <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div wire:ignore class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">API Operations – Last 7 Days</h4>
             <div id="dotw-operations-chart"></div>
         </div>

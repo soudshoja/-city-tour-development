@@ -4,6 +4,54 @@
     <div class="w-56 border-r border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
         <nav class="space-y-1">
 
+            {{-- Dashboard --}}
+            <button
+                @click="activeTab = 'dashboard'"
+                :class="activeTab === 'dashboard'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                {{-- Heroicons outline: chart-bar --}}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Dashboard
+            </button>
+
+            {{-- Bookings --}}
+            <button
+                @click="activeTab = 'bookings'"
+                :class="activeTab === 'bookings'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                {{-- Heroicons outline: calendar --}}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Bookings
+            </button>
+
+            {{-- Errors --}}
+            <button
+                @click="activeTab = 'errors'"
+                :class="activeTab === 'errors'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                {{-- Heroicons outline: exclamation-triangle --}}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                Errors
+            </button>
+
+            {{-- Divider --}}
+            <div class="my-2 border-t border-gray-200 dark:border-gray-700"></div>
+
             {{-- Credentials --}}
             <button
                 @click="activeTab = 'credentials'"
@@ -56,6 +104,21 @@
 
     {{-- Content area --}}
     <div class="flex-1 p-6">
+
+        {{-- Tab: Dashboard --}}
+        <div x-show="activeTab === 'dashboard'" x-cloak>
+            @livewire(\App\Http\Livewire\Admin\DotwDashboardTab::class)
+        </div>
+
+        {{-- Tab: Bookings --}}
+        <div x-show="activeTab === 'bookings'" x-cloak>
+            @livewire(\App\Http\Livewire\Admin\DotwBookingLifecycleTab::class)
+        </div>
+
+        {{-- Tab: Errors --}}
+        <div x-show="activeTab === 'errors'" x-cloak>
+            @livewire(\App\Http\Livewire\Admin\DotwErrorTrackerTab::class)
+        </div>
 
         {{-- Tab 1: Credentials --}}
         <div x-show="activeTab === 'credentials'" x-cloak>

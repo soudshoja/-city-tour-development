@@ -62,7 +62,8 @@
                     @forelse($credentials as $cred)
                     @php
                         $user = $cred->company?->user;
-                        $existingToken = $user?->tokens->first(); {{-- eager-loaded, filtered to dotw-n8n --}}
+                        {{-- eager-loaded, filtered to dotw-n8n --}}
+                        $existingToken = $user?->tokens->first();
                         $hasToken = !is_null($existingToken);
                     @endphp
                     <tr>

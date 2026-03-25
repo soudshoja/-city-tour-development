@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Enums\InvoiceStatus;
 use App\Models\Reminder;
+use App\Http\Traits\Lockable;
 use InvalidArgumentException;
 
 class Invoice extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Lockable;
 
     protected $fillable = [
         'invoice_number',
@@ -38,6 +39,18 @@ class Invoice extends Model
         'payment_type',
         'is_client_credit',
         'external_url',
+        'is_locked',
+        'locked_by',
+        'locked_at',
+        'agent_loss',
+        'company_loss',
+    ];
+
+    protected $casts = [
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
+        'agent_loss' => 'decimal:2',
+        'company_loss' => 'decimal:2',
     ];
 
     public static function boot()
@@ -51,6 +64,19 @@ class Invoice extends Model
                 throw new InvalidArgumentException("Invalid invoice status: {$invoice->status}");
             }
         });
+    }
+
+    /**
+     * When an invoice is locked, also lock:
+     * - All transactions where invoice_id = this invoice
+     * - All journal entries where invoice_id = this invoice
+     */
+    public static function getLockCascadeMap(): array
+    {
+        return [
+            [Transaction::class,  'invoice_id'],
+            [JournalEntry::class, 'invoice_id'],
+        ];
     }
 
     public function client()
@@ -145,5 +171,57 @@ class Invoice extends Model
     public function isFullyPaidViaApplications()
     {
         return $this->remaining_balance <= 0;
+    }
+
+    /**
+     * Get effective loss settings for this invoice.
+     * Returns invoice-level override if set, otherwise falls back to agent_loss table default.
+     *
+     * Bearer is derived from percentages:
+     *   agent_loss=100 → agent bears | company_loss=100 → company bears | otherwise → split
+     */
+    public function getEffectiveLossSettings(): AgentLoss
+    {
+        if ($this->agent_loss !== null) {
+            $agentPct = (float) $this->agent_loss;
+            $companyPct = (float) $this->company_loss;
+
+            if ($agentPct >= 100) {
+                $bearer = AgentLoss::BEARER_AGENT;
+            } elseif ($companyPct >= 100) {
+                $bearer = AgentLoss::BEARER_COMPANY;
+            } else {
+                $bearer = AgentLoss::BEARER_SPLIT;
+            }
+
+            return new AgentLoss([
+                'agent_id' => $this->agent_id,
+                'company_id' => $this->agent?->branch?->company_id ?? 0,
+                'loss_bearer' => $bearer,
+                'agent_percentage' => $agentPct,
+                'company_percentage' => $companyPct,
+            ]);
+        }
+
+        $companyId = $this->agent?->branch?->company_id;
+        if ($companyId && $this->agent_id) {
+            return AgentLoss::getForAgent($this->agent_id, $companyId);
+        }
+
+        return new AgentLoss([
+            'loss_bearer' => AgentLoss::BEARER_COMPANY,
+            'agent_percentage' => 0,
+            'company_percentage' => 100,
+        ]);
+    }
+
+    public function hasLossBearerOverride(): bool
+    {
+        return $this->agent_loss !== null;
+    }
+
+    public function hasLoss(): bool
+    {
+        return $this->invoiceDetails->contains(fn($d) => $d->profit < 0);
     }
 }

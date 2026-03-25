@@ -7,6 +7,7 @@ use App\Services\LoggingHelper;
 use App\Enums\SupplierAuthType;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Account;
+use App\Models\Company;
 use App\Models\Country;
 use App\Models\JournalEntry;
 use App\Models\Role;
@@ -49,71 +50,74 @@ class SupplierController extends Controller
     {
         Gate::authorize('viewAny', Supplier::class);
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
-        $suppliers = Supplier::all();
+        $query = Supplier::query();
+
+        if ($request->filled('q')) {
+            $query->where('name', 'like', '%' . $request->q . '%');
+        }
 
         if ($user->role_id == Role::ADMIN) {
-            // Only get SupplierCompany which is active
-            $suppliers = Supplier::with(['companies' => function ($query) {
-                $query->where('is_active', true);
-            }])->get();
+            $query->whereHas('companies', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            })->with(['country', 'supplierCompanies', 'companies' => function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            }]);
 
-            foreach ($suppliers as $supplier) {
-                foreach ($supplier->companies as $company) {
-                    if ($company->pivot) {
-                        $company->pivot->setRelation(
-                            'supplierSurcharges',
-                            SupplierSurcharge::with('references')->where('supplier_company_id', $company->pivot->id)->get()
-                        );
-                    }
-                }
+            $otherQuery = Supplier::query()
+                ->whereDoesntHave('companies', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })
+                ->with(['country', 'supplierCompanies']);
+
+            if ($request->filled('q')) {
+                $otherQuery->where('name', 'like', '%' . $request->q . '%');
             }
+
+            $otherSuppliers = $otherQuery->orderBy('name')->get();
         } elseif ($user->role_id == Role::COMPANY) {
-            $suppliers = Supplier::with(['credentials', 'companies' => function ($query) use ($user) {
-                $query->where('company_id', $user->branch->company->id);
-            }])
-                ->activeForCompany($user->branch->company->id)
-                ->get();
-
-            // Load surcharges for company role (same as admin)
-            foreach ($suppliers as $supplier) {
-                foreach ($supplier->companies as $company) {
-                    if ($company->pivot) {
-                        $company->pivot->setRelation(
-                            'supplierSurcharges',
-                            SupplierSurcharge::with('references')->where('supplier_company_id', $company->pivot->id)->get()
-                        );
-                    }
-                }
-            }
+            $query->activeForCompany($companyId)
+                ->with(['credentials', 'companies' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                }]);
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $suppliers = Supplier::with(['companies' => function ($query) {
-                $query->where('is_active', true);
-            }])->get();
+            $query->activeForCompany($companyId)
+                ->with(['credentials', 'companies' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                }]);
         } else {
             return abort(403, 'Unauthorized action.');
         }
 
+        if (!isset($otherSuppliers)) {
+            $otherSuppliers = collect();
+        }
+
+        $suppliers = $query->orderBy('id')->paginate(20)->withQueryString();
+
         foreach ($suppliers as $supplier) {
-            if (!is_null($supplier->route)) {
-                $route = Route::getRoutes()->getByName('suppliers.' . $supplier->route . '.index');
-                $supplier->named_route = $route ? $route->getName() : null;
-            } else {
-                $supplier->named_route = null;
+            foreach ($supplier->companies as $company) {
+                if ($company->pivot) {
+                    $company->pivot->setRelation(
+                        'supplierSurcharges',
+                        SupplierSurcharge::with('references')->where('supplier_company_id', $company->pivot->id)->get()
+                    );
+                }
             }
         }
 
-        $suppliersCount = $suppliers->count();
         $countries = Country::all();
         $supplierAuthTypes = SupplierAuthType::cases();
-        $supplierCompanies = SupplierCompany::all();
+        $companies = $user->role_id == Role::ADMIN ? Company::all() : collect();
 
         return view('suppliers.index', compact(
             'suppliers',
-            'suppliersCount',
+            'otherSuppliers',
             'countries',
             'supplierAuthTypes',
-            'supplierCompanies'
+            'companyId',
+            'companies'
         ));
     }
 
@@ -145,15 +149,10 @@ class SupplierController extends Controller
     public function show($suppliersId)
     {
         Gate::authorize('view', Supplier::class);
-
-        $user = Auth::user();
-        if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role_id == Role::BRANCH || $user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->branch->company_id;
-        } else {
+        if (!in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             abort(403, 'Unauthorized action.');
         }
+        $companyId = getCompanyId(Auth::user());
 
         $supplier = Supplier::with([
             'tasks' => fn($q) => $q->where('company_id', $companyId)->with(['agent', 'journalEntries']),
@@ -176,14 +175,10 @@ class SupplierController extends Controller
         $filteredTasks = $supplier->tasks;
         $payableAccount = $supplier->payableAccount ?? null;
 
-        $supplierCompany = collect();
-
-        if ($companyId) {
-            $supplierCompany = \App\Models\SupplierCompany::where('supplier_id', $supplier->id)
-                ->where('company_id', $companyId)
-                ->where('is_active', true)
-                ->first();
-        }
+        $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->first();
 
         return view('suppliers.show', compact(
             'supplier',
@@ -213,19 +208,17 @@ class SupplierController extends Controller
 
     public function create()
     {
-
-        // Check if the user has an admin role
+        Gate::authorize('create', Supplier::class);
         if (Auth::user()->role_id !== Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Return view
         return view('suppliers.SuppliersCreate');
     }
 
     public function store(Request $request)
     {
-        Gate::authorize('update', Supplier::class);
+        Gate::authorize('create', Supplier::class);
         if (Auth::user()->role_id != Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
@@ -269,11 +262,19 @@ class SupplierController extends Controller
             return redirect()->back()->with('error', 'Failed to create supplier.');
         }
 
+        $companyId = getCompanyId(Auth::user());
+        SupplierCompany::create([
+            'supplier_id' => $supplier->id,
+            'company_id' => $companyId,
+            'is_active' => true,
+        ]);
+
         return redirect()->back()->with('success', 'Supplier created successfully.');
     }
 
     public function update($id)
     {
+        Gate::authorize('update', Supplier::class);
         if (Auth::user()->role_id != Role::ADMIN && Auth::user()->role_id != Role::COMPANY) {
             abort(403, 'Unauthorized action.');
         }
@@ -506,7 +507,8 @@ class SupplierController extends Controller
             'is_confirmed.*.*' => 'nullable|boolean',
             'is_refund.*.*' => 'nullable|boolean',
             'is_void.*.*' => 'nullable|boolean',
-            'charge_behavior.*.*' => ['nullable', Rule::in(['single', 'repetitive'])],        ]);
+            'charge_behavior.*.*' => ['nullable', Rule::in(['single', 'repetitive'])],
+        ]);
 
         DB::transaction(function () use ($supplierCompany, $request, $user) {
             if ($request->has('surcharge_label')) {

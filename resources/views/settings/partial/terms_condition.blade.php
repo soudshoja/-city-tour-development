@@ -1,15 +1,15 @@
 <div class="flex items-center justify-between mb-6">
     
     <div>
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Terms & Regulation</h2>
-        <p class="text-sm text-gray-500 mt-1">Manage terms and conditions templates for clients before proceeding to payment gateway</p>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ __('settings.terms_regulations') }}</h2>
+        <p class="text-sm text-gray-500 mt-1">{{ __('settings.terms_regulations_description') }}</p>
     </div>
     <button @click="showCreateModal = true"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        Add Template
+        {{ __('settings.add_template') }}
     </button>
 </div>
 
@@ -26,25 +26,25 @@
     <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
     </svg>
-    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-1">No templates yet</h3>
-    <p class="text-sm text-gray-500 mb-4">Create your first terms and conditions template</p>
+    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-1">{{ __('settings.no_templates') }}</h3>
+    <p class="text-sm text-gray-500 mb-4">{{ __('settings.create_first_template') }}</p>
     <button @click="showCreateModal = true"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        Add Template
+        {{ __('settings.add_template') }}
     </button>
 </div>
 
 <!-- Language Filter Tabs -->
 <div x-show="!loadingTemplates && templates.length > 0" class="mb-4">
     <div class="flex items-center gap-2">
-        <span class="text-sm text-gray-500 mr-2">Filter by language:</span>
+        <span class="text-sm text-gray-500 mr-2">{{ __('settings.filter_by_language') }}:</span>
         <button @click="languageFilter = 'all'"
             :class="languageFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
             class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors">
-            All
+            {{ __('settings.all') }}
             <span class="ml-1 px-1.5 py-0.5 rounded-full text-xs"
                 :class="languageFilter === 'all' ? 'bg-gray-700' : 'bg-gray-200'"
                 x-text="templates.length"></span>
@@ -53,7 +53,7 @@
         <button @click="languageFilter = 'EN'"
             :class="languageFilter === 'EN' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'"
             class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors inline-flex items-center gap-1">
-            <span>🇬🇧</span> English
+            <span>🇬🇧</span> {{ __('settings.english') }}
             <span class="ml-1 px-1.5 py-0.5 rounded-full text-xs"
                 :class="languageFilter === 'EN' ? 'bg-indigo-500' : 'bg-indigo-100'"
                 x-text="templates.filter(t => t.language === 'EN').length"></span>
@@ -61,7 +61,7 @@
         <button @click="languageFilter = 'ARB'"
             :class="languageFilter === 'ARB' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
             class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors inline-flex items-center gap-1">
-            <span>🇸🇦</span> Arabic
+            <span>🇸🇦</span> {{ __('settings.arabic') }}
             <span class="ml-1 px-1.5 py-0.5 rounded-full text-xs"
                 :class="languageFilter === 'ARB' ? 'bg-emerald-500' : 'bg-emerald-100'"
                 x-text="templates.filter(t => t.language === 'ARB').length"></span>
@@ -76,13 +76,13 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="text-lg">🇬🇧</span>
-                <span class="text-sm font-medium text-indigo-800 dark:text-indigo-200">English Default</span>
+                <span class="text-sm font-medium text-indigo-800 dark:text-indigo-200">{{ __('settings.english_default') }}</span>
             </div>
             <template x-if="getDefaultForLanguage('EN')">
                 <span class="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full" x-text="getDefaultForLanguage('EN').title"></span>
             </template>
             <template x-if="!getDefaultForLanguage('EN')">
-                <span class="text-xs text-gray-500 italic">Not set</span>
+                <span class="text-xs text-gray-500 italic">{{ __('settings.not_set') }}</span>
             </template>
         </div>
     </div>
@@ -92,13 +92,13 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="text-lg">🇸🇦</span>
-                <span class="text-sm font-medium text-emerald-800 dark:text-emerald-200">Arabic Default</span>
+                <span class="text-sm font-medium text-emerald-800 dark:text-emerald-200">{{ __('settings.arabic_default') }}</span>
             </div>
             <template x-if="getDefaultForLanguage('ARB')">
                 <span class="text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full" x-text="getDefaultForLanguage('ARB').title"></span>
             </template>
             <template x-if="!getDefaultForLanguage('ARB')">
-                <span class="text-xs text-gray-500 italic">Not set</span>
+                <span class="text-xs text-gray-500 italic">{{ __('settings.not_set') }}</span>
             </template>
         </div>
     </div>
@@ -109,12 +109,12 @@
     <table class="w-full">
         <thead class="bg-gray-100 dark:bg-gray-600">
             <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Template Name</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Language</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Created By</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Created At</th>
-                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('settings.template_name') }}</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('settings.language') }}</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('settings.status') }}</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('settings.created_by') }}</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('settings.created_at') }}</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('settings.actions') }}</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
@@ -132,11 +132,11 @@
                     <td class="px-4 py-4">
                         <span x-show="template.language === 'EN'"
                             class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
-                            <span>🇬🇧</span> English
+                            <span>🇬🇧</span> {{ __('settings.english') }}
                         </span>
                         <span x-show="template.language === 'ARB'"
                             class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
-                            <span>🇸🇦</span> Arabic
+                            <span>🇸🇦</span> {{ __('settings.arabic') }}
                         </span>
                     </td>
 
@@ -145,15 +145,15 @@
                         <div class="flex items-center gap-2">
                             <span x-show="template.is_default"
                                 class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                Default
+                                {{ __('settings.default') }}
                             </span>
                             <span x-show="template.is_active && !template.is_default"
                                 class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                Active
+                                {{ __('settings.active') }}
                             </span>
                             <span x-show="!template.is_active"
                                 class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded-full">
-                                Inactive
+                                {{ __('settings.inactive') }}
                             </span>
                         </div>
                     </td>
@@ -164,7 +164,7 @@
                             <div class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
                                 <span class="text-xs font-medium text-blue-600" x-text="template.created_by_name ? template.created_by_name.charAt(0).toUpperCase() : 'S'"></span>
                             </div>
-                            <span class="text-sm text-gray-600 dark:text-gray-300" x-text="template.created_by_name || 'System'"></span>
+                            <span class="text-sm text-gray-600 dark:text-gray-300" x-text="template.created_by_name || '{{ __('settings.system') }}'"></span>
                         </div>
                     </td>
 
@@ -184,7 +184,7 @@
                                 @csrf
                                 <button type="submit"
                                     class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                                    :title="`Set as Default for ${template.language === 'en' ? 'English' : 'Arabic'}`">
+                                    :title="`Set as Default for ${template.language === 'en' ? '{{ __('settings.english') }}' : '{{ __('settings.arabic') }}'}`">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
                                     </svg>
@@ -194,7 +194,7 @@
                             <!-- View/Edit -->
                             <button @click="openEditModal(template)"
                                 class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit">
+                                title="{{ __('general.edit') }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                 </svg>
@@ -207,7 +207,7 @@
                                 <button type="submit"
                                     class="p-2 rounded-lg transition-colors"
                                     :class="template.is_active ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50' : 'text-orange-600 hover:bg-orange-50'"
-                                    :title="template.is_active ? 'Deactivate' : 'Activate'">
+                                    :title="template.is_active ? '{{ __('settings.deactivate') }}' : '{{ __('settings.activate') }}'">
                                     <svg x-show="template.is_active" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
                                     </svg>
@@ -222,7 +222,7 @@
                             <button x-show="!template.is_default"
                                 @click="confirmDelete(template)"
                                 class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete">
+                                title="{{ __('general.delete') }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
@@ -241,13 +241,13 @@
     <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
     </svg>
-    <p class="text-sm text-gray-500 mb-3">No templates found for <span class="font-medium" x-text="languageFilter === 'EN' ? 'English' : 'Arabic'"></span></p>
+    <p class="text-sm text-gray-500 mb-3">{{ __('settings.no_templates_for') }} <span class="font-medium" x-text="languageFilter === 'EN' ? '{{ __('settings.english') }}' : '{{ __('settings.arabic') }}'"></span></p>
     <button @click="showCreateModal = true"
         class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        Add Template
+        {{ __('settings.add_template') }}
     </button>
 </div>
 
@@ -255,8 +255,8 @@
 <div x-show="!loadingTemplates" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
     <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
         <div>
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Require T&C Acceptance</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Require clients to accept terms before payment</p>
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('settings.require_t&c_acceptance') }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('settings.require_t&c_acceptance_description') }}</p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" class="sr-only peer" id="require-tc" checked>
@@ -288,8 +288,8 @@
             <!-- Modal Header -->
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Create New Template</h3>
-                    <p class="text-sm text-gray-500 mt-0.5">Add a new terms and conditions template</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ __('settings.add_template') }}</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">{{ __('settings.add_template_description') }}</p>
                 </div>
                 <button type="button" @click="showCreateModal = false"
                     class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -307,7 +307,7 @@
                         <!-- Template Name -->
                         <div class="col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                                Template Name <span class="text-red-500">*</span>
+                                {{ __('settings.template_name') }} <span class="text-red-500">*</span>
                             </label>
                             <input type="text" name="title" required
                                 class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('title') border-red-500 @enderror"
@@ -321,12 +321,12 @@
                         <!-- Language -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                                Language <span class="text-red-500">*</span>
+                                {{ __('settings.language') }} <span class="text-red-500">*</span>
                             </label>
                             <select name="language" required
                                 class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('language') border-red-500 @enderror">
-                                <option value="EN" {{ old('language', 'EN') === 'EN' ? 'selected' : '' }}>🇬🇧 English</option>
-                                <option value="ARB" {{ old('language') === 'ARB' ? 'selected' : '' }}>🇸🇦 Arabic</option>
+                                <option value="EN" {{ old('language', 'EN') === 'EN' ? 'selected' : '' }}>🇬🇧 {{ __('settings.english') }}</option>
+                                <option value="ARB" {{ old('language') === 'ARB' ? 'selected' : '' }}>🇸🇦 {{ __('settings.arabic') }}</option>
                             </select>
                             @error('language')
                             <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
@@ -337,16 +337,16 @@
                     <!-- Template Content -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                            Terms & Conditions Content <span class="text-red-500">*</span>
+                            {{ __('settings.terms_conditions_content') }} <span class="text-red-500">*</span>
                         </label>
                         <textarea name="content" rows="12" required
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('content') border-red-500 @enderror"
-                            placeholder="Enter your terms and conditions here...">{{ old('content') }}</textarea>
+                            placeholder="{{ __('settings.enter_terms_placeholder') }}">{{ old('content') }}</textarea>
                         @error('content')
                         <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                         @enderror
                         <p class="text-xs text-gray-400 mt-1">
-                            <span class="font-medium">Tip:</span> Use numbered lists and clear headings for better readability
+                            <span class="font-medium">{{ __('settings.tip') }}:</span> {{ __('settings.tip_description') }}
                         </p>
                     </div>
 
@@ -356,8 +356,8 @@
                             class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                             {{ old('is_default') ? 'checked' : '' }}>
                         <div>
-                            <label for="create-is-default" class="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Set as default template</label>
-                            <p class="text-xs text-gray-500">This will be the default template for the selected language</p>
+                            <label for="create-is-default" class="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">{{ __('settings.set_as_default') }}</label>
+                            <p class="text-xs text-gray-500">{{ __('settings.set_as_default_description') }}</p>
                         </div>
                     </div>
                 </div>
@@ -367,11 +367,11 @@
             <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-xl">
                 <button type="button" @click="showCreateModal = false"
                     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    Cancel
+                    {{ __('settings.cancel') }}
                 </button>
                 <button type="submit"
                     class="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                    Create Template
+                    {{ __('settings.create_template') }}
                 </button>
             </div>
         </form>
@@ -396,8 +396,8 @@
             
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Edit Template</h3>
-                    <p class="text-sm text-gray-500 mt-0.5">Update your terms and conditions template</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ __('settings.edit_template') }}</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">{{ __('settings.edit_template_description') }}</p>
                 </div>
                 <button type="button" @click="showEditModal = false"
                     class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -415,7 +415,7 @@
                         <!-- Template Name -->
                         <div class="col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                                Template Name <span class="text-red-500">*</span>
+                                {{ __('settings.template_name') }} <span class="text-red-500">*</span>
                             </label>
                             <input type="text" name="title" required x-model="editingTemplate.title"
                                 class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -425,12 +425,12 @@
                         <!-- Language -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                                Language <span class="text-red-500">*</span>
+                                {{ __('settings.language') }} <span class="text-red-500">*</span>
                             </label>
                             <select name="language" required x-model="editingTemplate.language"
                                 class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="EN">🇬🇧 English</option>
-                                <option value="ARB">🇸🇦 Arabic</option>
+                                <option value="EN">🇬🇧 {{ __('settings.english') }}</option>
+                                <option value="ARB">🇸🇦 {{ __('settings.arabic') }}</option>
                             </select>
                         </div>
                     </div>
@@ -438,13 +438,13 @@
                     <!-- Template Content -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                            Terms & Conditions Content <span class="text-red-500">*</span>
+                            {{ __('settings.terms_conditions_content') }} <span class="text-red-500">*</span>
                         </label>
                         <textarea name="content" rows="12" required x-model="editingTemplate.content"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enter your terms and conditions here..."></textarea>
+                            placeholder="{{ __('settings.enter_terms_placeholder') }}"></textarea>
                         <p class="text-xs text-gray-400 mt-1">
-                            <span class="font-medium">Tip:</span> Use numbered lists and clear headings for better readability
+                            <span class="font-medium">{{ __('settings.tip') }}:</span> {{ __('settings.tip_description') }}
                         </p>
                     </div>
 
@@ -454,7 +454,7 @@
                             <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
                             </svg>
-                            <span class="text-sm font-medium text-blue-700">This is the default template for <span x-text="editingTemplate?.language === 'EN' ? 'English' : 'Arabic'"></span></span>
+                            <span class="text-sm font-medium text-blue-700">{{ __('settings.default_description') }} <span x-text="editingTemplate?.language === 'EN' ? '{{ __('settings.english') }}' : '{{ __('settings.arabic') }}'"></span></span>
                         </div>
                     </div>
                 </div>
@@ -464,11 +464,11 @@
             <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-xl">
                 <button type="button" @click="showEditModal = false"
                     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    Cancel
+                    {{ __('settings.cancel') }}
                 </button>
                 <button type="submit"
                     class="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                    Update Template
+                    {{ __('settings.update_template') }}
                 </button>
             </div>
         </form>
@@ -496,19 +496,19 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                 </svg>
             </div>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 text-center mb-2">Delete Template</h3>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 text-center mb-2">{{ __('settings.delete_template') }}</h3>
             <p class="text-sm text-gray-500 text-center mb-6">
-                Are you sure you want to delete "<span class="font-semibold text-gray-700" x-text="deletingTemplate?.title"></span>"?
-                <br><span class="text-red-500">This action cannot be undone.</span>
+                {{ __('settings.delete_template_description') }} "<span class="font-semibold text-gray-700" x-text="deletingTemplate?.title"></span>"?
+                <br><span class="text-red-500">{{ __('settings.action_cannot_be_undone') }}</span>
             </p>
             <div class="flex items-center justify-center gap-3">
                 <button type="button" @click="showDeleteModal = false"
                     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    Cancel
+                    {{ __('settings.cancel') }}
                 </button>
                 <button type="submit"
                     class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
-                    Delete
+                    {{ __('settings.delete') }}
                 </button>
             </div>
         </form>

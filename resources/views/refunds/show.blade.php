@@ -66,6 +66,28 @@
     $totalRefundToClient = $refund->refundDetails->sum('total_refund_to_client');
     $totalSupplierCharge = $refund->refundDetails->sum('supplier_charge');
     $totalNewProfit = $refund->refundDetails->sum('new_task_profit');
+
+    // Holistic credit calculation (for partial-payment refunds)
+    $paidPartials = $refund->originalInvoice
+        ? $refund->originalInvoice->invoicePartials()->where('status', 'paid')->get()
+        : collect();
+    $totalPaidPrincipal = $paidPartials->sum('amount');
+    $totalServiceChargesPaid = $paidPartials->sum('service_charge');
+    $totalInvoiceChargesPaid = $paidPartials->sum('invoice_charge');
+    $totalNonRefundableCharges = $totalServiceChargesPaid + $totalInvoiceChargesPaid;
+    $totalPaidAll = $totalPaidPrincipal + $totalNonRefundableCharges;
+
+    $refundedOriginalTaskIds = $refund->refundDetails
+        ->map(fn($d) => $d->task?->originalTask?->id ?? $d->task_id)
+        ->filter()->unique()->toArray();
+    $remainingTaskTotal = $refund->originalInvoice
+        ? $refund->originalInvoice->invoiceDetails()
+            ->when(!empty($refundedOriginalTaskIds), fn($q) => $q->whereNotIn('task_id', $refundedOriginalTaskIds))
+            ->sum('task_price')
+        : 0;
+
+    $actualCredit = $refund->total_nett_refund;
+    $isHolisticCredit = !$isCollectCharges && $totalPaidPrincipal > 0;
 @endphp
 
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100 py-10">
@@ -352,24 +374,62 @@
 
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <h4 class="text-sm font-semibold text-gray-800 mb-2">Refund Breakdown</h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Original Invoice Price:</span>
-                            <span>{{ number_format($totalOriginalPrice, 3) }}</span>
+                    @if($isHolisticCredit)
+                        {{-- Partial-payment scenario: show step-by-step calculation --}}
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Total Paid by Client:</span>
+                                <span>{{ number_format($totalPaidAll, 3) }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Remaining Task Costs:</span>
+                                <span class="text-red-600">-{{ number_format($remainingTaskTotal, 3) }}</span>
+                            </div>
+                            @if($totalNonRefundableCharges > 0)
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">
+                                    Non-refundable Charges
+                                    @if($totalServiceChargesPaid > 0 && $totalInvoiceChargesPaid > 0)
+                                        <span class="text-xs text-gray-400">(service + invoice)</span>
+                                    @elseif($totalServiceChargesPaid > 0)
+                                        <span class="text-xs text-gray-400">(service charge)</span>
+                                    @else
+                                        <span class="text-xs text-gray-400">(invoice charge)</span>
+                                    @endif
+                                </span>
+                                <span class="text-red-600">-{{ number_format($totalNonRefundableCharges, 3) }}</span>
+                            </div>
+                            @endif
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Cancellation Fee:</span>
+                                <span class="text-red-600">-{{ number_format($refund->total_refund_amount, 3) }}</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-gray-300">
+                                <span class="font-bold">Credit to Client:</span>
+                                <span class="font-bold text-green-600">{{ number_format($actualCredit, 3) }}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Supplier Charges:</span>
-                            <span class="text-red-600">-{{ number_format($totalSupplierCharge, 3) }}</span>
+                    @else
+                        {{-- Simple per-task breakdown --}}
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Original Invoice Price:</span>
+                                <span>{{ number_format($totalOriginalPrice, 3) }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Supplier Charges:</span>
+                                <span class="text-red-600">-{{ number_format($totalSupplierCharge, 3) }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Agency Fee:</span>
+                                <span class="text-red-600">-{{ number_format($totalNewProfit, 3) }}</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-gray-300">
+                                <span class="font-bold">Credit to Client:</span>
+                                <span class="font-bold text-green-600">{{ number_format($actualCredit, 3) }}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Agency Fee:</span>
-                            <span class="text-red-600">-{{ number_format($totalNewProfit, 3) }}</span>
-                        </div>
-                        <div class="flex justify-between pt-2 border-t border-gray-300">
-                            <span class="font-bold">Credit to Client:</span>
-                            <span class="font-bold text-green-600">{{ number_format($totalRefundToClient, 3) }}</span>
-                        </div>
-                    </div>
+                    @endif
                 </div>
             </div>
             @if($usageHistory->count() > 0)

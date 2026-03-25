@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\BulkUpload;
+use App\Models\BulkInvoice;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\InvoiceSequence;
@@ -19,7 +19,7 @@ use Throwable;
 /**
  * CreateBulkInvoicesJob
  *
- * Background queue job for atomic bulk invoice creation from approved bulk uploads.
+ * Background queue job for atomic bulk invoice creation from approved bulk invoices.
  * Links existing tasks to clients, sets selling prices, creates invoices, and applies payments.
  *
  * Process:
@@ -61,51 +61,47 @@ class CreateBulkInvoicesJob implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param  int  $bulkUploadId  The bulk upload ID to process
+     * @param  int  $bulkInvoiceId  The bulk invoice ID to process
      */
-    public function __construct(public int $bulkUploadId) {}
+    public function __construct(public int $bulkInvoiceId) {}
 
     /**
      * Execute the job.
      */
     public function handle(): void
     {
-        // Load BulkUpload with rows
-        $bulkUpload = BulkUpload::with('rows')->findOrFail($this->bulkUploadId);
+        // Load BulkInvoice with rows
+        $bulkInvoice = BulkInvoice::with('rows')->findOrFail($this->bulkInvoiceId);
 
         // Set log context
         Log::withContext([
-            'bulk_upload_id' => $this->bulkUploadId,
-            'company_id' => $bulkUpload->company_id,
+            'bulk_invoice_id' => $this->bulkInvoiceId,
+            'company_id' => $bulkInvoice->company_id,
         ]);
 
         Log::info('Starting bulk invoice creation', [
-            'filename' => $bulkUpload->original_filename,
-            'valid_rows' => $bulkUpload->valid_rows,
+            'filename' => $bulkInvoice->original_filename,
+            'valid_rows' => $bulkInvoice->valid_rows,
         ]);
 
         // Wrap everything in DB::transaction for atomicity
-        DB::transaction(function () use ($bulkUpload) {
+        DB::transaction(function () use ($bulkInvoice) {
             $invoiceGroups = [];
 
             // STEP 1: Process each valid row
-            foreach ($bulkUpload->rows()->where('status', 'valid')->get() as $row) {
+            foreach ($bulkInvoice->rows()->where('status', 'valid')->get() as $row) {
                 // 1a. Load matched entities
                 $task = \App\Models\Task::findOrFail($row->task_id);
                 $client = \App\Models\Client::findOrFail($row->client_id);
                 $payment = \App\Models\Payment::findOrFail($row->payment_id);
 
-                // 1b. Set selling price (was NULL before)
-                $task->selling_amount = $row->raw_data['selling_price'];
-                $task->save();
-
-                // 1c. Link task to client (if not already linked)
+                // 1b. Link task to client (if not already linked)
                 if (! $task->client_id) {
                     $task->client_id = $client->id;
                     $task->save();
                 }
 
-                // 1d. Group by client_id + invoice_date
+                // 1c. Group by client_id + invoice_date
                 $groupKey = ($task->client_id ?? $client->id).'_'.$row->raw_data['invoice_date'];
                 $invoiceGroups[$groupKey][] = [
                     'task' => $task,
@@ -121,7 +117,7 @@ class CreateBulkInvoicesJob implements ShouldQueue
             $createdInvoices = [];
             foreach ($invoiceGroups as $group) {
                 // 2a. Create invoice
-                $invoice = $this->createInvoice($group, $bulkUpload);
+                $invoice = $this->createInvoice($group, $bulkInvoice);
 
                 // 2b. Create invoice details (link tasks)
                 foreach ($group as $item) {
@@ -153,8 +149,8 @@ class CreateBulkInvoicesJob implements ShouldQueue
                 ]);
             }
 
-            // STEP 3: Update bulk upload status
-            $bulkUpload->update([
+            // STEP 3: Update bulk invoice status
+            $bulkInvoice->update([
                 'status' => 'completed',
                 'invoice_ids' => $createdInvoices,
             ]);
@@ -165,39 +161,42 @@ class CreateBulkInvoicesJob implements ShouldQueue
             ]);
         });
 
-        // STEP 4: Dispatch email job (after commit)
-        SendInvoiceEmailsJob::dispatch($this->bulkUploadId)
-            ->onQueue('emails')
-            ->afterCommit();
-
-        Log::info('Dispatched email notification job', [
-            'bulk_upload_id' => $this->bulkUploadId,
-        ]);
+        // STEP 4: Send email notifications (non-critical, don't fail the whole job)
+        try {
+            SendInvoiceEmailsJob::dispatchSync($this->bulkInvoiceId);
+            Log::info('Sent invoice email notifications', [
+                'bulk_invoice_id' => $this->bulkInvoiceId,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to send invoice emails (non-critical)', [
+                'bulk_invoice_id' => $this->bulkInvoiceId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
      * Create an invoice for a group of tasks.
      *
      * @param  array  $group  Group of task data with client, payment, dates, prices
-     * @param  BulkUpload  $bulkUpload  The bulk upload instance
+     * @param  BulkInvoice  $bulkInvoice  The bulk invoice instance
      * @return Invoice The created invoice
      */
-    protected function createInvoice(array $group, BulkUpload $bulkUpload): Invoice
+    protected function createInvoice(array $group, BulkInvoice $bulkInvoice): Invoice
     {
         $firstItem = $group[0];
         $client = $firstItem['client'];
-        $invoiceDate = $firstItem['invoice_date'];
+        $invoiceDate = \Carbon\Carbon::parse($firstItem['invoice_date'])->format('Y-m-d');
         $totalAmount = array_sum(array_column($group, 'selling_price'));
 
         // Generate invoice number with pessimistic lock
-        $invoiceNumber = $this->generateInvoiceNumber($bulkUpload->company_id);
+        $invoiceNumber = $this->generateInvoiceNumber($bulkInvoice->company_id);
 
         // Create invoice
         return Invoice::create([
-            'company_id' => $bulkUpload->company_id,
             'invoice_number' => $invoiceNumber,
             'client_id' => $client->id,
-            'agent_id' => $bulkUpload->agent_id,
+            'agent_id' => $bulkInvoice->agent_id,
             'invoice_date' => $invoiceDate,
             'currency' => 'KWD', // or from first task if needed
             'sub_amount' => $totalAmount,
@@ -229,7 +228,7 @@ class CreateBulkInvoicesJob implements ShouldQueue
         }
 
         // Determine payment mode based on payment status
-        $paymentMode = ($payment->completed && $payment->status === 'paid') ? 'full' : 'partial';
+        $paymentMode = ($payment->status === 'completed') ? 'full' : 'partial';
 
         // Apply payment to invoice using PaymentApplicationService
         $paymentService = app(\App\Services\PaymentApplicationService::class);
@@ -285,20 +284,20 @@ class CreateBulkInvoicesJob implements ShouldQueue
     /**
      * Handle a job failure.
      *
-     * Updates the BulkUpload status to 'failed' with error details.
+     * Updates the BulkInvoice status to 'failed' with error details.
      *
      * @param  Throwable  $exception  The exception that caused the failure
      */
     public function failed(Throwable $exception): void
     {
         Log::error('Bulk invoice creation job failed permanently', [
-            'bulk_upload_id' => $this->bulkUploadId,
+            'bulk_invoice_id' => $this->bulkInvoiceId,
             'exception' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);
 
-        // Update BulkUpload status to 'failed' with error details
-        BulkUpload::where('id', $this->bulkUploadId)->update([
+        // Update BulkInvoice status to 'failed' with error details
+        BulkInvoice::where('id', $this->bulkInvoiceId)->update([
             'status' => 'failed',
             'error_summary' => json_encode([
                 'job_failure' => $exception->getMessage(),

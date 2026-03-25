@@ -12,7 +12,7 @@
             <a
                 href="{{ route('dashboard') }}">
                 <div class="relative">
-                    <div data-tooltip="Dashboard"
+                    <div data-tooltip="{{ __('menu.dashboard') }}"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <g fill="none" stroke="currentColor" stroke-width="1.5">
@@ -31,7 +31,7 @@
         <div class="flex flex-col items-center ">
             <a href="{{ route('users.create') }}">
                 <div class="relative ">
-                    <div data-tooltip="Add new user"
+                    <div data-tooltip="{{ __('menu.add_new_user') }}"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <g fill="none" fill-rule="evenodd">
@@ -53,7 +53,7 @@
 
                 <div class="relative">
 
-                    <div data-tooltip="Create Invoice"
+                    <div data-tooltip="{{ __('menu.create_invoice') }}"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
 
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -66,41 +66,20 @@
         </div>
         @endcan
 
-
-        @can("create", App\Models\Invoice::class)
+        @can('create', App\Models\Invoice::class)
         <div class="flex flex-col items-center ">
-            <a href="{{ route("bulk-invoices.index") }}">
-
+            <a href="{{ route('bulk-invoices.index') }}">
                 <div class="relative">
-
-                    <div data-tooltip="Bulk Invoice Upload"
+                    <div data-tooltip="{{ __('menu.bulk_invoice_upload') }}"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5v11M8 12h2v2H8v-2m0 4h8v-2H8v2m8-10h-4v-2h4v2m-4 4h4v-2h-4v2Z"/>
                         </svg>
-
                     </div>
                 </div>
             </a>
         </div>
         @endcan
-
-        @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
-        <div class="flex flex-col items-center">
-            <a href="{{ route('admin.dotw.index') }}">
-                <div class="relative">
-                    <div data-tooltip="DOTW Hotel API"
-                        class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                        <img src="https://www.webbeds.com/wp-content/uploads/2018/11/dotw-wb.jpg"
-                             alt="DOTW Hotel API"
-                             class="h-6 w-6 object-contain">
-                    </div>
-                </div>
-            </a>
-        </div>
-        @endif
-
 
         <div class="flex flex-col items-center"
             x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">
@@ -108,7 +87,7 @@
             <!-- Trigger Button -->
             <button @click="showModal = true">
                 <div class="relative">
-                    <div data-tooltip="Currency Exchange"
+                    <div data-tooltip="{{ __('menu.currency_exchange') }}"
                         class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="12" cy="12" r="10" />
@@ -127,8 +106,8 @@
 
                     <div class="flex items-center justify-between mb-6">
                         <div>
-                            <h2 class="text-xl font-bold text-gray-800">Currency Exchange</h2>
-                            <p class="text-gray-600 italic text-xs mt-1">Perform quick currency conversions with saved exchange rates</p>
+                            <h2 class="text-xl font-bold text-gray-800">{{ __('menu.currency_exchange') }}</h2>
+                            <p class="text-gray-600 italic text-xs mt-1">{{ __('menu.currency_exchange_description') }}</p>
                         </div>
                         <button @click="showModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
                     </div>
@@ -136,7 +115,7 @@
                     <div class="space-y-6">
                         <!-- Amount -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Amount</label>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">{{ __('menu.amount') }}</label>
                             <input type="text" step="0.01" x-model.number="amount"
                                 @input.debounce.400ms="convertIfReady"
                                 class="w-full border border-gray-300 rounded-md px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -148,7 +127,7 @@
                             <!-- From -->
                             <div class="w-full border rounded-lg p-4 flex items-center justify-between">
                                 <div class="relative w-full">
-                                    <p class="text-sm text-gray-500">From</p>
+                                    <p class="text-sm text-gray-500">{{ __('menu.from') }}</p>
                                     <select id="fromSelect"
                                         x-model="from"
                                         @change="convertIfReady"
@@ -173,7 +152,7 @@
                             <!-- To -->
                             <div class="w-full border rounded-lg p-4 flex items-center justify-between">
                                 <div class="relative w-full">
-                                    <p class="text-sm text-gray-500">To</p>
+                                    <p class="text-sm text-gray-500">{{ __('menu.to') }}</p>
                                     <select id="toSelect"
                                         x-model="to"
                                         @change="convertIfReady"
@@ -210,7 +189,7 @@
                         <!-- (Button kept but hidden; remove if you prefer) -->
                         <div class="flex items-center justify-end gap-2" x-show="false">
                             <button type="button" @click="convert()" class="px-4 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700">
-                                Convert
+                                {{ __('menu.convert') }}
                             </button>
                         </div>
 
@@ -242,6 +221,64 @@
             :currentCompanyId="$currentCompanyId ?? 1" />
         @endif
 
+        <div class="flex flex-col items-center" x-data="{ showLangModal: false }">
+            <!-- Language Switcher Button -->
+            <button @click="showLangModal = true">
+                <div class="relative">
+                    <div data-tooltip="{{ __('general.language') }}"
+                        class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M2 12h20"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Language Modal -->
+            <div x-cloak x-show="showLangModal" x-trap="showLangModal" @click.self="showLangModal = false"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-xl">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ __('general.select_language') }}</h2>
+                            <p class="text-gray-600 dark:text-gray-400 italic text-xs mt-1">{{ __('general.language_description') }}</p>
+                        </div>
+                        <button @click="showLangModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                    </div>
+                    <div class="space-y-3">
+                        <a href="{{ route('locale.switch', 'en') }}"
+                            class="flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200
+                                {{ app()->getLocale() === 'en' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                            <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl mr-4">EN</div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-gray-800 dark:text-gray-100">English</p>
+                            </div>
+                            @if(app()->getLocale() === 'en')
+                                <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                            @endif
+                        </a>
+                        <a href="{{ route('locale.switch', 'ar') }}"
+                            class="flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200
+                                {{ app()->getLocale() === 'ar' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                            <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl mr-4">AR</div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-gray-800 dark:text-gray-100">العربية</p>
+                            </div>
+                            @if(app()->getLocale() === 'ar')
+                                <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                            @endif
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 
@@ -256,7 +293,7 @@
 
     <div class="flex flex-col justify-between items-center space-y-4">
 
-        <div id="themeToggle" data-tooltip="switch theme">
+        <div id="themeToggle" data-tooltip="{{ __('menu.switch_theme') }}">
 
             <button id="themeButton" class="p-3 rounded-full shadow-md flex items-center justify-center bg-black hover:bg-gray-700 dark:bg-gray-600  dark:hover:bg-gray-900/50 transition-all duration-200">
 
@@ -274,6 +311,12 @@
     </div>
 </div>
 <script>
+    const __sidebarTranslations = {
+        lastUpdated: "{{ __('menu.last_updated') }}",
+        failedToConvert: "{{ __('menu.failed_to_convert') }}",
+        rateCreatedRefreshing: "{{ __('menu.rate_created_refreshing') }}"
+    };
+
     function currencyConverter({
         companyId,
         convertUrl
@@ -369,7 +412,7 @@
 
                     // If backend says the rate was just created, show message then retry
                     if (payload && payload.created === true) {
-                        this.notice = payload.message || 'Rate created. Refreshing…';
+                        this.notice = payload.message || __sidebarTranslations.rateCreatedRefreshing;
                         // small delay so DB write is visible; 1500 ms as you asked
                         setTimeout(() => {
                             this.convert(); // re-run to fetch fresh numbers
@@ -388,9 +431,9 @@
                     this.ready = true;
 
                     const now = new Date();
-                    this.lastUpdated = `Last updated ${now.toLocaleString()}`;
+                    this.lastUpdated = `${__sidebarTranslations.lastUpdated} ${now.toLocaleString()}`;
                 } catch (e) {
-                    this.error = e?.message || 'Failed to convert.';
+                    this.error = e?.message || __sidebarTranslations.failedToConvert;
                 } finally {
                     this.loading = false;
                 }

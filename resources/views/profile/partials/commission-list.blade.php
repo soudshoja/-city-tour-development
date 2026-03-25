@@ -1,24 +1,32 @@
 @php
-$typeId = optional($user->agent)->type_id;
-$showProfit = true; // All types show profit
-$showCommission = in_array($typeId, [2, 3, 4]); // Types 2, 3, 4 show commission
-$viewType = request('view_type', 'invoice');
+    $typeId = optional($user->agent)->type_id;
+    $showProfit = true; // All types show profit
+    $showCommission = in_array($typeId, [2, 3, 4]); // Types 2, 3, 4 show commission
+    $viewType = request('view_type', 'invoice');
 
-$title = match($typeId) {
-1 => 'Profit',
-2 => 'Commission & Profit',
-3,4 => 'Commission & Profit',
-default => 'Commission & Profit'
-};
+    $title = match($typeId) {
+    1 => 'Profit & Loss',
+    2,3,4 => 'Commission, Profit & Loss',
+    default => 'Commission, Profit & Loss'
+    };
 @endphp
-<section class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md text-gray-900 dark:text-gray-200">
-    <header class="flex flex-col md:flex-row justify-between mb-4 gap-4">
+<section>
+    <header class="flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-y-auto">
         <div class="flex-1">
             <div class="flex items-center justify-between mb-2">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    {{ $user->name }}'s {{ $title }}
-                </h2>
-                
+                <div class="">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ $title }}
+                    </h2>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        @if($viewType === 'task')
+                            Review your earned {{ strtolower($title) }} along with details of the associated tasks
+                        @else
+                            Review your earned {{ strtolower($title) }} grouped by invoices
+                        @endif
+                    </p>
+                </div>
+
                 <!-- View Type Toggle -->
                 <div class="flex bg-gray-100 rounded-lg p-1">
                     <a href="{{ route('profile.edit', array_merge(request()->only(['month']), ['tab' => 'Commission', 'view_type' => 'task'])) }}"
@@ -31,47 +39,115 @@ default => 'Commission & Profit'
                     </a>
                 </div>
             </div>
-            
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                @if($viewType === 'task')
-                    Review your earned {{ strtolower($title) }} along with details of the associated tasks.
-                @else
-                    Review your earned {{ strtolower($title) }} grouped by invoices.
-                @endif
-            </p>
-
-            <form method="GET" action="{{ route('profile.edit') }}" class="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="tab" value="Commission">
-                <input type="hidden" name="view_type" value="{{ $viewType }}">
-                <label for="month" class="sr-only">Month</label>
-                <div class="flex items-center gap-1">
-                    <input type="month" name="month" id="month" value="{{ request('month', now()->format('Y-m')) }}"
-                        class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white">
-                    <button type="submit" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm">
-                        Filter
-                    </button>
-                    <a href="{{ route('profile.edit', ['tab' => 'Commission', 'view_type' => $viewType]) }}" 
-                        class="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm">
-                        Reset
-                    </a>
-                </div>
-            </form>
         </div>
     </header>
 
+    <div class="flex justify-end mt-10 mb-5">
+        <div class="flex items-center gap-2">
+            <form method="GET" id="commissionFilterForm" action="{{ route('profile.edit') }}"
+                class="flex items-center gap-1 bg-white/60 z-20 dark:bg-gray-800/40 px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+
+                <input type="hidden" name="tab" value="Commission">
+                <input type="hidden" name="view_type" value="{{ $viewType }}">
+
+                <div x-data="{ 
+                        open: false, 
+                        selected: {{ request('filter_month', request('month') ? (int)\Carbon\Carbon::parse(request('month'))->format('m') : now()->month) }},
+                        months: ['January','February','March','April','May','June','July','August','September','October','November','December']
+                    }" class="relative">
+
+                    <input type="hidden" name="filter_month" x-model="selected">
+
+                    <button type="button" @click="open = !open" @click.outside="open = false"
+                        class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
+                        <span x-text="months[selected - 1]"></span>
+                    </button>
+
+                    <div x-show="open" x-cloak
+                        class="absolute top-8 left-0 z-9999 bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[140px]">
+                        <template x-for="(month, index) in months" :key="index">
+                            <button type="button"
+                                @click="selected = index + 1; open = false"
+                                class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                                :class="selected === index + 1 ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
+                                x-text="month">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <span class="text-gray-400 text-sm">/</span>
+
+                <div x-data="{ 
+                        open: false, 
+                        selected: {{ request('filter_year', request('month') ? (int)\Carbon\Carbon::parse(request('month'))->format('Y') : now()->year) }},
+                        years: {{ json_encode(range(now()->year, now()->year - 5)) }}
+                    }" class="relative">
+
+                    <input type="hidden" name="filter_year" x-model="selected">
+
+                    <button type="button" @click="open = !open" @click.outside="open = false"
+                        class="text-sm text-gray-700 dark:text-gray-100 cursor-pointer">
+                        <span x-text="selected"></span>
+                    </button>
+
+                    <div x-show="open" x-cloak
+                        class="absolute top-8 left-0 z-100 bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-gray-100 dark:ring-gray-700 py-2 min-w-[90px]">
+                        <template x-for="year in years" :key="year">
+                            <button type="button"
+                                @click="selected = year; open = false"
+                                class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                                :class="selected === year ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-200'"
+                                x-text="year">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Filter Icon Button -->
+            <button type="submit" form="commissionFilterForm"
+                class="w-8 h-8 inline-flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                title="Filter">
+                <i class="fas fa-filter text-sm"></i>
+            </button>
+
+            <!-- Reset Icon Button -->
+            @php
+                $isFiltered = request('filter_month') && (
+                    (int)request('filter_month') !== now()->month || 
+                    (int)request('filter_year', now()->year) !== now()->year
+                );
+            @endphp
+
+            @if($isFiltered)
+            <a href="{{ route('profile.edit', ['tab' => 'Commission', 'view_type' => $viewType]) }}"
+                class="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-600 text-white hover:bg-gray-700 transition shadow-sm"
+                title="Reset">
+                <i class="fas fa-rotate-left text-sm"></i>
+            </a>
+            @endif
+        </div>
+    </div>
+
     @if($commissions && $commissions->count() > 0)
-    
     <!-- Summary Totals -->
-    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4 mb-6 border border-blue-200 dark:border-gray-600">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">Summary for {{ request('month', now()->format('Y-m')) }}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-{{ $showCommission ? '2' : '1' }} gap-4">
+    <div class="mb-10">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+            Summary for {{ \Carbon\Carbon::createFromDate(
+                request('filter_year', now()->year),
+                request('filter_month', now()->month),
+                1
+            )->format('F Y') }}
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-{{ $showCommission ? '3' : '1' }} gap-4">
             @if($showProfit)
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="bg-blue-100 dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-gray-700 shadow-md">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        <div class="w-8 h-8 bg-blue-300 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-800 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                             </svg>
                         </div>
                     </div>
@@ -83,13 +159,28 @@ default => 'Commission & Profit'
                     </div>
                 </div>
             </div>
+             <div class="bg-red-100 dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-gray-700 shadow-md">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-red-300 dark:bg-red-900 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-red-600 dark:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Loss</p>
+                        <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $totalLoss }} KWD</p>
+                    </div>
+                </div>
+            </div>
             @endif
             
             @if($showCommission)
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="bg-green-100 dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-gray-700 shadow-md">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                        <div class="w-8 h-8 bg-green-300 dark:bg-green-900 rounded-full flex items-center justify-center">
                             <svg class="w-4 h-4 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
@@ -107,13 +198,14 @@ default => 'Commission & Profit'
     
     <div class="overflow-x-auto" x-data="{ openRow: null }">
         <table class="min-w-full text-sm border border-gray-300 dark:border-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+            <thead class="bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 uppercase tracking-wide">
                 <tr>
                     @if($viewType === 'task')
                         <th class="py-3 px-4 border-b text-center">Task Reference</th>
                         <th class="py-3 px-4 border-b text-center">Passenger</th>
                         @if($showProfit)
-                        <th class="py-3 px-4 border-b text-center">Total Profit (KWD)</th>
+                        <th class="py-3 px-4 border-b text-center">Total Profit (KWD)</th>                        
+                        <th class="py-3 px-4 border-b text-center">Total Loss (KWD)</th>
                         @endif
                         @if($showCommission)
                         <th class="py-3 px-4 border-b text-center">Total Commission (KWD)</th>
@@ -125,6 +217,7 @@ default => 'Commission & Profit'
                         <th class="py-3 px-4 border-b text-center">Task Count</th>
                         @if($showProfit)
                         <th class="py-3 px-4 border-b text-center">Total Profit (KWD)</th>
+                        <th class="py-3 px-4 border-b text-center">Total Loss    (KWD)</th>
                         @endif
                         @if($showCommission)
                         <th class="py-3 px-4 border-b text-center">Total Commission (KWD)</th>
@@ -145,6 +238,9 @@ default => 'Commission & Profit'
                         @if($showProfit)
                         <td class="py-3 px-4 border-b text-blue-700 font-semibold">
                             {{ number_format($item['task_profit'], 3) }}
+                        </td>
+                        <td class="py-3 px-4 border-b text-red-700 font-semibold">
+                            {{ number_format($item['task_loss'], 3) }}
                         </td>
                         @endif
                         @if($showCommission)
@@ -239,6 +335,9 @@ default => 'Commission & Profit'
                         @if($showProfit)
                         <td class="py-3 px-4 border-b text-blue-700 font-semibold">
                             {{ number_format($item['total_profit'], 3) }}
+                        </td>
+                         <td class="py-3 px-4 border-b text-blue-700 font-semibold">
+                            {{ number_format($item['total_loss'], 3) }}
                         </td>
                         @endif
                         @if($showCommission)

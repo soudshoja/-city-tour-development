@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Company;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -62,6 +62,7 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+
     // protected function twoFactorCode(): Attribute
     // {
     //     return new Attribute(
@@ -89,10 +90,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(Branch::class);
     }
 
-    /*     public function company()
-        {
-            return $this->hasOne(Company::class);
-        } */
+/*     public function company()
+    {
+        return $this->hasOne(Company::class);
+    } */
 
     public function notification()
     {
@@ -104,36 +105,38 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(Role::class);
     }
 
-    public function accountant()
+    public function accountant() 
     {
         return $this->hasOne(Accountant::class);
     }
 
-    // In User.php
-    public function company(): Attribute
-    {
-        return Attribute::get(function () {
-            // Case 1: user directly owns a company
-            if ($this->hasOne(\App\Models\Company::class)->exists()) {
-                return $this->hasOne(\App\Models\Company::class)->first();
-            }
+// In User.php
+public function company(): Attribute
+{
+    return Attribute::get(function () {
+        // Case 1: user directly owns a company
+        if ($this->hasOne(\App\Models\Company::class)->exists()) {
+            return $this->hasOne(\App\Models\Company::class)->first();
+        }
 
-            // Case 2: accountant → branch → company
-            if ($this->accountant && $this->accountant->branch) {
-                return $this->accountant->branch->company;
-            }
+        // Case 2: accountant → branch → company
+        if ($this->accountant && $this->accountant->branch) {
+            return $this->accountant->branch->company;
+        }
 
-            // Case 3: agent → branch → company
-            if ($this->agent && $this->agent->branch) {
-                return $this->agent->branch->company;
-            }
+        // Case 3: agent → branch → company
+        if ($this->agent && $this->agent->branch) {
+            return $this->agent->branch->company;
+        }
 
-            // Case 4: branch → company
-            if ($this->branch) {
-                return $this->branch->company;
-            }
+        // Case 4: branch → company
+        if ($this->branch) {
+            return $this->branch->company;
+        }
 
-            return null;
-        });
-    }
+        return null;
+    });
+}
+
+
 }

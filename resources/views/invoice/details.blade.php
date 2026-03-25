@@ -51,13 +51,15 @@
                         <p><span class="font-semibold text-gray-600 dark:text-slate-300">Due Date:</span> {{ \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') }}</p>
                         <p><span class="font-semibold text-gray-600 dark:text-slate-300">Paid Date:</span> {{ \Carbon\Carbon::parse($invoice->paid_date)->format('d M Y') }}</p>
                         @php
-                        $status = strtolower($invoice->status ?? '');
-                        $classes = [
-                        'paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
-                        'unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 shadow-sm',
-                        'partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
-                        'paid by refund' => 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
-                        ][$status] ?? 'bg-gray-100 text-gray-800 dark:bg-slate-800/70 dark:text-slate-200 shadow-sm';
+                            $status = strtolower($invoice->status ?? '');
+                            $classes = [
+                                'paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
+                                'refunded' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
+                                'unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 shadow-sm',
+                                'partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                                'paid by refund' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                                'partial refund' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                            ][$status] ?? 'bg-gray-100 text-gray-800 dark:bg-slate-800/70 dark:text-slate-200 shadow-sm';
                         @endphp
                         <span class="mt-2 inline-block px-3.5 py-1 rounded-full text-base font-semibold {{ $classes }}">
                             {{ ucfirst($invoice->status) }}
@@ -368,6 +370,10 @@
                                 <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->sub_amount, 3) }} KWD</dd>
                             </div>
                             <div class="flex justify-between">
+                                <dt class="text-gray-600 dark:text-slate-400">Invoice Charges:</dt>
+                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoicePartials->sum('invoice_charge') ?? 0, 3) }} KWD</dd>
+                            </div>
+                            <div class="flex justify-between">
                                 <dt class="text-gray-600 dark:text-slate-400">Service Charges:</dt>
                                 <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoicePartials->sum('service_charge') ?? 0, 3) }} KWD</dd>
                             </div>
@@ -410,6 +416,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Reference</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Amount</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Service Charge</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Invoice Charge</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Total</th>
                             </tr>
                         </thead>
@@ -420,8 +427,11 @@
                                 $isCredit = (stripos($partial->payment_gateway ?? '', 'credit') !== false);
                                 
                                 // Check if this credit payment has PaymentApplication records (new audit trail system)
-                                $paymentApps = $partial->paymentApplications()->with('payment')->get();
+                                $paymentApps = $partial->paymentApplications()->with(['payment', 'credit.refund'])->get();
                                 $hasPaymentApplications = $paymentApps->isNotEmpty();
+
+                                $topupApps = $paymentApps->filter(fn($app) => $app->payment_id !== null);
+                                $refundApps = $paymentApps->filter(fn($app) => $app->payment_id === null && $app->credit?->refund_id !== null);
                             @endphp
                             <tr>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-200">
@@ -432,29 +442,50 @@
                                 </td>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-300">
                                     @if($hasPaymentApplications)
-                                        @foreach($paymentApps as $app)
+                                        @foreach($topupApps as $app)
                                             @if($app->payment)
                                                 <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $app->payment->voucher_number]) }}"
                                                     class="text-blue-500 hover:text-blue-700" target="_blank">{{ $app->payment->voucher_number }}</a>
                                                 <span class="text-xs text-gray-500">({{ number_format($app->amount, 3) }})</span>
-                                                @if(!$loop->last)<br>@endif
+                                                @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
                                             @endif
+                                        @endforeach
+                                        @foreach($refundApps as $app)
+                                            @if($app->credit?->refund)
+                                                <a href="{{ route('refunds.show', ['companyId' => $company->id, 'refundNumber' => $app->credit->refund->refund_number]) }}"
+                                                    class="text-blue-500 hover:text-blue-700" target="_blank">{{ $app->credit->refund->refund_number }}</a>
+                                                <span class="text-xs text-gray-500">({{ number_format($app->amount, 3) }})</span>
+                                            @else
+                                                <span class="text-gray-600 italic">TBA</span>
+                                            @endif
+                                            @if(!$loop->last)<br>@endif
                                         @endforeach
                                     @elseif($voucher)
                                         <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $voucher]) }}"
                                             class="text-blue-500 hover:text-blue-700" target="_blank">{{ $voucher }}</a>
+                                    @elseif($partial->charge && !$partial->charge->is_system_default)
+                                        @if($partial->invoiceReceipt?->transaction?->reference_number)
+                                            <a href="{{ route('receipt-voucher.show', ['companyId' => $company->id, 'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 hover:text-blue-700" target="_blank">
+                                                {{ $partial->invoiceReceipt->transaction->reference_number }}
+                                            </a>
+                                        @else
+                                            <span class="text-gray-600 italic">TBA</span>
+                                        @endif
                                     @else
                                         {{ $isCredit ? 'Client Credit' : 'TBA' }}
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">
-                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount : $partial->amount - $partial->service_charge, 3) }} KWD
+                                    {{ number_format($partial->amount, 3) }} KWD
                                 </td>
                                 <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
                                     {{ number_format($partial->service_charge ?? 0, 3) }} KWD
                                 </td>
                                 <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
-                                    {{ number_format($partial->status === 'unpaid' ? $partial->amount + $partial->service_charge : $partial->amount, 3) }} KWD
+                                    {{ number_format($partial->invoice_charge ?? 0, 3) }} KWD
+                                </td>
+                                <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
+                                    {{ number_format($partial->amount + $partial->invoice_charge + $partial->service_charge, 3) }} KWD
                                 </td>
                             </tr>
                             @endforeach
@@ -462,8 +493,12 @@
                     </table>
                 </div>
                 <p class="mt-3 text-xs text-gray-600 dark:text-slate-400">
-                    Paid {{ number_format($invoice->invoicePartials->filter(fn($p) => strtolower($p->status ?? '') === 'paid')->sum('amount'), 3) }} KWD
-                    of {{ number_format($invoice->amount + $partials->sum('service_charge'), 3) }} KWD
+                    @php
+                        $paidPartials = $invoice->invoicePartials->filter(fn($p) => strtolower($p->status ?? '') === 'paid');
+                        $paidTotal = $paidPartials->sum('amount') + $paidPartials->sum('service_charge') + $paidPartials->sum('invoice_charge');
+                        $grandTotal = $invoice->amount + $partials->sum('service_charge');
+                    @endphp
+                    Paid {{ number_format($paidTotal, 3) }} KWD of {{ number_format($grandTotal, 3) }} KWD
                 </p>
                 @endif
             </section>

@@ -1,8 +1,4 @@
 <x-app-layout>
-    @push('styles')
-        <link rel="stylesheet" href="{{ asset('css/outstanding.css') }}">
-    @endpush
-
     @php
         function sortUrl($type, $field, $currentSort, $currentDirection) {
             $newDirection = ($currentSort === $field && $currentDirection === 'asc') ? 'desc' : 'asc';
@@ -26,8 +22,7 @@
         </div>
     </div>
 
-    <div class="main-panel" 
-         x-data="{ 
+    <div x-data="{ 
             activeTab: localStorage.getItem('outstanding_tab') || 'payment_links',
             setTab(tab) {
                 this.activeTab = tab;

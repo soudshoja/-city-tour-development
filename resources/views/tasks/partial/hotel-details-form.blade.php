@@ -1,13 +1,15 @@
 <div class="flex flex-col gap-4" @change="updateHotelDetail($event)" @dropdown-select="updateHotelDetail($event)">
-    <!-- Hotel Selection -->
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Hotel</label>
-        <x-searchable-dropdown
+        <x-ajax-searchable-dropdown
             name="hotel_id"
-            :items="$hotels"
             :selectedId="$task->hotelDetails->hotel_id ?? ''"
             :selectedName="$task->hotelDetails->hotel->name ?? ''"
-            placeholder="Select a hotel" />
+            ajaxUrl="{{ route('hotel.ajax.search') }}"
+            placeholder="Select a hotel"
+            :columns="['name', 'city', 'state']"
+            displayColumn="name"
+            mode="modal" />
     </div>
 
     <!-- Room Type & Room Number -->

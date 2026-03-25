@@ -19,12 +19,10 @@ class SupplierCompany extends Pivot
         'account_id',
         'group_id',
         'is_active',
-        'auto_process_pdf',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'auto_process_pdf' => 'boolean',
     ];
 
     public function supplier()

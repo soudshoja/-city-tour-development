@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\BulkUpload;
+use App\Models\BulkInvoice;
 use App\Models\Invoice;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
@@ -22,18 +22,18 @@ class BulkInvoicesMail extends Mailable
     use Queueable, SerializesModels;
 
     /**
-     * The bulk upload ID.
+     * The bulk invoice ID.
      */
-    protected int $bulkUploadId;
+    protected int $bulkInvoiceId;
 
     /**
      * Create a new message instance.
      *
-     * @param  int  $bulkUploadId  The bulk upload ID (not Eloquent model)
+     * @param  int  $bulkInvoiceId  The bulk invoice ID (not Eloquent model)
      */
-    public function __construct(int $bulkUploadId)
+    public function __construct(int $bulkInvoiceId)
     {
-        $this->bulkUploadId = $bulkUploadId;
+        $this->bulkInvoiceId = $bulkInvoiceId;
     }
 
     /**
@@ -43,11 +43,11 @@ class BulkInvoicesMail extends Mailable
      */
     public function build()
     {
-        // Load BulkUpload with eager loading
-        $bulkUpload = BulkUpload::with('agent.branch.company')->findOrFail($this->bulkUploadId);
+        // Load BulkInvoice with eager loading
+        $bulkInvoice = BulkInvoice::with('agent.branch.company')->findOrFail($this->bulkInvoiceId);
 
         // Load invoices with all necessary relationships
-        $invoices = Invoice::whereIn('id', $bulkUpload->invoice_ids ?? [])
+        $invoices = Invoice::whereIn('id', $bulkInvoice->invoice_ids ?? [])
             ->with([
                 'client',
                 'agent.branch.company',
@@ -60,7 +60,7 @@ class BulkInvoicesMail extends Mailable
             ->get();
 
         // Get company from agent relationship
-        $company = $bulkUpload->agent?->branch?->company;
+        $company = $bulkInvoice->agent?->branch?->company;
 
         // Set subject
         $invoiceCount = $invoices->count();
@@ -68,10 +68,10 @@ class BulkInvoicesMail extends Mailable
 
         // Return email with view and data
         return $this->subject($subject)
-            ->view('email.bulk-invoices')
+            ->view('bulk-invoice.pdf.bulk-invoices')
             ->with([
                 'invoices' => $invoices,
-                'bulkUpload' => $bulkUpload,
+                'bulkInvoice' => $bulkInvoice,
                 'company' => $company,
             ]);
     }
@@ -85,11 +85,11 @@ class BulkInvoicesMail extends Mailable
      */
     public function attachments(): array
     {
-        // Load BulkUpload
-        $bulkUpload = BulkUpload::with('agent.branch.company')->findOrFail($this->bulkUploadId);
+        // Load BulkInvoice
+        $bulkInvoice = BulkInvoice::with('agent.branch.company')->findOrFail($this->bulkInvoiceId);
 
         // Load invoices with all necessary relationships
-        $invoices = Invoice::whereIn('id', $bulkUpload->invoice_ids ?? [])
+        $invoices = Invoice::whereIn('id', $bulkInvoice->invoice_ids ?? [])
             ->with([
                 'client',
                 'agent.branch.company',

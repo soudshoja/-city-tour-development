@@ -55,10 +55,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-
-// ResailAI Module
-use App\Modules\ResailAI\Services\ProcessingAdapter;
-use App\Modules\ResailAI\Jobs\ProcessDocumentJob;
 use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -153,7 +149,7 @@ class TaskController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
+        $defaultColumns = ['reference', 'type', 'gds-reference', 'amadeus-reference', 'bill-to', 'passenger-name', 'supplier-pay-date', 'agent-name', 'price', 'invoice', 'status', 'info', 'supplier'];
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
         $sortBy = $request->query('sortBy', 'created_at');
@@ -163,7 +159,19 @@ class TaskController extends Controller
             $sortBy = 'created_at';
         }
 
-        $query = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
+        $query = Task::with([
+            'agent.branch',
+            'client',
+            'invoiceDetail.invoice',
+            'refundDetail',
+            'originalTask',
+            'linkedTask',
+            'supplier:id,name',
+            'flightDetails:id,task_id,departure_time,arrival_time,airport_from,airport_to,ticket_number',
+            'hotelDetails:id,task_id,check_in,check_out,hotel_id',
+            'hotelDetails.hotel:id,name',
+            'paymentMethod:id,name',
+        ]);
         $suppliers = Supplier::with('companies');
 
         if ($user->role_id == Role::ADMIN) {
@@ -557,6 +565,59 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
         $importedTask = Cache::get('imported_task');
 
+        $switchInvoiceData = $tasks->filter(function ($task) {
+            return $task->originalTask?->status === 'confirmed'
+                && $task->status === 'issued'
+                && $task->originalTask->invoiceDetail;
+        })->mapWithKeys(function ($task) {
+            $invoice = $task->originalTask->invoiceDetail->invoice;
+            $invoiceDetail = $task->originalTask->invoiceDetail;
+            $oldSupplierCost = $task->originalTask->total ?? 0;
+            $newSupplierCost = $task->total ?? 0;
+            $taskPrice = $invoiceDetail->task_price ?? 0;
+            $oldProfit = $taskPrice - $oldSupplierCost;
+            $newProfit = $taskPrice - $newSupplierCost;
+
+            return [$task->id => [
+                'taskId' => $task->id,
+                'taskReference' => $task->reference,
+                'taskStatus' => $task->status,
+                'originalTaskId' => $task->originalTask->id,
+                'originalTaskReference' => $task->originalTask->reference,
+                'originalTaskStatus' => $task->originalTask->status,
+                'invoiceNumber' => $invoice->invoice_number,
+                'invoiceStatus' => $invoice->status,
+                'invoiceUrl' => route('invoice.details', [$invoice->agent->branch->company_id, $invoice->invoice_number]),
+                'currency' => $invoice->currency ?? 'KWD',
+                'isPaid' => $invoice->status === 'paid',
+                'oldSupplierCost' => $oldSupplierCost,
+                'newSupplierCost' => $newSupplierCost,
+                'taskPrice' => $taskPrice,
+                'oldProfit' => $oldProfit,
+                'newProfit' => $newProfit,
+                'profitDifference' => $newProfit - $oldProfit,
+                'isLoss' => $newProfit < 0,
+                'hasPriceChange' => $oldSupplierCost != $newSupplierCost,
+                'formAction' => route('tasks.switchInvoice', $task),
+            ]];
+        });
+
+        $isAdmin = Auth::user()->role_id == Role::ADMIN;
+        $actionData = $tasks->mapWithKeys(function ($task) use ($isAdmin, $switchInvoiceData) {
+            $isInvoicedAndPaid = $task->invoiceDetail?->invoice?->status === 'paid';
+            return [$task->id => [
+                'taskId' => $task->id,
+                'editUrl' => route('tasks.detail', ['tasks' => $task->id]),
+                'canEdit' => !$isInvoicedAndPaid,
+                'canEditFinancials' => $isAdmin,
+                'price' => $task->price ?? 0,
+                'tax' => $task->tax ?? 0,
+                'surcharge' => $task->surcharge ?? 0,
+                'isInvoicedAndPaid' => $isInvoicedAndPaid,
+                'showSwitchInvoice' => isset($switchInvoiceData[$task->id]),
+            ]];
+        });
+
         return view('tasks.index', compact(
             'tasks',
             'taskCount',
@@ -570,7 +631,9 @@ class TaskController extends Controller
             'allTypes',
             'defaultColumns',
             'currencies',
-            'listOfCreditors'
+            'listOfCreditors',
+            'switchInvoiceData',
+            'actionData'
         ));
     }
 
@@ -3005,16 +3068,12 @@ class TaskController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role_id == Role::COMPANY) {
-            $company = $user->company;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $company = $user->branch->company;
-        } elseif ($user->role_id == Role::AGENT) {
-            $company = $user->agent->branch->company;
-        } else {
+        $companyId = getCompanyId($user);
+        if (!$companyId) {
             return redirect()->back()->with('error', 'User not authorized to upload tasks.');
         }
 
+        $company = Company::find($companyId);
         if (!$company) {
             Log::error("Company not found for user ID: {$user->id}");
             return redirect()->back()->with('error', 'Something went wrong.');
@@ -3199,7 +3258,7 @@ class TaskController extends Controller
                     }
                     Storage::put($mergedPath, $mergedBytes);
 
-                    $fileUpload = FileUpload::create([
+                    FileUpload::create([
                         'file_name'        => $mergedName,
                         'destination_path' => Storage::path($mergedPath),
                         'user_id'          => $user->id,
@@ -3208,22 +3267,6 @@ class TaskController extends Controller
                         'status'           => 'pending',
                         'source_files'     => $successFiles,
                     ]);
-
-                    // Check if auto-process PDF is enabled for this supplier/company
-                    if (ProcessingAdapter::isPdfProcessingEnabled($supplier->id, $company->id)) {
-                        // Dispatch to ResailAI queue for processing
-                        ProcessDocumentJob::dispatch([
-                            'document_id' => $fileUpload->id,
-                            'supplier_id' => $supplier->id,
-                            'company_id' => $company->id,
-                            'agent_id' => $request->input('agent_id'),
-                            'branch_id' => null,
-                            'file_path' => Storage::path($mergedPath),
-                        ]);
-
-                        // Update status to queued
-                        $fileUpload->update(['status' => 'queued']);
-                    }
 
                     if (count($successFiles) === 1) {
                         $allMessages[] = "Batch {$batchIndex} uploaded single PDF: " . $successFiles[0];
@@ -3300,7 +3343,7 @@ class TaskController extends Controller
             Log::info("Uploading file: " . $file->getClientOriginalName() . " to: " . $filePath);
 
             try {
-                $fileUpload = FileUpload::create([
+                FileUpload::create([
                     'file_name' => $file->getClientOriginalName(),
                     'destination_path' => $filePath . '/' . $file->getClientOriginalName(),
                     'user_id' => $user->id,
@@ -3308,23 +3351,6 @@ class TaskController extends Controller
                     'company_id' => $company->id,
                     'status' => 'pending',
                 ]);
-
-                // Check if auto-process PDF is enabled for this supplier/company
-                $fileExtension = strtolower($file->getClientOriginalExtension());
-                if (ProcessingAdapter::isPdfProcessingEnabled($supplier->id, $company->id) && $fileExtension === 'pdf') {
-                    // Dispatch to ResailAI queue for processing
-                    ProcessDocumentJob::dispatch([
-                        'document_id' => $fileUpload->id,
-                        'supplier_id' => $supplier->id,
-                        'company_id' => $company->id,
-                        'agent_id' => $request->input('agent_id'),
-                        'branch_id' => null,
-                        'file_path' => $filePath . '/' . $file->getClientOriginalName(),
-                    ]);
-
-                    // Update status to queued
-                    $fileUpload->update(['status' => 'queued']);
-                }
             } catch (Exception $e) {
                 Log::error("Failed to create file upload record for {$fileName}: " . $e->getMessage());
                 $errorFilesWithMessage['file_name'] = $fileName;
@@ -4082,13 +4108,8 @@ class TaskController extends Controller
             $agentId = $agent->id;
         }
 
-        if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company->id;
-        } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company->id;
-        } else {
+        $companyId = getCompanyId($user);
+        if (!$companyId) {
             return redirect()->back()->with('error', 'User not authorized to create task');
         }
 
@@ -5491,6 +5512,8 @@ class TaskController extends Controller
                     $hasInvoicedTasks = true;
                 }
             }
+
+            $task->can_invoice = !$task->invoiceDetail && $task->client_id && $task->agent_id && $task->company_id && $task->supplier_id && $task->status && $task->type && $task->total && $task->reference;
         }
 
         // Block access if any task has a paid invoice
@@ -5537,28 +5560,36 @@ class TaskController extends Controller
             ->toArray();
 
 
-        $hotels = Hotel::orderBy('name', 'asc')->get(['id', 'name'])->map(function($hotel) {
-            return [
-                'id' => $hotel->id,
-                'name' => $hotel->name
-            ];
-        });
-
-        $airports = Airport::orderBy('iata_code', 'asc')->get(['id', 'iata_code', 'name'])->map(function($airport) {
+        $airports = Airport::orderBy('iata_code', 'asc')->get(['id', 'iata_code', 'name'])->map(function ($airport) {
             return [
                 'id' => $airport->id,
                 'name' => $airport->iata_code . ' - ' . $airport->name
             ];
         });
 
-        $airlines = Airline::orderBy('name', 'asc')->get(['id', 'iata_designator', 'name'])->map(function($airline) {
+        $airlines = Airline::orderBy('name', 'asc')->get(['id', 'iata_designator', 'name'])->map(function ($airline) {
             return [
                 'id' => $airline->id,
                 'name' => $airline->iata_designator . ' - ' . $airline->name
             ];
         });
 
-        return view('tasks.detail', compact('tasks', 'agents', 'clients', 'listOfCreditors', 'hotels', 'airports', 'airlines', 'hasInvoicedTasks'));
+        $selectableTask = $tasks->filter(fn($task) => $task->can_invoice);
+
+        $selectableId = $selectableTask->pluck('id')->toArray();
+        $selectableCount = $selectableTask->count();
+
+        return view('tasks.detail', compact(
+            'tasks',
+            'agents',
+            'clients',
+            'listOfCreditors',
+            'airports',
+            'airlines',
+            'hasInvoicedTasks',
+            'selectableCount',
+            'selectableId'
+        ));
     }
 
     public function bulkUpdate(Request $request)
@@ -6407,10 +6438,12 @@ class TaskController extends Controller
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('reference', 'like', "%{$search}%")
-                    ->orWhereHas('client', function ($clientQuery) use ($search) {
-                    $clientQuery->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $search . '%'])
-                            ->orWhere('client_name', 'like', "%{$search}%");
-                    });
+                    ->orWhere('client_name', 'like', "%{$search}%")
+                    ->orWhereHas(
+                        'client',
+                        fn($clientQuery) => $clientQuery
+                            ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$search}%"])
+                    );
             });
         }
 
@@ -6420,10 +6453,10 @@ class TaskController extends Controller
             $tasks->map(function ($t) {
                 return [
                     'id' => $t->id,
-                    'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
+                    'reference' => $t->reference,
+                    'client_name' => $t->client?->full_name ?? $t->client_name ?? $t->passenger_name,
                 ];
             })
         );
     }
-
 }

@@ -23,10 +23,13 @@ class TapPayment extends Model
         'receipt_id',
         'receipt_email',
         'receipt_sms',
+        'customer_reference',
+        'payload',
     ];
 
     protected $casts = [
         'receipt_email' => 'boolean',
-        'receipt_sms' => 'boolean'
+        'receipt_sms' => 'boolean',
+        'payload' => 'array',
     ];
 }

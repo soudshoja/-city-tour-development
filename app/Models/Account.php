@@ -2,53 +2,52 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Account extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
-       'serial_number',
-       'account_type',
-       'report_type',
-       'name', 
-       'level', 
-       'actual_balance',
-       'budget_balance',    
-       'variance', 
-       'parent_id', 
-       'root_id',
-       'company_id', 
-       'branch_id',
-       'agent_id',
-       'client_id',
-       'supplier_id',
-       'supplier_company_id',
-       'reference_id', 
-       'account_type_id',
-       'code',
-       'currency',
-       'is_group',
-       'disabled',
-       'balance_must_be',
-       'supplier_company_id',
+        'serial_number',
+        'account_type',
+        'report_type',
+        'name',
+        'level',
+        'actual_balance',
+        'opening_balance',
+        'opening_balance_date',
+        'budget_balance',
+        'variance',
+        'parent_id',
+        'root_id',
+        'company_id',
+        'branch_id',
+        'agent_id',
+        'client_id',
+        'supplier_id',
+        'supplier_company_id',
+        'reference_id',
+        'account_type_id',
+        'code',
+        'currency',
+        'is_group',
+        'disabled',
+        'balance_must_be',
+        'supplier_company_id',
+    ];
+
+    protected $casts = [
+        'opening_balance' => 'decimal:3',
+        'opening_balance_date' => 'date',
     ];
 
     public const REPORT_TYPES = [
         'PROFIT_LOSS' => 'profit loss',
         'BALANCE_SHEET' => 'balance sheet',
     ];
-
-     protected static function booted()
-    {
-        static::addGlobalScope('company', function ($query) {
-            if (auth()->check() && auth()->user()->company != null) {
-                $query->where('company_id', auth()->user()->company->id);
-            }
-        });
-    }
 
     public function parent()
     {
@@ -62,14 +61,14 @@ class Account extends Model
 
     public function company()
     {
-        return $this->belongsTo(Company::class, 'company_id'); 
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     public function branch()
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
-    
+
     public function agent()
     {
         return $this->belongsTo(Agent::class, 'account_id');

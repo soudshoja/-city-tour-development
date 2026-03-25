@@ -308,7 +308,7 @@
         </div>
 
         {{-- Tab 4: Documentation --}}
-        <div x-show="activeTab === 'documentation'" x-cloak>
+        <div x-show="activeTab === 'documentation'" x-cloak dir="ltr" class="text-left">
             <div class="max-w-4xl">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">DOTW API Documentation</h2>
 
@@ -328,8 +328,8 @@
                             <div>
                                 <p class="font-medium text-gray-800 dark:text-gray-200">Base URL:</p>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <code class="flex-1 bg-gray-100 dark:bg-gray-900 px-3 py-2 rounded text-xs font-mono break-all">{{ config('app.url') }}/api/dotwai</code>
-                                    <button @click="navigator.clipboard.writeText('{{ config('app.url') }}/api/dotwai')" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-800 transition">Copy</button>
+                                    <code class="flex-1 bg-gray-100 dark:bg-gray-900 px-3 py-2 rounded text-xs font-mono break-all">{{ url('/api/dotwai') }}</code>
+                                    <button @click="navigator.clipboard.writeText('{{ url('/api/dotwai') }}')" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-800 transition">Copy</button>
                                 </div>
                             </div>
 
@@ -672,7 +672,8 @@
                         </div>
                     </div>
 
-                    {{-- Section 3: AI System Message --}}
+                    {{-- Section 3: AI System Message (Super Admin Only) --}}
+                    @if($isSuperAdmin)
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                         <h3 class="text-md font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -693,6 +694,7 @@
                             Copy System Message
                         </button>
                     </div>
+                    @endif
 
                     {{-- Section 4: Webhook Events --}}
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
@@ -745,7 +747,8 @@
                         </div>
                     </div>
 
-                    {{-- Section 5: Configuration Reference --}}
+                    {{-- Section 5: Configuration Reference (Super Admin Only) --}}
+                    @if($isSuperAdmin)
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                         <h3 class="text-md font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -782,6 +785,158 @@
                             </div>
                         </div>
                     </div>
+                    @endif
+
+                    {{-- Section 6: Integration Templates (Super Admin Only) --}}
+                    @if($isSuperAdmin)
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                        <h3 class="text-md font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Integration Templates
+                        </h3>
+
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                            Pre-configured HTTP Request templates. Download and import these JSON files into your automation tool for quick API integration.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{-- Search & Discovery Category --}}
+                            <div class="col-span-1 md:col-span-2">
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 text-blue-700 dark:text-blue-400">Search & Discovery</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <a href="{{ asset('downloads/api-templates/search_hotels.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Search Hotels</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/get_hotel_details.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Hotel Details</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/get_cities.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Get Cities</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {{-- Booking & Confirmation Category --}}
+                            <div class="col-span-1 md:col-span-2">
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 text-green-700 dark:text-green-400">Booking & Confirmation</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <a href="{{ asset('downloads/api-templates/prebook_hotel.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Prebook Hotel</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/confirm_booking.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Confirm Booking</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/payment_link.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Payment Link</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {{-- Booking Management Category --}}
+                            <div class="col-span-1 md:col-span-2">
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 text-purple-700 dark:text-purple-400">Booking Management</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <a href="{{ asset('downloads/api-templates/cancel_booking.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-red-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Cancel Booking</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/booking_status.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Booking Status</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/booking_history.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Booking History</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {{-- Vouchers & Statements Category --}}
+                            <div class="col-span-1 md:col-span-2">
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 text-orange-700 dark:text-orange-400">Vouchers & Statements</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <a href="{{ asset('downloads/api-templates/resend_voucher.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Resend Voucher</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">POST</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/download_voucher.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Download Voucher</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/statement.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Statement</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {{-- Account Category --}}
+                            <div class="col-span-1 md:col-span-2">
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 text-indigo-700 dark:text-indigo-400">Account</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <a href="{{ asset('downloads/api-templates/balance.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Account Balance</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                    <a href="{{ asset('downloads/api-templates/health.json') }}" download class="flex flex-col items-center justify-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <svg class="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Health Check</p>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">GET</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     {{-- Help Section --}}
                     <div class="border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6">

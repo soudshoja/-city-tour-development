@@ -1,1 +1,0 @@
-<!-- notification-index.blade.php --><?php /**PATH /home/soudshoja/soud-laravel/resources/views/notifications/index.blade.php ENDPATH**/ ?>

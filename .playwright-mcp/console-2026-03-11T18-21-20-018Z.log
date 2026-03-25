@@ -1,0 +1,5 @@
+[   11692ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:blank:0
+[   11704ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:blank:0
+[   11717ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:blank:0
+[   14104ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Access Denied) @ https://development.citycommerce.group:2083/:0
+[   28044ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/admin/resailai/suppliers:0

@@ -1,0 +1,884 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result xmlns:a="https://xmldev.stage.aws.dotw.com/xsd/atomicCondition" xmlns:c="https://xmldev.stage.aws.dotw.com/xsd/complexCondition" command="getservingcountries" tID="1774336645000001" ip="52.18.234.149" sip="10.245.0.240" date="2026-03-24 07:17:37" version="2.0" elapsedTime="12.322494029999">
+      <countries count="219">
+        <country runno="0">
+          <name>ALBANIA</name>
+          <code>90</code>
+        </country>
+        <country runno="1">
+          <name>ALGERIA</name>
+          <code>187</code>
+        </country>
+        <country runno="2">
+          <name>ANDORRA</name>
+          <code>55</code>
+        </country>
+        <country runno="3">
+          <name>ANGOLA</name>
+          <code>200</code>
+        </country>
+        <country runno="4">
+          <name>ANGUILLA</name>
+          <code>151</code>
+        </country>
+        <country runno="5">
+          <name>ANTIGUA AND BARBUDA</name>
+          <code>137</code>
+        </country>
+        <country runno="6">
+          <name>ARGENTINA</name>
+          <code>107</code>
+        </country>
+        <country runno="7">
+          <name>ARMENIA</name>
+          <code>153</code>
+        </country>
+        <country runno="8">
+          <name>ARUBA</name>
+          <code>138</code>
+        </country>
+        <country runno="9">
+          <name>AUSTRALIA</name>
+          <code>28</code>
+        </country>
+        <country runno="10">
+          <name>AUSTRIA</name>
+          <code>56</code>
+        </country>
+        <country runno="11">
+          <name>AZERBAIJAN</name>
+          <code>154</code>
+        </country>
+        <country runno="12">
+          <name>BAHAMAS</name>
+          <code>108</code>
+        </country>
+        <country runno="13">
+          <name>BAHRAIN</name>
+          <code>1</code>
+        </country>
+        <country runno="14">
+          <name>BANGLADESH</name>
+          <code>19</code>
+        </country>
+        <country runno="15">
+          <name>BARBADOS</name>
+          <code>139</code>
+        </country>
+        <country runno="16">
+          <name>BELARUS</name>
+          <code>57</code>
+        </country>
+        <country runno="17">
+          <name>BELGIUM</name>
+          <code>58</code>
+        </country>
+        <country runno="18">
+          <name>BELIZE</name>
+          <code>136</code>
+        </country>
+        <country runno="19">
+          <name>BENIN</name>
+          <code>201</code>
+        </country>
+        <country runno="20">
+          <name>BERMUDA</name>
+          <code>103</code>
+        </country>
+        <country runno="21">
+          <name>BHUTAN</name>
+          <code>27</code>
+        </country>
+        <country runno="22">
+          <name>BOLIVIA</name>
+          <code>124</code>
+        </country>
+        <country runno="23">
+          <name>BONAIRE, SINT EUSTATIUS AND SABA</name>
+          <code>305</code>
+        </country>
+        <country runno="24">
+          <name>BOSNIA</name>
+          <code>59</code>
+        </country>
+        <country runno="25">
+          <name>BOTSWANA</name>
+          <code>202</code>
+        </country>
+        <country runno="26">
+          <name>BRAZIL</name>
+          <code>109</code>
+        </country>
+        <country runno="27">
+          <name>BRUNEI</name>
+          <code>166</code>
+        </country>
+        <country runno="28">
+          <name>BULGARIA</name>
+          <code>60</code>
+        </country>
+        <country runno="29">
+          <name>BURKINA FASO</name>
+          <code>203</code>
+        </country>
+        <country runno="30">
+          <name>BURUNDI</name>
+          <code>204</code>
+        </country>
+        <country runno="31">
+          <name>CAMBODIA</name>
+          <code>167</code>
+        </country>
+        <country runno="32">
+          <name>CAMEROON</name>
+          <code>206</code>
+        </country>
+        <country runno="33">
+          <name>CANADA</name>
+          <code>100</code>
+        </country>
+        <country runno="34">
+          <name>CAPE VERDE</name>
+          <code>205</code>
+        </country>
+        <country runno="35">
+          <name>CARIBBEAN</name>
+          <code>101</code>
+        </country>
+        <country runno="36">
+          <name>CAYMAN ISLANDS</name>
+          <code>149</code>
+        </country>
+        <country runno="37">
+          <name>CHAD</name>
+          <code>208</code>
+        </country>
+        <country runno="38">
+          <name>CHILE</name>
+          <code>110</code>
+        </country>
+        <country runno="39">
+          <name>CHINA</name>
+          <code>168</code>
+        </country>
+        <country runno="40">
+          <name>COCOS (KEELING) ISLANDS</name>
+          <code>53</code>
+        </country>
+        <country runno="41">
+          <name>COLOMBIA</name>
+          <code>111</code>
+        </country>
+        <country runno="42">
+          <name>COMOROS</name>
+          <code>211</code>
+        </country>
+        <country runno="43">
+          <name>COOK ISLANDS</name>
+          <code>35</code>
+        </country>
+        <country runno="44">
+          <name>COSTA RICA</name>
+          <code>125</code>
+        </country>
+        <country runno="45">
+          <name>CRIMEA</name>
+          <code>435</code>
+        </country>
+        <country runno="46">
+          <name>CROATIA</name>
+          <code>61</code>
+        </country>
+        <country runno="47">
+          <name>CUBA</name>
+          <code>112</code>
+        </country>
+        <country runno="48">
+          <name>CURACAO</name>
+          <code>325</code>
+        </country>
+        <country runno="49">
+          <name>CYPRUS</name>
+          <code>62</code>
+        </country>
+        <country runno="50">
+          <name>CZECH REPUBLIC</name>
+          <code>63</code>
+        </country>
+        <country runno="51">
+          <name>DEMOCRATIC REPUBLIC OF CONGO</name>
+          <code>209</code>
+        </country>
+        <country runno="52">
+          <name>DENMARK</name>
+          <code>64</code>
+        </country>
+        <country runno="53">
+          <name>DJIBOUTI</name>
+          <code>213</code>
+        </country>
+        <country runno="54">
+          <name>DOMINICA</name>
+          <code>142</code>
+        </country>
+        <country runno="55">
+          <name>DOMINICAN REPUBLIC</name>
+          <code>143</code>
+        </country>
+        <country runno="56">
+          <name>ECUADOR</name>
+          <code>114</code>
+        </country>
+        <country runno="57">
+          <name>EGYPT</name>
+          <code>7</code>
+        </country>
+        <country runno="58">
+          <name>EL SALVADOR</name>
+          <code>126</code>
+        </country>
+        <country runno="59">
+          <name>EQUATORIAL GUINEA</name>
+          <code>215</code>
+        </country>
+        <country runno="60">
+          <name>ERITREA</name>
+          <code>214</code>
+        </country>
+        <country runno="61">
+          <name>ESTONIA</name>
+          <code>155</code>
+        </country>
+        <country runno="62">
+          <name>ETHIOPIA</name>
+          <code>198</code>
+        </country>
+        <country runno="63">
+          <name>FAROE ISLANDS</name>
+          <code>96</code>
+        </country>
+        <country runno="64">
+          <name>FIJI</name>
+          <code>29</code>
+        </country>
+        <country runno="65">
+          <name>FINLAND</name>
+          <code>65</code>
+        </country>
+        <country runno="66">
+          <name>FRANCE</name>
+          <code>66</code>
+        </country>
+        <country runno="67">
+          <name>FRENCH GUIANA</name>
+          <code>134</code>
+        </country>
+        <country runno="68">
+          <name>FRENCH POLYNESIA</name>
+          <code>30</code>
+        </country>
+        <country runno="69">
+          <name>GABON</name>
+          <code>216</code>
+        </country>
+        <country runno="70">
+          <name>GAMBIA</name>
+          <code>217</code>
+        </country>
+        <country runno="71">
+          <name>GEORGIA</name>
+          <code>156</code>
+        </country>
+        <country runno="72">
+          <name>GERMANY</name>
+          <code>67</code>
+        </country>
+        <country runno="73">
+          <name>GHANA</name>
+          <code>218</code>
+        </country>
+        <country runno="74">
+          <name>GIBRALTAR</name>
+          <code>68</code>
+        </country>
+        <country runno="75">
+          <name>GREECE</name>
+          <code>69</code>
+        </country>
+        <country runno="76">
+          <name>GREENLAND</name>
+          <code>105</code>
+        </country>
+        <country runno="77">
+          <name>GRENADA /CARRICOU</name>
+          <code>141</code>
+        </country>
+        <country runno="78">
+          <name>GUADELOUPE</name>
+          <code>135</code>
+        </country>
+        <country runno="79">
+          <name>GUAM</name>
+          <code>46</code>
+        </country>
+        <country runno="80">
+          <name>GUATEMALA</name>
+          <code>127</code>
+        </country>
+        <country runno="81">
+          <name>GUINEA</name>
+          <code>219</code>
+        </country>
+        <country runno="82">
+          <name>GUINEA-BISSAU</name>
+          <code>220</code>
+        </country>
+        <country runno="83">
+          <name>GUYANA</name>
+          <code>145</code>
+        </country>
+        <country runno="84">
+          <name>HAITI</name>
+          <code>130</code>
+        </country>
+        <country runno="85">
+          <name>HONDURAS</name>
+          <code>115</code>
+        </country>
+        <country runno="86">
+          <name>HONG KONG</name>
+          <code>169</code>
+        </country>
+        <country runno="87">
+          <name>HUNGARY</name>
+          <code>70</code>
+        </country>
+        <country runno="88">
+          <name>ICELAND</name>
+          <code>89</code>
+        </country>
+        <country runno="89">
+          <name>INDIA</name>
+          <code>20</code>
+        </country>
+        <country runno="90">
+          <name>INDONESIA</name>
+          <code>170</code>
+        </country>
+        <country runno="91">
+          <name>IRAN</name>
+          <code>8</code>
+        </country>
+        <country runno="92">
+          <name>IRAQ</name>
+          <code>16</code>
+        </country>
+        <country runno="93">
+          <name>ISRAEL</name>
+          <code>17</code>
+        </country>
+        <country runno="94">
+          <name>ITALY</name>
+          <code>72</code>
+        </country>
+        <country runno="95">
+          <name>IVORY COAST</name>
+          <code>212</code>
+        </country>
+        <country runno="96">
+          <name>JAMAICA</name>
+          <code>116</code>
+        </country>
+        <country runno="97">
+          <name>JAPAN</name>
+          <code>171</code>
+        </country>
+        <country runno="98">
+          <name>JORDAN</name>
+          <code>9</code>
+        </country>
+        <country runno="99">
+          <name>KAZAKHSTAN</name>
+          <code>157</code>
+        </country>
+        <country runno="100">
+          <name>KENYA</name>
+          <code>188</code>
+        </country>
+        <country runno="101">
+          <name>KOSOVO</name>
+          <code>455</code>
+        </country>
+        <country runno="102">
+          <name>KUWAIT</name>
+          <code>2</code>
+        </country>
+        <country runno="103">
+          <name>KYRGYZSTAN</name>
+          <code>158</code>
+        </country>
+        <country runno="104">
+          <name>LAOS</name>
+          <code>172</code>
+        </country>
+        <country runno="105">
+          <name>LATVIA</name>
+          <code>73</code>
+        </country>
+        <country runno="106">
+          <name>LEBANON</name>
+          <code>10</code>
+        </country>
+        <country runno="107">
+          <name>LESOTHO</name>
+          <code>189</code>
+        </country>
+        <country runno="108">
+          <name>LIBERIA</name>
+          <code>221</code>
+        </country>
+        <country runno="109">
+          <name>LIBYA</name>
+          <code>190</code>
+        </country>
+        <country runno="110">
+          <name>LIECHTENSTEIN</name>
+          <code>92</code>
+        </country>
+        <country runno="111">
+          <name>LITHUANIA</name>
+          <code>74</code>
+        </country>
+        <country runno="112">
+          <name>LUXEMBOURG</name>
+          <code>75</code>
+        </country>
+        <country runno="113">
+          <name>MACAU</name>
+          <code>185</code>
+        </country>
+        <country runno="114">
+          <name>MACEDONIA</name>
+          <code>91</code>
+        </country>
+        <country runno="115">
+          <name>MADAGASCAR</name>
+          <code>199</code>
+        </country>
+        <country runno="116">
+          <name>MALAWI</name>
+          <code>222</code>
+        </country>
+        <country runno="117">
+          <name>MALAYSIA</name>
+          <code>173</code>
+        </country>
+        <country runno="118">
+          <name>MALDIVES</name>
+          <code>21</code>
+        </country>
+        <country runno="119">
+          <name>MALI</name>
+          <code>223</code>
+        </country>
+        <country runno="120">
+          <name>MALTA</name>
+          <code>76</code>
+        </country>
+        <country runno="121">
+          <name>MARTINIQUE</name>
+          <code>131</code>
+        </country>
+        <country runno="122">
+          <name>MAURITANIA</name>
+          <code>224</code>
+        </country>
+        <country runno="123">
+          <name>MAURITIUS</name>
+          <code>191</code>
+        </country>
+        <country runno="124">
+          <name>MAYOTTE</name>
+          <code>225</code>
+        </country>
+        <country runno="125">
+          <name>MEXICO</name>
+          <code>117</code>
+        </country>
+        <country runno="126">
+          <name>MICRONESIA</name>
+          <code>38</code>
+        </country>
+        <country runno="127">
+          <name>MOLDOVA</name>
+          <code>159</code>
+        </country>
+        <country runno="128">
+          <name>MONACO</name>
+          <code>97</code>
+        </country>
+        <country runno="129">
+          <name>MONGOLIA</name>
+          <code>184</code>
+        </country>
+        <country runno="130">
+          <name>MONTENEGRO</name>
+          <code>99</code>
+        </country>
+        <country runno="131">
+          <name>MOROCCO</name>
+          <code>11</code>
+        </country>
+        <country runno="132">
+          <name>MOZAMBIQUE</name>
+          <code>226</code>
+        </country>
+        <country runno="133">
+          <name>MYANMAR-BURMA</name>
+          <code>22</code>
+        </country>
+        <country runno="134">
+          <name>NAMIBIA</name>
+          <code>227</code>
+        </country>
+        <country runno="135">
+          <name>NEPAL</name>
+          <code>23</code>
+        </country>
+        <country runno="136">
+          <name>NETHERLANDS</name>
+          <code>77</code>
+        </country>
+        <country runno="137">
+          <name>NETHERLANDS ANTILLES</name>
+          <code>255</code>
+        </country>
+        <country runno="138">
+          <name>NEW CALEDONIA</name>
+          <code>40</code>
+        </country>
+        <country runno="139">
+          <name>NEW ZEALAND</name>
+          <code>31</code>
+        </country>
+        <country runno="140">
+          <name>NICARAGUA</name>
+          <code>128</code>
+        </country>
+        <country runno="141">
+          <name>NIGER</name>
+          <code>228</code>
+        </country>
+        <country runno="142">
+          <name>NIGERIA</name>
+          <code>192</code>
+        </country>
+        <country runno="143">
+          <name>NIUE</name>
+          <code>41</code>
+        </country>
+        <country runno="144">
+          <name>NORFOLK ISLAND</name>
+          <code>42</code>
+        </country>
+        <country runno="145">
+          <name>NORTHERN MARIANA ISLANDS</name>
+          <code>43</code>
+        </country>
+        <country runno="146">
+          <name>NORWAY</name>
+          <code>78</code>
+        </country>
+        <country runno="147">
+          <name>OMAN</name>
+          <code>5</code>
+        </country>
+        <country runno="148">
+          <name>PAKISTAN</name>
+          <code>24</code>
+        </country>
+        <country runno="149">
+          <name>PALESTINIAN TERRITORY</name>
+          <code>18</code>
+        </country>
+        <country runno="150">
+          <name>PANAMA</name>
+          <code>129</code>
+        </country>
+        <country runno="151">
+          <name>PAPUA NEW GUINEA</name>
+          <code>44</code>
+        </country>
+        <country runno="152">
+          <name>PARAGUAY</name>
+          <code>118</code>
+        </country>
+        <country runno="153">
+          <name>PERU</name>
+          <code>119</code>
+        </country>
+        <country runno="154">
+          <name>PHILIPPINES</name>
+          <code>174</code>
+        </country>
+        <country runno="155">
+          <name>POLAND</name>
+          <code>79</code>
+        </country>
+        <country runno="156">
+          <name>PORTUGAL</name>
+          <code>80</code>
+        </country>
+        <country runno="157">
+          <name>PUERTO RICO</name>
+          <code>133</code>
+        </country>
+        <country runno="158">
+          <name>QATAR</name>
+          <code>3</code>
+        </country>
+        <country runno="159">
+          <name>REPUBLIC OF IRELAND</name>
+          <code>71</code>
+        </country>
+        <country runno="160">
+          <name>REPUBLIC OF PALAU</name>
+          <code>180</code>
+        </country>
+        <country runno="161">
+          <name>REUNION</name>
+          <code>238</code>
+        </country>
+        <country runno="162">
+          <name>ROMANIA</name>
+          <code>81</code>
+        </country>
+        <country runno="163">
+          <name>RUSSIA</name>
+          <code>160</code>
+        </country>
+        <country runno="164">
+          <name>RWANDA</name>
+          <code>229</code>
+        </country>
+        <country runno="165">
+          <name>SAINT BARTHELEMY</name>
+          <code>375</code>
+        </country>
+        <country runno="166">
+          <name>SAINT HELENA</name>
+          <code>239</code>
+        </country>
+        <country runno="167">
+          <name>SAINT KITTS AND NEVIS</name>
+          <code>144</code>
+        </country>
+        <country runno="168">
+          <name>SAINT MARTIN (FRENCH PART)</name>
+          <code>385</code>
+        </country>
+        <country runno="169">
+          <name>SAINT VINCENT AND THE GRENADINES</name>
+          <code>147</code>
+        </country>
+        <country runno="170">
+          <name>SAMOA</name>
+          <code>54</code>
+        </country>
+        <country runno="171">
+          <name>SAN MARINO</name>
+          <code>95</code>
+        </country>
+        <country runno="172">
+          <name>SAO TOME AND PRINCIPE</name>
+          <code>230</code>
+        </country>
+        <country runno="173">
+          <name>SAUDI ARABIA</name>
+          <code>4</code>
+        </country>
+        <country runno="174">
+          <name>SENEGAL</name>
+          <code>231</code>
+        </country>
+        <country runno="175">
+          <name>SERBIA</name>
+          <code>98</code>
+        </country>
+        <country runno="176">
+          <name>SEYCHELLES</name>
+          <code>193</code>
+        </country>
+        <country runno="177">
+          <name>SIERRA LEONE</name>
+          <code>232</code>
+        </country>
+        <country runno="178">
+          <name>SINGAPORE</name>
+          <code>175</code>
+        </country>
+        <country runno="179">
+          <name>SLOVAKIA</name>
+          <code>82</code>
+        </country>
+        <country runno="180">
+          <name>SLOVENIA</name>
+          <code>83</code>
+        </country>
+        <country runno="181">
+          <name>SOLOMON ISLANDS</name>
+          <code>32</code>
+        </country>
+        <country runno="182">
+          <name>SOUTH AFRICA</name>
+          <code>194</code>
+        </country>
+        <country runno="183">
+          <name>SOUTH KOREA</name>
+          <code>176</code>
+        </country>
+        <country runno="184">
+          <name>SOUTH SUDAN</name>
+          <code>415</code>
+        </country>
+        <country runno="185">
+          <name>SPAIN</name>
+          <code>84</code>
+        </country>
+        <country runno="186">
+          <name>SRI LANKA</name>
+          <code>25</code>
+        </country>
+        <country runno="187">
+          <name>ST LUCIA</name>
+          <code>120</code>
+        </country>
+        <country runno="188">
+          <name>SUDAN</name>
+          <code>12</code>
+        </country>
+        <country runno="189">
+          <name>SURINAME</name>
+          <code>146</code>
+        </country>
+        <country runno="190">
+          <name>SWAZILAND</name>
+          <code>234</code>
+        </country>
+        <country runno="191">
+          <name>SWEDEN</name>
+          <code>85</code>
+        </country>
+        <country runno="192">
+          <name>SWITZERLAND</name>
+          <code>86</code>
+        </country>
+        <country runno="193">
+          <name>SYRIA</name>
+          <code>13</code>
+        </country>
+        <country runno="194">
+          <name>TAIWAN</name>
+          <code>177</code>
+        </country>
+        <country runno="195">
+          <name>TAJIKISTAN</name>
+          <code>161</code>
+        </country>
+        <country runno="196">
+          <name>TANZANIA</name>
+          <code>195</code>
+        </country>
+        <country runno="197">
+          <name>THAILAND</name>
+          <code>178</code>
+        </country>
+        <country runno="198">
+          <name>TIMOR LESTE</name>
+          <code>186</code>
+        </country>
+        <country runno="199">
+          <name>TOGO</name>
+          <code>235</code>
+        </country>
+        <country runno="200">
+          <name>TONGA</name>
+          <code>48</code>
+        </country>
+        <country runno="201">
+          <name>TRINIDAD AND TOBAGO</name>
+          <code>140</code>
+        </country>
+        <country runno="202">
+          <name>TUNISIA</name>
+          <code>14</code>
+        </country>
+        <country runno="203">
+          <name>TURKEY</name>
+          <code>87</code>
+        </country>
+        <country runno="204">
+          <name>TURKS / CAICOS</name>
+          <code>121</code>
+        </country>
+        <country runno="205">
+          <name>U.S. VIRGIN ISLANDS</name>
+          <code>132</code>
+        </country>
+        <country runno="206">
+          <name>UGANDA</name>
+          <code>236</code>
+        </country>
+        <country runno="207">
+          <name>UKRAINE</name>
+          <code>163</code>
+        </country>
+        <country runno="208">
+          <name>UNITED ARAB EMIRATES</name>
+          <code>6</code>
+        </country>
+        <country runno="209">
+          <name>UNITED KINGDOM</name>
+          <code>88</code>
+        </country>
+        <country runno="210">
+          <name>UNITED STATES OF AMERICA</name>
+          <code>102</code>
+        </country>
+        <country runno="211">
+          <name>URUGUAY</name>
+          <code>122</code>
+        </country>
+        <country runno="212">
+          <name>UZBEKISTAN</name>
+          <code>164</code>
+        </country>
+        <country runno="213">
+          <name>VANUATU</name>
+          <code>50</code>
+        </country>
+        <country runno="214">
+          <name>VENEZUELA</name>
+          <code>123</code>
+        </country>
+        <country runno="215">
+          <name>VIETNAM</name>
+          <code>179</code>
+        </country>
+        <country runno="216">
+          <name>VIRGIN ISLANDS (BRITISH)</name>
+          <code>148</code>
+        </country>
+        <country runno="217">
+          <name>ZAMBIA</name>
+          <code>196</code>
+        </country>
+        <country runno="218">
+          <name>ZIMBABWE</name>
+          <code>197</code>
+        </country>
+      </countries>
+      <successful>TRUE</successful>
+    </result>
+    
+  âœ”  [12a] Gzip request sent and response decompressed successfully

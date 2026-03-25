@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="getrooms" tID="1774336626100008" ip="152.53.86.223" date="2026-03-24 07:17:07" version="4.0" elapsedTime="0.34611392021179">
+      <currencyShort>KWD</currencyShort>
+      <hotel id="1013275" name="Gateway Hotel">
+        <allowBook>yes</allowBook>
+        <rooms count="1">
+          <room runno="0" count="3" adults="2" children="0" childrenages="" extrabeds="0">
+            <roomType runno="0" roomtypecode="483146225">
+              <name>DELUXE ROOM.</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>3</maxOccupancy>
+                <maxAdultWithChildren>2</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>11</maxChildAge>
+                <maxAdult>3</maxAdult>
+                <maxExtraBed>1</maxExtraBed>
+                <maxChildren>1</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="1">
+                <rateBasis runno="0" id="1331" description="Breakfast">
+                  <status>checked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336626000004B1000B0</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <fromDate>2026-03-24 10:17:06</fromDate>
+                      <fromDateDetails>Tue, 24 Mar 2026 10:17:06</fromDateDetails>
+                      <amendRestricted>true</amendRestricted>
+                      <cancelCharge>13.1544<formatted>13.15</formatted></cancelCharge>
+                      <charge>13.1544<formatted>13.15</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-22 23:00:00</fromDate>
+                      <fromDateDetails>Mon, 22 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>13.1544<formatted>13.15</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>yes</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    Compulsory Tourism Dirham to be paid by guest directly to the hotel per room per night valid from 31st March 2014 Onward.
+    No show and early departure will be subjected to 100% charge. No date, name and room changed allowed. Bookings including children will be based on sharing parents bedding, no separate bed for children is provided unless otherwise stated. Cancel and rebooking is not allowed
+    
+    Existing reservation cannot be cancelled and re-booked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>13.1544<formatted>13.15</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-22" day="Jun, 22 2026" wday="Monday">
+                      <price>13.1544<formatted>13.15</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="1">
+                        <includedMeal runno="0">
+                          <mealName>Buffet</mealName>
+                          <mealType code="1331">Breakfast</mealType>
+                        </includedMeal>
+                      </including>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <roomType runno="1" roomtypecode="650645755">
+              <name>DELUXE TWIN</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>2</maxOccupancy>
+                <maxAdultWithChildren>0</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>0</maxChildAge>
+                <maxAdult>2</maxAdult>
+                <maxExtraBed>0</maxExtraBed>
+                <maxChildren>0</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="1">
+                <rateBasis runno="0" id="1331" description="Breakfast">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336626000004B1000B1</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <fromDate>2026-03-24 10:17:06</fromDate>
+                      <fromDateDetails>Tue, 24 Mar 2026 10:17:06</fromDateDetails>
+                      <amendRestricted>true</amendRestricted>
+                      <cancelCharge>13.1544<formatted>13.15</formatted></cancelCharge>
+                      <charge>13.1544<formatted>13.15</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-22 23:00:00</fromDate>
+                      <fromDateDetails>Mon, 22 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>13.1544<formatted>13.15</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>yes</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    Compulsory Tourism Dirham to be paid by guest directly to the hotel per room per night valid from 31st March 2014 Onward.
+    No show and early departure will be subjected to 100% charge. No date, name and room changed allowed. Bookings including children will be based on sharing parents bedding, no separate bed for children is provided unless otherwise stated. Cancel and rebooking is not allowed
+    
+    Existing reservation cannot be cancelled and re-booked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>13.1544<formatted>13.15</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-22" day="Jun, 22 2026" wday="Monday">
+                      <price>13.1544<formatted>13.15</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="1">
+                        <includedMeal runno="0">
+                          <mealName>Buffet</mealName>
+                          <mealType code="1331">Breakfast</mealType>
+                        </includedMeal>
+                      </including>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <roomType runno="2" roomtypecode="1176007055">
+              <name>DELUXE, TWIN BEDS</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>2</maxOccupancy>
+                <maxAdultWithChildren>2</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>12</maxChildAge>
+                <maxAdult>2</maxAdult>
+                <maxExtraBed>0</maxExtraBed>
+                <maxChildren>0</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="2">
+                <rateBasis runno="0" id="1331" description="Breakfast">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>2</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">3</rateType>
+                  <allowsExtraMeals>false</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>false</allowsBeddingPreference>
+                  <allocationDetails>1774336627000001B1836B1</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <toDate>2026-06-20 22:00:00</toDate>
+                      <toDateDetails>Sat, 20 Jun 2026 22:00:00</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-20 22:00:01</fromDate>
+                      <fromDateDetails>Sat, 20 Jun 2026 22:00:01</fromDateDetails>
+                      <amendCharge>18.981<formatted>18.98</formatted></amendCharge>
+                      <cancelCharge>18.981<formatted>18.98</formatted></cancelCharge>
+                      <charge>18.981<formatted>18.98</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[CheckIn instructions: &lt;ul&gt;  &lt;li&gt;Extra-person charges may apply and vary depending on property policy&lt;/li&gt;&lt;li&gt;Government-issued photo identification and a credit card, debit card, or cash deposit may be required at check-in for incidental charges&lt;/li&gt;&lt;li&gt;Special requests are subject to availability upon check-in and may incur additional charges; special requests cannot be guaranteed&lt;/li&gt;&lt;li&gt;This property accepts credit cards and cash&lt;/li&gt;  &lt;/ul&gt;,CheckIn special instructions: This property doesn&#039;t offer after-hours check-in. Front desk staff will greet guests on arrival at the property.,Mandatory fees: &lt;p&gt;You&#039;ll be asked to pay the following charges at the property. Fees may include applicable taxes:&lt;/p&gt; &lt;ul&gt;&lt;li&gt;A tax is imposed by the city: AED 10.00 per accommodation, per night&lt;/li&gt;&lt;/ul&gt; &lt;p&gt;We have included all charges provided to us by the property. &lt;/p&gt;,Optional fees: &lt;ul&gt; &lt;li&gt;Fee for buffet breakfast: approximately AED 60.00 for adults and AED 60.00 for children&lt;/li&gt;&lt;li&gt;Rollaway bed fee: AED 120.0 per night&lt;/li&gt;&lt;/ul&gt; &lt;p&gt;The above list may not be comprehensive. Fees and deposits may not include tax and are subject to change. &lt;/p&gt;,Additional fees for 2 people:,Name: mandatory_tax, Cost: 2.72 USD,Tax Recovery Charges and Service Fees for 2 people: 6.48 USD (This amount is included within the total price).]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>19.1727<formatted>19.17</formatted></total>
+                  <totalTaxes>1.9865<formatted>1.99</formatted></totalTaxes>
+                  <propertyFees count="2">
+                    <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">1.588<formatted>1.59</formatted></propertyFee>
+                    <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346<formatted>0.83</formatted></propertyFee>
+                  </propertyFees>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-22" day="Jun, 22 2026" wday="Monday">
+                      <price>19.1727<formatted>19.17</formatted></price>
+                      <freeStay/>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="1">
+                        <includedMeal runno="0">
+                          <mealName>Breakfast</mealName>
+                          <mealType code="1331">Breakfast</mealType>
+                        </includedMeal>
+                      </including>
+                    </date>
+                  </dates>
+                  <leftToSell>1</leftToSell>
+                </rateBasis>
+                <rateBasis runno="1" id="1331" description="Breakfast">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>2</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">3</rateType>
+                  <allowsExtraMeals>false</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>false</allowsBeddingPreference>
+                  <allocationDetails>1774336627000001B1836B0</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <toDate>2026-06-20 22:00:00</toDate>
+                      <toDateDetails>Sat, 20 Jun 2026 22:00:00</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-20 22:00:01</fromDate>
+                      <fromDateDetails>Sat, 20 Jun 2026 22:00:01</fromDateDetails>
+                      <amendCharge>19.3759<formatted>19.38</formatted></amendCharge>
+                      <cancelCharge>19.3759<formatted>19.38</formatted></cancelCharge>
+                      <charge>19.3759<formatted>19.38</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[CheckIn instructions: &lt;ul&gt;  &lt;li&gt;Extra-person charges may apply and vary depending on property policy&lt;/li&gt;&lt;li&gt;Government-issued photo identification and a credit card, debit card, or cash deposit may be required at check-in for incidental charges&lt;/li&gt;&lt;li&gt;Special requests are subject to availability upon check-in and may incur additional charges; special requests cannot be guaranteed&lt;/li&gt;&lt;li&gt;This property accepts credit cards and cash&lt;/li&gt;  &lt;/ul&gt;,CheckIn special instructions: This property doesn&#039;t offer after-hours check-in. Front desk staff will greet guests on arrival at the property.,Mandatory fees: &lt;p&gt;You&#039;ll be asked to pay the following charges at the property. Fees may include applicable taxes:&lt;/p&gt; &lt;ul&gt;&lt;li&gt;A tax is imposed by the city: AED 10.00 per accommodation, per night&lt;/li&gt;&lt;/ul&gt; &lt;p&gt;We have included all charges provided to us by the property. &lt;/p&gt;,Optional fees: &lt;ul&gt; &lt;li&gt;Fee for buffet breakfast: approximately AED 60.00 for adults and AED 60.00 for children&lt;/li&gt;&lt;li&gt;Rollaway bed fee: AED 120.0 per night&lt;/li&gt;&lt;/ul&gt; &lt;p&gt;The above list may not be comprehensive. Fees and deposits may not include tax and are subject to change. &lt;/p&gt;,Additional fees for 2 people:,Name: mandatory_tax, Cost: 2.72 USD,Tax Recovery Charges and Service Fees for 2 people: 6.48 USD (This amount is included within the total price).]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>19.3759<formatted>19.38</formatted></total>
+                  <totalTaxes>1.9865<formatted>1.99</formatted></totalTaxes>
+                  <propertyFees count="2">
+                    <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">1.588<formatted>1.59</formatted></propertyFee>
+                    <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346<formatted>0.83</formatted></propertyFee>
+                  </propertyFees>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-22" day="Jun, 22 2026" wday="Monday">
+                      <price>19.3759<formatted>19.38</formatted></price>
+                      <freeStay/>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="1">
+                        <includedMeal runno="0">
+                          <mealName>Breakfast</mealName>
+                          <mealType code="1331">Breakfast</mealType>
+                        </includedMeal>
+                      </including>
+                    </date>
+                  </dates>
+                  <leftToSell>1</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <lookedForText>Room Number 1: 2 adult/s</lookedForText>
+          </room>
+        </rooms>
+        <extraMeals count="0"/>
+      </hotel>
+      <successful>TRUE</successful>
+    </result>
+    
+  âœ”  [7c] Blocked OK â€” all rooms status: checked

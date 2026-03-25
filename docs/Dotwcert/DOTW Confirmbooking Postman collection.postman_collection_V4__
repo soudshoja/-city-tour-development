@@ -1,0 +1,373 @@
+{
+	"info": {
+		"_postman_id": "cb5aea7a-8485-4d23-b9ff-9c509e023e60",
+		"name": "DOTW Confirmbooking Postman collection",
+		"description": "confirmbooking xml booking flow",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "3900312"
+	},
+	"item": [
+		{
+			"name": "searchhotels per city code",
+			"protocolProfileBehavior": {
+				"strictSSL": true
+			},
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password> <!--MD5 encrypted password  -->\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"searchhotels\">\r\n        <bookingDetails>\r\n            <fromDate>2025-12-09</fromDate>\r\n            <toDate>2025-12-10</toDate>\r\n            <currency></currency> <!--getcurrenciesids method -->\r\n            <rooms no=\"1\">\r\n                <room runno=\"0\">\r\n                    <adultsCode>2</adultsCode>\r\n                    <children no=\"2\">\r\n                        <child runno=\"0\">9</child>\r\n                        <child runno=\"1\">11</child>\r\n                    </children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality> <!--getallcountries method  -->\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence> <!--getallcountries method  -->\r\n                </room>\r\n            </rooms>\r\n        </bookingDetails>\r\n        <return>\r\n            <filters>\r\n                <city>364</city> <!--getallcities method  -->\r\n            </filters>\r\n        </return>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "availability xml request"
+			},
+			"response": []
+		},
+		{
+			"name": "searchhotels per hotelID",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"searchhotels\">\r\n        <bookingDetails>\r\n            <fromDate>2025-12-09</fromDate>\r\n            <toDate>2025-12-10</toDate>\r\n            <currency></currency>\r\n            <rooms no=\"1\">\r\n                <room runno=\"0\">\r\n                    <adultsCode>2</adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                </room>\r\n            </rooms>\r\n        </bookingDetails>\r\n        <return>\r\n            <filters xmlns:a=\"http://us.dotwconnect.com/xsd/atomicCondition\" xmlns:c=\"http://us.dotwconnect.com/xsd/complexCondition\">\r\n                <c:condition>\r\n                    <a:condition>\r\n                        <fieldName>hotelId</fieldName>\r\n                        <fieldTest>in</fieldTest>\r\n                        <fieldValues>\r\n                            <fieldValue>XXXXXX</fieldValue>\r\n                            <fieldValue>XXXXXX</fieldValue>\r\n                            <fieldValue>XXXXXX</fieldValue>\r\n                            <fieldValue>XXXXXX</fieldValue>\r\n                            <fieldValue>XXXXXX</fieldValue>\r\n                        </fieldValues>\r\n                    </a:condition>\r\n                </c:condition>\r\n            </filters>\r\n        </return>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "availability xml request"
+			},
+			"response": []
+		},
+		{
+			"name": "getRooms simple",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"getrooms\">\r\n        <bookingDetails>\r\n            <fromDate>2025-12-09</fromDate>\r\n            <toDate>2025-12-10</toDate>\r\n            <currency></currency>\r\n            <rooms no=\"1\">\r\n                <room runno=\"0\">\r\n                    <adultsCode>2</adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                </room>\r\n            </rooms>\r\n            <productId></productId>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "detailed availability at property level"
+			},
+			"response": []
+		},
+		{
+			"name": "getRooms with blocking",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"getrooms\">\r\n        <bookingDetails>\r\n            <fromDate>2025-12-09</fromDate>\r\n            <toDate>2025-12-10</toDate>\r\n            <currency></currency>\r\n            <rooms no=\"1\">\r\n                <room runno=\"0\">\r\n                    <adultsCode>2</adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                    <roomTypeSelected>\r\n                        <code></code>\r\n                        <selectedRateBasis></selectedRateBasis>\r\n                        <allocationDetails></allocationDetails>\r\n                    </roomTypeSelected>\r\n                </room>\r\n            </rooms>\r\n            <productId></productId>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "the blocking step."
+			},
+			"response": []
+		},
+		{
+			"name": "confirmbooking",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"confirmbooking\">\r\n        <bookingDetails>\r\n            <fromDate>2025-03-09</fromDate>\r\n            <toDate>2025-03-10</toDate>\r\n            <currency>769</currency>\r\n            <productId>30714</productId>\r\n            <rooms no=\"1\">\r\n                <room runno=\"0\">\r\n                    <roomTypeCode></roomTypeCode>\r\n                    <selectedRateBasis></selectedRateBasis>\r\n                    <allocationDetails></allocationDetails>\r\n                    <adultsCode>4</adultsCode>\r\n                    <actualAdults>2</actualAdults>\r\n                    <children no=\"1\">\r\n                        <child runno=\"0\">3</child>\r\n                    </children>\r\n                    <actualChildren no=\"3\">\r\n                        <actualChild runno=\"0\">3</actualChild>\r\n                        <actualChild runno=\"1\">11</actualChild>\r\n                        <actualChild runno=\"2\">12</actualChild>\r\n                    </actualChildren>\r\n                    <extraBed>1</extraBed>\r\n                    <passengerNationality>5</passengerNationality>\r\n                    <passengerCountryOfResidence>5</passengerCountryOfResidence>\r\n                    <passengersDetails>\r\n                        <passenger leading=\"yes\">\r\n                            <salutation>147</salutation>\r\n                            <firstName></firstName>\r\n                            <lastName></lastName>\r\n                        </passenger>\r\n                        <passenger leading=\"no\">\r\n                            <salutation>147</salutation>\r\n                            <firstName></firstName>\r\n                            <lastName></lastName>\r\n                        </passenger>\r\n                    </passengersDetails>\r\n                    <specialRequests count=\"0\"></specialRequests>\r\n                    <beddingPreference>0</beddingPreference>\r\n                </room>\r\n            </rooms>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "the confirmation step"
+			},
+			"response": []
+		},
+		{
+			"name": "searchhotels 2 rooms",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "text/xml"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"searchhotels\">\r\n        <bookingDetails>\r\n            <fromDate></fromDate>\r\n            <toDate></toDate>\r\n            <currency></currency>\r\n            <rooms no=\"2\">\r\n                <room runno=\"0\">\r\n                    <adultsCode>1</adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                </room>\r\n                <room runno=\"1\">\r\n                    <adultsCode>1</adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                </room>\r\n            </rooms>\r\n        </bookingDetails>\r\n        <return>\r\n            <filters\r\n                                xmlns:c=\"http://us.dotwconnect.com/xsd/complexCondition\"\r\n                                xmlns:a=\"http://us.dotwconnect.com/xsd/atomicCondition\">\r\n                <city></city>\r\n            </filters>\r\n        </return>\r\n    </request>\r\n</customer>"
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetRooms 2 rooms",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "text/xml"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"getrooms\">\r\n        <bookingDetails>\r\n            <fromDate></fromDate>\r\n            <toDate></toDate>\r\n            <currency></currency>\r\n            <rooms no=\"2\">\r\n                <room runno=\"0\">\r\n                    <adultsCode></adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                </room>\r\n                <room runno=\"1\">\r\n                    <adultsCode></adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                </room>\r\n            </rooms>\r\n            <productId></productId>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>"
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetRooms_Block 2 rooms",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "text/xml"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"getrooms\">\r\n        <bookingDetails>\r\n            <fromDate></fromDate>\r\n            <toDate></toDate>\r\n            <currency></currency>\r\n            <rooms no=\"2\">\r\n                <room runno=\"0\">\r\n                    <adultsCode></adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                    <roomTypeSelected>\r\n                        <code></code>\r\n                        <selectedRateBasis></selectedRateBasis>\r\n                        <allocationDetails></allocationDetails>\r\n                    </roomTypeSelected>\r\n                </room>\r\n                <room runno=\"1\">\r\n                    <adultsCode></adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                    <roomTypeSelected>\r\n                        <code></code>\r\n                        <selectedRateBasis></selectedRateBasis>\r\n                        <allocationDetails></allocationDetails>\r\n                    </roomTypeSelected>\r\n                </room>\r\n            </rooms>\r\n            <productId></productId>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>"
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Confirmbooking Req 2 rooms",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "text/xml"
+					},
+					{
+						"key": "Authorization",
+						"value": "Basic REVSVE9VUjo5NjNmNjY5MDdmNzc0YTAzYzU3NzNmZjhjZjRiNzZmZg=="
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <request command=\"confirmbooking\">\r\n        <bookingDetails>\r\n            <fromDate></fromDate>\r\n            <toDate></toDate>\r\n            <currency></currency>\r\n            <productId></productId>\r\n            <customerReference></customerReference>\r\n            <rooms no=\"2\">\r\n                <room runno=\"0\">\r\n                    <roomTypeCode></roomTypeCode>\r\n                    <selectedRateBasis></selectedRateBasis>\r\n                    <allocationDetails></allocationDetails>\r\n                    <adultsCode></adultsCode>\r\n                    <actualAdults></actualAdults>\r\n                    <children no=\"0\"></children>\r\n                    <actualChildren no=\"0\"></actualChildren>\r\n                    <extraBed></extraBed>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                    <passengersDetails>\r\n                        <passenger leading=\"yes\">\r\n                            <salutation></salutation>\r\n                            <firstName></firstName>\r\n                            <lastName></lastName>\r\n                        </passenger>\r\n                        <passenger leading=\"no\">\r\n                            <salutation></salutation>\r\n                            <firstName></firstName>\r\n                            <lastName></lastName>\r\n                        </passenger>\r\n                    </passengersDetails>\r\n                    <specialRequests count=\"0\"></specialRequests>\r\n                </room>\r\n                <room runno=\"1\">\r\n                    <roomTypeCode></roomTypeCode>\r\n                    <selectedRateBasis></selectedRateBasis>\r\n                    <allocationDetails></allocationDetails>\r\n                    <adultsCode></adultsCode>\r\n                    <actualAdults></actualAdults>\r\n                    <children no=\"1\">\r\n                        <child runno=\"0\">10</child>\r\n                    </children>\r\n                    <actualChildren no=\"1\">\r\n                        <actualChild runno=\"0\">10</actualChild>\r\n                    </actualChildren>\r\n                    <extraBed></extraBed>\r\n                    <passengerNationality></passengerNationality>\r\n                    <passengerCountryOfResidence></passengerCountryOfResidence>\r\n                    <passengersDetails>\r\n                        <passenger leading=\"yes\">\r\n                            <salutation></salutation>\r\n                            <firstName></firstName>\r\n                            <lastName></lastName>\r\n                        </passenger>\r\n                        <passenger leading=\"no\">\r\n                            <salutation></salutation>\r\n                            <firstName></firstName>\r\n                            <lastName></lastName>\r\n                        </passenger>\r\n                    </passengersDetails>\r\n                    <specialRequests count=\"0\"></specialRequests>\r\n                </room>\r\n            </rooms>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>"
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "cancelbooking - confirm=no",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <request command=\"cancelbooking\">\r\n        <bookingDetails>\r\n            <bookingType>1</bookingType>\r\n            <bookingCode>249XXXXX3</bookingCode> \r\n            <confirm>no</confirm>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "html"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "1st cancellation step"
+			},
+			"response": []
+		},
+		{
+			"name": "cancelbooking - confirm=yes",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <request command=\"cancelbooking\">\r\n        <bookingDetails>\r\n            <bookingType>1</bookingType>\r\n            <bookingCode>249XXXXX3</bookingCode>\r\n            <confirm>yes</confirm>\r\n            <testPricesAndAllocation>\r\n                <service referencenumber=\"249XXXXX3\">\r\n                    <penaltyApplied></penaltyApplied><!-- <price> value(123.0245), not formatted -->\r\n                </service>\r\n            </testPricesAndAllocation>\r\n        </bookingDetails>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				},
+				"description": "2nd cancellation step"
+			},
+			"response": []
+		},
+		{
+			"name": "static data download xml request",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<customer>\r\n    <username></username>\r\n    <password></password>\r\n    <id></id>\r\n    <source>1</source>\r\n    <product>hotel</product>\r\n    <language>en</language>\r\n    <request command=\"searchhotels\">\r\n        <bookingDetails>\r\n            <fromDate></fromDate>\r\n            <toDate></toDate>\r\n            <currency></currency>\r\n            <rooms no=\"1\">\r\n                <room runno=\"0\">\r\n                    <adultsCode>1</adultsCode>\r\n                    <children no=\"0\"></children>\r\n                    <rateBasis>-1</rateBasis>\r\n                </room>\r\n            </rooms>\r\n        </bookingDetails>\r\n        <return>\r\n            <filters\r\n                                xmlns:a=\"http://us.dotwconnect.com/xsd/atomicCondition/\"\r\n                                xmlns:c=\"http://us.dotwconnect.com/xsd/complexCondition\">\r\n                <country>364</country>\r\n                <noPrice>true</noPrice>\r\n            </filters>\r\n            <fields>\r\n               <field>preferred</field>\r\n                <field>builtYear</field>\r\n                <field>renovationYear</field>\r\n                <field>floors</field>\r\n                <field>noOfRooms</field>\r\n                <field>preferred</field>\r\n                <field>fullAddress</field>\r\n                <field>description1</field>\r\n                <field>description2</field>\r\n                <field>hotelName</field>\r\n                <field>address</field>\r\n                <field>zipCode</field>\r\n                <field>location</field>\r\n                <field>locationId</field>\r\n                <field>geoLocations</field>\r\n                <field>location1</field>\r\n                <field>location2</field>\r\n                <field>location3</field>\r\n                <field>cityName</field>\r\n                <field>cityCode</field>\r\n                <field>stateName</field>\r\n                <field>stateCode</field>\r\n                <field>countryName</field>\r\n                <field>countryCode</field>\r\n                <field>regionName</field>\r\n                <field>regionCode</field>\r\n                <field>attraction</field>\r\n                <field>amenitie</field>\r\n                <field>leisure</field>\r\n                <field>business</field>\r\n                <field>transportation</field>\r\n                <field>hotelPhone</field>\r\n                <field>hotelCheckIn</field>\r\n                <field>hotelCheckOut</field>\r\n                <field>minAge</field>\r\n                <field>rating</field>\r\n                <field>fireSafety</field>\r\n                <field>hotelPreference</field>\r\n                <field>direct</field>\r\n                <field>geoPoint</field>\r\n                <field>leftToSell</field>\r\n                <field>chain</field>\r\n                <field>lastUpdated</field>\r\n                <field>priority</field>\r\n                <field>hotelAttributes</field>\r\n                <field>hotelAmenities</field>\r\n                <field>hotelImages</field>\r\n                <roomField>name</roomField>\r\n                <roomField>roomInfo</roomField>\r\n                <roomField>twin</roomField>\r\n                <roomField>roomAmenities</roomField>\r\n                <roomField>roomAttributes</roomField>\r\n                <roomField>roomDescription</roomField>\r\n                <roomField>roomImages</roomField>\r\n            </fields>\r\n        </return>\r\n    </request>\r\n</customer>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://xmldev.dotwconnect.com/gatewayV4.dotw",
+					"protocol": "https",
+					"host": [
+						"xmldev",
+						"dotwconnect",
+						"com"
+					],
+					"path": [
+						"gatewayV4.dotw"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

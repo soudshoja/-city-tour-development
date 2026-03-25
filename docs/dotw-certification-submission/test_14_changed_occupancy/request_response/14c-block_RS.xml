@@ -1,0 +1,663 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="getrooms" tID="1774336667100003" ip="152.53.86.223" date="2026-03-24 07:17:48" version="4.0" elapsedTime="0.46561503410339">
+      <currencyShort>KWD</currencyShort>
+      <hotel id="1015245" name="Grand Hyatt Residence">
+        <allowBook>yes</allowBook>
+        <rooms count="1">
+          <room runno="0" count="5" adults="3" children="1" childrenages="12" extrabeds="0">
+            <roomType runno="0" roomtypecode="6811875">
+              <name>TWO BEDROOM APARTMENT</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>6</maxOccupancy>
+                <maxAdultWithChildren>4</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>11</maxChildAge>
+                <maxAdult>5</maxAdult>
+                <maxExtraBed>1</maxExtraBed>
+                <maxChildren>2</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="2">
+                <rateBasis runno="0" id="0" description="Room Only">
+                  <validForOccupancy>
+                    <adults>4</adults>
+                    <extraBed>0</extraBed>
+                    <extraBedOccupant>child</extraBedOccupant>
+                  </validForOccupancy>
+                  <changedOccupancy>4,0,,0</changedOccupancy>
+                  <status>checked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336668000001B1000B0</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="3">
+                    <rule runno="0">
+                      <toDate>2026-06-15 13:59:59</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 13:59:59</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 14:00:00</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 14:00:00</fromDateDetails>
+                      <amendCharge>66.6791<formatted>66.68</formatted></amendCharge>
+                      <cancelCharge>66.6791<formatted>66.68</formatted></cancelCharge>
+                      <charge>66.6791<formatted>66.68</formatted></charge>
+                    </rule>
+                    <rule runno="2">
+                      <fromDate>2026-06-17 23:00:00</fromDate>
+                      <fromDateDetails>Wed, 17 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>66.6791<formatted>66.68</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    No show and early departure will be charged 100%. No name, date and room change allowed.
+    Note: New pet policy update: One small pet (dog, cat or caged bird) may be permitted in the apartment; however prior permission is required. This permission may be denied or withdrawn at any subsequent time if the pet causes a disturbance to other guests, in which case the pet will have to be removed from the apartment by the guest.  If a pet is kept in the apartment, access to the apartment with the pet may only be made via the service lifts and not the guest elevators. The cost of rectifying any damage caused by the pet in the Premises or in or around the Building shall be the responsibility of the Tenant.
+    Existing reservation cannot be cancelled and rebooked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality Bookings including children will be based on sharing parents bedding and no separate bed for children is provided unless otherwise stated]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>66.6791<formatted>66.68</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>66.6791<formatted>66.68</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <dayExtraBedOnRequest>0</dayExtraBedOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+                <rateBasis runno="1" id="0" description="Room Only">
+                  <validForOccupancy>
+                    <adults>4</adults>
+                    <extraBed>1</extraBed>
+                    <extraBedOccupant>child</extraBedOccupant>
+                  </validForOccupancy>
+                  <changedOccupancy>4,0,,1</changedOccupancy>
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336668000001B1000B1</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="3">
+                    <rule runno="0">
+                      <toDate>2026-06-15 13:59:59</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 13:59:59</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 14:00:00</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 14:00:00</fromDateDetails>
+                      <amendCharge>87.0003<formatted>87.00</formatted></amendCharge>
+                      <cancelCharge>87.0003<formatted>87.00</formatted></cancelCharge>
+                      <charge>87.0003<formatted>87.00</formatted></charge>
+                    </rule>
+                    <rule runno="2">
+                      <fromDate>2026-06-17 23:00:00</fromDate>
+                      <fromDateDetails>Wed, 17 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>87.0003<formatted>87.00</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    No show and early departure will be charged 100%. No name, date and room change allowed.
+    Note: New pet policy update: One small pet (dog, cat or caged bird) may be permitted in the apartment; however prior permission is required. This permission may be denied or withdrawn at any subsequent time if the pet causes a disturbance to other guests, in which case the pet will have to be removed from the apartment by the guest.  If a pet is kept in the apartment, access to the apartment with the pet may only be made via the service lifts and not the guest elevators. The cost of rectifying any damage caused by the pet in the Premises or in or around the Building shall be the responsibility of the Tenant.
+    Existing reservation cannot be cancelled and rebooked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality Bookings including children will be based on sharing parents bedding and no separate bed for children is provided unless otherwise stated]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>87.0003<formatted>87.00</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>87.0003<formatted>87.00</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <dayExtraBedOnRequest>0</dayExtraBedOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <roomType runno="1" roomtypecode="1255943555">
+              <name>2 BEDROOMS, APARTMENT</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>4</maxOccupancy>
+                <maxAdultWithChildren>3</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>12</maxChildAge>
+                <maxAdult>3</maxAdult>
+                <maxExtraBed>0</maxExtraBed>
+                <maxChildren>1</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="2">
+                <rateBasis runno="0" id="0" description="Room Only">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>4</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">3</rateType>
+                  <allowsExtraMeals>false</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>false</allowsBeddingPreference>
+                  <allocationDetails>1774336668000002B1836B3</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <toDate>2026-06-15 22:00:00</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 22:00:00</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 22:00:01</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 22:00:01</fromDateDetails>
+                      <amendCharge>68.7473<formatted>68.75</formatted></amendCharge>
+                      <cancelCharge>68.7473<formatted>68.75</formatted></cancelCharge>
+                      <charge>68.7473<formatted>68.75</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Additional fees for 3-12 people:,Name: mandatory_tax, Cost: 5.44 USD,Tax Recovery Charges and Service Fees for 3-12 people: 22.05 USD (This amount is included within the total price).]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>68.7473<formatted>68.75</formatted></total>
+                  <totalTaxes>6.7596<formatted>6.76</formatted></totalTaxes>
+                  <propertyFees count="2">
+                    <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">8.7462<formatted>8.75</formatted></propertyFee>
+                    <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692<formatted>1.67</formatted></propertyFee>
+                  </propertyFees>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>68.7473<formatted>68.75</formatted></price>
+                      <freeStay/>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>1</leftToSell>
+                </rateBasis>
+                <rateBasis runno="1" id="0" description="Room Only">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>4</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">3</rateType>
+                  <allowsExtraMeals>false</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>false</allowsBeddingPreference>
+                  <allocationDetails>1774336668000002B1836B2</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <toDate>2026-06-15 22:00:00</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 22:00:00</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 22:00:01</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 22:00:01</fromDateDetails>
+                      <amendCharge>76.2369<formatted>76.24</formatted></amendCharge>
+                      <cancelCharge>76.2369<formatted>76.24</formatted></cancelCharge>
+                      <charge>76.2369<formatted>76.24</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Additional fees for 3-12 people:,Name: mandatory_tax, Cost: 5.44 USD,Tax Recovery Charges and Service Fees for 3-12 people: 24.50 USD (This amount is included within the total price).]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>76.2369<formatted>76.24</formatted></total>
+                  <totalTaxes>7.5107<formatted>7.51</formatted></totalTaxes>
+                  <propertyFees count="2">
+                    <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.347<formatted>9.35</formatted></propertyFee>
+                    <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692<formatted>1.67</formatted></propertyFee>
+                  </propertyFees>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>76.2369<formatted>76.24</formatted></price>
+                      <freeStay/>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>1</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <roomType runno="2" roomtypecode="1255951785">
+              <name>3 BEDROOMS, APARTMENT</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>4</maxOccupancy>
+                <maxAdultWithChildren>3</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>12</maxChildAge>
+                <maxAdult>3</maxAdult>
+                <maxExtraBed>0</maxExtraBed>
+                <maxChildren>1</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="2">
+                <rateBasis runno="0" id="0" description="Room Only">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>4</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">3</rateType>
+                  <allowsExtraMeals>false</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>false</allowsBeddingPreference>
+                  <allocationDetails>1774336668000002B1836B1</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <toDate>2026-06-15 22:00:00</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 22:00:00</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 22:00:01</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 22:00:01</fromDateDetails>
+                      <amendCharge>94.9929<formatted>94.99</formatted></amendCharge>
+                      <cancelCharge>94.9929<formatted>94.99</formatted></cancelCharge>
+                      <charge>94.9929<formatted>94.99</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Additional fees for 3-12 people:,Name: mandatory_tax, Cost: 5.44 USD,Tax Recovery Charges and Service Fees for 3-12 people: 30.32 USD (This amount is included within the total price).]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>94.9929<formatted>94.99</formatted></total>
+                  <totalTaxes>9.2949<formatted>9.29</formatted></totalTaxes>
+                  <propertyFees count="2">
+                    <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">12.4433<formatted>12.44</formatted></propertyFee>
+                    <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692<formatted>1.67</formatted></propertyFee>
+                  </propertyFees>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>94.9929<formatted>94.99</formatted></price>
+                      <freeStay/>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>1</leftToSell>
+                </rateBasis>
+                <rateBasis runno="1" id="0" description="Room Only">
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>4</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">3</rateType>
+                  <allowsExtraMeals>false</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>false</allowsBeddingPreference>
+                  <allocationDetails>1774336668000002B1836B0</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="2">
+                    <rule runno="0">
+                      <toDate>2026-06-15 22:00:00</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 22:00:00</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 22:00:01</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 22:00:01</fromDateDetails>
+                      <amendCharge>105.2906<formatted>105.29</formatted></amendCharge>
+                      <cancelCharge>105.2906<formatted>105.29</formatted></cancelCharge>
+                      <charge>105.2906<formatted>105.29</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Additional fees for 3-12 people:,Name: mandatory_tax, Cost: 5.44 USD,Tax Recovery Charges and Service Fees for 3-12 people: 33.70 USD (This amount is included within the total price).]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <total>105.2906<formatted>105.29</formatted></total>
+                  <totalTaxes>10.3311<formatted>10.33</formatted></totalTaxes>
+                  <propertyFees count="2">
+                    <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">13.2679<formatted>13.27</formatted></propertyFee>
+                    <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692<formatted>1.67</formatted></propertyFee>
+                  </propertyFees>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>105.2906<formatted>105.29</formatted></price>
+                      <freeStay/>
+                      <dayOnRequest>0</dayOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>1</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <roomType runno="3" roomtypecode="6811885">
+              <name>THREE BEDROOM APARTMENT</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>8</maxOccupancy>
+                <maxAdultWithChildren>6</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>11</maxChildAge>
+                <maxAdult>7</maxAdult>
+                <maxExtraBed>1</maxExtraBed>
+                <maxChildren>2</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="2">
+                <rateBasis runno="0" id="0" description="Room Only">
+                  <validForOccupancy>
+                    <adults>4</adults>
+                    <extraBed>0</extraBed>
+                    <extraBedOccupant>child</extraBedOccupant>
+                  </validForOccupancy>
+                  <changedOccupancy>4,0,,0</changedOccupancy>
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336668000001B1000B2</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="3">
+                    <rule runno="0">
+                      <toDate>2026-06-15 13:59:59</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 13:59:59</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 14:00:00</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 14:00:00</fromDateDetails>
+                      <amendCharge>107.9566<formatted>107.96</formatted></amendCharge>
+                      <cancelCharge>107.9566<formatted>107.96</formatted></cancelCharge>
+                      <charge>107.9566<formatted>107.96</formatted></charge>
+                    </rule>
+                    <rule runno="2">
+                      <fromDate>2026-06-17 23:00:00</fromDate>
+                      <fromDateDetails>Wed, 17 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>107.9566<formatted>107.96</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    No show and early departure will be charged 100%. No name, date and room change allowed.
+    Note: New pet policy update: One small pet (dog, cat or caged bird) may be permitted in the apartment; however prior permission is required. This permission may be denied or withdrawn at any subsequent time if the pet causes a disturbance to other guests, in which case the pet will have to be removed from the apartment by the guest.  If a pet is kept in the apartment, access to the apartment with the pet may only be made via the service lifts and not the guest elevators. The cost of rectifying any damage caused by the pet in the Premises or in or around the Building shall be the responsibility of the Tenant.
+    Existing reservation cannot be cancelled and rebooked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality Bookings including children will be based on sharing parents bedding and no separate bed for children is provided unless otherwise stated]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>107.9566<formatted>107.96</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>107.9566<formatted>107.96</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <dayExtraBedOnRequest>0</dayExtraBedOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+                <rateBasis runno="1" id="0" description="Room Only">
+                  <validForOccupancy>
+                    <adults>4</adults>
+                    <extraBed>1</extraBed>
+                    <extraBedOccupant>child</extraBedOccupant>
+                  </validForOccupancy>
+                  <changedOccupancy>4,0,,1</changedOccupancy>
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336668000001B1000B3</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="3">
+                    <rule runno="0">
+                      <toDate>2026-06-15 13:59:59</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 13:59:59</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 14:00:00</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 14:00:00</fromDateDetails>
+                      <amendCharge>128.2778<formatted>128.28</formatted></amendCharge>
+                      <cancelCharge>128.2778<formatted>128.28</formatted></cancelCharge>
+                      <charge>128.2778<formatted>128.28</formatted></charge>
+                    </rule>
+                    <rule runno="2">
+                      <fromDate>2026-06-17 23:00:00</fromDate>
+                      <fromDateDetails>Wed, 17 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>128.2778<formatted>128.28</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    No show and early departure will be charged 100%. No name, date and room change allowed.
+    Note: New pet policy update: One small pet (dog, cat or caged bird) may be permitted in the apartment; however prior permission is required. This permission may be denied or withdrawn at any subsequent time if the pet causes a disturbance to other guests, in which case the pet will have to be removed from the apartment by the guest.  If a pet is kept in the apartment, access to the apartment with the pet may only be made via the service lifts and not the guest elevators. The cost of rectifying any damage caused by the pet in the Premises or in or around the Building shall be the responsibility of the Tenant.
+    Existing reservation cannot be cancelled and rebooked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality Bookings including children will be based on sharing parents bedding and no separate bed for children is provided unless otherwise stated]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>128.2778<formatted>128.28</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>128.2778<formatted>128.28</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <dayExtraBedOnRequest>0</dayExtraBedOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <roomType runno="4" roomtypecode="19762395">
+              <name>FOUR BEDROOM APARTMENT</name>
+              <twin>no</twin>
+              <roomInfo>
+                <maxOccupancy>10</maxOccupancy>
+                <maxAdultWithChildren>8</maxAdultWithChildren>
+                <minChildAge>0</minChildAge>
+                <maxChildAge>11</maxChildAge>
+                <maxAdult>9</maxAdult>
+                <maxExtraBed>1</maxExtraBed>
+                <maxChildren>2</maxChildren>
+              </roomInfo>
+              <specials count="0"/>
+              <rateBases count="2">
+                <rateBasis runno="0" id="0" description="Room Only">
+                  <validForOccupancy>
+                    <adults>4</adults>
+                    <extraBed>0</extraBed>
+                    <extraBedOccupant>child</extraBedOccupant>
+                  </validForOccupancy>
+                  <changedOccupancy>4,0,,0</changedOccupancy>
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336668000001B1000B4</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="3">
+                    <rule runno="0">
+                      <toDate>2026-06-15 13:59:59</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 13:59:59</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 14:00:00</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 14:00:00</fromDateDetails>
+                      <amendCharge>117.0286<formatted>117.03</formatted></amendCharge>
+                      <cancelCharge>117.0286<formatted>117.03</formatted></cancelCharge>
+                      <charge>117.0286<formatted>117.03</formatted></charge>
+                    </rule>
+                    <rule runno="2">
+                      <fromDate>2026-06-17 23:00:00</fromDate>
+                      <fromDateDetails>Wed, 17 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>117.0286<formatted>117.03</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    No show and early departure will be charged 100%. No name, date and room change allowed.
+    Note: New pet policy update: One small pet (dog, cat or caged bird) may be permitted in the apartment; however prior permission is required. This permission may be denied or withdrawn at any subsequent time if the pet causes a disturbance to other guests, in which case the pet will have to be removed from the apartment by the guest.  If a pet is kept in the apartment, access to the apartment with the pet may only be made via the service lifts and not the guest elevators. The cost of rectifying any damage caused by the pet in the Premises or in or around the Building shall be the responsibility of the Tenant.
+    Existing reservation cannot be cancelled and rebooked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality Bookings including children will be based on sharing parents bedding and no separate bed for children is provided unless otherwise stated]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>117.0286<formatted>117.03</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>117.0286<formatted>117.03</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <dayExtraBedOnRequest>0</dayExtraBedOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+                <rateBasis runno="1" id="0" description="Room Only">
+                  <validForOccupancy>
+                    <adults>4</adults>
+                    <extraBed>1</extraBed>
+                    <extraBedOccupant>child</extraBedOccupant>
+                  </validForOccupancy>
+                  <changedOccupancy>4,0,,1</changedOccupancy>
+                  <status>unchecked</status>
+                  <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+                  <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+                  <allowsExtraMeals>true</allowsExtraMeals>
+                  <allowsSpecialRequests>true</allowsSpecialRequests>
+                  <allowsBeddingPreference>true</allowsBeddingPreference>
+                  <allocationDetails>1774336668000001B1000B5</allocationDetails>
+                  <minStay/>
+                  <dateApplyMinStay/>
+                  <cancellationRules count="3">
+                    <rule runno="0">
+                      <toDate>2026-06-15 13:59:59</toDate>
+                      <toDateDetails>Mon, 15 Jun 2026 13:59:59</toDateDetails>
+                      <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                      <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                      <charge>0<formatted>0.00</formatted></charge>
+                    </rule>
+                    <rule runno="1">
+                      <fromDate>2026-06-15 14:00:00</fromDate>
+                      <fromDateDetails>Mon, 15 Jun 2026 14:00:00</fromDateDetails>
+                      <amendCharge>137.3498<formatted>137.35</formatted></amendCharge>
+                      <cancelCharge>137.3498<formatted>137.35</formatted></cancelCharge>
+                      <charge>137.3498<formatted>137.35</formatted></charge>
+                    </rule>
+                    <rule runno="2">
+                      <fromDate>2026-06-17 23:00:00</fromDate>
+                      <fromDateDetails>Wed, 17 Jun 2026 23:00:00</fromDateDetails>
+                      <noShowPolicy>true</noShowPolicy>
+                      <charge>137.3498<formatted>137.35</formatted></charge>
+                    </rule>
+                  </cancellationRules>
+                  <withinCancellationDeadline>no</withinCancellationDeadline>
+                  <tariffNotes><![CDATA[Rate Notes:
+    
+    Hotel Tariff Notes:
+    No show and early departure will be charged 100%. No name, date and room change allowed.
+    Note: New pet policy update: One small pet (dog, cat or caged bird) may be permitted in the apartment; however prior permission is required. This permission may be denied or withdrawn at any subsequent time if the pet causes a disturbance to other guests, in which case the pet will have to be removed from the apartment by the guest.  If a pet is kept in the apartment, access to the apartment with the pet may only be made via the service lifts and not the guest elevators. The cost of rectifying any damage caused by the pet in the Premises or in or around the Building shall be the responsibility of the Tenant.
+    Existing reservation cannot be cancelled and rebooked under lower promotion.
+    Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+    The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+    This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality Bookings including children will be based on sharing parents bedding and no separate bed for children is provided unless otherwise stated]]></tariffNotes>
+                  <isBookable>yes</isBookable>
+                  <onRequest>0</onRequest>
+                  <extraBedOnRequest>0</extraBedOnRequest>
+                  <total>137.3498<formatted>137.35</formatted></total>
+                  <dates count="1">
+                    <date runno="0" datetime="2026-06-17" day="Jun, 17 2026" wday="Wednesday">
+                      <price>137.3498<formatted>137.35</formatted></price>
+                      <freeStay>no</freeStay>
+                      <dayOnRequest>0</dayOnRequest>
+                      <dayExtraBedOnRequest>0</dayExtraBedOnRequest>
+                      <including count="0"/>
+                    </date>
+                  </dates>
+                  <leftToSell>9999</leftToSell>
+                </rateBasis>
+              </rateBases>
+            </roomType>
+            <lookedForText>Room Number 1: 3 adult/s and 1 child</lookedForText>
+          </room>
+        </rooms>
+        <extraMeals count="0"/>
+      </hotel>
+      <successful>TRUE</successful>
+    </result>
+    
+  âœ”  [14c] Blocked OK â€” status: checked
+  [Step 14d] confirmbooking â€” validForOccupancy adultsCode/extraBed, original actualAdults/actualChildren
+  VERIFICATION XML: <adultsCode>4</adultsCode> (from validForOccupancy)
+  VERIFICATION XML: <actualAdults>3</actualAdults> (from original search)
+  VERIFICATION XML: <children no="1"><child runno="0">12</child></children> (from validForOccupancy)
+  VERIFICATION XML: <actualChildren no="1"><actualChild runno="0">12</actualChild></actualChildren> (from original search)

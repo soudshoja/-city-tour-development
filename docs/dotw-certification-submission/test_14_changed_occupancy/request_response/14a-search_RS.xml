@@ -1,0 +1,3885 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="searchhotels" tID="1774336664100001" ip="152.53.86.223" date="2026-03-24 07:17:47" version="4.0" elapsedTime="3.2443020343781">
+      <hotels>
+        <hotel hotelid="1015245">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="6811875">
+                <name>TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>66.6791</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>93.895</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>281.2315</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>353.8073</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="6811885">
+                <name>THREE BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>107.9566</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>244.9435</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>317.5194</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>390.0953</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="19762395">
+                <name>FOUR BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>117.0286</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>281.2315</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>353.8073</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>426.3832</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="5525265">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1363665815">
+                <name>TWO BEDROOM APARTMENT CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>104.3278</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>108.8638</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>145.1517</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>181.4397</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1363666825">
+                <name>TWO BEDROOM APARTMENT CREEK VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>113.3998</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>117.9358</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>154.2237</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>190.5116</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="922535">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5713905">
+                <name>THREE BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>100.699</total>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>122.4718</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>131.5438</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>158.7597</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="5713915">
+                <name>TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>67.1327</total>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.6478</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>97.9774</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>125.1934</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="6194695">
+                <name>FOUR BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>129.7294</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>160.5741</total>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>185.9756</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>187.79</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="1968625">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="776788055">
+                <name>QUAD ROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>24.948</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>27.6695</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>53.0711</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>71.2151</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="109423895">
+                <name>FAMILY SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.7415</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>41.2775</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>66.6791</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>84.823</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="923015">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5731235">
+                <name>FAMILY SUITE (2 ROOM STUDIO)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>16.6761</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>24.8209</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>44.5253</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>57.6615</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="1017548">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="8447168">
+                <name>2 BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.2879</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>51.7103</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>61.6895</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>144.0994</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="8447248">
+                <name>2 BEDROOM  APARTMENT SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>45.3599</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>60.7823</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>70.7615</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>150.9941</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="56538355">
+                <name>3 BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>74.3903</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>88.9054</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>169.6098</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="8447408">
+                <name>3 BEDROOM APARTMENT SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>63.5039</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>83.4622</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>97.9774</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>176.5045</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="1980825">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="35296805">
+                <name>TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>58.9679</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>87.9982</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>117.0286</total>
+                  </rateBasis>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">1</rateType>
+                    <total>175.0893</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="41587725">
+                <name>THREE BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>90.7198</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>119.7502</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>148.7805</total>
+                  </rateBasis>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">1</rateType>
+                    <total>206.8412</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="43114">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="39155715">
+                <name>2 BEDROOM ASPEN SKI CHALET WITH 2 SKI DXB TICKET PER STAY/EXCUTIVE LOUNGE ACCESS</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>673.0776</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>740.2103</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>807.343</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="39155735">
+                <name>3 BEDROOM ASPEN SKI CHALETS WITH 2 SKI DXB TICKET PER STAY/EXCUTIVE LOUNGE ACCES</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>736.5815</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>803.7142</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>870.8468</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="923025">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5967155">
+                <name>Two Bedroom Apartment Deluxe</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>27.2159</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.2879</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>48.9887</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="7508548">
+                <name>PREMIER 2 BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>34.9045</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>47.3149</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="5967165">
+                <name>Three Bedroom Apartment Deluxe</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.2879</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>47.6279</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>60.3287</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="7508568">
+                <name>PREMIER 3 BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>44.988</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>57.3984</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1460020885">
+                <name>Three Bedroom Grand Premier (3BHK-GP)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>64.3793</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>76.7898</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="449855">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5963405">
+                <name>TWO BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>53.5247</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>62.5967</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>89.8126</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>117.0286</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="5963425">
+                <name>THREE BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>67.1327</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>76.2047</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>103.4206</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>130.6366</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4997195">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="276208005">
+                <name>STANDARD TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.6478</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>112.4926</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="276208085">
+                <name>DELUXE TWO BEDROOM WITH BALCONY</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>90.7198</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>121.5646</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="276208275">
+                <name>PREMIUM TWO BEDROOM MARINA VIEW &amp; BALCONY</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>99.7918</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>130.6366</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="972479065">
+                <name>SUPERIOR PREMIUM TWO BEDROOM MARINA VIEW &amp; BALCONY</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>108.8638</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>139.7085</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="280012935">
+                <name>Standard 2 Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>80.7991</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="280013565">
+                <name>Deluxe 2 Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.7524</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="280013665">
+                <name>Premium 2 Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>90.6988</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="5197385">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1036898135">
+                <name>SUITE ROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>32.6591</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>35.8343</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>50.3495</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>61.2359</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2552675">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="142363475">
+                <name>ONE BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>32.6591</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>38.1023</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>56.2463</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>74.3903</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="592555">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="143407715">
+                <name>1 BEDROOM KING APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>31.7519</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>39.4631</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>57.6071</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>78.9263</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="247442075">
+                <name>1 BEDROOM TWIN APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>31.7519</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>39.4631</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>57.6071</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>78.9263</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2230145">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="62480005">
+                <name>TWO BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>69.593</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>85.9679</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>115.9281</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>137.7009</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="710756805">
+                <name>Two Bedroom Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>59.8803</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.3414</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2563615">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="226275355">
+                <name>FAMILY ROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>48.9887</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>67.1327</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>75.2975</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="45364">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="21631775">
+                <name>FAMILY ROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>34.0199</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>52.1639</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>70.3079</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="130244">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="350404">
+                <name>TWO BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>68.0399</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>89.8126</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>111.5854</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2271035">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="67032595">
+                <name>TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>29.9375</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="67032605">
+                <name>THREE BEDROOM APARTMENT.</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>39.0095</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2596695">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="152115475">
+                <name>STANDARD TWO BEDROOM WITH KING AND QUEEN</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>70.7615</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>94.3486</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="198524555">
+                <name>DELUXE TWO BEDROOM WITH KING AND TWIN BEDDING</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>68.0399</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>84.3694</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>107.9566</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="458375">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="6165155">
+                <name>2 BEDROOM SUITE BURJ AND FOUNTAIN VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>105.7793</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>117.21</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>140.7972</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="5362165">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="695237405">
+                <name>DELUXE TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>50.1227</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="695237455">
+                <name>PREMIUM TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>55.9061</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="695237835">
+                <name>DELUXE THREE BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>73.2563</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="695238105">
+                <name>PREMIUM THREE BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>84.823</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1189407345">
+                <name>2 BR Deluxe Apt</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>70.2353</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1189411535">
+                <name>2 BR Premium Apt</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>79.1258</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1189416365">
+                <name>3 BR Deluxe Apt</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>96.9069</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1189419445">
+                <name>3 BR Premium Apt</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>105.7975</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="924745">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5872605">
+                <name>STANDARD TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>65.3183</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>79.8334</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>112.2204</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>144.6074</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="133264">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="359874">
+                <name>TWO BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>63.5039</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>76.2047</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>101.6062</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>127.0078</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2274885">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1501094795">
+                <name>EXECUTIVE CITY TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>40.8239</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>154.2237</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>181.4397</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1501095035">
+                <name>EXECUTIVE MARINA TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>45.3599</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>157.8525</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>185.0684</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1501095245">
+                <name>EXECUTIVE SEA TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>49.8959</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>165.1101</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>192.326</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1501095425">
+                <name>PREMIUM MARINA TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>168.7389</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>195.9548</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1501095525">
+                <name>PREMIUM SEA TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>58.9679</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>175.9965</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>203.2124</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="53754">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="59776985">
+                <name>JUNIOR SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>45.3599</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>90.7198</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>117.9358</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="81867735">
+                <name>Junior  Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>35.3698</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.7694</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="925445">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5891105">
+                <name>THREE BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>77.1119</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="135494">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5214775">
+                <name>Ocean 2 Bedroom Family Suite</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>299.3754</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>364.6937</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="5214785">
+                <name>Palm 2 Bedroom Family Suite</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>326.5914</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>391.9097</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="5214795">
+                <name>2 Bedroom Family Villa with Private pool</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>508.031</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>573.3493</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="418956">
+                <name>SUPERIOR 4 BEDROOM PENTHOUSE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>780.1905</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>845.5088</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2288655">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="74080385">
+                <name>HILTON FAMILY GUEST ROOM (Twin Guest Room + King Guest Room)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>66.2255</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>68.0399</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>98.8846</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>129.7294</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="74080365">
+                <name>ONE BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>93.4414</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>124.2862</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>155.1309</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="75494">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1001507975">
+                <name>DELUXE FAMILY ROOM - JUMEIRAH VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>56.2463</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>60.7823</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>78.0191</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>95.2558</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="33449345">
+                <name>EXECUTIVE SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>67.1327</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="33449585">
+                <name>DIPLOMATIC SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>87.5446</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1001508295">
+                <name>FAMILY SUITE - JUMEIRAH VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>90.2662</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>94.8022</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>112.039</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>129.2758</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="925465">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="17953998">
+                <name>JUNIOR SUITE ROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.2879</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>59.8751</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="771375">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="6093735">
+                <name>PREMIUM 2 BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.6478</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>101.6062</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="139534">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="45268625">
+                <name>GRAND SUITE - CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>46.5393</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>75.5696</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>104.6</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="14419558">
+                <name>TWO BEDROOM APARTMENT - CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>48.5805</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>77.6108</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>106.6412</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="45268645">
+                <name>GRAND SUITE - SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>50.6217</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>79.652</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>108.6824</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2290115">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1400452305">
+                <name>TWO BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>31.7519</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>39.0095</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>62.5967</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>82.555</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2620995">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="179028565">
+                <name>FAMILY ROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>74.8439</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="963835">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1490375165">
+                <name>TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>44.9063</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>53.0711</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2309635">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1002947875">
+                <name>BLISS RESORT VIEW FAMILY ROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>152.6815</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1002949185">
+                <name>HARMONY OCEANFRONT MASTER FAMILY SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>245.76</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="838245">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="6329985">
+                <name>TWO BED ROOMS GRAND SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>72.5759</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>77.1119</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>104.3278</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>131.5438</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="967185">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="20606885">
+                <name>TWO BEDROOM SUITE BALCONY CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>49.8959</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>58.9679</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>75.2975</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>91.627</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="20606935">
+                <name>TWO BEDROOM SUITE BALCONY PARTIAL SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>53.5247</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>62.5967</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>78.9263</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>95.2558</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="231146">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="927379445">
+                <name>FAMILY SUITE (One bedroom)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>28.5767</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>32.2055</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>55.7927</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4784905">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="263105895">
+                <name>Family Suite (GS 3)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>17.5543</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>25.8552</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>38.5559</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>51.2567</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="359940335">
+                <name>TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>27.2159</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.2879</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>48.9887</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>61.6895</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="359941755">
+                <name>THREE BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.2879</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>47.6279</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>60.3287</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>73.0295</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="380977635">
+                <name>TWO BEDROOM PREMIER</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.7415</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>49.8052</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="380977805">
+                <name>THREE BEDROOM PREMIER</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>47.3558</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>60.4194</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1460067475">
+                <name>THREE BEDROOM GRAND PREMIER (3 BHK-GP)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>71.5326</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>85.322</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="872195">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="223636785">
+                <name>TWO BEDROOM PARTIAL SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>47.6279</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>63.9575</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>87.5446</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="223654695">
+                <name>TWO BEDROOM MARINA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>49.8959</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>66.2255</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>89.8126</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="6013665">
+                <name>3 BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>70.3079</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>94.8022</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>118.3894</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2329275">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="92263125">
+                <name>DELUXE CONNECTING ROOM</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>63.141</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>71.1243</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>99.7918</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>128.4593</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4796605">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="284360165">
+                <name>THEMED ROOM WITH PARK ACCESS</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>86.1838</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>113.3998</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>140.6157</total>
+                  </rateBasis>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">1</rateType>
+                    <total>156.4917</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="284360225">
+                <name>FULLY THEMED ROOM WITH PARK ACCESS</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>95.2558</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>122.4718</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>149.6877</total>
+                  </rateBasis>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">1</rateType>
+                    <total>165.5637</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="98588">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="9468338">
+                <name>EXECUTIVE SUITE THREE BEDROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>80.287</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>109.3174</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="1525358">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="14857468">
+                <name>FAMILY (INTERCONNECTING ROOM)</name>
+                <rateBases>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>63.5039</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>79.8334</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="992835">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="6570715">
+                <name>DELUXE 2 BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.6478</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>99.7918</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>132.0881</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="106021235">
+                <name>PANORAMIC 2 BEDROOM SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>108.8638</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>131.5438</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>163.84</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="153325085">
+                <name>Deluxe Two Bedroom  Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>224.9307</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>260.9374</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="153325115">
+                <name>Panoramic Two Bedroom Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>264.9382</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>300.9449</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="907025">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1366053535">
+                <name>2 CONNECTING SEA VIEW ROOMS WITH BALCONY</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>72.5759</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>103.4206</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>134.2653</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="394235">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="11726028">
+                <name>TWO BEDROOM APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>68.0399</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4927475">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="720371395">
+                <name>SUITE ROOM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>41.7311</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>68.9471</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>96.163</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1249991255">
+                <name>FAMILY SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.6478</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>108.8638</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>136.0797</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1068867515">
+                <name>Grand Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>34.488</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>53.9366</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="5492685">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="782356475">
+                <name>TWO BEDROOM SUITE CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>72.5759</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>99.7918</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>155.6752</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="782356715">
+                <name>THREE BEDROOM SUITE CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>103.4206</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>127.4614</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>183.3448</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="920905">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="5716665">
+                <name>2 BEDROOM NON MARINA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>62.4152</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>91.4456</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>113.2183</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>134.9911</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="46727545">
+                <name>2 BEDROOM MARINA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>76.9304</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>105.9608</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>127.7335</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>149.5063</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="397515">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="721306175">
+                <name>Grand Family Suite Two Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>72.5759</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>83.4622</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>105.235</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>125.1934</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="6310875">
+                <name>Deluxe Two Bedroom Apartment with Balcony</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>81.6478</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>92.5342</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>114.307</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>134.2653</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1060220965">
+                <name>Premium Two Bedroom Apartment with Balcony</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>90.7198</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>101.6062</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>123.379</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>143.3373</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="922515">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1216297585">
+                <name>PRESTIGE TWO BEDROOM SUITES - CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>21.7728</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>49.8959</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>74.3903</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1216300325">
+                <name>PRESTIGE TWO BEDROOM SUITES - SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>24.0408</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>54.4319</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>56.6999</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>76.6583</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1216300995">
+                <name>FAMILY TWO BEDROOM APARTMENT - CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>38.5559</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>51.2567</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>71.2151</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>91.1734</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1216301325">
+                <name>FAMILY TWO BEDROOM APARTMENT - SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>43.0919</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>55.7927</total>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">1</rateType>
+                    <total>75.7511</total>
+                  </rateBasis>
+                  <rateBasis id="1335">
+                    <rateType currencyid="769">1</rateType>
+                    <total>95.7094</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="143786">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="289036325">
+                <name>Two Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>147.4206</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="289036355">
+                <name>Three Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>215.4605</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="474615">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="55282515">
+                <name>Two  Bedroom</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>127.5237</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>147.9275</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="924145">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="55282175">
+                <name>Two  Bedroom</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>57.3859</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>95.6426</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2178525">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1048269365">
+                <name>Deluxe Two Bedroom Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>56.5831</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>69.8078</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4466455">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="197376865">
+                <name>Three Bedroom Apartment Canal View</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>96.0179</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="197377245">
+                <name>Two Bedroom Apartment Canal View</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>50.409</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="197377325">
+                <name>Two Bedroom Apartment City View</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>43.208</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="925405">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="991725705">
+                <name>Standard Three Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>164.0305</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>204.1269</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2270125">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="65580555">
+                <name>Premium Executive</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.796</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="233056">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1046651135">
+                <name>TWO BEDROOM  APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>38.2475</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>51.5107</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2596405">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="751060015">
+                <name>Royal Two Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>65.3909</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="797040305">
+                <name>Premium Royal Two Bedroom</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>74.0274</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="797040585">
+                <name>Premium Royal Three Bedroom</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>77.1119</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="3108365">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="197831685">
+                <name>Family Room</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>320.0596</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>341.3969</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4557415">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="260271375">
+                <name>Two Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>29.7561</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>36.4694</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="4770395">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="282634985">
+                <name>Two Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>40.1707</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="429342335">
+                <name>Three Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>63.6037</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="429342425">
+                <name>Four Bedroom Apartment</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>80.3415</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="5247255">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="707818305">
+                <name>Premier Room</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>88</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>99.2892</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="98109">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1154565995">
+                <name>Princeton Suite (2 Bedroom)</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">1</rateType>
+                    <total>44.5307</total>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">1</rateType>
+                    <total>66.3797</total>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="30914">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1429155215">
+                <name>FAMILY SUITE, GARDEN</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>507.5481</total>
+                    <totalTaxes>95.7693</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>555.9303</total>
+                    <totalTaxes>95.7693</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>607.0699</total>
+                    <totalTaxes>114.5492</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1324764545">
+                <name>2 BEDROOMS, OCEAN, SUITE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>502.572</total>
+                    <totalTaxes>94.8312</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>550.48</total>
+                    <totalTaxes>94.8312</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>602.0938</total>
+                    <totalTaxes>113.6142</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="30974">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1459793335">
+                <name>Presidential Suite, 1 Double Bed (SW-M)</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>1312.2289</total>
+                    <totalTaxes>130.8244</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">104.6596</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">53.415</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>1400.1997</total>
+                    <totalTaxes>130.8244</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">104.6596</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">53.415</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1474872105">
+                <name>1 BEDROOM, FAMILY SUITE, SEA VIEW, SMOKING</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>580.4382</total>
+                    <totalTaxes>57.7957</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">46.2384</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">53.415</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>601.9143</total>
+                    <totalTaxes>57.7957</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">46.2384</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">53.415</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="31054">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1468944155">
+                <name>TOWER, GUEST ROOM, FAMILY, TWIN BEDS, PARTIAL SEA VIEW, LARGE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>149.5301</total>
+                    <totalTaxes>15.6499</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">12.5199</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">33.3844</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>163.4862</total>
+                    <totalTaxes>17.106</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">13.6879</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">33.3844</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>183.4245</total>
+                    <totalTaxes>19.1968</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.3556</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">33.3844</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1468943605">
+                <name>1 BEDROOM, FAMILY SUITE, TOWER, PARTIAL SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>173.4553</total>
+                    <totalTaxes>18.1545</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">14.5217</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">33.3844</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>185.9447</total>
+                    <totalTaxes>18.1545</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">14.5217</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">33.3844</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="30784">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1429119555">
+                <name>GRAND, FAMILY SUITE, DELUXE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>164.4076</total>
+                    <totalTaxes>16.1036</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">12.8816</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>191.0868</total>
+                    <totalTaxes>19.4574</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.564</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1134017835">
+                <name>CONNECTING, KING BED</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>175.7181</total>
+                    <totalTaxes>17.8908</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">14.3133</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>191.0868</total>
+                    <totalTaxes>19.4574</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.564</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="73344">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1160150665">
+                <name>2 BEDROOMS, SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>107.2316</total>
+                    <totalTaxes>10.6407</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">8.5132</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">25.0398</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>123.962</total>
+                    <totalTaxes>12.3114</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.8498</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">25.0398</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>163.4862</total>
+                    <totalTaxes>17.106</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">13.6879</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">25.0398</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="31134">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1133858225">
+                <name>EXECUTIVE, QUEEN BED, SOFA</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>23.7863</total>
+                    <totalTaxes>2.3605</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">1.8853</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>35.2561</total>
+                    <totalTaxes>3.6511</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">2.9215</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1329378065">
+                <name>SUPERIOR, FAMILY, DOUBLE BED, SOFA</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>46.4413</total>
+                    <totalTaxes>4.813</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.8473</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>49.9168</total>
+                    <totalTaxes>4.813</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.8473</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="84722">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1160070385">
+                <name>PALM, QUEEN BED</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>216.7565</total>
+                    <totalTaxes>40.2421</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>235.9665</total>
+                    <totalTaxes>40.2421</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>267.659</total>
+                    <totalTaxes>49.6903</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1134022965">
+                <name>OCEAN, QUEEN BED</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>207.1532</total>
+                    <totalTaxes>38.461</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>225.5095</total>
+                    <totalTaxes>38.461</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>258.0523</total>
+                    <totalTaxes>47.9092</totalTaxes>
+                    <propertyFees count="1">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="30964">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1133878315">
+                <name>DELUXE, KING BED, SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>105.4363</total>
+                    <totalTaxes>10.423</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">8.3384</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>120.0733</total>
+                    <totalTaxes>11.8823</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.5064</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">3</rateType>
+                    <total>189.0713</total>
+                    <totalTaxes>18.7676</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.0153</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1133878425">
+                <name>DELUXE, 1 KING AND 1 SINGLE BEDS, SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">3</rateType>
+                    <total>191.1613</total>
+                    <totalTaxes>18.9791</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.1808</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>203.7929</total>
+                    <totalTaxes>18.9791</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.1808</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="74064">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1442396845">
+                <name>DELUXE, 2 QUEEN BEDS, SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>123.6876</total>
+                    <totalTaxes>12.4065</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.9233</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1442414665">
+                <name>DELUXE, 2 QUEEN BEDS, SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>122.1159</total>
+                    <totalTaxes>12.2471</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.7977</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1161251075">
+                <name>DELUXE, KING BED, SEA VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>119.5042</total>
+                    <totalTaxes>11.9865</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.5892</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1161251055">
+                <name>DELUXE, KING BED, SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>114.2774</total>
+                    <totalTaxes>11.4653</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.1723</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">41.7289</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="41784">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1133941995">
+                <name>EXECUTIVE, KING BED</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>41.4449</total>
+                    <totalTaxes>4.2152</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.3722</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>44.6731</total>
+                    <totalTaxes>4.2152</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.3722</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1139521065">
+                <name>EXECUTIVE, TWIN BEDS</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>41.4449</total>
+                    <totalTaxes>4.2152</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.3722</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1133942015">
+                <name>EXECUTIVE, KING BED, ACCESSIBLE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>44.0091</total>
+                    <totalTaxes>4.4758</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.5806</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>47.4338</total>
+                    <totalTaxes>4.4758</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.5806</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1133950455">
+                <name>FAMILY, 3 BEDS</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>28.7726</total>
+                    <totalTaxes>2.9276</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">2.3421</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1133942005">
+                <name>EXECUTIVE, TWIN BEDS</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>44.6731</total>
+                    <totalTaxes>4.2152</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.3722</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="75464">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1284319135">
+                <name>2 BEDROOMS, SUITE, SEA FRONT, SEA VIEW, BALCONY, LOUNGE ACCESS</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>241.261</total>
+                    <totalTaxes>25.6437</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">20.515</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>243.5068</total>
+                    <totalTaxes>25.8829</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">20.7051</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>264.756</total>
+                    <totalTaxes>25.6437</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">20.515</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1336">
+                    <rateType currencyid="769">3</rateType>
+                    <total>318.8901</total>
+                    <totalTaxes>33.8902</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">27.1152</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2344175">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1429125705">
+                <name>ADJOINING, FAMILY SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>112.438</total>
+                    <totalTaxes>11.8301</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.4635</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>122.0786</total>
+                    <totalTaxes>12.8449</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">10.2759</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2292325">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1312747455">
+                <name>2 BEDROOMS, URBAN, APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>40.2728</total>
+                    <totalTaxes>4.2244</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.3814</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>43.8533</total>
+                    <totalTaxes>4.5984</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.6818</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1160294075">
+                <name>2 BEDROOMS, PREMIUM, APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>45.8451</total>
+                    <totalTaxes>4.813</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.8473</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>48.9818</total>
+                    <totalTaxes>4.813</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">3.8473</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2882315">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1256339355">
+                <name>SUITE, KING BED, WITH VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>53.3313</total>
+                    <totalTaxes>5.5825</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">4.4666</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">8.3446</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>73.2695</total>
+                    <totalTaxes>7.6701</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">6.1343</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">8.3446</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1264865125">
+                <name>EXECUTIVE, SUITE, KING BED, WITH VIEW</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>65.5395</total>
+                    <totalTaxes>6.5205</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">5.2176</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">8.3446</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>69.8821</total>
+                    <totalTaxes>6.5205</totalTaxes>
+                    <propertyFees count="3">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">5.2176</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Occupancy Fee" description="Occupancy Fee" includedinprice="Yes">8.3446</propertyFee>
+                      <propertyFee runno="2" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2456345">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1322070085">
+                <name>ROOM, QUADRUPLE, POOL ACCESS</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>40.9029</total>
+                    <totalTaxes>4.2244</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">4.2152</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="967195">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1144708825">
+                <name>2 BEDROOMS, SUITE, CITY VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>91.155</total>
+                    <totalTaxes>9.1477</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">7.3176</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>112.3838</total>
+                    <totalTaxes>11.2783</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.0221</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2519</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="126954">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1468056585">
+                <name>Sea View Residence Two Bedroom Suites with Lounge Access, Butler &amp; Mall Shuttle</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>405.9328</total>
+                    <totalTaxes>43.4334</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">34.7455</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>435.769</total>
+                    <totalTaxes>43.4334</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">34.7455</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>468.3355</total>
+                    <totalTaxes>50.1103</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">40.0888</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2416135">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1337683995">
+                <name>Premier, 2 Queen Beds</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>94.7897</total>
+                    <totalTaxes>9.3562</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">7.4831</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>136.0415</total>
+                    <totalTaxes>13.4273</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">10.7419</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1442434875">
+                <name>PREMIER, 2 QUEEN BEDS, SKYLINE VIEW</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>101.866</total>
+                    <totalTaxes>9.8007</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">7.8387</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2347455">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1175908705">
+                <name>CONNECTING, FAMILY</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>113.1223</total>
+                    <totalTaxes>11.7167</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.3715</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>155.431</total>
+                    <totalTaxes>16.0975</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">12.8786</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2343785">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1160749435">
+                <name>2 BEDROOMS, EXECUTIVE</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>148.2564</total>
+                    <totalTaxes>15.0674</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">12.0509</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1160789115">
+                <name>3 BEDROOMS, PREMIUM</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>189.3219</total>
+                    <totalTaxes>19.2366</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">15.3893</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1160749455">
+                <name>2 BEDROOMS, PREMIUM, APARTMENT</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>129.7748</total>
+                    <totalTaxes>13.1882</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">10.5487</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>140.042</total>
+                    <totalTaxes>14.2305</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">11.3826</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2334065">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1468053785">
+                <name>Two Bedroom Outdoor Jacuzzi Suite with Access to Lounge, 3 Pools &amp; Mall Shuttle</name>
+                <rateBases>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>410.9901</total>
+                    <totalTaxes>42.5628</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">34.0527</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>437.9708</total>
+                    <totalTaxes>42.5628</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">34.0527</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                  <rateBasis id="1334">
+                    <rateType currencyid="769">3</rateType>
+                    <total>475.4592</total>
+                    <totalTaxes>49.2427</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">39.3929</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2552805">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1316685245">
+                <name>2 BEDROOMS, GRAND, SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>116.4453</total>
+                    <totalTaxes>12.1244</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">9.6996</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1160711285">
+                <name>FAMILY</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>55.6313</total>
+                    <totalTaxes>5.797</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">4.6383</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1160711315">
+                <name>GRAND, FAMILY</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>57.1658</total>
+                    <totalTaxes>5.9565</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">4.767</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.6692</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="2880865">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1453672135">
+                <name>Two Bedrooms Full Fountains and Burj Khalifa View</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>164.8615</total>
+                    <totalTaxes>6.8056</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">27.3451</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="1453672145">
+                <name>Three Bedrooms Full Fountains and Burj Khalifa View</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                    <total>325.0111</total>
+                    <totalTaxes>13.9883</totalTaxes>
+                    <propertyFees count="2">
+                      <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">42.5352</propertyFee>
+                      <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8346</propertyFee>
+                    </propertyFees>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="1609628">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="897685125">
+                <name>One-Bedroom King Suite</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>51.4544</total>
+                    <totalTaxes>8.0687</totalTaxes>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>70.0864</total>
+                    <totalTaxes>10.9902</totalTaxes>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="897672715">
+                <name>FAMILY CONNECTING ROOMS</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>55.8586</total>
+                    <totalTaxes>8.7584</totalTaxes>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>74.7291</total>
+                    <totalTaxes>11.7167</totalTaxes>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+              <roomType roomtypecode="22331585">
+                <name>TWO BEDROOM FAMILY SUITE</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>74.7802</total>
+                    <totalTaxes>11.7259</totalTaxes>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+        <hotel hotelid="919425">
+          <rooms>
+            <room adults="3" children="1" childrenages="12" extrabeds="0">
+              <roomType roomtypecode="1517289453">
+                <name>Two-Bedroom Family Room</name>
+                <rateBases>
+                  <rateBasis id="0">
+                    <rateType currencyid="769">3</rateType>
+                    <total>96.1951</total>
+                    <totalTaxes>15.0827</totalTaxes>
+                  </rateBasis>
+                  <rateBasis id="1331">
+                    <rateType currencyid="769">3</rateType>
+                    <total>120.7199</total>
+                    <totalTaxes>18.927</totalTaxes>
+                  </rateBasis>
+                </rateBases>
+              </roomType>
+            </room>
+          </rooms>
+        </hotel>
+      </hotels>
+      <successful>TRUE</successful>
+    </result>
+    
+  âœ”  [14a] Hotel: 1015245 | Rate: 0
+  [Step 14b] getRooms (browse) â€” detect changedOccupancy and validForOccupancy

@@ -1,0 +1,1 @@
+[    3053ms] [ERROR] Refused to apply style from 'https://cpanel.shoja.cloud/cpsess6131199268/frontend/jupiter/jodit-editor/4.7.9/jodit.min.css' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled. @ https://cpanel.shoja.cloud/cpsess6131199268/frontend/jupiter/filemanager/index.html:0

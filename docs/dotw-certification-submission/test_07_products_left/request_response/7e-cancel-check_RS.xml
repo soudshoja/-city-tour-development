@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="cancelbooking" tID="1774336628100004" ip="152.53.86.223" date="2026-03-24 07:17:08" version="4.0" elapsedTime="0.049360036849976">
+      <services>
+        <service runno="0" code="932563863">
+          <cancellationPenalty>
+            <charge>13.1544<formatted>13.15</formatted></charge>
+            <currency>769</currency>
+            <currencyShort>KWD</currencyShort>
+          </cancellationPenalty>
+        </service>
+      </services>
+      <successful>TRUE</successful>
+    </result>
+    
+  [7e] Cancellation charge: 13.1544 | serviceCode: 932563863
+  âœ”  [7e] Charge reported: 13.1544
+  [Step 7f] cancelBooking (confirm=yes) â€” check productsLeftOnItinerary

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <result command="searchhotels" tID="1774336680100001" ip="152.53.86.223" date="2026-03-24 07:18:00" version="4.0" elapsedTime="0.0047049522399902">
+      <request>
+        <successful>FALSE</successful>
+        <error>
+          <class>RequestController</class>
+          <code>26</code>
+          <postXml><![CDATA[<customer>
+      <username>techventure26alphia</username>
+      <password>********************************</password>
+      <id>2308675</id>
+      <source>1</source>
+      <product>hotel</product>
+      <request command="searchhotels">
+                    <bookingDetails>
+                        <fromDate>2026-06-27</fromDate>
+                        <toDate>2026-06-28</toDate>
+                        <currency>769</currency>
+                        <rooms no="1">
+                            <room runno="0">
+                                <adultsCode>2</adultsCode>
+                                <children no="0"/>
+                                <rateBasis>-1</rateBasis>
+                                <passengerNationality>66</passengerNationality>
+                                <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                            </room>
+                        </rooms>
+                    </bookingDetails>
+                    <return>
+                        <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
+                                 xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
+                            <c:condition>
+                                <a:condition>
+                                    <fieldName>hotelid</fieldName>
+                                    <fieldTest>in</fieldTest>
+                                    <fieldValues>
+                                        <fieldValue>809755</fieldValue>
+                                    </fieldValues>
+                                </a:condition>
+                            </c:condition>
+                        </filters>
+                    </return>
+                </request>
+    </customer>]]></postXml>
+          <details>XML request NOT XSD VALID</details>
+          <extraDetails>
+            <xsd_error file="searchhotels.xsd">
+              <error_message>Element 'fieldName': [facet 'enumeration'] The value 'hotelid' is not an element of the set {'hotelId', 'price', 'preferred', 'onRequest', 'rating', 'luxury', 'topDeals', 'specialDeals', 'location', 'locationId', 'amenitie', 'leisure', 'business', 'hotelPreference', 'chain', 'attraction', 'hotelName', 'builtYear', 'renovationYear', 'floors', 'noOfRooms', 'fireSafety', 'roomOnRequest', 'lastUpdated', 'roomPrice', 'suite', 'roomAmentie', 'roomId', 'roomRateBasis', 'roomName', 'roomCategories'}.</error_message>
+              <error_message>Element 'fieldName': 'hotelid' is not a valid value of the atomic type '{http://us.dotwconnect.com/xsd/atomicCondition}fieldNameType'.</error_message>
+            </xsd_error>
+          </extraDetails>
+        </error>
+      </request>
+    </result>
+    
+  âœ˜  [16a-conrad] FAIL: DOTW error [26]: XML request NOT XSD VALID

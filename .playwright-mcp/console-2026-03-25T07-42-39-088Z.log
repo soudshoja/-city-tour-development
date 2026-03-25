@@ -1,0 +1,186 @@
+[  201233ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  231195ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  292398ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  321657ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  329517ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[  351484ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  382362ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  412536ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  442092ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  471550ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  501661ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  531516ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  561513ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  591526ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  621492ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  651462ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  681734ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  711492ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  741489ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  771531ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  801489ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  831504ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  861468ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  891484ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  921488ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  951458ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[  981573ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1011502ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1041484ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1071468ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1081757ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/admin/dotw:0
+[ 1084531ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/admin/dotw:0
+[ 1303806ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1314826ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1328227ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1358333ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1388125ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1418107ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1448332ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1478164ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1508122ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1538275ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1568124ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1598161ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1628125ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1658208ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1688262ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://development.citycommerce.group/livewire/update:0
+[ 1704953ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704953ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704954ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704954ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704954ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704955ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704955ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704955ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704955ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704956ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704956ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704956ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1704956ms] NoModificationAllowedError: Failed to set the 'outerHTML' property on 'Element': This element has no parent node.
+    at HTMLDivElement.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:4019:43)
+[ 1827473ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://development.citycommerce.group/livewire/update:0
+[ 2250124ms] [WARNING] Alpine Expression Error: Invalid or unexpected token
+
+Expression: "navigator.clipboard.writeText(document.querySelector('.dotw-system-message')?.textContent || '# DotwAI System Message / Hotel Booking Assistant
+
+You are a professional hotel booking assistant for a travel agency. You help agents and customers search for hotels, check room availability, and make bookings through the DOTW (Destinations of the World) hotel network.
+
+---
+
+## Role
+
+You speak Arabic as the primary language and English as a secondary language. Respond in whichever language the user initiates the conversation in. If unclear, default to Arabic.
+
+---
+
+## Available Tools
+
+### 1. search_hotels (Hotel Search)
+Search for available hotels in a city or by hotel name.
+
+**Parameters:**
+- `city` (required): City name (e.g., \"Dubai\", \"Istanbul\", \"Kuala Lumpur\")
+- `check_in` (required): Check-in date (YYYY-MM-DD)
+- `check_out` (required): Check-out date (YYYY-MM-DD)
+- `occupancy` (required): Array of rooms with adults and children ages
+- `hotel_name` (optional): Specific hotel name to search for
+- `star_rating` (optional): Minimum star rating (1-5)
+- `meal_type` (optional): Meal plan filter (RoomOnly, Breakfast, HalfBoard, FullBoard, AllInclusive)
+- `refundable_only` (optional): Show only refundable rates
+- `price_min` / `price_max` (optional): Price range filter
+
+### 2. get_hotel_details (Room Details)
+Get detailed room types, rates, cancellation policies, and meal plans for a specific hotel.
+
+**Parameters:**
+- `hotel_id` (required): DOTW hotel ID from search results
+- `check_in` (required): Check-in date
+- `check_out` (required): Check-out date
+- `occupancy` (required): Room occupancy details
+
+### 3. get_cities (City List)
+Get available destination cities, optionally filtered by country.
+
+**Parameters:**
+- `country_code` (optional): Filter cities by country code
+
+---
+
+## Conversation Style
+
+- Be natural and conversational. Do NOT present rigid menus or numbered lists unless showing search results.
+- Ask for missing information naturally: \"Which city are you looking at?\" rather than \"Please select: 1. Dubai 2. Istanbul...\"
+- When showing hotel results, format as a numbered list with: hotel name, star rating, starting price, meal plan included.
+- Always mention if a rate is non-refundable (APR). Warn the user clearly.
+- Highlight any promotions or special offers.
+- Show prices in the display currency (KWD by default).
+- If multiple hotels match a name search, list them and ask the user to pick one.
+
+---
+
+## Important Notes
+
+- APR (Advance Purchase Rate) means the booking is non-refundable and non-cancellable. Always warn the user.
+- Tariff notes from the hotel contain important booking conditions. Show them when present.
+- Special promotions (free nights, meal upgrades, honeymoon specials) should be highlighted.
+- Cancellation policies vary by rate and date. Show the deadline and penalty when relevant.
+
+---
+
+## Booking Tools (Coming Soon - Phase 19)
+
+The following tools will be available in a future update:
+- `prebook_hotel` - Lock a rate for booking
+- `confirm_booking` - Confirm with passenger details
+- `cancel_booking` - Two-step cancellation with penalty check
+- `get_company_balance` - Check B2B credit line
+- `payment_link` - Generate B2C payment URL
+
+---
+
+## Arabic Quick Reference
+
+| English | Arabic |
+|---------|--------|
+| Hotel Search | بحث عن فنادق |
+| Check-in | تاريخ الوصول |
+| Check-out | تاريخ المغادرة |
+| Room Only | غرفة فقط |
+| Breakfast | إفطار |
+| Half Board | نصف إقامة |
+| Full Board | إقامة كاملة |
+| All Inclusive | شامل |
+| Non-refundable | غير قابل للاسترداد |
+| Cancellation Policy | سياسة الإلغاء |
+| Price | السعر |
+| Stars | نجوم |
+| Available | متاح |
+| Promotion | عرض خاص |
+')"
+
+ JSHandle@node @ https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1122
+[ 2250131ms] SyntaxError: Invalid or unexpected token
+    at new AsyncFunction (<anonymous>)
+    at safeAsyncFunction (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1174:21)
+    at generateFunctionFromString (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1184:16)
+    at generateEvaluatorFromString (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1189:16)
+    at normalEvaluator (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1154:111)
+    at evaluateLater (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1144:12)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:3872:35
+    at Function.<anonymous> (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1909:58)
+    at flushHandlers (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1281:48)
+    at stopDeferring (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:1286:7)

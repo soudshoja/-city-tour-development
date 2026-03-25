@@ -1,0 +1,33 @@
+{
+  "name": "DOTW - Get Cities",
+  "type": "n8n-nodes-base.httpRequest",
+  "typeVersion": 4.2,
+  "position": [250, 300],
+  "parameters": {
+    "method": "GET",
+    "url": "={{ $json.base_url || 'https://development.citycommerce.group' }}/api/dotwai/get_cities",
+    "sendHeaders": true,
+    "headerParameters": {
+      "parameters": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    "sendQuery": true,
+    "queryParameters": {
+      "parameters": [
+        {
+          "name": "telephone",
+          "value": "+96550000000"
+        },
+        {
+          "name": "country_code",
+          "value": "AE"
+        }
+      ]
+    },
+    "options": {}
+  }
+}

@@ -124,33 +124,33 @@
         <div x-show="activeTab === 'credentials'" x-cloak>
             <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">DOTW Credentials</h2>
 
-            @if($isSuperAdmin)
-                {{-- Super Admin sees info message only --}}
-                <div class="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700 p-4 max-w-xl">
-                    <div class="flex gap-3">
-                        <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <div>
-                            <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Super Admin</p>
-                            <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                                To configure DOTW credentials for a company, use the API endpoint:
-                            </p>
-                            <code class="block mt-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 rounded px-3 py-2 font-mono">
-                                POST /api/admin/companies/{id}/dotw-credentials
-                            </code>
-                        </div>
-                    </div>
+            @if(session('credentials_saved'))
+                <div class="mb-4 rounded-lg border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-700 p-3 text-sm text-green-800 dark:text-green-200">
+                    {{ session('credentials_saved') }}
                 </div>
-            @else
-                {{-- Company Admin sees credentials form --}}
-                @if(session('credentials_saved'))
-                    <div class="mb-4 rounded-lg border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-700 p-3 text-sm text-green-800 dark:text-green-200">
-                        {{ session('credentials_saved') }}
-                    </div>
-                @endif
+            @endif
 
+            {{-- Company selector for Super Admin --}}
+            @if($isSuperAdmin)
+                <div class="mb-6">
+                    <label for="selected_company_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Company
+                    </label>
+                    <select
+                        id="selected_company_id"
+                        wire:model.live="selected_company_id"
+                        class="w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">-- Choose a company --</option>
+                        @foreach($companies as $company)
+                            <option value="{{ $company->id }}">{{ $company->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            {{-- Credentials form (shown for all when company is selected) --}}
+            @if($isSuperAdmin ? $selected_company_id : true)
                 <form wire:submit.prevent="saveCredentials" class="max-w-lg space-y-4">
 
                     <div>
@@ -221,6 +221,43 @@
                         @enderror
                     </div>
 
+                    {{-- Toggles Section --}}
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Product Tracks</h3>
+
+                        <div class="space-y-3">
+                            {{-- B2B Track --}}
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    wire:model="b2b_enabled"
+                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                >
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Enable B2B Track</span>
+                            </label>
+
+                            {{-- B2C Track --}}
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    wire:model="b2c_enabled"
+                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                >
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Enable B2C Track</span>
+                            </label>
+
+                            {{-- Active Status --}}
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    wire:model="is_active"
+                                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                >
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Credentials Active</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="pt-2">
                         <button
                             type="submit"
@@ -234,6 +271,8 @@
                     </div>
 
                 </form>
+            @else
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Select a company from the dropdown above to manage its credentials.</p>
             @endif
         </div>
 

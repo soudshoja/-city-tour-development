@@ -45,6 +45,7 @@
 - [x] **Phase 20: Cancellation + Accounting** - Two-step cancellation with penalty handling and hybrid accounting integration (completed 2026-03-24)
 - [x] **Phase 21: Lifecycle + History** - Automated reminders, auto-invoicing, booking history, voucher resend, and event webhooks (completed 2026-03-24)
 - [ ] **Phase 22: Dashboard** - Livewire monitoring dashboard for API calls, booking lifecycle, and error tracking
+- [ ] **Phase 24: DOTW Certification Fixes v2** - Fix all Olga March 27 feedback: salutation IDs, rateBasis, APR removal, mandatory display features in WhatsApp, 2-room cancellation, special requests, nationality/residence, B2B/B2C doc
 
 ## Phase Details
 
@@ -209,10 +210,27 @@ Plans:
 
 ---
 
+### Phase 23: Agent Facade + n8n Workflow
+**Goal**: Two POST endpoints (/api/dotwai/agent-b2c and /api/dotwai/agent-b2b) that accept action+params, manage per-phone session state in Cache, route to existing services, return every response with sessionContext — plus a ready-to-import n8n workflow with Resayil trigger, 1 HTTP tool (dotwai_agent), Window Buffer Memory, and Resayil send
+**Depends on**: Phase 22
+**Requirements**: AGEN-01, AGEN-02, AGEN-03, AGEN-04
+**Success Criteria** (what must be TRUE):
+  1. POST /api/dotwai/agent-b2c and /api/dotwai/agent-b2b handle all actions (search, details, book, pay, cancel, status, history, voucher) via PHP match() routing to existing services
+  2. Session state tracked per phone in Cache (dotwai_session_{phone}, 60-min TTL) — AI sends {action: "details", params: {option: 2}} without repeating hotel_id/dates/occupancy
+  3. Every response (success and error) includes sessionContext: {stage, summary, next_actions[]} and DOTW expiry validated on every call (SEARCH_EXPIRED after 10 min, PREBOOK_EXPIRED after 30 min)
+  4. n8n workflow JSON importable with Resayil trigger (device 68ac2c4c80090e92ccbf6d74), AI Agent with 1 HTTP tool (dotwai_agent), Window Buffer Memory (20 msgs, phone session key), Resayil send
+**Plans**: 2 plans
+
+Plans:
+- [ ] 23-01-PLAN.md — AgentSessionService (per-phone cache session + expiry), AgentController (match routing), AgentRequest, routes (AGEN-01, AGEN-02)
+- [ ] 23-02-PLAN.md — Updated system message (single-tool bilingual), n8n workflow JSON (Resayil trigger + 1 tool + send), CleanStaleSessionsCommand (AGEN-03, AGEN-04)
+
+---
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
+Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -227,6 +245,17 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 20. Cancellation + Accounting | v2.0 DOTW AI | 2/2 | Complete | 2026-03-24 |
 | 21. Lifecycle + History | 2/2 | Complete    | 2026-03-25 | - |
 | 22. Dashboard | v2.0 DOTW AI | 1/3 | In Progress | - |
+| 23. Agent Facade + n8n | v2.0 DOTW AI | 0/2 | Planned | - |
+
+### Phase 24: DOTW Certification Fixes v2 — Olga March 27 Feedback
+
+**Goal:** Resolve all issues from Olga Chicu's March 27 review to pass DOTW certification. Fix salutation ID mapping (BookingService passes 'Mr' string instead of DOTW code 558), rateBasis=0 leak, remove APR flow (DOTW removed APRs from API), wire all mandatory display features into WhatsApp messages (cancellation policy, tariff notes, min stay, MSP, special promotions, special requests, taxes & fees — shown before booking AND in confirmation/voucher), run 2-room cancellation test with evidence, sync special request codes from API, collect nationality/residence from user instead of hardcoding 66, write B2B/B2C connection type document, provide test access or WhatsApp screenshots for Olga.
+**Requirements**: CERT-01 through CERT-09
+**Depends on:** Phase 16 (original cert fixes), Phase 19-21 (booking/cancellation/lifecycle)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 24 to break down)
 
 ---
 
@@ -237,3 +266,4 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 *Phase 20 plans created: 2026-03-24*
 *Phase 21 plans created: 2026-03-25*
 *Phase 22 plans created: 2026-03-25*
+*Phase 23 plans created: 2026-03-28*

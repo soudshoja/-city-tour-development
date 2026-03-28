@@ -551,15 +551,13 @@ class HotelSearchService
                 $specialsApplied = $detail['specialsApplied'] ?? [];
                 $propertyFees = $detail['propertyFees'] ?? [];
 
-                // Determine refundability
-                $isAPR = false;
+                // Determine refundability (APR rates removed by DOTW, Olga Chicu March 2026)
                 $isRefundable = true;
                 // Check cancellation rules for full restriction
                 $allRestricted = !empty($cancellationRules) && collect($cancellationRules)
                     ->every(fn (array $rule) => ($rule['cancelRestricted'] ?? false) === true);
                 if ($allRestricted) {
                     $isRefundable = false;
-                    $isAPR = true;
                 }
 
                 // Apply B2C markup
@@ -593,7 +591,7 @@ class HotelSearchService
                     'taxes' => $taxes,
                     'currency' => config('dotwai.display_currency', 'KWD'),
                     'is_refundable' => $isRefundable,
-                    'is_apr' => $isAPR,
+                    'is_apr' => false,  // APR removed by DOTW (Olga Chicu, March 2026)
                     'tariff_notes' => $tariffNotes,
                     'cancellation_rules' => $mappedRules,
                     'specials' => $mappedSpecials,

@@ -194,11 +194,11 @@ Always use `next_actions` from `sessionContext` to guide the customer. Never sug
 
 ---
 
-## أسعار APR (غير قابلة للاسترداد) | APR Rates (Non-Refundable)
+## أسعار غير قابلة للاسترداد | Non-Refundable Rates
 
-تحذير مهم: أسعار APR (Advance Purchase Rate) غير قابلة للاسترداد أو الإلغاء. حذّر العميل دائماً بوضوح قبل إتمام أي حجز بهذا النوع من الأسعار.
+ملاحظة: جميع الأسعار تتبع سياسة الإلغاء العادية. الأسعار غير القابلة للاسترداد لا يمكن إلغاؤها. أسعار APR (Advance Purchase Rate) تم إزالتها من API شركة DOTW.
 
-Important warning: APR (Advance Purchase Rate) rates are non-refundable and non-cancellable. Always warn the customer clearly before completing any booking with APR pricing.
+Note: All rates follow the standard cancellation policy. Non-refundable rates cannot be cancelled but are not APR (Advance Purchase Rates have been removed by DOTW, confirmed by Olga Chicu, March 2026). Always warn the customer clearly before completing any booking with a non-refundable rate.
 
 ---
 

@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\DotwAI\Services;
 
-use App\Models\Agent;
 use App\Modules\DotwAI\DTOs\DotwAIContext;
 use App\Modules\DotwAI\Models\DotwAIBooking;
-use App\Modules\DotwAI\Services\AccountingService;
 use App\Modules\DotwAI\Services\WebhookEventService;
 use App\Services\DotwService;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Booking orchestration service for the DotwAI module.
@@ -26,7 +22,7 @@ use Throwable;
  * Key locked decisions (per CONTEXT.md):
  * - Rate blocking always uses getRooms(blocking=true)
  * - confirmAfterPayment always re-blocks before confirming
- * - APR rates use saveBooking + bookItinerary instead of confirmBooking
+ * - All bookings use confirmBooking (APR flow removed — DOTW removed APRs, Olga Chicu March 2026)
  * - MSP is enforced on all B2C display prices
  *
  * @see B2B-03 Rate locking via blocking=true
@@ -152,7 +148,7 @@ class BookingService
             'markup_percentage'    => $context->markupPercent,
             'minimum_selling_price' => $msp > 0 ? $msp : null,
             'is_refundable'        => $blockedRoom['is_refundable'] ?? true,
-            'is_apr'               => $blockedRoom['is_apr'] ?? false,
+            'is_apr'               => false,
             'cancellation_deadline' => $cancellationDeadline,
             'cancellation_rules'   => $cancellationRules,
             'allocation_details'   => $blockedRoom['allocation_details'] ?? '',
@@ -175,7 +171,7 @@ class BookingService
             'original_total_fare'   => $originalFare,
             'currency'              => config('dotwai.display_currency', 'KWD'),
             'is_refundable'         => $blockedRoom['is_refundable'] ?? true,
-            'is_apr'                => $blockedRoom['is_apr'] ?? false,
+            'is_apr'                => false,
             'cancellation_rules'    => $cancellationRules,
             'cancellation_deadline' => $cancellationDeadline,
             'track'                 => $track,
@@ -291,15 +287,6 @@ class BookingService
 
         $booking->refresh();
 
-        // APR (non-refundable) bookings: auto-invoice immediately (no reminder cycle)
-        if ($booking->is_apr) {
-            $this->invoiceAPRBooking($booking);
-            Log::info('[DotwAI] APR booking auto-invoiced on confirmation', [
-                'booking_id' => $booking->id,
-                'hotel' => $booking->hotel_name,
-            ]);
-        }
-
         // Dispatch webhook event
         WebhookEventService::dispatchEvent('booking_confirmed', [
             'booking_id'  => $booking->id,
@@ -407,15 +394,6 @@ class BookingService
 
         $booking->refresh();
 
-        // APR (non-refundable) bookings: auto-invoice immediately (no reminder cycle)
-        if ($booking->is_apr) {
-            $this->invoiceAPRBooking($booking);
-            Log::info('[DotwAI] APR booking auto-invoiced on confirmation', [
-                'booking_id' => $booking->id,
-                'hotel' => $booking->hotel_name,
-            ]);
-        }
-
         // Dispatch webhook event
         WebhookEventService::dispatchEvent('booking_confirmed', [
             'booking_id'  => $booking->id,
@@ -453,33 +431,6 @@ class BookingService
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
-
-    /**
-     * Auto-invoice an APR (non-refundable) booking immediately on confirmation.
-     *
-     * APR bookings do not go through the reminder cycle — revenue is
-     * recognized immediately on confirmation. If invoicing fails, the
-     * booking is still confirmed; the error is logged for admin reconciliation.
-     *
-     * @param DotwAIBooking $booking Confirmed APR booking
-     * @return void
-     */
-    private function invoiceAPRBooking(DotwAIBooking $booking): void
-    {
-        try {
-            DB::transaction(function () use ($booking) {
-                $accountingService = new AccountingService();
-                $accountingService->createAutoInvoiceForDeadline($booking);
-                $booking->update(['auto_invoiced_at' => now()]);
-            });
-        } catch (Throwable $e) {
-            Log::error('[DotwAI] APR auto-invoice failed', [
-                'booking_id' => $booking->id,
-                'error'      => $e->getMessage(),
-            ]);
-            // Don't throw; booking is already confirmed, keep it
-        }
-    }
 
     /**
      * Normalize a phone number to digits only.
@@ -663,7 +614,7 @@ class BookingService
                 'allocation_details' => $detail['allocationDetails'] ?? '',
                 'cancellation_rules' => $cancellationRules,
                 'is_refundable'    => !$allRestricted,
-                'is_apr'           => $allRestricted,
+                'is_apr'           => false,  // APR removed by DOTW (Olga Chicu, March 2026)
             ];
         }
 
@@ -761,7 +712,10 @@ class BookingService
     }
 
     /**
-     * Call DOTW confirm (or saveBooking + bookItinerary for APR rates).
+     * Call DOTW confirmBooking.
+     *
+     * All bookings use confirmBooking. The legacy APR flow was removed because
+     * DOTW removed APRs from their API (Olga Chicu, March 2026).
      *
      * @param DotwService   $dotwService  Instantiated DotwService
      * @param DotwAIBooking $booking      The booking record
@@ -776,18 +730,6 @@ class BookingService
         array $confirmParams,
         int $companyId,
     ): array {
-        if ($booking->is_apr) {
-            // APR rates: saveBooking first, then bookItinerary
-            $itinerary = $dotwService->saveBooking($confirmParams, null, null, $companyId);
-            $bookingCode = $itinerary['bookingCode'] ?? ($itinerary['itineraryCode'] ?? null);
-
-            if (empty($bookingCode)) {
-                throw new \RuntimeException('saveBooking did not return a bookingCode');
-            }
-
-            return $dotwService->bookItinerary($bookingCode, null, null, $companyId);
-        }
-
         return $dotwService->confirmBooking($confirmParams, null, null, $companyId);
     }
 

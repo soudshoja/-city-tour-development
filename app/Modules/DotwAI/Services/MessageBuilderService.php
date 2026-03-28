@@ -297,12 +297,10 @@ class MessageBuilderService
         $lines[] = "Price | السعر: {$currency} {$price}";
 
         $isRefundable = $prebook['is_refundable'] ?? true;
-        $isApr = $prebook['is_apr'] ?? false;
         if ($isRefundable) {
             $lines[] = "Status | الحالة: Refundable | قابل للاسترداد";
         } else {
-            $label = $isApr ? 'Non-Refundable (APR) | غير قابل للاسترداد (سعر مسبق)' : 'Non-Refundable | غير قابل للاسترداد';
-            $lines[] = "Status | الحالة: {$label}";
+            $lines[] = "Status | الحالة: Non-Refundable | غير قابل للاسترداد";
         }
 
         $deadline = $prebook['cancellation_deadline'] ?? null;
@@ -647,15 +645,14 @@ class MessageBuilderService
 
         // Cancellation policy
         $isRefundable         = $booking->is_refundable ?? true;
-        $isApr                = $booking->is_apr ?? false;
         $cancellationDeadline = $booking->cancellation_deadline;
 
-        if ($isRefundable && !$isApr && $cancellationDeadline !== null) {
+        if ($isRefundable && $cancellationDeadline !== null) {
             $formattedDeadline = $cancellationDeadline->format('d M Y');
             $lines[] = "Free cancellation until {$formattedDeadline}";
             $lines[] = "الإلغاء المجاني حتى {$formattedDeadline}";
-        } elseif (!$isRefundable || $isApr) {
-            $lines[] = "Non-Refundable (APR) | غير قابل للاسترداد";
+        } elseif (!$isRefundable) {
+            $lines[] = "Non-Refundable | غير قابل للاسترداد";
         } else {
             $lines[] = "See cancellation policy | راجع سياسة الإلغاء";
         }

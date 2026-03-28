@@ -994,7 +994,7 @@ class DotwService
      *
      * Returns an associative array keyed by lowercase salutation label mapped to
      * the numeric ID expected in confirmbooking/savebooking passenger XML.
-     * Example: ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5]
+     * Example: ['mr' => 147, 'mrs' => 149, 'miss' => 15134, 'ms' => 148]
      *
      * The result is cached in $salutationMap so the API is only called once per
      * DotwService instance.
@@ -1009,7 +1009,22 @@ class DotwService
             return $this->salutationMap;
         }
 
-        $fallback = ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5];
+        // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
+        // Source: Olga Chicu screenshot 2026-03-27
+        $fallback = [
+            'mr'            => 147,
+            'mrs'           => 149,
+            'miss'          => 15134,
+            'ms'            => 148,
+            'dr'            => 558,
+            'child'         => 14632,
+            'sir'           => 1328,
+            'madame'        => 1671,
+            'mademoiselle'  => 74195,
+            'messrs'        => 9234,
+            'monsieur'      => 74185,
+            'sir/madam'     => 3801,
+        ];
 
         $this->logger->info('DOTW getSalutationIds request initiated');
 
@@ -1355,6 +1370,12 @@ class DotwService
         foreach ($rooms as $index => $room) {
             $childrenXml = $this->buildChildrenXml($room['children'] ?? []);
 
+            // Guard: rateBasis 0 is not a valid DOTW code — use -1 (all rates) — CERT-03 fix
+            $rateBasis = (int) ($room['rateBasis'] ?? -1);
+            if ($rateBasis === 0) {
+                $rateBasis = -1;
+            }
+
             $roomsXml .= sprintf(
                 '<room runno="%d">
         <adultsCode>%d</adultsCode>
@@ -1366,7 +1387,7 @@ class DotwService
                 $index,
                 (int) ($room['adultsCode'] ?? 2),
                 $childrenXml,
-                (int) ($room['rateBasis'] ?? -1),
+                $rateBasis,
                 htmlspecialchars((string) ($room['passengerNationality'] ?? '')),
                 htmlspecialchars((string) ($room['passengerCountryOfResidence'] ?? ''))
             );
@@ -1563,7 +1584,7 @@ class DotwService
      *
      * Salutation IDs in each passenger array should come from getSalutationIds()
      * to comply with DOTW certification requirement (DOTW-FIX-01).
-     * Falls back to 1 (Mr) if not provided — callers should resolve IDs dynamically.
+     * Falls back to 147 (Mr) if not provided — callers should resolve IDs dynamically.
      *
      * @param  array  $passengers  Passenger details
      * @return string XML element
@@ -1587,7 +1608,8 @@ class DotwService
         </passenger>',
                 $isLeading,
                 // Salutation IDs sourced from getsalutationsids API (see getSalutationIds())
-                (int) ($passenger['salutation'] ?? 1),
+                // Default 147 = Mr (correct DOTW value code, not runno)
+                (int) ($passenger['salutation'] ?? 147),
                 htmlspecialchars($this->sanitizePassengerName((string) ($passenger['firstName'] ?? ''))),
                 htmlspecialchars($this->sanitizePassengerName((string) ($passenger['lastName'] ?? '')))
             );

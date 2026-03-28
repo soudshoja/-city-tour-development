@@ -125,4 +125,40 @@ return [
         'deadline_passed',
         'booking_confirmed',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Special Request Codes (CERT-02)
+    |--------------------------------------------------------------------------
+    |
+    | DOTW API special request codes from getspecialsrequests API.
+    | Keys are the numeric codes sent in <req runno="N">CODE</req>.
+    | Source: Olga Chicu screenshot 2026-03-27.
+    |
+    */
+    'special_request_codes' => [
+        92255 => 'Allergy - Nut or Food or Bedding',
+        92245 => 'Guest celebrating a birthday',
+        92235 => 'Guest celebrating a wedding anniversary',
+        92295 => 'Guest has a sensory impairment (hearing or vision loss)',
+        92265 => 'Guest requires space for a CPAP machine',
+        92225 => 'Hotel Membership Number',
+        1717  => 'Mark the guest as a VIP',
+        1718  => 'Mark the guests as a honeymoon couple',
+        1719  => 'Request a baby cot',
+        1711  => 'Request a non-smoking room',
+        92285 => 'Request a room close to elevators or amenities',
+        1713  => 'Request a room on a higher floor',
+        1714  => 'Request a room on a lower floor',
+        1712  => 'Request a smoking room',
+        92305 => 'Request a wheelchair-accessible room with a separate shower',
+        92215 => 'Request adjacent rooms',
+        1710  => 'Request an interconnecting room',
+        92325 => 'Request double bedding',
+        1715  => 'Request early check-in',
+        93975 => 'Request late check-in',
+        1716  => 'Request late check-out',
+        92275 => 'Request refrigeration for insulin (subject to availability)',
+        92315 => 'Request twin bedding',
+    ],
 ];

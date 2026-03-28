@@ -1018,6 +1018,7 @@ class DotwService
             'ms'            => 148,
             'dr'            => 558,
             'child'         => 14632,
+            'master'        => 14632,
             'sir'           => 1328,
             'madame'        => 1671,
             'mademoiselle'  => 74195,

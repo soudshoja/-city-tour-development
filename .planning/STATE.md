@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
 status: Phase complete — ready for verification
-stopped_at: Completed 24-01-SUMMARY.md
-last_updated: "2026-03-28T04:08:39.485Z"
+stopped_at: Completed 24-03-PLAN.md
+last_updated: "2026-03-28T04:18:35.951Z"
 progress:
   total_phases: 14
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 35
-  completed_plans: 32
+  completed_plans: 35
 ---
 
 # Project State
@@ -57,6 +57,7 @@ Plan: 2 of 2 (both completed)
 | Phase 22 P02 | 78 | 2 tasks | 2 files |
 | Phase 22 P01 | 348s (5.8m) | 2 tasks | 2 files |
 | Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P01 | 10 | 2 tasks | 4 files |
+| Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P03 | 15 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ Recent decisions affecting current work:
 - [Phase 24-01]: Salutation fallback uses DOTW value codes (147=Mr) not runno codes (1=Dr)
 - [Phase 24-01]: Special request codes stored in config/dotwai.php (23 codes from Olga screenshot)
 - [Phase 24-01]: rateBasis=0 guard added in DotwService.buildRoomsXml and BookingService — defaults to -1
+- [Phase 24-03]: formatMandatoryFeatures is a static pure-function helper wired into prebook and booking confirmation; voucher uses inline equivalent because it takes a DotwAIBooking model
+- [Phase 24-03]: 2-room cancel test is runTest21 (not runTest20) since test 20 was already taken by property fees test
 
 ### Pending Todos
 
@@ -118,7 +121,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-28T04:08:39.482Z
-Stopped at: Completed 24-01-SUMMARY.md
+Last session: 2026-03-28T04:18:35.948Z
+Stopped at: Completed 24-03-PLAN.md
 Resume file: None
 Resume file: None

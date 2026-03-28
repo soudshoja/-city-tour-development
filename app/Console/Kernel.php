@@ -53,6 +53,10 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Clean stale DotwAI agent sessions daily at 3 AM
+        $schedule->command('dotwai:clean-sessions')
+            ->dailyAt('03:00');
+
         // Make sure to run the queue worker
         $schedule->command('queue:work --queue=api_sync --stop-when-empty')
             ->everyMinute()

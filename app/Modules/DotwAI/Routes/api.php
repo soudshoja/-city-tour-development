@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\DotwAI\Http\Controllers\AgentController;
 use App\Modules\DotwAI\Http\Controllers\BookingController;
 use App\Modules\DotwAI\Http\Controllers\PaymentCallbackController;
 use App\Modules\DotwAI\Http\Controllers\SearchController;
@@ -65,4 +66,8 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
 
     // PDF voucher download (Phase 21 - HIST-04)
     Route::get('download_voucher', [BookingController::class, 'downloadVoucher']);
+
+    // Agent facade endpoints (Phase 23) — single-tool interface for n8n AI agent
+    Route::post('agent-b2c', [AgentController::class, 'handle']);
+    Route::post('agent-b2b', [AgentController::class, 'handle']);
 });

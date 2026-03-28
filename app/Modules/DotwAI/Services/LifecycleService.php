@@ -17,8 +17,9 @@ use Illuminate\Database\Eloquent\Collection;
  * This service is query-only (no API calls, no side effects).
  * Called by ProcessDeadlinesCommand to get lists for job dispatch.
  *
- * Reminder window: Only refundable (is_apr = false) confirmed bookings are
- * eligible. APR bookings are non-refundable and auto-invoiced at confirmation.
+ * Reminder window: All confirmed bookings with a cancellation deadline are
+ * eligible for reminders. APR rates were removed by DOTW (Olga Chicu, March 2026),
+ * so the old is_apr=false filter is no longer needed.
  *
  * @see LIFE-02 Reminder dispatch logic
  * @see LIFE-03 Deadline-pass auto-invoice logic
@@ -31,19 +32,21 @@ class LifecycleService
      *
      * Returns bookings where:
      * - status = 'confirmed'
-     * - is_apr = false (refundable bookings only; APR never need reminders)
      * - reminder_sent_at IS NULL (no reminder sent yet)
      * - cancellation_deadline is between now and +3 days (the 3/2/1 day window)
      *
      * The 3-day window captures all urgency levels in a single daily scan.
      * The queue job calculates the exact days_left at send time.
      *
+     * Note: The former is_apr=false filter has been removed. DOTW confirmed APRs
+     * are no longer part of their API (Olga Chicu, March 2026). All confirmed
+     * bookings with a deadline receive reminders.
+     *
      * @return Collection<int, DotwAIBooking>
      */
     public function findBookingsDueForReminder(): Collection
     {
         return DotwAIBooking::where('status', DotwAIBooking::STATUS_CONFIRMED)
-            ->where('is_apr', false)
             ->whereNull('reminder_sent_at')
             ->where('cancellation_deadline', '>=', now())
             ->where('cancellation_deadline', '<=', now()->addDays(3))
@@ -58,10 +61,7 @@ class LifecycleService
      * - cancellation_deadline < now() (deadline has passed)
      * - auto_invoiced_at IS NULL (not yet auto-invoiced)
      *
-     * Both refundable and APR bookings are included here because an APR booking
-     * that somehow still has confirmed status with a past deadline also needs
-     * invoicing. Normal APR flow (auto-invoice at confirmation) is handled
-     * by BookingService (Phase 21 Plan 02).
+     * All confirmed bookings past their deadline are included for auto-invoicing.
      *
      * @return Collection<int, DotwAIBooking>
      */

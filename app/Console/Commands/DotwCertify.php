@@ -2655,11 +2655,17 @@ class DotwCertify extends Command
     }
 
     // ──────────────────────────────────────────────────────────────
-    // TEST 16 — APR Booking (savebooking + bookitinerary)
+    // TEST 16 — APR Booking (N/A — DOTW removed APRs)
     // ──────────────────────────────────────────────────────────────
     private function runTest16(): void
     {
-        $this->startTest(16, 'APR Booking — nonrefundable=yes routes to savebooking + bookitinerary');
+        $this->startTest(16, 'APR Booking — REMOVED BY DOTW');
+        $this->skipTest(16, 'DOTW removed APRs from API (confirmed by Olga Chicu, March 2026). savebooking + bookitinerary flow is no longer applicable. All bookings use confirmbooking.');
+
+        return;
+
+        // The following code is preserved for historical reference only (unreachable).
+        // DOTW confirmed: "Please disregard APRs, these has been recently removed from our API."
 
         $fromDate = now()->addDays(95)->format('Y-m-d');
         $toDate = now()->addDays(96)->format('Y-m-d');

@@ -159,15 +159,15 @@
         <div class="section">
             <div class="section-title">Cancellation Policy | سياسة الإلغاء</div>
             <div class="section-body">
-                @if(($booking->is_refundable ?? true) && !($booking->is_apr ?? false) && $booking->cancellation_deadline)
+                @if(($booking->is_refundable ?? true) && $booking->cancellation_deadline)
                 <div class="policy-refundable">
                     <div class="policy-title">Free cancellation until {{ $booking->cancellation_deadline->format('d M Y') }}</div>
                     <div class="policy-ar">الإلغاء المجاني حتى {{ $booking->cancellation_deadline->format('d M Y') }}</div>
                     <div class="policy-note">Cancellation after this date may incur charges as per hotel policy.</div>
                 </div>
-                @elseif(!($booking->is_refundable ?? true) || ($booking->is_apr ?? false))
+                @elseif(!($booking->is_refundable ?? true))
                 <div class="policy-nonrefundable">
-                    <div class="policy-title">Non-Refundable (APR)</div>
+                    <div class="policy-title">Non-Refundable</div>
                     <div class="policy-ar">غير قابل للاسترداد</div>
                     <div class="policy-note">This booking cannot be cancelled or modified without full charges.</div>
                 </div>

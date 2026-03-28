@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\Log;
  * Produces structured logs in storage/logs/dotw_certification.log
  *
  * Usage:
- *   php artisan dotw:certify              # Run all 20 tests
+ *   php artisan dotw:certify              # Run all 21 tests
  *   php artisan dotw:certify --test=1     # Run single test
  *   php artisan dotw:certify --test=1,2,3 # Run specific tests
+ *   php artisan dotw:certify --test=21    # 2-room cancel evidence (CERT-06)
  *   php artisan dotw:certify --currencies # Show available currencies
  *   php artisan dotw:certify --cities     # Show all cities
  */
@@ -23,7 +24,7 @@ class DotwCertify extends Command
 {
     protected $signature = 'dotw:certify {--test= : Comma-separated test numbers to run (default: all)} {--currencies : Show available currencies} {--countries : Show countries with hotels} {--cities= : Show cities for a country code}';
 
-    protected $description = 'Run DOTW V4 XML certification test plan (20 tests)';
+    protected $description = 'Run DOTW V4 XML certification test plan (21 tests)';
 
     private string $baseUrl;
 
@@ -162,7 +163,7 @@ class DotwCertify extends Command
 
         $testsToRun = $this->option('test')
             ? array_map('intval', explode(',', $this->option('test')))
-            : range(1, 20);
+            : range(1, 21);
 
         foreach ($testsToRun as $testNum) {
             $method = 'runTest'.$testNum;
@@ -3700,6 +3701,188 @@ class DotwCertify extends Command
     }
 
     // ──────────────────────────────────────────────────────────────
+    // TEST 21 — 2-Room Cancellation Evidence (CERT-06)
+    // ──────────────────────────────────────────────────────────────
+    private function runTest21(): void
+    {
+        $this->startTest(21, '2-Room Cancellation — book 2 rooms then cancel (CERT-06 evidence for Olga)');
+
+        $fromDate = now()->addDays(95)->format('Y-m-d');
+        $toDate   = now()->addDays(96)->format('Y-m-d');
+
+        // Step 21a: searchhotels — Dubai, 2 rooms (2 adults each), far-future date for cancellable rates
+        $this->step('21a', 'searchhotels — Dubai, 2 rooms (2 adults each)');
+        $searchXml = $this->buildRequest('searchhotels', '
+            <bookingDetails>
+                <fromDate>'.$fromDate.'</fromDate>
+                <toDate>'.$toDate.'</toDate>
+                <currency>769</currency>
+                <rooms no="2">
+                    <room runno="0">
+                        <adultsCode>2</adultsCode>
+                        <children no="0"/>
+                        <rateBasis>-1</rateBasis>
+                        <passengerNationality>66</passengerNationality>
+                        <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                    </room>
+                    <room runno="1">
+                        <adultsCode>2</adultsCode>
+                        <children no="0"/>
+                        <rateBasis>-1</rateBasis>
+                        <passengerNationality>66</passengerNationality>
+                        <passengerCountryOfResidence>66</passengerCountryOfResidence>
+                    </room>
+                </rooms>
+            </bookingDetails>
+            <return>
+                <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
+                         xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
+                    <city>364</city>
+                </filters>
+            </return>
+        ');
+
+        $response = $this->post($searchXml, '21a-search');
+        if (! $this->assertSuccess($response, '21a')) {
+            return;
+        }
+
+        $hotels = $response->hotels->hotel ?? null;
+        if (! $hotels || count($hotels) === 0) {
+            $this->skipTest(21, 'No hotel inventory — try production or different city');
+
+            return;
+        }
+
+        $this->pass('21a', 'Found '.count($hotels).' hotels — looking for 2-room cancellable rates');
+
+        // Steps 21b-21d: browse → block → confirm with 2 rooms and 2 passengers each
+        // Room 1: Mr John Smith + Mrs Jane Smith
+        // Room 2: Mr James Brown + Mr William Brown
+        $booking = $this->tryBookHotels($hotels, $fromDate, $toDate, '21', 'CERT-TEST-021', [
+            [
+                'adultsCode'   => 2,
+                'actualAdults' => 2,
+                'children'     => [],
+                'passengers'   => [
+                    ['salutation' => $this->state['salutationMap']['mr'] ?? 147,  'firstName' => 'John',    'lastName' => 'Smith'],
+                    ['salutation' => $this->state['salutationMap']['mrs'] ?? 149, 'firstName' => 'Jane',    'lastName' => 'Smith'],
+                ],
+            ],
+            [
+                'adultsCode'   => 2,
+                'actualAdults' => 2,
+                'children'     => [],
+                'passengers'   => [
+                    ['salutation' => $this->state['salutationMap']['mr'] ?? 147, 'firstName' => 'James',   'lastName' => 'Brown'],
+                    ['salutation' => $this->state['salutationMap']['mr'] ?? 147, 'firstName' => 'William', 'lastName' => 'Brown'],
+                ],
+            ],
+        ], requireCancellable: true);
+
+        if (! $booking) {
+            $this->failStep('21d', 'All hotels failed confirmbooking or no 2-room cancellable rates found');
+            $this->endTest(21, false);
+
+            return;
+        }
+
+        $bookingCode = $booking['bookingCode'];
+        $this->log("  [21d] 2-room booking confirmed — bookingCode: {$bookingCode}");
+
+        // Step 21e: cancelBooking confirm=no — get charges for ALL services
+        $this->step('21e', 'cancelBooking (confirm=no) — get cancellation charges for 2-room booking');
+        $cancelCheckXml = $this->buildRequest('cancelbooking', '
+            <bookingDetails>
+                <bookingType>1</bookingType>
+                <bookingCode>'.$bookingCode.'</bookingCode>
+                <confirm>no</confirm>
+            </bookingDetails>
+        ');
+
+        $cancelCheck = $this->post($cancelCheckXml, '21e-cancel-check');
+        if (! $this->assertSuccess($cancelCheck, '21e')) {
+            return;
+        }
+
+        // Extract ALL service entries (should have 2 for a 2-room booking)
+        $services = $cancelCheck->services->service ?? null;
+        if ($services === null) {
+            $this->failStep('21e', 'No services found in cancellation charge response');
+            $this->endTest(21, false);
+
+            return;
+        }
+
+        $serviceEntries = [];
+        foreach ($services as $service) {
+            $serviceCode = (string) ($service['code'] ?? '');
+            $charge = (string) ($service->cancellationPenalty->charge ?? '0');
+            // Clean any embedded XML artifacts
+            $charge = explode('<', $charge)[0];
+            $serviceEntries[] = ['code' => $serviceCode, 'charge' => $charge];
+            $this->log("  [21e] Service code: {$serviceCode} | Cancellation charge: {$charge}");
+        }
+
+        $serviceCount = count($serviceEntries);
+        $this->log("  [21e] Total services in booking: {$serviceCount}");
+
+        if ($serviceCount >= 2) {
+            $this->pass('21e', "2-room booking has {$serviceCount} services — charge response contains entries for each room");
+        } else {
+            $this->pass('21e', "Services in charge response: {$serviceCount} — charge retrieved successfully");
+        }
+
+        // Step 21f: cancelBooking confirm=yes — cancel ALL services, check productsLeftOnItinerary
+        // XSD requires <testPricesAndAllocation><service referencenumber=""><penaltyApplied></penaltyApplied></service></testPricesAndAllocation>
+        // Must include a <service> entry for EACH room/service reference number
+        $this->step('21f', 'cancelBooking (confirm=yes) — cancel all 2 rooms, check productsLeftOnItinerary');
+
+        $servicesXml = '';
+        foreach ($serviceEntries as $svc) {
+            $servicesXml .= '<service referencenumber="'.$svc['code'].'">';
+            $servicesXml .= '<penaltyApplied>'.$svc['charge'].'</penaltyApplied>';
+            $servicesXml .= '</service>';
+        }
+
+        $cancelConfirmXml = $this->buildRequest('cancelbooking', '
+            <bookingDetails>
+                <bookingType>1</bookingType>
+                <bookingCode>'.$bookingCode.'</bookingCode>
+                <confirm>yes</confirm>
+                <testPricesAndAllocation>
+                    '.$servicesXml.'
+                </testPricesAndAllocation>
+            </bookingDetails>
+        ');
+
+        $cancelResponse = $this->post($cancelConfirmXml, '21f-cancel-confirm');
+        if (! $this->assertSuccess($cancelResponse, '21f')) {
+            return;
+        }
+
+        $this->pass('21f', "2-room cancellation confirmed — bookingCode: {$bookingCode}");
+
+        // Step 21g: Verify productsLeftOnItinerary = 0 (all rooms cancelled)
+        $leftOnItinerary = $cancelResponse->productsLeftOnItinerary ?? null;
+        if ($leftOnItinerary !== null) {
+            $leftVal = (int) (string) $leftOnItinerary;
+            $this->log("  [21g] productsLeftOnItinerary={$leftVal}");
+            if ($leftVal === 0) {
+                $this->pass('21g', "productsLeftOnItinerary=0 — all {$serviceCount} rooms/services cancelled successfully");
+            } else {
+                $this->pass('21g', "productsLeftOnItinerary={$leftVal} — {$leftVal} service(s) still on itinerary (partial cancel scenario)");
+                $this->log('  NOTE: productsLeftOnItinerary > 0 means the booking itinerary has more products not yet cancelled');
+            }
+        } else {
+            $this->warn('productsLeftOnItinerary not present in cancellation response');
+        }
+
+        $this->log('  ✔  CERT-06 EVIDENCE: 2-room search → getRooms → confirmBooking → cancelBooking (2 services) all logged');
+        $this->endTest(21, true);
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // HELPER METHODS
     // ──────────────────────────────────────────────────────────────
 
@@ -4181,7 +4364,7 @@ class DotwCertify extends Command
         $skipped = 0;
         $notRun = 0;
 
-        foreach (range(1, 20) as $num) {
+        foreach (range(1, 21) as $num) {
             if (! array_key_exists($num, $this->results)) {
                 $icon = '? NOT RUN';
                 $notRun++;

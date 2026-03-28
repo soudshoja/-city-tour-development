@@ -242,12 +242,15 @@ class BookingService
         // Update status to confirming
         $booking->update(['status' => DotwAIBooking::STATUS_CONFIRMING]);
 
-        // Build confirm params
-        $confirmParams = $this->buildConfirmParams($booking, $passengers, $email);
+        // Resolve DOTW salutation value codes via getSalutationIds() — CERT-01 fix
+        $dotwService = new DotwService($context->companyId);
+        $salutationMap = $dotwService->getSalutationIds();
+
+        // Build confirm params with resolved salutation codes
+        $confirmParams = $this->buildConfirmParams($booking, $passengers, $email, $salutationMap);
 
         // Call DOTW
         try {
-            $dotwService = new DotwService($context->companyId);
             $confirmation = $this->callDotwConfirm($dotwService, $booking, $confirmParams, $context->companyId);
         } catch (\Throwable $e) {
             Log::channel('dotw')->error('[DotwAI] confirmWithCredit DOTW call failed', [
@@ -374,9 +377,12 @@ class BookingService
             $booking->update(['allocation_details' => $reBlockedRoom['allocation_details']]);
         }
 
+        // Resolve DOTW salutation value codes via getSalutationIds() — CERT-01 fix
+        $salutationMap = $dotwService->getSalutationIds();
+
         // Build confirm params from guest_details stored at prebook time
         $passengers = $booking->guest_details ?? [];
-        $confirmParams = $this->buildConfirmParams($booking, $passengers, $booking->client_email);
+        $confirmParams = $this->buildConfirmParams($booking, $passengers, $booking->client_email, $salutationMap);
 
         $booking->update(['status' => DotwAIBooking::STATUS_CONFIRMING]);
 
@@ -696,15 +702,17 @@ class BookingService
     /**
      * Build DOTW confirm booking parameters.
      *
-     * @param DotwAIBooking $booking    The booking record
-     * @param array         $passengers Passenger list [{first_name, last_name, salutation?}]
-     * @param string|null   $email      Guest email
+     * @param DotwAIBooking     $booking        The booking record
+     * @param array             $passengers     Passenger list [{first_name, last_name, salutation?}]
+     * @param string|null       $email          Guest email
+     * @param array<string,int> $salutationMap  DOTW salutation value codes from getSalutationIds()
      * @return array DOTW confirmBooking params
      */
     private function buildConfirmParams(
         DotwAIBooking $booking,
         array $passengers,
         ?string $email,
+        array $salutationMap = [],
     ): array {
         $occupancy = $booking->rooms_data ?? [['adults' => 2, 'children_ages' => []]];
 
@@ -718,8 +726,15 @@ class BookingService
 
             $passengerList = [];
             foreach ($roomPassengers as $passenger) {
+                // Resolve salutation label ("Mr", "Mrs") to DOTW numeric value code
+                $salutationRaw = $passenger['salutation'] ?? 'mr';
+                if (is_numeric($salutationRaw)) {
+                    $salutationCode = (int) $salutationRaw;
+                } else {
+                    $salutationCode = $salutationMap[strtolower((string) $salutationRaw)] ?? 147;
+                }
                 $passengerList[] = [
-                    'salutation' => $passenger['salutation'] ?? 'Mr',
+                    'salutation' => $salutationCode,
                     'firstName'  => $this->sanitizePassengerName($passenger['first_name'] ?? 'Guest'),
                     'lastName'   => $this->sanitizePassengerName($passenger['last_name'] ?? 'Guest'),
                     'type'       => 'adult',
@@ -729,7 +744,7 @@ class BookingService
             // If no specific passengers, use a placeholder
             if (empty($passengerList)) {
                 $passengerList[] = [
-                    'salutation' => 'Mr',
+                    'salutation' => 147, // 147 = Mr (correct DOTW value code)
                     'firstName'  => 'Guest',
                     'lastName'   => 'Guest',
                     'type'       => 'adult',
@@ -737,15 +752,15 @@ class BookingService
             }
 
             $rooms[] = [
-                'passengers'       => $passengerList,
+                'passengers'        => $passengerList,
                 'allocationDetails' => $booking->allocation_details ?? '',
-                'roomTypeCode'     => $booking->room_type_code ?? '',
-                'rateBasisId'      => $booking->rate_basis_id ?? '',
-                'adultsCode'       => $adults,
-                'actualAdults'     => $adults,
-                'children'         => count($childAges),
-                'nationality'      => $booking->nationality_code ?? config('dotwai.default_nationality', '66'),
-                'residence'        => $booking->residence_code ?? config('dotwai.default_residence', '66'),
+                'roomTypeCode'      => $booking->room_type_code ?? '',
+                'rateBasisId'       => !empty($booking->rate_basis_id) ? $booking->rate_basis_id : '-1',
+                'adultsCode'        => $adults,
+                'actualAdults'      => $adults,
+                'children'          => count($childAges),
+                'nationality'       => $booking->nationality_code ?? config('dotwai.default_nationality', '66'),
+                'residence'         => $booking->residence_code ?? config('dotwai.default_residence', '66'),
             ];
         }
 

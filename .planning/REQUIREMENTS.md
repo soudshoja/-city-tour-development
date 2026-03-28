@@ -73,6 +73,12 @@
 - [x] **EVNT-02**: Every REST response includes `whatsappMessage` (pre-formatted) and `whatsappOptions`
 - [x] **EVNT-03**: Error responses include WhatsApp-ready text with `suggestedAction` for AI
 
+## Agent Facade + n8n Integration (AGEN)
+- [x] **AGEN-01**: Single POST /api/dotwai/agent endpoint routes all actions (search, details, book, pay, cancel, status, history, voucher) to existing services
+- [x] **AGEN-02**: Per-phone session state — Laravel tracks search results, selected hotel, prebook context so AI sends minimal params
+- [ ] **AGEN-03**: Updated system message for single-tool AI agent with action-based interface
+- [ ] **AGEN-04**: Ready-to-import n8n workflow JSON with Resayil trigger, AI Agent (1 HTTP tool), Window Buffer Memory, and Resayil send
+
 ## Future Requirements
 - Multi-supplier aggregation (TBO + DOTW combined search)
 - Booking modification (cancel + rebook — DOTW has no amendment API)

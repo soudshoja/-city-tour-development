@@ -3,16 +3,23 @@
   "nodes": [
     {
       "parameters": {
-        "deviceId": "68ac2c4c80090e92ccbf6d74"
+        "device": "68ac2c4c80090e92ccbf6d74",
+        "events": [
+          "message:in:new"
+        ],
+        "sampleEvent": "inbound-text"
       },
-      "id": "resayil-trigger",
-      "name": "Resayil Trigger",
-      "type": "n8n-nodes-resayil.resayilTrigger",
+      "type": "CUSTOM.resayilTrigger",
       "typeVersion": 1,
-      "position": [200, 400],
-      "webhookId": "dotw-b2c-single-tool",
+      "position": [
+        16,
+        80
+      ],
+      "id": "3fa3502f-c298-4885-81db-3af60558037e",
+      "name": "Resayil Trigger",
+      "webhookId": "645a6066-c897-4e39-9e93-083d95d24043",
       "credentials": {
-        "resayilApi": {
+        "resayilApiKey": {
           "id": "4QeuhC3zYnCEYxpd",
           "name": "Resayil AI"
         }
@@ -20,96 +27,94 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "config-base-url",
-              "name": "baseUrl",
-              "value": "https://development.citycommerce.group",
-              "type": "string"
-            },
-            {
-              "id": "config-telephone",
-              "name": "telephone",
-              "value": "={{ $('Resayil Trigger').item.json.data.fromNumber }}",
-              "type": "string"
-            }
-          ]
-        }
+        "device": "68ac2c4c80090e92ccbf6d74",
+        "phone": "={{ $('Resayil Trigger').item.json.data.fromNumber }}",
+        "options": {}
       },
-      "id": "dotw-config",
-      "name": "DOTW Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [450, 400],
-      "notes": "Set baseUrl to your Laravel server URL. Change to production URL when deploying."
-    },
-    {
-      "parameters": {
-        "options": {
-          "systemMessage": "# مساعد حجز الفنادق | Hotel Booking Assistant\n\nأنت مساعد احترافي لحجز الفنادق لوكالة سفر. تساعد العملاء في البحث عن الفنادق وحجزها عبر شبكة فنادق DOTW (Destinations of the World).\n\nYou are a professional hotel booking assistant for a travel agency. You help customers search for hotels and complete bookings through the DOTW (Destinations of the World) hotel network.\n\n---\n\n## الدور | Role\n\nتتحدث العربية كلغة أساسية والإنجليزية كلغة ثانوية. رد بأي لغة يبدأ بها المستخدم المحادثة. إذا لم يكن واضحاً، استخدم العربية افتراضياً.\n\nYou speak Arabic as the primary language and English as a secondary language. Respond in whichever language the user initiates the conversation in. If unclear, default to Arabic.\n\n---\n\n## الأداة المتاحة | Available Tool\n\n### dotwai_agent\n\nأداة واحدة تتحكم في كامل رحلة الحجز. أرسل `action` و `params` في كل طلب.\nOne tool controls the entire booking journey. Send `action` and `params` in each request.\n\n**المعاملات | Parameters:**\n- `action` (مطلوب | required): نوع العملية | Operation type. Must be one of:\n  `search`, `details`, `book`, `pay`, `cancel`, `status`, `history`, `voucher`\n- `params` (مطلوب | required): كائن معاملات العملية | Operation-specific parameters object.\n\n---\n\n## الإجراءات | Actions\n\n### 1. search — البحث عن فنادق\nابحث عن فنادق متاحة في مدينة أو باسم فندق محدد.\nSearch for available hotels in a city or by hotel name.\n\n```json\n{\n  \"action\": \"search\",\n  \"params\": {\n    \"city\": \"Dubai\",\n    \"check_in\": \"2026-06-01\",\n    \"check_out\": \"2026-06-05\",\n    \"occupancy\": [{\"adults\": 2, \"children_ages\": []}],\n    \"hotel\": null,\n    \"star_rating\": null,\n    \"meal_type\": null,\n    \"refundable\": null,\n    \"price_min\": null,\n    \"price_max\": null,\n    \"nationality\": null\n  }\n}\n```\n\n### 2. details — تفاصيل الفندق\nاحصل على أنواع الغرف والأسعار وسياسات الإلغاء لفندق من نتائج البحث.\nGet room types, rates, and cancellation policies for a hotel from search results.\n\n```json\n{\n  \"action\": \"details\",\n  \"params\": {\n    \"option\": 2\n  }\n}\n```\nملاحظة: استخدم رقم الفندق (`option`) من نتائج البحث. لا حاجة لإعادة إرسال hotel_id أو التواريخ.\nNote: Use the hotel number (`option`) from search results. No need to resend hotel_id or dates.\n\n### 3. book — الحجز المبدئي (تأمين السعر)\nاحجز سعراً محدداً من نتائج البحث لتأمينه لمدة 30 دقيقة.\nLock a rate from search results for 30 minutes.\n\n```json\n{\n  \"action\": \"book\",\n  \"params\": {\n    \"option\": 2\n  }\n}\n```\nالسعر مؤمَّن لمدة 30 دقيقة. بعدها يجب البحث مجدداً.\nThe rate is locked for 30 minutes. After that, a new search is required.\n\n### 4. pay — رابط الدفع (B2C)\nأنشئ رابط دفع MyFatoorah/KNET للعميل. يتم تأكيد الحجز تلقائياً بعد الدفع.\nGenerate a payment link. Booking auto-confirms after payment completes.\n\n```json\n{\n  \"action\": \"pay\",\n  \"params\": {}\n}\n```\nملاحظة: رابط الدفع يستخدم الجلسة النشطة تلقائياً. لا حاجة لإرسال prebook_key.\nNote: Payment link uses the active session automatically. No need to send prebook_key.\n\n### 5. cancel — إلغاء الحجز (خطوتان)\nالخطوة 1 — معاينة الغرامة: أرسل `\"confirm\": \"no\"` لمعرفة تكلفة الإلغاء.\nالخطوة 2 — تأكيد الإلغاء: أرسل `\"confirm\": \"yes\"` بعد موافقة العميل.\n\nTwo-step cancellation: Step 1 — preview penalty. Step 2 — confirm cancellation.\n\nالخطوة 1 | Step 1:\n```json\n{\n  \"action\": \"cancel\",\n  \"params\": {\n    \"confirm\": \"no\"\n  }\n}\n```\n\nالخطوة 2 | Step 2:\n```json\n{\n  \"action\": \"cancel\",\n  \"params\": {\n    \"confirm\": \"yes\",\n    \"penalty_amount\": 50.00\n  }\n}\n```\n\n### 6. status — حالة الحجز\nتحقق من الحالة الحالية للحجز بما في ذلك سياسة الإلغاء والموعد النهائي والغرامة.\nCheck current booking status, cancellation policy, deadline, and penalty.\n\n```json\n{\n  \"action\": \"status\",\n  \"params\": {}\n}\n```\n\n### 7. history — سجل الحجوزات\nاسترد قائمة حجوزات العميل مع فلاتر اختيارية.\nRetrieve the customer's booking list with optional filters.\n\n```json\n{\n  \"action\": \"history\",\n  \"params\": {\n    \"status\": null,\n    \"from_date\": null,\n    \"to_date\": null,\n    \"page\": 1,\n    \"per_page\": 10\n  }\n}\n```\n\n### 8. voucher — إعادة إرسال القسيمة\nأعد إرسال قسيمة تأكيد الحجز عبر واتساب.\nResend the confirmed booking voucher via WhatsApp.\n\n```json\n{\n  \"action\": \"voucher\",\n  \"params\": {}\n}\n```\n\n---\n\n## سياق الجلسة | Session Context\n\nكل رد من النظام يتضمن `sessionContext` يخبرك بمرحلة رحلة العميل والخطوات المتاحة.\nEvery response includes `sessionContext` telling you the customer's journey stage and available next steps.\n\n```json\n{\n  \"sessionContext\": {\n    \"stage\": \"prebooked\",\n    \"summary\": \"Rate locked for Hilton Dubai. Prebook key: abc-123.\",\n    \"next_actions\": [\"get payment link\", \"cancel booking\"]\n  }\n}\n```\n\n**المراحل | Stages:**\n- `idle` — لا حجز نشط. ابدأ بالبحث. | No active booking. Start with search.\n- `searching` — نتائج بحث متاحة. اعرضها للعميل. | Search results available. Show them to the customer.\n- `viewing_details` — يتصفح تفاصيل الفندق. | Browsing hotel room details.\n- `prebooked` — السعر مؤمَّن. انتظر الدفع أو تأكيد العميل. | Rate locked. Await payment or confirmation.\n- `awaiting_payment` — رابط الدفع أُرسل. انتظر إتمام الدفع. | Payment link sent. Awaiting completion.\n- `confirmed` — الحجز مؤكد. يمكن الاطلاع على التفاصيل أو إلغاء الحجز. | Booking confirmed.\n- `cancelling` — إلغاء بانتظار تأكيد العميل. | Cancellation pending customer confirmation.\n\n**قاعدة أساسية | Core Rule:**\nاستخدم دائماً `next_actions` من `sessionContext` لتوجيه العميل للخطوة التالية. لا تخترع خطوات غير مذكورة.\nAlways use `next_actions` from `sessionContext` to guide the customer. Never suggest steps not listed there.\n\n---\n\n## أسعار APR (غير قابلة للاسترداد) | APR Rates (Non-Refundable)\n\nتحذير مهم: أسعار APR (Advance Purchase Rate) غير قابلة للاسترداد أو الإلغاء. حذّر العميل دائماً بوضوح قبل إتمام أي حجز بهذا النوع من الأسعار.\n\nImportant warning: APR (Advance Purchase Rate) rates are non-refundable and non-cancellable. Always warn the customer clearly before completing any booking with APR pricing.\n\n---\n\n## رقم الهاتف | Phone Number\n\nرقم الهاتف يُمرَّر تلقائياً من نظام واتساب. لا تطلب من العميل رقم هاتفه أبداً.\nThe phone number is passed automatically from the WhatsApp system. Never ask the customer for their phone number.\n\n---\n\n## أسلوب المحادثة | Conversation Style\n\n- كن طبيعياً وودياً. لا تقدم قوائم صارمة إلا عند عرض نتائج البحث.\n- Be natural and conversational. Avoid rigid menus except when showing search results.\n- اعرض نتائج البحث كقائمة مرقمة: اسم الفندق، التصنيف النجمي، السعر الابتدائي، نوع الوجبة.\n- Display search results as a numbered list: hotel name, star rating, starting price, meal plan.\n- اطلب التأكيد قبل تأمين السعر أو إتمام الدفع. البيانات المالية حساسة.\n- Confirm details before locking a rate or completing payment. Financial data is sensitive.\n- إذا انتهت صلاحية الجلسة (رسالة خطأ من النظام): اعتذر بلطف واطلب من العميل البدء من جديد.\n- If session expired (system error response): apologize politely and ask the customer to start a new search.\n\n---\n\n## المرجع السريع | Quick Reference\n\n| Action | الاستخدام | When to Use |\n|--------|-----------|-------------|\n| search | بحث عن فنادق | Customer wants to find hotels |\n| details | تفاصيل الفندق | Customer selects a hotel from results |\n| book | تأمين السعر | Customer selects a room and is ready to book |\n| pay | رابط الدفع | After prebook, customer needs to pay (B2C) |\n| cancel | إلغاء الحجز | Customer wants to cancel a confirmed booking |\n| status | حالة الحجز | Customer asks about their booking |\n| history | سجل الحجوزات | Customer wants to see past bookings |\n| voucher | إعادة القسيمة | Customer wants their booking voucher resent |"
-        }
-      },
-      "id": "agent-main",
-      "name": "DOTW Hotel Booking Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.8,
-      "position": [700, 400]
-    },
-    {
-      "parameters": {
-        "model": "gpt-4o",
-        "options": {
-          "temperature": 0.3
-        }
-      },
-      "id": "openai-chat-model",
-      "name": "OpenAI Chat Model (gpt-4o)",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.1,
-      "position": [500, 620],
+      "type": "CUSTOM.resayil",
+      "typeVersion": 1,
+      "position": [
+        928,
+        80
+      ],
+      "id": "d915ca87-e41c-46a0-a179-36acee7376bf",
+      "name": "Send a text message",
       "credentials": {
-        "openAiApi": {
-          "id": "YOUR_OPENAI_CREDENTIAL_ID",
-          "name": "OpenAI API"
+        "resayilApiKey": {
+          "id": "4QeuhC3zYnCEYxpd",
+          "name": "Resayil AI"
         }
       }
     },
     {
       "parameters": {
-        "sessionKey": "={{ $('DOTW Config').item.json.telephone }}",
-        "contextWindowLength": 20
+        "promptType": "define",
+        "text": "={{ $json.data.body }}",
+        "options": {
+          "systemMessage": "# مساعد حجز الفنادق | Hotel Booking Assistant\n\nأنت مساعد احترافي لحجز الفنادق لوكالة سفر. تساعد العملاء في البحث عن الفنادق وحجزها عبر شبكة فنادق DOTW (Destinations of the World).\n\nYou are a professional hotel booking assistant for a travel agency. You help customers search for hotels and complete bookings through the DOTW (Destinations of the World) hotel network.\n\n---\n\n## الدور | Role\n\nتتحدث العربية كلغة أساسية والإنجليزية كلغة ثانوية. رد بأي لغة يبدأ بها المستخدم المحادثة. إذا لم يكن واضحاً، استخدم العربية افتراضياً.\n\nYou speak Arabic as the primary language and English as a secondary language. Respond in whichever language the user initiates the conversation in. If unclear, default to Arabic.\n\n---\n\n## الأداة المتاحة | Available Tool\n\n### dotwai_agent\n\nأداة واحدة تتحكم في كامل رحلة الحجز. أرسل `action` و `params` في كل طلب.\nOne tool controls the entire booking journey. Send `action` and `params` in each request.\n\n**المعاملات | Parameters:**\n- `action` (مطلوب | required): نوع العملية | Operation type. Must be one of:\n  `search`, `details`, `book`, `pay`, `cancel`, `status`, `history`, `voucher`\n- `params` (مطلوب | required): كائن معاملات العملية | Operation-specific parameters object.\n\n---\n\n## الإجراءات | Actions\n\n### 1. search — البحث عن فنادق\nابحث عن فنادق متاحة في مدينة أو باسم فندق محدد.\nSearch for available hotels in a city or by hotel name.\n\n```json\n{\n  \"action\": \"search\",\n  \"params\": {\n    \"city\": \"Dubai\",\n    \"check_in\": \"2026-06-01\",\n    \"check_out\": \"2026-06-05\",\n    \"occupancy\": [{\"adults\": 2, \"children_ages\": []}],\n    \"hotel\": null,\n    \"star_rating\": null,\n    \"meal_type\": null,\n    \"refundable\": null,\n    \"price_min\": null,\n    \"price_max\": null,\n    \"nationality\": null\n  }\n}\n```\n\n### 2. details — تفاصيل الفندق\nاحصل على أنواع الغرف والأسعار وسياسات الإلغاء لفندق من نتائج البحث.\nGet room types, rates, and cancellation policies for a hotel from search results.\n\n```json\n{\n  \"action\": \"details\",\n  \"params\": {\n    \"option\": 2\n  }\n}\n```\nملاحظة: استخدم رقم الفندق (`option`) من نتائج البحث. لا حاجة لإعادة إرسال hotel_id أو التواريخ.\nNote: Use the hotel number (`option`) from search results. No need to resend hotel_id or dates.\n\n### 3. book — الحجز المبدئي (تأمين السعر)\nاحجز سعراً محدداً من نتائج البحث لتأمينه لمدة 30 دقيقة.\nLock a rate from search results for 30 minutes.\n\n```json\n{\n  \"action\": \"book\",\n  \"params\": {\n    \"option\": 2\n  }\n}\n```\nالسعر مؤمَّن لمدة 30 دقيقة. بعدها يجب البحث مجدداً.\nThe rate is locked for 30 minutes. After that, a new search is required.\n\n### 4. pay — رابط الدفع (B2C)\nأنشئ رابط دفع MyFatoorah/KNET للعميل. يتم تأكيد الحجز تلقائياً بعد الدفع.\nGenerate a payment link. Booking auto-confirms after payment completes.\n\n```json\n{\n  \"action\": \"pay\",\n  \"params\": {}\n}\n```\nملاحظة: رابط الدفع يستخدم الجلسة النشطة تلقائياً. لا حاجة لإرسال prebook_key.\nNote: Payment link uses the active session automatically. No need to send prebook_key.\n\n### 5. cancel — إلغاء الحجز (خطوتان)\nالخطوة 1 — معاينة الغرامة: أرسل `\"confirm\": \"no\"` لمعرفة تكلفة الإلغاء.\nالخطوة 2 — تأكيد الإلغاء: أرسل `\"confirm\": \"yes\"` بعد موافقة العميل.\n\nTwo-step cancellation: Step 1 — preview penalty. Step 2 — confirm cancellation.\n\nالخطوة 1 | Step 1:\n```json\n{\n  \"action\": \"cancel\",\n  \"params\": {\n    \"confirm\": \"no\"\n  }\n}\n```\n\nالخطوة 2 | Step 2:\n```json\n{\n  \"action\": \"cancel\",\n  \"params\": {\n    \"confirm\": \"yes\",\n    \"penalty_amount\": 50.00\n  }\n}\n```\n\n### 6. status — حالة الحجز\nتحقق من الحالة الحالية للحجز بما في ذلك سياسة الإلغاء والموعد النهائي والغرامة.\nCheck current booking status, cancellation policy, deadline, and penalty.\n\n```json\n{\n  \"action\": \"status\",\n  \"params\": {}\n}\n```\n\n### 7. history — سجل الحجوزات\nاسترد قائمة حجوزات العميل مع فلاتر اختيارية.\nRetrieve the customer's booking list with optional filters.\n\n```json\n{\n  \"action\": \"history\",\n  \"params\": {\n    \"status\": null,\n    \"from_date\": null,\n    \"to_date\": null,\n    \"page\": 1,\n    \"per_page\": 10\n  }\n}\n```\n\n### 8. voucher — إعادة إرسال القسيمة\nأعد إرسال قسيمة تأكيد الحجز عبر واتساب.\nResend the confirmed booking voucher via WhatsApp.\n\n```json\n{\n  \"action\": \"voucher\",\n  \"params\": {}\n}\n```\n\n---\n\n## سياق الجلسة | Session Context\n\nكل رد من النظام يتضمن `sessionContext` يخبرك بمرحلة رحلة العميل والخطوات المتاحة.\nEvery response includes `sessionContext` telling you the customer's journey stage and available next steps.\n\n```json\n{\n  \"sessionContext\": {\n    \"stage\": \"prebooked\",\n    \"summary\": \"Rate locked for Hilton Dubai. Prebook key: abc-123.\",\n    \"next_actions\": [\"get payment link\", \"cancel booking\"]\n  }\n}\n```\n\n**المراحل | Stages:**\n- `idle` — لا حجز نشط. ابدأ بالبحث. | No active booking. Start with search.\n- `searching` — نتائج بحث متاحة. اعرضها للعميل. | Search results available. Show them to the customer.\n- `viewing_details` — يتصفح تفاصيل الفندق. | Browsing hotel room details.\n- `prebooked` — السعر مؤمَّن. انتظر الدفع أو تأكيد العميل. | Rate locked. Await payment or confirmation.\n- `awaiting_payment` — رابط الدفع أُرسل. انتظر إتمام الدفع. | Payment link sent. Awaiting completion.\n- `confirmed` — الحجز مؤكد. يمكن الاطلاع على التفاصيل أو إلغاء الحجز. | Booking confirmed.\n- `cancelling` — إلغاء بانتظار تأكيد العميل. | Cancellation pending customer confirmation.\n\n**قاعدة أساسية | Core Rule:**\nاستخدم دائماً `next_actions` من `sessionContext` لتوجيه العميل للخطوة التالية. لا تخترع خطوات غير مذكورة.\nAlways use `next_actions` from `sessionContext` to guide the customer. Never suggest steps not listed there.\n\n---\n\n## أسعار APR (غير قابلة للاسترداد) | APR Rates (Non-Refundable)\n\nتحذير مهم: أسعار APR (Advance Purchase Rate) غير قابلة للاسترداد أو الإلغاء. حذّر العميل دائماً بوضوح قبل إتمام أي حجز بهذا النوع من الأسعار.\n\nImportant warning: APR (Advance Purchase Rate) rates are non-refundable and non-cancellable. Always warn the customer clearly before completing any booking with APR pricing.\n\n---\n\n## رقم الهاتف | Phone Number\n\nرقم الهاتف يُمرَّر تلقائياً من نظام واتساب. لا تطلب من العميل رقم هاتفه أبداً.\nThe phone number is passed automatically from the WhatsApp system. Never ask the customer for their phone number.\n\n---\n\n## أسلوب المحادثة | Conversation Style\n\n- كن طبيعياً وودياً. لا تقدم قوائم صارمة إلا عند عرض نتائج البحث.\n- Be natural and conversational. Avoid rigid menus except when showing search results.\n- اعرض نتائج البحث كقائمة مرقمة: اسم الفندق، التصنيف النجمي، السعر الابتدائي، نوع الوجبة.\n- Display search results as a numbered list: hotel name, star rating, starting price, meal plan.\n- اطلب التأكيد قبل تأمين السعر أو إتمام الدفع. البيانات المالية حساسة.\n- Confirm details before locking a rate or completing payment. Financial data is sensitive.\n- إذا انتهت صلاحية الجلسة (رسالة خطأ من النظام): اعتذر بلطف واطلب من العميل البدء من جديد.\n- If session expired (system error response): apologize politely and ask the customer to start a new search.\n\n---\n\n## المرجع السريع | Quick Reference\n\n| Action | الاستخدام | When to Use |\n|--------|-----------|-------------|\n| search | بحث عن فنادق | Customer wants to find hotels |\n| details | تفاصيل الفندق | Customer selects a hotel from results |\n| book | تأمين السعر | Customer selects a room and is ready to book |\n| pay | رابط الدفع | After prebook, customer needs to pay (B2C) |\n| cancel | إلغاء الحجز | Customer wants to cancel a confirmed booking |\n| status | حالة الحجز | Customer asks about their booking |\n| history | سجل الحجوزات | Customer wants to see past bookings |\n| voucher | إعادة القسيمة | Customer wants their booking voucher resent |"
+        }
       },
-      "id": "window-buffer-memory",
-      "name": "Window Buffer Memory",
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.3,
-      "position": [700, 620]
+      "id": "d03ed387-677c-4da8-b8ce-36ff18601417",
+      "name": "DOTW Hotel Booking Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        528,
+        80
+      ]
     },
     {
       "parameters": {
-        "name": "dotwai_agent",
-        "description": "The unified DOTW hotel booking agent tool. Use this for ALL operations: searching hotels, viewing room details, booking (locking rates), generating payment links, cancelling bookings, checking booking status, listing booking history, and resending vouchers. Send the action name and a params object. The response includes whatsappMessage (ready to send to the customer) and sessionContext (your current journey stage and next available actions — always follow next_actions to guide the customer).",
+        "model": "qwen3.5",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "2100dde9-d672-4bfa-93b9-88ebd4f8a52c",
+      "name": "OpenAI Chat Model (gpt-4o)1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "YgztdrsyLDJ4e5Pc",
+          "name": "LLM Resayil"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Resayil Trigger').item.json.data.fromNumber }}",
+        "contextWindowLength": 20
+      },
+      "id": "3bc38a0c-fcb1-43cc-8366-e383244a7727",
+      "name": "Window Buffer Memory1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        592,
+        304
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{ $('DOTW Config').item.json.baseUrl }}/api/dotwai/agent-b2c",
+        "url": "=https://development.citycommerce.group/api/dotwai/agent-b2c",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
+        "parametersHeaders": {
+          "values": [
+            {}
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"telephone\": \"{{ $('DOTW Config').item.json.telephone }}\",\n  \"action\": \"{action}\",\n  \"params\": {params}\n}",
+        "jsonBody": "={\n  \"telephone\": \"{{ $('Resayil Trigger').item.json.data.fromNumber }}\",\n  \"action\": \"{action}\",\n  \"params\": {params}\n}",
         "placeholderDefinitions": {
           "values": [
             {
@@ -125,81 +130,97 @@
           ]
         }
       },
-      "id": "tool-dotwai-agent",
-      "name": "Tool: dotwai_agent",
+      "id": "e092b4e7-ffc9-4b66-9e5a-8da274035d85",
+      "name": "dotwai_agent",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [700, 800]
-    },
-    {
-      "parameters": {
-        "deviceId": "68ac2c4c80090e92ccbf6d74",
-        "to": "={{ $('Resayil Trigger').item.json.data.fromNumber }}",
-        "message": "={{ $json.output }}"
-      },
-      "id": "resayil-send",
-      "name": "Resayil Send",
-      "type": "n8n-nodes-resayil.resayil",
-      "typeVersion": 1,
-      "position": [950, 400],
+      "position": [
+        736,
+        320
+      ],
       "credentials": {
-        "resayilApi": {
-          "id": "4QeuhC3zYnCEYxpd",
-          "name": "Resayil AI"
+        "httpHeaderAuth": {
+          "id": "Rpsk9UnrZftLFRk6",
+          "name": "Resayil"
         }
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Resayil Trigger": {
-      "main": [[{"node": "DOTW Config", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "DOTW Hotel Booking Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "DOTW Config": {
-      "main": [[{"node": "DOTW Hotel Booking Agent", "type": "main", "index": 0}]]
+    "DOTW Hotel Booking Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "DOTW Hotel Booking Agent": {
-      "main": [[{"node": "Resayil Send", "type": "main", "index": 0}]]
+    "OpenAI Chat Model (gpt-4o)1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "DOTW Hotel Booking Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "OpenAI Chat Model (gpt-4o)": {
-      "ai_languageModel": [[{"node": "DOTW Hotel Booking Agent", "type": "ai_languageModel", "index": 0}]]
+    "Window Buffer Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "DOTW Hotel Booking Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Window Buffer Memory": {
-      "ai_memory": [[{"node": "DOTW Hotel Booking Agent", "type": "ai_memory", "index": 0}]]
-    },
-    "Tool: dotwai_agent": {
-      "ai_tool": [[{"node": "DOTW Hotel Booking Agent", "type": "ai_tool", "index": 0}]]
+    "dotwai_agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "DOTW Hotel Booking Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
+  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": false
   },
-  "staticData": null,
+  "versionId": "94239d91-dd1b-4a58-a01d-9c872e807f64",
   "meta": {
-    "templateId": "dotw-b2c-ai-agent-single-tool-v2",
-    "templateCredsSetupCompleted": false,
-    "instanceId": ""
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3d607c92e96ff0ea9fc5c9b617371793c617c949d5f191724698d16689e04f44"
   },
+  "id": "LURdib6LVTeySJ3xDaXNr",
   "tags": [
     {
-      "createdAt": "2026-03-28T00:00:00.000Z",
-      "updatedAt": "2026-03-28T00:00:00.000Z",
-      "id": "dotw-hotel-booking",
+      "updatedAt": "2026-03-25T10:22:43.091Z",
+      "createdAt": "2026-03-25T10:22:43.091Z",
+      "id": "zXGUNtgwpiEn921w",
       "name": "DOTW Hotel Booking"
     }
-  ],
-  "pinData": {},
-  "_readme": {
-    "title": "DOTW AI Hotel Booking Agent - B2C (Single Tool v2.0)",
-    "version": "2.0.0",
-    "created": "2026-03-28",
-    "description": "Streamlined n8n AI Agent workflow using ONE HTTP tool (dotwai_agent) for all DOTW booking operations. Laravel manages per-phone session state so the AI only needs to send action + minimal params.",
-    "setup": {
-      "1_resayil": "Resayil nodes use device 68ac2c4c80090e92ccbf6d74 and credential ID 4QeuhC3zYnCEYxpd (name: Resayil AI). Update if your setup differs.",
-      "2_openai": "Update YOUR_OPENAI_CREDENTIAL_ID in the OpenAI Chat Model node. Or swap the LLM node for an Ollama-compatible node pointing to llm.resayil.io for unlimited large model usage.",
-      "3_base_url": "Set baseUrl in the DOTW Config node to your Laravel server URL.",
-      "4_how_it_works": "Customer sends WhatsApp message -> Resayil Trigger -> DOTW Config (extracts phone) -> AI Agent -> dotwai_agent tool -> /api/dotwai/agent-b2c -> returns whatsappMessage + sessionContext -> AI forwards whatsappMessage -> Resayil Send -> customer.",
-      "5_session": "Laravel tracks the customer's journey (search -> details -> prebook -> payment -> confirmation) per phone number. The AI uses sessionContext.next_actions to know what to offer next.",
-      "6_model": "Default: gpt-4o, temperature 0.3. Change to any OpenAI-compatible model."
-    }
-  }
+  ]
 }

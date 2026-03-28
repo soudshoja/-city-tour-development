@@ -49,6 +49,10 @@ class DotwAIResponse
     public const CANCELLATION_NOT_ALLOWED = 'CANCELLATION_NOT_ALLOWED';
     public const CANCELLATION_FAILED = 'CANCELLATION_FAILED';
 
+    // Agent facade error codes (Phase 23)
+    public const SEARCH_EXPIRED = 'SEARCH_EXPIRED';
+    public const SESSION_EMPTY  = 'SESSION_EMPTY';
+
     /**
      * Default Arabic/English error messages and suggested actions per error code.
      *
@@ -134,6 +138,16 @@ class DotwAIResponse
         self::CANCELLATION_FAILED => [
             'whatsappMessage' => "عذرا، حدث خطأ أثناء معالجة طلب الإلغاء. يرجى المحاولة مرة أخرى.\nSorry, an error occurred while processing the cancellation. Please try again.",
             'suggestedAction' => 'Retry the cancellation. If the error persists, contact technical support.',
+        ],
+
+        // Agent facade error codes (Phase 23)
+        self::SEARCH_EXPIRED => [
+            'whatsappMessage' => "انتهت صلاحية نتائج البحث. يرجى البحث مجدداً.\nSearch results have expired (10 min limit). Please search again.",
+            'suggestedAction' => 'Ask the user to initiate a new hotel search.',
+        ],
+        self::SESSION_EMPTY => [
+            'whatsappMessage' => "لا توجد جلسة نشطة. يرجى البحث عن فندق أولاً.\nNo active session found. Please start by searching for a hotel.",
+            'suggestedAction' => 'Ask the user what hotel they would like to search for.',
         ],
     ];
 

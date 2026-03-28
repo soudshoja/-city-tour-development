@@ -587,6 +587,10 @@ class BookingService
         $residenceCode   = $roomData['residence_code'] ?? config('dotwai.default_residence', '66');
         $roomTypeCode    = $roomData['room_type_code'] ?? null;
         $rateBasisId     = $roomData['rate_basis_id'] ?? null;
+        // Guard: rateBasisId 0 is not a valid DOTW code — use -1 to request all rates — CERT-03 fix
+        if ($rateBasisId !== null && (int) $rateBasisId === 0) {
+            $rateBasisId = -1;
+        }
         $allocationDetails = $roomData['allocation_details'] ?? '';
 
         $rooms = [];
@@ -751,6 +755,13 @@ class BookingService
                 ];
             }
 
+            // Wire validated special request codes — CERT-02 fix
+            $validCodes = array_keys(config('dotwai.special_request_codes', []));
+            $requestedCodes = array_values(array_filter(
+                $booking->special_requests ?? [],
+                fn ($code) => in_array((int) $code, $validCodes)
+            ));
+
             $rooms[] = [
                 'passengers'        => $passengerList,
                 'allocationDetails' => $booking->allocation_details ?? '',
@@ -761,6 +772,7 @@ class BookingService
                 'children'          => count($childAges),
                 'nationality'       => $booking->nationality_code ?? config('dotwai.default_nationality', '66'),
                 'residence'         => $booking->residence_code ?? config('dotwai.default_residence', '66'),
+                'specialRequests'   => $requestedCodes,
             ];
         }
 

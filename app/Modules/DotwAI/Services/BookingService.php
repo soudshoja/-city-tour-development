@@ -183,8 +183,7 @@ class BookingService
      * Confirm a booking using the agent's B2B credit line.
      *
      * Pessimistic credit locking via CreditService::checkAndDeductCredit.
-     * If credit check passes, immediately calls DOTW confirmBooking (or
-     * saveBooking + bookItinerary for APR rates).
+     * If credit check passes, immediately calls DOTW confirmBooking.
      * On DOTW failure, credit is refunded automatically.
      *
      * Idempotent: if booking is already confirmed, returns existing confirmation.

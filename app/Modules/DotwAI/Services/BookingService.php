@@ -498,8 +498,8 @@ class BookingService
                 'room_data'  => [
                     'room_type_code'      => $input['room_type_code'] ?? null,
                     'rate_basis_id'       => $input['rate_basis_id'] ?? null,
-                    'nationality_code'    => config('dotwai.default_nationality', '66'),
-                    'residence_code'      => config('dotwai.default_residence', '66'),
+                    'nationality_code'    => $input['nationality_code'] ?? config('dotwai.default_nationality', '66'),
+                    'residence_code'      => $input['residence_code'] ?? config('dotwai.default_residence', '66'),
                     'minimum_selling_price' => 0,
                 ],
             ];
@@ -512,8 +512,8 @@ class BookingService
             'room_data'  => [
                 'room_type_code'      => $input['room_type_code'] ?? null,
                 'rate_basis_id'       => $input['rate_basis_id'] ?? null,
-                'nationality_code'    => config('dotwai.default_nationality', '66'),
-                'residence_code'      => config('dotwai.default_residence', '66'),
+                'nationality_code'    => $input['nationality_code'] ?? config('dotwai.default_nationality', '66'),
+                'residence_code'      => $input['residence_code'] ?? config('dotwai.default_residence', '66'),
                 'minimum_selling_price' => 0,
             ],
         ];

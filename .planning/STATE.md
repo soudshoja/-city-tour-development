@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
-status: Phase 23 complete — all plans executed
-stopped_at: Completed 23-02-SUMMARY.md
-last_updated: "2026-03-28T04:15:00.000Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 24-01-SUMMARY.md
+last_updated: "2026-03-28T04:08:39.485Z"
 progress:
   total_phases: 14
-  completed_phases: 14
-  total_plans: 31
-  completed_plans: 31
+  completed_phases: 13
+  total_plans: 35
+  completed_plans: 32
 ---
 
 # Project State
@@ -56,6 +56,7 @@ Plan: 2 of 2 (both completed)
 | Phase 21-lifecycle-history P02 | 12 | 2 tasks | 9 files |
 | Phase 22 P02 | 78 | 2 tasks | 2 files |
 | Phase 22 P01 | 348s (5.8m) | 2 tasks | 2 files |
+| Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P01 | 10 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Recent decisions affecting current work:
 - [Phase 21-lifecycle-history]: Webhook events are config-gated: empty webhook_url disables all webhooks; per-event gating via webhook_events array in dotwai config
 - [Phase 21]: DOTW V4 API has NO voucher/PDF/invoice endpoint — local PDF generation via DomPDF is the only option
 - [Phase 21]: PDF voucher includes B2B agent + agency company details when track is b2b/b2b_gateway
+- [Phase 24-01]: Salutation fallback uses DOTW value codes (147=Mr) not runno codes (1=Dr)
+- [Phase 24-01]: Special request codes stored in config/dotwai.php (23 codes from Olga screenshot)
+- [Phase 24-01]: rateBasis=0 guard added in DotwService.buildRoomsXml and BookingService — defaults to -1
 
 ### Pending Todos
 
@@ -114,7 +118,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-28T03:20:29.995Z
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-agent-facade-n8n-workflow/23-CONTEXT.md
+Last session: 2026-03-28T04:08:39.482Z
+Stopped at: Completed 24-01-SUMMARY.md
+Resume file: None
 Resume file: None

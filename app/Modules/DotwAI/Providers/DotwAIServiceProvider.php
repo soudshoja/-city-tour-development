@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\DotwAI\Providers;
 
+use App\Modules\DotwAI\Commands\CleanStaleSessionsCommand;
 use App\Modules\DotwAI\Commands\ImportHotelsCommand;
 use App\Modules\DotwAI\Commands\ProcessDeadlinesCommand;
 use App\Modules\DotwAI\Commands\SyncStaticDataCommand;
@@ -49,6 +50,7 @@ class DotwAIServiceProvider extends ServiceProvider
                 ImportHotelsCommand::class,
                 SyncStaticDataCommand::class,
                 ProcessDeadlinesCommand::class,
+                CleanStaleSessionsCommand::class,
             ]);
         }
     }

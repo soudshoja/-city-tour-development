@@ -541,7 +541,7 @@ class HotelSearchService
             foreach ($room['details'] ?? [] as $detail) {
                 $price = (float) ($detail['price'] ?? 0);
                 $taxes = (float) ($detail['taxes'] ?? 0);
-                $msp = 0; // MSP not directly in getRooms parsed output
+                $msp = (float) ($detail['totalMinimumSelling'] ?? 0); // CERT-07: MSP propagated from DotwService::parseRooms
                 $rateBasisId = $detail['id'] ?? '';
                 $tariffNotes = $detail['tariffNotes'] ?? '';
                 $cancellationRules = $detail['cancellationRules'] ?? [];
@@ -589,6 +589,7 @@ class HotelSearchService
                     'price' => $price,
                     'display_price' => $displayPrice,
                     'taxes' => $taxes,
+                    'minimum_selling_price' => $msp,  // CERT-07: MSP from DOTW totalMinimumSelling
                     'currency' => config('dotwai.display_currency', 'KWD'),
                     'is_refundable' => $isRefundable,
                     'is_apr' => false,  // APR removed by DOTW (Olga Chicu, March 2026)

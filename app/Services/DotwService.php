@@ -1877,6 +1877,8 @@ class DotwService
                     'status' => (string) ($rateBasis['status'] ?? 'unknown'),
                     'price' => (float) ($rateBasis->total ?? 0),
                     'taxes' => (float) ($rateBasis->totalTaxes ?? 0),
+                    // CERT-07: MSP propagated from getRooms response to display layer (DOTW-FIX-07)
+                    'totalMinimumSelling' => (float) ($rateBasis->totalMinimumSelling ?? 0),
                     'allocationDetails' => (string) ($rateBasis->allocationDetails ?? ''),
                     'cancellationRules' => $this->parseCancellationRules($rateBasis),
                     // COMPLY-03: tariffNotes — rate basis conditions/notes

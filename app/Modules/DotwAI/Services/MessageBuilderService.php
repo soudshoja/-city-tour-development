@@ -209,6 +209,135 @@ class MessageBuilderService
     }
 
     /**
+     * Format all mandatory DOTW display features into a WhatsApp-friendly block.
+     *
+     * Required by DOTW certification (CERT-07): ALL of these must be shown BEFORE booking
+     * AND in confirmation/voucher:
+     *  1. Cancellation Policy (rules with dates/charges + cancelRestricted warnings)
+     *  2. Tariff Notes
+     *  3. Minimum Stay
+     *  4. Minimum Selling Price (MSP)
+     *  5. Special Promotions
+     *  6. Taxes & Property Fees
+     *
+     * Special Requests are handled separately (see formatBookingConfirmation / formatVoucherMessage)
+     * because they come from the booked passenger data, not the room rate data.
+     *
+     * @param array $room Room array from HotelSearchService::parseRoomDetails or prebook data.
+     *                    Expected keys (all optional with safe defaults):
+     *                    cancellation_rules (array), tariff_notes (string), min_stay (int|null),
+     *                    min_stay_date (string|null), minimum_selling_price (float),
+     *                    specials (array), property_fees (array), currency (string)
+     * @return string Formatted section string (empty string if no mandatory features present)
+     */
+    public static function formatMandatoryFeatures(array $room): string
+    {
+        $lines = [];
+        $currency = $room['currency'] ?? config('dotwai.display_currency', 'KWD');
+
+        // ── Cancellation Policy ──────────────────────────────
+        $cancellationRules = $room['cancellation_rules'] ?? [];
+        if (!empty($cancellationRules)) {
+            $lines[] = "";
+            $lines[] = "سياسة الإلغاء | Cancellation Policy:";
+            foreach ($cancellationRules as $rule) {
+                $fromDate  = $rule['fromDate'] ?? '';
+                $toDate    = $rule['toDate'] ?? '';
+                $charge    = (float) ($rule['charge'] ?? 0);
+                $restricted = (bool) ($rule['cancelRestricted'] ?? false);
+
+                if ($restricted) {
+                    // WARNING: Cancellation not permitted during this period
+                    $period = !empty($fromDate) && !empty($toDate)
+                        ? "{$fromDate} - {$toDate}"
+                        : ($fromDate ?: $toDate);
+                    $lines[] = "  تحذير | WARNING: إلغاء محظور | Cancellation restricted: {$period}";
+                } elseif ($charge > 0) {
+                    $chargeFormatted = number_format($charge, 3);
+                    if (!empty($fromDate)) {
+                        $lines[] = "  بعد {$fromDate} | After {$fromDate}: {$currency} {$chargeFormatted} رسوم الإلغاء | penalty";
+                    } else {
+                        $lines[] = "  رسوم الإلغاء | Penalty: {$currency} {$chargeFormatted}";
+                    }
+                } else {
+                    // Charge = 0 means free cancellation until fromDate
+                    if (!empty($fromDate)) {
+                        $lines[] = "  إلغاء مجاني حتى | Free cancellation until: {$fromDate}";
+                    }
+                }
+            }
+        }
+
+        // ── Tariff Notes ─────────────────────────────────────
+        $tariffNotes = trim($room['tariff_notes'] ?? '');
+        if (!empty($tariffNotes)) {
+            $lines[] = "";
+            $lines[] = "ملاحظات التعرفة | Tariff Notes:";
+            $lines[] = "  {$tariffNotes}";
+        }
+
+        // ── Minimum Stay ─────────────────────────────────────
+        $minStay = $room['min_stay'] ?? null;
+        if (!empty($minStay) && (int) $minStay > 0) {
+            $minStayInt = (int) $minStay;
+            $nightsLabel = $minStayInt === 1 ? 'night | ليلة' : 'nights | ليالي';
+            $lines[] = "";
+            $lines[] = "الحد الأدنى للإقامة | Minimum Stay: {$minStayInt} {$nightsLabel}";
+
+            $minStayDate = $room['min_stay_date'] ?? null;
+            if (!empty($minStayDate)) {
+                $lines[] = "  (ينطبق من | Applies from: {$minStayDate})";
+            }
+        }
+
+        // ── Minimum Selling Price (MSP) ───────────────────────
+        $msp = (float) ($room['minimum_selling_price'] ?? 0);
+        if ($msp > 0) {
+            $mspFormatted = number_format($msp, 3);
+            $lines[] = "";
+            $lines[] = "الحد الأدنى لسعر البيع | Min. Selling Price: {$currency} {$mspFormatted}";
+        }
+
+        // ── Special Promotions ────────────────────────────────
+        $specials = $room['specials'] ?? [];
+        if (!empty($specials)) {
+            $lines[] = "";
+            $lines[] = "العروض الخاصة | Special Promotions:";
+            foreach ($specials as $special) {
+                $name = $special['name'] ?? (is_string($special) ? $special : '');
+                $desc = $special['description'] ?? '';
+                if (!empty($desc)) {
+                    $lines[] = "  - {$name}: {$desc}";
+                } elseif (!empty($name)) {
+                    $lines[] = "  - {$name}";
+                }
+            }
+        }
+
+        // ── Taxes & Property Fees ─────────────────────────────
+        $propertyFees = $room['property_fees'] ?? [];
+        $taxes = (float) ($room['taxes'] ?? 0);
+        if ($taxes > 0 || !empty($propertyFees)) {
+            $lines[] = "";
+            $lines[] = "الضرائب والرسوم | Taxes & Fees:";
+            if ($taxes > 0) {
+                $taxesFormatted = number_format($taxes, 3);
+                $lines[] = "  ضرائب | Taxes: {$currency} {$taxesFormatted} (مشمولة | included in price)";
+            }
+            foreach ($propertyFees as $fee) {
+                $feeName = $fee['name'] ?? 'Fee';
+                $feeIncluded = (bool) ($fee['includedInPrice'] ?? false);
+                $feeStatus = $feeIncluded
+                    ? "(مشمولة | included in price)"
+                    : "(تُدفع في الفندق | payable at property)";
+                $lines[] = "  {$feeName}: {$feeStatus}";
+            }
+        }
+
+        return empty($lines) ? '' : implode("\n", $lines);
+    }
+
+    /**
      * Format a city list as a simple numbered list.
      *
      * @param array<int, array{code: string, name: string, country_code: string}> $cities
@@ -308,6 +437,16 @@ class MessageBuilderService
 
         $lines[] = "Booking Ref | رقم الحجز: " . ($prebook['prebook_key'] ?? 'N/A');
 
+        // CERT-07: Mandatory features must appear BEFORE booking confirmation
+        $mandatoryBlock = self::formatMandatoryFeatures($prebook);
+        if (!empty($mandatoryBlock)) {
+            $lines[] = "";
+            $lines[] = self::SEPARATOR;
+            $lines[] = "تفاصيل السعر | Rate Details:";
+            $lines[] = $mandatoryBlock;
+        }
+
+        $lines[] = "";
         $lines[] = self::SEPARATOR;
 
         $needsPayment = $prebook['needs_payment'] ?? false;
@@ -367,6 +506,27 @@ class MessageBuilderService
         if (!empty($confirmation['payment_guaranteed_by'])) {
             $lines[] = "";
             $lines[] = "Payment Guaranteed By | ضامن الدفع: " . $confirmation['payment_guaranteed_by'];
+        }
+
+        // CERT-07: Mandatory features in booking confirmation (post-booking)
+        $mandatoryBlock = self::formatMandatoryFeatures($confirmation);
+        if (!empty($mandatoryBlock)) {
+            $lines[] = "";
+            $lines[] = self::SEPARATOR;
+            $lines[] = "تفاصيل السعر | Rate Details:";
+            $lines[] = $mandatoryBlock;
+        }
+
+        // CERT-07: Special requests shown in confirmation
+        $specialRequests = $confirmation['special_requests'] ?? [];
+        if (!empty($specialRequests)) {
+            $lines[] = "";
+            $lines[] = "الطلبات الخاصة | Special Requests:";
+            $srCodes = config('dotwai.special_request_codes', []);
+            foreach ($specialRequests as $code) {
+                $label = $srCodes[(int) $code] ?? "Request #{$code}";
+                $lines[] = "  - {$label}";
+            }
         }
 
         $lines[] = "";
@@ -643,10 +803,13 @@ class MessageBuilderService
         $lines[] = self::SEPARATOR;
         $lines[] = "";
 
-        // Cancellation policy
-        $isRefundable         = $booking->is_refundable ?? true;
+        // CERT-07: Mandatory features — cancellation policy, tariff notes, MSP, special requests
+        $cancellationRules = $booking->cancellation_rules ?? [];
+        $isRefundable      = $booking->is_refundable ?? true;
         $cancellationDeadline = $booking->cancellation_deadline;
 
+        // Cancellation policy section
+        $lines[] = "سياسة الإلغاء | Cancellation Policy:";
         if ($isRefundable && $cancellationDeadline !== null) {
             $formattedDeadline = $cancellationDeadline->format('d M Y');
             $lines[] = "Free cancellation until {$formattedDeadline}";
@@ -655,6 +818,45 @@ class MessageBuilderService
             $lines[] = "Non-Refundable | غير قابل للاسترداد";
         } else {
             $lines[] = "See cancellation policy | راجع سياسة الإلغاء";
+        }
+
+        // Detailed cancel rules with restricted warnings
+        if (!empty($cancellationRules)) {
+            foreach ($cancellationRules as $rule) {
+                $fromDate   = $rule['fromDate'] ?? '';
+                $charge     = (float) ($rule['charge'] ?? 0);
+                $restricted = (bool) ($rule['cancelRestricted'] ?? false);
+                if ($restricted) {
+                    $toDate = $rule['toDate'] ?? '';
+                    $period = !empty($fromDate) && !empty($toDate) ? "{$fromDate} - {$toDate}" : ($fromDate ?: $toDate);
+                    $lines[] = "  تحذير | WARNING: إلغاء محظور | Cancellation restricted: {$period}";
+                } elseif ($charge > 0 && !empty($fromDate)) {
+                    $chargeFormatted = number_format($charge, 3);
+                    $currency = $booking->display_currency ?? 'KWD';
+                    $lines[] = "  بعد {$fromDate}: {$currency} {$chargeFormatted} رسوم الإلغاء | penalty";
+                }
+            }
+        }
+
+        // MSP
+        $msp = (float) ($booking->minimum_selling_price ?? 0);
+        if ($msp > 0) {
+            $mspCurrency = $booking->display_currency ?? 'KWD';
+            $mspFormatted = number_format($msp, 3);
+            $lines[] = "";
+            $lines[] = "الحد الأدنى لسعر البيع | Min. Selling Price: {$mspCurrency} {$mspFormatted}";
+        }
+
+        // Special Requests (CERT-07: shown in voucher)
+        $specialRequests = $booking->special_requests ?? [];
+        if (!empty($specialRequests)) {
+            $lines[] = "";
+            $lines[] = "الطلبات الخاصة | Special Requests:";
+            $srCodes = config('dotwai.special_request_codes', []);
+            foreach ((array) $specialRequests as $code) {
+                $label = $srCodes[(int) $code] ?? "Request #{$code}";
+                $lines[] = "  - {$label}";
+            }
         }
 
         $lines[] = "";

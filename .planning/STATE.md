@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
 status: Ready to execute
-stopped_at: Completed 24-04-PLAN.md (B2B/B2C Connection Guide + Evidence Checklist)
-last_updated: "2026-03-28T04:07:35.645Z"
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-03-28T04:10:38.226Z"
 progress:
   total_phases: 14
   completed_phases: 13
   total_plans: 35
-  completed_plans: 32
+  completed_plans: 33
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 24 (dotw-certification-fixes-v2-olga-march-27-feedback) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Plan: 2 of 4
 | Phase 22 P02 | 78 | 2 tasks | 2 files |
 | Phase 22 P01 | 348s (5.8m) | 2 tasks | 2 files |
 | Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P04 | 201 | 2 tasks | 2 files |
+| Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P02 | 10 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase 21]: PDF voucher includes B2B agent + agency company details when track is b2b/b2b_gateway
 - [Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback]: B2B/B2C connection guide answers Olga's onboarding question with multi-tenant WhatsApp-first architecture diagram
 - [Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback]: Evidence guide offers Option A (direct WhatsApp test) or Option B (screenshots+XML logs) — Olga's choice
+- [Phase 24-dotw-cert]: APR flow removed entirely — DOTW confirmed APRs no longer exist in their API (Olga Chicu, March 2026)
+- [Phase 24-dotw-cert]: resolveResidenceCode() added to HotelSearchService mirroring resolveNationalityCode() with config 66 (Kuwait) fallback
 
 ### Pending Todos
 
@@ -117,7 +120,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-28T04:07:35.642Z
-Stopped at: Completed 24-04-PLAN.md (B2B/B2C Connection Guide + Evidence Checklist)
+Last session: 2026-03-28T04:10:38.222Z
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None
 Resume file: None

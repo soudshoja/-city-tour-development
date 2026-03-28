@@ -1370,6 +1370,12 @@ class DotwService
         foreach ($rooms as $index => $room) {
             $childrenXml = $this->buildChildrenXml($room['children'] ?? []);
 
+            // Guard: rateBasis 0 is not a valid DOTW code — use -1 (all rates) — CERT-03 fix
+            $rateBasis = (int) ($room['rateBasis'] ?? -1);
+            if ($rateBasis === 0) {
+                $rateBasis = -1;
+            }
+
             $roomsXml .= sprintf(
                 '<room runno="%d">
         <adultsCode>%d</adultsCode>
@@ -1381,7 +1387,7 @@ class DotwService
                 $index,
                 (int) ($room['adultsCode'] ?? 2),
                 $childrenXml,
-                (int) ($room['rateBasis'] ?? -1),
+                $rateBasis,
                 htmlspecialchars((string) ($room['passengerNationality'] ?? '')),
                 htmlspecialchars((string) ($room['passengerCountryOfResidence'] ?? ''))
             );

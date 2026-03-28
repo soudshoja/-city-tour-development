@@ -261,7 +261,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23
 | 21. Lifecycle + History | 2/2 | Complete    | 2026-03-25 | - |
 | 22. Dashboard | v2.0 DOTW AI | 1/3 | In Progress | - |
 | 23. Agent Facade + n8n | v2.0 DOTW AI | 0/2 | Planned | - |
-| 24. Cert Fixes v2 | v2.0 DOTW AI | 4/4 | Complete   | 2026-03-28 |
+| 24. Cert Fixes v2 | v2.0 DOTW AI | 4/4 | Complete    | 2026-03-28 |
 
 *Roadmap created: 2026-03-09*
 *v2.0 DOTW AI Module phases added: 2026-03-24*

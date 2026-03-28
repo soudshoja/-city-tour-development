@@ -232,13 +232,13 @@ Plans:
 **Goal:** Resolve all issues from Olga Chicu's March 27 review to pass DOTW certification. Fix salutation ID mapping, rateBasis=0 leak, remove APR flow, wire mandatory display features into WhatsApp messages, run 2-room cancellation test, add special request codes, collect nationality/residence from user, write B2B/B2C connection document, prepare certification evidence.
 **Requirements**: CERT-01 through CERT-09
 **Depends on:** Phase 16 (original cert fixes), Phase 19-21 (booking/cancellation/lifecycle)
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 24-01-PLAN.md — Fix salutation ID mapping (value codes), add special request codes, fix rateBasis=0 leak (CERT-01, CERT-02, CERT-03)
 - [ ] 24-02-PLAN.md — Remove APR flow entirely, wire nationality/residence from user input (CERT-04, CERT-05)
 - [ ] 24-03-PLAN.md — Wire all mandatory display features into WhatsApp messages, add 2-room cancellation cert test (CERT-06, CERT-07)
-- [ ] 24-04-PLAN.md — B2B/B2C connection document and certification evidence guide (CERT-08, CERT-09)
+- [x] 24-04-PLAN.md — B2B/B2C connection document and certification evidence guide (CERT-08, CERT-09)
 
 ---
 
@@ -261,7 +261,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23
 | 21. Lifecycle + History | 2/2 | Complete    | 2026-03-25 | - |
 | 22. Dashboard | v2.0 DOTW AI | 1/3 | In Progress | - |
 | 23. Agent Facade + n8n | v2.0 DOTW AI | 0/2 | Planned | - |
-| 24. Cert Fixes v2 | v2.0 DOTW AI | 0/4 | Planned | - |
+| 24. Cert Fixes v2 | v2.0 DOTW AI | 1/4 | In Progress|  |
 
 *Roadmap created: 2026-03-09*
 *v2.0 DOTW AI Module phases added: 2026-03-24*

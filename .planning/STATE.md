@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DOTW AI Module
-status: Ready to execute
-stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-03-28T04:10:38.226Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 24-01-SUMMARY.md
+last_updated: "2026-03-28T04:08:39.485Z"
 progress:
   total_phases: 14
   completed_phases: 13
   total_plans: 35
-  completed_plans: 33
+  completed_plans: 32
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Enable travel agents and customers to search, book, and manage DOTW hotel reservations entirely through WhatsApp with AI-driven conversation, automated lifecycle, and full accounting
-**Current focus:** Phase 24 — dotw-certification-fixes-v2-olga-march-27-feedback
+**Current focus:** Phase 23 — agent-facade-n8n-workflow
 
 ## Current Position
 
-Phase: 24 (dotw-certification-fixes-v2-olga-march-27-feedback) — EXECUTING
-Plan: 3 of 4
+Phase: 23 (agent-facade-n8n-workflow) — COMPLETE
+Plan: 2 of 2 (both completed)
 
 ## Performance Metrics
 
@@ -56,8 +56,7 @@ Plan: 3 of 4
 | Phase 21-lifecycle-history P02 | 12 | 2 tasks | 9 files |
 | Phase 22 P02 | 78 | 2 tasks | 2 files |
 | Phase 22 P01 | 348s (5.8m) | 2 tasks | 2 files |
-| Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P04 | 201 | 2 tasks | 2 files |
-| Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P02 | 10 | 2 tasks | 7 files |
+| Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback P01 | 10 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,10 +99,9 @@ Recent decisions affecting current work:
 - [Phase 21-lifecycle-history]: Webhook events are config-gated: empty webhook_url disables all webhooks; per-event gating via webhook_events array in dotwai config
 - [Phase 21]: DOTW V4 API has NO voucher/PDF/invoice endpoint — local PDF generation via DomPDF is the only option
 - [Phase 21]: PDF voucher includes B2B agent + agency company details when track is b2b/b2b_gateway
-- [Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback]: B2B/B2C connection guide answers Olga's onboarding question with multi-tenant WhatsApp-first architecture diagram
-- [Phase 24-dotw-certification-fixes-v2-olga-march-27-feedback]: Evidence guide offers Option A (direct WhatsApp test) or Option B (screenshots+XML logs) — Olga's choice
-- [Phase 24-dotw-cert]: APR flow removed entirely — DOTW confirmed APRs no longer exist in their API (Olga Chicu, March 2026)
-- [Phase 24-dotw-cert]: resolveResidenceCode() added to HotelSearchService mirroring resolveNationalityCode() with config 66 (Kuwait) fallback
+- [Phase 24-01]: Salutation fallback uses DOTW value codes (147=Mr) not runno codes (1=Dr)
+- [Phase 24-01]: Special request codes stored in config/dotwai.php (23 codes from Olga screenshot)
+- [Phase 24-01]: rateBasis=0 guard added in DotwService.buildRoomsXml and BookingService — defaults to -1
 
 ### Pending Todos
 
@@ -120,7 +118,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-28T04:10:38.222Z
-Stopped at: Completed 24-02-PLAN.md
+Last session: 2026-03-28T04:08:39.482Z
+Stopped at: Completed 24-01-SUMMARY.md
 Resume file: None
 Resume file: None

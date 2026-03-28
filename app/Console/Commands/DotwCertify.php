@@ -192,11 +192,26 @@ class DotwCertify extends Command
      * Falls back to standard DOTW defaults if the API call fails or returns
      * an unexpected response structure.
      *
-     * @return array<string, int> e.g. ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5]
+     * @return array<string, int> e.g. ['mr' => 147, 'mrs' => 149, 'miss' => 15134, 'ms' => 148]
      */
     private function fetchSalutationMap(): array
     {
-        $fallback = ['mr' => 1, 'mrs' => 2, 'miss' => 3, 'master' => 4, 'ms' => 5];
+        // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
+        // Source: Olga Chicu screenshot 2026-03-27
+        $fallback = [
+            'mr'            => 147,
+            'mrs'           => 149,
+            'miss'          => 15134,
+            'ms'            => 148,
+            'dr'            => 558,
+            'child'         => 14632,
+            'sir'           => 1328,
+            'madame'        => 1671,
+            'mademoiselle'  => 74195,
+            'messrs'        => 9234,
+            'monsieur'      => 74185,
+            'sir/madam'     => 3801,
+        ];
 
         $xml = $this->buildRequest('getsalutationsids', '');
         $response = $this->post($xml, 'salutations');

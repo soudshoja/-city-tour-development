@@ -74,7 +74,7 @@ class HotelSearchService
 
         // 2. Resolve nationality and residence codes
         $nationalityCode = $this->resolveNationalityCode($input['nationality'] ?? null);
-        $residenceCode = config('dotwai.default_residence', '66');
+        $residenceCode = $this->resolveResidenceCode($input['residence'] ?? null);
 
         // 3. Hotel name filter (fuzzy match to DOTW hotel IDs)
         $hotelIdFilter = [];
@@ -211,7 +211,7 @@ class HotelSearchService
     public function getHotelDetails(DotwAIContext $context, string $hotelId, array $input): array
     {
         $nationalityCode = $this->resolveNationalityCode($input['nationality'] ?? null);
-        $residenceCode = config('dotwai.default_residence', '66');
+        $residenceCode = $this->resolveResidenceCode($input['residence'] ?? null);
 
         $params = [
             'fromDate' => $input['check_in'],
@@ -651,6 +651,29 @@ class HotelSearchService
         }
 
         return (string) config('dotwai.default_nationality', '66');
+    }
+
+    /**
+     * Resolve residence input to DOTW country code via fuzzy matching.
+     *
+     * Mirrors resolveNationalityCode() for residence. Falls back to
+     * config('dotwai.default_residence', '66') (Kuwait) when the user
+     * does not provide their country of residence — appropriate for the
+     * Kuwait-based agency context.
+     *
+     * @param string|null $residence Country name from input
+     * @return string DOTW country code
+     */
+    private function resolveResidenceCode(?string $residence): string
+    {
+        if ($residence !== null && $residence !== '') {
+            $country = $this->fuzzyMatcher->resolveCountry($residence);
+            if ($country !== null) {
+                return $country->code;
+            }
+        }
+
+        return (string) config('dotwai.default_residence', '66');
     }
 
     /**

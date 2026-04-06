@@ -2750,7 +2750,6 @@ class PaymentController extends Controller
             })->get();
         }
 
-        $invoices = Invoice::all();
         $payments = Payment::all();
         $currencies = Currency::all();
 
@@ -2789,7 +2788,6 @@ class PaymentController extends Controller
             'payments',
             'clients',
             'agents',
-            'invoices',
             'currencies',
             'paymentGateways',
             'paymentMethods',

@@ -142,6 +142,13 @@ trait NotificationTrait
                 ]);
                 return;
             }
+
+            if($payment->client === null){
+                Log::warning('[NotificationTrait] PDF sending skipped due to missing client association', [
+                    'payment_id' => $payment->id,
+                ]);
+                return;
+            }
             
             $service = new PaymentReceiptService();
             $result = $service->generateAndSendPdf($payment);

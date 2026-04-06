@@ -126,6 +126,11 @@ class Payment extends Model
             ->withTimestamps();
     }
 
+    public function paymentMethodChoses(int $companyId)
+    {
+        return $this->hasMany(PaymentMethodChose::class, 'payment_id')->where('company_id', $companyId);
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');

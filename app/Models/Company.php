@@ -85,4 +85,9 @@ class Company extends Model
         
         return $mainBranch;
     }
+
+    public function paymentMethodChoses()
+    {
+        return $this->hasMany(PaymentMethodChose::class);
+    }
 }

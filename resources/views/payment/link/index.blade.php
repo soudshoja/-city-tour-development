@@ -70,6 +70,15 @@
                 </template>
             </div>
 
+            <a id="export-payment-links-btn" data-tooltip-left="Export to Excel"
+                class="pl-action-btn pl-import-btn" style="cursor:pointer;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+            </a>
+
             <a href="{{ route('payment.link.create') }}">
                 <div data-tooltip-left="Create payment link"
                     class="pl-action-btn pl-create-btn btn-success">
@@ -886,5 +895,24 @@
                 alert('Could not copy. Please try again.');
             });
         }
+        document.getElementById('export-payment-links-btn')?.addEventListener('click', function() {
+            const params = new URLSearchParams();
+            const filters = @json($filters ?? []);
+
+            if (filters.client_id) params.set('client_id', filters.client_id);
+            if (filters.agent_id) params.set('agent_id', filters.agent_id);
+            if (filters.created_by) params.set('created_by', filters.created_by);
+            if (filters.payment_gateway) params.set('payment_gateway', filters.payment_gateway);
+            if (filters.status) params.set('status', filters.status);
+            if (filters.date_from) params.set('date_from', filters.date_from);
+            if (filters.date_to) params.set('date_to', filters.date_to);
+            if (filters.payment_method_id) params.set('payment_method_id', filters.payment_method_id);
+
+            const search = new URLSearchParams(window.location.search).get('search');
+            if (search) params.set('search', search);
+
+            const url = "{{ route('payment.link.export') }}" + (params.toString() ? '?' + params.toString() : '');
+            window.location.href = url;
+        });
     </script>
 </x-app-layout>

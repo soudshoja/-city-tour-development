@@ -89,6 +89,9 @@ class TaskHotelSchema
                 ? $input[$field]
                 : ($meta['default'] ?? $meta['example'] ?? null);
         }
+        if (isset($normalized['room_details']) && is_array($normalized['room_details'])) {
+            $normalized['room_details'] = json_encode($normalized['room_details']);
+        }
         return $normalized;
     }
 }

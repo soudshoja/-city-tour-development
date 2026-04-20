@@ -235,7 +235,11 @@
                     @can('viewAny', App\Models\Role::class)
                     <a href="{{ route('role.index') }}" class="mobile-drawer-subitem">Manage Roles</a>
                     @endcan
-                    <a href="#" class="mobile-drawer-subitem">Documentations</a>
+                    <a href="{{ route('docs.user-documentation') }}" class="mobile-drawer-subitem">User Docs</a>
+                    <a href="{{ route('docs.api-documentation') }}" class="mobile-drawer-subitem">API Docs</a>
+                    @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
+                    <a href="{{ route('docs.developer-documentation') }}" class="mobile-drawer-subitem">Developer Docs</a>
+                    @endif
                     <a href="#" class="mobile-drawer-subitem">Help</a>
                     @can('viewAny', App\Models\CurrencyExchange::class)
                     <a href="{{ route('exchange.index') }}" class="mobile-drawer-subitem">Currency Exchange</a>

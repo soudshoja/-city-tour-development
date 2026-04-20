@@ -23,10 +23,14 @@ Added 3 lines to `app/Schema/TaskHotelSchema.php::normalize()` — if `room_deta
 - `app/Schema/TaskHotelSchema.php` (+3 lines)
 
 **Deployment:**
-- Commit: `<pending>`
-- Deployed to production: `tour.citycommerce.group` at `<pending>`
-- Replayed stuck files: `<pending>` moved from `files_error/` → `files_unprocessed/`
-- Verified: `<pending>` tasks created after next cron run
+- Commit: `e03db9a6`
+- Deployed to production: `tour.citycommerce.group` at `2026-04-20 11:42:06 UTC` via `scp` (server is not a git checkout; single-file scp + `php artisan optimize:clear`)
+- Replayed 3 stuck `.pdf` files moved from `files_error/` → `files_unprocessed/`:
+  - `INV2 (2) (1).pdf`
+  - `SKYR-2510071425-b01.pdf`
+  - `SRH48046-.pdf`
+  - (1 non-PDF file `download` (JPEG) left in `files_error/` — not a PDF, not moved.)
+- Verified: 2 new tasks created after replay (IDs 14464, 14465) — `SRH48046-.pdf` produced task ID 14465 (reference `2026/03145`, passenger Mrs Anoud Alkandari). `SKYR-2510071425-b01.pdf` likely deduped against the existing Oct 2025 processed copy. No new `Array to string conversion` errors in `storage/logs/laravel.log` post-deploy.
 
 **Permanent fix deferred:**
 Column type change to JSON + Eloquent Attribute cast pending as part of Phase 25 (PDF AI Processing Fallback). See `.planning/phases/25-pdf-ai-fallback-chain/25-RESEARCH.md`.

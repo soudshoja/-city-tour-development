@@ -568,6 +568,7 @@ Route::middleware(['auth'])->group(function () {
         ], function () {
 
             Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
+            Route::get('/export', [PaymentController::class, 'exportPaymentLinks'])->name('export');
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
             Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');
             Route::get('/show/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
@@ -636,6 +637,9 @@ Route::middleware(['auth'])->group(function () {
             'as' => 'ajax.',
         ], function () {
             Route::get('/search', [ClientController::class, 'searchClient'])->name('search');
+            Route::get('/{id}/tasks', [ClientController::class, 'ajaxTasks'])->name('tasks');
+            Route::get('/{id}/invoices', [ClientController::class, 'ajaxInvoices'])->name('invoices');
+            Route::get('/{id}/payments', [ClientController::class, 'ajaxPayments'])->name('payments');
         });
     });
 
@@ -891,6 +895,9 @@ Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhoo
 Route::get('/docs/developer', function () {
     return view('docs.developer-documentation');
 })->name('docs.developer-documentation');
+Route::get('/docs/api', function () {
+    return view('docs.api-documentation');
+})->name('docs.api-documentation');
 Route::get('/docs/user', function () {
     return view('docs.user-documentation');
 })->name('docs.user-documentation');

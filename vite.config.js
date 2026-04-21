@@ -11,16 +11,23 @@ export default defineConfig({
                 //task
                 "resources/css/task/index.css",
 
-                //components
+                //component
                 "resources/css/component/ajax-searchable.css",
 
-                "resources/css/refund.css",
+                //setting
                 "resources/css/settings/main.css",
                 "resources/css/settings/index.css",
                 "resources/css/settings/agent-loss.css",
                 "resources/css/settings/notification.css",
+
+                //system setting
                 "resources/css/system-setting/main.css",
                 "resources/css/system-setting/hotel.css",
+
+                //client
+                "resources/css/client/show.css",
+
+                "resources/css/refund.css",
                 "resources/css/lock-management/index.css",
                 "resources/css/payment-link/index.css",
                 "resources/js/jsbyNisma.js",

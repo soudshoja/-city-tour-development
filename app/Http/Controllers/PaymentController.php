@@ -2,71 +2,68 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Arr;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Cache;
-use App\Services\HesabeCrypt;
-use App\Services\GatewayConfigService;
-use App\Services\ChargeService;
-use App\Support\PaymentGateway\Tap;
-use App\Support\PaymentGateway\MyFatoorah;
-use App\Support\PaymentGateway\Hesabe;
-use App\Support\PaymentGateway\UPayment;
-use App\Http\Traits\NotificationTrait;
+use App\Exports\PaymentLinkExport;
 use App\Http\Traits\CurrencyExchangeTrait;
-use App\Http\Controllers\ClientController;
-use App\Http\Traits\EmailNotificationTrait;
+use App\Http\Traits\NotificationTrait;
+use App\Models\Account;
+use App\Models\Agent;
+use App\Models\Branch;
+use App\Models\Charge;
+use App\Models\Client;
+use App\Models\Company;
+use App\Models\Currency;
 use App\Models\HesabePayment;
-use App\Models\UpaymentPayment;
+use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
 use App\Models\JournalEntry;
-use App\Models\TapPayment;
-use App\Models\Sequence;
-use App\Models\Supplier;
-use App\Models\Client;
-use App\Models\Agent;
-use App\Models\Task;
-use App\Models\User;
-use App\Models\Invoice;
-use App\Models\Account;
-use App\Models\Accountant;
-use App\Models\Branch;
+use App\Models\MyFatoorahPayment;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\PaymentMethod;
-use App\Models\Transaction;
-use App\Models\Charge;
-use App\Models\Currency;
-use App\Models\Role;
-use App\Models\Company;
-use App\Models\MyFatoorahPayment;
 use App\Models\PaymentMethodChose;
-use App\Models\PaymentMethodGroup;
 use App\Models\PaymentTransaction;
 use App\Models\Refund;
-use App\Models\TBO;
+use App\Models\Role;
+use App\Models\Sequence;
 use App\Models\SupplierCompany;
+use App\Models\TapPayment;
+use App\Models\Task;
+use App\Models\TBO;
+use App\Models\Transaction;
+use App\Models\UpaymentPayment;
+use App\Models\User;
 use App\Models\UserSetting;
+use App\Services\ChargeService;
+use App\Services\GatewayConfigService;
+use App\Services\HesabeCrypt;
 use App\Services\TBOHolidayService;
+use App\Support\PaymentGateway\Hesabe;
 use App\Support\PaymentGateway\Knet;
+use App\Support\PaymentGateway\MyFatoorah;
+use App\Support\PaymentGateway\Tap;
+use App\Support\PaymentGateway\UPayment;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
 class PaymentController extends Controller
 {
-    use NotificationTrait, CurrencyExchangeTrait;
+    use CurrencyExchangeTrait, NotificationTrait;
 
     public function show(int $id)
     {
@@ -80,7 +77,7 @@ class PaymentController extends Controller
             'createdBy',
             'tapPayment',
             'myFatoorahPayment',
-            'paymentItems'
+            'paymentItems',
         ])->findOrFail($id);
 
         return view('payment.show', compact('payment'));
@@ -110,18 +107,18 @@ class PaymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'partials' => $partials
+                'partials' => $partials,
             ]);
         } catch (\Exception $e) {
             Log::error('Error loading payment partials', [
                 'payment_id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading partials',
-                'partials' => []
+                'partials' => [],
             ], 500);
         }
     }
@@ -142,7 +139,7 @@ class PaymentController extends Controller
                     return [
                         'id' => $transaction->id,
                         'transaction_type' => ucfirst($transaction->transaction_type),
-                        'amount' => number_format($transaction->amount, 3) . ' KWD',
+                        'amount' => number_format($transaction->amount, 3).' KWD',
                         'description' => $transaction->description,
                         'created_at' => $transaction->created_at->format('d/m/Y H:i'),
                     ];
@@ -150,18 +147,18 @@ class PaymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'transactions' => $transactions
+                'transactions' => $transactions,
             ]);
         } catch (\Exception $e) {
             Log::error('Error loading payment transactions', [
                 'payment_id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading transactions',
-                'transactions' => []
+                'transactions' => [],
             ], 500);
         }
     }
@@ -175,7 +172,7 @@ class PaymentController extends Controller
             'total_amount' => 'required|numeric',
             'payment_gateway' => 'required|string',
             'payment_method' => 'nullable|string',
-            'invoice_partial_id' => 'required'
+            'invoice_partial_id' => 'required',
         ]);
 
         Log::info('Received payment request', $request->all());
@@ -184,14 +181,14 @@ class PaymentController extends Controller
 
         $invoice = Invoice::with(['agent.branch', 'client'])
             ->where('invoice_number', $invoiceNumber)
-            ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+            ->whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))
             ->first();
 
-        if (!$invoice) {
+        if (! $invoice) {
             return Auth::user() ? redirect()->back()->with('error', 'Invoice not found!') : abort(404, 'Invoice not found!');
         }
 
-        if (!$invoice->client) {
+        if (! $invoice->client) {
             return Auth::user() ? redirect()->back()->with('error', 'Client not found for this invoice!') : abort(404, 'Client not found for this invoice!');
         }
 
@@ -199,8 +196,9 @@ class PaymentController extends Controller
 
         $companyId = $invoice->agent->branch->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             Log::error('InvoiceController@create: Company not found for the invoice', ['invoice_id' => $invoice->id]);
+
             return Auth::user() ? redirect()->back()->with('error', 'Company not found for this invoice!') : abort(404);
         }
 
@@ -216,9 +214,8 @@ class PaymentController extends Controller
             'total_amount' => $request->total_amount,
             'payment_gateway' => $request->payment_gateway,
             'payment_method' => $request->payment_method,
-            'invoice_partial_id' =>  $request->invoice_partial_id,
+            'invoice_partial_id' => $request->invoice_partial_id,
         ];
-
 
         if ($clientMiddleName = $request->client_middle_name) {
             $data['client_middle_name'] = $clientMiddleName;
@@ -247,7 +244,7 @@ class PaymentController extends Controller
         $this->storeNotification([
             'user_id' => $invoice->agent->user_id,
             'title' => 'Payment Initiated',
-            'message' => 'Payment has been initiated for invoice: ' . $invoiceNumber,
+            'message' => 'Payment has been initiated for invoice: '.$invoiceNumber,
         ]);
 
         return redirect($response['url']);
@@ -256,25 +253,23 @@ class PaymentController extends Controller
     public function generateVoucherNumber($sequence)
     {
         $year = now()->year;
+
         return sprintf('VOU-%s-%05d', $year, $sequence);
     }
 
     /**
      * Process TBO booking after payment success
      * This method is called from all payment gateway callbacks
-     * 
-     * @param Payment $payment
-     * @return array|null
      */
     private function processTBOBookingAfterPayment(Payment $payment): ?array
     {
         try {
             $hotelBooking = $payment->hotelBooking;
 
-            if (!$hotelBooking) {
+            if (! $hotelBooking) {
 
                 Log::info('No hotel booking linked, not a TBO payment', [
-                    'payment_id' => $payment->id
+                    'payment_id' => $payment->id,
                 ]);
 
                 return null;
@@ -282,11 +277,11 @@ class PaymentController extends Controller
 
             $tboBooking = TBO::where('hotel_booking_id', $hotelBooking->id)->first();
 
-            if (!$tboBooking) {
+            if (! $tboBooking) {
 
                 Log::info('No TBO booking found for the hotel booking', [
                     'payment_id' => $payment->id,
-                    'hotel_booking_id' => $hotelBooking->id
+                    'hotel_booking_id' => $hotelBooking->id,
                 ]);
 
                 return null;
@@ -295,13 +290,14 @@ class PaymentController extends Controller
             if ($tboBooking->confirmation_no) {
                 Log::info('TBO booking already confirmed', [
                     'payment_id' => $payment->id,
-                    'confirmation_no' => $tboBooking->confirmation_no
+                    'confirmation_no' => $tboBooking->confirmation_no,
                 ]);
+
                 return [
                     'success' => true,
                     'message' => 'TBO booking already confirmed',
                     'confirmation_no' => $tboBooking->confirmation_no,
-                    'already_booked' => true
+                    'already_booked' => true,
                 ];
             }
 
@@ -309,7 +305,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'hotel_booking_id' => $hotelBooking->id,
                 'tbo_id' => $tboBooking->id,
-                'prebook_key' => $tboBooking->prebook_key
+                'prebook_key' => $tboBooking->prebook_key,
             ]);
 
             $customerDetails = [];
@@ -321,25 +317,25 @@ class PaymentController extends Controller
                         'FirstName' => $payment->client->first_name ?? 'Guest',
                         'LastName' => $payment->client->last_name ?? 'Customer',
                         'Title' => 'Mr',
-                        'Type' => 'Adult'
+                        'Type' => 'Adult',
                     ];
                 }
 
                 for ($i = 0; $i < $room->child_quantity; $i++) {
                     $customers[] = [
-                        'FirstName' => 'Child' . ($i + 1),
+                        'FirstName' => 'Child'.($i + 1),
                         'LastName' => $payment->client->last_name ?? 'Customer',
                         'Title' => 'Mstr',
-                        'Type' => 'Child'
+                        'Type' => 'Child',
                     ];
                 }
 
                 $customerDetails[] = [
-                    'CustomerNames' => $customers
+                    'CustomerNames' => $customers,
                 ];
             }
 
-            $clientReferenceId = $tboBooking->prebook_key . '-' . time();
+            $clientReferenceId = $tboBooking->prebook_key.'-'.time();
 
             $totalFareForTBO = $tboBooking->original_total_fare ?? $tboBooking->total_fare;
 
@@ -349,13 +345,13 @@ class PaymentController extends Controller
                 'CustomerDetails' => $customerDetails,
                 'ClientReferenceId' => $clientReferenceId,
                 'BookingReferenceId' => $tboBooking->prebook_key,
-                'TotalFare' => (float)$totalFareForTBO,
+                'TotalFare' => (float) $totalFareForTBO,
                 'EmailId' => $payment->client->email ?? 'noreply@example.com',
                 'PhoneNumber' => $payment->client->phone ?? '',
                 'PaymentMode' => 'Limit',
                 'PaymentInfo' => [
-                    'PaymentType' => 'FullPayment'
-                ]
+                    'PaymentType' => 'FullPayment',
+                ],
             ];
 
             Log::info('TBO Booking Price Breakdown', [
@@ -363,14 +359,14 @@ class PaymentController extends Controller
                 'original_currency' => $tboBooking->original_currency,
                 'total_fare_after_conversion' => $tboBooking->total_fare,
                 'currency_after_conversion' => $tboBooking->currency,
-                'sending_to_tbo' => $totalFareForTBO
+                'sending_to_tbo' => $totalFareForTBO,
             ]);
 
             Log::info('Calling TBO Book API', [
-                'payload' => $bookingPayload
+                'payload' => $bookingPayload,
             ]);
 
-            $tboService = new TBOHolidayService();
+            $tboService = new TBOHolidayService;
             $bookingResponse = $tboService->book($bookingPayload);
 
             Log::info('TBO Book API Response', $bookingResponse);
@@ -378,19 +374,19 @@ class PaymentController extends Controller
             if (($bookingResponse['Status']['Code'] ?? null) !== 200) {
                 Log::error('TBO booking failed', [
                     'payment_id' => $payment->id,
-                    'response' => $bookingResponse
+                    'response' => $bookingResponse,
                 ]);
 
                 $hotelBooking->update(['status' => 'failed']);
                 $tboBooking->update([
                     'payment_status' => 'paid',
-                    'supplier_status' => 'failed'
+                    'supplier_status' => 'failed',
                 ]);
 
                 return [
                     'success' => false,
-                    'message' => 'TBO booking failed: ' . ($bookingResponse['Status']['Description'] ?? 'Unknown error'),
-                    'response' => $bookingResponse
+                    'message' => 'TBO booking failed: '.($bookingResponse['Status']['Description'] ?? 'Unknown error'),
+                    'response' => $bookingResponse,
                 ];
             }
 
@@ -399,25 +395,25 @@ class PaymentController extends Controller
 
             Log::info('TBO metadata', [
                 'confirmation_no' => $confirmationNo,
-                'booking_reference_id' => $bookingReferenceId
+                'booking_reference_id' => $bookingReferenceId,
             ]);
 
             $hotelBooking->update([
                 'supplier_booking_id' => $confirmationNo,
-                'status' => 'confirmed'
+                'status' => 'confirmed',
             ]);
 
             $tboBooking->update([
                 'confirmation_no' => $confirmationNo,
                 'booking_reference_id' => $bookingReferenceId,
                 'payment_status' => 'paid',
-                'supplier_status' => 'confirmed'
+                'supplier_status' => 'confirmed',
             ]);
 
             Log::info('TBO booking completed successfully', [
                 'payment_id' => $payment->id,
                 'confirmation_no' => $confirmationNo,
-                'booking_reference_id' => $bookingReferenceId
+                'booking_reference_id' => $bookingReferenceId,
             ]);
 
             // Retry mechanism for TBO BookingDetail API (handles propagation delay)
@@ -430,7 +426,7 @@ class PaymentController extends Controller
                     if ($attempt > 1) {
                         Log::info("TBO BookingDetail retry attempt {$attempt}/{$maxRetries}", [
                             'confirmation_no' => $confirmationNo,
-                            'delay' => $retryDelay . 's'
+                            'delay' => $retryDelay.'s',
                         ]);
                         sleep($retryDelay);
                     }
@@ -442,14 +438,14 @@ class PaymentController extends Controller
                     if (isset($detailResponse['Status']['Code']) && $detailResponse['Status']['Code'] == 200) {
                         Log::info('TBO BookingDetail API Response (success)', [
                             'attempt' => $attempt,
-                            'response' => $detailResponse
+                            'response' => $detailResponse,
                         ]);
                         break;
                     } else {
                         $errorMsg = $detailResponse['Status']['Description'] ?? 'Unknown error';
                         Log::warning("TBO BookingDetail API returned error on attempt {$attempt}", [
                             'error' => $errorMsg,
-                            'response' => $detailResponse
+                            'response' => $detailResponse,
                         ]);
 
                         // If it's "does not exist" error and we have retries left, continue
@@ -460,24 +456,23 @@ class PaymentController extends Controller
                 } catch (Exception $e) {
                     Log::warning("TBO BookingDetail API exception on attempt {$attempt}", [
                         'error' => $e->getMessage(),
-                        'confirmation_no' => $confirmationNo
+                        'confirmation_no' => $confirmationNo,
                     ]);
 
                     if ($attempt >= $maxRetries) {
                         Log::error('TBO BookingDetail API failed after all retries', [
                             'confirmation_no' => $confirmationNo,
                             'total_attempts' => $maxRetries,
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
             }
 
-
             $bookingResult = [
                 'confirmation_no' => $confirmationNo,
                 'booking_reference_id' => $bookingReferenceId,
-                'booking_detail' => $detailResponse['BookingDetail'] ?? null
+                'booking_detail' => $detailResponse['BookingDetail'] ?? null,
             ];
 
             $taskResult = $this->createTaskFromTBOBooking($payment, $tboBooking, $bookingResult);
@@ -485,7 +480,7 @@ class PaymentController extends Controller
             if ($taskResult && $taskResult['success']) {
                 Log::info('Task and Invoice created from TBO booking', [
                     'task_id' => $taskResult['task']['id'] ?? null,
-                    'invoice_number' => $taskResult['invoice']->invoice_number ?? null
+                    'invoice_number' => $taskResult['invoice']->invoice_number ?? null,
                 ]);
 
                 return [
@@ -495,11 +490,11 @@ class PaymentController extends Controller
                     'booking_reference_id' => $bookingReferenceId,
                     'task' => $taskResult['task'] ?? null,
                     'invoice' => $taskResult['invoice'] ?? null,
-                    'response' => $bookingResponse
+                    'response' => $bookingResponse,
                 ];
             } else {
                 Log::warning('TBO booking confirmed but task creation failed', [
-                    'task_result' => $taskResult
+                    'task_result' => $taskResult,
                 ]);
 
                 return [
@@ -509,19 +504,19 @@ class PaymentController extends Controller
                     'booking_reference_id' => $bookingReferenceId,
                     'task_creation_failed' => true,
                     'task_error' => $taskResult['message'] ?? 'Unknown error',
-                    'response' => $bookingResponse
+                    'response' => $bookingResponse,
                 ];
             }
         } catch (Exception $e) {
             Log::error('Exception in processTBOBookingAfterPayment', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'TBO booking exception: ' . $e->getMessage()
+                'message' => 'TBO booking exception: '.$e->getMessage(),
             ];
         }
     }
@@ -532,18 +527,19 @@ class PaymentController extends Controller
             Log::info('Creating Task from TBO booking', [
                 'payment_id' => $payment->id,
                 'tbo_id' => $tboBooking->id,
-                'booking_result' => $bookingResult
+                'booking_result' => $bookingResult,
             ]);
 
             $companyId = $payment->agent->branch->company_id ?? null;
-            if (!$companyId) {
+            if (! $companyId) {
                 Log::error('Company ID not found for payment agent', [
                     'payment_id' => $payment->id,
-                    'agent_id' => $payment->agent_id
+                    'agent_id' => $payment->agent_id,
                 ]);
+
                 return [
                     'success' => false,
-                    'message' => 'Company ID not found for agent'
+                    'message' => 'Company ID not found for agent',
                 ];
             }
 
@@ -556,14 +552,15 @@ class PaymentController extends Controller
                 ->with('supplier')
                 ->first();
 
-            if (!$supplierCompany || !$supplierCompany->supplier) {
+            if (! $supplierCompany || ! $supplierCompany->supplier) {
                 Log::error('TBO supplier not found in supplier_companies', [
                     'company_id' => $companyId,
-                    'payment_id' => $payment->id
+                    'payment_id' => $payment->id,
                 ]);
+
                 return [
                     'success' => false,
-                    'message' => 'TBO supplier not configured for this company'
+                    'message' => 'TBO supplier not configured for this company',
                 ];
             }
 
@@ -573,7 +570,7 @@ class PaymentController extends Controller
 
             $request = new Request($taskData);
 
-            $taskController = new TaskController();
+            $taskController = new TaskController;
             $response = $taskController->store($request);
 
             $responseData = $response->getData(true);
@@ -581,13 +578,14 @@ class PaymentController extends Controller
             // TaskController returns 'status' not 'success'
             $isSuccess = ($responseData['status'] ?? '') === 'success' || ($responseData['success'] ?? false);
 
-            if (!$isSuccess) {
+            if (! $isSuccess) {
                 Log::error('Failed to create task from TBO booking', [
-                    'response' => $responseData
+                    'response' => $responseData,
                 ]);
+
                 return [
                     'success' => false,
-                    'message' => $responseData['message'] ?? 'Task creation failed'
+                    'message' => $responseData['message'] ?? 'Task creation failed',
                 ];
             }
 
@@ -596,7 +594,7 @@ class PaymentController extends Controller
 
             Log::info('Task created successfully from TBO booking', [
                 'task_id' => $task['id'] ?? null,
-                'invoice_id' => $invoice['id'] ?? null
+                'invoice_id' => $invoice['id'] ?? null,
             ]);
 
             // Generate invoice for TBO task if not already invoiced
@@ -612,18 +610,18 @@ class PaymentController extends Controller
                             Log::info('Task already has an invoice, skipping generation', [
                                 'task_id' => $taskModel->id,
                                 'invoice_id' => $taskModel->invoiceDetail->invoice->id,
-                                'invoice_number' => $taskModel->invoiceDetail->invoice->invoice_number
+                                'invoice_number' => $taskModel->invoiceDetail->invoice->invoice_number,
                             ]);
 
                             $invoice = $taskModel->invoiceDetail->invoice;
 
                             // Update payment with invoice_id if not set
-                            if (!$payment->invoice_id) {
+                            if (! $payment->invoice_id) {
                                 $payment->update(['invoice_id' => $invoice->id]);
                             }
                         } else {
                             Log::info('Task not invoiced yet, generating invoice', [
-                                'task_id' => $taskModel->id
+                                'task_id' => $taskModel->id,
                             ]);
 
                             $autoGenerateResponse = app(InvoiceController::class)->autoGenerateInvoice($taskModel, $payment);
@@ -640,12 +638,12 @@ class PaymentController extends Controller
 
                                     Log::info('Invoice generated successfully for TBO task', [
                                         'invoice_id' => $invoiceId,
-                                        'invoice_number' => $invoice->invoice_number ?? null
+                                        'invoice_number' => $invoice->invoice_number ?? null,
                                     ]);
                                 }
                             } else {
                                 Log::warning('Failed to generate invoice for TBO task', [
-                                    'response' => $autoGenerateResponse
+                                    'response' => $autoGenerateResponse,
                                 ]);
                             }
                         }
@@ -653,7 +651,7 @@ class PaymentController extends Controller
                 } catch (Exception $e) {
                     Log::error('Exception checking/generating invoice for TBO task', [
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
                 }
             }
@@ -661,18 +659,18 @@ class PaymentController extends Controller
             return [
                 'success' => true,
                 'task' => $task,
-                'invoice' => $invoice
+                'invoice' => $invoice,
             ];
         } catch (Exception $e) {
             Log::error('Exception creating task from TBO booking', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'Task creation exception: ' . $e->getMessage()
+                'message' => 'Task creation exception: '.$e->getMessage(),
             ];
         }
     }
@@ -686,7 +684,7 @@ class PaymentController extends Controller
             'payment_id' => $payment->id,
             'tbo_id' => $tboBooking->id,
             'booking_result' => $bookingResult,
-            'supplier_id' => $supplierId
+            'supplier_id' => $supplierId,
         ]);
 
         $hotelBooking = $payment->hotelBooking;
@@ -708,7 +706,7 @@ class PaymentController extends Controller
         }
 
         // Fallback to TBO booking model
-        if (!$checkIn || !$checkOut) {
+        if (! $checkIn || ! $checkOut) {
             $firstRoom = $tboBooking->rooms->first();
             $checkIn = $checkIn ?? ($firstRoom->check_in ?? null);
             $checkOut = $checkOut ?? ($firstRoom->check_out ?? null);
@@ -811,7 +809,7 @@ class PaymentController extends Controller
             'tax' => $tboBooking->tax_before_markup ?? 0,
             'surcharge' => 0,
 
-            'is_exchanged' => !empty($tboBooking->exchange_rate),
+            'is_exchanged' => ! empty($tboBooking->exchange_rate),
             'exchange_rate' => $tboBooking->exchange_rate ?? 1,
 
             'duration' => $duration,
@@ -844,8 +842,8 @@ class PaymentController extends Controller
     /**
      * Register a confirmed TBO booking as a task in the system
      * This can be called independently to handle cases where booking succeeded but task creation failed
-     * 
-     * @param int $paymentId - The payment ID
+     *
+     * @param  int  $paymentId  - The payment ID
      * @return JsonResponse
      */
     public function registerTBOBookingAsTask(Request $request)
@@ -860,33 +858,33 @@ class PaymentController extends Controller
             $payment = Payment::with(['agent.branch.company', 'client', 'hotelBooking'])
                 ->find($paymentId);
 
-            if (!$payment) {
+            if (! $payment) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Payment not found'
+                    'message' => 'Payment not found',
                 ], 404);
             }
 
             $hotelBooking = $payment->hotelBooking;
-            if (!$hotelBooking) {
+            if (! $hotelBooking) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No hotel booking associated with this payment'
+                    'message' => 'No hotel booking associated with this payment',
                 ], 400);
             }
 
             $tboBooking = TBO::with('rooms')->where('hotel_booking_id', $hotelBooking->id)->first();
-            if (!$tboBooking) {
+            if (! $tboBooking) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No TBO booking found for this hotel booking'
+                    'message' => 'No TBO booking found for this hotel booking',
                 ], 404);
             }
 
-            if (!$tboBooking->confirmation_no) {
+            if (! $tboBooking->confirmation_no) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'TBO booking is not confirmed yet. Confirmation number missing.'
+                    'message' => 'TBO booking is not confirmed yet. Confirmation number missing.',
                 ], 400);
             }
 
@@ -897,7 +895,7 @@ class PaymentController extends Controller
             if ($existingTask) {
                 Log::info('Task already exists, checking for invoice', [
                     'task_id' => $existingTask->id,
-                    'invoice_id' => $payment->invoice_id
+                    'invoice_id' => $payment->invoice_id,
                 ]);
 
                 // Check if task has an invoice
@@ -907,16 +905,16 @@ class PaymentController extends Controller
                     if ($invoiceModel) {
                         $invoice = [
                             'id' => $invoiceModel->id,
-                            'invoice_number' => $invoiceModel->invoice_number
+                            'invoice_number' => $invoiceModel->invoice_number,
                         ];
                     }
                 }
 
                 // If no invoice exists, generate one
-                if (!$invoice) {
+                if (! $invoice) {
                     Log::info('Task exists but no invoice found, auto-generating invoice', [
                         'task_id' => $existingTask->id,
-                        'payment_id' => $payment->id
+                        'payment_id' => $payment->id,
                     ]);
 
                     try {
@@ -934,28 +932,28 @@ class PaymentController extends Controller
 
                             $invoice = [
                                 'id' => $invoiceId,
-                                'invoice_number' => $invoiceNumber
+                                'invoice_number' => $invoiceNumber,
                             ];
 
                             Log::info('Invoice auto-generated successfully for existing task', [
                                 'invoice_id' => $invoice['id'],
-                                'invoice_number' => $invoice['invoice_number']
+                                'invoice_number' => $invoice['invoice_number'],
                             ]);
                         } else {
                             Log::warning('Failed to auto-generate invoice for existing task', [
-                                'response' => $generateInvoiceResponse
+                                'response' => $generateInvoiceResponse,
                             ]);
                         }
                     } catch (\Exception $e) {
                         Log::error('Exception auto-generating invoice for existing task', [
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
 
                 $responseData = [
                     'success' => true,
-                    'message' => 'Task already exists for this booking' . ($invoice ? '. Invoice has been sent.' : ''),
+                    'message' => 'Task already exists for this booking'.($invoice ? '. Invoice has been sent.' : ''),
                     'task_id' => $existingTask->id,
                     'task' => $existingTask,
                     'invoice' => $invoice,
@@ -971,7 +969,7 @@ class PaymentController extends Controller
                 if ($invoice && isset($invoice['invoice_number'])) {
                     $responseData['invoice_url'] = route('invoice.show', [
                         'companyId' => $payment->agent->branch->company_id,
-                        'invoiceNumber' => $invoice['invoice_number']
+                        'invoiceNumber' => $invoice['invoice_number'],
                     ]);
                 }
 
@@ -988,14 +986,14 @@ class PaymentController extends Controller
             Log::info('createTaskFromTBOBooking result', [
                 'taskResult' => $taskResult,
                 'has_success' => isset($taskResult['success']),
-                'success_value' => $taskResult['success'] ?? 'not set'
+                'success_value' => $taskResult['success'] ?? 'not set',
             ]);
 
-            if (!$taskResult || !$taskResult['success']) {
+            if (! $taskResult || ! $taskResult['success']) {
                 return response()->json([
                     'success' => false,
                     'message' => $taskResult['message'] ?? 'Failed to create task from TBO booking',
-                    'details' => $taskResult
+                    'details' => $taskResult,
                 ], 500);
             }
 
@@ -1005,16 +1003,16 @@ class PaymentController extends Controller
             Log::info('Task and Invoice extracted', [
                 'task' => $task,
                 'invoice' => $invoice,
-                'has_task' => !is_null($task),
-                'has_invoice' => !is_null($invoice),
-                'has_task_id' => $task && isset($task['id'])
+                'has_task' => ! is_null($task),
+                'has_invoice' => ! is_null($invoice),
+                'has_task_id' => $task && isset($task['id']),
             ]);
 
             // If no invoice was created, auto-generate one
-            if (!$invoice && $task && isset($task['id'])) {
+            if (! $invoice && $task && isset($task['id'])) {
                 Log::info('No invoice found, auto-generating invoice for TBO task', [
                     'task_id' => $task['id'],
-                    'payment_id' => $paymentId
+                    'payment_id' => $paymentId,
                 ]);
 
                 try {
@@ -1034,22 +1032,22 @@ class PaymentController extends Controller
 
                             $invoice = [
                                 'id' => $invoiceId,
-                                'invoice_number' => $invoiceNumber
+                                'invoice_number' => $invoiceNumber,
                             ];
 
                             Log::info('Invoice auto-generated successfully', [
                                 'invoice_id' => $invoice['id'],
-                                'invoice_number' => $invoice['invoice_number']
+                                'invoice_number' => $invoice['invoice_number'],
                             ]);
                         } else {
                             Log::warning('Failed to auto-generate invoice', [
-                                'response' => $generateInvoiceResponse
+                                'response' => $generateInvoiceResponse,
                             ]);
                         }
                     }
                 } catch (\Exception $e) {
                     Log::error('Exception auto-generating invoice', [
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -1070,7 +1068,7 @@ class PaymentController extends Controller
             if ($invoice && isset($invoice['invoice_number'])) {
                 $responseData['invoice_url'] = route('invoice.show', [
                     'companyId' => $payment->agent->branch->company_id,
-                    'invoiceNumber' => $invoice['invoice_number']
+                    'invoiceNumber' => $invoice['invoice_number'],
                 ]);
             }
 
@@ -1082,7 +1080,7 @@ class PaymentController extends Controller
                 'invoice_number' => $invoice['invoice_number'] ?? null,
                 'hotel_voucher_url' => $responseData['hotel_voucher_url'] ?? null,
                 'invoice_url' => $responseData['invoice_url'] ?? null,
-                'note' => 'Invoice and hotel voucher sent automatically via N8N webhook from autoGenerateInvoice'
+                'note' => 'Invoice and hotel voucher sent automatically via N8N webhook from autoGenerateInvoice',
             ]);
 
             return response()->json($responseData, 200);
@@ -1090,18 +1088,18 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
             Log::error('Exception in registerTBOBookingAsTask', [
                 'payment_id' => $request->input('payment_id'),
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Exception occurred: ' . $e->getMessage()
+                'message' => 'Exception occurred: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1111,14 +1109,14 @@ class PaymentController extends Controller
         $invoice = $data['invoice'];
         $company = $invoice->agent->branch->company;
 
-        if (!$company) {
+        if (! $company) {
             Log::error('Company not found for the invoice', ['invoice_id' => $invoice->id]);
 
             return response()->json(['error' => 'Company not found for the invoice.'], 500);
         }
 
         $invoicePartialId = $data['invoice_partial_id'] ?? null;
-        if (!$invoicePartialId) {
+        if (! $invoicePartialId) {
             return response()->json(['error' => 'Invoice partial ID is missing.'], 400);
         }
 
@@ -1154,7 +1152,7 @@ class PaymentController extends Controller
                 $existingPayment->payment_url &&
                 $existingPayment->expiry_date &&
                 now()->lt($existingPayment->expiry_date) &&
-                !in_array(strtolower($data['payment_gateway']), ['tap', 'hesabe'])
+                ! in_array(strtolower($data['payment_gateway']), ['tap', 'hesabe'])
             ) {
                 Log::info('Reusing existing payment link.', [
                     'invoice_id' => $invoice->id,
@@ -1196,7 +1194,7 @@ class PaymentController extends Controller
             'status' => 'pending',
             'invoice_id' => $invoice->id,
             'client_id' => $invoice->client_id,
-            'agent_id' => $invoice->agent_id
+            'agent_id' => $invoice->agent_id,
         ]);
 
         InvoicePartial::where('id', $invoicePartialId)->update(['payment_id' => $payment->id]);
@@ -1207,7 +1205,7 @@ class PaymentController extends Controller
 
         if (strtolower($data['payment_gateway']) === 'tap') {
 
-            $tap = new Tap();
+            $tap = new Tap;
 
             $requestTap = new Request([
                 'finalAmount' => $finalAmount,
@@ -1219,7 +1217,7 @@ class PaymentController extends Controller
                 'payment_method_id' => $data['payment_method'],
                 'payment_gateway' => $payment->payment_gateway,
                 'invoice_partial_id' => $data['invoice_partial_id'],
-                'description' => 'Payment for invoice: ' . $invoice->id,
+                'description' => 'Payment for invoice: '.$invoice->id,
             ]);
 
             Log::info('requestTap', ['requestTap' => $requestTap]);
@@ -1234,14 +1232,15 @@ class PaymentController extends Controller
 
             if (isset($response['status']) && $response['status'] === 'FAILED') {
                 $errorMessage = $response['gateway']['response']['message'] ?? $response['response']['message'] ?? 'Payment failed';
+
                 return response()->json(['error' => $errorMessage], 500);
             }
 
             $paymentReference = $response['id'];
             $paymentUrl = $response['transaction']['url'];
-        } else if (strtolower($data['payment_gateway']) === 'myfatoorah') {
+        } elseif (strtolower($data['payment_gateway']) === 'myfatoorah') {
 
-            $myFatoorah = new MyFatoorah();
+            $myFatoorah = new MyFatoorah;
 
             $requestFatoorah = new Request([
                 'final_amount' => $finalAmount,
@@ -1279,8 +1278,8 @@ class PaymentController extends Controller
             $payment->expiry_date = $expiryDate ? \Carbon\Carbon::parse($expiryDate) : now()->addDays(2);
             $payment->status = 'initiate';
             $payment->save();
-        } else if (strtolower($data['payment_gateway']) === 'upayment') {
-            $uPayment = new UPayment();
+        } elseif (strtolower($data['payment_gateway']) === 'upayment') {
+            $uPayment = new UPayment;
 
             $requestUPayment = new Request([
                 'final_amount' => $finalAmount,
@@ -1300,7 +1299,7 @@ class PaymentController extends Controller
 
             $response = $uPayment->makeCharge($requestUPayment);
 
-            if (!$response['status']) {
+            if (! $response['status']) {
                 return response()->json(['error' => $response['message']], 500);
             }
 
@@ -1314,10 +1313,10 @@ class PaymentController extends Controller
 
             $companyId = $payment->agent->branch->company_id;
             $company = Company::find($companyId);
-            $configService = new GatewayConfigService();
+            $configService = new GatewayConfigService;
             $hesabeConfig = $configService->getHesabeConfig();
 
-            if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+            if (! $hesabeConfig['status'] || ! $hesabeConfig['data']) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Hesabe configuration is missing or inactive',
@@ -1330,11 +1329,11 @@ class PaymentController extends Controller
                 ->first();
             Log::info('API key received from database', ['api_key' => $apiKey]);
 
-            if (!$apiKey) {
+            if (! $apiKey) {
                 return response()->json([
-                    'status'  => 'error',
-                    'message' => 'API key of ' . ucwords($data['payment_gateway']) .
-                        ' gateway for company ' . ($company?->name ?? 'Unknown') .
+                    'status' => 'error',
+                    'message' => 'API key of '.ucwords($data['payment_gateway']).
+                        ' gateway for company '.($company?->name ?? 'Unknown').
                         ' does not exist. Contact support team for more detail',
                 ], 422);
             }
@@ -1358,17 +1357,17 @@ class PaymentController extends Controller
             $variable2 = (string) $data['invoice_partial_id'];
 
             $checkoutPayload = [
-                "amount" => $finalAmount,
-                "currency" => 'KWD',
-                "paymentType" => $paymentMethod,
-                "orderReferenceNumber" => $payment->voucher_number,
-                "name" => $customerName,
-                "version" => '2.0',
-                "merchantCode" => $merchantCode,
-                "variable1" => 'invoice',
-                "variable2" => $variable2,
-                "responseUrl" => route('payment.hesabe.response'),
-                "failureUrl" => route('payment.hesabe.failure'),
+                'amount' => $finalAmount,
+                'currency' => 'KWD',
+                'paymentType' => $paymentMethod,
+                'orderReferenceNumber' => $payment->voucher_number,
+                'name' => $customerName,
+                'version' => '2.0',
+                'merchantCode' => $merchantCode,
+                'variable1' => 'invoice',
+                'variable2' => $variable2,
+                'responseUrl' => route('payment.hesabe.response'),
+                'failureUrl' => route('payment.hesabe.failure'),
                 'webhookUrl' => route('payment.hesabe.webhook'),
             ];
 
@@ -1381,29 +1380,30 @@ class PaymentController extends Controller
             Log::info('EncryptedData: ', ['encrypted_data' => $encryptedData]);
 
             $curl = curl_init();
-            curl_setopt_array($curl, array(
+            curl_setopt_array($curl, [
                 CURLOPT_URL => "$baseUrl/checkout",
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 0,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => array('data' => $encryptedData),
-                CURLOPT_HTTPHEADER => array(
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => ['data' => $encryptedData],
+                CURLOPT_HTTPHEADER => [
                     "accessCode: $accessCode",
-                    "Accept: application/json"
-                ),
-            ));
+                    'Accept: application/json',
+                ],
+            ]);
             $response = curl_exec($curl);
             curl_close($curl);
             Log::info('Checkout response: ', ['response', $response]);
 
-            if (!$response) {
+            if (! $response) {
                 Log::error('Hesabe: cURL error ', ['response' => $response]);
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Hesabe checkout failed due to cURL error',
@@ -1411,10 +1411,11 @@ class PaymentController extends Controller
             }
 
             $decryptedData = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
-            Log::info('Hesabe decryption: ' . $decryptedData);
+            Log::info('Hesabe decryption: '.$decryptedData);
 
-            if (!$decryptedData) {
+            if (! $decryptedData) {
                 Log::error('Hesabe: Decryption failed ', ['response' => $decryptedData]);
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Hesabe decryption failed',
@@ -1424,8 +1425,9 @@ class PaymentController extends Controller
             $responseData = json_decode($decryptedData, true);
             Log::info('Response data: ', ['response', $responseData]);
 
-            if (!$responseData) {
+            if (! $responseData) {
                 Log::error('Hesabe: Checkout failed', ['response' => $responseData]);
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Hesabe checkout failed, no response data',
@@ -1433,7 +1435,7 @@ class PaymentController extends Controller
             }
 
             $responseToken = $responseData['response']['data'];
-            $paymentUrl = $baseUrl . '/payment' . '?data=' . $responseToken;
+            $paymentUrl = $baseUrl.'/payment'.'?data='.$responseToken;
             $paymentReference = $payment->voucher_number;
         } elseif (strtolower($data['payment_gateway']) === 'knet') {
 
@@ -1462,6 +1464,7 @@ class PaymentController extends Controller
             $paymentUrl = $response['redirect_url'];
         } else {
             $payment->delete();
+
             return response()->json(['error' => 'Unsupported payment method'], 400);
         }
 
@@ -1482,7 +1485,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'payment_gateway' => $payment->payment_gateway,
                 'payment_reference' => $paymentReference,
-                'payment_url' => $paymentUrl
+                'payment_url' => $paymentUrl,
             ]);
 
             $payment->delete();
@@ -1493,25 +1496,26 @@ class PaymentController extends Controller
 
     public function webhook(Request $request)
     {
-        Log::info('Tap Payment Webhook received: ' . $request->getContent());
+        Log::info('Tap Payment Webhook received: '.$request->getContent());
     }
 
     public function getPaymentStatusMyFatoorah($invoiceId): JsonResponse
     {
-        $configService = new GatewayConfigService();
+        $configService = new GatewayConfigService;
         $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
-        if (!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+        if (! $myfatoorahConfig['status'] || ! $myfatoorahConfig['data']) {
             Log::error('MyFatoorah configuration is missing or inactive');
+
             return response()->json([
                 'status' => 'error',
-                'message' => $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive'
+                'message' => $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive',
             ], 500);
         }
 
         $myfatoorahConfig = $myfatoorahConfig['data'];
 
-        $apiKey  = $myfatoorahConfig['api_key'];
+        $apiKey = $myfatoorahConfig['api_key'];
         $baseUrl = $myfatoorahConfig['base_url'];
 
         Log::info('getPaymentStatusMyFatoorah called with invoice_id: ', [
@@ -1524,25 +1528,25 @@ class PaymentController extends Controller
             'Authorization' => "Bearer $apiKey",
             'Content-Type' => 'application/json',
         ])->post("$baseUrl/getPaymentStatus", [
-            "Key" => $invoiceId,
-            "KeyType" => "InvoiceId"
+            'Key' => $invoiceId,
+            'KeyType' => 'InvoiceId',
         ]);
 
         Log::info('getPaymentStatusMyFatoorah Response', [
-            'response' => $response->json() ?? $response->body()
+            'response' => $response->json() ?? $response->body(),
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $message = $response->json()['Message'] ?? 'Unknown error';
 
             Log::error('Failed to fetch payment status from MyFatoorah', [
                 'invoiceId' => $invoiceId,
-                'response' => $response->body()
+                'response' => $response->body(),
             ]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => $message
+                'message' => $message,
             ], 500);
         }
 
@@ -1551,9 +1555,10 @@ class PaymentController extends Controller
 
         if (empty($data)) {
             Log::error('No data found in MyFatoorah response', ['response' => $responseData]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'No data found in MyFatoorah response'
+                'message' => 'No data found in MyFatoorah response',
             ], 404);
         }
 
@@ -1562,32 +1567,35 @@ class PaymentController extends Controller
 
         $invoiceStatus = $data['InvoiceStatus'] ?? null;
 
-        if (!$invoiceStatus) {
+        if (! $invoiceStatus) {
             Log::error('Invoice status not found in MyFatoorah response', ['response' => $responseData]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Invoice status not found in MyFatoorah response'
+                'message' => 'Invoice status not found in MyFatoorah response',
             ], 404);
         }
 
         $invoiceValue = $data['InvoiceValue'] ?? null;
 
-        if (!$invoiceValue) {
+        if (! $invoiceValue) {
             Log::error('Invoice value not found in MyFatoorah response', ['response' => $responseData]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Invoice value not found in MyFatoorah response'
+                'message' => 'Invoice value not found in MyFatoorah response',
             ], 404);
         }
 
         if ($invoiceStatus === 'Paid') {
             $invoiceId = $response->json()['Data']['InvoiceId'] ?? null;
 
-            if (!$invoiceId) {
+            if (! $invoiceId) {
                 Log::info('Invoice ID not found in MyFatoorah portal');
+
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'No such Invoice ID found in MyFatoorah portal'
+                    'message' => 'No such Invoice ID found in MyFatoorah portal',
                 ], 400);
             }
 
@@ -1595,16 +1603,18 @@ class PaymentController extends Controller
 
             if ($existingInvoiceId) {
                 Log::info('Invoice ID has already been imported');
+
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'A payment with this Invoice ID has already been imported'
+                    'message' => 'A payment with this Invoice ID has already been imported',
                 ], 400);
             }
         } else {
             Log::info('Invoice status is not Paid', ['invoiceStatus' => $invoiceStatus]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Invoice status is not Paid'
+                'message' => 'Invoice status is not Paid',
             ], 400);
         }
 
@@ -1666,12 +1676,12 @@ class PaymentController extends Controller
 
             if ($response['status'] === 'error') {
                 Log::error('Error fetching payment status from MyFatoorah', [
-                    'message' => $response['message']
+                    'message' => $response['message'],
                 ]);
 
                 return response()->json([
                     'status' => 'error',
-                    'message' => $response['message']
+                    'message' => $response['message'],
                 ], 400);
             }
 
@@ -1684,7 +1694,7 @@ class PaymentController extends Controller
                 'amount' => $response['amount'],
                 'client_id' => $clientId,
                 'agent_id' => $agentId,
-                'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
+                'notes' => 'Imported from MyFatoorah Portal with Invoice ID: '.$response['invoice_id'],
                 'source' => 'import',
                 'invoice_reference' => $response['invoice_reference'],
                 'auth_code' => $response['auth_code'],
@@ -1702,7 +1712,7 @@ class PaymentController extends Controller
 
                 return response()->json([
                     'status' => 'error',
-                    'message' => $response['message']
+                    'message' => $response['message'],
                 ], 400);
             }
 
@@ -1715,7 +1725,7 @@ class PaymentController extends Controller
                 'amount' => $response['amount'],
                 'client_id' => $clientId,
                 'agent_id' => $agentId,
-                'notes' => 'Imported from Hesabe Portal with Order Reference Number: ' . $response['payment_reference'],
+                'notes' => 'Imported from Hesabe Portal with Order Reference Number: '.$response['payment_reference'],
                 'source' => 'import',
                 'payment_reference' => $response['data']['TransactionID'] ?? null,
                 'track_id' => $response['data']['TrackID'] ?? null,
@@ -1724,32 +1734,32 @@ class PaymentController extends Controller
         } elseif ($gateway === 'tap') {
 
             try {
-                $response = (new Tap())->getCharge($importChargeId);
+                $response = (new Tap)->getCharge($importChargeId);
             } catch (\Throwable $e) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Failed to fetch TAP charge: ' . $e->getMessage()
+                    'message' => 'Failed to fetch TAP charge: '.$e->getMessage(),
                 ], 400);
             }
 
-            if (!is_array($response) || ($response['status'] ?? '') === 'error') {
+            if (! is_array($response) || ($response['status'] ?? '') === 'error') {
                 return response()->json([
                     'status' => 'error',
-                    'message' => $response['message'] ?? 'TAP charge not found.'
+                    'message' => $response['message'] ?? 'TAP charge not found.',
                 ], 400);
             }
 
             if ($response['status'] !== 'CAPTURED') {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'TAP charge is not captured (status: ' . ($response['status'] ?? 'unknown') . ')'
+                    'message' => 'TAP charge is not captured (status: '.($response['status'] ?? 'unknown').')',
                 ], 400);
             }
 
             if (TapPayment::where('tap_id', $importChargeId)->exists()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'A payment with this Charge ID has already been imported.'
+                    'message' => 'A payment with this Charge ID has already been imported.',
                 ], 400);
             }
 
@@ -1769,7 +1779,7 @@ class PaymentController extends Controller
                 'amount' => $amount,
                 'client_id' => $clientId,
                 'agent_id' => $agentId,
-                'notes' => 'Imported from TAP Portal with Charge ID: ' . $importChargeId,
+                'notes' => 'Imported from TAP Portal with Charge ID: '.$importChargeId,
                 'source' => 'import',
                 'invoice_reference' => $response['reference']['payment'] ?? null,
                 'auth_code' => $response['transaction']['authorization_id'] ?? null,
@@ -1780,8 +1790,8 @@ class PaymentController extends Controller
             ];
         } else {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Unsupported payment gateway selected.'
+                'status' => 'error',
+                'message' => 'Unsupported payment gateway selected.',
             ], 400);
         }
 
@@ -1789,9 +1799,10 @@ class PaymentController extends Controller
 
         if ($response['status'] === 'error') {
             Log::error('Error during payment store link process', ['message' => $response['message']]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => $response['message']
+                'message' => $response['message'],
             ], 400);
         }
 
@@ -1801,7 +1812,7 @@ class PaymentController extends Controller
             'data' => [
                 'client_id' => $clientId,
                 'agent_id' => $agentId,
-            ]
+            ],
         ]);
     }
 
@@ -1824,20 +1835,21 @@ class PaymentController extends Controller
 
             if ($response['status'] === 'error') {
                 Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
+
                 return redirect()->back()->with('error', $response['message']);
             }
 
             return redirect()->route('payment.link.create')->withInput([
-                'invoice_id'          => $response['invoice_id'],
-                'payment_gateway'     => $response['payment_gateway'],
+                'invoice_id' => $response['invoice_id'],
+                'payment_gateway' => $response['payment_gateway'],
                 'payment_method_name' => data_get($response, 'data.InvoiceTransactions.0.PaymentGateway'),
-                'amount'              => $response['amount'],
-                'notes'               => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
-                'source'              => 'import',
-                'invoice_reference'   => $response['invoice_reference'],
-                'auth_code'           => $response['auth_code'],
-                'actual_gateway_fee'  => $response['actual_gateway_fee'] ?? 0,
-                'transaction_date'    => data_get($response, 'data.InvoiceTransactions.0.TransactionDate'),
+                'amount' => $response['amount'],
+                'notes' => 'Imported from MyFatoorah Portal with Invoice ID: '.$response['invoice_id'],
+                'source' => 'import',
+                'invoice_reference' => $response['invoice_reference'],
+                'auth_code' => $response['auth_code'],
+                'actual_gateway_fee' => $response['actual_gateway_fee'] ?? 0,
+                'transaction_date' => data_get($response, 'data.InvoiceTransactions.0.TransactionDate'),
             ]);
         } elseif ($gateway === 'hesabe') {
             $orderRef = $request->input('import_order_reference');
@@ -1850,32 +1862,32 @@ class PaymentController extends Controller
             }
 
             return redirect()->route('payment.link.create')->withInput([
-                'order_reference'       => $response['data']['reference_number'],
-                'payment_gateway'       => 'Hesabe',
-                'payment_method'        => $response['data']['payment_type'],
-                'payment_method_name'   => $response['data']['payment_type'],
-                'amount'                => $response['data']['amount'],
-                'notes'                 => 'Imported from Hesabe Portal with Order Reference Number: ' . $response['data']['reference_number'],
-                'source'                => 'import',
-                'payment_reference'     => $response['data']['TransactionID'],
-                'track_id'              => $response['data']['TrackID'],
-                'transaction_date'      => $response['data']['datetime'],
+                'order_reference' => $response['data']['reference_number'],
+                'payment_gateway' => 'Hesabe',
+                'payment_method' => $response['data']['payment_type'],
+                'payment_method_name' => $response['data']['payment_type'],
+                'amount' => $response['data']['amount'],
+                'notes' => 'Imported from Hesabe Portal with Order Reference Number: '.$response['data']['reference_number'],
+                'source' => 'import',
+                'payment_reference' => $response['data']['TransactionID'],
+                'track_id' => $response['data']['TrackID'],
+                'transaction_date' => $response['data']['datetime'],
             ]);
         } elseif ($gateway === 'tap') {
             $chargeId = $request->input('import_charge_id');
 
             try {
-                $response = (new Tap())->getCharge($chargeId);
+                $response = (new Tap)->getCharge($chargeId);
             } catch (\Throwable $e) {
-                return redirect()->back()->with('error', 'Failed to fetch TAP charge: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to fetch TAP charge: '.$e->getMessage());
             }
 
-            if (!is_array($response) || ($response['status'] ?? '') === 'error') {
+            if (! is_array($response) || ($response['status'] ?? '') === 'error') {
                 return redirect()->back()->with('error', $response['message'] ?? 'TAP charge not found.');
             }
 
             if ($response['status'] !== 'CAPTURED') {
-                return redirect()->back()->with('error', 'TAP charge is not captured (status: ' . ($response['status'] ?? 'unknown') . ')');
+                return redirect()->back()->with('error', 'TAP charge is not captured (status: '.($response['status'] ?? 'unknown').')');
             }
 
             if (TapPayment::where('tap_id', $chargeId)->exists()) {
@@ -1892,16 +1904,16 @@ class PaymentController extends Controller
             session(['tap_import' => $response]);
 
             return redirect()->route('payment.link.create')->withInput([
-                'invoice_id'          => $chargeId,
-                'payment_gateway'     => 'Tap',
+                'invoice_id' => $chargeId,
+                'payment_gateway' => 'Tap',
                 'payment_method_name' => $paymentMethodName,
-                'amount'              => $amount,
-                'notes'               => 'Imported from TAP Portal with Charge ID: ' . $chargeId,
-                'source'              => 'import',
-                'invoice_reference'   => $response['reference']['payment'] ?? null,
-                'auth_code'           => $response['transaction']['authorization_id'] ?? null,
-                'actual_gateway_fee'  => $fee > 0 ? $fee : '',
-                'transaction_date'    => isset($response['transaction']['date']['created'])
+                'amount' => $amount,
+                'notes' => 'Imported from TAP Portal with Charge ID: '.$chargeId,
+                'source' => 'import',
+                'invoice_reference' => $response['reference']['payment'] ?? null,
+                'auth_code' => $response['transaction']['authorization_id'] ?? null,
+                'actual_gateway_fee' => $fee > 0 ? $fee : '',
+                'transaction_date' => isset($response['transaction']['date']['created'])
                     ? Carbon::createFromTimestampMs($response['transaction']['date']['created'])->toDateTimeString()
                     : null,
             ]);
@@ -1926,7 +1938,7 @@ class PaymentController extends Controller
             'auth_code' => 'nullable',
             'paymentReference' => 'nullable',
             'trackId' => 'nullable',
-            'notes' => 'nullable|string|max:255'
+            'notes' => 'nullable|string|max:255',
         ]);
 
         $invoiceId = $request->input('invoice_id');
@@ -1943,7 +1955,7 @@ class PaymentController extends Controller
         $methodName = $request->input('payment_method_name');
         $gatewayType = strtolower($request->input('payment_gateway', ''));
         $paymentMethodId = $methodName
-            ? PaymentMethod::where('type', $gatewayType)->whereHas('paymentMethodGroup', fn($q) => $q->where('name', $methodName))->value('id')
+            ? PaymentMethod::where('type', $gatewayType)->whereHas('paymentMethodGroup', fn ($q) => $q->where('name', $methodName))->value('id')
             : ($request->payment_methods[0] ?? $request->payment_method);
 
         // Resolve gateway fee
@@ -1989,7 +2001,7 @@ class PaymentController extends Controller
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
-                'created_by' => Auth::id()
+                'created_by' => Auth::id(),
             ];
 
             $payment = Payment::create($data);
@@ -2016,7 +2028,7 @@ class PaymentController extends Controller
                     $gatewaySession = json_decode($gatewaySession, true);
                 }
 
-                if (!$gatewaySession) {
+                if (! $gatewaySession) {
                     throw new Exception('Hesabe payload not found in session');
                 }
 
@@ -2038,7 +2050,7 @@ class PaymentController extends Controller
 
                 Log::info('Hesabe Payment record created');
             } elseif ($payment->payment_gateway === 'Tap') {
-                if (!$gatewaySession) {
+                if (! $gatewaySession) {
                     throw new Exception('TAP payload not found in session');
                 }
 
@@ -2068,14 +2080,14 @@ class PaymentController extends Controller
 
             $addCredit = (new ClientController)->addCredit($payment);
             if (isset($addCredit['error'])) {
-                throw new Exception('Failed to add credit: ' . $addCredit['error']);
+                throw new Exception('Failed to add credit: '.$addCredit['error']);
             }
 
             DB::commit();
 
             return [
                 'status' => 'success',
-                'message' => 'Successfully importing payment from payment gateway ' . $payment->payment_gateway . ' for payment ID ' . $payment->id,
+                'message' => 'Successfully importing payment from payment gateway '.$payment->payment_gateway.' for payment ID '.$payment->id,
                 'data' => [
                     'voucher_number' => $payment->voucher_number,
                     'payment_id' => $payment->id,
@@ -2106,7 +2118,7 @@ class PaymentController extends Controller
 
         $companyId = getCompanyId(Auth::user());
 
-        $import = new \App\Imports\PaymentImport();
+        $import = new \App\Imports\PaymentImport;
         \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
 
         $rows = $import->rows;
@@ -2131,30 +2143,34 @@ class PaymentController extends Controller
             if (strtolower(trim($row['type'] ?? '')) === 'refund') {
                 $skippedIds[] = ['row' => $index + 2, 'invoice_id' => $invoiceId, 'reason' => 'refund_skipped'];
                 $skipped++;
+
                 continue;
             }
 
-            if (!$invoiceId) {
+            if (! $invoiceId) {
                 $skippedIds[] = ['row' => $index + 2, 'reason' => 'no_invoice_id'];
                 $skipped++;
+
                 continue;
             }
 
             if (MyFatoorahPayment::where('invoice_id', $invoiceId)->exists()) {
                 $skippedIds[] = ['row' => $index + 2, 'invoice_id' => $invoiceId, 'reason' => 'already_imported'];
                 $skipped++;
+
                 continue;
             }
 
             $agentName = $row['created_by'] ?? null;
-            $agent = $agentName ? Agent::where('name', 'like', '%' . trim($agentName) . '%')
-                ->whereHas('branch', fn($q) => $q->where('company_id', $companyId))
+            $agent = $agentName ? Agent::where('name', 'like', '%'.trim($agentName).'%')
+                ->whereHas('branch', fn ($q) => $q->where('company_id', $companyId))
                 ->first() : null;
 
-            if (!$agent) {
-                $errors[] = "Row " . ($index + 2) . ": Agent '{$agentName}' not found";
+            if (! $agent) {
+                $errors[] = 'Row '.($index + 2).": Agent '{$agentName}' not found";
                 $skippedIds[] = ['row' => $index + 2, 'invoice_id' => $invoiceId, 'reason' => 'agent_not_found', 'agent' => $agentName];
                 $skipped++;
+
                 continue;
             }
 
@@ -2208,10 +2224,12 @@ class PaymentController extends Controller
                 $y = preg_match('/\/\d{4}\b/', $raw) ? 'Y' : 'y';
                 $t = preg_match('/[AP]M/i', $raw) ? 'h:i A' : (str_contains($raw, ':') ? 'H:i' : '');
                 try {
-                    $paidDate = Carbon::createFromFormat("d/m/{$y}" . ($t ? " {$t}" : ''), $raw);
+                    $paidDate = Carbon::createFromFormat("d/m/{$y}".($t ? " {$t}" : ''), $raw);
                 } catch (\Throwable) {
                 }
-                if ($paidDate->year < 100) $paidDate->year += 2000;
+                if ($paidDate->year < 100) {
+                    $paidDate->year += 2000;
+                }
             }
 
             DB::beginTransaction();
@@ -2235,7 +2253,7 @@ class PaymentController extends Controller
                     'completed' => true,
                     'client_id' => null,
                     'agent_id' => $agent->id,
-                    'notes' => 'Imported from ' . $request->input('gateway') . ' file with Invoice ID: ' . $invoiceId,
+                    'notes' => 'Imported from '.$request->input('gateway').' file with Invoice ID: '.$invoiceId,
                     'created_by' => $agent->user_id ?? Auth::id(),
                     'is_imported' => true,
                 ]);
@@ -2245,8 +2263,8 @@ class PaymentController extends Controller
                     $transaction = data_get($apiData, 'InvoiceTransactions.0', []);
 
                     // Build Excel payload as fallback when API data is unavailable (PascalCase keys)
-                    $excelPayload = collect($row)->filter(fn($v) => $v !== null && $v !== '')
-                        ->mapWithKeys(fn($v, $k) => [Str::studly($k) => is_string($v) ? trim($v) : $v])
+                    $excelPayload = collect($row)->filter(fn ($v) => $v !== null && $v !== '')
+                        ->mapWithKeys(fn ($v, $k) => [Str::studly($k) => is_string($v) ? trim($v) : $v])
                         ->toArray();
 
                     MyFatoorahPayment::create([
@@ -2282,7 +2300,7 @@ class PaymentController extends Controller
                     'invoice_id' => $invoiceId,
                     'error' => $e->getMessage(),
                 ]);
-                $errors[] = "Row " . ($index + 2) . ": " . $e->getMessage();
+                $errors[] = 'Row '.($index + 2).': '.$e->getMessage();
                 $skipped++;
             }
         }
@@ -2316,7 +2334,7 @@ class PaymentController extends Controller
             }
 
             if ($lastChargeId) {
-                if (!$grouped->has($lastChargeId)) {
+                if (! $grouped->has($lastChargeId)) {
                     $grouped[$lastChargeId] = collect();
                 }
                 $grouped[$lastChargeId]->push($row);
@@ -2331,23 +2349,26 @@ class PaymentController extends Controller
         foreach ($grouped as $chargeId => $group) {
             $chargeId = trim($chargeId);
 
-            if (!$chargeId) {
+            if (! $chargeId) {
                 $skipped++;
+
                 continue;
             }
 
             if (TapPayment::where('tap_id', $chargeId)->exists()) {
                 $skippedIds[] = ['charge_id' => $chargeId, 'reason' => 'already_imported'];
                 $skipped++;
+
                 continue;
             }
 
-            $saleRow = $group->first(fn($r) => str_starts_with(strtolower(trim($r['description'] ?? '')), 'sale'));
-            $feeRow  = $group->first(fn($r) => str_starts_with(strtolower(trim($r['description'] ?? '')), 'fee'));
+            $saleRow = $group->first(fn ($r) => str_starts_with(strtolower(trim($r['description'] ?? '')), 'sale'));
+            $feeRow = $group->first(fn ($r) => str_starts_with(strtolower(trim($r['description'] ?? '')), 'fee'));
 
-            if (!$saleRow) {
+            if (! $saleRow) {
                 $skippedIds[] = ['charge_id' => $chargeId, 'reason' => 'no_sale_row'];
                 $skipped++;
+
                 continue;
             }
 
@@ -2369,16 +2390,18 @@ class PaymentController extends Controller
                 $y = preg_match('/\/\d{4}\b/', $raw) ? 'Y' : 'y';
                 $t = preg_match('/[AP]M/i', $raw) ? 'h:i A' : (str_contains($raw, ':') ? 'H:i' : '');
                 try {
-                    $paidDate = Carbon::createFromFormat("d/m/{$y}" . ($t ? " {$t}" : ''), $raw);
+                    $paidDate = Carbon::createFromFormat("d/m/{$y}".($t ? " {$t}" : ''), $raw);
                 } catch (\Throwable) {
                 }
-                if ($paidDate->year < 100) $paidDate->year += 2000;
+                if ($paidDate->year < 100) {
+                    $paidDate->year += 2000;
+                }
             }
 
             $excelPayload = $saleRow->toArray();
             $apiData = null;
             try {
-                $response = (new Tap())->getCharge($chargeId);
+                $response = (new Tap)->getCharge($chargeId);
                 if (is_array($response) && ($response['status'] ?? '') !== 'error') {
                     $apiData = $response;
                 }
@@ -2407,14 +2430,14 @@ class PaymentController extends Controller
                     'completed' => true,
                     'client_id' => null,
                     'agent_id' => null,
-                    'notes' => 'Imported from ' . $gatewayName . ' file with Charge ID: ' . $chargeId,
+                    'notes' => 'Imported from '.$gatewayName.' file with Charge ID: '.$chargeId,
                     'created_by' => null,
                     'is_imported' => true,
                 ]);
 
                 // Build Excel payload as fallback
-                $excelPayload = collect($saleRow)->filter(fn($v) => $v !== null && $v !== '')
-                    ->mapWithKeys(fn($v, $k) => [Str::studly($k) => is_string($v) ? trim($v) : $v])
+                $excelPayload = collect($saleRow)->filter(fn ($v) => $v !== null && $v !== '')
+                    ->mapWithKeys(fn ($v, $k) => [Str::studly($k) => is_string($v) ? trim($v) : $v])
                     ->toArray();
 
                 TapPayment::create([
@@ -2446,7 +2469,7 @@ class PaymentController extends Controller
                     'charge_id' => $chargeId,
                     'error' => $e->getMessage(),
                 ]);
-                $errors[] = "Charge {$chargeId}: " . $e->getMessage();
+                $errors[] = "Charge {$chargeId}: ".$e->getMessage();
                 $skipped++;
             }
         }
@@ -2473,7 +2496,7 @@ class PaymentController extends Controller
 
         $agentId = null;
 
-        if (!$payment->agent_id) {
+        if (! $payment->agent_id) {
             $rules['agent_id'] = 'required|integer|exists:agents,id';
             $agentId = $request->agent_id;
         } else {
@@ -2481,17 +2504,17 @@ class PaymentController extends Controller
         }
 
         $clients = Client::where('agent_id', $agentId)
-            ->orWhereHas('agents', fn($q) => $q->where('agent_id', $agentId))
+            ->orWhereHas('agents', fn ($q) => $q->where('agent_id', $agentId))
             ->pluck('id')
             ->toArray();
 
-        $rules['client_id'] .= '|in:' . implode(',', $clients);
+        $rules['client_id'] .= '|in:'.implode(',', $clients);
 
         $request->validate($rules, $messages);
 
         $client = Client::findOrFail($request->client_id);
 
-        if (!$payment->agent_id && $request->agent_id) {
+        if (! $payment->agent_id && $request->agent_id) {
             $agent = Agent::with('branch.company')->findOrFail($request->agent_id);
             $payment->agent_id = $agent->id;
             $payment->created_by = $agent->user_id ?? Auth::id();
@@ -2522,22 +2545,23 @@ class PaymentController extends Controller
         $payment->refresh();
 
         try {
-            $clientController = new ClientController();
+            $clientController = new ClientController;
             $addCredit = $clientController->addCredit($payment);
 
             if (isset($addCredit['error']) || (isset($addCredit['status']) && $addCredit['status'] === 'error')) {
-                return redirect()->back()->with('error', 'Client assigned but failed to create COA: ' . ($addCredit['message'] ?? $addCredit['error']));
+                return redirect()->back()->with('error', 'Client assigned but failed to create COA: '.($addCredit['message'] ?? $addCredit['error']));
             }
         } catch (\Throwable $e) {
             Log::error('Failed to create COA for imported payment', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
-            return redirect()->back()->with('error', 'Client assigned but COA creation failed: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Client assigned but COA creation failed: '.$e->getMessage());
         }
 
         return redirect()->route('payment.link.index')
-            ->with('success', 'Client assigned and journal entries created for ' . $payment->voucher_number);
+            ->with('success', 'Client assigned and journal entries created for '.$payment->voucher_number);
     }
 
     public function paymentLink(Request $request)
@@ -2548,7 +2572,7 @@ class PaymentController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
-                $agents = $agents->whereHas('branch', fn($q) => $q->where('company_id', $companyId))->get();
+                $agents = $agents->whereHas('branch', fn ($q) => $q->where('company_id', $companyId))->get();
             } else {
                 $agents = $agents->get();
             }
@@ -2589,11 +2613,12 @@ class PaymentController extends Controller
             $query->whereHas('invoice', function ($payment) use ($agentsId) {
                 $payment->whereIn('agent_id', $agentsId);
             })->orWhereIn('agent_id', $agentsId)
-                ->orWhere(fn($q) => $q->where('is_imported', true)->whereNull('agent_id'));
+                ->orWhere(fn ($q) => $q->where('is_imported', true)->whereNull('agent_id'));
         });
 
         if ($request->boolean('clear')) {
             session()->forget('filter');
+
             return redirect()->route('payment.link.index', array_filter([
                 'search' => $request->query('search'),
             ]));
@@ -2601,35 +2626,36 @@ class PaymentController extends Controller
 
         $search = $request->query('search');
         $searchQuery = function ($query) use ($search) {
-            $query->where('payment_reference', 'like', '%' . $search . '%')
-                ->orWhere('payment_gateway', 'like', '%' . $search . '%')
-                ->orWhere('voucher_number', 'like', '%' . $search . '%')
-                ->orWhereHas('paymentMethod', fn($q) => $q->where('english_name', 'like', '%' . $search . '%'))
-                ->orWhereHas('agent', fn($q) => $q->where('name', 'like', '%' . $search . '%'))
+            $query->where('payment_reference', 'like', '%'.$search.'%')
+                ->orWhere('payment_gateway', 'like', '%'.$search.'%')
+                ->orWhere('voucher_number', 'like', '%'.$search.'%')
+                ->orWhereHas('paymentMethod', fn ($q) => $q->where('english_name', 'like', '%'.$search.'%'))
+                ->orWhereHas('agent', fn ($q) => $q->where('name', 'like', '%'.$search.'%'))
                 ->orWhereHas(
                     'client',
-                    fn($q) => $q
-                        ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $search . '%'])
-                        ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%' . $search . '%'])
+                    fn ($q) => $q
+                        ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%'.$search.'%'])
+                        ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%'.$search.'%'])
                 )
-                ->orWhereHas('myFatoorahPayment', fn($q) => $q->where('invoice_ref', 'like', '%' . $search . '%'))
-                ->orWhereHas('tapPayment', fn($q) => $q->where('tap_id', 'like', '%' . $search . '%'));
+                ->orWhereHas('myFatoorahPayment', fn ($q) => $q->where('invoice_ref', 'like', '%'.$search.'%'))
+                ->orWhereHas('tapPayment', fn ($q) => $q->where('tap_id', 'like', '%'.$search.'%'));
         };
 
         // --- Tab 1: Regular payments (not imported) ---
         $payments = clone $baseQuery;
-        $payments = $payments->where(fn($q) => $q->where('is_imported', false)->orWhereNull('is_imported'));
+        $payments = $payments->where(fn ($q) => $q->where('is_imported', false)->orWhereNull('is_imported'));
 
         if ($search) {
             $payments->where($searchQuery);
         }
 
         $incoming = collect($request->input('filter', []))
-            ->filter(fn($v) => is_array($v) ? array_filter($v, fn($x) => $x !== '' && $x !== null) : $v !== '' && $v !== null)
+            ->filter(fn ($v) => is_array($v) ? array_filter($v, fn ($x) => $x !== '' && $x !== null) : $v !== '' && $v !== null)
             ->all();
 
         if ($request->has('filter')) {
             session(['filter' => array_replace(session('filter', []), $incoming)]);
+
             return redirect()->route('payment.link.index', array_filter([
                 'search' => $request->query('search'),
             ]));
@@ -2637,14 +2663,14 @@ class PaymentController extends Controller
 
         $filters = session('filter', []);
 
-        $payments->when(data_get($filters, 'client_id'), fn($q, $v) => $q->where('client_id', $v));
-        $payments->when(data_get($filters, 'agent_id'), fn($q, $v) => $q->where('agent_id', $v));
-        $payments->when(data_get($filters, 'payment_method_id'), fn($q, $v) => $q->where('payment_method_id', $v));
-        $payments->when(data_get($filters, 'created_by'), fn($q, $v) => $q->where('created_by', $v));
-        $payments->when(data_get($filters, 'payment_gateway'), fn($q, $v) => $q->whereIn('payment_gateway', (array)$v));
-        $payments->when(data_get($filters, 'status'), fn($q, $v) => $q->whereIn('status', (array)$v));
-        $payments->when(data_get($filters, 'date_from'), fn($q, $v) => $q->whereDate('created_at', '>=', $v));
-        $payments->when(data_get($filters, 'date_to'), fn($q, $v) => $q->whereDate('created_at', '<=', $v));
+        $payments->when(data_get($filters, 'client_id'), fn ($q, $v) => $q->where('client_id', $v));
+        $payments->when(data_get($filters, 'agent_id'), fn ($q, $v) => $q->where('agent_id', $v));
+        $payments->when(data_get($filters, 'payment_method_id'), fn ($q, $v) => $q->where('payment_method_id', $v));
+        $payments->when(data_get($filters, 'created_by'), fn ($q, $v) => $q->where('created_by', $v));
+        $payments->when(data_get($filters, 'payment_gateway'), fn ($q, $v) => $q->whereIn('payment_gateway', (array) $v));
+        $payments->when(data_get($filters, 'status'), fn ($q, $v) => $q->whereIn('status', (array) $v));
+        $payments->when(data_get($filters, 'date_from'), fn ($q, $v) => $q->whereDate('created_at', '>=', $v));
+        $payments->when(data_get($filters, 'date_to'), fn ($q, $v) => $q->whereDate('created_at', '<=', $v));
 
         $payments = $payments->orderBy('id', 'desc')->paginate(15, ['*'], 'page')->appends($request->only(['search', 'ipage']));
 
@@ -2656,8 +2682,8 @@ class PaymentController extends Controller
             $importedPayments->where($searchQuery);
         }
 
-        $importedPayments->when(data_get($filters, 'date_from'), fn($q, $v) => $q->whereDate('payment_date', '>=', $v));
-        $importedPayments->when(data_get($filters, 'date_to'), fn($q, $v) => $q->whereDate('payment_date', '<=', $v));
+        $importedPayments->when(data_get($filters, 'date_from'), fn ($q, $v) => $q->whereDate('payment_date', '>=', $v));
+        $importedPayments->when(data_get($filters, 'date_to'), fn ($q, $v) => $q->whereDate('payment_date', '<=', $v));
 
         $importedPayments = $importedPayments->orderBy('id', 'desc')
             ->paginate(15, ['*'], 'ipage')
@@ -2693,7 +2719,7 @@ class PaymentController extends Controller
         if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
                 $agents = Agent::with('branch.company')
-                    ->whereHas('branch', fn($q) => $q->where('company_id', $companyId))
+                    ->whereHas('branch', fn ($q) => $q->where('company_id', $companyId))
                     ->get();
             } else {
                 $agents = Agent::with('branch.company')->get();
@@ -2713,7 +2739,7 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
 
-        if ($user->role_id == Role::ADMIN && !$companyId) {
+        if ($user->role_id == Role::ADMIN && ! $companyId) {
             $clients = Client::all();
         } else {
             $clients = Client::where(function ($query) use ($agentsId) {
@@ -2810,17 +2836,19 @@ class PaymentController extends Controller
 
         $isAdvancedMode = $request->has('items') && is_array($request->items) && count($request->items) > 0;
 
-        if ($isAdvancedMode && (!$request->items || count($request->items) === 0)) {
+        if ($isAdvancedMode && (! $request->items || count($request->items) === 0)) {
             Log::error('[PAYMENT LINK] No items provided in advanced mode');
+
             return ['status' => 'error', 'message' => 'At least one item is required in Advanced mode'];
         }
 
-        if (!$isAdvancedMode && !$request->amount) {
+        if (! $isAdvancedMode && ! $request->amount) {
             Log::error('[PAYMENT LINK] No amount provided in quick mode');
+
             return ['status' => 'error', 'message' => 'Amount is required in Quick mode'];
         }
 
-        if (!$request->company_id) {
+        if (! $request->company_id) {
             $companyId = null;
             $user = Auth::user();
 
@@ -2842,11 +2870,11 @@ class PaymentController extends Controller
         $client = Client::find($request->client_id);
         $agent = Agent::find($request->agent_id);
 
-        if (!$client) {
+        if (! $client) {
             return ['status' => 'error', 'message' => 'Client cannot be found'];
         }
 
-        if (!$agent) {
+        if (! $agent) {
             return ['status' => 'error', 'message' => 'Agent cannot be found'];
         }
 
@@ -2861,6 +2889,7 @@ class PaymentController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
 
@@ -2886,9 +2915,10 @@ class PaymentController extends Controller
                             'from' => $item['currency'],
                             'to' => 'KWD',
                             'amount' => $item['extended_amount'],
-                            'error' => $conversionResult['message']
+                            'error' => $conversionResult['message'],
                         ]);
-                        return ['status' => 'error', 'message' => 'Currency exchange rate not found for ' . $item['currency'] . ' to KWD'];
+
+                        return ['status' => 'error', 'message' => 'Currency exchange rate not found for '.$item['currency'].' to KWD'];
                     }
 
                     $itemAmountInKWD = $conversionResult['converted_amount'];
@@ -2897,7 +2927,7 @@ class PaymentController extends Controller
                         'from_currency' => $item['currency'],
                         'original_amount' => $item['extended_amount'],
                         'exchange_rate' => $conversionResult['exchange_rate'],
-                        'kwd_amount' => $itemAmountInKWD
+                        'kwd_amount' => $itemAmountInKWD,
                     ]);
                 }
 
@@ -2910,7 +2940,7 @@ class PaymentController extends Controller
 
         $totalAmount = $totalAmountInKWD;
 
-        Log::info('[PAYMENT LINK] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount . ' KWD');
+        Log::info('[PAYMENT LINK] Mode: '.($isAdvancedMode ? 'Advanced' : 'Quick').', Total: '.$totalAmount.' KWD');
 
         $chargeResult = ChargeService::calculate($totalAmount, $companyId, $paymentMethodId, $request->payment_gateway);
         $serviceCharge = $chargeResult['gatewayFee'] ?? 0;
@@ -2935,13 +2965,13 @@ class PaymentController extends Controller
                 'notes' => $request->notes,
                 'terms_conditions' => $request->terms_conditions,
                 'language' => $request->language,
-                'created_by' => Auth::id()
+                'created_by' => Auth::id(),
             ];
 
             $payment = Payment::create($data);
             Log::info('[PAYMENT LINK] Created payment', ['payment_id' => $payment->id, 'voucher' => $voucherNumber]);
 
-            if ($isAdvancedMode && !empty($request->items)) {
+            if ($isAdvancedMode && ! empty($request->items)) {
                 foreach ($request->items as $item) {
                     $payment->paymentItems()->create([
                         'product_name' => $item['product_name'],
@@ -2951,13 +2981,14 @@ class PaymentController extends Controller
                         'currency' => $item['currency'],
                     ]);
                 }
-                Log::info('[PAYMENT LINK] Created ' . count($request->items) . ' payment items for payment ID: ' . $payment->id);
+                Log::info('[PAYMENT LINK] Created '.count($request->items).' payment items for payment ID: '.$payment->id);
             }
         } catch (Exception $e) {
             Log::error('[PAYMENT LINK] Failed to create payment', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
 
@@ -2965,7 +2996,7 @@ class PaymentController extends Controller
             'status' => 'success',
             'message' => 'Payment Link Created',
             'clientEmail' => $companyEmail,
-            'data' => $payment
+            'data' => $payment,
         ];
     }
 
@@ -2984,10 +3015,10 @@ class PaymentController extends Controller
 
         if ($request->payment_gateway == null) {
 
-            Log::info("multi payment method invoke at paymentStoreLink");
+            Log::info('multi payment method invoke at paymentStoreLink');
 
             $request->validate([
-                'payment_methods' => 'required'
+                'payment_methods' => 'required',
             ]);
 
             $response = $this->multiPaymentMethodProcess($request);
@@ -3004,7 +3035,8 @@ class PaymentController extends Controller
         }
 
         $voucherNumber = $response['data']['voucher_number'];
-        $paymentUrl = url('/payment/link/show/' . $voucherNumber);
+        $paymentUrl = url('/payment/link/show/'.$voucherNumber);
+
         // Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
@@ -3013,18 +3045,18 @@ class PaymentController extends Controller
     {
         $payment = Payment::with(['agent.branch.company', 'client', 'paymentItems'])
             ->where('voucher_number', $voucherNumber)
-            ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+            ->whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             return Auth::user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
-        if (!$payment->client) {
+        if (! $payment->client) {
             return Auth::user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
-        if (!$payment->agent) {
+        if (! $payment->agent) {
             return Auth::user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
@@ -3047,7 +3079,7 @@ class PaymentController extends Controller
             }
             if (is_array($payloadData) && isset($payloadData['Data']['InvoiceTransactions'])) {
                 $transactions = $payloadData['Data']['InvoiceTransactions'];
-                if (!empty($transactions)) {
+                if (! empty($transactions)) {
                     $authorizationId = $transactions[0]['AuthorizationId'] ?? null;
                 }
             }
@@ -3058,10 +3090,10 @@ class PaymentController extends Controller
         $gatewayFee = 0;
         $finalAmount = 0;
         $chargeData = [
-            'amount'    => $payment->amount,
+            'amount' => $payment->amount,
             'client_id' => $payment->client_id,
-            'agent_id'  => $payment->agent_id,
-            'currency'  => $payment->currency,
+            'agent_id' => $payment->agent_id,
+            'currency' => $payment->currency,
         ];
 
         if ($payment->status === 'completed' && is_null($payment->service_charge)) {
@@ -3096,12 +3128,12 @@ class PaymentController extends Controller
                 $gatewayFee = $tempChargeResult['gatewayFee'] ?? 0;
                 $finalAmount = $payment->amount;
             }
-        } else if ($payment->status !== 'completed') {
+        } elseif ($payment->status !== 'completed') {
             $chargeData = [
-                'amount'     => $payment->amount,
-                'currency'   => $payment->currency,
-                'client_id'  => $payment->client_id,
-                'agent_id'   => $payment->agent_id,
+                'amount' => $payment->amount,
+                'currency' => $payment->currency,
+                'client_id' => $payment->client_id,
+                'agent_id' => $payment->agent_id,
             ];
 
             $chargeResult = [];
@@ -3210,7 +3242,7 @@ class PaymentController extends Controller
 
         $payment = Payment::with('invoice')->find($request->payment_id);
 
-        if (!$payment) {
+        if (! $payment) {
             if (Auth::user()) {
                 return redirect()->back()->with('error', 'Payment not found.');
             }
@@ -3226,7 +3258,7 @@ class PaymentController extends Controller
         $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
 
         if (strtolower($paymentGateway) === 'tap') {
-            $tap = new Tap();
+            $tap = new Tap;
             $paymentMethod = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
             $chargeResult = ChargeService::calculate($payment->amount, $payment->agent->branch->company_id, $paymentMethod, 'Tap');
@@ -3241,7 +3273,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'payment_gateway' => $paymentGateway,
                 'payment_method_id' => $paymentMethod,
-                'description' => 'Payment for ' . $payment->voucher_number,
+                'description' => 'Payment for '.$payment->voucher_number,
                 'process' => $process,
             ]);
 
@@ -3255,25 +3287,27 @@ class PaymentController extends Controller
             }
 
             $paymentUrl = $response['transaction']['url'];
+
             return redirect($paymentUrl);
-        } else if (strtolower($paymentGateway) === 'myfatoorah') {
-            $configService = new GatewayConfigService();
+        } elseif (strtolower($paymentGateway) === 'myfatoorah') {
+            $configService = new GatewayConfigService;
             $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
-            if (!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+            if (! $myfatoorahConfig['status'] || ! $myfatoorahConfig['data']) {
                 return redirect()->back()->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
             }
 
             $myfatoorahConfig = $myfatoorahConfig['data'];
 
-            $apiKey  = $myfatoorahConfig['api_key'];
+            $apiKey = $myfatoorahConfig['api_key'];
             $baseUrl = $myfatoorahConfig['base_url'];
 
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = $payment->agent->branch->company_id;
 
-            if (!$companyId) {
+            if (! $companyId) {
                 Log::error('Company ID not found for the payment.', ['payment_id' => $payment->id]);
+
                 return Auth::user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
             }
 
@@ -3288,11 +3322,13 @@ class PaymentController extends Controller
                     return redirect($payment->payment_url);
                 }
                 Log::info('Old payment URL expired, reinitiating new payment');
+
                 return $this->paymentLinkReinitiate($payment->payment_reference);
             } elseif (in_array(strtolower($payment->status), ['completed', 'paid'])) {
                 Log::info('Initiate payment ignored: payment already completed', ['payment_id' => $payment->id]);
                 $partialId = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('id');
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
@@ -3319,30 +3355,30 @@ class PaymentController extends Controller
             $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
             $executePayload = [
-                "PaymentMethodId"     => $paymentMethod,
-                "InvoiceValue"        => $finalAmount,
-                "CustomerName"       => $customerName ?? 'Customer',
-                "CustomerEmail"       => $companyEmail,
-                "MobileCountryCode"   => $client->country_code ?? '+965',
-                "CustomerMobile"      => $clientPhone ?? '50000000',
-                "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
-                "CallBackUrl"         => route('payments.callback'),
-                "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
+                'PaymentMethodId' => $paymentMethod,
+                'InvoiceValue' => $finalAmount,
+                'CustomerName' => $customerName ?? 'Customer',
+                'CustomerEmail' => $companyEmail,
+                'MobileCountryCode' => $client->country_code ?? '+965',
+                'CustomerMobile' => $clientPhone ?? '50000000',
+                'DisplayCurrencyIso' => $payment->currency ?? 'KWD',
+                'CallBackUrl' => route('payments.callback'),
+                'ErrorUrl' => route('payments.error', ['payment_id' => $payment->id]),
                 // "ErrorUrl"            => route('payments.error'),
-                "Language"            => "en",
-                "UserDefinedField"   => json_encode([
+                'Language' => 'en',
+                'UserDefinedField' => json_encode([
                     'voucher_number' => $payment->voucher_number,
                     'payment_id' => $payment->id,
                     'payment_gateway' => $paymentGateway,
                     'payment_method' => $paymentMethod,
                     'process' => $process,
                 ]),
-                "InvoiceItems" => [
+                'InvoiceItems' => [
                     [
-                        "ItemName"   => "Voucher " . $payment->voucher_number,
-                        "Quantity"   => 1,
-                        "UnitPrice"  => $finalAmount,
-                    ]
+                        'ItemName' => 'Voucher '.$payment->voucher_number,
+                        'Quantity' => 1,
+                        'UnitPrice' => $finalAmount,
+                    ],
                 ],
             ];
 
@@ -3357,8 +3393,9 @@ class PaymentController extends Controller
                 'Content-Type' => 'application/json',
             ])->post("$baseUrl/ExecutePayment", $executePayload);
 
-            if (!$executeResponse->successful()) {
+            if (! $executeResponse->successful()) {
                 Log::error('MyFatoorah: ExecutePayment failed', ['response' => $executeResponse->body()]);
+
                 return redirect()->back()->with('error', 'ExecutePayment failed.');
             }
 
@@ -3379,6 +3416,7 @@ class PaymentController extends Controller
                     'old_url' => $invoiceUrl,
                     'old_expires_at' => $payment->expiry_date,
                 ]);
+
                 return redirect($invoiceUrl);
             }
 
@@ -3387,10 +3425,10 @@ class PaymentController extends Controller
 
             $companyId = $payment->agent->branch->company_id;
             $company = Company::find($companyId);
-            $configService = new GatewayConfigService();
+            $configService = new GatewayConfigService;
             $hesabeConfig = $configService->getHesabeConfig();
 
-            if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+            if (! $hesabeConfig['status'] || ! $hesabeConfig['data']) {
                 return redirect()->back()->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
             }
 
@@ -3400,8 +3438,8 @@ class PaymentController extends Controller
                 ->first();
             Log::info('API key received from database', ['api_key' => $apiKey]);
 
-            if (!$apiKey) {
-                return redirect()->back()->with('error', 'API key of ' . ucwords($paymentGateway) . ' gateway for company ' . $company->name . ' does not exist. Contact support team for more details');
+            if (! $apiKey) {
+                return redirect()->back()->with('error', 'API key of '.ucwords($paymentGateway).' gateway for company '.$company->name.' does not exist. Contact support team for more details');
             }
 
             /* $apiKey = $hesabeConfig['data']['api_key']; */
@@ -3422,16 +3460,16 @@ class PaymentController extends Controller
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $checkoutPayload = [
-                "amount" => $finalAmount,
-                "currency" => 'KWD',
-                "paymentType" => $paymentMethod,
-                "orderReferenceNumber" => $payment->voucher_number,
-                "name" => $customerName,
-                "version" => '2.0',
-                "merchantCode" => $merchantCode,
-                "variable1" => 'topup',
-                "responseUrl" => route('payment.hesabe.response'),
-                "failureUrl" => route('payment.hesabe.failure'),
+                'amount' => $finalAmount,
+                'currency' => 'KWD',
+                'paymentType' => $paymentMethod,
+                'orderReferenceNumber' => $payment->voucher_number,
+                'name' => $customerName,
+                'version' => '2.0',
+                'merchantCode' => $merchantCode,
+                'variable1' => 'topup',
+                'responseUrl' => route('payment.hesabe.response'),
+                'failureUrl' => route('payment.hesabe.failure'),
                 'webhookUrl' => route('payment.hesabe.webhook'),
             ];
 
@@ -3442,50 +3480,53 @@ class PaymentController extends Controller
             Log::info('EncryptedData: ', ['encrypted_data' => $encryptedData]);
 
             $curl = curl_init();
-            curl_setopt_array($curl, array(
+            curl_setopt_array($curl, [
                 CURLOPT_URL => "$baseUrl/checkout",
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 0,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => array('data' => $encryptedData),
-                CURLOPT_HTTPHEADER => array(
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => ['data' => $encryptedData],
+                CURLOPT_HTTPHEADER => [
                     "accessCode: $accessCode",
-                    "Accept: application/json"
-                ),
-            ));
+                    'Accept: application/json',
+                ],
+            ]);
             $response = curl_exec($curl);
             curl_close($curl);
             Log::info('Checkout response: ', ['response', $response]);
 
-            if (!$response) {
+            if (! $response) {
                 Log::error('Hesabe: cURL error ', ['response' => $response]);
+
                 return redirect()->back()->with('error', 'Hesabe checkout failed due to cURL error');
             }
 
             $decryptedData = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
-            Log::info('Hesabe decryption: ' . $decryptedData);
+            Log::info('Hesabe decryption: '.$decryptedData);
 
-            if (!$decryptedData) {
+            if (! $decryptedData) {
                 Log::error('Hesabe: Decryption failed ', ['response' => $decryptedData]);
+
                 return redirect()->back()->with('error', 'Hesabe decryption failed');
             }
 
             $responseData = json_decode($decryptedData, true);
             Log::info('Response data: ', ['response', $responseData]);
 
-            if (!$responseData) {
+            if (! $responseData) {
                 Log::error('Hesabe: Checkout failed', ['response' => $responseData]);
+
                 return redirect()->back()->with('error', 'Hesabe checkout failed, no response data');
             }
 
             $responseToken = $responseData['response']['data'];
-            $paymentUrl = $baseUrl . '/payment' . '?data=' . $responseToken;
+            $paymentUrl = $baseUrl.'/payment'.'?data='.$responseToken;
 
             if ($paymentUrl) {
                 $payment->payment_url = $paymentUrl;
@@ -3504,6 +3545,7 @@ class PaymentController extends Controller
                     'response_token' => $responseData['response']['data'],
                     'payment_url' => $paymentUrl,
                 ]);
+
                 return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
             }
         } elseif (strtolower($paymentGateway) === 'upayment') {
@@ -3518,9 +3560,9 @@ class PaymentController extends Controller
                     return redirect($payment->payment_url);
                 }
                 Log::info('Old payment URL expired, reinitiating new payment');
+
                 return $this->paymentLinkReinitiate($payment->payment_reference);
             }
-
 
             $payment->load(['agent.branch.company', 'client']);
             $company = $payment->agent?->branch?->company;
@@ -3533,28 +3575,29 @@ class PaymentController extends Controller
             }
 
             $chargeResult = ChargeService::calculate($payment->amount, $company->id, $payment->payment_method_id, 'UPayment');
-            $finalAmount  = $chargeResult['finalAmount'] ?? $payment->amount;
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $requestUPayment = new Request([
-                'final_amount'      => $finalAmount,
-                'client_id'         => $client->id,
-                'client_name'       => $client->full_name,
-                'client_email'      => $client->email ?? $company?->email,
-                'client_phone'      => $clientPhone ?? '50000000',
-                'company_email'     => $company?->email,
-                'payment_id'        => $payment->id,
-                'payment_number'    => $payment->voucher_number,
+                'final_amount' => $finalAmount,
+                'client_id' => $client->id,
+                'client_name' => $client->full_name,
+                'client_email' => $client->email ?? $company?->email,
+                'client_phone' => $clientPhone ?? '50000000',
+                'company_email' => $company?->email,
+                'payment_id' => $payment->id,
+                'payment_number' => $payment->voucher_number,
                 'payment_method_id' => $payment->payment_method_id,
-                'invoice_id'        => optional($payment->invoice)->id,
-                'invoice_number'    => optional($payment->invoice)->invoice_number,
-                'currency'          => $payment->currency ?? 'KWD',
+                'invoice_id' => optional($payment->invoice)->id,
+                'invoice_number' => optional($payment->invoice)->invoice_number,
+                'currency' => $payment->currency ?? 'KWD',
             ]);
 
-            $uPayment = new UPayment();
+            $uPayment = new UPayment;
             $response = $uPayment->makeCharge($requestUPayment);
 
-            if (!is_array($response)) {
+            if (! is_array($response)) {
                 Log::error('UPayments: Unexpected response', ['raw' => $response]);
+
                 return redirect()->back()->with('error', 'UPayments: unexpected response');
             }
 
@@ -3574,15 +3617,16 @@ class PaymentController extends Controller
                 $payment->save();
 
                 Log::info('UPayments payment initiated', [
-                    'payment_id'  => $payment->id,
-                    'track_id'    => $paymentReference,
+                    'payment_id' => $payment->id,
+                    'track_id' => $paymentReference,
                     'payment_url' => $paymentUrl,
-                    'expires_at'  => $payment->expiry_date,
+                    'expires_at' => $payment->expiry_date,
                 ]);
 
                 return redirect($paymentUrl);
             }
             Log::error('UPayments: Missing link or trackId', ['response' => $response]);
+
             return redirect()->back()->with('error', 'UPayments response missing link or trackId.');
         }
 
@@ -3592,22 +3636,22 @@ class PaymentController extends Controller
     public function paymentLinkReinitiate($paymentReference)
     {
         $payment = Payment::with(['client', 'agent.branch.company', 'paymentMethod'])->where('payment_reference', $paymentReference)->first();
-        if (!$payment || $payment->status !== 'initiate') {
+        if (! $payment || $payment->status !== 'initiate') {
             return redirect()->back()->with('error', 'Invalid or already processed payment.');
         }
 
         Log::info('Reinitiating payment link', ['payment_reference' => $paymentReference]);
 
-        $configService = new GatewayConfigService();
+        $configService = new GatewayConfigService;
         $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
-        if (!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+        if (! $myfatoorahConfig['status'] || ! $myfatoorahConfig['data']) {
             return redirect()->back()->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
         }
 
         $gateway = strtolower($payment->payment_gateway);
         $company = $payment->agent?->branch?->company;
-        $client  = $payment->client;
+        $client = $payment->client;
 
         $clientPhone = $client->phone ?? '50000000';
         if (str_starts_with($clientPhone, '+')) {
@@ -3629,19 +3673,20 @@ class PaymentController extends Controller
 
     protected function reinitiateMyFatoorah($payment, $company, $client, $clientPhone)
     {
-        $configService = new GatewayConfigService();
+        $configService = new GatewayConfigService;
         $config = $configService->getMyFatoorahConfig();
 
         $companyId = $payment->agent->branch->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             Log::error('reinitiateMyFatoorah: Company ID not found for the payment.', ['payment_id' => $payment->id]);
+
             return Auth::user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
         }
 
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
-        if (!$config['status'] || !$config['data']) {
+        if (! $config['status'] || ! $config['data']) {
             return redirect()->back()->with('error', $config['message'] ?? 'MyFatoorah config missing or inactive.');
         }
 
@@ -3653,39 +3698,40 @@ class PaymentController extends Controller
         $finalAmount = $chargeResult['finalAmount'];
 
         $executePayload = [
-            "PaymentMethodId"     => $payment->paymentMethod?->myfatoorah_id,
-            "InvoiceValue"        => $finalAmount,
-            "CustomerName"        => $client->full_name,
-            "CustomerEmail"       => $companyEmail,
-            "MobileCountryCode"   => $client->country_code ?? '+965',
-            "CustomerMobile"      => $clientPhone,
-            "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
-            "CallBackUrl"         => route('payments.callback'),
-            "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
-            "Language"            => "en",
-            "UserDefinedField"    => json_encode([
-                'voucher_number'   => $payment->voucher_number,
-                'payment_id'       => $payment->id,
-                'payment_gateway'  => $payment->payment_gateway,
-                'payment_method'   => $payment->paymentMethod?->myfatoorah_id,
-                'process'          => $payment->invoice ? 'invoice' : 'topup',
+            'PaymentMethodId' => $payment->paymentMethod?->myfatoorah_id,
+            'InvoiceValue' => $finalAmount,
+            'CustomerName' => $client->full_name,
+            'CustomerEmail' => $companyEmail,
+            'MobileCountryCode' => $client->country_code ?? '+965',
+            'CustomerMobile' => $clientPhone,
+            'DisplayCurrencyIso' => $payment->currency ?? 'KWD',
+            'CallBackUrl' => route('payments.callback'),
+            'ErrorUrl' => route('payments.error', ['payment_id' => $payment->id]),
+            'Language' => 'en',
+            'UserDefinedField' => json_encode([
+                'voucher_number' => $payment->voucher_number,
+                'payment_id' => $payment->id,
+                'payment_gateway' => $payment->payment_gateway,
+                'payment_method' => $payment->paymentMethod?->myfatoorah_id,
+                'process' => $payment->invoice ? 'invoice' : 'topup',
             ]),
-            "InvoiceItems" => [
+            'InvoiceItems' => [
                 [
-                    "ItemName"   => "Voucher " . $payment->voucher_number,
-                    "Quantity"   => 1,
-                    "UnitPrice"  => $finalAmount,
-                ]
+                    'ItemName' => 'Voucher '.$payment->voucher_number,
+                    'Quantity' => 1,
+                    'UnitPrice' => $finalAmount,
+                ],
             ],
         ];
 
         $executeResponse = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",
-            'Content-Type'  => 'application/json',
+            'Content-Type' => 'application/json',
         ])->post("$baseUrl/ExecutePayment", $executePayload);
 
-        if (!$executeResponse->successful()) {
+        if (! $executeResponse->successful()) {
             Log::error('MyFatoorah reinitiate failed', ['response' => $executeResponse->body()]);
+
             return Auth::user() ? redirect()->route('invoices.index')->with('error', 'Failed to reinitiate MyFatoorah payment.') : abort(500);
         }
 
@@ -3710,25 +3756,26 @@ class PaymentController extends Controller
         $finalAmount = $charge['finalAmount'] ?? $payment->amount;
 
         $request = new Request([
-            'final_amount'      => $finalAmount,
-            'client_id'         => $client->id,
-            'client_name'       => $client->full_name,
-            'client_email'      => $client->email ?? $company?->email,
-            'client_phone'      => $clientPhone,
-            'company_email'     => $company?->email,
-            'payment_id'        => $payment->id,
-            'payment_number'    => $payment->voucher_number,
+            'final_amount' => $finalAmount,
+            'client_id' => $client->id,
+            'client_name' => $client->full_name,
+            'client_email' => $client->email ?? $company?->email,
+            'client_phone' => $clientPhone,
+            'company_email' => $company?->email,
+            'payment_id' => $payment->id,
+            'payment_number' => $payment->voucher_number,
             'payment_method_id' => $payment->payment_method_id,
-            'invoice_id'        => optional($payment->invoice)->id,
-            'invoice_number'    => optional($payment->invoice)->invoice_number,
-            'currency'          => $payment->currency ?? 'KWD',
+            'invoice_id' => optional($payment->invoice)->id,
+            'invoice_number' => optional($payment->invoice)->invoice_number,
+            'currency' => $payment->currency ?? 'KWD',
         ]);
 
-        $upayment = new UPayment();
+        $upayment = new UPayment;
         $response = $upayment->makeCharge($request);
 
-        if (!is_array($response)) {
+        if (! is_array($response)) {
             Log::error('UPayment reinitiate unexpected response', ['raw' => $response]);
+
             return redirect()->back()->with('error', 'UPayment: unexpected response.');
         }
 
@@ -3747,12 +3794,13 @@ class PaymentController extends Controller
         }
 
         Log::error('UPayment reinitiate missing link/trackId', ['response' => $response]);
+
         return redirect()->back()->with('error', 'UPayment reinitiate failed: Missing link or trackId.');
     }
 
     public function paymentLinkWebhook(Request $request)
     {
-        Log::info('Tap Payment Webhook received: ' . $request->getContent());
+        Log::info('Tap Payment Webhook received: '.$request->getContent());
     }
 
     public function handleMyFatoorahCallback(Request $request)
@@ -3762,30 +3810,31 @@ class PaymentController extends Controller
 
             $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
 
-            if (!$paymentId) {
+            if (! $paymentId) {
                 return redirect()->route('payment.failed')->with('error', 'Invalid payment callback data.');
             }
 
-            $eventKey = 'mf:callback:' . $paymentId;
+            $eventKey = 'mf:callback:'.$paymentId;
             $lock = Cache::lock($eventKey, 40);
-            if (!$lock->get()) {
+            if (! $lock->get()) {
                 Log::warning('Duplicate MyFatoorah callback suppressed by lock', ['key' => $eventKey]);
+
                 return response('OK', 200);
             }
 
             try {
-                $myfatoorah = new MyFatoorah();
+                $myfatoorah = new MyFatoorah;
 
                 $statusResponse = $myfatoorah->getPaymentStatus(type: 'payment', key: $paymentId);
 
-                if (!$statusResponse['success']) {
+                if (! $statusResponse['success']) {
                     return redirect()->route('payment.failed')->with('error', 'Failed to verify payment status.');
                 }
 
                 $invoiceStatus = strtolower($statusResponse['data']['InvoiceStatus'] ?? '');
                 $invoiceId = $statusResponse['data']['InvoiceId'] ?? null;
 
-                $userDefinedField   = !empty($statusResponse['data']['UserDefinedField']) ? json_decode($statusResponse['data']['UserDefinedField'], true) : [];
+                $userDefinedField = ! empty($statusResponse['data']['UserDefinedField']) ? json_decode($statusResponse['data']['UserDefinedField'], true) : [];
 
                 Log::info('[MYFATOORAH CALLBACK] UserDefinedField:', ['user_defined_field' => $userDefinedField]);
                 $voucherNumber = $userDefinedField['voucher_number'] ?? null;
@@ -3794,17 +3843,17 @@ class PaymentController extends Controller
 
                 $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
 
-                if (!$invoiceId || $invoiceStatus !== 'paid') {
+                if (! $invoiceId || $invoiceStatus !== 'paid') {
                     if ($payment) {
                         $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
                         $this->storeNotification([
                             'user_id' => $receiptInfo['agent']->user_id,
-                            'title'   => $receiptInfo['title'],
+                            'title' => $receiptInfo['title'],
                             'message' => $receiptInfo['message'],
                         ]);
 
-                        (new ResayilController())->message(
+                        (new ResayilController)->message(
                             $receiptInfo['agent']->phone_number,
                             $receiptInfo['agent']->country_code,
                             $receiptInfo['message']
@@ -3816,8 +3865,9 @@ class PaymentController extends Controller
                     return redirect()->route('payment.failed')->with('error', 'Payment was not completed.');
                 }
 
-                if (!$payment) {
+                if (! $payment) {
                     Log::error('Payment not found', ['invoiceId' => $invoiceId]);
+
                     return redirect()->route('payment.failed')->with('error', 'Payment record not found.');
                 }
 
@@ -3836,6 +3886,7 @@ class PaymentController extends Controller
                     }
 
                     Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
+
                     return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
                 }
 
@@ -3845,16 +3896,19 @@ class PaymentController extends Controller
                     Log::error('MyFatoorah callback processing failed', [
                         'payment_id' => $payment->id,
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
-                    return redirect()->to($receiptInfo['url'])->with('error', 'Error: ' . $e->getMessage());
+
+                    return redirect()->to($receiptInfo['url'])->with('error', 'Error: '.$e->getMessage());
                 }
+
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
             } finally {
                 optional($lock)->release();
             }
         } catch (Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
+
             return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
         }
     }
@@ -3882,7 +3936,7 @@ class PaymentController extends Controller
                 'entity_type' => 'company',
                 'transaction_type' => 'credit',
                 'amount' => $invoice->amount,
-                'description' => 'MyFatoorah payment failed: ' . $invoice->invoice_number,
+                'description' => 'MyFatoorah payment failed: '.$invoice->invoice_number,
                 'invoice_id' => $invoice->id,
                 'payment_id' => $invoice->payment->id,
                 'payment_reference' => $invoice->payment->payment_reference,
@@ -3905,7 +3959,7 @@ class PaymentController extends Controller
                 'entity_type' => 'company',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
-                'description' => 'Topup failed by ' . $payment->client->full_name,
+                'description' => 'Topup failed by '.$payment->client->full_name,
                 'payment_id' => $payment->id,
                 'invoice_id' => $payment->invoice_id,
                 'payment_reference' => $payment->payment_reference,
@@ -3920,17 +3974,17 @@ class PaymentController extends Controller
 
         Log::info('[MYFATOORAH] prepare notification for failed payment', [
             'user_id' => $receiptInfo['agent']->user_id,
-            'title'   => $receiptInfo['title'],
+            'title' => $receiptInfo['title'],
             'message' => $receiptInfo['message'],
         ]);
 
         $this->storeNotification([
             'user_id' => $receiptInfo['agent']->user_id,
-            'title'   => $receiptInfo['title'],
+            'title' => $receiptInfo['title'],
             'message' => $receiptInfo['message'],
         ]);
 
-        (new ResayilController())->message(
+        (new ResayilController)->message(
             $receiptInfo['agent']->phone_number,
             $receiptInfo['agent']->country_code,
             $receiptInfo['message']
@@ -3945,36 +3999,40 @@ class PaymentController extends Controller
             Log::info('Tap callback received', ['request' => $request->all()]);
 
             $tapId = $request->query('tap_id') ?? $request->input('tap_id');
-            if (!$tapId) {
+            if (! $tapId) {
                 Log::error('Tap callback missing tap_id', ['request' => $request->all()]);
+
                 return redirect()->route('payment.failed')->with('error', 'Invalid callback data.');
             }
 
-            $tap = new Tap();
+            $tap = new Tap;
             $response = $tap->getCharge($tapId);
 
             if (isset($response['errors'])) {
                 Log::error('Tap charge error', ['errors' => $response['errors']]);
+
                 return redirect()->route('payment.failed')->with('error', $response['errors'][0]['description'] ?? 'Payment failed.');
             }
 
             $paymentId = $response['metadata']['payment_id'] ?? null;
             $process = $response['metadata']['process'] ?? null;
-            if (!$paymentId) {
+            if (! $paymentId) {
                 Log::error('Missing payment_id in Tap metadata', ['response' => $response]);
+
                 return redirect()->route('payment.failed')->with('error', 'Payment reference missing.');
             }
 
             $payment = Payment::with(['agent.branch.company', 'client', 'invoice'])->find($paymentId);
-            if (!$payment) {
+            if (! $payment) {
                 Log::error('Payment not found for Tap callback', ['payment_id' => $paymentId]);
+
                 return redirect()->route('payment.failed')->with('error', 'Payment not found.');
             }
 
             $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $tapId)->first();
 
             if ($paymentTransaction) {
-                Log::info("[TAP CALLBACK] Update payment transaction status", [
+                Log::info('[TAP CALLBACK] Update payment transaction status', [
                     'payment_transaction_id' => $paymentTransaction->id,
                     'status' => $response['status'],
                 ]);
@@ -4015,7 +4073,7 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $payment->amount,
-                    'description' => 'Tap payment failed for ' . $payment->client->full_name,
+                    'description' => 'Tap payment failed for '.$payment->client->full_name,
                     'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
                     'payment_reference' => $response['id'],
@@ -4032,11 +4090,11 @@ class PaymentController extends Controller
 
                 $this->storeNotification([
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
                 ]);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
@@ -4055,20 +4113,20 @@ class PaymentController extends Controller
                 $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
 
                 TapPayment::create([
-                    'payment_id'       => $payment->id,
-                    'tap_id'           => $response['id'],
+                    'payment_id' => $payment->id,
+                    'tap_id' => $response['id'],
                     'authorization_id' => $response['transaction']['authorization_id'] ?? null,
-                    'timezone'         => $response['transaction']['timezone'] ?? null,
-                    'expiry_period'    => $response['transaction']['expiry']['period'] ?? null,
-                    'expiry_type'      => $response['transaction']['expiry']['type'] ?? null,
-                    'amount'           => $finalPaidAmount,
-                    'currency'         => $response['currency'] ?? 'KWD',
-                    'date_created'     => $dateCreated,
-                    'date_completed'   => $dateCompleted,
+                    'timezone' => $response['transaction']['timezone'] ?? null,
+                    'expiry_period' => $response['transaction']['expiry']['period'] ?? null,
+                    'expiry_type' => $response['transaction']['expiry']['type'] ?? null,
+                    'amount' => $finalPaidAmount,
+                    'currency' => $response['currency'] ?? 'KWD',
+                    'date_created' => $dateCreated,
+                    'date_completed' => $dateCompleted,
                     'date_transaction' => $dateTransaction,
-                    'receipt_id'       => $response['receipt']['id'] ?? null,
-                    'receipt_email'    => $response['receipt']['email'] ?? null,
-                    'receipt_sms'      => $response['receipt']['sms'] ?? null,
+                    'receipt_id' => $response['receipt']['id'] ?? null,
+                    'receipt_email' => $response['receipt']['email'] ?? null,
+                    'receipt_sms' => $response['receipt']['sms'] ?? null,
                     'customer_reference' => $payment->voucher_number,
                     'payload' => $response,
                 ]);
@@ -4085,7 +4143,7 @@ class PaymentController extends Controller
                     $addCreditResponse = $clientController->addCredit($payment);
 
                     if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
-                        throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
+                        throw new \RuntimeException('Failed to add credit: '.($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
                     Log::info('Credit added successfully via addCredit()', [
@@ -4093,11 +4151,10 @@ class PaymentController extends Controller
                         'response' => $addCreditResponse,
                     ]);
 
-
                     if ($paymentTransaction) {
                         $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
 
-                        Log::info('[MYFATOORAH] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                        Log::info('[MYFATOORAH] Updating payment transaction ID: '.$paymentTransaction->id, [
                             'payment_id' => $payment->id,
                             'transaction_id' => $transactionId,
                         ]);
@@ -4110,11 +4167,11 @@ class PaymentController extends Controller
                         payment: $payment,
                         finalPaidAmount: $finalPaidAmount,
                         gatewayName: 'Tap',
-                        partialIds: !empty($partialId) ? [$partialId] : null,
+                        partialIds: ! empty($partialId) ? [$partialId] : null,
                         paymentReference: $response['id']
                     );
 
-                    if (!$coaResult['success']) {
+                    if (! $coaResult['success']) {
                         throw new \RuntimeException($coaResult['message']);
                     }
 
@@ -4138,7 +4195,7 @@ class PaymentController extends Controller
 
             $storeNotificationData = [
                 'user_id' => $receiptInfo['agent']->user_id,
-                'title'   => $receiptInfo['title'],
+                'title' => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
             ];
 
@@ -4152,7 +4209,7 @@ class PaymentController extends Controller
 
             $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-            (new ResayilController())->message(
+            (new ResayilController)->message(
                 $receiptInfo['agent']->phone_number,
                 $receiptInfo['agent']->country_code,
                 $receiptInfo['message']
@@ -4169,15 +4226,17 @@ class PaymentController extends Controller
                             $response = $wsHotelController->hotelBookingDetails($payment);
                             $apiResponse = $response->getData(true);
 
-                            if (!empty($apiResponse['success']) && $apiResponse['success'] === true) {
+                            if (! empty($apiResponse['success']) && $apiResponse['success'] === true) {
                                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful and booking confirmed!');
                             }
 
                             Log::warning('Hotel booking API responded with failure', ['response' => $apiResponse]);
+
                             return redirect()->route('payment.failed')->with('error', $apiResponse['message'] ?? 'Booking API failed.');
                         } catch (Throwable $e) {
                             Log::error('Hotel booking API crashed', ['error' => $e->getMessage()]);
-                            return redirect()->route('payment.failed')->with('error', 'Booking process failed: ' . $e->getMessage());
+
+                            return redirect()->route('payment.failed')->with('error', 'Booking process failed: '.$e->getMessage());
                         }
                     }
                 }
@@ -4186,6 +4245,7 @@ class PaymentController extends Controller
             return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
         } catch (Throwable $e) {
             Log::error('Tap callback exception', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
         }
     }
@@ -4202,8 +4262,9 @@ class PaymentController extends Controller
             // Get encrypted response data
             $encryptedData = $request->input('trandata');
 
-            if (!$encryptedData) {
+            if (! $encryptedData) {
                 Log::error('KNET Response: Missing encrypted data');
+
                 return redirect()->route('payment.failed')->with('error', 'Invalid response data.');
             }
 
@@ -4212,16 +4273,18 @@ class PaymentController extends Controller
             // Solution: Get company_id from a temporary query parameter or use a default/first attempt
             $tempCompanyId = $request->query('company_id');
 
-            if (!$tempCompanyId) {
+            if (! $tempCompanyId) {
                 Log::error('KNET Response: Missing company_id parameter');
+
                 return redirect()->route('payment.failed')->with('error', 'Missing company identifier.');
             }
 
             $knet = new \App\Support\PaymentGateway\Knet($tempCompanyId);
             $responseData = $knet->decryptResponse($encryptedData);
 
-            if (!$responseData) {
+            if (! $responseData) {
                 Log::error('KNET Response: Decryption failed');
+
                 return redirect()->route('payment.failed')->with('error', 'Failed to process response.');
             }
 
@@ -4237,14 +4300,16 @@ class PaymentController extends Controller
             // Determine process type (invoice or topup)
             $process = $invoiceNumber ? 'invoice' : 'topup';
 
-            if (!$paymentId) {
+            if (! $paymentId) {
                 Log::error('KNET Response: Missing payment_id in UDF', ['response' => $responseData]);
+
                 return redirect()->route('payment.failed')->with('error', 'Payment reference missing.');
             }
 
             $payment = Payment::with(['agent.branch.company', 'client', 'invoice'])->find($paymentId);
-            if (!$payment) {
+            if (! $payment) {
                 Log::error('KNET Response: Payment not found', ['payment_id' => $paymentId]);
+
                 return redirect()->route('payment.failed')->with('error', 'Payment not found.');
             }
 
@@ -4263,6 +4328,7 @@ class PaymentController extends Controller
                 }
 
                 Log::info('KNET callback ignored: already completed', ['payment_id' => $paymentId]);
+
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
@@ -4283,7 +4349,7 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $payment->amount,
-                    'description' => 'KNET payment failed for ' . $payment->client->full_name,
+                    'description' => 'KNET payment failed for '.$payment->client->full_name,
                     'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
                     'payment_reference' => $responseData['paymentid'] ?? null,
@@ -4295,7 +4361,7 @@ class PaymentController extends Controller
 
                 $storeNotificationData = [
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
                 ];
 
@@ -4309,14 +4375,15 @@ class PaymentController extends Controller
 
                 $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
                 );
 
                 $errorMessage = $responseData['ErrorText'] ?? 'Payment failed or cancelled.';
-                return redirect()->to($receiptInfo['url'])->with('error', $errorMessage . ' Please try again or contact support.');
+
+                return redirect()->to($receiptInfo['url'])->with('error', $errorMessage.' Please try again or contact support.');
             }
 
             // Process successful payment
@@ -4351,12 +4418,12 @@ class PaymentController extends Controller
                     $addCreditResponse = $clientController->addCredit($payment);
 
                     if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
-                        throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
+                        throw new \RuntimeException('Failed to add credit: '.($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
                     if ($paymentTransaction && $transactionId) {
-                        Log::info('[KNET] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                        Log::info('[KNET] Updating payment transaction ID: '.$paymentTransaction->id, [
                             'payment_id' => $payment->id,
                             'transaction_id' => $transactionId,
                         ]);
@@ -4378,11 +4445,11 @@ class PaymentController extends Controller
                     // Handle invoice payment
                     $invoice = $payment->invoice;
 
-                    if (!$invoice) {
+                    if (! $invoice) {
                         throw new \RuntimeException('Invoice not found for payment.');
                     }
 
-                    if (!empty($partialId)) {
+                    if (! empty($partialId)) {
                         $partial = InvoicePartial::where('invoice_id', $invoice->id)->where('id', $partialId)->first();
 
                         if ($partial) {
@@ -4394,7 +4461,7 @@ class PaymentController extends Controller
 
                         Log::info('Updated KNET invoice partials to paid', [
                             'invoice_id' => $invoice->id,
-                            'partial_id' => $partialId
+                            'partial_id' => $partialId,
                         ]);
                     }
 
@@ -4415,11 +4482,11 @@ class PaymentController extends Controller
                         payment: $payment,
                         finalPaidAmount: $finalPaidAmount,
                         gatewayName: 'KNET',
-                        partialIds: !empty($partialId) ? [$partialId] : null,
+                        partialIds: ! empty($partialId) ? [$partialId] : null,
                         paymentReference: $responseData['paymentid'] ?? $responseData['tranid'] ?? null
                     );
 
-                    if (!$coaResult['success']) {
+                    if (! $coaResult['success']) {
                         throw new \RuntimeException($coaResult['message']);
                     }
                 }
@@ -4440,7 +4507,7 @@ class PaymentController extends Controller
 
             $storeNotificationData = [
                 'user_id' => $receiptInfo['agent']->user_id,
-                'title'   => $receiptInfo['title'],
+                'title' => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
             ];
 
@@ -4454,7 +4521,7 @@ class PaymentController extends Controller
 
             $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-            (new ResayilController())->message(
+            (new ResayilController)->message(
                 $receiptInfo['agent']->phone_number,
                 $receiptInfo['agent']->country_code,
                 $receiptInfo['message']
@@ -4466,8 +4533,9 @@ class PaymentController extends Controller
         } catch (\Throwable $e) {
             Log::error('KNET Response exception', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
         }
     }
@@ -4516,11 +4584,11 @@ class PaymentController extends Controller
 
                             $this->storeNotification([
                                 'user_id' => $receiptInfo['agent']->user_id,
-                                'title'   => $receiptInfo['title'],
+                                'title' => $receiptInfo['title'],
                                 'message' => $receiptInfo['message'],
                             ]);
 
-                            (new ResayilController())->message(
+                            (new ResayilController)->message(
                                 $receiptInfo['agent']->phone_number,
                                 $receiptInfo['agent']->country_code,
                                 $receiptInfo['message']
@@ -4540,8 +4608,9 @@ class PaymentController extends Controller
         } catch (\Throwable $e) {
             Log::error('KNET Error handler exception', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()->route('payment.failed')
                 ->with('error', 'Something went wrong. Please contact support.');
         }
@@ -4549,36 +4618,46 @@ class PaymentController extends Controller
 
     public function paymentUpdateLink($paymentId, Request $request)
     {
-        Log::info("[PAYMENT LINK] Update request received", [
+        Log::info('[PAYMENT LINK] Update request received', [
             'payment_id' => $paymentId,
             'request_data' => $request->all(),
         ]);
 
         $payment = Payment::find($paymentId);
 
-        if (!$payment) {
+        if (! $payment) {
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
         if ($clientId = $request->client_id) {
             $client = Client::find($clientId);
-            if (!$client) {
+            if (! $client) {
                 return redirect()->back()->with('error', 'Client not found.');
             }
 
             $payment->client_id = $clientId;
         } else {
             $client = $payment->client;
-            if (!$client) {
+            if (! $client) {
                 return redirect()->back()->with('error', 'Client not found.');
             }
         }
 
-        if ($request->agent_id) $payment->agent_id = $request->agent_id;
-        if ($request->dial_code) $client->country_code = $request->dial_code;
-        if ($request->phone) $client->phone = $request->phone;
-        if ($request->amount) $payment->amount = $request->amount;
-        if ($request->language) $payment->language = $request->language;
+        if ($request->agent_id) {
+            $payment->agent_id = $request->agent_id;
+        }
+        if ($request->dial_code) {
+            $client->country_code = $request->dial_code;
+        }
+        if ($request->phone) {
+            $client->phone = $request->phone;
+        }
+        if ($request->amount) {
+            $payment->amount = $request->amount;
+        }
+        if ($request->language) {
+            $payment->language = $request->language;
+        }
 
         // Handle payment method based on flow
         if ($payment->availablePaymentMethodGroups()->exists()) {
@@ -4589,8 +4668,12 @@ class PaymentController extends Controller
             }
         } else {
             // Old flow: Single payment gateway and method
-            if ($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
-            if ($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
+            if ($request->payment_gateway) {
+                $payment->payment_gateway = $request->payment_gateway;
+            }
+            if ($request->payment_method_id) {
+                $payment->payment_method_id = $request->payment_method_id;
+            }
         }
 
         try {
@@ -4601,11 +4684,11 @@ class PaymentController extends Controller
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
             ]);
+
             return redirect()->back()->with('error', 'Failed to update payment link.');
         }
 
-
-        Log::info("[PAYMENT LINK] Updated successfully", [
+        Log::info('[PAYMENT LINK] Updated successfully', [
             'payment' => $payment->toArray(),
         ]);
 
@@ -4620,7 +4703,7 @@ class PaymentController extends Controller
             if ($payment->status === 'completed') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot edit items for completed payments.'
+                    'message' => 'Cannot edit items for completed payments.',
                 ], 403);
             }
 
@@ -4673,30 +4756,32 @@ class PaymentController extends Controller
             Log::info('[PAYMENT ITEMS] Updated payment items', [
                 'payment_id' => $payment->id,
                 'items_count' => count($validated['items']),
-                'total_amount' => $totalAmount
+                'total_amount' => $totalAmount,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Payment items updated successfully.'
+                'message' => 'Payment items updated successfully.',
             ]);
         } catch (ValidationException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed.',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('[PAYMENT ITEMS] Failed to update payment items', [
                 'payment_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update payment items.'
+                'message' => 'Failed to update payment items.',
             ], 500);
         }
     }
@@ -4717,7 +4802,7 @@ class PaymentController extends Controller
     public function paymentDeleteLink($paymentId)
     {
         $payment = Payment::find($paymentId);
-        if (!$payment) {
+        if (! $payment) {
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
@@ -4728,6 +4813,7 @@ class PaymentController extends Controller
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
             ]);
+
             return redirect()->back()->with('error', 'Failed to delete payment link.');
         }
 
@@ -4739,18 +4825,20 @@ class PaymentController extends Controller
         $secretKey = config('services.myfatoorah.webhook_secret_key');
 
         $incomingSignature = $request->header('MyFatoorah-Signature');
-        Log::info('Received Signature From MyFatoorah: ' . $incomingSignature);
+        Log::info('Received Signature From MyFatoorah: '.$incomingSignature);
 
         $rawBody = $request->getContent();
         if (empty($rawBody)) {
             Log::error('MF Webhook: empty body');
+
             return response()->json(['error' => 'Empty body received'], 400);
         }
-        Log::info('Raw Body: ' . $rawBody);
+        Log::info('Raw Body: '.$rawBody);
 
         $payload = json_decode($rawBody, true);
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             Log::error('MF Webhook: invalid JSON');
+
             return response()->json(['error' => 'Invalid JSON'], 400);
         }
         Log::info('MyFatoorah Webhook Received', ['body' => $payload]);
@@ -4788,6 +4876,7 @@ class PaymentController extends Controller
                 Log::error('MF Webhook: Failed to forward to ERP Booking', [
                     'error' => $e->getMessage(),
                 ]);
+
                 return response()->json(['error' => 'Failed to forward to ERP'], 500);
             }
         }
@@ -4808,8 +4897,9 @@ class PaymentController extends Controller
             'received_signature' => $incomingSignature,
         ]);
 
-        if (!hash_equals($generatedSignature, $incomingSignature)) {
+        if (! hash_equals($generatedSignature, $incomingSignature)) {
             Log::error('MF Webhook: invalid signature');
+
             return response()->json(['error' => 'Unauthorized request'], 403);
         }
 
@@ -4820,14 +4910,15 @@ class PaymentController extends Controller
         $process = $userDefinedField['process'] ?? 'invoice';
         $partialId = $userDefinedField['invoice_partial_id'] ?? null;
 
-        if (!$invoiceId || !$invoiceStatus) {
+        if (! $invoiceId || ! $invoiceStatus) {
             Log::warning('MF Webhook: missing invoice fields', compact('invoiceId', 'invoiceStatus'));
+
             return response()->json(['message' => 'Ignored (missing fields)'], 200);
         }
 
         $payment = Payment::where('payment_reference', $invoiceId)->first();
         if ($payment) {
-            Log::info('Found the payment record in the system with ID: ' . $payment->id);
+            Log::info('Found the payment record in the system with ID: '.$payment->id);
             if ($payment->status === 'initiate') {
                 if ($invoiceStatus === 'PAID') {
                     try {
@@ -4837,14 +4928,15 @@ class PaymentController extends Controller
                         Log::info('MF Webhook: payment processed successfully', [
                             'payment_id' => $payment->id,
                             'payment_reference' => $invoiceId,
-                            'new_status' => $invoiceStatus
+                            'new_status' => $invoiceStatus,
                         ]);
                     } catch (Exception $e) {
                         Log::error('MF Webhook: payment processing failed', [
                             'payment_id' => $payment->id,
                             'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
+                            'trace' => $e->getTraceAsString(),
                         ]);
+
                         return response()->json(['error' => 'Payment processing failed'], 500);
                     }
                 } else {
@@ -4855,11 +4947,11 @@ class PaymentController extends Controller
 
                         $this->storeNotification([
                             'user_id' => $receiptInfo['agent']->user_id,
-                            'title'   => $receiptInfo['title'],
+                            'title' => $receiptInfo['title'],
                             'message' => $receiptInfo['message'],
                         ]);
 
-                        (new ResayilController())->message(
+                        (new ResayilController)->message(
                             $receiptInfo['agent']->phone_number,
                             $receiptInfo['agent']->country_code,
                             $receiptInfo['message']
@@ -4876,12 +4968,13 @@ class PaymentController extends Controller
                 Log::info('MF Webhook: payment already processed', [
                     'payment_id' => $payment->id,
                     'payment_reference' => $invoiceId,
-                    'current_status' => $payment->status
+                    'current_status' => $payment->status,
                 ]);
             }
         } else {
             Log::warning('MF Webhook: no matching payment', ['invoice_id' => $invoiceId]);
         }
+
         return response()->json(['message' => 'Webhook processed successfully'], 200);
     }
 
@@ -4906,7 +4999,7 @@ class PaymentController extends Controller
 
             $existingMF = MyFatoorahPayment::where('payment_int_id', $payment->id)->first();
 
-            if (!$existingMF) {
+            if (! $existingMF) {
                 MyFatoorahPayment::create([
                     'payment_int_id' => $payment->id,
                     'payment_id' => $transaction['PaymentId'] ?? null,
@@ -4928,7 +5021,7 @@ class PaymentController extends Controller
                 $addCreditResponse = $clientController->addCredit($payment);
 
                 if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
-                    throw new \Exception('Failed to add credit: ' . ($addCreditResponse['error'] ?? $addCreditResponse['message']));
+                    throw new \Exception('Failed to add credit: '.($addCreditResponse['error'] ?? $addCreditResponse['message']));
                 }
 
                 $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
@@ -4944,7 +5037,7 @@ class PaymentController extends Controller
                     $paymentTransaction->status = $statusData['InvoiceStatus'];
                     $paymentTransaction->save();
                 } else {
-                    Log::warning('[MYFATOORAH] Payment transaction not found for reference: ' . $statusData['InvoiceReference'], [
+                    Log::warning('[MYFATOORAH] Payment transaction not found for reference: '.$statusData['InvoiceReference'], [
                         'payment_id' => $payment->id,
                         'status' => $statusData['InvoiceStatus'],
                     ]);
@@ -4955,11 +5048,11 @@ class PaymentController extends Controller
                         payment: $payment,
                         finalPaidAmount: $finalPaidAmount,
                         gatewayName: 'MyFatoorah',
-                        partialIds: !empty($partialId) ? [$partialId] : null,
+                        partialIds: ! empty($partialId) ? [$partialId] : null,
                         paymentReference: $statusData['InvoiceReference']
                     );
 
-                    if (!$coaResult['success']) {
+                    if (! $coaResult['success']) {
                         throw new \Exception($coaResult['message']);
                     }
                 }
@@ -4986,7 +5079,7 @@ class PaymentController extends Controller
             Log::error('MyFatoorah payment processing failed', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -5003,15 +5096,17 @@ class PaymentController extends Controller
             Log::info('UPayment callback received', ['request' => $request->all()]);
 
             $trackId = $request->query('trackId') ?? $request->input('trackId') ?? $request->input('track_id');
-            if (!$trackId) {
+            if (! $trackId) {
                 Log::error('UPayment callback missing trackId', ['request' => $request->all()]);
+
                 return redirect()->route('payment.failed')->with('error', 'Invalid payment callback data.');
             }
 
             // Find the payment record by track_id
             $payment = Payment::where('payment_reference', $trackId)->first();
-            if (!$payment) {
+            if (! $payment) {
                 Log::error('Payment not found for UPayment track_id', ['track_id' => $trackId]);
+
                 return redirect()->route('payment.failed')->with('error', 'Payment record not found.');
             }
 
@@ -5029,16 +5124,18 @@ class PaymentController extends Controller
 
                 Log::info('[UPAYMENT] Callback ignored: payment already completed', ['payment_id' => $payment->id]);
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
-            $uPayment = new UPayment();
+            $uPayment = new UPayment;
             $statusResponse = $uPayment->getPaymentStatus($trackId);
 
             Log::info('UPayment status response', ['response' => $statusResponse]);
 
-            if (!$statusResponse['status'] || !isset($statusResponse['data']['transaction'])) {
+            if (! $statusResponse['status'] || ! isset($statusResponse['data']['transaction'])) {
                 Log::error('Failed to get UPayment status', ['response' => $statusResponse]);
+
                 return redirect()->route('payment.failed')->with('error', 'Failed to verify payment status.');
             }
 
@@ -5051,7 +5148,7 @@ class PaymentController extends Controller
                 Log::error('[UPAYMENT] Transaction not successful', [
                     'result' => $result,
                     'status' => $status,
-                    'track_id' => $trackId
+                    'track_id' => $trackId,
                 ]);
 
                 UpaymentPayment::create([
@@ -5072,7 +5169,7 @@ class PaymentController extends Controller
 
                 $storeNotificationData = [
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
                     'type' => $process,
                 ];
@@ -5085,7 +5182,7 @@ class PaymentController extends Controller
 
                 $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
@@ -5136,13 +5233,13 @@ class PaymentController extends Controller
                     $addCreditResponse = $clientController->addCredit($payment);
 
                     if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
-                        throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
+                        throw new \RuntimeException('Failed to add credit: '.($addCreditResponse['message'] ?? $addCreditResponse['error']));
                     }
 
                     $transactionId = $addCreditResponse['data']['transaction_id'] ?? null;
 
                     if ($paymentTransaction && $transactionId) {
-                        Log::info('[UPAYMENT] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                        Log::info('[UPAYMENT] Updating payment transaction ID: '.$paymentTransaction->id, [
                             'payment_id' => $payment->id,
                             'status' => $transaction['status'] ?? '',
                         ]);
@@ -5150,7 +5247,7 @@ class PaymentController extends Controller
                         $paymentTransaction->transaction_id = $transactionId;
                         $paymentTransaction->save();
                     } else {
-                        Log::warning('[UPAYMENT] Payment transaction not found or missing transaction ID for reference: ' . $trackId, [
+                        Log::warning('[UPAYMENT] Payment transaction not found or missing transaction ID for reference: '.$trackId, [
                             'payment_id' => $payment->id,
                             'transaction_id' => $transactionId,
                         ]);
@@ -5161,7 +5258,7 @@ class PaymentController extends Controller
                         'response' => $addCreditResponse,
                     ]);
                 } else {
-                    if (!empty($partialId)) {
+                    if (! empty($partialId)) {
                         $partial = InvoicePartial::where('invoice_id', $payment->invoice_id)->where('id', $partialId)->first();
                         if ($partial) {
                             $partial->status = 'paid';
@@ -5173,9 +5270,9 @@ class PaymentController extends Controller
 
                     $invoice = $payment->invoice()->with('invoicePartials:id,invoice_id,status')->first();
                     $hasUnpaid = $invoice->invoicePartials()->where('status', '!=', 'paid')->exists();
-                    $hasPaid   = $invoice->invoicePartials()->where('status', 'paid')->exists();
+                    $hasPaid = $invoice->invoicePartials()->where('status', 'paid')->exists();
 
-                    if (!$hasUnpaid && $hasPaid) {
+                    if (! $hasUnpaid && $hasPaid) {
                         $invoice->status = 'paid';
                     } elseif ($hasUnpaid && $hasPaid) {
                         $invoice->status = 'partial';
@@ -5186,11 +5283,11 @@ class PaymentController extends Controller
                         payment: $payment,
                         finalPaidAmount: $totalPaidAmount,
                         gatewayName: 'UPayment',
-                        partialIds: !empty($partialId) ? [$partialId] : null,
+                        partialIds: ! empty($partialId) ? [$partialId] : null,
                         paymentReference: $trackId
                     );
 
-                    if (!$coaResult['success']) {
+                    if (! $coaResult['success']) {
                         throw new \RuntimeException($coaResult['message']);
                     }
                 }
@@ -5212,7 +5309,7 @@ class PaymentController extends Controller
 
             $storeNotificationData = [
                 'user_id' => $receiptInfo['agent']->user_id,
-                'title'   => $receiptInfo['title'],
+                'title' => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
             ];
 
@@ -5226,7 +5323,7 @@ class PaymentController extends Controller
 
             $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-            (new ResayilController())->message(
+            (new ResayilController)->message(
                 $receiptInfo['agent']->phone_number,
                 $receiptInfo['agent']->country_code,
                 $receiptInfo['message']
@@ -5236,8 +5333,9 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             Log::error('UPayment callback exception', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
         }
     }
@@ -5250,9 +5348,9 @@ class PaymentController extends Controller
             'input' => $request->input(),
         ]);
 
-        $trackId   = $request->input('track_id') ?? $request->query('trackId') ?? null;
+        $trackId = $request->input('track_id') ?? $request->query('trackId') ?? null;
         $paymentId = $request->input('payment_id') ?? null;
-        $orderId   = $request->input('order_id') ?? null;
+        $orderId = $request->input('order_id') ?? null;
         $invoiceId = $request->input('invoice_id') ?? null;
         $payment = $trackId ? Payment::where('payment_reference', $trackId)->first() : null;
 
@@ -5267,7 +5365,7 @@ class PaymentController extends Controller
             'payment_method' => $request->input('payment_method'),
             'total_price' => $request->input('total_price'),
             'payment_date' => now(),
-            'payload'  => $request->all(),
+            'payload' => $request->all(),
         ]);
 
         if ($payment) {
@@ -5277,11 +5375,11 @@ class PaymentController extends Controller
 
             $this->storeNotification([
                 'user_id' => $receiptInfo['agent']->user_id,
-                'title'   => $receiptInfo['title'],
+                'title' => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
             ]);
 
-            (new ResayilController())->message(
+            (new ResayilController)->message(
                 $receiptInfo['agent']->phone_number,
                 $receiptInfo['agent']->country_code,
                 $receiptInfo['message']
@@ -5304,10 +5402,10 @@ class PaymentController extends Controller
     {
         Log::info('Hesabe success response received', [$request->all()]);
 
-        $configService = new GatewayConfigService();
+        $configService = new GatewayConfigService;
         $hesabeConfig = $configService->getHesabeConfig();
 
-        if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+        if (! $hesabeConfig['status'] || ! $hesabeConfig['data']) {
             return redirect()->route('payment.failed')->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
         }
 
@@ -5318,6 +5416,7 @@ class PaymentController extends Controller
 
         if ($decryptedResponse === false) {
             Log::error('Hesabe: Response decryption failed ', ['response' => $response]);
+
             return redirect()->route('payment.failed')->with('error', 'Hesabe response decryption failed');
         }
 
@@ -5338,8 +5437,9 @@ class PaymentController extends Controller
             Log::info('Extracted Hesabe variable2 (partialId):', ['raw' => $raw, 'parsed' => $partialId]);
 
             $payment = Payment::where('voucher_number', $voucherNumber)->first();
-            if (!$payment) {
+            if (! $payment) {
                 Log::info('Payment record not found', ['voucher_number' => $voucherNumber]);
+
                 return redirect()->route('payment.failed')->with('error', 'Payment record not found');
             }
 
@@ -5349,6 +5449,7 @@ class PaymentController extends Controller
                     'status' => $payment->status,
                 ]);
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
@@ -5370,7 +5471,7 @@ class PaymentController extends Controller
                 $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
 
                 if ($paymentTransaction) {
-                    $hesabe = new Hesabe();
+                    $hesabe = new Hesabe;
                     $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
 
                     if ($getPaymentStatus['status'] == true) {
@@ -5379,23 +5480,23 @@ class PaymentController extends Controller
 
                         Log::info('[HESABE] Payment transaction updated to completed', [
                             'payment_transaction_id' => $paymentTransaction->id,
-                            'status' => $paymentTransaction->status
+                            'status' => $paymentTransaction->status,
                         ]);
                     }
 
                     $paymentTransaction->save();
 
                     Log::info('[HESABE] Payment transaction updated to completed', [
-                        'payment_transaction_id' => $paymentTransaction->id
+                        'payment_transaction_id' => $paymentTransaction->id,
                     ]);
                 } else {
                     Log::warning('[HESABE] Payment transaction not found for the given payment token', [
-                        'payment_token' => $paymentToken
+                        'payment_token' => $paymentToken,
                     ]);
                 }
             } else {
                 Log::warning('[HESABE] Payment token is not found in the response', [
-                    'response' => $responseData
+                    'response' => $responseData,
                 ]);
             }
 
@@ -5423,11 +5524,11 @@ class PaymentController extends Controller
 
                 $this->storeNotification([
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
                 ]);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
@@ -5472,6 +5573,7 @@ class PaymentController extends Controller
                         'message' => $addCreditResponse['error'] ?? $addCreditResponse['message'],
                         'payment_reference' => $data['transactionId'],
                     ]);
+
                     return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error'] ?? $addCreditResponse['message']);
                 }
 
@@ -5479,7 +5581,7 @@ class PaymentController extends Controller
 
                 if ($paymentTransaction && $transactionId) {
 
-                    Log::info('[HESABE] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                    Log::info('[HESABE] Updating payment transaction ID: '.$paymentTransaction->id, [
                         'payment_id' => $payment->id,
                         'transaction_id' => $transactionId,
                     ]);
@@ -5509,8 +5611,9 @@ class PaymentController extends Controller
                     paymentReference: $data['transactionId'] ?? null
                 );
 
-                if (!$coaResult['success']) {
+                if (! $coaResult['success']) {
                     Log::error('Failed to create journal entry for invoice payment', ['message' => $coaResult['message']]);
+
                     return redirect()->to($receiptInfo['url'])->with('error', $coaResult['message']);
                 }
             }
@@ -5531,11 +5634,11 @@ class PaymentController extends Controller
                 $storeNotificationData['payment'] = $payment;
             }
 
-            Log::info('[HESABE] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
+            Log::info('[HESABE] Storing notification with PDF for agent ID: '.$agent->id, $storeNotificationData);
 
             $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-            (new ResayilController())->message(
+            (new ResayilController)->message(
                 $agent->phone_number,
                 $agent->country_code,
                 $receiptInfo['message']
@@ -5561,10 +5664,10 @@ class PaymentController extends Controller
             'request' => $request->all(),
         ]);
 
-        $configService = new GatewayConfigService();
+        $configService = new GatewayConfigService;
         $hesabeConfig = $configService->getHesabeConfig();
 
-        if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+        if (! $hesabeConfig['status'] || ! $hesabeConfig['data']) {
             return redirect()->back()->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
         }
 
@@ -5575,18 +5678,19 @@ class PaymentController extends Controller
         $decryptedResponse = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
         if ($decryptedResponse === false) {
             Log::error('Hesabe: Response decryption failed ', [
-                'response' => $decryptedResponse
+                'response' => $decryptedResponse,
             ]);
+
             return redirect()->back()->with('error', 'Hesabe response decryption failed');
         }
 
         $responseData = json_decode($decryptedResponse, true);
         Log::info('Failure callback response data: ', [
             'response',
-            $responseData
+            $responseData,
         ]);
 
-        if (!isset($responseData['status']) || $responseData['status'] !== false) {
+        if (! isset($responseData['status']) || $responseData['status'] !== false) {
             return redirect()->route('payment.failed')->with('error', 'Invalid failure response format.');
         }
 
@@ -5604,8 +5708,9 @@ class PaymentController extends Controller
                 'parsed' => $partialId,
             ]);
 
-            if (!$voucherNumber) {
+            if (! $voucherNumber) {
                 Log::error('Missing voucher number in failure response', ['data' => $data]);
+
                 return redirect()->route('payment.failed')->with('error', 'Invalid failure response — missing reference number.');
             }
 
@@ -5643,11 +5748,11 @@ class PaymentController extends Controller
 
                 $this->storeNotification([
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
                 ]);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
@@ -5663,6 +5768,7 @@ class PaymentController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()->route('payment.failed')->with('error', 'Payment failed! Something went wrong while processing failure.');
         }
     }
@@ -5681,11 +5787,12 @@ class PaymentController extends Controller
         $serviceType = $request->input('service_type');
         $datetime = $request->input('datetime');
 
-        if (!$voucherNumber || !$status) {
+        if (! $voucherNumber || ! $status) {
             Log::error('Hesabe webhook: Missing required fields', [
                 'reference_number' => $voucherNumber,
                 'status' => $status,
             ]);
+
             return response()->json(['error' => 'Invalid request - missing required fields'], 400);
         }
 
@@ -5702,9 +5809,10 @@ class PaymentController extends Controller
         try {
             $payment = Payment::where('voucher_number', $voucherNumber)->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
                 DB::rollback();
+
                 return response()->json(['error' => 'Payment not found'], 404);
             }
 
@@ -5715,6 +5823,7 @@ class PaymentController extends Controller
                     'status' => $payment->status,
                 ]);
                 DB::rollback();
+
                 return response()->json([
                     'message' => 'Payment already processed',
                     'status' => 'success',
@@ -5744,7 +5853,7 @@ class PaymentController extends Controller
                         'status' => $status,
                     ]);
 
-                    $hesabe = new Hesabe();
+                    $hesabe = new Hesabe;
                     $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
 
                     if ($getPaymentStatus['status'] == true) {
@@ -5765,11 +5874,11 @@ class PaymentController extends Controller
 
                             Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
                                 'payment_transaction_id' => $paymentTransaction->id,
-                                'status' => $paymentTransaction->status
+                                'status' => $paymentTransaction->status,
                             ]);
                         } else {
                             Log::warning('[HESABE WEBHOOK] Payment transaction not found for the given payment token', [
-                                'payment_token' => $paymentToken
+                                'payment_token' => $paymentToken,
                             ]);
                         }
                     } else {
@@ -5828,6 +5937,7 @@ class PaymentController extends Controller
                             'payment_reference' => $paymentToken,
                         ]);
                         DB::rollback();
+
                         return response()->json(['error' => $addCreditResponse['error']], 500);
                     }
 
@@ -5835,7 +5945,7 @@ class PaymentController extends Controller
 
                     if ($paymentTransaction && $transactionId) {
 
-                        Log::info('[HESABE WEBHOOK] Updating payment transaction ID: ' . $paymentTransaction->id, [
+                        Log::info('[HESABE WEBHOOK] Updating payment transaction ID: '.$paymentTransaction->id, [
                             'payment_id' => $payment->id,
                             'transaction_id' => $transactionId,
                         ]);
@@ -5866,7 +5976,7 @@ class PaymentController extends Controller
                         paymentReference: $paymentToken
                     );
 
-                    if (!$coaResult['success']) {
+                    if (! $coaResult['success']) {
                         Log::error('Hesabe webhook: Failed to create invoice journal entry', [
                             'message' => $coaResult['message'],
                         ]);
@@ -5893,7 +6003,7 @@ class PaymentController extends Controller
 
                 $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
@@ -5916,7 +6026,7 @@ class PaymentController extends Controller
                 $fullPaymentResponse = null;
 
                 if ($paymentToken) {
-                    $hesabe = new Hesabe();
+                    $hesabe = new Hesabe;
                     $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
 
                     if ($getPaymentStatus['status'] == true) {
@@ -5957,11 +6067,11 @@ class PaymentController extends Controller
 
                 $this->storeNotification([
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
                 ]);
 
-                (new ResayilController())->message(
+                (new ResayilController)->message(
                     $receiptInfo['agent']->phone_number,
                     $receiptInfo['agent']->country_code,
                     $receiptInfo['message']
@@ -5977,13 +6087,14 @@ class PaymentController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 
     /**
      * Create COA entries for invoice payment via payment gateway
-     * 
+     *
      * This unified method handles:
      * - Updating invoice partials to paid
      * - Updating invoice status (paid/partial)
@@ -5991,12 +6102,12 @@ class PaymentController extends Controller
      * - Creating transaction record
      * - Creating all journal entries (receivable, gateway asset, gateway fee)
      * - Updating account balances
-     * 
-     * @param Payment $payment - The payment record
-     * @param float $finalPaidAmount - What client actually paid (including service charge if client pays)
-     * @param string $gatewayName - Gateway name for charge lookup (MyFatoorah, Tap, Hesabe, UPayment, KNET)
-     * @param array|null $partialIds - Array of partial IDs to mark as paid
-     * @param string|null $paymentReference - Payment reference from gateway
+     *
+     * @param  Payment  $payment  - The payment record
+     * @param  float  $finalPaidAmount  - What client actually paid (including service charge if client pays)
+     * @param  string  $gatewayName  - Gateway name for charge lookup (MyFatoorah, Tap, Hesabe, UPayment, KNET)
+     * @param  array|null  $partialIds  - Array of partial IDs to mark as paid
+     * @param  string|null  $paymentReference  - Payment reference from gateway
      * @return array ['success' => bool, 'message' => string, 'transaction_id' => int|null]
      */
     private function createInvoicePaymentCOA(
@@ -6010,13 +6121,13 @@ class PaymentController extends Controller
             return DB::transaction(function () use ($payment, $finalPaidAmount, $gatewayName, $partialIds, $paymentReference) {
                 $invoice = $payment->invoice;
 
-                if (!$invoice) {
+                if (! $invoice) {
                     throw new \Exception('Invoice not found for payment');
                 }
 
                 $companyId = $payment->agent->branch->company_id;
 
-                if (!empty($partialIds)) {
+                if (! empty($partialIds)) {
                     InvoicePartial::where('invoice_id', $invoice->id)
                         ->whereIn('id', $partialIds)
                         ->update([
@@ -6062,7 +6173,7 @@ class PaymentController extends Controller
                     ->where('company_id', $companyId)
                     ->first();
 
-                if (!$chargeRecord) {
+                if (! $chargeRecord) {
                     throw new \Exception("Charge record not found for gateway: {$gatewayName}");
                 }
 
@@ -6070,7 +6181,7 @@ class PaymentController extends Controller
                 $gatewayExpenseAccount = Account::find($chargeRecord->acc_fee_id);
                 $receivableAccount = Account::where('name', 'Clients')->first();
 
-                if (!$gatewayAssetAccount || !$gatewayExpenseAccount || !$receivableAccount) {
+                if (! $gatewayAssetAccount || ! $gatewayExpenseAccount || ! $receivableAccount) {
                     throw new \Exception('One or more required financial accounts not found');
                 }
 
@@ -6109,7 +6220,7 @@ class PaymentController extends Controller
                 $invoiceDetail = InvoiceDetail::where('invoice_number', $invoice->invoice_number)->first();
                 $client = $invoice->client;
 
-                if (!$invoiceDetail || !$client) {
+                if (! $invoiceDetail || ! $client) {
                     throw new \Exception('Invoice detail or client not found');
                 }
 
@@ -6152,7 +6263,7 @@ class PaymentController extends Controller
                 $gatewayAssetAccount->actual_balance += $netAmount;
                 $gatewayAssetAccount->save();
 
-                $feeDescription = ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $gatewayExpenseAccount->name;
+                $feeDescription = ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$gatewayExpenseAccount->name;
 
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
@@ -6205,7 +6316,7 @@ class PaymentController extends Controller
 
             return [
                 'success' => false,
-                'message' => 'Error creating COA: ' . $e->getMessage(),
+                'message' => 'Error creating COA: '.$e->getMessage(),
                 'transaction_id' => null,
             ];
         }
@@ -6229,15 +6340,15 @@ class PaymentController extends Controller
             'isOrderReference' => 'sometimes|boolean',
         ]);
 
-        $dataValue   = $request->input('data');
-        $accessCode  = $request->input('accessCode');
+        $dataValue = $request->input('data');
+        $accessCode = $request->input('accessCode');
         $useOrderRef = $request->boolean('isOrderReference', false);
 
-        $configService = new GatewayConfigService();
+        $configService = new GatewayConfigService;
         $hesabeConfig = $configService->getHesabeConfig();
         $baseUrl = $hesabeConfig['data']['base_url'];
 
-        $url = rtrim($baseUrl, '/') . '/api/transaction/' . urlencode($dataValue);
+        $url = rtrim($baseUrl, '/').'/api/transaction/'.urlencode($dataValue);
 
         if ($useOrderRef) {
             $url .= '?isOrderReference=1';
@@ -6246,15 +6357,16 @@ class PaymentController extends Controller
         try {
             $response = Http::withHeaders([
                 'accessCode' => $accessCode,
-                'Accept'     => 'application/json',
+                'Accept' => 'application/json',
             ])->get($url);
         } catch (Exception $e) {
             Log::error('Hesabe Transaction Enquiry HTTP error', [
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to call Hesabe Transaction Enquiry: ' . $e->getMessage(),
+                'message' => 'Failed to call Hesabe Transaction Enquiry: '.$e->getMessage(),
             ], 500);
         }
 
@@ -6281,14 +6393,15 @@ class PaymentController extends Controller
     public function getHesabeTransaction(string $orderRef): JsonResponse
     {
         try {
-            $responseData = (new Hesabe())->getTransaction($orderRef);
+            $responseData = (new Hesabe)->getTransaction($orderRef);
         } catch (\Exception $e) {
             Log::error('Import Hesabe Transaction error', [
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Failed to call Hesabe Transaction Enquiry: ' . $e->getMessage(),
+                'status' => 'error',
+                'message' => 'Failed to call Hesabe Transaction Enquiry: '.$e->getMessage(),
             ]);
         }
 
@@ -6297,18 +6410,18 @@ class PaymentController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'No data found in Hesabe response'
+                'message' => 'No data found in Hesabe response',
             ], 404);
         }
 
         $referenceNumber = $responseData['data']['reference_number'] ?? null;
 
-        if (!$referenceNumber) {
+        if (! $referenceNumber) {
             Log::info('Reference Number not found in Hesabe portal', ['response' => $responseData]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'No such transaction found in Hesabe portal'
+                'message' => 'No such transaction found in Hesabe portal',
             ], 400);
         }
 
@@ -6317,7 +6430,7 @@ class PaymentController extends Controller
         if ($transactionStatus !== 'SUCCESSFUL') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Transaction is not paid (status: ' . ($transactionStatus ?? 'unknown') . ')'
+                'message' => 'Transaction is not paid (status: '.($transactionStatus ?? 'unknown').')',
             ], 400);
         }
 
@@ -6326,22 +6439,22 @@ class PaymentController extends Controller
 
         if (Payment::where('voucher_number', $referenceNumber)->exists()) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'A payment with this Order Reference Number has already been imported.'
+                'status' => 'error',
+                'message' => 'A payment with this Order Reference Number has already been imported.',
             ], 400);
         }
 
         if (Payment::where('payment_reference', $transactionId)->exists()) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'A payment with this Transaction ID has already been imported.'
+                'status' => 'error',
+                'message' => 'A payment with this Transaction ID has already been imported.',
             ], 400);
         }
 
         if (Payment::where('invoice_reference', $trackId)->exists()) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'A payment with this Track ID has already been imported.'
+                'status' => 'error',
+                'message' => 'A payment with this Track ID has already been imported.',
             ], 400);
         }
 
@@ -6383,10 +6496,10 @@ class PaymentController extends Controller
         string $status = 'success',
         ?int $partialId = null
     ): array {
-        $isInvoice = $process === 'invoice' || (!empty($payment->invoice_id) && $process !== 'topup');
+        $isInvoice = $process === 'invoice' || (! empty($payment->invoice_id) && $process !== 'topup');
 
         $hotelBooking = $payment->hotelBooking()->with('tbo')->first();
-        $isHotelBooking = !empty($hotelBooking) && !$isInvoice;
+        $isHotelBooking = ! empty($hotelBooking) && ! $isInvoice;
 
         $invoicePartialType = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('type');
         $isPartial = in_array(strtolower($invoicePartialType ?? ''), ['split', 'partial']);
@@ -6423,18 +6536,18 @@ class PaymentController extends Controller
         if ($status === 'success') {
             if ($isPartial) {
                 return [
-                    'agent'  => $payment->invoice->agent,
-                    'title'   => $payment->invoice->invoice_number . ' partial payment paid successfully',
-                    'message' => 'Your client ' . $payment->client->full_name . ' successfully paid part of invoice ' . $payment->invoice->invoice_number . ".\n\nCheck the link : " . $url,
+                    'agent' => $payment->invoice->agent,
+                    'title' => $payment->invoice->invoice_number.' partial payment paid successfully',
+                    'message' => 'Your client '.$payment->client->full_name.' successfully paid part of invoice '.$payment->invoice->invoice_number.".\n\nCheck the link : ".$url,
                     'url' => $url,
                     'route' => $route,
                 ];
             } elseif ($isInvoice) {
                 return [
-                    'agent'  => $payment->invoice->agent,
-                    'title'   => $payment->invoice->invoice_number . ' paid successfully',
-                    'message' => 'Your client ' . $payment->client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number .
-                        ".\n\nCheck the link : " . $url,
+                    'agent' => $payment->invoice->agent,
+                    'title' => $payment->invoice->invoice_number.' paid successfully',
+                    'message' => 'Your client '.$payment->client->full_name.' has paid invoice '.$payment->invoice->invoice_number.
+                        ".\n\nCheck the link : ".$url,
                     'url' => $url,
                     'route' => $route,
                 ];
@@ -6448,20 +6561,20 @@ class PaymentController extends Controller
                 }
 
                 return [
-                    'agent'  => $payment->agent,
-                    'title'   => 'Hotel Booking Payment Successful',
-                    'message' => 'Your client ' . $payment->client->full_name . ' has successfully paid for hotel booking' . $confirmationInfo .
-                        ' with amount ' . number_format($payment->amount, 3) . ' ' . $payment->currency .
-                        ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,
+                    'agent' => $payment->agent,
+                    'title' => 'Hotel Booking Payment Successful',
+                    'message' => 'Your client '.$payment->client->full_name.' has successfully paid for hotel booking'.$confirmationInfo.
+                        ' with amount '.number_format($payment->amount, 3).' '.$payment->currency.
+                        ' using voucher '.$payment->voucher_number.".\n\nCheck the link : ".$url,
                     'url' => $url,
                     'route' => $route,
                 ];
             } else {
                 return [
-                    'agent'  => $payment->agent,
-                    'title'   => 'Client ' . $payment->client->full_name . ' Topup Successful',
-                    'message' => 'Your client ' . $payment->client->full_name . ' has successfully topped up ' . number_format($payment->amount, 3) .
-                        ' ' . $payment->currency . ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,
+                    'agent' => $payment->agent,
+                    'title' => 'Client '.$payment->client->full_name.' Topup Successful',
+                    'message' => 'Your client '.$payment->client->full_name.' has successfully topped up '.number_format($payment->amount, 3).
+                        ' '.$payment->currency.' using voucher '.$payment->voucher_number.".\n\nCheck the link : ".$url,
                     'url' => $url,
                     'route' => $route,
                 ];
@@ -6471,17 +6584,17 @@ class PaymentController extends Controller
         if ($isPartial) {
             return [
                 'agent' => $payment->invoice->agent,
-                'title' => 'Client ' . $payment->client->full_name . "'s Partial Payment Failed",
-                'message' => 'Your client ' . $payment->client->full_name . ' attempted to pay a part of invoice ' . $payment->invoice->invoice_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+                'title' => 'Client '.$payment->client->full_name."'s Partial Payment Failed",
+                'message' => 'Your client '.$payment->client->full_name.' attempted to pay a part of invoice '.$payment->invoice->invoice_number.' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.'."\n\nCheck the link : ".$url,
                 'url' => $url,
                 'route' => $route,
             ];
         } elseif ($isInvoice) {
             return [
                 'agent' => $payment->invoice->agent,
-                'title' => 'Client ' . $payment->client->full_name . "'s Payment Failed",
-                'message' => 'Your client ' . $payment->client->full_name . ' attempted to pay invoice ' . $payment->invoice->invoice_number .
-                    ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+                'title' => 'Client '.$payment->client->full_name."'s Payment Failed",
+                'message' => 'Your client '.$payment->client->full_name.' attempted to pay invoice '.$payment->invoice->invoice_number.
+                    ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.'."\n\nCheck the link : ".$url,
                 'url' => $url,
                 'route' => $route,
             ];
@@ -6490,8 +6603,8 @@ class PaymentController extends Controller
             return [
                 'agent' => $payment->agent,
                 'title' => 'Hotel Booking Payment Failed',
-                'message' => 'Your client ' . $payment->client->full_name . ' attempted to pay for hotel booking using payment link ' . $payment->voucher_number .
-                    ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+                'message' => 'Your client '.$payment->client->full_name.' attempted to pay for hotel booking using payment link '.$payment->voucher_number.
+                    ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.'."\n\nCheck the link : ".$url,
                 'url' => $url,
                 'route' => $route,
             ];
@@ -6499,9 +6612,9 @@ class PaymentController extends Controller
 
         return [
             'agent' => $payment->agent,
-            'title' => 'Client ' . $payment->client->full_name . "'s Topup Failed",
-            'message' => 'Your client ' . $payment->client->full_name . ' attempted to top up their account using payment link ' . $payment->voucher_number .
-                ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+            'title' => 'Client '.$payment->client->full_name."'s Topup Failed",
+            'message' => 'Your client '.$payment->client->full_name.' attempted to top up their account using payment link '.$payment->voucher_number.
+                ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.'."\n\nCheck the link : ".$url,
             'url' => $url,
             'route' => $route,
         ];
@@ -6511,26 +6624,27 @@ class PaymentController extends Controller
     {
         $payment = Payment::find($paymentId);
 
-        if (!$payment) {
-            Log::info('Payment not found for ID: ' . $paymentId . ' to proceed with disabling payment link');
-            return redirect()->back()->with('error', 'Payment not found for ID: ' . $paymentId);
+        if (! $payment) {
+            Log::info('Payment not found for ID: '.$paymentId.' to proceed with disabling payment link');
+
+            return redirect()->back()->with('error', 'Payment not found for ID: '.$paymentId);
         }
 
         try {
-            $payment->is_disabled = !$payment->is_disabled;
+            $payment->is_disabled = ! $payment->is_disabled;
             $payment->save();
 
             $message = $payment->is_disabled ? 'Payment link successfully disabled' : 'Payment link successfully enabled';
-            Log::info($message . ' for payment ID: ' . $paymentId);
+            Log::info($message.' for payment ID: '.$paymentId);
 
             return redirect()->back()->with('success', $message);
         } catch (Exception $e) {
-            Log::error('Error disabling payment link for payment ID: ' . $paymentId, [
+            Log::error('Error disabling payment link for payment ID: '.$paymentId, [
                 'message' => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Error disabling payment link: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error disabling payment link: '.$e->getMessage());
         }
     }
 
@@ -6558,11 +6672,12 @@ class PaymentController extends Controller
 
         $company = $agent->branch->company;
 
-        if (!$company) {
-            Log::error('[MULTI PAYMENT METHOD] Company not found for agent ID: ' . $agent->id);
+        if (! $company) {
+            Log::error('[MULTI PAYMENT METHOD] Company not found for agent ID: '.$agent->id);
+
             return [
                 'success' => false,
-                'message' => 'Company not found for the specified agent'
+                'message' => 'Company not found for the specified agent',
             ];
         }
 
@@ -6602,9 +6717,9 @@ class PaymentController extends Controller
                                     'from' => $item['currency'],
                                     'to' => 'KWD',
                                     'amount' => $item['extended_amount'],
-                                    'error' => $conversionResult['message']
+                                    'error' => $conversionResult['message'],
                                 ]);
-                                throw new Exception('Currency exchange rate not found for ' . $item['currency'] . ' to KWD');
+                                throw new Exception('Currency exchange rate not found for '.$item['currency'].' to KWD');
                             }
 
                             $itemAmountInKWD = $conversionResult['converted_amount'];
@@ -6613,7 +6728,7 @@ class PaymentController extends Controller
                                 'from_currency' => $item['currency'],
                                 'original_amount' => $item['extended_amount'],
                                 'exchange_rate' => $conversionResult['exchange_rate'],
-                                'kwd_amount' => $itemAmountInKWD
+                                'kwd_amount' => $itemAmountInKWD,
                             ]);
                         }
 
@@ -6626,7 +6741,7 @@ class PaymentController extends Controller
 
                 $totalAmount = $totalAmountInKWD;
 
-                Log::info('[MULTI PAYMENT METHOD] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount . ' KWD');
+                Log::info('[MULTI PAYMENT METHOD] Mode: '.($isAdvancedMode ? 'Advanced' : 'Quick').', Total: '.$totalAmount.' KWD');
 
                 $payment = Payment::create([
                     'company_id' => $company->id,
@@ -6646,7 +6761,7 @@ class PaymentController extends Controller
                     'created_by' => Auth::id(),
                 ]);
 
-                if ($isAdvancedMode && !empty($request->items)) {
+                if ($isAdvancedMode && ! empty($request->items)) {
                     foreach ($request->items as $item) {
                         $payment->paymentItems()->create([
                             'product_name' => $item['product_name'],
@@ -6656,7 +6771,7 @@ class PaymentController extends Controller
                             'currency' => $item['currency'],
                         ]);
                     }
-                    Log::info('[MULTI PAYMENT METHOD] Created ' . count($request->items) . ' payment items for payment ID: ' . $payment->id);
+                    Log::info('[MULTI PAYMENT METHOD] Created '.count($request->items).' payment items for payment ID: '.$payment->id);
                 }
 
                 $paymentMethods = PaymentMethod::whereIn('id', $request->payment_methods)->get();
@@ -6664,7 +6779,7 @@ class PaymentController extends Controller
 
                 $payment->availablePaymentMethodGroups()->attach($groupIds);
 
-                Log::info('[MULTI PAYMENT METHOD] Attached payment method groups to payment ID: ' . $payment->id, [
+                Log::info('[MULTI PAYMENT METHOD] Attached payment method groups to payment ID: '.$payment->id, [
                     'payment_methods_selected' => $request->payment_methods,
                     'payment_method_groups' => $groupIds->toArray(),
                 ]);
@@ -6672,23 +6787,24 @@ class PaymentController extends Controller
                 $voucherSequence->current_sequence++;
                 $voucherSequence->save();
 
-                Log::info('[MULTI PAYMENT METHOD] Payment created with voucher number: ' . $voucherNumber, [
+                Log::info('[MULTI PAYMENT METHOD] Payment created with voucher number: '.$voucherNumber, [
                     'payment_id' => $payment->id,
                 ]);
 
                 return [
                     'success' => true,
                     'payment_id' => $payment->id,
-                    'message' => 'Multi payment method payment created successfully'
+                    'message' => 'Multi payment method payment created successfully',
                 ];
             } catch (Exception $e) {
                 Log::error('[MULTI PAYMENT METHOD] Failed to create payment', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
+
                 return [
                     'success' => false,
-                    'message' => 'Error creating payment'
+                    'message' => 'Error creating payment',
                 ];
             }
         });
@@ -6713,16 +6829,18 @@ class PaymentController extends Controller
             ->with(['charge', 'paymentMethodGroup'])
             ->find($request->payment_method_id);
 
-        if (!$paymentMethod) {
+        if (! $paymentMethod) {
             Log::error('[MULTI PAYMENT] Payment method not found', ['payment_method_id' => $request->payment_method_id]);
+
             return redirect()->back()->with('error', 'Selected payment method not found');
         }
 
-        if (!$paymentMethod->is_active) {
+        if (! $paymentMethod->is_active) {
             Log::warning('[MULTI PAYMENT] Inactive payment method selected', [
                 'payment_method_id' => $paymentMethod->id,
-                'payment_id' => $payment->id
+                'payment_id' => $payment->id,
             ]);
+
             return redirect()->back()->with('error', 'Selected payment method is no longer active. Please choose another payment method.');
         }
 
@@ -6731,25 +6849,28 @@ class PaymentController extends Controller
             Log::error('[MULTI PAYMENT] Payment method company mismatch', [
                 'payment_method_id' => $paymentMethod->id,
                 'payment_method_company_id' => $paymentMethod->company_id,
-                'payment_company_id' => $companyId
+                'payment_company_id' => $companyId,
             ]);
+
             return redirect()->back()->with('error', 'Invalid payment method selected');
         }
 
         $allowedGroupIds = $payment->availablePaymentMethodGroups->pluck('id');
-        if (!$allowedGroupIds->contains($paymentMethod->payment_method_group_id)) {
+        if (! $allowedGroupIds->contains($paymentMethod->payment_method_group_id)) {
             Log::error('[MULTI PAYMENT] Payment method group not allowed', [
                 'payment_method_id' => $paymentMethod->id,
                 'payment_method_group_id' => $paymentMethod->payment_method_group_id,
-                'allowed_group_ids' => $allowedGroupIds->toArray()
+                'allowed_group_ids' => $allowedGroupIds->toArray(),
             ]);
+
             return redirect()->back()->with('error', 'This payment method is not available for this payment link');
         }
 
         $paymentGateway = $paymentMethod->charge->name;
 
-        if (!$paymentGateway) {
-            Log::error('[MULTI PAYMENT] Payment gateway not found for payment method ID: ' . $paymentMethod->id);
+        if (! $paymentGateway) {
+            Log::error('[MULTI PAYMENT] Payment gateway not found for payment method ID: '.$paymentMethod->id);
+
             return redirect()->back()->with('error', 'Payment gateway configuration is missing. Please contact support.');
         }
 
@@ -6803,7 +6924,7 @@ class PaymentController extends Controller
         $paymentGatewayExpiryDate = null;
 
         if (strtolower($paymentGateway) === 'tap') {
-            $tap = new Tap();
+            $tap = new Tap;
             $paymentMethodId = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
             $chargeResult = ChargeService::calculate($payment->amount, $payment->agent->branch->company_id, $paymentMethodId, 'Tap');
@@ -6817,7 +6938,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'payment_gateway' => $paymentGateway,
                 'payment_method_id' => $paymentMethodId,
-                'description' => 'Payment for ' . $payment->voucher_number,
+                'description' => 'Payment for '.$payment->voucher_number,
                 'process' => $process,
             ]);
 
@@ -6843,12 +6964,13 @@ class PaymentController extends Controller
             $paymentGatewayExpiryDate = $expiryDate;
 
             // return redirect($paymentUrl);
-        } else if (strtolower($paymentGateway) === 'myfatoorah') {
+        } elseif (strtolower($paymentGateway) === 'myfatoorah') {
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = $payment->agent->branch->company_id;
 
-            if (!$companyId) {
+            if (! $companyId) {
                 Log::error('[MULTI PAYMENT] Company ID not found for the payment.', ['payment_id' => $payment->id]);
+
                 return Auth::user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
             }
 
@@ -6887,17 +7009,18 @@ class PaymentController extends Controller
 
             Log::info('[MULTI PAYMENT] Creating MyFatoorah charge', [
                 'payment_id' => $payment->id,
-                'request' => $requestMyFatoorah->all()
+                'request' => $requestMyFatoorah->all(),
             ]);
 
-            $myFatoorah = new MyFatoorah();
+            $myFatoorah = new MyFatoorah;
             $response = $myFatoorah->createCharge($requestMyFatoorah);
 
             if ($response['status'] === 'error') {
                 Log::error('[MULTI PAYMENT] MyFatoorah charge creation failed', [
                     'payment_id' => $payment->id,
-                    'response' => $response
+                    'response' => $response,
                 ]);
+
                 return redirect()->back()->with('error', $response['message'] ?? 'MyFatoorah payment initiation failed.');
             }
 
@@ -6949,8 +7072,8 @@ class PaymentController extends Controller
 
                     $paymentGatewayStatus = $invoiceStatus ?? 'initiate';
                     $paymentGatewayReferenceNumber = $invoiceReference ?? $paymentGatewayReferenceNumber;
-                    $paymentGatewayTrackId =   $trackId ?? $paymentGatewayTrackId;
-                    $paymentGatewayExpiryDate =  $myFatoorah->convertExpiryDate(expiryDate: $expiryDateStr, expiryTime: $expiryTimeStr)
+                    $paymentGatewayTrackId = $trackId ?? $paymentGatewayTrackId;
+                    $paymentGatewayExpiryDate = $myFatoorah->convertExpiryDate(expiryDate: $expiryDateStr, expiryTime: $expiryTimeStr)
                         ?? $paymentGatewayExpiryDate;
                 } else {
                     Log::warning('[MULTI PAYMENT] Failed to fetch MyFatoorah payment status', [
@@ -6964,7 +7087,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'invoice_id' => $response['invoice_id'],
                 'payment_url' => $response['payment_url'],
-                'expiry_date' => $paymentGatewayExpiryDate
+                'expiry_date' => $paymentGatewayExpiryDate,
             ]);
         } elseif (strtolower($paymentGateway) === 'hesabe') {
 
@@ -7003,18 +7126,20 @@ class PaymentController extends Controller
 
             Log::info('[HESABE] Creating charge via Hesabe helper', ['request' => $requestHesabe->all()]);
 
-            $hesabe = new Hesabe();
+            $hesabe = new Hesabe;
             $response = $hesabe->createCharge($requestHesabe);
 
-            if (!$response['success']) {
+            if (! $response['success']) {
                 Log::error('[HESABE] Payment initiation failed', ['response' => $response]);
-                return redirect()->back()->with('error', 'Hesabe payment initiation failed: ' . ($response['message'] ?? 'Something went wrong'));
+
+                return redirect()->back()->with('error', 'Hesabe payment initiation failed: '.($response['message'] ?? 'Something went wrong'));
             }
 
             $paymentUrl = $response['payment_url'] ?? null;
 
-            if (!$paymentUrl) {
+            if (! $paymentUrl) {
                 Log::error('[HESABE] Payment URL missing in response', ['response' => $response]);
+
                 return redirect()->back()->with('error', 'Hesabe response missing payment URL.');
             }
 
@@ -7028,8 +7153,9 @@ class PaymentController extends Controller
                 'payment_status' => $payment->status,
             ]);
 
-            if (!$response['token']) {
+            if (! $response['token']) {
                 Log::error('[HESABE] Token missing in response', ['response' => $response]);
+
                 return redirect()->back()->with('error', 'Hesabe response missing token.');
             }
 
@@ -7053,9 +7179,9 @@ class PaymentController extends Controller
                     return redirect($payment->payment_url);
                 }
                 Log::info('Old payment URL expired, reinitiating new payment');
+
                 return $this->paymentLinkReinitiate($payment->payment_reference);
             }
-
 
             $payment->load(['agent.branch.company', 'client']);
             $company = $payment->agent?->branch?->company;
@@ -7068,28 +7194,29 @@ class PaymentController extends Controller
             }
 
             $chargeResult = ChargeService::calculate($payment->amount, $company->id, $payment->payment_method_id, 'UPayment');
-            $finalAmount  = $chargeResult['finalAmount'] ?? $payment->amount;
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $requestUPayment = new Request([
-                'final_amount'      => $finalAmount,
-                'client_id'         => $client->id,
-                'client_name'       => $client->full_name,
-                'client_email'      => $client->email ?? $company?->email,
-                'client_phone'      => $clientPhone ?? '50000000',
-                'company_email'     => $company?->email,
-                'payment_id'        => $payment->id,
-                'payment_number'    => $payment->voucher_number,
+                'final_amount' => $finalAmount,
+                'client_id' => $client->id,
+                'client_name' => $client->full_name,
+                'client_email' => $client->email ?? $company?->email,
+                'client_phone' => $clientPhone ?? '50000000',
+                'company_email' => $company?->email,
+                'payment_id' => $payment->id,
+                'payment_number' => $payment->voucher_number,
                 'payment_method_id' => $payment->payment_method_id,
-                'invoice_id'        => optional($payment->invoice)->id,
-                'invoice_number'    => optional($payment->invoice)->invoice_number,
-                'currency'          => $payment->currency ?? 'KWD',
+                'invoice_id' => optional($payment->invoice)->id,
+                'invoice_number' => optional($payment->invoice)->invoice_number,
+                'currency' => $payment->currency ?? 'KWD',
             ]);
 
-            $uPayment = new UPayment();
+            $uPayment = new UPayment;
             $response = $uPayment->makeCharge($requestUPayment);
 
-            if (!is_array($response)) {
+            if (! is_array($response)) {
                 Log::error('UPayments: Unexpected response', ['raw' => $response]);
+
                 return redirect()->back()->with('error', 'UPayments: unexpected response');
             }
 
@@ -7109,10 +7236,10 @@ class PaymentController extends Controller
                 $payment->save();
 
                 Log::info('UPayments payment initiated', [
-                    'payment_id'  => $payment->id,
-                    'track_id'    => $paymentReference,
+                    'payment_id' => $payment->id,
+                    'track_id' => $paymentReference,
                     'payment_url' => $paymentUrl,
-                    'expires_at'  => $payment->expiry_date,
+                    'expires_at' => $payment->expiry_date,
                 ]);
 
                 $paymentGatewayStatus = 'initiate';
@@ -7124,6 +7251,7 @@ class PaymentController extends Controller
                 // return redirect($paymentUrl);
             } else {
                 Log::error('UPayments: Missing link or trackId', ['response' => $response]);
+
                 return redirect()->back()->with('error', 'UPayments response missing link or trackId.');
             }
         }
@@ -7155,13 +7283,14 @@ class PaymentController extends Controller
             Log::error('[MULTI PAYMENT] Payment gateway URL is missing, cannot redirect', [
                 'payment_id' => $payment->id,
             ]);
+
             return redirect()->back()->with('error', 'Payment gateway URL is missing. Please contact support.');
         }
     }
 
     public function getHesabePayment(string $token)
     {
-        $hesabe = new Hesabe();
+        $hesabe = new Hesabe;
 
         $response = $hesabe->getPaymentStatus(
             token: $token,
@@ -7184,7 +7313,9 @@ class PaymentController extends Controller
         $agentsQuery = Agent::query();
         switch ($user->role_id) {
             case Role::ADMIN:
-                if ($companyId) $agentsQuery->whereHas('branch', fn($q) => $q->where('company_id', $companyId));
+                if ($companyId) {
+                    $agentsQuery->whereHas('branch', fn ($q) => $q->where('company_id', $companyId));
+                }
                 break;
             case Role::COMPANY:
             case Role::ACCOUNTANT:
@@ -7202,17 +7333,17 @@ class PaymentController extends Controller
         $agentIds = $agentsQuery->pluck('id')->toArray();
 
         $paymentLinksQuery = Payment::with(['client', 'agent', 'paymentMethod', 'createdBy', 'myFatoorahPayment', 'hesabePayment'])
-            ->where(fn($q) => $q->whereHas('invoice', fn($sub) => $sub->whereIn('invoices.agent_id', $agentIds))
+            ->where(fn ($q) => $q->whereHas('invoice', fn ($sub) => $sub->whereIn('invoices.agent_id', $agentIds))
                 ->orWhereIn('payments.agent_id', $agentIds))
             ->where('payments.status', '!=', 'completed');
 
         if ($search) {
             $paymentLinksQuery->where(function ($q) use ($search) {
                 $q->where('payments.voucher_number', 'like', "%{$search}%")
-                    ->orWhereHas('client', fn($sub) => $sub->where(fn($s) => $s
+                    ->orWhereHas('client', fn ($sub) => $sub->where(fn ($s) => $s
                         ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$search}%"])
                         ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ["%{$search}%"])))
-                    ->orWhereHas('agent', fn($sub) => $sub->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('agent', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -7225,34 +7356,34 @@ class PaymentController extends Controller
         }
 
         $paymentLinks = $paymentLinksQuery->paginate(20, ['*'], 'pp');
-        $totalPaymentLinks = Payment::where(fn($q) => $q->whereHas('invoice', fn($sub) => $sub->whereIn('invoices.agent_id', $agentIds))
+        $totalPaymentLinks = Payment::where(fn ($q) => $q->whereHas('invoice', fn ($sub) => $sub->whereIn('invoices.agent_id', $agentIds))
             ->orWhereIn('payments.agent_id', $agentIds))
             ->where('payments.status', '!=', 'completed')
             ->count();
 
-        $companiesId = ($user->role_id == Role::ADMIN && !$companyId) ? Company::pluck('id')->toArray() : [$companyId];
+        $companiesId = ($user->role_id == Role::ADMIN && ! $companyId) ? Company::pluck('id')->toArray() : [$companyId];
 
         $invoicesQuery = Invoice::with(['agent.branch', 'invoiceDetails.task.supplier', 'client', 'invoicePartials'])
             ->whereIn('agent_id', $agentIds)
-            ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId))
+            ->whereHas('agent.branch', fn ($q) => $q->whereIn('company_id', $companiesId))
             ->whereIn('status', ['unpaid', 'partial']);
 
         if ($search) {
             $invoicesQuery->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
-                    ->orWhereHas('client', fn($sub) => $sub->where(fn($s) => $s
+                    ->orWhereHas('client', fn ($sub) => $sub->where(fn ($s) => $s
                         ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$search}%"])
                         ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ["%{$search}%"])))
-                    ->orWhereHas('agent', fn($sub) => $sub->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('agent', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
 
         $invoices = $invoicesQuery->orderBy($invSort, $invDirection)->paginate(20, ['*'], 'ip');
 
-        $invoices->each(fn($invoice) => $invoice->client_pay = $invoice->amount + $invoice->invoicePartials->sum('service_charge'));
+        $invoices->each(fn ($invoice) => $invoice->client_pay = $invoice->amount + $invoice->invoicePartials->sum('service_charge'));
 
         $totalInvoices = Invoice::whereIn('agent_id', $agentIds)
-            ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId))
+            ->whereHas('agent.branch', fn ($q) => $q->whereIn('company_id', $companiesId))
             ->whereIn('status', ['unpaid', 'partial'])
             ->count();
 
@@ -7275,7 +7406,7 @@ class PaymentController extends Controller
             $paymentTransaction = PaymentTransaction::with(['payment.invoice', 'payment.agent.branch.company', 'payment.client', 'paymentGateway'])->findOrFail($transactionId);
             $payment = $paymentTransaction->payment;
 
-            if (!$payment) {
+            if (! $payment) {
                 return redirect()->back()->with('error', 'Payment not found for this transaction.');
             }
 
@@ -7284,11 +7415,11 @@ class PaymentController extends Controller
             }
 
             if (in_array(strtolower($paymentTransaction->status), ['paid', 'captured', 'successful'])) {
-                return redirect()->back()->with('error', 'Transaction is already completed. Current status: ' . $paymentTransaction->status);
+                return redirect()->back()->with('error', 'Transaction is already completed. Current status: '.$paymentTransaction->status);
             }
 
             $gateway = $paymentTransaction->paymentGateway;
-            if (!$gateway) {
+            if (! $gateway) {
                 return redirect()->back()->with('error', 'Payment gateway not found.');
             }
 
@@ -7299,7 +7430,7 @@ class PaymentController extends Controller
 
             switch ($gatewayName) {
                 case 'Tap':
-                    $tap = new Tap();
+                    $tap = new Tap;
                     $response = $tap->getCharge($paymentTransaction->reference_number);
 
                     Log::info('[CHECK_STATUS] Tap response', ['response' => $response]);
@@ -7312,7 +7443,7 @@ class PaymentController extends Controller
                     break;
 
                 case 'MyFatoorah':
-                    $myFatoorah = new MyFatoorah();
+                    $myFatoorah = new MyFatoorah;
                     $response = $myFatoorah->getPaymentStatus('invoice', $paymentTransaction->track_id);
 
                     Log::info('[CHECK_STATUS] MyFatoorah response', ['response' => $response]);
@@ -7326,7 +7457,7 @@ class PaymentController extends Controller
                     break;
 
                 case 'Hesabe':
-                    $hesabe = new Hesabe();
+                    $hesabe = new Hesabe;
                     $response = $hesabe->getPaymentStatus($paymentTransaction->reference_number);
 
                     Log::info('[CHECK_STATUS] Hesabe response', ['response' => $response->json()]);
@@ -7340,7 +7471,7 @@ class PaymentController extends Controller
                     break;
 
                 case 'UPayment':
-                    $uPayment = new UPayment();
+                    $uPayment = new UPayment;
                     $response = $uPayment->getPaymentStatus($paymentTransaction->track_id);
 
                     Log::info('[CHECK_STATUS] UPayment response', ['response' => $response]);
@@ -7404,7 +7535,7 @@ class PaymentController extends Controller
                         'error' => $e->getMessage(),
                     ]);
 
-                    return redirect()->back()->with('error', 'Payment is completed on gateway but failed to process: ' . $e->getMessage());
+                    return redirect()->back()->with('error', 'Payment is completed on gateway but failed to process: '.$e->getMessage());
                 }
             }
 
@@ -7416,7 +7547,7 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Error checking payment status: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error checking payment status: '.$e->getMessage());
         }
     }
 
@@ -7468,7 +7599,7 @@ class PaymentController extends Controller
                 $addCreditResponse = $clientController->addCredit($payment);
 
                 if (isset($addCreditResponse['error']) || $addCreditResponse['status'] === 'error') {
-                    throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['message'] ?? $addCreditResponse['error']));
+                    throw new \RuntimeException('Failed to add credit: '.($addCreditResponse['message'] ?? $addCreditResponse['error']));
                 }
 
                 if ($paymentTransaction) {
@@ -7483,17 +7614,17 @@ class PaymentController extends Controller
                     payment: $payment,
                     finalPaidAmount: $finalPaidAmount,
                     gatewayName: 'Tap',
-                    partialIds: !empty($partialId) ? [$partialId] : null,
+                    partialIds: ! empty($partialId) ? [$partialId] : null,
                     paymentReference: $response['id']
                 );
 
-                if (!$coaResult['success']) {
+                if (! $coaResult['success']) {
                     throw new \RuntimeException($coaResult['message']);
                 }
             }
 
             $tboResult = $this->processTBOBookingAfterPayment($payment);
-            if ($tboResult !== null && !$tboResult['success']) {
+            if ($tboResult !== null && ! $tboResult['success']) {
                 Log::error('TBO booking failed via manual status check', $tboResult);
             }
 
@@ -7543,7 +7674,7 @@ class PaymentController extends Controller
                 $addCreditResponse = $clientController->addCredit($payment);
 
                 if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
-                    throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['error'] ?? $addCreditResponse['message']));
+                    throw new \RuntimeException('Failed to add credit: '.($addCreditResponse['error'] ?? $addCreditResponse['message']));
                 }
 
                 if ($paymentTransaction) {
@@ -7558,17 +7689,17 @@ class PaymentController extends Controller
                     payment: $payment,
                     finalPaidAmount: (float) $finalPaidAmount,
                     gatewayName: 'Hesabe',
-                    partialIds: !empty($partialId) ? [$partialId] : null,
+                    partialIds: ! empty($partialId) ? [$partialId] : null,
                     paymentReference: $data['transactionId'] ?? null
                 );
 
-                if (!$coaResult['success']) {
+                if (! $coaResult['success']) {
                     throw new \RuntimeException($coaResult['message']);
                 }
             }
 
             $tboResult = $this->processTBOBookingAfterPayment($payment);
-            if ($tboResult !== null && !$tboResult['success']) {
+            if ($tboResult !== null && ! $tboResult['success']) {
                 Log::error('TBO booking failed via manual status check', $tboResult);
             }
 
@@ -7610,7 +7741,7 @@ class PaymentController extends Controller
                 $addCreditResponse = $clientController->addCredit($payment);
 
                 if (isset($addCreditResponse['error']) || (isset($addCreditResponse['status']) && $addCreditResponse['status'] === 'error')) {
-                    throw new \RuntimeException('Failed to add credit: ' . ($addCreditResponse['error'] ?? $addCreditResponse['message']));
+                    throw new \RuntimeException('Failed to add credit: '.($addCreditResponse['error'] ?? $addCreditResponse['message']));
                 }
 
                 if ($paymentTransaction) {
@@ -7625,17 +7756,17 @@ class PaymentController extends Controller
                     payment: $payment,
                     finalPaidAmount: $finalPaidAmount,
                     gatewayName: 'UPayment',
-                    partialIds: !empty($partialId) ? [$partialId] : null,
+                    partialIds: ! empty($partialId) ? [$partialId] : null,
                     paymentReference: $transaction['paymentId'] ?? $transaction['trackId'] ?? null
                 );
 
-                if (!$coaResult['success']) {
+                if (! $coaResult['success']) {
                     throw new \RuntimeException($coaResult['message']);
                 }
             }
 
             $tboResult = $this->processTBOBookingAfterPayment($payment);
-            if ($tboResult !== null && !$tboResult['success']) {
+            if ($tboResult !== null && ! $tboResult['success']) {
                 Log::error('TBO booking failed via manual status check', $tboResult);
             }
 
@@ -7673,10 +7804,80 @@ class PaymentController extends Controller
 
         $this->storeNotificationWithSendingPdf($storeNotificationData);
 
-        (new ResayilController())->message(
+        (new ResayilController)->message(
             $agent->phone_number,
             $agent->country_code,
             $receiptInfo['message']
+        );
+    }
+
+    public function exportPaymentLinks(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId) {
+                $agents = Agent::with('branch')->whereHas('branch', fn ($q) => $q->where('company_id', $companyId))->get();
+            } else {
+                $agents = Agent::with('branch')->get();
+            }
+        } elseif ($user->role_id == Role::COMPANY) {
+            $branches = Branch::where('company_id', $companyId)->get();
+            $agents = Agent::whereIn('branch_id', $branches->pluck('id')->toArray())->get();
+        } elseif ($user->role_id == Role::BRANCH) {
+            $agents = Agent::where('branch_id', $user->branch->id)->get();
+        } elseif ($user->role_id == Role::AGENT) {
+            $agents = Agent::where('id', $user->agent->id)->get();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $branches = Branch::where('company_id', $companyId)->get();
+            $agents = Agent::whereIn('branch_id', $branches->pluck('id')->toArray())->get();
+        } else {
+            return redirect()->back()->with('error', 'You are not authorized to export payment links.');
+        }
+
+        $agentsId = $agents->pluck('id')->toArray();
+
+        $query = Payment::with([
+            'invoice', 'client', 'agent.branch', 'createdBy',
+            'paymentMethod', 'myFatoorahPayment',
+        ])->where(function ($query) use ($agentsId) {
+            $query->whereHas('invoice', function ($payment) use ($agentsId) {
+                $payment->whereIn('agent_id', $agentsId);
+            })->orWhereIn('agent_id', $agentsId);
+        })->where(fn ($q) => $q->where('is_imported', false)->orWhereNull('is_imported'));
+
+        $query->when($request->input('client_id'), fn ($q, $v) => $q->where('client_id', $v));
+        $query->when($request->input('agent_id'), fn ($q, $v) => $q->where('agent_id', $v));
+        $query->when($request->input('payment_method_id'), fn ($q, $v) => $q->where('payment_method_id', $v));
+        $query->when($request->input('created_by'), fn ($q, $v) => $q->where('created_by', $v));
+        $query->when($request->input('payment_gateway'), fn ($q, $v) => $q->whereIn('payment_gateway', (array) $v));
+        $query->when($request->input('status'), fn ($q, $v) => $q->whereIn('status', (array) $v));
+        $query->when($request->input('date_from'), fn ($q, $v) => $q->whereDate('created_at', '>=', $v));
+        $query->when($request->input('date_to'), fn ($q, $v) => $q->whereDate('created_at', '<=', $v));
+
+        $search = $request->input('search');
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('payment_reference', 'like', '%'.$search.'%')
+                    ->orWhere('payment_gateway', 'like', '%'.$search.'%')
+                    ->orWhere('voucher_number', 'like', '%'.$search.'%')
+                    ->orWhereHas('paymentMethod', fn ($q) => $q->where('english_name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('agent', fn ($q) => $q->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('client', fn ($q) => $q
+                        ->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%'.$search.'%'])
+                        ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%'.$search.'%'])
+                    );
+            });
+        }
+
+        $payments = (clone $query)->orderBy('id', 'desc');
+
+        $filename = 'payment-links-'.now()->format('Y-m-d-His').'.xlsx';
+
+        return Excel::download(
+            new PaymentLinkExport($payments),
+            $filename
         );
     }
 }

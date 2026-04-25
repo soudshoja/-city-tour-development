@@ -574,7 +574,7 @@ class BookingService
             // When null/missing/-1, the default -1 (all rates) sentinel still applies.
             if ($isUserPickedMeal) {
                 $room['userPickedMeal'] = true;
-                $room['rateBasis']      = (int) $rateBasisId;
+                $room['rateBasis'] = (int) $rateBasisId;
             }
 
             $rooms[] = $room;

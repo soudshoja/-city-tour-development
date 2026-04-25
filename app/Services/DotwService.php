@@ -571,9 +571,9 @@ class DotwService
      * via bookitinerary. Only for APR flow — cannot delete confirmed bookings.
      *
      * @param  string  $itineraryCode  Code returned from saveBooking
-     * @return array  Deletion result
+     * @return array Deletion result
      *
-     * @throws Exception  If deletion fails
+     * @throws Exception If deletion fails
      */
     public function deleteItinerary(string $itineraryCode): array
     {
@@ -866,8 +866,8 @@ class DotwService
 
         $commandCategoryMap = [
             'getamenitiesids' => 'amenity',
-            'getleisureids'   => 'leisure',
-            'getbusinessids'  => 'business',
+            'getleisureids' => 'leisure',
+            'getbusinessids' => 'business',
         ];
 
         foreach ($commandCategoryMap as $command => $category) {
@@ -879,7 +879,7 @@ class DotwService
                     $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
                     $this->logger->warning("DOTW {$command} returned unsuccessful response", [
                         'error_code' => $errorCode,
-                        'category'   => $category,
+                        'category' => $category,
                     ]);
 
                     continue;
@@ -889,19 +889,19 @@ class DotwService
 
                 foreach ($items as $item) {
                     $merged[] = [
-                        'code'     => $item['code'],
-                        'name'     => $item['name'],
+                        'code' => $item['code'],
+                        'name' => $item['name'],
                         'category' => $category,
                     ];
                 }
 
                 $this->logger->debug("DOTW {$command} parsed", [
-                    'count'    => count($items),
+                    'count' => count($items),
                     'category' => $category,
                 ]);
             } catch (\Exception $e) {
                 $this->logger->warning("DOTW {$command} failed — continuing with other categories", [
-                    'error'    => $e->getMessage(),
+                    'error' => $e->getMessage(),
                     'category' => $category,
                 ]);
             }
@@ -1012,19 +1012,19 @@ class DotwService
         // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
         // Source: Olga Chicu screenshot 2026-03-27
         $fallback = [
-            'mr'            => 147,
-            'mrs'           => 149,
-            'miss'          => 15134,
-            'ms'            => 148,
-            'dr'            => 558,
-            'child'         => 14632,
-            'master'        => 14632,
-            'sir'           => 1328,
-            'madame'        => 1671,
-            'mademoiselle'  => 74195,
-            'messrs'        => 9234,
-            'monsieur'      => 74185,
-            'sir/madam'     => 3801,
+            'mr' => 147,
+            'mrs' => 149,
+            'miss' => 15134,
+            'ms' => 148,
+            'dr' => 558,
+            'child' => 14632,
+            'master' => 14632,
+            'sir' => 1328,
+            'madame' => 1671,
+            'mademoiselle' => 74195,
+            'messrs' => 9234,
+            'monsieur' => 74185,
+            'sir/madam' => 3801,
         ];
 
         $this->logger->info('DOTW getSalutationIds request initiated');
@@ -1391,7 +1391,7 @@ class DotwService
             // userPickedMeal flag distinguishes the two cases — set true by BookingService
             // when the user has selected a specific meal plan.
             $userPickedMeal = (bool) ($room['userPickedMeal'] ?? false);
-            $rawRateBasis   = $room['rateBasis'] ?? null;
+            $rawRateBasis = $room['rateBasis'] ?? null;
 
             if ($userPickedMeal && $rawRateBasis !== null && $rawRateBasis !== '') {
                 // User picked — preserve the id (0=RO, 1331=BB, etc.)
@@ -1854,16 +1854,16 @@ class DotwService
      *
      * @param  SimpleXMLElement  $response  XML response
      * @return array Parsed rooms array with keys:
-     *   - roomTypeCode (string)
-     *   - roomName (string)
-     *   - specials (string[]) — promotional specials at roomType level (COMPLY-04)
-     *   - details (array[]) — one entry per rateBasis, each with:
-     *       id, status, price, taxes, allocationDetails, cancellationRules,
-     *       tariffNotes (string, COMPLY-03),
-     *       specialsApplied (string[], COMPLY-04),
-     *       minStay (string, COMPLY-06),
-     *       dateApplyMinStay (string, COMPLY-06),
-     *       propertyFees (array[], COMPLY-07)
+     *               - roomTypeCode (string)
+     *               - roomName (string)
+     *               - specials (string[]) — promotional specials at roomType level (COMPLY-04)
+     *               - details (array[]) — one entry per rateBasis, each with:
+     *               id, status, price, taxes, allocationDetails, cancellationRules,
+     *               tariffNotes (string, COMPLY-03),
+     *               specialsApplied (string[], COMPLY-04),
+     *               minStay (string, COMPLY-06),
+     *               dateApplyMinStay (string, COMPLY-06),
+     *               propertyFees (array[], COMPLY-07)
      */
     private function parseRooms(SimpleXMLElement $response): array
     {
@@ -1941,12 +1941,12 @@ class DotwService
      *
      * @param  SimpleXMLElement  $rateBasis  Rate basis element
      * @return array Parsed rules, each with keys:
-     *   - fromDate (string)
-     *   - toDate (string)
-     *   - charge (float)
-     *   - cancelCharge (float)
-     *   - cancelRestricted (bool) — cancellation not permitted (COMPLY-05)
-     *   - amendRestricted (bool) — amendment not permitted (COMPLY-05)
+     *               - fromDate (string)
+     *               - toDate (string)
+     *               - charge (float)
+     *               - cancelCharge (float)
+     *               - cancelRestricted (bool) — cancellation not permitted (COMPLY-05)
+     *               - amendRestricted (bool) — amendment not permitted (COMPLY-05)
      */
     private function parseCancellationRules(SimpleXMLElement $rateBasis): array
     {
@@ -2019,16 +2019,16 @@ class DotwService
      *
      * @param  SimpleXMLElement  $response  XML response
      * @return array Booking details with schema-required keys:
-     *   - bookingCode       (string) DOTW booking reference
-     *   - hotelCode         (string) DOTW hotel code
-     *   - fromDate          (string) check-in date
-     *   - toDate            (string) check-out date
-     *   - status            (string) booking status
-     *   - customerReference (string) customer's own reference
-     *   - totalAmount       (float)  total booking amount
-     *   - currency          (string) currency code
-     *   - passengerDetails  (array)  list of passenger objects (firstName, lastName, type)
-     *   — Backward-compat aliases (hotelName, checkIn, checkOut, totalPrice) also returned
+     *               - bookingCode       (string) DOTW booking reference
+     *               - hotelCode         (string) DOTW hotel code
+     *               - fromDate          (string) check-in date
+     *               - toDate            (string) check-out date
+     *               - status            (string) booking status
+     *               - customerReference (string) customer's own reference
+     *               - totalAmount       (float)  total booking amount
+     *               - currency          (string) currency code
+     *               - passengerDetails  (array)  list of passenger objects (firstName, lastName, type)
+     *               — Backward-compat aliases (hotelName, checkIn, checkOut, totalPrice) also returned
      */
     private function parseBookingDetail(SimpleXMLElement $response): array
     {
@@ -2037,28 +2037,28 @@ class DotwService
         foreach ($response->xpath('//passenger') as $pax) {
             $passengers[] = [
                 'firstName' => (string) ($pax->firstName ?? ''),
-                'lastName'  => (string) ($pax->lastName ?? ''),
-                'type'      => (string) ($pax->type ?? 'adult'),
+                'lastName' => (string) ($pax->lastName ?? ''),
+                'type' => (string) ($pax->type ?? 'adult'),
             ];
         }
 
         return [
             // Schema-required fields (BookingDetails non-null contract)
-            'bookingCode'       => (string) ($response->bookingCode ?? ''),
-            'hotelCode'         => (string) ($response->hotelCode ?? ''),
-            'fromDate'          => (string) ($response->fromDate ?? ''),
-            'toDate'            => (string) ($response->toDate ?? ''),
-            'status'            => (string) ($response->status ?? ''),
+            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'hotelCode' => (string) ($response->hotelCode ?? ''),
+            'fromDate' => (string) ($response->fromDate ?? ''),
+            'toDate' => (string) ($response->toDate ?? ''),
+            'status' => (string) ($response->status ?? ''),
             'customerReference' => (string) ($response->customerReference ?? ''),
-            'totalAmount'       => (float)  ($response->totalAmount ?? $response->totalPrice ?? 0),
-            'currency'          => (string) ($response->currency ?? ''),
-            'passengerDetails'  => $passengers,
+            'totalAmount' => (float) ($response->totalAmount ?? $response->totalPrice ?? 0),
+            'currency' => (string) ($response->currency ?? ''),
+            'passengerDetails' => $passengers,
 
             // Backward-compat aliases (keep existing callers unbroken)
-            'hotelName'  => (string) ($response->hotelName ?? ''),
-            'checkIn'    => (string) ($response->fromDate ?? $response->checkIn ?? ''),
-            'checkOut'   => (string) ($response->toDate ?? $response->checkOut ?? ''),
-            'totalPrice' => (float)  ($response->totalAmount ?? $response->totalPrice ?? 0),
+            'hotelName' => (string) ($response->hotelName ?? ''),
+            'checkIn' => (string) ($response->fromDate ?? $response->checkIn ?? ''),
+            'checkOut' => (string) ($response->toDate ?? $response->checkOut ?? ''),
+            'totalPrice' => (float) ($response->totalAmount ?? $response->totalPrice ?? 0),
         ];
     }
 

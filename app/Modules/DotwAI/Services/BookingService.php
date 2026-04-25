@@ -537,10 +537,12 @@ class BookingService
         $residenceCode = $roomData['residence_code'] ?? config('dotwai.default_residence', '66');
         $roomTypeCode = $roomData['room_type_code'] ?? null;
         $rateBasisId = $roomData['rate_basis_id'] ?? null;
-        // Guard: rateBasisId 0 is not a valid DOTW code — use -1 to request all rates — CERT-03 fix
-        if ($rateBasisId !== null && (int) $rateBasisId === 0) {
-            $rateBasisId = -1;
-        }
+        // CERT-12: determine whether the caller has explicitly picked a meal plan.
+        // Excludes null, empty string, and -1 (all-rates sentinel) — those mean "no pick".
+        // CERT-03 guard is preserved inside DotwService::buildRoomsXml for callers without userPickedMeal.
+        $isUserPickedMeal = $rateBasisId !== null
+            && $rateBasisId !== ''
+            && (int) $rateBasisId !== -1;
         $allocationDetails = $roomData['allocation_details'] ?? '';
 
         $rooms = [];
@@ -565,6 +567,14 @@ class BookingService
             }
             if (! empty($allocationDetails)) {
                 $room['allocationDetails'] = $allocationDetails;
+            }
+
+            // CERT-12: signal to DotwService::buildRoomsXml that this rateBasis was user-picked.
+            // True only when caller passed a non-null, non-empty, non-sentinel rate_basis_id.
+            // When null/missing/-1, the default -1 (all rates) sentinel still applies.
+            if ($isUserPickedMeal) {
+                $room['userPickedMeal'] = true;
+                $room['rateBasis']      = (int) $rateBasisId;
             }
 
             $rooms[] = $room;

@@ -1356,6 +1356,16 @@ class DotwService
     /**
      * Build <rooms> XML element from occupancy array
      *
+     * Per-room shape:
+     *   - 'adultsCode'   (int)         number of adults
+     *   - 'children'     (int[])       child ages
+     *   - 'rateBasis'    (?int|string) DOTW rate-basis id (0=RO, 1331=BB, etc.) or null
+     *   - 'userPickedMeal' (bool)      CERT-12: when true, preserve rateBasis verbatim
+     *                                  (including 0 for Room Only). When false/missing,
+     *                                  null/empty/0 all collapse to -1 (all rates).
+     *   - 'passengerNationality'        DOTW country code
+     *   - 'passengerCountryOfResidence' DOTW country code
+     *
      * @param  array  $rooms  Room occupancy details
      * @return string XML rooms element
      */
@@ -1371,10 +1381,27 @@ class DotwService
         foreach ($rooms as $index => $room) {
             $childrenXml = $this->buildChildrenXml($room['children'] ?? []);
 
-            // Guard: rateBasis 0 is not a valid DOTW code — use -1 (all rates) — CERT-03 fix
-            $rateBasis = (int) ($room['rateBasis'] ?? -1);
-            if ($rateBasis === 0) {
-                $rateBasis = -1;
+            // CERT-12 (supersedes CERT-03): rateBasis logic per Olga 2026-04-21 clarification.
+            //   - 0    = Room Only (VALID DOTW code)
+            //   - 1331 = Breakfast (VALID DOTW code)
+            //   - -1   = sentinel for "all rates" (used when caller has not picked)
+            //
+            // Rule: when the caller explicitly picks a meal plan, preserve the id verbatim
+            // (even 0). When no pick has happened (rateBasis missing or null), default to -1.
+            // userPickedMeal flag distinguishes the two cases — set true by BookingService
+            // when the user has selected a specific meal plan.
+            $userPickedMeal = (bool) ($room['userPickedMeal'] ?? false);
+            $rawRateBasis   = $room['rateBasis'] ?? null;
+
+            if ($userPickedMeal && $rawRateBasis !== null && $rawRateBasis !== '') {
+                // User picked — preserve the id (0=RO, 1331=BB, etc.)
+                $rateBasis = (int) $rawRateBasis;
+            } else {
+                // No pick — default to -1 (all rates). Also catches null/empty/0 leaks.
+                $rateBasis = (int) ($rawRateBasis ?? -1);
+                if ($rateBasis === 0) {
+                    $rateBasis = -1;
+                }
             }
 
             $roomsXml .= sprintf(

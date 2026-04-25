@@ -200,19 +200,19 @@ class DotwCertify extends Command
         // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
         // Source: Olga Chicu screenshot 2026-03-27
         $fallback = [
-            'mr'            => 147,
-            'mrs'           => 149,
-            'miss'          => 15134,
-            'ms'            => 148,
-            'dr'            => 558,
-            'child'         => 14632,
-            'master'        => 14632,
-            'sir'           => 1328,
-            'madame'        => 1671,
-            'mademoiselle'  => 74195,
-            'messrs'        => 9234,
-            'monsieur'      => 74185,
-            'sir/madam'     => 3801,
+            'mr' => 147,
+            'mrs' => 149,
+            'miss' => 15134,
+            'ms' => 148,
+            'dr' => 558,
+            'child' => 14632,
+            'master' => 14632,
+            'sir' => 1328,
+            'madame' => 1671,
+            'mademoiselle' => 74195,
+            'messrs' => 9234,
+            'monsieur' => 74185,
+            'sir/madam' => 3801,
         ];
 
         $xml = $this->buildRequest('getsalutationsids', '');
@@ -3503,7 +3503,7 @@ class DotwCertify extends Command
         $this->pass('19c', "Blocked OK — status: {$blockStatus}");
 
         // Step 19d: confirmbooking with specialRequests
-        $this->step('19d', 'confirmbooking — specialRequests count=1, code=1 (no smoking)');
+        $this->step('19d', 'confirmbooking — specialRequests count=1, code=1711 (non-smoking room)');
         $confirmXml = $this->buildRequest('confirmbooking', '
             <bookingDetails>
                 <fromDate>'.$fromDate.'</fromDate>
@@ -3515,6 +3515,7 @@ class DotwCertify extends Command
                 <rooms no="1">
                     <room runno="0">
                         <roomTypeCode>'.$browseRtCode.'</roomTypeCode>
+                        <!-- CERT-11: selectedRateBasis is the actual rate id from getRooms browse response (0=Room Only, 1331=Breakfast, etc) — NOT a hardcoded value. -->
                         <selectedRateBasis>'.$browseRbId.'</selectedRateBasis>
                         <allocationDetails>'.htmlspecialchars($blockAllocation).'</allocationDetails>
                         <adultsCode>2</adultsCode>
@@ -3537,7 +3538,7 @@ class DotwCertify extends Command
                             </passenger>
                         </passengersDetails>
                         <specialRequests count="1">
-                            <req runno="0">1</req>
+                            <req runno="0">1711</req>
                         </specialRequests>
                         <beddingPreference>0</beddingPreference>
                     </room>
@@ -3551,8 +3552,8 @@ class DotwCertify extends Command
         }
 
         $bookingCode = (string) ($confirmResponse->bookings->booking->bookingCode ?? '');
-        $this->pass('19d', "Booking with special request code=1 confirmed: {$bookingCode}");
-        $this->log('  ✔  VERIFICATION: Special request code 1 (no smoking) sent in XML');
+        $this->pass('19d', "Booking with special request code=1711 (non-smoking) confirmed: {$bookingCode}");
+        $this->log('  ✔  VERIFICATION: Special request code 1711 (non-smoking room) sent in XML — valid DOTW code per Olga\'s screenshot 2026-03-27');
         $this->endTest(19, true);
     }
 
@@ -3709,7 +3710,7 @@ class DotwCertify extends Command
         $this->startTest(21, '2-Room Cancellation — book 2 rooms then cancel (CERT-06 evidence for Olga)');
 
         $fromDate = now()->addDays(95)->format('Y-m-d');
-        $toDate   = now()->addDays(96)->format('Y-m-d');
+        $toDate = now()->addDays(96)->format('Y-m-d');
 
         // Step 21a: searchhotels — Dubai, 2 rooms (2 adults each), far-future date for cancellable rates
         $this->step('21a', 'searchhotels — Dubai, 2 rooms (2 adults each)');
@@ -3762,19 +3763,19 @@ class DotwCertify extends Command
         // Room 2: Mr James Brown + Mr William Brown
         $booking = $this->tryBookHotels($hotels, $fromDate, $toDate, '21', 'CERT-TEST-021', [
             [
-                'adultsCode'   => 2,
+                'adultsCode' => 2,
                 'actualAdults' => 2,
-                'children'     => [],
-                'passengers'   => [
+                'children' => [],
+                'passengers' => [
                     ['salutation' => $this->state['salutationMap']['mr'] ?? 147,  'firstName' => 'John',    'lastName' => 'Smith'],
                     ['salutation' => $this->state['salutationMap']['mrs'] ?? 149, 'firstName' => 'Jane',    'lastName' => 'Smith'],
                 ],
             ],
             [
-                'adultsCode'   => 2,
+                'adultsCode' => 2,
                 'actualAdults' => 2,
-                'children'     => [],
-                'passengers'   => [
+                'children' => [],
+                'passengers' => [
                     ['salutation' => $this->state['salutationMap']['mr'] ?? 147, 'firstName' => 'James',   'lastName' => 'Brown'],
                     ['salutation' => $this->state['salutationMap']['mr'] ?? 147, 'firstName' => 'William', 'lastName' => 'Brown'],
                 ],

@@ -17,11 +17,11 @@ use Illuminate\Support\Str;
  * NO foreign key constraints are enforced at the DB level (module isolation).
  * All reference IDs are soft foreign keys stored as nullable bigints.
  *
- * @property string $prebook_key       Unique booking reference (DOTWAI-{UUID})
- * @property string $track             Booking track: 'b2b', 'b2b_gateway', or 'b2c'
- * @property string $status            Current lifecycle status
- * @property int    $company_id        Company performing the booking
- * @property string $agent_phone       WhatsApp phone of the initiating agent
+ * @property string $prebook_key Unique booking reference (DOTWAI-{UUID})
+ * @property string $track Booking track: 'b2b', 'b2b_gateway', or 'b2c'
+ * @property string $status Current lifecycle status
+ * @property int $company_id Company performing the booking
+ * @property string $agent_phone WhatsApp phone of the initiating agent
  */
 class DotwAIBooking extends Model
 {
@@ -29,19 +29,28 @@ class DotwAIBooking extends Model
      * Lifecycle status constants.
      */
     public const STATUS_PREBOOKED = 'prebooked';
+
     public const STATUS_PENDING_PAYMENT = 'pending_payment';
+
     public const STATUS_CONFIRMING = 'confirming';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_EXPIRED = 'expired';
+
     public const STATUS_CANCELLATION_PENDING = 'cancellation_pending';
 
     /**
      * Track type constants.
      */
     public const TRACK_B2B = 'b2b';
+
     public const TRACK_B2B_GATEWAY = 'b2b_gateway';
+
     public const TRACK_B2C = 'b2c';
 
     protected $table = 'dotwai_bookings';
@@ -89,6 +98,7 @@ class DotwAIBooking extends Model
         'residence_code',
         'changed_occupancy',
         'rooms_data',
+        'valid_for_occupancy',
         'payment_guaranteed_by',
         'special_requests',
         'reminder_sent_at',
@@ -96,22 +106,23 @@ class DotwAIBooking extends Model
     ];
 
     protected $casts = [
-        'check_in'            => 'date',
-        'check_out'           => 'date',
+        'check_in' => 'date',
+        'check_out' => 'date',
         'original_total_fare' => 'decimal:3',
-        'display_total_fare'  => 'decimal:3',
-        'markup_percentage'   => 'decimal:2',
+        'display_total_fare' => 'decimal:3',
+        'markup_percentage' => 'decimal:2',
         'minimum_selling_price' => 'decimal:3',
-        'is_refundable'       => 'boolean',
-        'is_apr'              => 'boolean',
+        'is_refundable' => 'boolean',
+        'is_apr' => 'boolean',
         'cancellation_deadline' => 'datetime',
-        'voucher_sent_at'     => 'datetime',
-        'reminder_sent_at'    => 'datetime',
-        'auto_invoiced_at'    => 'datetime',
-        'guest_details'       => 'array',
-        'changed_occupancy'   => 'array',
-        'cancellation_rules'  => 'array',
-        'rooms_data'          => 'array',
+        'voucher_sent_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
+        'auto_invoiced_at' => 'datetime',
+        'guest_details' => 'array',
+        'changed_occupancy' => 'array',
+        'cancellation_rules' => 'array',
+        'rooms_data' => 'array',
+        'valid_for_occupancy' => 'array',
     ];
 
     /**
@@ -121,7 +132,7 @@ class DotwAIBooking extends Model
      */
     public function generatePrebookKey(): string
     {
-        return 'DOTWAI-' . strtoupper(Str::uuid()->toString());
+        return 'DOTWAI-'.strtoupper(Str::uuid()->toString());
     }
 
     /**

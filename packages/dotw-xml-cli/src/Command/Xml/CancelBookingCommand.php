@@ -1,7 +1,5 @@
 <?php
-
 declare(strict_types=1);
-
 namespace Dotw\XmlCli\Command\Xml;
 
 use Dotw\XmlCli\Command\AbstractXmlCommand;
@@ -11,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'xml:cancel-booking', description: 'Cancel a booking — preview charges (--confirm=no) or execute (--confirm=yes)')]
-final class CancelBookingCommand extends AbstractXmlCommand
+class CancelBookingCommand extends AbstractXmlCommand
 {
     protected function configure(): void
     {
@@ -38,21 +36,18 @@ final class CancelBookingCommand extends AbstractXmlCommand
         $confirm = strtolower((string) ($input->getOption('confirm') ?? 'no'));
 
         if (!$booking) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] --booking is required');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, '--booking is required');
         }
 
         if (!in_array($confirm, ['yes', 'no'], true)) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] --confirm must be "yes" or "no"');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, '--confirm must be "yes" or "no"');
         }
 
         $penaltyLine = '';
         if ($confirm === 'yes') {
             $penalty = $input->getOption('penalty');
             if ($penalty === null) {
-                $output->getErrorOutput()->writeln('[INPUT_ERROR] --penalty is required when --confirm=yes');
-                return self::EXIT_INPUT;
+                return $this->writeInputError($output, '--penalty is required when --confirm=yes');
             }
             $penaltyLine = sprintf('<penaltyApplied>%s</penaltyApplied>', htmlspecialchars((string) $penalty));
         }

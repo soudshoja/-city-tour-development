@@ -1,7 +1,5 @@
 <?php
-
 declare(strict_types=1);
-
 namespace Dotw\XmlCli\Command\Xml;
 
 use Dotw\XmlCli\Command\AbstractXmlCommand;
@@ -11,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'xml:confirm-booking', description: 'Confirm a hotel booking (confirmbooking)')]
-final class ConfirmBookingCommand extends AbstractXmlCommand
+class ConfirmBookingCommand extends AbstractXmlCommand
 {
     protected function configure(): void
     {
@@ -32,9 +30,9 @@ final class ConfirmBookingCommand extends AbstractXmlCommand
             ->setHelp(
                 "Confirm a hotel booking via confirmbooking.\n\n" .
                 "Single room example:\n" .
-                "  bin/dotw-xml xml:confirm-booking \\n" .
-                "    --hotel=12345 --from=2026-09-01 --to=2026-09-03 \\n" .
-                "    --email=agent@example.com --reference=REF001 \\n" .
+                "  bin/dotw-xml xml:confirm-booking \n" .
+                "    --hotel=12345 --from=2026-09-01 --to=2026-09-03 \n" .
+                "    --email=agent@example.com --reference=REF001 \n" .
                 "    --rooms-json='[{\"roomTypeCode\":\"DELUXE\",\"selectedRateBasis\":0,\n" .
                 "      \"allocationDetails\":\"ALLOC\",\"adults\":2,\"nationality\":66,\"residence\":66,\n" .
                 "      \"passengers\":[{\"salutation\":147,\"firstName\":\"John\",\"lastName\":\"Doe\",\"leading\":true}]}]'\n\n" .
@@ -50,14 +48,12 @@ final class ConfirmBookingCommand extends AbstractXmlCommand
         $roomsJson = $input->getOption('rooms-json');
 
         if (!$hotel || !$from || !$to || !$roomsJson) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] --hotel, --from, --to, and --rooms-json are required');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, '--hotel, --from, --to, and --rooms-json are required');
         }
 
         $rooms = json_decode((string) $roomsJson, true);
         if (!is_array($rooms) || empty($rooms)) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] --rooms-json must be a non-empty JSON array');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, '--rooms-json must be a non-empty JSON array');
         }
 
         $currency  = (int) ($input->getOption('currency') ?? $this->config->get('currency', 769));
@@ -78,9 +74,9 @@ final class ConfirmBookingCommand extends AbstractXmlCommand
                 );
             }
 
-            $childCount  = (int) ($room['children'] ?? 0);
+            $childCount = (int) ($room['children'] ?? 0);
             if ($childCount > 0) {
-                $ages = $room['childAges'] ?? array_fill(0, $childCount, 10);
+                $ages          = $room['childAges'] ?? array_fill(0, $childCount, 10);
                 $childElements = '';
                 foreach ((array) $ages as $i => $age) {
                     $childElements .= sprintf('<child runno="%d">%d</child>', $i, (int) $age);
@@ -90,9 +86,9 @@ final class ConfirmBookingCommand extends AbstractXmlCommand
                 $childrenXml = '<children no="0"></children>';
             }
 
-            $adults      = (int) ($room['adults']      ?? 2);
-            $nationality = (int) ($room['nationality']  ?? $this->config->get('nationality', 66));
-            $residence   = (int) ($room['residence']    ?? $this->config->get('residence', 66));
+            $adults      = (int) ($room['adults']     ?? 2);
+            $nationality = (int) ($room['nationality'] ?? $this->config->get('nationality', 66));
+            $residence   = (int) ($room['residence']   ?? $this->config->get('residence', 66));
 
             $roomsXml .= sprintf(
                 '<room runno="%d">

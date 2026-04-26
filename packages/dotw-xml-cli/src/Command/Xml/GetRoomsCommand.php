@@ -1,7 +1,5 @@
 <?php
-
 declare(strict_types=1);
-
 namespace Dotw\XmlCli\Command\Xml;
 
 use Dotw\XmlCli\Command\AbstractXmlCommand;
@@ -11,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'xml:get-rooms', description: 'Get room details for a hotel (browse or blocking mode)')]
-final class GetRoomsCommand extends AbstractXmlCommand
+class GetRoomsCommand extends AbstractXmlCommand
 {
     protected function configure(): void
     {
@@ -35,7 +33,7 @@ final class GetRoomsCommand extends AbstractXmlCommand
                 "Browse mode (default — shows available rooms and rates):\n" .
                 "  bin/dotw-xml xml:get-rooms --hotel=12345 --from=2026-09-01 --to=2026-09-03\n\n" .
                 "Blocking mode (lock a specific rate before confirmbooking):\n" .
-                "  bin/dotw-xml xml:get-rooms --hotel=12345 --from=2026-09-01 --to=2026-09-03 \\n" .
+                "  bin/dotw-xml xml:get-rooms --hotel=12345 --from=2026-09-01 --to=2026-09-03 \n" .
                 "    --block --room-type=ROOMCODE --rate=0 --allocation='ALLOC_STRING'\n\n" .
                 "After blocking, check <status>checked</status> — if not 'checked', rate is unavailable."
             );
@@ -48,8 +46,7 @@ final class GetRoomsCommand extends AbstractXmlCommand
         $to    = $input->getOption('to');
 
         if (!$hotel || !$from || !$to) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] --hotel, --from, and --to are required');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, '--hotel, --from, and --to are required');
         }
 
         $adults      = (int) ($input->getOption('adults') ?? 2);
@@ -70,8 +67,7 @@ final class GetRoomsCommand extends AbstractXmlCommand
             $allocation = $input->getOption('allocation');
 
             if ($roomType === null || $rate === null || $allocation === null) {
-                $output->getErrorOutput()->writeln('[INPUT_ERROR] --block requires --room-type, --rate, and --allocation');
-                return self::EXIT_INPUT;
+                return $this->writeInputError($output, '--block requires --room-type, --rate, and --allocation');
             }
 
             $roomTypeSelectedXml = sprintf(

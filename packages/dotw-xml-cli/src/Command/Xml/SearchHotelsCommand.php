@@ -1,7 +1,5 @@
 <?php
-
 declare(strict_types=1);
-
 namespace Dotw\XmlCli\Command\Xml;
 
 use Dotw\XmlCli\Command\AbstractXmlCommand;
@@ -11,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'xml:search-hotels', description: 'Search available hotels by city and dates')]
-final class SearchHotelsCommand extends AbstractXmlCommand
+class SearchHotelsCommand extends AbstractXmlCommand
 {
     protected function configure(): void
     {
@@ -42,8 +40,7 @@ final class SearchHotelsCommand extends AbstractXmlCommand
         $to   = $input->getOption('to');
 
         if (!$from || !$to) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] --from and --to are required');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, '--from and --to are required');
         }
 
         $adults      = (int) $input->getOption('adults');
@@ -56,8 +53,7 @@ final class SearchHotelsCommand extends AbstractXmlCommand
         $hotel       = $input->getOption('hotel');
 
         if (!$city && !$hotel) {
-            $output->getErrorOutput()->writeln('[INPUT_ERROR] Either --city or --hotel is required');
-            return self::EXIT_INPUT;
+            return $this->writeInputError($output, 'Either --city or --hotel is required');
         }
 
         $childrenXml = $children > 0

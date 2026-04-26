@@ -107,6 +107,20 @@ abstract class AbstractXmlCommand extends Command
         return self::EXIT_SUCCESS;
     }
 
+
+    /**
+     * Write an input validation error to stderr and return EXIT_INPUT.
+     * Uses ConsoleOutputInterface check so CommandTester output works in tests.
+     */
+    protected function writeInputError(OutputInterface $output, string $message): int
+    {
+        $errOut = $output instanceof ConsoleOutputInterface
+            ? $output->getErrorOutput()
+            : $output;
+        $errOut->writeln("[INPUT_ERROR] {$message}");
+        return self::EXIT_INPUT;
+    }
+
     private function writeXml(string $rawXml, OutputInterface $output): void
     {
         if ($this->jsonMode) {

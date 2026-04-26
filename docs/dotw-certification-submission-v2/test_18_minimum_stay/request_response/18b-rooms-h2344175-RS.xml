@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CERT-14 Evidence: getRooms response for hotel 2344175 (The S Hotel Al Barsha, Dubai) -->
+<!-- Date: 2026-04-26 | tID: 1777183488100001 | minStay=30 FOUND (PASS) -->
+<result command="getrooms" tID="1777183488100001" ip="121.121.56.157" date="2026-04-26 06:04:49" version="4.0" elapsedTime="0.29092597961426">
+  <currencyShort>KWD</currencyShort>
+  <hotel id="2344175" name="The S Hotel Al Barsha">
+    <allowBook>yes</allowBook>
+    <rooms count="1">
+      <room runno="0" count="4" adults="1" children="0" childrenages="" extrabeds="0">
+        <roomType runno="0" roomtypecode="81081325">
+          <rateBases count="5">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <minStay/>
+            </rateBasis>
+            <rateBasis runno="1" id="1331" description="Breakfast">
+              <minStay/>
+            </rateBasis>
+            <rateBasis runno="2" id="1334" description="Half Board">
+              <minStay/>
+            </rateBasis>
+            <rateBasis runno="3" id="1335" description="Full Board">
+              <minStay/>
+            </rateBasis>
+            <rateBasis runno="4" id="0" description="Room Only">
+              <!-- KEY EVIDENCE: minStay=30 nights on this rate -->
+              <minStay>30</minStay>
+              <total>264.1348<formatted>264.13</formatted></total>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="1" roomtypecode="81081345">
+          <rateBases count="5">
+            <rateBasis runno="4" id="0" description="Room Only">
+              <minStay>30</minStay>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="2" roomtypecode="192713145">
+          <rateBases count="5">
+            <rateBasis runno="4" id="0" description="Room Only">
+              <minStay>30</minStay>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="3" roomtypecode="1469809925">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <minStay>2</minStay>
+            </rateBasis>
+            <rateBasis runno="1" id="1331" description="Breakfast">
+              <minStay>2</minStay>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+      </room>
+    </rooms>
+  </hotel>
+  <successful>TRUE</successful>
+</result>

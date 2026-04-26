@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CERT-14 Evidence: getRooms response for hotel 81144 -->
+<!-- NOTE: This hotel was NOT queried in this run. The test loop exited via break 3 after -->
+<!-- hotel 2344175 (first in Olga's list) returned minStay=30 on 2026-04-26. -->
+<!-- Reason: per DotwCertify::runTest18 design, loop exits on first minStay > 0 found. -->
+<!-- The test PASSED on hotel 2344175. This file is a placeholder. -->
+<!-- To obtain a real RS for hotel 81144, re-run --test=18 with 2344175 removed from the list. -->

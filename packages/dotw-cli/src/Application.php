@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Dotw\Cli;
 
+use Dotw\Cli\Command\ConfirmCommand;
 use Dotw\Cli\Command\HotelsShowCommand;
 use Dotw\Cli\Command\PrebookCommand;
 use Dotw\Cli\Command\RoomsBrowseCommand;
 use Dotw\Cli\Command\SearchCommand;
+use Dotw\Cli\Command\VoucherCommand;
 use Symfony\Component\Console\Application as SymfonyApplication;
 
 /**
@@ -27,5 +29,7 @@ class Application extends SymfonyApplication
         $this->add(new HotelsShowCommand());
         $this->add(new RoomsBrowseCommand());
         $this->add(new PrebookCommand());
+        $this->add(new ConfirmCommand());
+        $this->add(new VoucherCommand());
     }
 }

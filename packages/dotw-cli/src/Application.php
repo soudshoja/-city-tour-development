@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Dotw\Cli;
 
+use Dotw\Cli\Command\AccountingShowCommand;
+use Dotw\Cli\Command\CancelExecuteCommand;
+use Dotw\Cli\Command\CancelPreviewCommand;
 use Dotw\Cli\Command\ConfirmCommand;
 use Dotw\Cli\Command\HotelsShowCommand;
 use Dotw\Cli\Command\PrebookCommand;
@@ -31,5 +34,8 @@ class Application extends SymfonyApplication
         $this->add(new PrebookCommand());
         $this->add(new ConfirmCommand());
         $this->add(new VoucherCommand());
+        $this->add(new CancelPreviewCommand());
+        $this->add(new CancelExecuteCommand());
+        $this->add(new AccountingShowCommand());
     }
 }

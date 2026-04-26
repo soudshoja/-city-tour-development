@@ -70,10 +70,13 @@ class CancelExecuteCommand extends AbstractCommand
 
         foreach ($codes as $code) {
             try {
-                $bodyXml = RequestBuilder::cancelBooking($code, confirm: true, penaltyApplied: $perCodePenalty);
+                // DOTW cancelbooking expects numeric booking code (e.g. 953295673),
+                // not the human-readable reference (e.g. HTL-WBD-953295673).
+                $numericCode = $this->extractNumericCode($code);
+                $bodyXml = RequestBuilder::cancelBooking($numericCode, confirm: true, penaltyApplied: $perCodePenalty);
                 $xml     = $client->send('cancelbooking', $bodyXml);
                 $client->assertSuccessful($xml);
-                $cancelledCodes[] = $code;
+                $cancelledCodes[] = $numericCode;
             } catch (\RuntimeException $e) {
                 // Log partial failure — continue per CERT-13 pattern
                 $errOutput = $output instanceof \Symfony\Component\Console\Output\ConsoleOutputInterface
@@ -172,5 +175,18 @@ class CancelExecuteCommand extends AbstractCommand
         $output->writeln(sprintf('Refund Due     : %s %s', $currency, number_format($refund, 3)));
 
         return self::EXIT_SUCCESS;
+    }
+
+    /**
+     * Extract numeric DOTW booking code from human-readable reference.
+     * e.g. "HTL-WBD-953295673" -> "953295673"
+     * e.g. "953295673"         -> "953295673" (already numeric — pass through)
+     */
+    private function extractNumericCode(string $code): string
+    {
+        if (preg_match('/^HTL-[A-Z]+-(\d+)$/i', $code, $m)) {
+            return $m[1];
+        }
+        return $code;
     }
 }

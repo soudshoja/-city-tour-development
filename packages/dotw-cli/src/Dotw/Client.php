@@ -97,20 +97,25 @@ class Client
 
     private function wrapRequest(string $command, string $body): string
     {
+        // cancelbooking XSD does not accept <product> — omit for cancel commands.
+        // All other commands (searchhotels, confirmbooking, etc.) include <product>.
+        $productLine = in_array($command, ['cancelbooking'], true)
+            ? ''
+            : sprintf('  <product>%s</product>' . "\n", $this->product);
+
         return sprintf(
             '<customer>
   <username>%s</username>
   <password>%s</password>
   <id>%s</id>
   <source>%d</source>
-  <product>%s</product>
-  <request command="%s">%s</request>
+%s  <request command="%s">%s</request>
 </customer>',
             htmlspecialchars($this->username),
             $this->passwordMd5,
             htmlspecialchars($this->companyCode),
             $this->source,
-            $this->product,
+            $productLine,
             htmlspecialchars($command),
             $body
         );

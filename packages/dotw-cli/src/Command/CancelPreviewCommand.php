@@ -64,7 +64,10 @@ class CancelPreviewCommand extends AbstractCommand
 
         foreach ($codes as $code) {
             try {
-                $bodyXml = RequestBuilder::cancelBooking($code, confirm: false);
+                // DOTW cancelbooking expects numeric booking code (e.g. 953295673),
+                // not the human-readable reference (e.g. HTL-WBD-953295673).
+                $numericCode = $this->extractNumericCode($code);
+                $bodyXml = RequestBuilder::cancelBooking($numericCode, confirm: false);
                 $xml     = $client->send('cancelbooking', $bodyXml);
                 $client->assertSuccessful($xml);
                 $parsed  = ResponseParser::cancelPreview($xml);
@@ -73,7 +76,7 @@ class CancelPreviewCommand extends AbstractCommand
                 $charge           = (float) $first['charge'];
                 $totalCharge     += $charge;
                 $perCodeResults[] = [
-                    'booking_code' => $code,
+                    'booking_code' => $numericCode,
                     'charge'       => $charge,
                     'currency'     => $first['currency'] ?? $currency,
                 ];
@@ -118,5 +121,19 @@ class CancelPreviewCommand extends AbstractCommand
         }
 
         return self::EXIT_SUCCESS;
+    }
+
+    /**
+     * Extract numeric DOTW booking code from human-readable reference.
+     * e.g. "HTL-WBD-953295673" -> "953295673"
+     * e.g. "953295673"         -> "953295673" (already numeric — pass through)
+     */
+    private function extractNumericCode(string $code): string
+    {
+        // Strip any "HTL-XXX-" prefix (e.g. HTL-WBD-, HTL-DXB-)
+        if (preg_match('/^HTL-[A-Z]+-(\d+)$/i', $code, $m)) {
+            return $m[1];
+        }
+        return $code;
     }
 }

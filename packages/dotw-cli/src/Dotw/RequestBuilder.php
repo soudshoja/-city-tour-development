@@ -162,6 +162,86 @@ class RequestBuilder
     }
 
     /**
+     * Build confirmbooking body.
+     *
+     * @param array{
+     *   fromDate: string,
+     *   toDate: string,
+     *   currency: int,
+     *   hotelId: string,
+     *   customerEmail: string,
+     *   customerReference: string,
+     *   roomTypeCode: string,
+     *   selectedRateBasis: int,
+     *   allocationDetails: string,
+     *   adults: int,
+     *   nationality: int,
+     *   residence: int,
+     *   passengers: list<array{salutation: int, firstName: string, lastName: string, leading: bool}>,
+     * } $params
+     */
+    public static function confirmBooking(array $params): string
+    {
+        $passengersXml = '';
+        foreach ($params['passengers'] as $p) {
+            $leading = $p['leading'] ? 'yes' : 'no';
+            $passengersXml .= sprintf(
+                '<passenger leading="%s">
+            <salutation>%d</salutation>
+            <firstName>%s</firstName>
+            <lastName>%s</lastName>
+        </passenger>',
+                $leading,
+                $p['salutation'],
+                htmlspecialchars($p['firstName']),
+                htmlspecialchars($p['lastName'])
+            );
+        }
+
+        return sprintf(
+            '<bookingDetails>
+    <fromDate>%s</fromDate>
+    <toDate>%s</toDate>
+    <currency>%d</currency>
+    <productId>%s</productId>
+    <sendCommunicationTo>%s</sendCommunicationTo>
+    <customerReference>%s</customerReference>
+    <rooms no="1">
+        <room runno="0">
+            <roomTypeCode>%s</roomTypeCode>
+            <selectedRateBasis>%d</selectedRateBasis>
+            <allocationDetails>%s</allocationDetails>
+            <adultsCode>%d</adultsCode>
+            <actualAdults>%d</actualAdults>
+            <children no="0"></children>
+            <actualChildren no="0"></actualChildren>
+            <extraBed>0</extraBed>
+            <passengerNationality>%d</passengerNationality>
+            <passengerCountryOfResidence>%d</passengerCountryOfResidence>
+            <passengersDetails>%s</passengersDetails>
+            <specialRequests count="0"></specialRequests>
+            <beddingPreference>0</beddingPreference>
+        </room>
+    </rooms>
+</bookingDetails>',
+            htmlspecialchars($params['fromDate']),
+            htmlspecialchars($params['toDate']),
+            $params['currency'],
+            htmlspecialchars($params['hotelId']),
+            htmlspecialchars($params['customerEmail']),
+            htmlspecialchars($params['customerReference']),
+            htmlspecialchars($params['roomTypeCode']),
+            $params['selectedRateBasis'],
+            htmlspecialchars($params['allocationDetails']),
+            $params['adults'],
+            $params['adults'],
+            $params['nationality'],
+            $params['residence'],
+            $passengersXml
+        );
+    }
+
+    /**
      * Build cancelbooking body (confirm=no for preview, confirm=yes for execute).
      */
     public static function cancelBooking(string $bookingCode, bool $confirm, ?float $penaltyApplied = null): string

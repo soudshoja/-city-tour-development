@@ -39,9 +39,9 @@ class CancellationService
     /**
      * Execute the 2-step cancellation flow.
      *
-     * @param DotwAIContext $context  Resolved company/agent context
-     * @param array         $input    Validated input: prebook_key, confirm ('no'|'yes'),
-     *                                penalty_amount (required when confirm=yes)
+     * @param  DotwAIContext  $context  Resolved company/agent context
+     * @param  array  $input  Validated input: prebook_key, confirm ('no'|'yes'),
+     *                        penalty_amount (required when confirm=yes)
      * @return array Result array suitable for DotwAIResponse::success/error
      */
     public function cancel(DotwAIContext $context, array $input): array
@@ -53,8 +53,8 @@ class CancellationService
 
         if ($booking === null) {
             return [
-                'error'   => true,
-                'code'    => DotwAIResponse::PREBOOK_NOT_FOUND,
+                'error' => true,
+                'code' => DotwAIResponse::PREBOOK_NOT_FOUND,
                 'message' => "Booking not found: {$input['prebook_key']}",
             ];
         }
@@ -65,10 +65,10 @@ class CancellationService
             DotwAIBooking::STATUS_CANCELLATION_PENDING,
         ];
 
-        if (!in_array($booking->status, $cancellableStatuses, true)) {
+        if (! in_array($booking->status, $cancellableStatuses, true)) {
             return [
-                'error'   => true,
-                'code'    => DotwAIResponse::CANCELLATION_NOT_ALLOWED,
+                'error' => true,
+                'code' => DotwAIResponse::CANCELLATION_NOT_ALLOWED,
                 'message' => "Booking cannot be cancelled in status: {$booking->status}",
             ];
         }
@@ -76,8 +76,8 @@ class CancellationService
         // Cannot cancel if the booking was never confirmed with DOTW
         if (empty($booking->booking_ref)) {
             return [
-                'error'   => true,
-                'code'    => DotwAIResponse::CANCELLATION_NOT_ALLOWED,
+                'error' => true,
+                'code' => DotwAIResponse::CANCELLATION_NOT_ALLOWED,
                 'message' => 'Booking has no DOTW booking reference — cannot cancel.',
             ];
         }
@@ -95,58 +95,80 @@ class CancellationService
 
     /**
      * Step 1: Preview mode — call DOTW with confirm=no to fetch penalty without cancelling.
+     *
+     * CERT-13: fires a separate cancelBooking call for each booking code in booking_refs,
+     * sums charges/refunds across all rooms, and returns the aggregate to the caller.
      */
     private function executePreviewCancellation(
         DotwAIBooking $booking,
         DotwAIContext $context,
     ): array {
-        try {
-            $dotwService = new DotwService($context->companyId);
-            $result      = $dotwService->cancelBooking([
-                'confirm'     => 'no',
-                'bookingCode' => $booking->booking_ref,
-            ]);
-
-            // Transition to cancellation_pending so we know preview was viewed
-            $booking->update(['status' => DotwAIBooking::STATUS_CANCELLATION_PENDING]);
-
-            $charge  = (float) ($result['charge'] ?? 0);
-            $refund  = (float) ($result['refund'] ?? 0);
-            $currency = $booking->display_currency ?? 'KWD';
-
-            $messageData = [
-                'hotel_name'     => $booking->hotel_name ?? 'Hotel',
-                'check_in'       => $booking->check_in?->format('Y-m-d') ?? '',
-                'check_out'      => $booking->check_out?->format('Y-m-d') ?? '',
-                'penalty_amount' => $charge,
-                'currency'       => $currency,
-                'booking_ref'    => $booking->booking_ref,
-                'refund_amount'  => $refund,
-            ];
-
+        $bookingRefs = $this->getBookingRefs($booking);
+        if (empty($bookingRefs)) {
             return [
-                'prebook_key'    => $booking->prebook_key,
-                'booking_ref'    => $booking->booking_ref,
-                'hotel_name'     => $booking->hotel_name,
-                'penalty_amount' => $charge,
-                'refund_amount'  => $refund,
-                'currency'       => $currency,
-                'step'           => 'preview',
-                '_message_data'  => $messageData,
-            ];
-        } catch (\Throwable $e) {
-            Log::channel('dotw')->error('[CancellationService] DOTW cancelBooking preview failed', [
-                'prebook_key' => $booking->prebook_key,
-                'booking_ref' => $booking->booking_ref,
-                'error'       => $e->getMessage(),
-            ]);
-
-            return [
-                'error'   => true,
-                'code'    => DotwAIResponse::DOTW_API_ERROR,
-                'message' => 'DOTW cancellation preview failed: ' . $e->getMessage(),
+                'error' => true,
+                'code' => DotwAIResponse::CANCELLATION_NOT_ALLOWED,
+                'message' => 'Booking has no DOTW booking references — cannot cancel.',
             ];
         }
+
+        $totalCharge = 0.0;
+        $totalRefund = 0.0;
+        $perRoomResults = [];
+
+        foreach ($bookingRefs as $ref) {
+            try {
+                $dotwService = new DotwService($context->companyId);
+                $result = $dotwService->cancelBooking([
+                    'confirm' => 'no',
+                    'bookingCode' => $ref,
+                ]);
+                $totalCharge += (float) ($result['charge'] ?? 0);
+                $totalRefund += (float) ($result['refund'] ?? 0);
+                $perRoomResults[$ref] = $result;
+            } catch (\Throwable $e) {
+                Log::channel('dotw')->error('[CancellationService] DOTW cancelBooking preview failed (per-room)', [
+                    'prebook_key' => $booking->prebook_key,
+                    'booking_ref' => $ref,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return [
+                    'error' => true,
+                    'code' => DotwAIResponse::DOTW_API_ERROR,
+                    'message' => 'DOTW cancellation preview failed for room '.$ref.': '.$e->getMessage(),
+                ];
+            }
+        }
+
+        // Transition to cancellation_pending so we know preview was viewed
+        $booking->update(['status' => DotwAIBooking::STATUS_CANCELLATION_PENDING]);
+
+        $charge = $totalCharge;
+        $refund = $totalRefund;
+        $currency = $booking->display_currency ?? 'KWD';
+
+        $messageData = [
+            'hotel_name' => $booking->hotel_name ?? 'Hotel',
+            'check_in' => $booking->check_in?->format('Y-m-d') ?? '',
+            'check_out' => $booking->check_out?->format('Y-m-d') ?? '',
+            'penalty_amount' => $charge,
+            'currency' => $currency,
+            'booking_ref' => $booking->booking_ref,
+            'refund_amount' => $refund,
+            'per_room_results' => $perRoomResults, // CERT-13: per-room breakdown
+        ];
+
+        return [
+            'prebook_key' => $booking->prebook_key,
+            'booking_ref' => $booking->booking_ref,
+            'hotel_name' => $booking->hotel_name,
+            'penalty_amount' => $charge,
+            'refund_amount' => $refund,
+            'currency' => $currency,
+            'step' => 'preview',
+            '_message_data' => $messageData,
+        ];
     }
 
     /**
@@ -168,30 +190,63 @@ class CancellationService
     ): array {
         $penaltyAmount = (float) ($input['penalty_amount'] ?? 0);
 
-        // ── 1. Call DOTW API first (outside any transaction) ────────────────
-        try {
-            $dotwService = new DotwService($context->companyId);
-            $result      = $dotwService->cancelBooking([
-                'confirm'        => 'yes',
-                'bookingCode'    => $booking->booking_ref,
-                'penaltyApplied' => $penaltyAmount,
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('dotw')->error('[CancellationService] DOTW cancelBooking execute failed', [
-                'prebook_key' => $booking->prebook_key,
-                'booking_ref' => $booking->booking_ref,
-                'error'       => $e->getMessage(),
-            ]);
-
+        $bookingRefs = $this->getBookingRefs($booking);
+        if (empty($bookingRefs)) {
             return [
-                'error'   => true,
-                'code'    => DotwAIResponse::DOTW_API_ERROR,
-                'message' => 'DOTW cancellation execution failed: ' . $e->getMessage(),
+                'error' => true,
+                'code' => DotwAIResponse::CANCELLATION_NOT_ALLOWED,
+                'message' => 'Booking has no DOTW booking references — cannot cancel.',
             ];
         }
 
-        $charge  = (float) ($result['charge'] ?? 0);
-        $refund  = (float) ($result['refund'] ?? 0);
+        // ── 1. Call DOTW API first (outside any transaction) — one call per ref ─
+        // CERT-13: each booking code (one per room) needs its own cancelBooking call.
+        // Distribute penalty evenly across refs. This is a reasonable approximation
+        // for cert; a future plan can replace with per-room preview-charge memoization.
+        // TODO(CERT-13-future): store per-room preview charges in booking_refs metadata
+        //   so we can pass the exact penalty per code rather than an even split.
+        $totalRefsCount = count($bookingRefs);
+        $perCallPenalty = $totalRefsCount > 0 ? ($penaltyAmount / $totalRefsCount) : 0.0;
+        $totalCharge = 0.0;
+        $totalRefund = 0.0;
+        $allResults = [];
+        $cancelledRefs = [];
+
+        foreach ($bookingRefs as $ref) {
+            try {
+                $dotwService = new DotwService($context->companyId);
+                $result = $dotwService->cancelBooking([
+                    'confirm' => 'yes',
+                    'bookingCode' => $ref,
+                    'penaltyApplied' => $perCallPenalty,
+                ]);
+                $totalCharge += (float) ($result['charge'] ?? 0);
+                $totalRefund += (float) ($result['refund'] ?? 0);
+                $allResults[$ref] = $result;
+                $cancelledRefs[] = $ref;
+            } catch (\Throwable $e) {
+                Log::channel('dotw')->error('[CancellationService] DOTW cancelBooking execute failed (per-room)', [
+                    'prebook_key' => $booking->prebook_key,
+                    'booking_ref' => $ref,
+                    'cancelled_so_far' => $cancelledRefs,
+                    'error' => $e->getMessage(),
+                ]);
+
+                // Partial-failure: DOTW already cancelled some refs — mixed state.
+                // Mark as failed so admin can reconcile; surface which refs succeeded.
+                $booking->update(['status' => DotwAIBooking::STATUS_FAILED]);
+
+                return [
+                    'error' => true,
+                    'code' => DotwAIResponse::DOTW_API_ERROR,
+                    'message' => 'DOTW cancellation partially failed at room '.$ref.': '.$e->getMessage()
+                        .' (cancelled: '.implode(',', $cancelledRefs).')',
+                ];
+            }
+        }
+
+        $charge = $totalCharge;
+        $refund = $totalRefund;
         $currency = $booking->display_currency ?? 'KWD';
 
         // ── 2. Commit DB writes inside a transaction ──────────────────────
@@ -223,7 +278,7 @@ class CancellationService
                         } else {
                             Log::warning('[CancellationService] Could not resolve clientId for B2B credit refund', [
                                 'prebook_key' => $booking->prebook_key,
-                                'company_id'  => $context->companyId,
+                                'company_id' => $context->companyId,
                             ]);
                         }
                     }
@@ -233,10 +288,10 @@ class CancellationService
             // CRITICAL: DOTW cancellation succeeded but our DB writes failed.
             // The cancellation did happen — inform the user but log the discrepancy.
             Log::critical('[CancellationService] DB transaction failed after successful DOTW cancellation', [
-                'prebook_key'  => $booking->prebook_key,
-                'booking_ref'  => $booking->booking_ref,
-                'dotw_result'  => $result,
-                'error'        => $e->getMessage(),
+                'prebook_key' => $booking->prebook_key,
+                'booking_ref' => $booking->booking_ref,
+                'all_results' => $allResults,
+                'error' => $e->getMessage(),
             ]);
 
             // Best-effort: update booking status outside transaction
@@ -246,31 +301,51 @@ class CancellationService
             } catch (\Throwable $saveException) {
                 Log::critical('[CancellationService] Could not save cancelled status after transaction failure', [
                     'prebook_key' => $booking->prebook_key,
-                    'error'       => $saveException->getMessage(),
+                    'error' => $saveException->getMessage(),
                 ]);
             }
         }
 
-        $isFree      = $charge <= 0;
+        $isFree = $charge <= 0;
         $messageData = [
-            'hotel_name'          => $booking->hotel_name ?? 'Hotel',
-            'booking_ref'         => $booking->booking_ref,
-            'penalty_amount'      => $charge,
-            'currency'            => $currency,
+            'hotel_name' => $booking->hotel_name ?? 'Hotel',
+            'booking_ref' => $booking->booking_ref,
+            'penalty_amount' => $charge,
+            'currency' => $currency,
             'is_free_cancellation' => $isFree,
         ];
 
         return [
-            'prebook_key'          => $booking->prebook_key,
-            'booking_ref'          => $booking->booking_ref,
-            'hotel_name'           => $booking->hotel_name,
-            'status'               => DotwAIBooking::STATUS_CANCELLED,
-            'penalty_amount'       => $charge,
-            'refund_amount'        => $refund,
-            'currency'             => $currency,
+            'prebook_key' => $booking->prebook_key,
+            'booking_ref' => $booking->booking_ref,
+            'hotel_name' => $booking->hotel_name,
+            'status' => DotwAIBooking::STATUS_CANCELLED,
+            'penalty_amount' => $charge,
+            'refund_amount' => $refund,
+            'currency' => $currency,
             'is_free_cancellation' => $isFree,
-            'step'                 => 'confirmed',
-            '_message_data'        => $messageData,
+            'step' => 'confirmed',
+            '_message_data' => $messageData,
         ];
+    }
+
+    /**
+     * Return the list of DOTW booking codes for this booking.
+     *
+     * Multi-room bookings (CERT-13) have a separate code per room — each must be
+     * cancelled with its own cancelBooking call. Single-room bookings or bookings
+     * created before the booking_refs column was added fall back to [booking_ref].
+     *
+     * @return string[] List of DOTW booking codes (always at least 1 element when booking_ref set)
+     */
+    private function getBookingRefs(DotwAIBooking $booking): array
+    {
+        $refs = $booking->booking_refs ?? [];
+        if (is_array($refs) && count($refs) > 0) {
+            return array_values(array_filter($refs, fn ($r) => is_string($r) && $r !== ''));
+        }
+
+        // Fallback: legacy booking with only the singular booking_ref column populated.
+        return $booking->booking_ref ? [$booking->booking_ref] : [];
     }
 }

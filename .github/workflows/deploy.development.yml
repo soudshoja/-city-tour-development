@@ -1,0 +1,121 @@
+name: Deploy to development.citycommerce.group
+
+on:
+  push:
+    branches:
+      - master
+      - enhance/upstream-sync-2026-04
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'master'
+        type: string
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy + migrate + cache rebuild
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout code (for ref display only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Display deployment info
+        run: |
+          echo "::notice::Deploying ${GITHUB_SHA:0:7} from ${GITHUB_REF_NAME} to development.citycommerce.group"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_SSH_PORT || 22 }}
+          script_stop: true
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            DEPLOY_PATH="${{ secrets.DEV_DEPLOY_PATH }}"
+            BRANCH="${GITHUB_REF_NAME:-${{ github.event.inputs.branch }}}"
+            COMMIT="${{ github.sha }}"
+
+            echo "==> Entering ${DEPLOY_PATH}"
+            cd "${DEPLOY_PATH}"
+
+            echo "==> Putting site into maintenance mode"
+            php artisan down --retry=15 --secret="${{ secrets.DEV_MAINTENANCE_SECRET }}" || true
+
+            echo "==> Fetching latest from origin"
+            git fetch --all --prune
+
+            echo "==> Checking out ${BRANCH}"
+            git checkout "${BRANCH}"
+            git reset --hard "origin/${BRANCH}"
+
+            echo "==> Installing PHP dependencies (no-dev, optimized)"
+            composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+            echo "==> Installing Node dependencies + building assets"
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+            npm run build
+
+            echo "==> Running database migrations"
+            php artisan migrate --force
+
+            echo "==> Clearing + rebuilding caches"
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache || true
+
+            echo "==> Restarting queue workers (graceful)"
+            php artisan queue:restart || true
+
+            echo "==> Writing deployment marker"
+            cat > public/version.json <<EOF
+            { "commit": "${COMMIT}", "branch": "${BRANCH}", "deployed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)" }
+            EOF
+
+            echo "==> Bringing site back up"
+            php artisan up
+
+            echo "==> Deploy complete: ${COMMIT:0:7} on ${BRANCH}"
+
+      - name: Smoke test — verify site responds
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://development.citycommerce.group/ || echo "000")
+            echo "Attempt $i: HTTP $STATUS"
+            if [[ "$STATUS" =~ ^(200|301|302|401|403)$ ]]; then
+              echo "::notice::Site responding with $STATUS — deploy verified"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Site did not respond with a healthy status code after 5 attempts"
+          exit 1
+
+      - name: Verify version.json reflects new commit
+        run: |
+          DEPLOYED=$(curl -s https://development.citycommerce.group/version.json | grep -oE '"commit":\s*"[a-f0-9]+"' | grep -oE '[a-f0-9]+')
+          EXPECTED="${GITHUB_SHA}"
+          if [ "$DEPLOYED" = "$EXPECTED" ]; then
+            echo "::notice::version.json shows ${DEPLOYED:0:7} — matches deployed commit"
+          else
+            echo "::warning::version.json shows '$DEPLOYED' but expected '${EXPECTED:0:7}' — caching layer may be stale"
+          fi

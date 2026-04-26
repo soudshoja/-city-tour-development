@@ -66,6 +66,9 @@ class RequestBuilder
 
     /**
      * Build getRooms body for browse pass (blocking=false).
+     *
+     * NOTE: <productId> must appear AFTER <rooms> per getrooms.xsd.
+     * The <return><fields> section requests cancellation, name, and tariff notes.
      */
     public static function getRoomsBrowse(array $params): string
     {
@@ -78,7 +81,6 @@ class RequestBuilder
     <fromDate>%s</fromDate>
     <toDate>%s</toDate>
     <currency>%d</currency>
-    <productId>%s</productId>
     <rooms no="1">
         <room runno="0">
             <adultsCode>%d</adultsCode>
@@ -88,21 +90,31 @@ class RequestBuilder
             <passengerCountryOfResidence>%d</passengerCountryOfResidence>
         </room>
     </rooms>
-</bookingDetails>',
+    <productId>%s</productId>
+</bookingDetails>
+<return>
+    <fields>
+        <roomField>cancellation</roomField>
+        <roomField>name</roomField>
+        <roomField>tariffNotes</roomField>
+    </fields>
+</return>',
             htmlspecialchars($params['fromDate']),
             htmlspecialchars($params['toDate']),
             $params['currency'],
-            htmlspecialchars($params['hotelId']),
             $params['adults'],
             $childrenXml,
             $params['rateBasis'] ?? -1,
             $params['nationality'],
-            $params['residence']
+            $params['residence'],
+            htmlspecialchars($params['hotelId'])
         );
     }
 
     /**
      * Build getRooms body for block pass (blocking=true).
+     *
+     * NOTE: <productId> must appear AFTER <rooms> per getrooms.xsd.
      * Requires roomTypeCode, selectedRateBasis, allocationDetails from browse response.
      */
     public static function getRoomsBlock(array $params): string
@@ -116,7 +128,6 @@ class RequestBuilder
     <fromDate>%s</fromDate>
     <toDate>%s</toDate>
     <currency>%d</currency>
-    <productId>%s</productId>
     <rooms no="1">
         <room runno="0">
             <adultsCode>%d</adultsCode>
@@ -131,11 +142,13 @@ class RequestBuilder
             </roomTypeSelected>
         </room>
     </rooms>
-</bookingDetails>',
+    <productId>%s</productId>
+</bookingDetails>
+<return>
+</return>',
             htmlspecialchars($params['fromDate']),
             htmlspecialchars($params['toDate']),
             $params['currency'],
-            htmlspecialchars($params['hotelId']),
             $params['adults'],
             $childrenXml,
             $params['rateBasis'] ?? -1,
@@ -143,7 +156,8 @@ class RequestBuilder
             $params['residence'],
             htmlspecialchars($params['roomTypeCode']),
             $params['selectedRateBasis'],
-            htmlspecialchars($params['allocationDetails'])
+            htmlspecialchars($params['allocationDetails']),
+            htmlspecialchars($params['hotelId'])
         );
     }
 

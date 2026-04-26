@@ -27,31 +27,62 @@ class ResponseParser
      *   thumbnail: string,
      * }>
      */
+    /**
+     * DOTW V4 rate basis ID → human-readable name map.
+     * Search response does not include description attribute; map from ID.
+     */
+    private static array $rateBasisNames = [
+        0    => 'Room Only',
+        1331 => 'Breakfast',
+        1332 => 'Half Board',
+        1333 => 'Full Board',
+        1334 => 'All Inclusive',
+        1335 => 'Soft All Inclusive',
+        1336 => 'Self Catering',
+    ];
+
     public static function hotels(SimpleXMLElement $xml): array
     {
+        // V4 searchhotels response:
+        //   <result command="searchhotels" ...>
+        //     <hotels>
+        //       <hotel hotelid="1013275">
+        //         <rooms>
+        //           <room adults="2" ...>
+        //             <roomType roomtypecode="..." ><name>DELUXE ROOM.</name>
+        //               <rateBases>
+        //                 <rateBasis id="0"><rateType currencyid="769">1</rateType><total>20.9479</total>
+        // Note: hotel name, stars, city are NOT in search response — only in getrooms response.
         $hotels = [];
         foreach ($xml->hotels->hotel ?? [] as $hotel) {
-            $minFare = PHP_FLOAT_MAX;
-            $rateBasisName = '';
+            $hotelId   = (string) ($hotel['hotelid'] ?? '');
+            $minFare   = PHP_FLOAT_MAX;
+            $minRbId   = 0;
+            $currencyId = '';
+
             foreach ($hotel->rooms->room ?? [] as $room) {
-                foreach ($room->rateBases->rateBasis ?? [] as $rb) {
-                    $fare = (float) $rb->total;
-                    if ($fare < $minFare) {
-                        $minFare = $fare;
-                        $rateBasisName = (string) $rb->name;
+                foreach ($room->roomType ?? [] as $roomType) {
+                    foreach ($roomType->rateBases->rateBasis ?? [] as $rb) {
+                        $fare = (float) $rb->total;
+                        if ($fare < $minFare && $fare > 0.0) {
+                            $minFare    = $fare;
+                            $minRbId    = (int) ($rb['id'] ?? 0);
+                            $currencyId = (string) ($rb->rateType['currencyid'] ?? '');
+                        }
                     }
                 }
             }
+
             $hotels[] = [
-                'hotel_id'     => (string) $hotel->productId,
-                'hotel_name'   => (string) $hotel->hotelName,
-                'star_rating'  => (string) $hotel->classification,
-                'city_name'    => (string) $hotel->cityName,
-                'country_name' => (string) $hotel->countryName,
+                'hotel_id'     => $hotelId,
+                'hotel_name'   => '',   // not in search RS; call dotw:hotels:show for details
+                'star_rating'  => '',
+                'city_name'    => '',
+                'country_name' => '',
                 'min_fare'     => $minFare === PHP_FLOAT_MAX ? 0.0 : $minFare,
-                'currency'     => (string) ($xml->hotels['currency'] ?? ''),
-                'rate_basis'   => $rateBasisName,
-                'thumbnail'    => (string) ($hotel->imageList->image->url ?? ''),
+                'currency_id'  => $currencyId,
+                'rate_basis'   => self::$rateBasisNames[$minRbId] ?? "RB-{$minRbId}",
+                'thumbnail'    => '',
             ];
         }
         return $hotels;
@@ -73,20 +104,52 @@ class ResponseParser
      */
     public static function rooms(SimpleXMLElement $xml): array
     {
-        $rooms = [];
-        $currency = (string) ($xml->hotels->hotel->rooms['currency'] ?? '');
-        foreach ($xml->hotels->hotel->rooms->room ?? [] as $room) {
-            foreach ($room->rateBases->rateBasis ?? [] as $rb) {
-                $rooms[] = [
-                    'room_type_code'      => (string) $room->code,
-                    'room_name'           => (string) $room->name,
-                    'rate_basis_id'       => (int) $rb->id,
-                    'rate_basis_name'     => (string) $rb->name,
-                    'total_fare'          => (float) $rb->total,
-                    'allocation_details'  => (string) ($rb->allocationDetails ?? ''),
-                    'currency'            => $currency,
-                    'cancellation_policy' => (string) ($rb->cancellationPolicy ?? ''),
-                ];
+        // V4 getrooms response: <result><currencyShort>KWD</currencyShort>
+        //   <hotel id="..." name="...">
+        //     <rooms count="1">
+        //       <room runno="0" ...>
+        //         <roomType runno="0" roomtypecode="...">
+        //           <name>...</name>
+        //           <rateBases count="N">
+        //             <rateBasis runno="0" id="..." description="...">
+        //               <allocationDetails>...</allocationDetails>
+        //               <total>...</total>
+        //               <cancellationRules>...</cancellationRules>
+        $rooms    = [];
+        $currency = (string) ($xml->currencyShort ?? '');
+
+        foreach ($xml->hotel->rooms->room ?? [] as $room) {
+            foreach ($room->roomType ?? [] as $roomType) {
+                $roomTypeCode = (string) ($roomType['roomtypecode'] ?? '');
+                $roomName     = (string) ($roomType->name ?? '');
+
+                foreach ($roomType->rateBases->rateBasis ?? [] as $rb) {
+                    // Build a human-readable cancellation summary from first non-zero rule
+                    $cancelPolicy = '';
+                    foreach ($rb->cancellationRules->rule ?? [] as $rule) {
+                        $charge = (float) $rule->charge;
+                        if ($charge > 0.0) {
+                            $cancelPolicy = sprintf(
+                                'From %s: %s %s',
+                                (string) ($rule->fromDate ?? $rule->toDate ?? ''),
+                                $currency,
+                                number_format($charge, 3)
+                            );
+                            break;
+                        }
+                    }
+
+                    $rooms[] = [
+                        'room_type_code'      => $roomTypeCode,
+                        'room_name'           => $roomName,
+                        'rate_basis_id'       => (int) ($rb['id'] ?? 0),
+                        'rate_basis_name'     => (string) ($rb['description'] ?? ''),
+                        'total_fare'          => (float) $rb->total,
+                        'allocation_details'  => (string) ($rb->allocationDetails ?? ''),
+                        'currency'            => $currency,
+                        'cancellation_policy' => $cancelPolicy,
+                    ];
+                }
             }
         }
         return $rooms;

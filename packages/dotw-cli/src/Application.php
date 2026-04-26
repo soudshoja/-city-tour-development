@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Dotw\Cli;
 
+use Dotw\Cli\Command\HotelsShowCommand;
+use Dotw\Cli\Command\PrebookCommand;
+use Dotw\Cli\Command\RoomsBrowseCommand;
+use Dotw\Cli\Command\SearchCommand;
 use Symfony\Component\Console\Application as SymfonyApplication;
 
 /**
  * DOTW CLI Application bootstrap.
  *
- * Registers all commands. Commands are added here explicitly
- * (no container auto-discovery) for portability.
+ * Registers all commands explicitly (no container auto-discovery) for portability.
  */
 class Application extends SymfonyApplication
 {
@@ -20,7 +23,9 @@ class Application extends SymfonyApplication
     {
         parent::__construct('dotw-cli', self::VERSION);
 
-        // Commands are registered in subsequent plans (28-02 through 28-05).
-        // Scaffold only — bin/dotw list returns empty command list.
+        $this->add(new SearchCommand());
+        $this->add(new HotelsShowCommand());
+        $this->add(new RoomsBrowseCommand());
+        $this->add(new PrebookCommand());
     }
 }

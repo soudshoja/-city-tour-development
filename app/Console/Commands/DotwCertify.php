@@ -250,6 +250,73 @@ class DotwCertify extends Command
     }
 
     // ──────────────────────────────────────────────────────────────
+    // COUNTRY CODE MAP — loaded on first getCountryCodeByName call
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Resolve a country name to a DOTW numeric country code.
+     *
+     * Calls `getallcountries` once per command run, caches the full lookup table
+     * in $this->state['countryMap'] keyed by lowercased country name.
+     *
+     * @param  string  $name  Country name (case-insensitive). Aliases handled inline:
+     *                        "uae", "united arab emirates", "u.a.e." -> United Arab Emirates
+     * @return string DOTW country code (e.g. "142" for Spain). Returns "" on lookup failure.
+     */
+    private function getCountryCodeByName(string $name): string
+    {
+        // Normalise common aliases.
+        $aliases = [
+            'uae'                  => 'united arab emirates',
+            'u.a.e.'               => 'united arab emirates',
+            'u.a.e'                => 'united arab emirates',
+            'united arab emirates' => 'united arab emirates',
+            'spain'                => 'spain',
+            'kingdom of spain'     => 'spain',
+        ];
+        $key = strtolower(trim($name));
+        $key = $aliases[$key] ?? $key;
+
+        // Lazy-load + cache.
+        if (! isset($this->state['countryMap'])) {
+            $this->state['countryMap'] = $this->fetchCountryMap();
+        }
+
+        return $this->state['countryMap'][$key] ?? '';
+    }
+
+    /**
+     * Fetch the full DOTW country code map via getallcountries.
+     *
+     * @return array<string,string> name(lowercased) -> code
+     */
+    private function fetchCountryMap(): array
+    {
+        $xml = $this->buildRequest('getallcountries', '');
+        $response = $this->post($xml, 'getallcountries');
+        if (! $response) {
+            $this->log('  WARN: getallcountries returned no response — country lookup will fail');
+
+            return [];
+        }
+
+        $map = [];
+        // DOTW response shape: <countries><country code="X" name="Spain"/>...</countries>
+        // Some envs wrap in <country><code>X</code><name>Y</name></country> — handle both.
+        foreach ($response->countries->country ?? [] as $c) {
+            $code = (string) ($c['code'] ?? $c->code ?? '');
+            $cname = (string) ($c['name'] ?? $c->name ?? '');
+            if ($code !== '' && $cname !== '') {
+                $map[strtolower(trim($cname))] = $code;
+            }
+        }
+
+        $this->log('  Cached '.count($map).' DOTW country codes');
+
+        return $map;
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // TEST 1 — Book 2 adults
     // ──────────────────────────────────────────────────────────────
     private function runTest1(): void
@@ -3822,7 +3889,7 @@ class DotwCertify extends Command
     private function buildRequest(string $command, string $body): string
     {
         // Commands that do NOT include <product>hotel</product> per DOTW XSD
-        $noProductCommands = ['cancelbooking', 'deleteitinerary', 'getbookingdetails', 'searchbookings', 'bookitinerary'];
+        $noProductCommands = ['cancelbooking', 'deleteitinerary', 'getbookingdetails', 'searchbookings', 'bookitinerary', 'getallcountries', 'getsalutationsids'];
         $productLine = in_array($command, $noProductCommands, true) ? '' : "\n  <product>hotel</product>";
 
         return "<customer>

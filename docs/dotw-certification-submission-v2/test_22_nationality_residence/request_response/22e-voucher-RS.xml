@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result xmlns:a="https://xmldev.stage.aws.dotw.com/xsd/atomicCondition" xmlns:c="https://xmldev.stage.aws.dotw.com/xsd/complexCondition" command="getbookingdetails" tID="1777184122000001" ip="52.18.234.149" sip="10.245.0.198" date="2026-04-26 06:15:22" version="2.0" elapsedTime="0.0033729076385498">
+  <successful>TRUE</successful>
+</result>

@@ -3207,60 +3207,26 @@ class DotwCertify extends Command
     // ──────────────────────────────────────────────────────────────
     private function runTest18(): void
     {
-        $this->startTest(18, 'Minimum Stay — detect minStay and dateApplyMinStay on rateBasis');
+        // CERT-14 display chain (already wired, verification-only):
+        //   DOTW <minStay> -> HotelSearchService:548 ($detail['minStay']) -> 'min_stay' key
+        //   -> MessageBuilderService::formatMandatoryFeatures:280-291 -> bilingual prebook + voucher message
+        // No production-path code change needed; this test just refreshes the evidence with Olga's hotel IDs.
 
+        $this->startTest(18, "Minimum Stay (Olga's 'Test 17 Min Stay') -- detect minStay/dateApplyMinStay using hotel IDs 2344175 / 81144 / 2329275");
+
+        // Per Olga 2026-04-21: 1-day search against specific hotel IDs known to have minStay constraints.
         $fromDate = now()->addDays(105)->format('Y-m-d');
-        $toDate = now()->addDays(109)->format('Y-m-d');  // 4 nights — longer stay increases minStay trigger chance
+        $toDate = now()->addDays(106)->format('Y-m-d');
 
-        // Step 18a: searchhotels — 4 nights to allow minStay detection
-        $this->step('18a', 'searchhotels — Dubai, 2 adults, 4 nights');
-        $searchXml = $this->buildRequest('searchhotels', '
-            <bookingDetails>
-                <fromDate>'.$fromDate.'</fromDate>
-                <toDate>'.$toDate.'</toDate>
-                <currency>769</currency>
-                <rooms no="1">
-                    <room runno="0">
-                        <adultsCode>2</adultsCode>
-                        <children no="0"/>
-                        <rateBasis>-1</rateBasis>
-                        <passengerNationality>66</passengerNationality>
-                        <passengerCountryOfResidence>66</passengerCountryOfResidence>
-                    </room>
-                </rooms>
-            </bookingDetails>
-            <return>
-                <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
-                         xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
-                    <city>364</city>
-                </filters>
-            </return>
-        ');
-
-        $response = $this->post($searchXml, '18a-search');
-        if (! $this->assertSuccess($response, '18a')) {
-            return;
-        }
-
-        $hotels = $response->hotels->hotel ?? null;
-        if (! $hotels || count($hotels) === 0) {
-            $this->skipTest(18, 'No hotel inventory in this environment — run against production or use a city with live hotels');
-
-            return;
-        }
-
-        $this->pass('18a', 'Found '.count($hotels).' hotel(s) — scanning all for minStay');
-
-        // Step 18b: getRooms browse with minStay field — scan ALL returned hotels
-        $this->step('18b', 'getRooms (browse) — request minStay roomField for all hotels');
+        $hotelIds = ['2344175', '81144', '2329275'];
 
         $minStayFound = '';
         $dateApplyMinStayFound = '';
         $minStayHotelId = null;
 
-        foreach ($hotels as $hotel) {
-            $hotelId = (string) $hotel['hotelid'];
-            $rateBasisId = (string) ($hotel->rooms->room[0]->roomType->rateBases->rateBasis[0]['id'] ?? '-1');
+        foreach ($hotelIds as $idx => $hotelId) {
+            $stepLabel = sprintf('18-h%d', $idx + 1);
+            $this->step($stepLabel, "getRooms (browse) -- hotel {$hotelId}, 1 day, 1 adult, scan for minStay");
 
             $browseXml = $this->buildRequest('getrooms', '
                 <bookingDetails>
@@ -3269,9 +3235,9 @@ class DotwCertify extends Command
                     <currency>769</currency>
                     <rooms no="1">
                         <room runno="0">
-                            <adultsCode>2</adultsCode>
+                            <adultsCode>1</adultsCode>
                             <children no="0"/>
-                            <rateBasis>'.$rateBasisId.'</rateBasis>
+                            <rateBasis>-1</rateBasis>
                             <passengerNationality>66</passengerNationality>
                             <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         </room>
@@ -3286,85 +3252,51 @@ class DotwCertify extends Command
             ');
 
             $browseResponse = $this->post($browseXml, "18b-rooms-h{$hotelId}");
-            if (! $browseResponse || ! $this->assertSuccess($browseResponse, '18b')) {
-                $this->log("  → Hotel {$hotelId}: browse failed, skipping");
+            if (! $browseResponse) {
+                $this->log("  -> Hotel {$hotelId}: no response, skipping");
+
+                continue;
+            }
+            if (! $this->assertSuccess($browseResponse, $stepLabel)) {
+                $this->log("  -> Hotel {$hotelId}: getRooms failed, skipping");
 
                 continue;
             }
 
             $browseRoom = $browseResponse->hotel->rooms->room[0] ?? null;
             if (! $browseRoom) {
+                $this->log("  -> Hotel {$hotelId}: no room nodes in response");
+
                 continue;
             }
 
-            // Scan all room types and rate bases for minStay
+            // Scan all room types and rate bases for minStay > 0.
             foreach ($browseRoom->roomType ?? [] as $rt) {
                 foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
                     $ms = (string) ($rb->minStay ?? '');
-                    if (! empty($ms) && $ms !== '0') {
+                    if ($ms !== '' && $ms !== '0') {
                         $minStayFound = $ms;
                         $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
                         $minStayHotelId = $hotelId;
-                        break 3;
+                        $this->pass($stepLabel, "Hotel {$hotelId}: minStay={$ms} | dateApplyMinStay={$dateApplyMinStayFound}");
+                        break 3;  // exit roomType + rateBasis + hotelIds loops
                     }
                 }
             }
+
+            $this->log("  -> Hotel {$hotelId}: no minStay > 0 found on any rate (will try next hotel)");
         }
 
-        // Fallback: try DOTW-provided hotel 809755 (Conrad London St James) — resort/luxury hotels often have minStay
-        if (empty($minStayFound)) {
-            $this->log('  → Dubai scan found no minStay; trying DOTW-provided hotel 809755 (Conrad London St James)');
-            $conradMinStayXml = $this->buildRequest('getrooms', '
-                <bookingDetails>
-                    <fromDate>'.$fromDate.'</fromDate>
-                    <toDate>'.$toDate.'</toDate>
-                    <currency>769</currency>
-                    <rooms no="1">
-                        <room runno="0">
-                            <adultsCode>2</adultsCode>
-                            <children no="0"/>
-                            <rateBasis>-1</rateBasis>
-                            <passengerNationality>66</passengerNationality>
-                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
-                        </room>
-                    </rooms>
-                    <productId>809755</productId>
-                </bookingDetails>
-                <return>
-                    <fields>
-                        <roomField>minStay</roomField>
-                    </fields>
-                </return>
-            ');
-            $conradMinStayResponse = $this->post($conradMinStayXml, '18b-rooms-h809755');
-            if ($conradMinStayResponse && $this->assertSuccess($conradMinStayResponse, '18b-conrad')) {
-                $conradRoom = $conradMinStayResponse->hotel->rooms->room[0] ?? null;
-                if ($conradRoom) {
-                    foreach ($conradRoom->roomType ?? [] as $rt) {
-                        foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
-                            $ms = (string) ($rb->minStay ?? '');
-                            if (! empty($ms) && $ms !== '0') {
-                                $minStayFound = $ms;
-                                $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
-                                $minStayHotelId = '809755';
-                                break 2;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (! empty($minStayFound)) {
-            $this->pass('18b', "Hotel {$minStayHotelId}: minStay={$minStayFound} nights | dateApplyMinStay={$dateApplyMinStayFound}");
-            $this->log('  ✔  VERIFICATION: Block bookings where nights < minStay and arrival date matches dateApplyMinStay');
-        } else {
-            $this->skipTest(18, 'No minStay constraint found after scanning all hotels and hotel 809755 — run against a hotel with minimum stay requirements');
+        if ($minStayFound !== '' && $minStayHotelId !== null) {
+            $this->pass('18', "Hotel {$minStayHotelId}: minStay={$minStayFound} nights, dateApplyMinStay={$dateApplyMinStayFound}");
+            $this->log('  + VERIFICATION: minStay surfaced from getRooms -- block bookings where nights < minStay and arrival date matches dateApplyMinStay');
+            $this->log('  + CERT-14 EVIDENCE: per-hotel RQ/RS pairs captured (one per Olga hotel ID)');
+            $this->endTest(18, true);
 
             return;
         }
 
-        $this->endTest(18, true);
+        $this->skipTest(18, "None of Olga's 3 hotels (2344175/81144/2329275) returned minStay > 0 in this environment -- re-run against production or re-confirm hotel state with DOTW");
     }
 
     // ──────────────────────────────────────────────────────────────

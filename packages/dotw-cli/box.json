@@ -1,0 +1,27 @@
+{
+    "schema-version": "https://getcomposer.org/schema.json",
+    "output": "dotw-cli.phar",
+    "main": "bin/dotw",
+    "compression": "GZ",
+    "chmod": "0755",
+    "directories": [
+        "src"
+    ],
+    "files": [
+        "bin/dotw"
+    ],
+    "finder": [
+        {
+            "name": "*.php",
+            "exclude": ["Tests", "tests", "test", "spec", "docs", "fixtures"],
+            "in": "vendor"
+        }
+    ],
+    "exclude-composer-files": false,
+    "exclude-dev-files": true,
+    "metadata": {
+        "name": "dotw-cli",
+        "version": "1.0.0",
+        "description": "DOTW hotel booking CLI for Akeed AI agent"
+    }
+}

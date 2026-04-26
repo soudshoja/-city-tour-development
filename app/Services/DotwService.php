@@ -1976,8 +1976,28 @@ class DotwService
      */
     private function parseConfirmation(SimpleXMLElement $response): array
     {
+        // CERT-13: collect ALL booking codes from multi-room confirmBooking responses.
+        // Multi-room bookings return <bookings><booking><bookingCode>...</bookingCode></booking>...</bookings>.
+        // Single-room bookings may return a top-level <bookingCode> or a single-element <bookings> list.
+        $bookingCodes = [];
+        foreach ($response->bookings->booking ?? [] as $b) {
+            $code = (string) ($b->bookingCode ?? '');
+            if ($code !== '') {
+                $bookingCodes[] = $code;
+            }
+        }
+
+        // Derive the primary code: first from bookings list, fallback to top-level element.
+        $primaryCode = $bookingCodes[0] ?? (string) ($response->bookingCode ?? '');
+
+        // Ensure single-room legacy paths also have a bookingCodes array.
+        if (empty($bookingCodes) && $primaryCode !== '') {
+            $bookingCodes[] = $primaryCode;
+        }
+
         return [
-            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'bookingCode' => $primaryCode,
+            'bookingCodes' => $bookingCodes,
             'confirmationNumber' => (string) ($response->confirmationNumber ?? ''),
             'status' => (string) ($response->status ?? 'confirmed'),
             'paymentGuaranteedBy' => (string) ($response->paymentGuaranteedBy ?? ''),

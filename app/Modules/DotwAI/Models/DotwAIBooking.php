@@ -83,6 +83,7 @@ class DotwAIBooking extends Model
         'cancellation_rules',
         'confirmation_no',
         'booking_ref',
+        'booking_refs',
         'payment_id',
         'payment_link',
         'payment_status',
@@ -123,6 +124,7 @@ class DotwAIBooking extends Model
         'cancellation_rules' => 'array',
         'rooms_data' => 'array',
         'valid_for_occupancy' => 'array',
+        'booking_refs' => 'array',
     ];
 
     /**

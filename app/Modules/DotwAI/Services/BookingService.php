@@ -281,6 +281,10 @@ class BookingService
         $booking->update([
             'confirmation_no' => $confirmation['confirmationNumber'] ?? ($confirmation['bookingCode'] ?? null),
             'booking_ref' => $confirmation['bookingCode'] ?? null,
+            // CERT-13: persist all booking codes for multi-room bookings.
+            // Falls back to a single-element array of the legacy 'bookingCode' for safety.
+            'booking_refs' => $confirmation['bookingCodes']
+                ?? (isset($confirmation['bookingCode']) ? [$confirmation['bookingCode']] : null),
             'payment_guaranteed_by' => $confirmation['paymentGuaranteedBy'] ?? null,
             'status' => DotwAIBooking::STATUS_CONFIRMED,
             'payment_status' => 'credit_applied',
@@ -394,6 +398,10 @@ class BookingService
         $booking->update([
             'confirmation_no' => $confirmation['confirmationNumber'] ?? ($confirmation['bookingCode'] ?? null),
             'booking_ref' => $confirmation['bookingCode'] ?? null,
+            // CERT-13: persist all booking codes for multi-room bookings.
+            // Falls back to a single-element array of the legacy 'bookingCode' for safety.
+            'booking_refs' => $confirmation['bookingCodes']
+                ?? (isset($confirmation['bookingCode']) ? [$confirmation['bookingCode']] : null),
             'payment_guaranteed_by' => $confirmation['paymentGuaranteedBy'] ?? null,
             'status' => DotwAIBooking::STATUS_CONFIRMED,
         ]);

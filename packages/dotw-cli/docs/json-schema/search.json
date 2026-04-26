@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/search",
+  "title": "dotw:search Response",
+  "description": "Success response from dotw:search --json. Lists available hotels for the given city and dates.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["hotels", "count"],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Total number of hotels returned."
+        },
+        "hotels": {
+          "type": "array",
+          "description": "List of available hotels. Use hotel_id with dotw:rooms:browse or dotw:prebook.",
+          "items": {
+            "type": "object",
+            "required": ["hotel_id", "min_fare"],
+            "properties": {
+              "hotel_id":    { "type": "string", "description": "DOTW hotel ID. Pass to dotw:prebook as first argument." },
+              "hotel_name":  { "type": "string", "description": "Hotel name (empty in search RS; populated in dotw:hotels:show)." },
+              "star_rating": { "type": "string", "description": "Star rating string (e.g. '4', '5')." },
+              "city_name":   { "type": "string" },
+              "country_name":{ "type": "string" },
+              "min_fare":    { "type": "number", "description": "Lowest available rate across all room types. Currency from profile." },
+              "currency":    { "type": "string", "description": "ISO 4217 currency code (e.g. KWD)." },
+              "rate_basis":  { "type": "string", "description": "Rate basis name for the cheapest rate (e.g. Room Only, Breakfast)." },
+              "thumbnail":   { "type": "string", "description": "Hotel image URL (if available from DOTW)." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

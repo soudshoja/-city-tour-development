@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/prebook",
+  "title": "dotw:prebook Response",
+  "description": "Success response from dotw:prebook --json. Returns a rate-lock key valid for 3 minutes.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["prebook_key", "hotel_id", "hotel_name", "check_in", "check_out",
+                   "room_name", "rate_basis", "allocation_details", "currency",
+                   "total_fare", "markup_fare", "expires_at"],
+      "properties": {
+        "prebook_key": {
+          "type": "string",
+          "description": "Opaque rate-lock key. Pass as first argument to dotw:confirm. Valid until expires_at."
+        },
+        "hotel_id":   { "type": "string" },
+        "hotel_name": { "type": "string" },
+        "check_in":   { "type": "string", "format": "date" },
+        "check_out":  { "type": "string", "format": "date" },
+        "room_name":  { "type": "string" },
+        "rate_basis": { "type": "string" },
+        "allocation_details": { "type": "string" },
+        "currency":    { "type": "string" },
+        "total_fare":  { "type": "number", "description": "Raw DOTW fare (B2B cost price)." },
+        "markup_fare": { "type": "number", "description": "B2C selling price after markup_percent is applied." },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp. Rate lock expires 3 minutes after prebook. Must call dotw:confirm before this time."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/cancel-preview",
+  "title": "dotw:cancel:preview Response",
+  "description": "Success response from dotw:cancel:preview --json. Shows cancellation penalty without executing.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["booking_ref", "total_charge", "currency", "per_code_results", "rooms_count"],
+      "properties": {
+        "booking_ref":  { "type": "string" },
+        "hotel_name":   { "type": "string" },
+        "total_charge": {
+          "type": "number",
+          "description": "Total penalty across all rooms. Pass as --penalty to dotw:cancel:execute. 0 = free cancellation."
+        },
+        "currency": { "type": "string" },
+        "rooms_count": {
+          "type": "integer",
+          "description": "Number of booking codes / rooms in this booking."
+        },
+        "per_code_results": {
+          "type": "array",
+          "description": "Per-room breakdown for multi-room bookings (CERT-13 pattern).",
+          "items": {
+            "type": "object",
+            "required": ["booking_code", "charge", "currency"],
+            "properties": {
+              "booking_code": { "type": "string", "description": "Numeric DOTW booking code for this room." },
+              "charge":       { "type": "number" },
+              "currency":     { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

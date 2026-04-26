@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/confirm",
+  "title": "dotw:confirm Response",
+  "description": "Success response from dotw:confirm --json. Returns the confirmed booking reference.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["booking_ref", "hotel_name", "check_in", "check_out", "currency", "total_fare", "track", "status"],
+      "properties": {
+        "booking_ref": {
+          "type": "string",
+          "description": "DOTW booking reference (e.g. HTL-WBD-953295673). Pass to dotw:voucher and dotw:cancel:preview."
+        },
+        "hotel_name":  { "type": "string" },
+        "check_in":    { "type": "string", "format": "date" },
+        "check_out":   { "type": "string", "format": "date" },
+        "currency":    { "type": "string" },
+        "total_fare":  { "type": "number" },
+        "track": {
+          "type": "string",
+          "enum": ["b2b", "b2c"],
+          "description": "Payment track used. b2b = credit line debit; b2c = MyFatoorah payment."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["confirmed"],
+          "description": "Always 'confirmed' on success."
+        }
+      }
+    }
+  }
+}

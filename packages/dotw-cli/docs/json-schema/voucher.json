@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/voucher",
+  "title": "dotw:voucher Response",
+  "description": "Success response from dotw:voucher --json. Contains bilingual voucher text and optional PDF path.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["booking_ref", "voucher_text"],
+      "properties": {
+        "booking_ref":  { "type": "string", "description": "DOTW booking reference." },
+        "hotel_name":   { "type": "string" },
+        "check_in":     { "type": "string", "format": "date" },
+        "check_out":    { "type": "string", "format": "date" },
+        "voucher_text": {
+          "type": "string",
+          "description": "Bilingual Arabic/English voucher text. Share with customer via WhatsApp or email."
+        },
+        "pdf_path": {
+          "type": ["string", "null"],
+          "description": "Absolute path to generated PDF file. Null unless --pdf flag was used."
+        }
+      }
+    }
+  }
+}

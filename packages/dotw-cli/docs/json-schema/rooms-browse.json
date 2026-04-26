@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/rooms-browse",
+  "title": "dotw:rooms:browse Response",
+  "description": "Success response from dotw:rooms:browse --json. Lists room options without locking inventory.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["hotel_id", "rooms", "count"],
+      "properties": {
+        "hotel_id": { "type": "string" },
+        "count":    { "type": "integer" },
+        "rooms": {
+          "type": "array",
+          "description": "Available room+rate combinations. Use index N with dotw:prebook <hotel_id> <N>.",
+          "items": {
+            "type": "object",
+            "required": ["index", "room_type_code", "room_name", "rate_basis_id", "total_fare", "currency"],
+            "properties": {
+              "index":               { "type": "integer", "description": "Zero-based index. Pass as second argument to dotw:prebook." },
+              "room_type_code":      { "type": "string" },
+              "room_name":           { "type": "string" },
+              "rate_basis_id":       { "type": "integer" },
+              "rate_basis_name":     { "type": "string" },
+              "total_fare":          { "type": "number" },
+              "currency":            { "type": "string" },
+              "allocation_details":  { "type": "string" },
+              "cancellation_policy": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

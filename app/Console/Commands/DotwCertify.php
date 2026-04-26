@@ -3792,95 +3792,94 @@ class DotwCertify extends Command
         $bookingCode = $booking['bookingCode'];
         $this->log("  [21d] 2-room booking confirmed — bookingCode: {$bookingCode}");
 
-        // Step 21e: cancelBooking confirm=no — get charges for ALL services
-        $this->step('21e', 'cancelBooking (confirm=no) — get cancellation charges for 2-room booking');
-        $cancelCheckXml = $this->buildRequest('cancelbooking', '
-            <bookingDetails>
-                <bookingType>1</bookingType>
-                <bookingCode>'.$bookingCode.'</bookingCode>
-                <confirm>no</confirm>
-            </bookingDetails>
-        ');
+        // Step 21e: cancelBooking confirm=no — SEPARATE call per booking code (CERT-13)
+        // Each room in a multi-room booking has its own booking code that must be
+        // cancelled individually — one cancelBooking RQ per code.
+        $allBookingCodes = $booking['bookingCodes'] ?? [$booking['bookingCode']];
+        $this->log('  [21e] 2-room booking has '.count($allBookingCodes).' booking code(s) — firing separate cancelBooking per code');
 
-        $cancelCheck = $this->post($cancelCheckXml, '21e-cancel-check');
-        if (! $this->assertSuccess($cancelCheck, '21e')) {
-            return;
+        $perRoomCharges = [];
+
+        foreach ($allBookingCodes as $idx => $roomBookingCode) {
+            $roomLabel = sprintf('21e-r%d', $idx + 1);
+            $this->step($roomLabel, 'cancelBooking (confirm=no) — room '.($idx + 1)." — bookingCode: {$roomBookingCode}");
+
+            $cancelCheckXml = $this->buildRequest('cancelbooking', '
+                <bookingDetails>
+                    <bookingType>1</bookingType>
+                    <bookingCode>'.$roomBookingCode.'</bookingCode>
+                    <confirm>no</confirm>
+                </bookingDetails>
+            ');
+
+            $cancelCheck = $this->post($cancelCheckXml, '21e-cancel-check-r'.($idx + 1));
+            if (! $this->assertSuccess($cancelCheck, $roomLabel)) {
+                $this->endTest(21, false);
+
+                return;
+            }
+
+            $charge = (string) ($cancelCheck->services->service->cancellationPenalty->charge ?? '0');
+            $charge = explode('<', $charge)[0];
+            $perRoomCharges[$roomBookingCode] = $charge;
+            $this->pass($roomLabel, 'Room '.($idx + 1)." cancellation charge: {$charge}");
         }
 
-        // Extract ALL service entries (should have 2 for a 2-room booking)
-        $services = $cancelCheck->services->service ?? null;
-        if ($services === null) {
-            $this->failStep('21e', 'No services found in cancellation charge response');
+        $this->pass('21e', count($allBookingCodes).' separate cancelBooking confirm=no calls — one per room — all returned charge data');
+
+        // Step 21f: cancelBooking confirm=yes — SEPARATE call per booking code (CERT-13)
+        $finalLeftOnItinerary = null;
+        $cancelledCount = 0;
+
+        foreach ($allBookingCodes as $idx => $roomBookingCode) {
+            $roomLabel = sprintf('21f-r%d', $idx + 1);
+            $charge = $perRoomCharges[$roomBookingCode] ?? '0';
+            $this->step($roomLabel, 'cancelBooking (confirm=yes) — room '.($idx + 1)." — bookingCode: {$roomBookingCode} — penaltyApplied: {$charge}");
+
+            $cancelConfirmXml = $this->buildRequest('cancelbooking', '
+                <bookingDetails>
+                    <bookingType>1</bookingType>
+                    <bookingCode>'.$roomBookingCode.'</bookingCode>
+                    <confirm>yes</confirm>
+                    <testPricesAndAllocation>
+                        <service referencenumber="'.$roomBookingCode.'">
+                            <penaltyApplied>'.$charge.'</penaltyApplied>
+                        </service>
+                    </testPricesAndAllocation>
+                </bookingDetails>
+            ');
+
+            $cancelResponse = $this->post($cancelConfirmXml, '21f-cancel-confirm-r'.($idx + 1));
+            if (! $this->assertSuccess($cancelResponse, $roomLabel)) {
+                $this->endTest(21, false);
+
+                return;
+            }
+
+            $left = $cancelResponse->productsLeftOnItinerary ?? null;
+            if ($left !== null) {
+                $finalLeftOnItinerary = (int) (string) $left;
+                $this->log("  [{$roomLabel}] productsLeftOnItinerary={$finalLeftOnItinerary}");
+            }
+            $cancelledCount++;
+            $this->pass($roomLabel, 'Room '.($idx + 1)." cancelled — bookingCode: {$roomBookingCode}");
+        }
+
+        $this->pass('21f', "{$cancelledCount} separate cancelBooking confirm=yes calls completed — one per room");
+
+        // Step 21g: assert productsLeftOnItinerary=0 on the FINAL response (last room cancelled)
+        if ($finalLeftOnItinerary === 0) {
+            $this->pass('21g', 'productsLeftOnItinerary=0 after final cancelBooking — all rooms removed from itinerary');
+        } elseif ($finalLeftOnItinerary === null) {
+            $this->warn('productsLeftOnItinerary not present in final cancellation response');
+        } else {
+            $this->failStep('21g', "productsLeftOnItinerary={$finalLeftOnItinerary} after all cancels — expected 0");
             $this->endTest(21, false);
 
             return;
         }
 
-        $serviceEntries = [];
-        foreach ($services as $service) {
-            $serviceCode = (string) ($service['code'] ?? '');
-            $charge = (string) ($service->cancellationPenalty->charge ?? '0');
-            // Clean any embedded XML artifacts
-            $charge = explode('<', $charge)[0];
-            $serviceEntries[] = ['code' => $serviceCode, 'charge' => $charge];
-            $this->log("  [21e] Service code: {$serviceCode} | Cancellation charge: {$charge}");
-        }
-
-        $serviceCount = count($serviceEntries);
-        $this->log("  [21e] Total services in booking: {$serviceCount}");
-
-        if ($serviceCount >= 2) {
-            $this->pass('21e', "2-room booking has {$serviceCount} services — charge response contains entries for each room");
-        } else {
-            $this->pass('21e', "Services in charge response: {$serviceCount} — charge retrieved successfully");
-        }
-
-        // Step 21f: cancelBooking confirm=yes — cancel ALL services, check productsLeftOnItinerary
-        // XSD requires <testPricesAndAllocation><service referencenumber=""><penaltyApplied></penaltyApplied></service></testPricesAndAllocation>
-        // Must include a <service> entry for EACH room/service reference number
-        $this->step('21f', 'cancelBooking (confirm=yes) — cancel all 2 rooms, check productsLeftOnItinerary');
-
-        $servicesXml = '';
-        foreach ($serviceEntries as $svc) {
-            $servicesXml .= '<service referencenumber="'.$svc['code'].'">';
-            $servicesXml .= '<penaltyApplied>'.$svc['charge'].'</penaltyApplied>';
-            $servicesXml .= '</service>';
-        }
-
-        $cancelConfirmXml = $this->buildRequest('cancelbooking', '
-            <bookingDetails>
-                <bookingType>1</bookingType>
-                <bookingCode>'.$bookingCode.'</bookingCode>
-                <confirm>yes</confirm>
-                <testPricesAndAllocation>
-                    '.$servicesXml.'
-                </testPricesAndAllocation>
-            </bookingDetails>
-        ');
-
-        $cancelResponse = $this->post($cancelConfirmXml, '21f-cancel-confirm');
-        if (! $this->assertSuccess($cancelResponse, '21f')) {
-            return;
-        }
-
-        $this->pass('21f', "2-room cancellation confirmed — bookingCode: {$bookingCode}");
-
-        // Step 21g: Verify productsLeftOnItinerary = 0 (all rooms cancelled)
-        $leftOnItinerary = $cancelResponse->productsLeftOnItinerary ?? null;
-        if ($leftOnItinerary !== null) {
-            $leftVal = (int) (string) $leftOnItinerary;
-            $this->log("  [21g] productsLeftOnItinerary={$leftVal}");
-            if ($leftVal === 0) {
-                $this->pass('21g', "productsLeftOnItinerary=0 — all {$serviceCount} rooms/services cancelled successfully");
-            } else {
-                $this->pass('21g', "productsLeftOnItinerary={$leftVal} — {$leftVal} service(s) still on itinerary (partial cancel scenario)");
-                $this->log('  NOTE: productsLeftOnItinerary > 0 means the booking itinerary has more products not yet cancelled');
-            }
-        } else {
-            $this->warn('productsLeftOnItinerary not present in cancellation response');
-        }
-
-        $this->log('  ✔  CERT-06 EVIDENCE: 2-room search → getRooms → confirmBooking → cancelBooking (2 services) all logged');
+        $this->log('  ✔  CERT-13 EVIDENCE: '.count($allBookingCodes).' separate cancelBooking calls (RQ/RS pairs captured) — productsLeftOnItinerary='.($finalLeftOnItinerary ?? 'n/a'));
         $this->endTest(21, true);
     }
 
@@ -4250,10 +4249,25 @@ class DotwCertify extends Command
                 continue;
             }
 
-            $this->pass("{$testLabel}d", "Booking confirmed — bookingCode: {$bookingCode} | ref: {$bookingRef}");
+            // CERT-13: collect ALL booking codes from multi-room confirmBooking response.
+            // Other tests read $booking['bookingCode'] (singular) — preserve that key.
+            // runTest21 reads $booking['bookingCodes'] (plural) for per-room cancel loops.
+            $allBookingCodes = [];
+            foreach ($confirmResponse->bookings->booking ?? [] as $b) {
+                $code = (string) ($b->bookingCode ?? '');
+                if ($code !== '') {
+                    $allBookingCodes[] = $code;
+                }
+            }
+            if (empty($allBookingCodes)) {
+                $allBookingCodes[] = $bookingCode;
+            }
+
+            $this->pass("{$testLabel}d", "Booking confirmed — bookingCode: {$bookingCode} | ref: {$bookingRef} | rooms: ".count($allBookingCodes));
 
             return [
                 'bookingCode' => $bookingCode,
+                'bookingCodes' => $allBookingCodes,
                 'returnedCode' => $returnedCode,
                 'bookingRef' => $bookingRef,
                 'hotelId' => $hotelId,

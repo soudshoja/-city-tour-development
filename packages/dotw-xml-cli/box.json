@@ -1,0 +1,17 @@
+{
+    "alias": "dotw-xml.phar",
+    "banner": "dotw-xml-cli \u2014 low-level DOTW XML pass-through CLI",
+    "chmod": "0755",
+    "main": "bin/dotw-xml",
+    "output": "build/dotw-xml.phar",
+    "compression": "GZ",
+    "directories": [
+        "src"
+    ],
+    "directories-bin": [
+        "bin"
+    ],
+    "exclude-composer-files": false,
+    "exclude-dev-files": true,
+    "strip-comments": true
+}

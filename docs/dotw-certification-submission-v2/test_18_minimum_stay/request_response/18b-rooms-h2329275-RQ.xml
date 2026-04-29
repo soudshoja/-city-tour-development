@@ -1,18 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- CERT-14 Evidence: getRooms (browse) for hotel 2329275 -->
-<!-- NOTE: This hotel was NOT queried in this run — the test loop exited after hotel 2344175 -->
-<!-- returned minStay=30 (break 3 exits all nested loops). This RQ shows the request that -->
-<!-- would have been sent had hotels 2344175 and 81144 not already provided a minStay > 0. -->
-<!-- Date: 2026-04-26 | Test 18 (Olga's Test 17 Min Stay) -->
+<?xml version="1.0"?>
 <customer>
   <username>techventure26alphia</username>
+  <password>7a9caccc8b8aab8cb1f14daa3cef9944</password>
   <id>2308675</id>
   <source>1</source>
   <product>hotel</product>
   <request command="getrooms">
     <bookingDetails>
-      <fromDate>2026-08-09</fromDate>
-      <toDate>2026-08-10</toDate>
+      <fromDate>2026-08-12</fromDate>
+      <toDate>2026-08-13</toDate>
       <currency>769</currency>
       <rooms no="1">
         <room runno="0">

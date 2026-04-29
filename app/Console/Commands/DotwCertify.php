@@ -3304,6 +3304,9 @@ class DotwCertify extends Command
 
         $this->startTest(18, "Minimum Stay (Olga's 'Test 17 Min Stay') -- detect minStay/dateApplyMinStay using hotel IDs 2344175 / 81144 / 2329275");
 
+        // CERT-14b (Phase 27-08): enable evidence file writing so all 3 hotels produce real RQ/RS files.
+        $this->state['certEvidenceDir'] = base_path('docs/dotw-certification-submission-v2/test_18_minimum_stay/request_response');
+
         // Per Olga 2026-04-21: 1-day search against specific hotel IDs known to have minStay constraints.
         $fromDate = now()->addDays(105)->format('Y-m-d');
         $toDate = now()->addDays(106)->format('Y-m-d');
@@ -3365,11 +3368,14 @@ class DotwCertify extends Command
                 foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
                     $ms = (string) ($rb->minStay ?? '');
                     if ($ms !== '' && $ms !== '0') {
-                        $minStayFound = $ms;
-                        $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
-                        $minStayHotelId = $hotelId;
+                        if ($minStayFound === '') {
+                            // Record first minStay found (determines PASS result).
+                            $minStayFound = $ms;
+                            $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
+                            $minStayHotelId = $hotelId;
+                        }
                         $this->pass($stepLabel, "Hotel {$hotelId}: minStay={$ms} | dateApplyMinStay={$dateApplyMinStayFound}");
-                        break 3;  // exit roomType + rateBasis + hotelIds loops
+                        break 2;  // exit roomType + rateBasis loops for this hotel; continue hotelIds loop
                     }
                 }
             }
@@ -3378,6 +3384,7 @@ class DotwCertify extends Command
         }
 
         if ($minStayFound !== '' && $minStayHotelId !== null) {
+            unset($this->state['certEvidenceDir']);
             $this->pass('18', "Hotel {$minStayHotelId}: minStay={$minStayFound} nights, dateApplyMinStay={$dateApplyMinStayFound}");
             $this->log('  + VERIFICATION: minStay surfaced from getRooms -- block bookings where nights < minStay and arrival date matches dateApplyMinStay');
             $this->log('  + CERT-14 EVIDENCE: per-hotel RQ/RS pairs captured (one per Olga hotel ID)');
@@ -3386,6 +3393,7 @@ class DotwCertify extends Command
             return;
         }
 
+        unset($this->state['certEvidenceDir']);
         $this->skipTest(18, "None of Olga's 3 hotels (2344175/81144/2329275) returned minStay > 0 in this environment -- re-run against production or re-confirm hotel state with DOTW");
     }
 

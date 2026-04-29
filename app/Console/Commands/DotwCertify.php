@@ -4463,24 +4463,57 @@ class DotwCertify extends Command
             // Confirm
             $confirmRoomsXml = '<rooms no="'.$roomCount.'">';
             foreach ($roomConfig as $ri => $rc) {
-                $childCount = count($rc['children'] ?? []);
+                // CERT-10c (Phase 27-08): when validForOccupancy is present and specifies fewer
+                // children than the original search, use VFO values for <children> (pricing occupancy)
+                // and original $rc['children'] for <actualChildren> (real/searched occupancy).
+                // This is the symmetric counterpart to runTest14's changedOccupancy handling.
+                $vfo = $rc['validForOccupancy'] ?? null;
+                $originalChildren = $rc['children'] ?? [];
+                $actualChildCount = count($originalChildren);
+
+                if ($vfo !== null && (int) ($vfo['children'] ?? -1) !== -1) {
+                    // VFO specifies booked children count — use it for <children> (what DOTW will book).
+                    $bookedChildCount = (int) $vfo['children'];
+                    // Build booked child ages from VFO childrenAges string (e.g. "2, 6") or fallback.
+                    $bookedChildAges = [];
+                    if ($bookedChildCount > 0) {
+                        $vfoAgesRaw = trim((string) ($vfo['childrenAges'] ?? ''));
+                        if ($vfoAgesRaw !== '') {
+                            $bookedChildAges = array_values(array_map(
+                                fn ($a) => (int) trim($a),
+                                explode(',', $vfoAgesRaw)
+                            ));
+                        } else {
+                            $bookedChildAges = array_slice($originalChildren, 0, $bookedChildCount);
+                        }
+                    }
+                    $extraBed = (int) ($vfo['extraBed'] ?? 0);
+                } else {
+                    // No VFO override — booked occupancy equals original search occupancy.
+                    $bookedChildCount = $actualChildCount;
+                    $bookedChildAges = $originalChildren;
+                    $extraBed = 0;
+                }
+
                 $confirmRoomsXml .= '<room runno="'.$ri.'">';
                 $confirmRoomsXml .= '<roomTypeCode>'.$blockRtCodes[$ri].'</roomTypeCode>';
                 $confirmRoomsXml .= '<selectedRateBasis>'.$blockRbIds[$ri].'</selectedRateBasis>';
                 $confirmRoomsXml .= '<allocationDetails>'.htmlspecialchars($blockAllocations[$ri]).'</allocationDetails>';
                 $confirmRoomsXml .= '<adultsCode>'.$rc['adultsCode'].'</adultsCode>';
                 $confirmRoomsXml .= '<actualAdults>'.$rc['actualAdults'].'</actualAdults>';
-                $confirmRoomsXml .= '<children no="'.$childCount.'">';
-                foreach (($rc['children'] ?? []) as $ci => $age) {
+                // <children> = booked pricing occupancy (from VFO when present, else original)
+                $confirmRoomsXml .= '<children no="'.$bookedChildCount.'">';
+                foreach ($bookedChildAges as $ci => $age) {
                     $confirmRoomsXml .= '<child runno="'.$ci.'">'.$age.'</child>';
                 }
                 $confirmRoomsXml .= '</children>';
-                $confirmRoomsXml .= '<actualChildren no="'.$childCount.'">';
-                foreach (($rc['children'] ?? []) as $ci => $age) {
+                // <actualChildren> = original search occupancy (always from $rc['children'])
+                $confirmRoomsXml .= '<actualChildren no="'.$actualChildCount.'">';
+                foreach ($originalChildren as $ci => $age) {
                     $confirmRoomsXml .= '<actualChild runno="'.$ci.'">'.$age.'</actualChild>';
                 }
                 $confirmRoomsXml .= '</actualChildren>';
-                $confirmRoomsXml .= '<extraBed>0</extraBed>';
+                $confirmRoomsXml .= '<extraBed>'.$extraBed.'</extraBed>';
                 $confirmRoomsXml .= '<passengerNationality>66</passengerNationality>';
                 $confirmRoomsXml .= '<passengerCountryOfResidence>66</passengerCountryOfResidence>';
                 $confirmRoomsXml .= '<passengersDetails>';

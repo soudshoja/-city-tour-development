@@ -642,12 +642,9 @@ class BookingService
                 'cancellation_rules' => $cancellationRules,
                 'is_refundable' => ! $allRestricted,
                 'is_apr' => false,  // APR removed by DOTW (Olga Chicu, March 2026)
-                // CERT-10: Capture validForOccupancy when present so confirmBooking can map it correctly.
-                // Null if no changedOccupancy on this rate — confirmBooking falls back to rooms_data in that case.
-                // TODO(CERT-10): parseRooms does not currently surface validForOccupancy from the XML response.
-                // Until DotwService::parseRooms is extended to parse the validForOccupancy node, this will be
-                // null for all live blocking calls. The unit test suite (Task 3) injects a synthetic value to
-                // prove the buildConfirmParams mapping logic is correct regardless.
+                // CERT-10b (Phase 27-08): validForOccupancy now populated by DotwService::parseRooms.
+                // Null when DOTW returns no changedOccupancy for this rate — buildConfirmParams falls
+                // back to original rooms_data occupancy in that case (correct per DOTW spec).
                 'valid_for_occupancy' => $detail['validForOccupancy'] ?? null,
             ];
         }

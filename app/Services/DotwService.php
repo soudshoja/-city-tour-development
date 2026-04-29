@@ -1918,6 +1918,16 @@ class DotwService
                     'dateApplyMinStay' => (string) ($rateBasis->dateApplyMinStay ?? ''),
                     // COMPLY-07: property fees at rateBasis level
                     'propertyFees' => $propertyFees,
+                    // CERT-10b (Phase 27-08): validForOccupancy + changedOccupancy extracted from
+                    // rateBasis XML so that BookingService::buildConfirmParams can use real live data
+                    // instead of always falling back to original search occupancy.
+                    'validForOccupancy' => isset($rateBasis->validForOccupancy) ? [
+                        'adults' => (int) $rateBasis->validForOccupancy->adults,
+                        'children' => (int) ($rateBasis->validForOccupancy->children ?? 0),
+                        'childrenAges' => (string) ($rateBasis->validForOccupancy->childrenAges ?? ''),
+                        'extraBed' => (int) ($rateBasis->validForOccupancy->extraBed ?? 0),
+                    ] : null,
+                    'changedOccupancy' => (string) ($rateBasis->changedOccupancy ?? ''),
                 ];
             }
 

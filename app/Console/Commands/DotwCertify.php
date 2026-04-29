@@ -2343,6 +2343,9 @@ class DotwCertify extends Command
     {
         $this->startTest(14, 'Changed Occupancy — validForOccupancy overrides search adultsCode/children/extraBed');
 
+        // CERT-10b (Phase 27-08): enable evidence file writing so RQ/RS are regenerated as real live files.
+        $this->state['certEvidenceDir'] = base_path('docs/dotw-certification-submission-v2/test_14_changed_occupancy/request_response');
+
         $fromDate = now()->addDays(85)->format('Y-m-d');
         $toDate = now()->addDays(86)->format('Y-m-d');
         $originalAdults = 3;
@@ -2381,6 +2384,7 @@ class DotwCertify extends Command
 
         $hotels = $response->hotels->hotel ?? null;
         if (! $hotels || count($hotels) === 0) {
+            unset($this->state['certEvidenceDir']);
             $this->skipTest(14, 'No hotel inventory in this environment — run against production or use a city with live hotels');
 
             return;
@@ -2448,12 +2452,16 @@ class DotwCertify extends Command
             $bookExtraBed = $vfoExtraBed;
             $this->pass('14b', "changedOccupancy detected: {$changedOccupancy}");
             $this->log("  VERIFICATION: Using validForOccupancy: adults={$vfoAdults}, extraBed={$vfoExtraBed}");
-            // Build children XML from validForOccupancy children if present
+
+            // Build children XML from validForOccupancy <children> node OR changedOccupancy CSV field 2.
+            // DOTW sometimes omits <children> from VFO XML when count is 0 — the CSV is authoritative.
+            // changedOccupancy CSV format: "adults,children,,extraBed" (e.g. "4,0,,0")
             $vfoChildren = $validForOccupancy->children ?? null;
             if ($vfoChildren !== null) {
+                // VFO has explicit <children> node — use it directly.
                 $vfoChildCount = (int) ($vfoChildren['no'] ?? 0);
                 if ($vfoChildCount === 0) {
-                    $bookChildrenXml = '<children no="0"/>';
+                    $bookChildrenXml = '<children no="0"></children>';
                 } else {
                     $bookChildrenXml = sprintf('<children no="%d">', $vfoChildCount);
                     $ci = 0;
@@ -2462,8 +2470,18 @@ class DotwCertify extends Command
                     }
                     $bookChildrenXml .= '</children>';
                 }
+            } else {
+                // VFO <children> node absent — fall back to changedOccupancy CSV second field.
+                $csvParts = explode(',', $changedOccupancy);
+                $csvChildCount = isset($csvParts[1]) ? (int) $csvParts[1] : -1;
+                if ($csvChildCount === 0) {
+                    $bookChildrenXml = '<children no="0"></children>';
+                    $this->log('  CERT-10b NOTE: VFO children node absent; using changedOccupancy CSV field 2 = 0');
+                }
+                // csvChildCount > 0 but no ages in VFO: keep original children XML (DOTW rare case).
             }
         } else {
+            unset($this->state['certEvidenceDir']);
             $this->skipTest(14, 'No changedOccupancy rate found in search results — run against a property that has changedOccupancy rates');
 
             return;
@@ -2586,12 +2604,15 @@ class DotwCertify extends Command
         // The changedOccupancy logic is correct; this is a sandbox data issue.
         $confirmErrorCode = (string) ($confirmResponse?->request->error->code ?? $confirmResponse?->error->code ?? '');
         if ($confirmErrorCode === '731') {
+            unset($this->state['certEvidenceDir']);
             $this->skipTest(14, 'Sandbox error 731 (room type not valid for criteria) on changedOccupancy confirmbooking — changedOccupancy detection logic verified, confirmbooking step requires different sandbox hotel; run against production');
 
             return;
         }
 
         if (! $this->assertSuccess($confirmResponse, '14d')) {
+            unset($this->state['certEvidenceDir']);
+
             return;
         }
 
@@ -2599,6 +2620,7 @@ class DotwCertify extends Command
         $this->state['test14_booking_code'] = $bookingCode;
         $this->pass('14d', "Booking confirmed — Code: {$bookingCode}");
         $this->log('  ✔  VERIFICATION: validForOccupancy values used for adultsCode/children/extraBed, original for actualAdults/actualChildren');
+        unset($this->state['certEvidenceDir']);
         $this->endTest(14, true);
     }
 

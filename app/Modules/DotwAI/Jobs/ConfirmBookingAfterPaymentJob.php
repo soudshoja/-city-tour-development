@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\DotwAI\Jobs;
 
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\WhatsappController;
-use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Task;
 use App\Modules\DotwAI\Models\DotwAIBooking;
 use App\Modules\DotwAI\Services\BookingService;
-use App\Modules\DotwAI\Services\CreditService;
 use App\Modules\DotwAI\Services\MessageBuilderService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -63,7 +63,7 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param string $prebookKey The DotwAIBooking prebook_key to confirm
+     * @param  string  $prebookKey  The DotwAIBooking prebook_key to confirm
      */
     public function __construct(
         private string $prebookKey,
@@ -88,7 +88,7 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
         // Idempotency gate (Pitfall 3): already confirmed, nothing to do
         if (! empty($booking->confirmation_no)) {
             Log::info('[DotwAI][ConfirmJob] Already confirmed, skipping', [
-                'prebook_key'     => $this->prebookKey,
+                'prebook_key' => $this->prebookKey,
                 'confirmation_no' => $booking->confirmation_no,
             ]);
 
@@ -100,14 +100,14 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
         Log::info('[DotwAI][ConfirmJob] Starting confirmation', [
             'prebook_key' => $this->prebookKey,
-            'booking_id'  => $booking->id,
-            'track'       => $booking->track,
+            'booking_id' => $booking->id,
+            'track' => $booking->track,
         ]);
 
         // Delegate to BookingService::confirmAfterPayment (re-block + DOTW confirm)
         /** @var BookingService $bookingService */
         $bookingService = app(BookingService::class);
-        $result         = $bookingService->confirmAfterPayment($booking);
+        $result = $bookingService->confirmAfterPayment($booking);
 
         // Reload booking after service updates it
         $booking->refresh();
@@ -125,10 +125,10 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
         $this->sendConfirmationWhatsApp($booking);
 
         Log::info('[DotwAI][ConfirmJob] Confirmation complete', [
-            'prebook_key'     => $this->prebookKey,
+            'prebook_key' => $this->prebookKey,
             'confirmation_no' => $booking->confirmation_no,
-            'task_id'         => $booking->task_id,
-            'invoice_id'      => $booking->invoice_id,
+            'task_id' => $booking->task_id,
+            'invoice_id' => $booking->invoice_id,
         ]);
     }
 
@@ -142,8 +142,8 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
     {
         Log::critical('[DotwAI][ConfirmJob] Job permanently failed after all retries', [
             'prebook_key' => $this->prebookKey,
-            'error'       => $e->getMessage(),
-            'trace'       => $e->getTraceAsString(),
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
         ]);
 
         // Mark booking as failed for admin review
@@ -159,8 +159,8 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
      *
      * Initiates refund flow and notifies customer via WhatsApp.
      *
-     * @param DotwAIBooking        $booking The failed booking
-     * @param array<string, mixed> $result  Error result from BookingService::confirmAfterPayment
+     * @param  DotwAIBooking  $booking  The failed booking
+     * @param  array<string, mixed>  $result  Error result from BookingService::confirmAfterPayment
      */
     private function handleConfirmationFailure(DotwAIBooking $booking, array $result): void
     {
@@ -168,8 +168,8 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
         Log::critical('[DotwAI][ConfirmJob] Re-block/confirm failed after payment, refund initiated', [
             'prebook_key' => $this->prebookKey,
-            'booking_id'  => $booking->id,
-            'code'        => $code,
+            'booking_id' => $booking->id,
+            'code' => $code,
         ]);
 
         // Determine reason for message formatting
@@ -177,7 +177,7 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
         // Update booking status
         $booking->update([
-            'status'         => DotwAIBooking::STATUS_FAILED,
+            'status' => DotwAIBooking::STATUS_FAILED,
             'payment_status' => 'refund_pending',
         ]);
 
@@ -186,14 +186,14 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
         if (! empty($phone)) {
             try {
-                $message  = MessageBuilderService::formatBookingFailed($booking, $reason);
+                $message = MessageBuilderService::formatBookingFailed($booking, $reason);
                 $whatsapp = app(WhatsappController::class);
                 $whatsapp->sendToResayil($phone, $message);
             } catch (\Throwable $e) {
                 Log::error('[DotwAI][ConfirmJob] Failed to send WhatsApp failure notification', [
                     'prebook_key' => $this->prebookKey,
-                    'phone'       => $phone,
-                    'error'       => $e->getMessage(),
+                    'phone' => $phone,
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -202,58 +202,97 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
     /**
      * Create Task and Invoice records after a successful DOTW confirmation.
      *
-     * @param DotwAIBooking $booking The confirmed booking
+     * Routes through InvoiceController::autoGenerateInvoice so that journal
+     * entries are written atomically alongside the Invoice/Partial/Transaction
+     * records (closes the agent-flow ledger gap — B2C-04).
+     *
+     * @param  DotwAIBooking  $booking  The confirmed booking
      */
     private function createTaskAndInvoice(DotwAIBooking $booking): void
     {
         try {
-            // Create Task record (B2C-04)
-            // Map to Task model's fillable fields (supplier_id not known, use reference instead)
+            // Load the Payment record that was created by PaymentBridgeService.
+            // It carries agent_id and client_id resolved from the caller's phone number
+            // and is required by autoGenerateInvoice.
+            if (empty($booking->payment_id)) {
+                Log::error('[DotwAI][ConfirmJob] No payment_id on booking — cannot generate invoice with journal entry', [
+                    'prebook_key' => $this->prebookKey,
+                    'booking_id' => $booking->id,
+                ]);
+
+                return;
+            }
+
+            $payment = Payment::find($booking->payment_id);
+
+            if ($payment === null) {
+                Log::error('[DotwAI][ConfirmJob] Payment record not found — cannot generate invoice with journal entry', [
+                    'prebook_key' => $this->prebookKey,
+                    'payment_id' => $booking->payment_id,
+                ]);
+
+                return;
+            }
+
+            // Create Task record (B2C-04).
+            // agent_id and client_id are sourced from the Payment record so that
+            // autoGenerateInvoice::addJournalEntry can resolve the agent relationship.
+            // is_n8n_booking=true flags this task for agent-flow reporting.
             $task = Task::create([
-                'company_id'  => $booking->company_id,
-                'type'        => 'hotel',
-                'status'      => 'issued',
+                'company_id' => $booking->company_id,
+                'agent_id' => $payment->agent_id,
+                'client_id' => $payment->client_id,
+                'type' => 'hotel',
+                'status' => 'issued',
                 'client_name' => $this->extractGuestName($booking),
-                'reference'   => $booking->confirmation_no,
-                'total'       => $booking->display_total_fare,
+                'reference' => $booking->confirmation_no,
+                'total' => $booking->display_total_fare,
+                'currency' => $booking->display_currency ?? 'KWD',
+                'supplier_pay_date' => now(),
                 'is_n8n_booking' => true,
             ]);
 
             Log::info('[DotwAI][ConfirmJob] Task created', [
                 'prebook_key' => $this->prebookKey,
-                'task_id'     => $task->id,
+                'task_id' => $task->id,
+                'agent_id' => $task->agent_id,
+                'client_id' => $task->client_id,
             ]);
 
-            // Create Invoice record (B2C-04)
-            // Invoice requires: invoice_number, client_id (if available), currency, amount, status
-            $invoice = Invoice::create([
-                'invoice_number' => 'DOTWAI-INV-' . $booking->id,
-                'client_id'      => null, // No direct client for B2C/B2B gateway via WhatsApp
-                'agent_id'       => null,
-                'currency'       => $booking->display_currency ?? 'KWD',
-                'sub_amount'     => $booking->display_total_fare,
-                'amount'         => $booking->display_total_fare,
-                'status'         => 'paid', // Payment already received via gateway
-                'invoice_date'   => now(),
-                'label'          => "DOTW Hotel: {$booking->hotel_name}",
-            ]);
+            // Generate Invoice + InvoiceDetail + InvoicePartial + Transaction + JournalEntry
+            // atomically via autoGenerateInvoice (closes the ledger gap).
+            $invoiceResult = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
 
-            Log::info('[DotwAI][ConfirmJob] Invoice created', [
+            if (! ($invoiceResult['success'] ?? false)) {
+                Log::error('[DotwAI][ConfirmJob] autoGenerateInvoice failed — task created but no invoice/journal', [
+                    'prebook_key' => $this->prebookKey,
+                    'task_id' => $task->id,
+                    'message' => $invoiceResult['message'] ?? 'unknown',
+                ]);
+
+                // Link task even if invoice failed so admin can reconcile manually
+                $booking->update(['task_id' => $task->id]);
+
+                return;
+            }
+
+            Log::info('[DotwAI][ConfirmJob] Invoice + journal entries created via autoGenerateInvoice', [
                 'prebook_key' => $this->prebookKey,
-                'invoice_id'  => $invoice->id,
+                'task_id' => $task->id,
+                'invoice_id' => $invoiceResult['invoice_id'] ?? null,
             ]);
 
             // Link task and invoice to booking
             $booking->update([
-                'task_id'    => $task->id,
-                'invoice_id' => $invoice->id,
+                'task_id' => $task->id,
+                'invoice_id' => $invoiceResult['invoice_id'] ?? null,
             ]);
         } catch (\Throwable $e) {
             // Log but do not fail the job -- booking is confirmed, task/invoice can be created manually
             Log::error('[DotwAI][ConfirmJob] Failed to create task/invoice', [
                 'prebook_key' => $this->prebookKey,
-                'booking_id'  => $booking->id,
-                'error'       => $e->getMessage(),
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -261,7 +300,7 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
     /**
      * Send WhatsApp confirmation message to customer/agent after successful booking.
      *
-     * @param DotwAIBooking $booking The confirmed booking
+     * @param  DotwAIBooking  $booking  The confirmed booking
      */
     private function sendConfirmationWhatsApp(DotwAIBooking $booking): void
     {
@@ -277,15 +316,15 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
         try {
             $message = MessageBuilderService::formatBookingConfirmation([
-                'confirmation_no'       => $booking->confirmation_no,
-                'booking_ref'           => $booking->booking_ref,
-                'hotel_name'            => $booking->hotel_name,
-                'check_in'              => $booking->check_in?->format('Y-m-d'),
-                'check_out'             => $booking->check_out?->format('Y-m-d'),
-                'guest_details'         => $booking->guest_details ?? [],
+                'confirmation_no' => $booking->confirmation_no,
+                'booking_ref' => $booking->booking_ref,
+                'hotel_name' => $booking->hotel_name,
+                'check_in' => $booking->check_in?->format('Y-m-d'),
+                'check_out' => $booking->check_out?->format('Y-m-d'),
+                'guest_details' => $booking->guest_details ?? [],
                 'payment_guaranteed_by' => $booking->payment_guaranteed_by,
-                'display_total_fare'    => $booking->display_total_fare,
-                'display_currency'      => $booking->display_currency,
+                'display_total_fare' => $booking->display_total_fare,
+                'display_currency' => $booking->display_currency,
             ]);
 
             $whatsapp = app(WhatsappController::class);
@@ -296,13 +335,13 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
             Log::info('[DotwAI][ConfirmJob] WhatsApp confirmation sent', [
                 'prebook_key' => $this->prebookKey,
-                'phone'       => $phone,
+                'phone' => $phone,
             ]);
         } catch (\Throwable $e) {
             Log::error('[DotwAI][ConfirmJob] Failed to send WhatsApp confirmation', [
                 'prebook_key' => $this->prebookKey,
-                'phone'       => $phone,
-                'error'       => $e->getMessage(),
+                'phone' => $phone,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -310,7 +349,7 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
     /**
      * Extract the primary guest name from booking guest_details.
      *
-     * @param DotwAIBooking $booking The booking record
+     * @param  DotwAIBooking  $booking  The booking record
      * @return string Full name of first guest, or 'Guest'
      */
     private function extractGuestName(DotwAIBooking $booking): string
@@ -322,8 +361,8 @@ class ConfirmBookingAfterPaymentJob implements ShouldQueue
 
             if ($firstGuest !== null) {
                 $firstName = trim($firstGuest['first_name'] ?? '');
-                $lastName  = trim($firstGuest['last_name'] ?? '');
-                $fullName  = trim("{$firstName} {$lastName}");
+                $lastName = trim($firstGuest['last_name'] ?? '');
+                $fullName = trim("{$firstName} {$lastName}");
 
                 if (! empty($fullName)) {
                     return $fullName;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AkeedDotwAI\Services;
 
+use App\Modules\AkeedDotwAI\Jobs\EnrichHotelCatalogJob;
 use App\Services\DotwService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -86,10 +87,18 @@ class HotelSearchService
         // Cache only the unfiltered hotel list. The hotel-name filter is
         // applied post-cache so changing the filter does not poison or miss
         // the cache. Cache key intentionally excludes the hotel filter.
+        //
+        // Lazy enrichment: when this closure executes (cache miss = real DOTW
+        // call), the raw parseHotels result now includes hotelName/cityName/
+        // address/coords captured directly from the live XML response. We
+        // dispatch EnrichHotelCatalogJob AFTER building the response envelope
+        // so the DB write never blocks the customer-facing search path.
+        $enrichmentPayload = null;
+
         $cached = Cache::remember(
             $cacheKey,
             $ttl,
-            function () use ($input, $cityCode, $nationality, $residence, $companyId): array {
+            function () use ($input, $cityCode, $nationality, $residence, $companyId, &$enrichmentPayload): array {
                 $params = [
                     'fromDate' => $input['checkIn'],
                     'toDate' => $input['checkOut'],
@@ -114,21 +123,34 @@ class HotelSearchService
                     return ['status' => 'error', 'message' => 'DOTW search failed'];
                 }
 
+                // Capture the raw metadata from parseHotels for lazy enrichment.
+                // This fires only on a cache miss (real DOTW round-trip). The job
+                // is dispatched below, outside this closure, so the upsert never
+                // adds latency to the search response.
+                $enrichmentPayload = $hotels;
+
                 // Enrich raw DotwService output with local hotel metadata.
-                // DotwService::parseHotels returns ['hotelId' => ..., 'rooms' => ...]
-                // — name/address/city/star_rating live in the local `dotwai_hotels`
-                // table (owned by the B2B DotwAI module). Cross-module read is
-                // acceptable per FuzzyMatcherService precedent.
+                // DotwService::parseHotels now returns hotelName/cityName/address/
+                // coords alongside hotelId+rooms. Prefer the live response name
+                // when available; fall back to the local catalog row; finally fall
+                // back to the "Hotel #ID" placeholder so the caller always gets
+                // a non-empty hotel_name string.
                 $hotels = array_map(function (array $h) {
                     $hotelId = (string) ($h['hotelId'] ?? '');
                     $local = \App\Modules\DotwAI\Models\DotwAIHotel::where('dotw_hotel_id', $hotelId)->first();
 
+                    // Prefer: live response name > local catalog name > placeholder
+                    $liveName = $h['hotelName'] ?? '';
+                    $hotelName = $liveName !== ''
+                        ? $liveName
+                        : ($local?->name ?? "Hotel #{$hotelId}");
+
                     return array_merge($h, [
                         'hotel_id' => $hotelId,
-                        'hotel_name' => $local?->name ?? "Hotel #{$hotelId}",
-                        'hotel_address' => $local?->address,
+                        'hotel_name' => $hotelName,
+                        'hotel_address' => ($h['address'] ?? null) ?? $local?->address,
                         'star_rating' => $local?->star_rating,
-                        'city_name' => $local?->city,
+                        'city_name' => ($h['cityName'] ?? '') !== '' ? $h['cityName'] : $local?->city,
                     ]);
                 }, $hotels);
 
@@ -141,6 +163,14 @@ class HotelSearchService
                 ];
             }
         );
+
+        // Dispatch lazy enrichment job when a real DOTW call was made (cache miss).
+        // The job runs on the default queue after this request completes — it upserts
+        // only hotels with non-empty hotelName values so the catalog grows organically
+        // without polluting dotwai_hotels with empty-name placeholders.
+        if ($enrichmentPayload !== null) {
+            EnrichHotelCatalogJob::dispatch($enrichmentPayload);
+        }
 
         // Pass through error envelopes unchanged.
         if (($cached['status'] ?? null) !== 'hotel_found') {

@@ -1983,8 +1983,18 @@ class DotwService
         $hotelElements = $response->xpath('//hotel');
 
         foreach ($hotelElements as $hotel) {
+            // Capture static metadata alongside pricing so callers can lazily
+            // enrich the dotwai_hotels catalog without a second DOTW request.
+            // These fields appear in the live searchhotels XML response; they
+            // are empty strings when DOTW omits them (no fields block requested).
             $hotelData = [
                 'hotelId' => (string) $hotel['hotelid'],
+                'hotelName' => (string) ($hotel->hotelName ?? ''),
+                'cityName' => (string) ($hotel->cityName ?? ''),
+                'countryName' => (string) ($hotel->countryName ?? ''),
+                'address' => ((string) ($hotel->address ?? '')) ?: null,
+                'latitude' => isset($hotel->geoPoint->lat) ? (float) $hotel->geoPoint->lat : null,
+                'longitude' => isset($hotel->geoPoint->lng) ? (float) $hotel->geoPoint->lng : null,
                 'rooms' => [],
             ];
 

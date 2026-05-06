@@ -111,6 +111,24 @@ class HotelSearchService
                     return ['status' => 'error', 'message' => 'DOTW search failed'];
                 }
 
+                // Enrich raw DotwService output with local hotel metadata.
+                // DotwService::parseHotels returns ['hotelId' => ..., 'rooms' => ...]
+                // — name/address/city/star_rating live in the local `dotwai_hotels`
+                // table (owned by the B2B DotwAI module). Cross-module read is
+                // acceptable per FuzzyMatcherService precedent.
+                $hotels = array_map(function (array $h) {
+                    $hotelId = (string) ($h['hotelId'] ?? '');
+                    $local = \App\Modules\DotwAI\Models\DotwAIHotel::where('dotw_hotel_id', $hotelId)->first();
+
+                    return array_merge($h, [
+                        'hotel_id' => $hotelId,
+                        'hotel_name' => $local?->name ?? "Hotel #{$hotelId}",
+                        'hotel_address' => $local?->address,
+                        'star_rating' => $local?->star_rating,
+                        'city_name' => $local?->city,
+                    ]);
+                }, $hotels);
+
                 // Optional hotel-name post-filter (case-insensitive substring)
                 if (! empty($input['hotel'])) {
                     $hotels = array_values(

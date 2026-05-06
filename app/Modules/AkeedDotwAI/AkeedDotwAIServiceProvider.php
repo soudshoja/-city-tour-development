@@ -74,5 +74,12 @@ class AkeedDotwAIServiceProvider extends ServiceProvider
         if (class_exists($middlewareClass)) {
             $router->aliasMiddleware('akeed.dotw.context', $middlewareClass);
         }
+
+        // Register Artisan commands for this module.
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Modules\AkeedDotwAI\Console\Commands\SyncHotelsCommand::class,
+            ]);
+        }
     }
 }

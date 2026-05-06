@@ -254,6 +254,84 @@ class DotwService
     }
 
     /**
+     * Search hotels and return raw hotel IDs for static-data pre-load.
+     *
+     * Calls searchhotels with the same XSD-valid body as searchHotels() but
+     * returns a lightweight array keyed for the SyncHotelsCommand upsert:
+     *   - hotel_id   (string)  DOTW hotelid attribute from <hotel> element
+     *   - name       null      DOTW searchhotels does NOT return hotel name
+     *   - city_name  (string)  Passed in via $cityName parameter (caller-supplied)
+     *   - country_name null    Not available from this endpoint
+     *   - star_rating null     Not available from this endpoint
+     *   - address    null      Not available from this endpoint
+     *
+     * Note: DOTW V4 searchhotels only exposes hotelid in the response element.
+     * There is no DOTW endpoint that returns hotel names by city in bulk.
+     * The SyncHotelsCommand stores a placeholder name "Hotel {id}" so that
+     * lazy enrichment (T31.1-04) can back-fill real names at search time.
+     *
+     * @param  array  $params  Same structure as searchHotels() params array.
+     *                         Must contain: fromDate, toDate, currency, rooms, filters.
+     * @param  string  $cityName  Human-readable city name to attach to each hotel entry.
+     * @return array<int, array{hotel_id: string, name: null, city_name: string,
+     *                          country_name: null, star_rating: null, address: null}>
+     *
+     * @throws Exception If the DOTW request fails or returns an error response
+     */
+    public function searchHotelsWithMetadata(array $params, string $cityName = ''): array
+    {
+        $this->logger->info('DOTW searchHotelsWithMetadata request initiated', [
+            'from_date' => $params['fromDate'] ?? null,
+            'to_date' => $params['toDate'] ?? null,
+            'city_filter' => $params['filters']['city'] ?? null,
+        ]);
+
+        $body = $this->buildSearchHotelsBody($params);
+        $xml = $this->wrapRequest('searchhotels', $body);
+
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) ($response->request->error->code ?? 'UNKNOWN');
+            $errorDetails = (string) ($response->request->error->details ?? 'Unknown error');
+
+            $this->logger->error('DOTW searchHotelsWithMetadata error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW searchHotelsWithMetadata error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $hotels = [];
+        $hotelElements = $response->xpath('//hotel');
+
+        foreach ($hotelElements as $hotel) {
+            $hotelId = (string) $hotel['hotelid'];
+
+            if ($hotelId === '') {
+                continue;
+            }
+
+            $hotels[] = [
+                'hotel_id' => $hotelId,
+                'name' => null,   // Not provided by searchhotels response
+                'city_name' => $cityName,
+                'country_name' => null,   // Not provided by searchhotels response
+                'star_rating' => null,   // Not provided by searchhotels response
+                'address' => null,   // Not provided by searchhotels response
+            ];
+        }
+
+        $this->logger->info('DOTW searchHotelsWithMetadata complete', [
+            'hotel_count' => count($hotels),
+            'city_name' => $cityName,
+        ]);
+
+        return $hotels;
+    }
+
+    /**
      * Get rooms with rate blocking capability
      *
      * Called TWICE in V4 flow:

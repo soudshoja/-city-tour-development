@@ -115,4 +115,53 @@ return [
     */
     'default_currency' => env('AKEED_DOTWAI_DEFAULT_CURRENCY', '520'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Hotel Sync — Priority Cities
+    |--------------------------------------------------------------------------
+    |
+    | City codes (DOTW internal numeric codes) used by the
+    | akeed-dotwai:sync-hotels --all command for the initial hotel pre-load
+    | and the weekly scheduled top-up.
+    |
+    | These codes cover the top GCC + high-demand outbound destinations that
+    | account for ~80% of Akeed customer search traffic. Additional city codes
+    | can be discovered after running dotwai:sync-static (which populates
+    | dotwai_cities with all 25,868 DOTW cities).
+    |
+    | Known codes (verified against live DOTW sandbox 2026-05-06):
+    |   364    = Dubai
+    |   410    = Abu Dhabi
+    |   353    = Kuwait City
+    |   24     = Doha (Qatar)
+    |   194    = Riyadh
+    |   844    = Beirut
+    |   134    = Jeddah
+    |   93846  = Manama (Bahrain)
+    |   264    = Muscat
+    |   454    = Cairo
+    |   14214  = Istanbul
+    |   22594  = Bangkok
+    |   22394  = Singapore
+    |   271565 = Maldives (Male)
+    |
+    */
+    'hotel_sync_priority_cities' => [
+        364, 410, 353, 24, 194, 844, 134, 93846, 264, 454,
+        14214, 22594, 22394, 271565,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hotel Sync — Rate Limiting Delay
+    |--------------------------------------------------------------------------
+    |
+    | Milliseconds to sleep between city requests during hotel sync.
+    | Default 200 ms keeps a 14-city priority run under 3 seconds while
+    | respecting DOTW's undocumented rate limit (best-practices guidance
+    | recommends pacing batch requests).
+    |
+    */
+    'hotel_sync_delay_ms' => env('AKEED_DOTWAI_HOTEL_SYNC_DELAY_MS', 200),
+
 ];

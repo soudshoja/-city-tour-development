@@ -100,4 +100,19 @@ return [
     */
     'default_country_code' => env('AKEED_DOTWAI_DEFAULT_COUNTRY_CODE', '965'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | DOTW Currency
+    |--------------------------------------------------------------------------
+    |
+    | DOTW internal currency code used for searchhotels / getrooms requests.
+    | This must match what your DOTW account is provisioned for. The B2B
+    | DotwAI module reads DOTWAI_DEFAULT_CURRENCY (same code, separate env).
+    | Common DOTW codes: 769 = USD, 520 = KWD. Default 520 fails for accounts
+    | not provisioned for KWD — set AKEED_DOTWAI_DEFAULT_CURRENCY=769
+    | (or your account's code) on every deploy.
+    |
+    */
+    'default_currency' => env('AKEED_DOTWAI_DEFAULT_CURRENCY', '520'),
+
 ];

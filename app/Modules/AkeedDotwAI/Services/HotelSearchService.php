@@ -90,7 +90,7 @@ class HotelSearchService
                 $params = [
                     'fromDate' => $input['checkIn'],
                     'toDate' => $input['checkOut'],
-                    'currency' => config('dotw.default_currency', '520'),
+                    'currency' => config('akeed_dotwai.default_currency', '520'),
                     'city' => $cityCode,
                     'rooms' => $this->buildRoomsArray($input['occupancy'], $nationality, $residence),
                     'filters' => ['city' => $cityCode],
@@ -175,7 +175,7 @@ class HotelSearchService
                 $params = [
                     'fromDate' => $input['checkIn'],
                     'toDate' => $input['checkOut'],
-                    'currency' => config('dotw.default_currency', '520'),
+                    'currency' => config('akeed_dotwai.default_currency', '520'),
                     'rooms' => $this->buildRoomsArray($input['occupancy'], $nationality, $residence),
                     'productId' => $hotelId,
                 ];
@@ -302,7 +302,7 @@ class HotelSearchService
     private function parseRates(array $rawRates): array
     {
         $markupMul = (float) config('akeed_dotwai.b2c_markup', 0.20);
-        $currency = config('akeed_dotwai.display_currency', config('dotw.default_currency', '520'));
+        $currency = config('akeed_dotwai.display_currency', config('akeed_dotwai.default_currency', '520'));
         $parsed = [];
 
         foreach ($rawRates as $room) {

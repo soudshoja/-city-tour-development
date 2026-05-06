@@ -83,7 +83,10 @@ class HotelSearchService
         $ttl = (int) config('akeed_dotwai.search_cache_ttl_seconds', 600);
         $companyId = (int) config('akeed_dotwai.company_id');
 
-        return Cache::remember(
+        // Cache only the unfiltered hotel list. The hotel-name filter is
+        // applied post-cache so changing the filter does not poison or miss
+        // the cache. Cache key intentionally excludes the hotel filter.
+        $cached = Cache::remember(
             $cacheKey,
             $ttl,
             function () use ($input, $cityCode, $nationality, $residence, $companyId): array {
@@ -129,16 +132,6 @@ class HotelSearchService
                     ]);
                 }, $hotels);
 
-                // Optional hotel-name post-filter (case-insensitive substring)
-                if (! empty($input['hotel'])) {
-                    $hotels = array_values(
-                        array_filter(
-                            $hotels,
-                            fn (array $h) => stripos($h['hotel_name'] ?? '', $input['hotel']) !== false
-                        )
-                    );
-                }
-
                 return [
                     'status' => 'hotel_found',
                     'hotels' => $hotels,
@@ -148,6 +141,24 @@ class HotelSearchService
                 ];
             }
         );
+
+        // Pass through error envelopes unchanged.
+        if (($cached['status'] ?? null) !== 'hotel_found') {
+            return $cached;
+        }
+
+        // Apply hotel-name post-filter outside the cache.
+        $hotels = $cached['hotels'];
+        if (! empty($input['hotel'])) {
+            $hotels = array_values(
+                array_filter(
+                    $hotels,
+                    fn (array $h) => stripos($h['hotel_name'] ?? '', $input['hotel']) !== false
+                )
+            );
+        }
+
+        return array_merge($cached, ['hotels' => $hotels]);
     }
 
     /**

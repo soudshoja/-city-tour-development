@@ -83,9 +83,21 @@ return [
     |
     */
     'brand' => [
-        'name'          => env('AKEED_DOTWAI_BRAND_NAME', 'Akeed'),
+        'name' => env('AKEED_DOTWAI_BRAND_NAME', 'Akeed'),
         'support_phone' => env('AKEED_DOTWAI_SUPPORT_PHONE', null),
         'support_email' => env('AKEED_DOTWAI_SUPPORT_EMAIL', null),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Phone Normalization
+    |--------------------------------------------------------------------------
+    |
+    | default_country_code: ITU-T country code prepended to 8-digit local
+    |   numbers during phone normalization in AttachDotwContext. Kuwait = 965.
+    |   Override via AKEED_DOTWAI_DEFAULT_COUNTRY_CODE for other markets.
+    |
+    */
+    'default_country_code' => env('AKEED_DOTWAI_DEFAULT_COUNTRY_CODE', '965'),
 
 ];

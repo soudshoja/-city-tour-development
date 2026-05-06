@@ -52,17 +52,17 @@ class AkeedDotwAIServiceProvider extends ServiceProvider
 
         // Load migrations — only when module is enabled so the tables are
         // not present on deploys that have not opted in.
-        $this->loadMigrationsFrom(__DIR__ . '/Database/Migrations');
+        $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         // Load routes if the files exist. Both api.php and graphql.php are
         // created in T30-06; guard with file_exists so this provider is
         // fully standalone in T30-01.
-        $apiRoutes = __DIR__ . '/Routes/api.php';
+        $apiRoutes = __DIR__.'/Routes/api.php';
         if (file_exists($apiRoutes)) {
             $this->loadRoutesFrom($apiRoutes);
         }
 
-        $graphqlRoutes = __DIR__ . '/Routes/graphql.php';
+        $graphqlRoutes = __DIR__.'/Routes/graphql.php';
         if (file_exists($graphqlRoutes)) {
             $this->loadRoutesFrom($graphqlRoutes);
         }

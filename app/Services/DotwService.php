@@ -254,27 +254,30 @@ class DotwService
     }
 
     /**
-     * Search hotels and return raw hotel IDs for static-data pre-load.
+     * Search hotels and return full metadata for static-data pre-load.
      *
-     * Calls searchhotels with the same XSD-valid body as searchHotels() but
-     * returns a lightweight array keyed for the SyncHotelsCommand upsert:
-     *   - hotel_id   (string)  DOTW hotelid attribute from <hotel> element
-     *   - name       null      DOTW searchhotels does NOT return hotel name
-     *   - city_name  (string)  Passed in via $cityName parameter (caller-supplied)
-     *   - country_name null    Not available from this endpoint
-     *   - star_rating null     Not available from this endpoint
-     *   - address    null      Not available from this endpoint
+     * Calls searchhotels with <noPrice>true</noPrice> and a <fields> block so
+     * DOTW returns hotel name, address, city, country, and geo-coordinates
+     * alongside each hotel element — no pricing computation is performed.
      *
-     * Note: DOTW V4 searchhotels only exposes hotelid in the response element.
-     * There is no DOTW endpoint that returns hotel names by city in bulk.
-     * The SyncHotelsCommand stores a placeholder name "Hotel {id}" so that
-     * lazy enrichment (T31.1-04) can back-fill real names at search time.
+     * Returned array shape (per entry):
+     *   - hotel_id    (string)       DOTW hotelid attribute
+     *   - name        (string)       Hotel name from <hotelName> (empty string if absent)
+     *   - city_name   (string)       <cityName> child element; falls back to $cityName arg
+     *   - country_name (string|null) <countryName> child element
+     *   - star_rating  null          <rating> is a DOTW internal code (not 1–5 stars);
+     *                                always stored as null — enrich from a dedicated
+     *                                endpoint if star classification is required
+     *   - address     (string|null)  <address> child element
+     *   - latitude    (float|null)   <geoPoint><lat> child element
+     *   - longitude   (float|null)   <geoPoint><lng> child element
      *
-     * @param  array  $params  Same structure as searchHotels() params array.
-     *                         Must contain: fromDate, toDate, currency, rooms, filters.
-     * @param  string  $cityName  Human-readable city name to attach to each hotel entry.
-     * @return array<int, array{hotel_id: string, name: null, city_name: string,
-     *                          country_name: null, star_rating: null, address: null}>
+     * @param  array  $params  Must contain: fromDate, toDate, currency, rooms, filters.
+     * @param  string  $cityName  Fallback city label when <cityName> is absent.
+     * @return array<int, array{hotel_id: string, name: string, city_name: string,
+     *                          country_name: string|null, star_rating: null,
+     *                          address: string|null, latitude: float|null,
+     *                          longitude: float|null}>
      *
      * @throws Exception If the DOTW request fails or returns an error response
      */
@@ -285,6 +288,18 @@ class DotwService
             'to_date' => $params['toDate'] ?? null,
             'city_filter' => $params['filters']['city'] ?? null,
         ]);
+
+        // Request static hotel metadata: suppress pricing, ask for named fields.
+        $params['noPrice'] = true;
+        $params['fields'] = [
+            'hotelName',
+            'address',
+            'cityName',
+            'countryName',
+            'rating',
+            'geoPoint',
+            'lastUpdated',
+        ];
 
         $body = $this->buildSearchHotelsBody($params);
         $xml = $this->wrapRequest('searchhotels', $body);
@@ -313,13 +328,28 @@ class DotwService
                 continue;
             }
 
+            // <cityName> comes back from DOTW; fall back to caller-supplied label.
+            $resolvedCity = (string) ($hotel->cityName ?? '');
+            if ($resolvedCity === '') {
+                $resolvedCity = $cityName;
+            }
+
+            // <geoPoint> contains <lat> and <lng> child elements.
+            $lat = isset($hotel->geoPoint->lat) ? (float) $hotel->geoPoint->lat : null;
+            $lng = isset($hotel->geoPoint->lng) ? (float) $hotel->geoPoint->lng : null;
+
+            // <rating> is a DOTW internal numeric code (e.g. 561), not a 1–5 star value.
+            // We store null for star_rating; a dedicated enrichment step is needed if
+            // star classification is required.
             $hotels[] = [
                 'hotel_id' => $hotelId,
-                'name' => null,   // Not provided by searchhotels response
-                'city_name' => $cityName,
-                'country_name' => null,   // Not provided by searchhotels response
-                'star_rating' => null,   // Not provided by searchhotels response
-                'address' => null,   // Not provided by searchhotels response
+                'name' => (string) ($hotel->hotelName ?? ''),
+                'city_name' => $resolvedCity,
+                'country_name' => ((string) ($hotel->countryName ?? '')) ?: null,
+                'star_rating' => null,
+                'address' => ((string) ($hotel->address ?? '')) ?: null,
+                'latitude' => $lat,
+                'longitude' => $lng,
             ];
         }
 
@@ -1265,6 +1295,14 @@ class DotwService
     /**
      * Build XML body for searchhotels command
      *
+     * Supports optional static-data enrichment via:
+     *   - $params['noPrice'] (bool)    — injects <noPrice>true</noPrice> into the
+     *                                    <filters> block so DOTW returns hotel
+     *                                    metadata without pricing computation overhead.
+     *   - $params['fields'] (string[]) — appends a <fields><field>...</field></fields>
+     *                                    block under <return> to request specific
+     *                                    hotel metadata fields (name, address, etc.).
+     *
      * @param  array  $params  Search parameters
      * @return string XML body
      */
@@ -1274,7 +1312,16 @@ class DotwService
 
         $filtersXml = '';
         if (! empty($params['filters'])) {
-            $filtersXml = $this->buildFilterXml($params['filters']);
+            $filtersXml = $this->buildFilterXml($params['filters'], (bool) ($params['noPrice'] ?? false));
+        }
+
+        $fieldsXml = '';
+        if (! empty($params['fields']) && is_array($params['fields'])) {
+            $fieldsXml = '<fields>';
+            foreach ($params['fields'] as $field) {
+                $fieldsXml .= sprintf('<field>%s</field>', htmlspecialchars((string) $field));
+            }
+            $fieldsXml .= '</fields>';
         }
 
         return sprintf(
@@ -1286,12 +1333,14 @@ class DotwService
     </bookingDetails>
     <return>
       %s
+      %s
     </return>',
             htmlspecialchars($params['fromDate'] ?? ''),
             htmlspecialchars($params['toDate'] ?? ''),
             htmlspecialchars($params['currency'] ?? ''),
             $roomsXml,
-            $filtersXml
+            $filtersXml,
+            $fieldsXml
         );
     }
 
@@ -1775,14 +1824,20 @@ class DotwService
      * Supports complex conditions with atomic conditions
      *
      * @param  array  $filters  Filter specifications
+     * @param  bool  $noPrice  When true, injects <noPrice>true</noPrice> so DOTW
+     *                         returns hotel metadata without pricing computation.
      * @return string XML filters element
      */
-    private function buildFilterXml(array $filters): string
+    private function buildFilterXml(array $filters, bool $noPrice = false): string
     {
         $filtersXml = '<filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition" xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">';
 
         if (isset($filters['city'])) {
             $filtersXml .= sprintf('<city>%s</city>', htmlspecialchars($filters['city']));
+        }
+
+        if ($noPrice) {
+            $filtersXml .= '<noPrice>true</noPrice>';
         }
 
         if (isset($filters['conditions']) && is_array($filters['conditions'])) {

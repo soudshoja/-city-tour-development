@@ -14,15 +14,16 @@ use Illuminate\Support\Facades\Log;
 /**
  * Pre-load hotel entries from DOTW for a set of priority cities.
  *
- * DOTW's searchhotels response only returns hotel IDs (no name, no address,
- * no star rating). This command registers those IDs in dotwai_hotels with a
- * placeholder name "Hotel {hotelId}" so that FuzzyMatcherService can resolve
- * hotel IDs even before real names are back-filled by lazy enrichment
- * (T31.1-04 in HotelSearchService::search).
+ * Uses DotwService::searchHotelsWithMetadata which sends a searchhotels request
+ * with <noPrice>true</noPrice> and a <fields> block so DOTW returns real hotel
+ * names, addresses, city/country names, and geo-coordinates alongside each
+ * hotel element. A placeholder name "Hotel {hotelId}" is used only when DOTW
+ * returns an unexpectedly empty <hotelName>.
  *
- * City name is resolved from dotwai_cities by the numeric city code. If the
- * city row is absent (e.g. dotwai:sync-static has not yet run), the city
- * field falls back to "City {code}".
+ * City name in the dotwai_cities fallback lookup is no longer the primary
+ * source — <cityName> from the DOTW response takes precedence. The fallback
+ * resolves from dotwai_cities by numeric code and, if absent, falls back to
+ * "City {code}".
  *
  * Usage:
  *   php artisan akeed-dotwai:sync-hotels --city=364
@@ -96,12 +97,10 @@ class SyncHotelsCommand extends Command
                         continue;
                     }
 
-                    // DOTW searchhotels does not return hotel name, address, or star rating.
-                    // We register the hotel ID with a placeholder; lazy enrichment (T31.1-04)
-                    // will back-fill the real name from a live searchhotels response when a
-                    // customer searches for that city.
-                    $name = (string) $h['hotel_id'];
-                    $name = "Hotel {$name}";
+                    // searchHotelsWithMetadata now returns real hotel names from DOTW via
+                    // the <fields> + <noPrice> request (T31.1-03 fix). Fall back to a
+                    // placeholder only when the name field is unexpectedly empty.
+                    $name = $h['name'] !== '' ? $h['name'] : "Hotel {$h['hotel_id']}";
 
                     /** @phpstan-ignore-next-line staticMethod.notFound */
                     $row = DotwAIHotel::updateOrCreate(
@@ -109,9 +108,11 @@ class SyncHotelsCommand extends Command
                         [
                             'name' => $name,
                             'city' => (string) $h['city_name'],
-                            'country' => '',
+                            'country' => (string) ($h['country_name'] ?? ''),
                             'star_rating' => null,
-                            'address' => null,
+                            'address' => $h['address'] ?? null,
+                            'latitude' => $h['latitude'] ?? null,
+                            'longitude' => $h['longitude'] ?? null,
                         ]
                     );
 

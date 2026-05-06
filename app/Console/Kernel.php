@@ -57,34 +57,6 @@ class Kernel extends ConsoleKernel
         $schedule->command('dotwai:clean-sessions')
             ->dailyAt('03:00');
 
-        // Akeed-DOTW static data sync (countries + cities) — every Sunday at 03:00 KWT
-        $schedule->command('dotwai:sync-static')
-            ->weekly()
-            ->sundays()
-            ->at('03:00')
-            ->timezone('Asia/Kuwait')
-            ->withoutOverlapping(15)
-            ->runInBackground()
-            ->appendOutputTo(storage_path('logs/sync-static.log'))
-            ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('dotwai:sync-static weekly run failed');
-            });
-
-        // Akeed-DOTW hotel catalog sync (14 priority cities) — every Sunday at 03:30 KWT
-        // Guarded by config('akeed_dotwai.enabled') so disabled deployments skip it
-        $schedule->command('akeed-dotwai:sync-hotels', ['--all' => true])
-            ->weekly()
-            ->sundays()
-            ->at('03:30')
-            ->timezone('Asia/Kuwait')
-            ->withoutOverlapping(15)
-            ->runInBackground()
-            ->appendOutputTo(storage_path('logs/sync-hotels.log'))
-            ->when(fn () => config('akeed_dotwai.enabled'))
-            ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('akeed-dotwai:sync-hotels weekly run failed');
-            });
-
         // Make sure to run the queue worker
         $schedule->command('queue:work --queue=api_sync --stop-when-empty')
             ->everyMinute()

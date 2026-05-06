@@ -70,7 +70,7 @@ return [
     |
     */
     'session_ttl_minutes' => env('AKEED_DOTWAI_SESSION_TTL', 60),
-    'prebook_ttl_minutes' => 30,
+    'prebook_ttl_minutes' => 2, // 2 min — DOTW non-FIT inventory has no hold guarantee, FIT max 5 min, V4 default 3 min
     'search_cache_ttl_seconds' => 600,
 
     /*

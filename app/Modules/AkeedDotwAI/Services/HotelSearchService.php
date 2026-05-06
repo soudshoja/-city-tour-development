@@ -233,15 +233,18 @@ class HotelSearchService
      */
     private function buildRoomsArray(array $occupancy, string $nationality, string $residence): array
     {
-        return array_map(
-            fn (array $occ): array => [
-                'adults' => $occ['adults'] ?? 1,
-                'childrenAges' => $occ['childrenAges'] ?? [],
-                'nationality' => $nationality,
-                'residence' => $residence,
-            ],
-            $occupancy
-        );
+        $rooms = [];
+        foreach ($occupancy as $index => $occ) {
+            $rooms[] = [
+                'no' => $index + 1,
+                'adultsCode' => (int) ($occ['adults'] ?? 2),
+                'children' => $occ['childrenAges'] ?? [],
+                'passengerNationality' => $nationality,
+                'passengerCountryOfResidence' => $residence,
+            ];
+        }
+
+        return $rooms;
     }
 
     /**

@@ -735,6 +735,49 @@ class DotwService
     }
 
     /**
+     * Get all cities globally in a single API call.
+     *
+     * Calls getservingcities with an empty body, which causes DOTW to return
+     * all ~25,000 cities across every country. Country association is not
+     * included in the response, so country_code will be null for rows inserted
+     * via this method.
+     *
+     * Use this instead of iterating getCityList() per-country — one call is
+     * ~219× faster and avoids per-country API failure surface.
+     *
+     * @return array List of cities with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getAllCities(): array
+    {
+        $this->logger->info('DOTW getAllCities request initiated (single global call)');
+
+        $xml = $this->wrapRequest('getservingcities', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+
+            $this->logger->error('DOTW getAllCities error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getAllCities error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $cities = $this->parseCityList($response);
+
+        $this->logger->info('DOTW getAllCities successful', [
+            'city_count' => count($cities),
+        ]);
+
+        return $cities;
+    }
+
+    /**
      * Get hotel star rating classifications
      *
      * @return array List of hotel classifications with codes
@@ -1705,7 +1748,7 @@ class DotwService
     {
         try {
             $response = Http::withHeaders([
-                'Content-Type' => 'text/xml',
+                'Content-Type' => 'text/xml; charset=utf-8',
                 'Connection' => 'close',
                 // VALID-04: gzip compression required on all DOTW requests (certification test 12)
                 'Accept-Encoding' => 'gzip, deflate',
@@ -1713,7 +1756,8 @@ class DotwService
                 ->timeout($this->timeout)
                 ->connectTimeout(30)
                 ->withOptions(['decode_content' => true])
-                ->post($this->baseUrl, $xml);
+                ->withBody($xml, 'text/xml; charset=utf-8')
+                ->post($this->baseUrl);
 
             $this->logger->debug('DOTW API response received', [
                 'status' => $response->status(),
@@ -2105,8 +2149,8 @@ class DotwService
 
         foreach ($countryElements as $country) {
             $countries[] = [
-                'code' => (string) $country['code'] ?? '',
-                'name' => (string) $country ?? '',
+                'code' => (string) ($country->code ?? ''),
+                'name' => (string) ($country->name ?? ''),
             ];
         }
 
@@ -2126,8 +2170,8 @@ class DotwService
 
         foreach ($cityElements as $city) {
             $cities[] = [
-                'code' => (string) $city['code'] ?? '',
-                'name' => (string) $city ?? '',
+                'code' => (string) ($city->code ?? ''),
+                'name' => (string) ($city->name ?? ''),
             ];
         }
 

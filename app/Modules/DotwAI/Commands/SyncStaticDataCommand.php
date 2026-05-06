@@ -47,19 +47,17 @@ class SyncStaticDataCommand extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return int
      */
     public function handle(): int
     {
-        $dotwService = new DotwService();
+        $dotwService = new DotwService;
 
         $countriesOnly = $this->option('countries-only');
         $citiesOnly = $this->option('cities-only');
 
         // Default: sync both
-        $syncCountries = !$citiesOnly;
-        $syncCities = !$countriesOnly;
+        $syncCountries = ! $citiesOnly;
+        $syncCities = ! $countriesOnly;
 
         $countryCount = 0;
         $cityCount = 0;
@@ -91,7 +89,6 @@ class SyncStaticDataCommand extends Command
     /**
      * Sync countries from DOTW API.
      *
-     * @param DotwService $dotwService
      * @return int Number of countries synced, or -1 on failure
      */
     private function syncCountries(DotwService $dotwService): int
@@ -105,6 +102,7 @@ class SyncStaticDataCommand extends Command
             Log::channel('dotw')->warning('[DotwAI] sync-static countries failed', [
                 'error' => $e->getMessage(),
             ]);
+
             return -1;
         }
 
@@ -118,6 +116,7 @@ class SyncStaticDataCommand extends Command
 
             if (empty($code)) {
                 $bar->advance();
+
                 continue;
             }
 
@@ -141,72 +140,62 @@ class SyncStaticDataCommand extends Command
     }
 
     /**
-     * Sync cities from DOTW API for all synced countries.
+     * Sync cities from DOTW API using a single global getservingcities call.
      *
-     * Iterates over all countries in the dotwai_countries table and
-     * calls getCityList() for each. On per-country API error, logs
-     * a warning and continues to the next country.
+     * DOTW's getservingcities endpoint returns all ~25,000 cities globally when
+     * called with an empty body — country grouping is not included in the
+     * response, so country_code is stored as NULL.  This is ~219× faster than
+     * the previous per-country loop and eliminates per-country failure surface.
      *
-     * @param DotwService $dotwService
-     * @return int Number of cities synced, or -1 on total failure
+     * The dotwai_cities.country_code column must be nullable before running this
+     * sync (see migration 2026_05_06_000004_make_dotwai_cities_country_code_nullable).
+     *
+     * @return int Number of cities synced, or -1 on failure
      */
     private function syncCities(DotwService $dotwService): int
     {
-        $this->info('Syncing cities from DOTW API...');
+        $this->info('Syncing cities from DOTW API (single global call)...');
 
-        $countries = DotwAICountry::all();
+        try {
+            $cities = $dotwService->getAllCities();
+        } catch (Exception $e) {
+            $this->error("DOTW API error fetching cities: {$e->getMessage()}");
+            Log::channel('dotw')->warning('[DotwAI] sync-static cities failed', [
+                'error' => $e->getMessage(),
+            ]);
 
-        if ($countries->isEmpty()) {
-            $this->warn('No countries in database. Run with --countries-only first, or sync both.');
-            return 0;
+            return -1;
         }
 
         $count = 0;
-        $errors = 0;
-        $bar = $this->output->createProgressBar($countries->count());
+        $bar = $this->output->createProgressBar(count($cities));
         $bar->start();
 
-        foreach ($countries as $country) {
-            try {
-                $cities = $dotwService->getCityList($country->code);
+        foreach ($cities as $city) {
+            $code = $city['code'] ?? '';
+            $name = $city['name'] ?? '';
 
-                foreach ($cities as $city) {
-                    $code = $city['code'] ?? '';
-                    $name = $city['name'] ?? '';
+            if (empty($code)) {
+                $bar->advance();
 
-                    if (empty($code)) {
-                        continue;
-                    }
-
-                    DotwAICity::updateOrCreate(
-                        ['code' => $code],
-                        [
-                            'name' => $name,
-                            'country_code' => $country->code,
-                        ]
-                    );
-
-                    $count++;
-                }
-            } catch (Exception $e) {
-                $errors++;
-                Log::channel('dotw')->warning('[DotwAI] sync-static cities failed for country', [
-                    'country_code' => $country->code,
-                    'country_name' => $country->name,
-                    'error' => $e->getMessage(),
-                ]);
+                continue;
             }
 
+            DotwAICity::updateOrCreate(
+                ['code' => $code],
+                [
+                    'name' => $name,
+                    'country_code' => null,
+                ]
+            );
+
+            $count++;
             $bar->advance();
         }
 
         $bar->finish();
         $this->newLine();
         $this->info("  {$count} cities synced.");
-
-        if ($errors > 0) {
-            $this->warn("  {$errors} countries had API errors (logged). Existing data preserved.");
-        }
 
         return $count;
     }

@@ -6,4 +6,5 @@ return [
     // App\Providers\AuthServiceProvider::class,
     Spatie\Permission\PermissionServiceProvider::class,
     App\Modules\DotwAI\Providers\DotwAIServiceProvider::class,
+    App\Modules\AkeedDotwAI\AkeedDotwAIServiceProvider::class,
 ];

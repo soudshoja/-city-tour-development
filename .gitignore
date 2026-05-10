@@ -35,3 +35,6 @@ composer.lock
 # dotw-xml-cli standalone package dependencies
 /packages/dotw-xml-cli/vendor/
 /packages/dotw-xml-cli/composer.lock
+.githubworkflowsdeploy.yml.env
+.env.dusk.*
+.planning/

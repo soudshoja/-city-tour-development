@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="getrooms" tID="1775203363100004" ip="152.53.86.223" date="2026-04-03 08:02:45" version="4.0" elapsedTime="1.2771830558777">
+  <currencyShort>KWD</currencyShort>
+  <hotel id="922565" name="Tulip Hotel Apartment Bur Dubai">
+    <allowBook>yes</allowBook>
+    <rooms count="1">
+      <room runno="0" count="6" adults="2" children="0" childrenages="" extrabeds="0">
+        <roomType runno="0" roomtypecode="5714545">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203363000006B1000B3</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 12:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 12:59:59</toDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>14.4268<formatted>14.43</formatted></cancelCharge>
+                  <charge>14.4268<formatted>14.43</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 13:00:00</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>14.4268<formatted>14.43</formatted></cancelCharge>
+                  <charge>14.4268<formatted>14.43</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>14.4268<formatted>14.43</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>14.4268<formatted>14.43</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>14.4268<formatted>14.43</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+            <rateBasis runno="1" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203363000006B1000B2</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 12:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 12:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 13:00:00</fromDateDetails>
+                  <amendCharge>16.0298<formatted>16.03</formatted></amendCharge>
+                  <cancelCharge>16.0298<formatted>16.03</formatted></cancelCharge>
+                  <charge>16.0298<formatted>16.03</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>16.0298<formatted>16.03</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>16.0298<formatted>16.03</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>16.0298<formatted>16.03</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="1" roomtypecode="5714535">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203363000006B1000B1</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 12:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 12:59:59</toDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>19.7853<formatted>19.79</formatted></cancelCharge>
+                  <charge>19.7853<formatted>19.79</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 13:00:00</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>19.7853<formatted>19.79</formatted></cancelCharge>
+                  <charge>19.7853<formatted>19.79</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>19.7853<formatted>19.79</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <extraBedOnRequest>0</extraBedOnRequest>
+              <total>19.7853<formatted>19.79</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>19.7853<formatted>19.79</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+            <rateBasis runno="1" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203363000006B1000B0</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 12:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 12:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 13:00:00</fromDateDetails>
+                  <amendCharge>21.9837<formatted>21.98</formatted></amendCharge>
+                  <cancelCharge>21.9837<formatted>21.98</formatted></cancelCharge>
+                  <charge>21.9837<formatted>21.98</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>21.9837<formatted>21.98</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <extraBedOnRequest>0</extraBedOnRequest>
+              <total>21.9837<formatted>21.98</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>21.9837<formatted>21.98</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="2" roomtypecode="171925245">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="-">1</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>false</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203363000005B1816B1</allocationDetails>
+              <cancellationRules count="2">
+                <rule runno="0">
+                  <fromDate>2026-04-03 11:02:43</fromDate>
+                  <fromDateDetails>Fri, 03 Apr 2026 11:02:43</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>20.694<formatted>20.69</formatted></cancelCharge>
+                  <charge>20.694<formatted>20.69</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>20.694<formatted>20.69</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>20.694<formatted>20.69</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>20.694<formatted>20.69</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+            <rateBasis runno="1" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="-">1</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>false</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203363000005B1816B0</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 12:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 12:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 13:00:00</fromDateDetails>
+                  <amendCharge>32.2428<formatted>32.24</formatted></amendCharge>
+                  <cancelCharge>32.2428<formatted>32.24</formatted></cancelCharge>
+                  <charge>32.2428<formatted>32.24</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>32.2428<formatted>32.24</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>32.2428<formatted>32.24</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>32.2428<formatted>32.24</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="3" roomtypecode="171925255">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="-">1</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>false</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203363000005B1816B3</allocationDetails>
+              <cancellationRules count="2">
+                <rule runno="0">
+                  <fromDate>2026-04-03 11:02:43</fromDate>
+                  <fromDateDetails>Fri, 03 Apr 2026 11:02:43</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>21.4561<formatted>21.46</formatted></cancelCharge>
+                  <charge>21.4561<formatted>21.46</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>21.4561<formatted>21.46</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>21.4561<formatted>21.46</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>21.4561<formatted>21.46</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+            <rateBasis runno="1" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="-">1</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>false</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203363000005B1816B2</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 12:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 12:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 13:00:00</fromDateDetails>
+                  <amendCharge>31.4807<formatted>31.48</formatted></amendCharge>
+                  <cancelCharge>31.4807<formatted>31.48</formatted></cancelCharge>
+                  <charge>31.4807<formatted>31.48</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>31.4807<formatted>31.48</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>31.4807<formatted>31.48</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>31.4807<formatted>31.48</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="4" roomtypecode="1176019395">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>2</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML" notes="Strictly Non Refundable.">3</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203364000001B1836B3</allocationDetails>
+              <cancellationRules count="1">
+                <rule runno="0">
+                  <fromDate>2026-04-02 03:00:01</fromDate>
+                  <fromDateDetails>Thu, 02 Apr 2026 03:00:01</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelRestricted>true</cancelRestricted>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>26.4583<formatted>26.46</formatted></total>
+              <totalTaxes>2.7393<formatted>2.74</formatted></totalTaxes>
+              <propertyFees count="2">
+                <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">2.1914<formatted>2.19</formatted></propertyFee>
+                <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8427<formatted>0.84</formatted></propertyFee>
+              </propertyFees>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>26.4583<formatted>26.46</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+            <rateBasis runno="1" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>2</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML" notes="Strictly Non Refundable.">3</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203364000001B1836B2</allocationDetails>
+              <cancellationRules count="1">
+                <rule runno="0">
+                  <fromDate>2026-04-02 03:00:01</fromDate>
+                  <fromDateDetails>Thu, 02 Apr 2026 03:00:01</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelRestricted>true</cancelRestricted>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>26.7251<formatted>26.73</formatted></total>
+              <totalTaxes>2.7393<formatted>2.74</formatted></totalTaxes>
+              <propertyFees count="2">
+                <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">2.1914<formatted>2.19</formatted></propertyFee>
+                <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8427<formatted>0.84</formatted></propertyFee>
+              </propertyFees>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>26.7251<formatted>26.73</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="5" roomtypecode="1176010475">
+          <rateBases count="2">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>2</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML" notes="Strictly Non Refundable.">3</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203364000001B1836B1</allocationDetails>
+              <cancellationRules count="1">
+                <rule runno="0">
+                  <fromDate>2026-04-02 03:00:01</fromDate>
+                  <fromDateDetails>Thu, 02 Apr 2026 03:00:01</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelRestricted>true</cancelRestricted>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>27.4707<formatted>27.47</formatted></total>
+              <totalTaxes>2.8476<formatted>2.85</formatted></totalTaxes>
+              <propertyFees count="2">
+                <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">2.275<formatted>2.28</formatted></propertyFee>
+                <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8427<formatted>0.84</formatted></propertyFee>
+              </propertyFees>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>27.4707<formatted>27.47</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+            <rateBasis runno="1" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>2</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML" notes="Strictly Non Refundable.">3</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>false</allowsBeddingPreference>
+              <allocationDetails>1775203364000001B1836B0</allocationDetails>
+              <cancellationRules count="1">
+                <rule runno="0">
+                  <fromDate>2026-04-02 03:00:01</fromDate>
+                  <fromDateDetails>Thu, 02 Apr 2026 03:00:01</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelRestricted>true</cancelRestricted>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>27.7477<formatted>27.75</formatted></total>
+              <totalTaxes>2.8476<formatted>2.85</formatted></totalTaxes>
+              <propertyFees count="2">
+                <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">2.275<formatted>2.28</formatted></propertyFee>
+                <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">0.8427<formatted>0.84</formatted></propertyFee>
+              </propertyFees>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>27.7477<formatted>27.75</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <lookedForText>Room Number 1: 2 adult/s</lookedForText>
+      </room>
+    </rooms>
+    <extraMeals count="0"/>
+  </hotel>
+  <successful>TRUE</successful>
+</result>

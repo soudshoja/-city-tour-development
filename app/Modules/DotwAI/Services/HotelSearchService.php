@@ -102,7 +102,10 @@ class HotelSearchService
                 $nationalityCode,
                 $residenceCode
             ),
-            'filters' => $this->buildFilters($input, $hotelIdFilter),
+            'filters' => array_merge(
+                ['city' => $city->code],
+                $this->buildFilters($input, $hotelIdFilter)
+            ),
         ];
 
         // 5. Call DotwService::searchHotels()

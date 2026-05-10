@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="getrooms" tID="1775203467100004" ip="152.53.86.223" date="2026-04-03 08:04:27" version="4.0" elapsedTime="0.072478771209717">
+  <currencyShort>KWD</currencyShort>
+  <hotel id="5084735" name="Garden City Hotel">
+    <allowBook>yes</allowBook>
+    <rooms count="1">
+      <room runno="0" count="2" adults="2" children="0" childrenages="" extrabeds="0">
+        <roomType runno="0" roomtypecode="618557785">
+          <rateBases count="1">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="-">1</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>false</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203467000003B1758B1</allocationDetails>
+              <cancellationRules count="2">
+                <rule runno="0">
+                  <fromDate>2026-04-03 11:04:27</fromDate>
+                  <fromDateDetails>Fri, 03 Apr 2026 11:04:27</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>20.2558<formatted>20.26</formatted></cancelCharge>
+                  <charge>20.2558<formatted>20.26</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>20.2558<formatted>20.26</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>20.2558<formatted>20.26</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>20.2558<formatted>20.26</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="1" roomtypecode="618557635">
+          <rateBases count="1">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="-">1</rateType>
+              <allowsExtraMeals>false</allowsExtraMeals>
+              <allowsSpecialRequests>false</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203467000003B1758B0</allocationDetails>
+              <cancellationRules count="2">
+                <rule runno="0">
+                  <fromDate>2026-04-03 11:04:27</fromDate>
+                  <fromDateDetails>Fri, 03 Apr 2026 11:04:27</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>26.1262<formatted>26.13</formatted></cancelCharge>
+                  <charge>26.1262<formatted>26.13</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>26.1262<formatted>26.13</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>26.1262<formatted>26.13</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>26.1262<formatted>26.13</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <lookedForText>Room Number 1: 2 adult/s</lookedForText>
+      </room>
+    </rooms>
+  </hotel>
+  <successful>TRUE</successful>
+</result>

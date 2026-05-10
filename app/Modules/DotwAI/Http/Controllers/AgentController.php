@@ -106,6 +106,7 @@ class AgentController extends Controller
             );
         }
 
+        $params['telephone'] = $phone;
         $result = $this->searchService->searchHotels($context, $params);
 
         if (isset($result['error']) && $result['error'] === true) {
@@ -165,9 +166,9 @@ class AgentController extends Controller
 
         // Resolve hotel from session cache using option number
         $optionNumber = $params['option'] ?? 1;
-        $cachedSearch = Cache::get("dotwai_search_{$phone}");
+        $cachedHotels = $this->searchService->getCachedResults($phone);
 
-        if (!$cachedSearch || empty($cachedSearch['hotels'][$optionNumber - 1])) {
+        if (!$cachedHotels || empty($cachedHotels[$optionNumber - 1])) {
             $stageContext = $this->sessionService->getStageContext($session);
             $errorResponse = DotwAIResponse::error(
                 DotwAIResponse::HOTEL_NOT_FOUND,
@@ -178,7 +179,7 @@ class AgentController extends Controller
             return response()->json($responseData, $errorResponse->getStatusCode());
         }
 
-        $cachedHotel = $cachedSearch['hotels'][$optionNumber - 1];
+        $cachedHotel = $cachedHotels[$optionNumber - 1];
         $hotelId = $cachedHotel['id'] ?? $cachedHotel['hotel_id'] ?? '';
 
         if (empty($hotelId)) {

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="getrooms" tID="1775203360100002" ip="152.53.86.223" date="2026-04-03 08:02:40" version="4.0" elapsedTime="0.2692859172821">
+  <currencyShort>KWD</currencyShort>
+  <hotel id="2606065" name="Gulf Star Hotel Deira">
+    <allowBook>yes</allowBook>
+    <rooms count="1">
+      <room runno="0" count="1" adults="2" children="0" childrenages="" extrabeds="0">
+        <roomType runno="0" roomtypecode="192652855">
+          <rateBases count="1">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203360000004B1000B0</allocationDetails>
+              <cancellationRules count="2">
+                <rule runno="0">
+                  <fromDate>2026-04-03 11:02:40</fromDate>
+                  <fromDateDetails>Fri, 03 Apr 2026 11:02:40</fromDateDetails>
+                  <amendRestricted>true</amendRestricted>
+                  <cancelCharge>19.2357<formatted>19.24</formatted></cancelCharge>
+                  <charge>19.2357<formatted>19.24</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>19.2357<formatted>19.24</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>yes</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>19.2357<formatted>19.24</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>19.2357<formatted>19.24</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <lookedForText>Room Number 1: 2 adult/s</lookedForText>
+      </room>
+    </rooms>
+    <extraMeals count="0"/>
+  </hotel>
+  <successful>TRUE</successful>
+</result>

@@ -51,7 +51,12 @@ class BackfillStarRatingsCommand extends Command
     {
         // Precondition 1: DOTW credentials must be available.
         try {
-            $companyId = (int) config('akeed_dotwai.company_id', 1);
+            // Resolve company_id: null means "legacy env path" (DotwService backwards compat).
+            // Cast to int only when a non-null value is configured so we pass null rather
+            // than 0 (DotwService checks `$companyId !== null`, and 0 would trigger the
+            // B2B credential lookup path with no row for company_id=0).
+            $rawCompanyId = config('akeed_dotwai.company_id');
+            $companyId = $rawCompanyId !== null ? (int) $rawCompanyId : null;
             $dotw = new DotwService($companyId);
         } catch (\RuntimeException $e) {
             $this->error('DOTW credentials problem: '.$e->getMessage());

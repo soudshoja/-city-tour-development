@@ -1141,6 +1141,47 @@ class DotwService
     }
 
     /**
+     * Get DOTW room type codes (getroomtypeids).
+     *
+     * Room type codes (e.g. deluxe, suite, family) used for filtering and
+     * disambiguating room offerings in search responses.
+     *
+     * NOTE: Wrapper added 2026-05-20 (Phase 34). Endpoint may not be enabled on
+     * every DOTW account — callers should catch \Exception for partial-failure
+     * tolerance (the catalog sync command does).
+     *
+     * @return array List of room types with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getRoomTypeIds(): array
+    {
+        $this->logger->info('DOTW getRoomTypeIds request initiated');
+
+        $xml = $this->wrapRequest('getroomtypeids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+            $this->logger->error('DOTW getRoomTypeIds error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getRoomTypeIds error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $roomTypes = $this->parseGenericCodeItemsWithFallback($response, 'room_type', 'getroomtypeids');
+
+        $this->logger->info('DOTW getRoomTypeIds successful', [
+            'room_type_count' => count($roomTypes),
+        ]);
+
+        return $roomTypes;
+    }
+
+    /**
      * Fetch salutation ID map from the DOTW API via getsalutationsids command.
      *
      * Returns an associative array keyed by lowercase salutation label mapped to

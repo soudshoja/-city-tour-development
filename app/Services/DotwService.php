@@ -2544,8 +2544,10 @@ class DotwService
         $elements = $response->xpath("//{$elementTag}");
 
         foreach ($elements as $element) {
-            $code = (string) ($element['code'] ?? '');
-            $name = (string) $element;
+            // Try child element <code>…</code> first (e.g. getservingcountries format),
+            // then fall back to attribute code="…" used by some other DOTW commands.
+            $code = (string) ($element->code ?? ($element['code'] ?? ''));
+            $name = (string) ($element->name ?? $element);
 
             if ($code !== '') {
                 $items[] = [

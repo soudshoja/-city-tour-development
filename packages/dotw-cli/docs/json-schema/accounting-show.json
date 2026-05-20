@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/accounting-show",
+  "title": "dotw:accounting:show Response",
+  "description": "Success response from dotw:accounting:show --json. Returns COA ledger with debit/credit/balance per account.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["ledger", "grand_debit", "grand_credit", "net_balance"],
+      "properties": {
+        "grand_debit":  { "type": "number", "description": "Sum of all debit entries." },
+        "grand_credit": { "type": "number", "description": "Sum of all credit entries." },
+        "net_balance":  { "type": "number", "description": "grand_credit - grand_debit. Positive = agency profit." },
+        "ledger": {
+          "type": "array",
+          "description": "Chart of accounts summary. One row per account code.",
+          "items": {
+            "type": "object",
+            "required": ["account_code", "account_name", "currency", "total_debit", "total_credit", "balance"],
+            "properties": {
+              "account_code":  { "type": "string" },
+              "account_name":  { "type": "string" },
+              "currency":      { "type": "string" },
+              "total_debit":   { "type": "number" },
+              "total_credit":  { "type": "number" },
+              "balance":       { "type": "number" }
+            }
+          }
+        },
+        "entries": {
+          "type": "array",
+          "description": "Individual journal entries (raw double-entry rows).",
+          "items": {
+            "type": "object",
+            "required": ["id", "booking_ref", "entry_type", "account_code", "account_name", "debit", "credit", "currency", "description", "created_at"],
+            "properties": {
+              "id":           { "type": "integer" },
+              "booking_ref":  { "type": "string" },
+              "entry_type":   { "type": "string" },
+              "account_code": { "type": "string" },
+              "account_name": { "type": "string" },
+              "debit":        { "type": "number" },
+              "credit":       { "type": "number" },
+              "currency":     { "type": "string" },
+              "description":  { "type": "string" },
+              "created_at":   { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

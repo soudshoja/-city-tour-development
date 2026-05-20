@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="cancelbooking" tID="1777183163100002" ip="121.121.56.157" date="2026-04-26 05:59:23" version="4.0" elapsedTime="0.045121908187866">
+  <services>
+    <service runno="0" code="953106813">
+      <cancellationPenalty>
+        <charge>0<formatted>0.00</formatted></charge>
+        <currency>769</currency>
+        <currencyShort>KWD</currencyShort>
+      </cancellationPenalty>
+    </service>
+  </services>
+  <successful>TRUE</successful>
+</result>

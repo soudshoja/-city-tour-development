@@ -1,16 +1,13 @@
 <?php return array (
   'types' => 
   array (
-    'DotwMeta' => 
+    'DotwHotelSearchInput' => 
     array (
-      'kind' => 'ObjectTypeDefinition',
+      'kind' => 'InputObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'DotwMeta',
-      ),
-      'interfaces' => 
-      array (
+        'value' => 'DotwHotelSearchInput',
       ),
       'directives' => 
       array (
@@ -19,14 +16,11 @@
       array (
         0 => 
         array (
-          'kind' => 'FieldDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'trace_id',
-          ),
-          'arguments' => 
-          array (
+            'value' => 'telephone',
           ),
           'type' => 
           array (
@@ -43,24 +37,15 @@
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Unique identifier for this request — use with X-Trace-ID header for log correlation.',
-            'block' => false,
           ),
         ),
         1 => 
         array (
-          'kind' => 'FieldDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'timestamp',
-          ),
-          'arguments' => 
-          array (
+            'value' => 'city',
           ),
           'type' => 
           array (
@@ -77,184 +62,15 @@
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'ISO 8601 timestamp when the response was generated (UTC).',
-            'block' => false,
           ),
         ),
         2 => 
         array (
-          'kind' => 'FieldDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'company_id',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The company_id of the authenticated company making this request.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'request_id',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Request identifier echoed back — same as trace_id, kept for backwards compatibility.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Metadata attached to every DOTW GraphQL response for tracing and debugging.',
-        'block' => false,
-      ),
-    ),
-    'DotwError' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwError',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwErrorCode',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Machine-readable error code for N8N workflow branching.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error_message',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'User-friendly message suitable for display in WhatsApp conversation.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error_details',
-          ),
-          'arguments' => 
-          array (
+            'value' => 'hotel',
           ),
           'type' => 
           array (
@@ -268,23 +84,14 @@
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Technical error details for debugging — never shown to end users.',
-            'block' => false,
-          ),
         ),
         3 => 
         array (
-          'kind' => 'FieldDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'action',
-          ),
-          'arguments' => 
-          array (
+            'value' => 'guestNationality',
           ),
           'type' => 
           array (
@@ -295,1028 +102,171 @@
               'name' => 
               array (
                 'kind' => 'Name',
-                'value' => 'DotwErrorAction',
+                'value' => 'String',
               ),
             ),
           ),
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Suggested next action for the N8N workflow or caller.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Structured error returned by any DOTW operation when success is false.',
-        'block' => false,
-      ),
-    ),
-    'DotwErrorCode' => 
-    array (
-      'kind' => 'EnumTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwErrorCode',
-      ),
-      'directives' => 
-      array (
-      ),
-      'values' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'CREDENTIALS_NOT_CONFIGURED',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW API credentials are not configured for this company.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'CREDENTIALS_INVALID',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The provided DOTW credentials are invalid (wrong username, password, or company code).',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'ALLOCATION_EXPIRED',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The rate allocation has expired — the 3-minute window closed before confirmation.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'RATE_UNAVAILABLE',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The selected rate is no longer available from the supplier.',
-            'block' => false,
-          ),
         ),
         4 => 
         array (
-          'kind' => 'EnumValueDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'HOTEL_SOLD_OUT',
+            'value' => 'checkIn',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The hotel is fully booked for the requested dates.',
-            'block' => false,
           ),
         ),
         5 => 
         array (
-          'kind' => 'EnumValueDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'PASSENGER_VALIDATION_FAILED',
+            'value' => 'checkOut',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'A required passenger field is missing or invalid.',
-            'block' => false,
           ),
         ),
         6 => 
         array (
-          'kind' => 'EnumValueDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'API_TIMEOUT',
+            'value' => 'occupancy',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'ListType',
+              'type' => 
+              array (
+                'kind' => 'NonNullType',
+                'type' => 
+                array (
+                  'kind' => 'NamedType',
+                  'name' => 
+                  array (
+                    'kind' => 'Name',
+                    'value' => 'DotwOccupancyInput',
+                  ),
+                ),
+              ),
+            ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The DOTW API did not respond within the 25-second timeout.',
-            'block' => false,
           ),
         ),
         7 => 
         array (
-          'kind' => 'EnumValueDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'API_ERROR',
+            'value' => 'bookingType',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The DOTW API returned an unexpected error.',
-            'block' => false,
           ),
         ),
         8 => 
         array (
-          'kind' => 'EnumValueDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'CIRCUIT_BREAKER_OPEN',
+            'value' => 'noOfRooms',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Int',
+            ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'The circuit breaker is open — too many recent DOTW failures.',
-            'block' => false,
           ),
         ),
         9 => 
         array (
-          'kind' => 'EnumValueDefinition',
+          'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'VALIDATION_ERROR',
+            'value' => 'refundable',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Boolean',
+            ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'A validation error on the GraphQL input arguments.',
-            'block' => false,
           ),
         ),
         10 => 
         array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'INTERNAL_ERROR',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'An unexpected internal server error occurred.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Enumeration of all possible DOTW error codes.',
-        'block' => false,
-      ),
-    ),
-    'DotwErrorAction' => 
-    array (
-      'kind' => 'EnumTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwErrorAction',
-      ),
-      'directives' => 
-      array (
-      ),
-      'values' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'RETRY',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Call the same operation again — transient error.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'RETRY_IN_30_SECONDS',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Wait 30 seconds before retrying — rate limit or temporary overload.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'RECONFIGURE_CREDENTIALS',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Ask an admin to configure DOTW credentials for this company.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'RESEARCH',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Run a new searchHotels — the rate or allocation is no longer valid.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'CANCEL',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Do not retry — the booking has failed and manual intervention is needed.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'EnumValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'NONE',
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'No specific action — informational error.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Suggested action for the caller (N8N workflow or client) after an error.',
-        'block' => false,
-      ),
-    ),
-    'DotwResponseEnvelope' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwResponseEnvelope',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True when the response was served from cache rather than a live DOTW API call.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Shared response envelope for all DOTW GraphQL operations. Every DOTW query and mutation returns a type that includes these fields, ensuring N8N workflows and Resayil can always parse responses predictably regardless of operation.',
-        'block' => false,
-      ),
-    ),
-    'GetCitiesResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetCitiesResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the request succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetCitiesData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'List of DOTW-serveable cities for the requested country.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getCities query.',
-        'block' => false,
-      ),
-    ),
-    'GetCitiesData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetCitiesData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cities',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCity',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cities available for hotel search in this country.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of cities returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for city list results.',
-        'block' => false,
-      ),
-    ),
-    'DotwCity' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwCity',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW city code — use this as the destination in searchHotels.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'name',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Human-readable city name.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'A city served by DOTW in the requested country.',
-        'block' => false,
-      ),
-    ),
-    'SearchHotelsInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SearchHotelsInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
           'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'destination',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'City code from getCities (e.g. DXB for Dubai). Accepts DOTW city code only — use getCities to resolve city names to codes.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkin',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkout',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchHotelRoomInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room configuration — one entry per room requested. Supports multi-room complex itineraries (B2B-01).',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency',
+            'value' => 'mealType',
           ),
           'type' => 
           array (
@@ -1330,20 +280,14 @@
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Response currency code (e.g. KWD, USD). Passed through to DOTW as-is. Defaults to USD if not provided.',
-            'block' => false,
-          ),
         ),
-        5 => 
+        11 => 
         array (
           'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'filters',
+            'value' => 'priceMin',
           ),
           'type' => 
           array (
@@ -1351,34 +295,64 @@
             'name' => 
             array (
               'kind' => 'Name',
-              'value' => 'SearchHotelsFiltersInput',
+              'value' => 'Float',
             ),
           ),
           'directives' => 
           array (
           ),
-          'description' => 
+        ),
+        12 => 
+        array (
+          'kind' => 'InputValueDefinition',
+          'name' => 
           array (
-            'kind' => 'StringValue',
-            'value' => 'Optional filters for rating, price range, property type, meal plan, amenities, and cancellation policy (B2B-02 — full DOTW V4 vocabulary).',
-            'block' => false,
+            'kind' => 'Name',
+            'value' => 'priceMax',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Float',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        13 => 
+        array (
+          'kind' => 'InputValueDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'starRating',
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Int',
+            ),
+          ),
+          'directives' => 
+          array (
           ),
         ),
       ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the searchHotels query.',
-        'block' => false,
-      ),
     ),
-    'SearchHotelRoomInput' => 
+    'DotwOccupancyInput' => 
     array (
       'kind' => 'InputObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'SearchHotelRoomInput',
+        'value' => 'DotwOccupancyInput',
       ),
       'directives' => 
       array (
@@ -1391,7 +365,7 @@
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'adultsCode',
+            'value' => 'adults',
           ),
           'type' => 
           array (
@@ -1409,12 +383,6 @@
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Number of adults in this room.',
-            'block' => false,
-          ),
         ),
         1 => 
         array (
@@ -1422,7 +390,7 @@
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'children',
+            'value' => 'childrenAges',
           ),
           'type' => 
           array (
@@ -1448,327 +416,16 @@
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Ages of children in this room. Provide an empty array if no children.',
-            'block' => false,
-          ),
         ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'passengerNationality',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'ISO 3166-1 alpha-2 nationality code for occupants (e.g. AE, KW). Optional.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'passengerCountryOfResidence',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'ISO 3166-1 alpha-2 country of residence code for occupants. Optional.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Occupancy configuration for a single room.',
-        'block' => false,
       ),
     ),
-    'SearchHotelsFiltersInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SearchHotelsFiltersInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'minRating',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'Int',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Minimum star rating to include (1–5). Omit for no minimum.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'maxRating',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'Int',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Maximum star rating to include (1–5). Omit for no maximum.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'minPrice',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'Float',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Minimum total price filter.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'maxPrice',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'Float',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Maximum total price filter.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'propertyType',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Property type filter (e.g. hotel, apartment, resort). Maps to DOTW fieldName=propertytype.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'mealPlanType',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Meal plan type filter (e.g. BB, HB, FB, AI, RO, SC). Maps to DOTW fieldName=mealplantype.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'amenities',
-          ),
-          'type' => 
-          array (
-            'kind' => 'ListType',
-            'type' => 
-            array (
-              'kind' => 'NonNullType',
-              'type' => 
-              array (
-                'kind' => 'NamedType',
-                'name' => 
-                array (
-                  'kind' => 'Name',
-                  'value' => 'String',
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Amenity codes to require (e.g. pool, wifi). Maps to DOTW fieldName=amenities.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cancellationPolicy',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation policy type (e.g. refundable, non-refundable). Maps to DOTW fieldName=cancellation.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Optional filter criteria for hotel search. All fields are optional — omit to search without filters.',
-        'block' => false,
-      ),
-    ),
-    'SearchHotelsResponse' => 
+    'DotwSearchResult' => 
     array (
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'SearchHotelsResponse',
+        'value' => 'DotwSearchResult',
       ),
       'interfaces' => 
       array (
@@ -1805,12 +462,6 @@
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the search succeeded.',
-            'block' => false,
-          ),
         ),
         1 => 
         array (
@@ -1818,7 +469,35 @@
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'error',
+            'value' => 'status',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        2 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'message',
           ),
           'arguments' => 
           array (
@@ -1829,51 +508,11 @@
             'name' => 
             array (
               'kind' => 'Name',
-              'value' => 'DotwError',
+              'value' => 'String',
             ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
           ),
         ),
         3 => 
@@ -1882,32 +521,26 @@
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'cached',
+            'value' => 'hotelOptions',
           ),
           'arguments' => 
           array (
           ),
           'type' => 
           array (
-            'kind' => 'NonNullType',
+            'kind' => 'ListType',
             'type' => 
             array (
               'kind' => 'NamedType',
               'name' => 
               array (
                 'kind' => 'Name',
-                'value' => 'Boolean',
+                'value' => 'DotwHotelOption',
               ),
             ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True if results were served from the 2.5-minute per-company search cache.',
-            'block' => false,
           ),
         ),
         4 => 
@@ -1927,34 +560,22 @@
             'name' => 
             array (
               'kind' => 'Name',
-              'value' => 'SearchHotelsData',
+              'value' => 'DotwHotelData',
             ),
           ),
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Search result data — present only when success is true.',
-            'block' => false,
-          ),
         ),
       ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the searchHotels query.',
-        'block' => false,
-      ),
     ),
-    'SearchHotelsData' => 
+    'DotwHotelOption' => 
     array (
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'SearchHotelsData',
+        'value' => 'DotwHotelOption',
       ),
       'interfaces' => 
       array (
@@ -1965,411 +586,6 @@
       'fields' => 
       array (
         0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotels',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'HotelSearchResult',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotels matching the search criteria with cheapest rate per meal plan per room type.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of hotels returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for hotel search results.',
-        'block' => false,
-      ),
-    ),
-    'HotelSearchResult' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'HotelSearchResult',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel ID. Pass this as hotel_code to getRoomRates (Phase 5) for full hotel details and rate blocking.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'HotelRoomResult',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room configurations with cheapest rate per meal plan.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'A single hotel result from the DOTW searchhotels API.
-NOTE: Hotel name, city name, star rating, and image_url are NOT available from the DOTW searchhotels command.
-These metadata fields are returned by the getRoomRates query (Phase 5). Use hotel_code from this result
-as the hotel_code input to getRoomRates to obtain full hotel details.',
-        'block' => true,
-      ),
-    ),
-    'HotelRoomResult' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'HotelRoomResult',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'adults',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Number of adults this room accommodates.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'children',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Number of children.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'children_ages',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Child ages as a comma-separated string (from DOTW XML childrenages attribute).',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'room_types',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'RoomTypeRate',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Available room types with cheapest rate per meal plan.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Room occupancy result for a hotel — cheapest rate per meal plan from DOTW searchhotels.',
-        'block' => false,
-      ),
-    ),
-    'RoomTypeRate' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'RoomTypeRate',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW room type code.',
-            'block' => false,
-          ),
-        ),
-        1 => 
         array (
           'kind' => 'FieldDefinition',
           'name' => 
@@ -2396,308 +612,6 @@ as the hotel_code input to getRoomRates to obtain full hotel details.',
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room type name.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rate_basis_id',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Rate basis ID — maps to meal plan: 1331=RO, 1332=BB, 1333=HB, 1334=FB, 1335=AI, 1336=SC.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency_id',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Currency code from DOTW rateType currencyid attribute (passed through as-is — no conversion).',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'non_refundable',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True if this rate is non-refundable.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total fare before markup.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'markup',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'RateMarkup',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Markup applied to the fare: original_fare, markup_percent, markup_amount, final_fare.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_taxes',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total taxes.',
-            'block' => false,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_minimum_selling',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Minimum selling price (MSP) — never undercut this amount.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'A room type with its cheapest rate for a specific meal plan — all DOTW searchhotels fields included (B2B-03).',
-        'block' => false,
-      ),
-    ),
-    'RateMarkup' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'RateMarkup',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'original_fare',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Original fare from DOTW before markup.',
-            'block' => false,
-          ),
         ),
         1 => 
         array (
@@ -2705,263 +619,10 @@ as the hotel_code input to getRoomRates to obtain full hotel details.',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'markup_percent',
+            'value' => 'city_name',
           ),
           'arguments' => 
           array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Markup percentage applied (from company credential markup_percent).',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'markup_amount',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Markup amount added.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'final_fare',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Final fare after markup — this is the selling price.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Markup breakdown for a rate — transparent pricing for WhatsApp display (MARKUP-03).',
-        'block' => false,
-      ),
-    ),
-    'GetRoomRatesInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetRoomRatesInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier. Obtained from searchHotels response hotel_code field.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkin',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkout',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchHotelRoomInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room configuration. Reuses SearchHotelRoomInput from Phase 4.
-Must match the room config used in the searchHotels call that produced this hotel_code.',
-            'block' => true,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency',
           ),
           'type' => 
           array (
@@ -2975,66 +636,17 @@ Must match the room config used in the searchHotels call that produced this hote
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Optional currency code (e.g. KWD, USD). When omitted, DOTW account default applies.',
-            'block' => false,
-          ),
         ),
-      ),
-    ),
-    'BlockRatesInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BlockRatesInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
+        2 => 
         array (
-          'kind' => 'InputValueDefinition',
+          'kind' => 'FieldDefinition',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'hotel_code',
+            'value' => 'hotel_id',
           ),
-          'type' => 
+          'arguments' => 
           array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier. Must match the hotel_code used in the getRoomRates call.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_name',
           ),
           'type' => 
           array (
@@ -3048,246 +660,16 @@ Must match the room config used in the searchHotels call that produced this hote
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Optional hotel name from caller context. DOTW getRooms does not return hotel metadata.
-Caller should pass hotel name obtained from searchHotels or their hotel directory.
-Stored in dotw_prebooks.hotel_name for booking reference. Falls back to empty string.',
-            'block' => true,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkin',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkout',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchHotelRoomInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room configuration. Must match the config used in getRoomRates.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'selected_room_type',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room type code from getRoomRates response room_type_code field.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'selected_rate_basis',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Rate basis ID from getRoomRates response rate_basis_id field (e.g. 1332 = Bed & Breakfast).',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'allocation_details',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Opaque allocation token from getRoomRates response rate_details[].allocation_details field.
-Pass this value verbatim — any modification will cause DOTW to reject the blocking call.',
-            'block' => true,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Optional currency code. When omitted, DOTW account default applies.',
-            'block' => false,
-          ),
         ),
       ),
     ),
-    'GetRoomRatesResponse' => 
+    'DotwHotelData' => 
     array (
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'GetRoomRatesResponse',
+        'value' => 'DotwHotelData',
       ),
       'interfaces' => 
       array (
@@ -3298,1346 +680,6 @@ Pass this value verbatim — any modification will cause DOTW to reject the bloc
       'fields' => 
       array (
         0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Populated on failure. Null on success.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always present. Contains trace_id, timestamp, company_id.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — getRoomRates never caches results.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetRoomRatesData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Populated on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'GetRoomRatesData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetRoomRatesData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier (echo of input hotel_code).',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'RoomRateResult',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'All room types returned by DOTW for this hotel, dates, and room config.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of room types returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'RoomRateResult' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'RoomRateResult',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'room_type_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW room type code. Pass as selected_room_type to blockRates.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'room_name',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Human-readable room type name.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rate_details',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'RateDetail',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'All rate details for this room type, one per meal plan / rate basis.',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'RateDetail' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'RateDetail',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rate_basis_id',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Rate basis code. Mapping:
-1331 = Room Only, 1332 = Bed & Breakfast, 1333 = Half Board,
-1334 = Full Board, 1335 = All Inclusive, 1336 = Self Catering.
-Pass as selected_rate_basis to blockRates.',
-            'block' => true,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rate_basis_name',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Human-readable meal plan name (e.g. Bed & Breakfast, Half Board).',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'is_refundable',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the rate is refundable. Non-refundable rates cannot be cancelled.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_fare',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Base fare from DOTW before markup (pre-markup price).',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_taxes',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Tax amount from DOTW.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_price',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total price inclusive of taxes, before markup.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'markup',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'RateMarkup',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Transparent markup breakdown. Use markup.final_fare as the customer-facing price.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'allocation_details',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Opaque allocation token from DOTW. Pass verbatim as allocation_details to blockRates.
-Do not modify, encode, or truncate — token corruption causes DOTW to reject the block call.',
-            'block' => true,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cancellation_rules',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'CancellationRule',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation policy rules. Empty array if no policy data returned by DOTW.',
-            'block' => false,
-          ),
-        ),
-        9 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'original_currency',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Currency code of the rate as returned by DOTW (e.g. KWD, USD). Empty string if DOTW does not include currency in this rate. (RATE-05)',
-            'block' => false,
-          ),
-        ),
-        10 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'exchange_rate',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'Float',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Exchange rate applied if DOTW performed currency conversion. Null when no conversion occurred. (RATE-05)',
-            'block' => false,
-          ),
-        ),
-        11 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'final_currency',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Currency code of the final customer-facing price after markup. Matches original_currency when no conversion. (RATE-05)',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'CancellationRule' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CancellationRule',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'from_date',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Start of the cancellation penalty window (ISO 8601).',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'to_date',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'End of the cancellation penalty window (ISO 8601).',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'charge',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation charge amount in the booking currency.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cancel_charge',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancel charge (may differ from charge in some DOTW responses).',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'BlockRatesResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BlockRatesResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the blocking operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Populated on failure. Null on success.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always present. Contains trace_id, timestamp, company_id.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — blockRates never caches results.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'BlockRatesData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Populated on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'BlockRatesData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BlockRatesData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'prebook_key',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'UUID prebook key. Pass to createPreBooking (Phase 6) to confirm the booking.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'expires_at',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'ISO 8601 timestamp when the rate lock expires (3 minutes from block call).',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'countdown_timer_seconds',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Seconds remaining until expiry at response time. Computed from expires_at.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier (echo of input hotel_code).',
-            'block' => false,
-          ),
-        ),
-        4 => 
         array (
           'kind' => 'FieldDefinition',
           'name' => 
@@ -4664,2609 +706,8 @@ Do not modify, encode, or truncate — token corruption causes DOTW to reject th
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotel name from input or empty string if caller did not provide it.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'room_type',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room type code that was locked.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rate_basis',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Rate basis ID of the locked rate.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_fare',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total fare after markup applied (customer-facing price).',
-            'block' => false,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_tax',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Tax amount.',
-            'block' => false,
-          ),
-        ),
-        9 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'markup',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'RateMarkup',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Transparent markup breakdown for the locked rate.',
-            'block' => false,
-          ),
-        ),
-        10 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'is_refundable',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the locked rate is refundable.',
-            'block' => false,
-          ),
-        ),
-        11 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cancellation_rules',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'CancellationRule',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation rules applicable to the locked rate.',
-            'block' => false,
-          ),
-        ),
-      ),
-    ),
-    'PassengerInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'PassengerInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'salutation',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Salutation code: 1=Mr, 2=Mrs, 3=Ms, 4=Dr, 5=Prof.',
-            'block' => false,
-          ),
         ),
         1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'firstName',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Passenger first name.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'lastName',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Passenger last name / family name.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'nationality',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'ISO 3166-1 alpha-2 nationality code (e.g. KW, AE, GB).',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'residenceCountry',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'ISO 3166-1 alpha-2 country of residence code.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'email',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Guest email address for booking confirmation communication.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Passenger details for DOTW hotel booking confirmation.
-Salutation codes: 1=Mr, 2=Mrs, 3=Ms, 4=Dr, 5=Prof.',
-        'block' => true,
-      ),
-    ),
-    'CreatePreBookingInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CreatePreBookingInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'prebook_key',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'UUID prebook key from blockRates response. Identifies the locked rate.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkin',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date in YYYY-MM-DD format. Must match the dates used in blockRates.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkout',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date in YYYY-MM-DD format. Must match the dates used in blockRates.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'passengers',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'PassengerInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Passenger details. One entry per adult per room.
-Count must match total adults in the room configuration used in blockRates.
-First passenger is treated as lead guest for email communication.',
-            'block' => true,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchHotelRoomInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room configuration. Reuses SearchHotelRoomInput from Phase 4.
-Required to reconstruct room occupancy (adultsCode, children) for DOTW confirmBooking call.
-Must match the room configuration used in the original blockRates call.',
-            'block' => true,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'destination',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Optional city/destination code for alternative hotel suggestions.
-Used when rate is no longer available (ERROR-04) — enables searching 3 nearby alternatives.
-Same city code as the original searchHotels call. Omit if alternatives are not needed.',
-            'block' => true,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for createPreBooking mutation.
-Converts a locked prebook (from blockRates) into a confirmed DOTW booking.',
-        'block' => true,
-      ),
-    ),
-    'BookingItinerary' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BookingItinerary',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_name',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotel name from prebook context.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkin',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date (YYYY-MM-DD).',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkout',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date (YYYY-MM-DD).',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'room_type',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room type code.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rate_basis',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Rate basis name (e.g. Bed and Breakfast, Half Board).',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_fare',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total fare with markup applied (customer-facing price).',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Currency code (e.g. KWD, USD).',
-            'block' => false,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'is_refundable',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the booking is refundable.',
-            'block' => false,
-          ),
-        ),
-        9 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'lead_guest_name',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Lead passenger full name (salutation + firstName + lastName).',
-            'block' => false,
-          ),
-        ),
-        10 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'customer_reference',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'UUID customer reference generated for DOTW. Use for booking amendments or disputes.',
-            'block' => false,
-          ),
-        ),
-        11 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'confirmation_number',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Secondary DOTW confirmation number if provided. Empty string when not returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Hotel booking itinerary details returned on successful DOTW confirmation.',
-        'block' => false,
-      ),
-    ),
-    'CreatePreBookingData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CreatePreBookingData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_confirmation_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code (bookingCode from confirmBooking response).',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_status',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Booking status (e.g. confirmed).',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'itinerary_details',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'BookingItinerary',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Booking itinerary details for WhatsApp display.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'alternatives',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'HotelSearchResult',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Alternative hotels suggested when rate was unavailable (ERROR-04/ERROR-06).
-Empty array on successful booking. Up to 3 results from searchHotels with same destination.',
-            'block' => true,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Data payload on successful createPreBooking response.',
-        'block' => false,
-      ),
-    ),
-    'CreatePreBookingResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CreatePreBookingResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True when booking was confirmed successfully.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error when booking failed.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Request metadata: trace_id, company_id, timestamp.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — booking is a side-effecting mutation, never cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'CreatePreBookingData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Booking data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for createPreBooking mutation.',
-        'block' => false,
-      ),
-    ),
-    'SaveBookingInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SaveBookingInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'prebook_key',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'UUID prebook key from blockRates response.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkin',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkout',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date in YYYY-MM-DD format.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'passengers',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'PassengerInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Passenger details, one per adult per room.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'rooms',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchHotelRoomInput',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Room configuration matching blockRates call.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'destination',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Optional city/destination code for alternative suggestions.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'specialRequests',
-          ),
-          'type' => 
-          array (
-            'kind' => 'ListType',
-            'type' => 
-            array (
-              'kind' => 'NonNullType',
-              'type' => 
-              array (
-                'kind' => 'NamedType',
-                'name' => 
-                array (
-                  'kind' => 'Name',
-                  'value' => 'String',
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Optional special requests to pass to the hotel.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the saveBooking mutation — same passenger/room structure as createPreBooking plus optional special requests.',
-        'block' => false,
-      ),
-    ),
-    'BookItineraryInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BookItineraryInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'itinerary_code',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Itinerary code from saveBooking response.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the bookItinerary mutation — takes the itinerary code returned by saveBooking.',
-        'block' => false,
-      ),
-    ),
-    'GetBookingDetailsInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetBookingDetailsInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the getBookingDetails query.',
-        'block' => false,
-      ),
-    ),
-    'SearchBookingsInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SearchBookingsInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'from_date',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Start of the date range to search (YYYY-MM-DD). Optional.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'to_date',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'End of the date range to search (YYYY-MM-DD). Optional.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'customer_reference',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'String',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Customer reference to search for. Optional.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the searchBookings query — at least one field must be provided.',
-        'block' => false,
-      ),
-    ),
-    'SaveBookingData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SaveBookingData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'itinerary_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Itinerary code (from DOTW savebooking response) — pass to bookItinerary.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier echoed from the prebook.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'is_apr',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True when rate was non-refundable (APR booking).',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Data returned by saveBooking — the itinerary code to pass to bookItinerary.',
-        'block' => false,
-      ),
-    ),
-    'BookItineraryData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BookItineraryData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code (final reference after bookitinerary call).',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_status',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Booking status returned by DOTW.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Data returned by bookItinerary — the final confirmed booking code.',
-        'block' => false,
-      ),
-    ),
-    'BookingDetails' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BookingDetails',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'hotel_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'from_date',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date (YYYY-MM-DD).',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'to_date',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date (YYYY-MM-DD).',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'status',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Current booking status (e.g. confirmed, cancelled).',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'customer_reference',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Customer reference used when booking was created.',
-            'block' => false,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_amount',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total amount charged.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Currency code of the booking.',
-            'block' => false,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'passengers',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Passenger details as a JSON-encoded string (DOTW returns varying structures).',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Full booking details returned by getBookingDetails.',
-        'block' => false,
-      ),
-    ),
-    'BookingSummary' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BookingSummary',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'customer_reference',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Customer reference used at booking time.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'status',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Current booking status.',
-            'block' => false,
-          ),
-        ),
-        3 => 
         array (
           'kind' => 'FieldDefinition',
           'name' => 
@@ -7293,11 +734,53 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'directives' => 
           array (
           ),
-          'description' => 
+        ),
+        2 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
           array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW hotel identifier.',
-            'block' => false,
+            'kind' => 'Name',
+            'value' => 'hotel_address',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'String',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        3 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'star_rating',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Int',
+            ),
+          ),
+          'directives' => 
+          array (
           ),
         ),
         4 => 
@@ -7306,32 +789,22 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'from_date',
+            'value' => 'city_name',
           ),
           'arguments' => 
           array (
           ),
           'type' => 
           array (
-            'kind' => 'NonNullType',
-            'type' => 
+            'kind' => 'NamedType',
+            'name' => 
             array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
+              'kind' => 'Name',
+              'value' => 'String',
             ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check-in date.',
-            'block' => false,
           ),
         ),
         5 => 
@@ -7340,7 +813,61 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'to_date',
+            'value' => 'rooms',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'ListType',
+              'type' => 
+              array (
+                'kind' => 'NonNullType',
+                'type' => 
+                array (
+                  'kind' => 'NamedType',
+                  'name' => 
+                  array (
+                    'kind' => 'Name',
+                    'value' => 'DotwRoomResult',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+      ),
+    ),
+    'DotwRoomResult' => 
+    array (
+      'kind' => 'ObjectTypeDefinition',
+      'name' => 
+      array (
+        'kind' => 'Name',
+        'value' => 'DotwRoomResult',
+      ),
+      'interfaces' => 
+      array (
+      ),
+      'directives' => 
+      array (
+      ),
+      'fields' => 
+      array (
+        0 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'room_name',
           ),
           'arguments' => 
           array (
@@ -7361,11 +888,141 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'directives' => 
           array (
           ),
-          'description' => 
+        ),
+        1 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
           array (
-            'kind' => 'StringValue',
-            'value' => 'Check-out date.',
-            'block' => false,
+            'kind' => 'Name',
+            'value' => 'room_type_code',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        2 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'rate_basis_id',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        3 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'rate_basis_desc',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        4 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'meal_type',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        5 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'max_occupancy',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Int',
+            ),
+          ),
+          'directives' => 
+          array (
           ),
         ),
         6 => 
@@ -7374,7 +1031,59 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'total_amount',
+            'value' => 'twin',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Boolean',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        7 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'browse_allocation_details',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'String',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        8 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'displayed_price',
           ),
           'arguments' => 
           array (
@@ -7395,14 +1104,36 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'directives' => 
           array (
           ),
-          'description' => 
+        ),
+        9 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
           array (
-            'kind' => 'StringValue',
-            'value' => 'Total amount charged.',
-            'block' => false,
+            'kind' => 'Name',
+            'value' => 'original_total_fare',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'Float',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
           ),
         ),
-        7 => 
+        10 => 
         array (
           'kind' => 'FieldDefinition',
           'name' => 
@@ -7429,28 +1160,200 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'directives' => 
           array (
           ),
-          'description' => 
+        ),
+        11 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
           array (
-            'kind' => 'StringValue',
-            'value' => 'Currency code.',
-            'block' => false,
+            'kind' => 'Name',
+            'value' => 'is_refundable',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'Boolean',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        12 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'is_apr',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NonNullType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'Boolean',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        13 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'cancel_policies',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'ListType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'DotwCancelPolicy',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        14 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'tariff_notes',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'String',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        15 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'specials',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'ListType',
+            'type' => 
+            array (
+              'kind' => 'NamedType',
+              'name' => 
+              array (
+                'kind' => 'Name',
+                'value' => 'DotwSpecial',
+              ),
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        16 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'min_stay',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Int',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        17 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'min_stay_date',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'String',
+            ),
+          ),
+          'directives' => 
+          array (
           ),
         ),
       ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'A single booking summary from searchBookings results.',
-        'block' => false,
-      ),
     ),
-    'SearchBookingsData' => 
+    'DotwCancelPolicy' => 
     array (
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'SearchBookingsData',
+        'value' => 'DotwCancelPolicy',
       ),
       'interfaces' => 
       array (
@@ -7466,1038 +1369,7 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'bookings',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'BookingSummary',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'List of bookings matching the search criteria.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of bookings returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for searchBookings results.',
-        'block' => false,
-      ),
-    ),
-    'SaveBookingResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SaveBookingResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the save operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — saveBooking is a side-effecting mutation, never cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'SaveBookingData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Saved booking data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for saveBooking mutation.',
-        'block' => false,
-      ),
-    ),
-    'BookItineraryResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'BookItineraryResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the itinerary booking succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — bookItinerary is a side-effecting mutation, never cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'BookItineraryData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Booking confirmation data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for bookItinerary mutation.',
-        'block' => false,
-      ),
-    ),
-    'GetBookingDetailsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetBookingDetailsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the query succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — getBookingDetails never caches results.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'BookingDetails',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Full booking details on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for getBookingDetails query.',
-        'block' => false,
-      ),
-    ),
-    'SearchBookingsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'SearchBookingsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the search succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — searchBookings never caches results.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'SearchBookingsData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Search results on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for searchBookings query.',
-        'block' => false,
-      ),
-    ),
-    'CheckCancellationInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CheckCancellationInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code to check cancellation charge for.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the checkCancellation query — retrieve cancellation charge before committing.',
-        'block' => false,
-      ),
-    ),
-    'CancelBookingInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CancelBookingInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code to cancel.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'penalty_applied',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Penalty amount returned by checkCancellation. Must be passed back verbatim to confirm cancellation.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the cancelBooking mutation — confirm cancellation with the penalty amount from checkCancellation.',
-        'block' => false,
-      ),
-    ),
-    'DeleteItineraryInput' => 
-    array (
-      'kind' => 'InputObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DeleteItineraryInput',
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'InputValueDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'itinerary_code',
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Itinerary code returned from saveBooking (APR flow only).',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Input for the deleteItinerary mutation — remove a saved (unconfirmed) APR itinerary.',
-        'block' => false,
-      ),
-    ),
-    'CancellationChargeData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CancellationChargeData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
+            'value' => 'fromDate',
           ),
           'arguments' => 
           array (
@@ -8518,14 +1390,56 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code (echo of input).',
-            'block' => false,
-          ),
         ),
         1 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'toDate',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'String',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        2 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
+          array (
+            'kind' => 'Name',
+            'value' => 'chargeType',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'String',
+            ),
+          ),
+          'directives' => 
+          array (
+          ),
+        ),
+        3 => 
         array (
           'kind' => 'FieldDefinition',
           'name' => 
@@ -8552,490 +1466,6 @@ Empty array on successful booking. Up to 3 results from searchHotels with same d
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation charge amount. Pass this as penalty_applied to cancelBooking.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'currency',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Currency of the cancellation charge. Empty string if DOTW does not return currency in cancel query.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'is_outside_deadline',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True when charge is 0.0 — indicates the booking is outside the penalty deadline (free cancellation).',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Data returned by checkCancellation — the charge incurred if cancellation is confirmed.',
-        'block' => false,
-      ),
-    ),
-    'CancelBookingData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CancelBookingData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'booking_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW booking confirmation code (echo of input).',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cancelled',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True when the cancellation was successfully processed by DOTW.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'penalty_applied',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Float',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Penalty amount that was applied (echo of input penalty_applied).',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'products_left_on_itinerary',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Number of products remaining on the itinerary after cancellation.
-0 = full cancellation, >0 = partial cancellation (some rooms/products still active).
-Maps to DOTW productsLeftOnItinerary field.',
-            'block' => true,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Data returned by cancelBooking — result of confirmed cancellation.',
-        'block' => false,
-      ),
-    ),
-    'DeleteItineraryData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DeleteItineraryData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'itinerary_code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Itinerary code that was deleted (echo of input).',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'deleted',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'True when the itinerary was successfully deleted.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Data returned by deleteItinerary — confirmation of itinerary deletion.',
-        'block' => false,
-      ),
-    ),
-    'CheckCancellationResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'CheckCancellationResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — checkCancellation is never cached.',
-            'block' => false,
-          ),
         ),
         4 => 
         array (
@@ -9043,7 +1473,7 @@ Maps to DOTW productsLeftOnItinerary field.',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'data',
+            'value' => 'cancelRestricted',
           ),
           'arguments' => 
           array (
@@ -9054,34 +1484,46 @@ Maps to DOTW productsLeftOnItinerary field.',
             'name' => 
             array (
               'kind' => 'Name',
-              'value' => 'CancellationChargeData',
+              'value' => 'Boolean',
             ),
           ),
           'directives' => 
           array (
           ),
-          'description' => 
+        ),
+        5 => 
+        array (
+          'kind' => 'FieldDefinition',
+          'name' => 
           array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation charge data on success. Null on failure.',
-            'block' => false,
+            'kind' => 'Name',
+            'value' => 'amendRestricted',
+          ),
+          'arguments' => 
+          array (
+          ),
+          'type' => 
+          array (
+            'kind' => 'NamedType',
+            'name' => 
+            array (
+              'kind' => 'Name',
+              'value' => 'Boolean',
+            ),
+          ),
+          'directives' => 
+          array (
           ),
         ),
       ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for the checkCancellation query.',
-        'block' => false,
-      ),
     ),
-    'CancelBookingResponse' => 
+    'DotwSpecial' => 
     array (
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'kind' => 'Name',
-        'value' => 'CancelBookingResponse',
+        'value' => 'DotwSpecial',
       ),
       'interfaces' => 
       array (
@@ -9097,379 +1539,7 @@ Maps to DOTW productsLeftOnItinerary field.',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — cancelBooking is a side-effecting mutation, never cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'CancelBookingData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Cancellation result data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for the cancelBooking mutation.',
-        'block' => false,
-      ),
-    ),
-    'DeleteItineraryResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DeleteItineraryResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — deleteItinerary is a side-effecting mutation, never cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DeleteItineraryData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Deletion result data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response envelope for the deleteItinerary mutation.',
-        'block' => false,
-      ),
-    ),
-    'DotwCodeItem' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwCodeItem',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'code',
+            'value' => 'type',
           ),
           'arguments' => 
           array (
@@ -9489,12 +1559,6 @@ Maps to DOTW productsLeftOnItinerary field.',
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW reference code — use as a filter value in search or booking requests.',
-            'block' => false,
           ),
         ),
         1 => 
@@ -9524,104 +1588,6 @@ Maps to DOTW productsLeftOnItinerary field.',
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Human-readable name for display purposes.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'A simple code/name pair returned by DOTW reference lookup queries.',
-        'block' => false,
-      ),
-    ),
-    'DotwAmenityItem' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'DotwAmenityItem',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'code',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'DOTW amenity code — use in hotel search amenity filters.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'name',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Human-readable amenity name.',
-            'block' => false,
-          ),
         ),
         2 => 
         array (
@@ -9629,799 +1595,7 @@ Maps to DOTW productsLeftOnItinerary field.',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'category',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'String',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Category of the amenity: \'amenity\', \'leisure\', or \'business\'.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'An amenity/leisure/business facility item returned by the getAmenityIds query.',
-        'block' => false,
-      ),
-    ),
-    'GetAllCountriesData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetAllCountriesData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'countries',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCodeItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'All DOTW internal country codes.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of countries returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getAllCountries query results.',
-        'block' => false,
-      ),
-    ),
-    'GetServingCountriesData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetServingCountriesData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'countries',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCodeItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Countries for which DOTW has hotel inventory.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of serving countries returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getServingCountries query results.',
-        'block' => false,
-      ),
-    ),
-    'GetHotelClassificationsData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetHotelClassificationsData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'classifications',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCodeItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotel star rating classification codes.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of classifications returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getHotelClassifications query results.',
-        'block' => false,
-      ),
-    ),
-    'GetLocationIdsData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetLocationIdsData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'locations',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCodeItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Location filtering codes for hotel search.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of locations returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getLocationIds query results.',
-        'block' => false,
-      ),
-    ),
-    'GetAmenityIdsData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetAmenityIdsData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'amenities',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwAmenityItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Amenity, leisure, and business facility codes merged into one list.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of amenity items returned across all categories.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getAmenityIds query results (merged from 3 DOTW commands).',
-        'block' => false,
-      ),
-    ),
-    'GetPreferenceIdsData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetPreferenceIdsData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'preferences',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCodeItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotel preference codes.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of preference codes returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getPreferenceIds query results.',
-        'block' => false,
-      ),
-    ),
-    'GetChainIdsData' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetChainIdsData',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'chains',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'ListType',
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DotwCodeItem',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotel chain affiliation codes.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'total_count',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Int',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Total number of chain codes returned.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Container for getChainIds query results.',
-        'block' => false,
-      ),
-    ),
-    'GetAllCountriesResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetAllCountriesResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
+            'value' => 'description',
           ),
           'arguments' => 
           array (
@@ -10432,51 +1606,11 @@ Maps to DOTW productsLeftOnItinerary field.',
             'name' => 
             array (
               'kind' => 'Name',
-              'value' => 'DotwError',
+              'value' => 'String',
             ),
           ),
           'directives' => 
           array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
           ),
         ),
         3 => 
@@ -10485,41 +1619,7 @@ Maps to DOTW productsLeftOnItinerary field.',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
+            'value' => 'condition',
           ),
           'arguments' => 
           array (
@@ -10530,1141 +1630,13 @@ Maps to DOTW productsLeftOnItinerary field.',
             'name' => 
             array (
               'kind' => 'Name',
-              'value' => 'GetAllCountriesData',
+              'value' => 'String',
             ),
           ),
           'directives' => 
           array (
           ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Country list data on success. Null on failure.',
-            'block' => false,
-          ),
         ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getAllCountries query.',
-        'block' => false,
-      ),
-    ),
-    'GetServingCountriesResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetServingCountriesResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetServingCountriesData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Serving country list data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getServingCountries query.',
-        'block' => false,
-      ),
-    ),
-    'GetHotelClassificationsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetHotelClassificationsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetHotelClassificationsData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Hotel classification data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getHotelClassifications query.',
-        'block' => false,
-      ),
-    ),
-    'GetLocationIdsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetLocationIdsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetLocationIdsData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Location codes data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getLocationIds query.',
-        'block' => false,
-      ),
-    ),
-    'GetAmenityIdsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetAmenityIdsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetAmenityIdsData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Amenity data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getAmenityIds query.',
-        'block' => false,
-      ),
-    ),
-    'GetPreferenceIdsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetPreferenceIdsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetPreferenceIdsData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Preference codes data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getPreferenceIds query.',
-        'block' => false,
-      ),
-    ),
-    'GetChainIdsResponse' => 
-    array (
-      'kind' => 'ObjectTypeDefinition',
-      'name' => 
-      array (
-        'kind' => 'Name',
-        'value' => 'GetChainIdsResponse',
-      ),
-      'interfaces' => 
-      array (
-      ),
-      'directives' => 
-      array (
-      ),
-      'fields' => 
-      array (
-        0 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'success',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Whether the operation succeeded.',
-            'block' => false,
-          ),
-        ),
-        1 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'error',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'DotwError',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Structured error — present only when success is false.',
-            'block' => false,
-          ),
-        ),
-        2 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'meta',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DotwMeta',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Per-request tracing metadata — always present.',
-            'block' => false,
-          ),
-        ),
-        3 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cached',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'Boolean',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Always false — lookup queries are not cached.',
-            'block' => false,
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'data',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NamedType',
-            'name' => 
-            array (
-              'kind' => 'Name',
-              'value' => 'GetChainIdsData',
-            ),
-          ),
-          'directives' => 
-          array (
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Chain codes data on success. Null on failure.',
-            'block' => false,
-          ),
-        ),
-      ),
-      'description' => 
-      array (
-        'kind' => 'StringValue',
-        'value' => 'Response from the getChainIds query.',
-        'block' => false,
       ),
     ),
     'DateTime' => 
@@ -12292,7 +2264,7 @@ Maps to DOTW productsLeftOnItinerary field.',
           'name' => 
           array (
             'kind' => 'Name',
-            'value' => 'getCities',
+            'value' => 'searchDotwHotelRooms',
           ),
           'arguments' => 
           array (
@@ -12302,7 +2274,7 @@ Maps to DOTW productsLeftOnItinerary field.',
               'name' => 
               array (
                 'kind' => 'Name',
-                'value' => 'country_code',
+                'value' => 'input',
               ),
               'type' => 
               array (
@@ -12313,18 +2285,12 @@ Maps to DOTW productsLeftOnItinerary field.',
                   'name' => 
                   array (
                     'kind' => 'Name',
-                    'value' => 'String',
+                    'value' => 'DotwHotelSearchInput',
                   ),
                 ),
               ),
               'directives' => 
               array (
-              ),
-              'description' => 
-              array (
-                'kind' => 'StringValue',
-                'value' => 'ISO 3166-1 alpha-2 country code (e.g. AE for United Arab Emirates, KW for Kuwait).',
-                'block' => false,
               ),
             ),
           ),
@@ -12337,7 +2303,7 @@ Maps to DOTW productsLeftOnItinerary field.',
               'name' => 
               array (
                 'kind' => 'Name',
-                'value' => 'GetCitiesResponse',
+                'value' => 'DotwSearchResult',
               ),
             ),
           ),
@@ -12359,7 +2325,7 @@ Maps to DOTW productsLeftOnItinerary field.',
                   'value' => 
                   array (
                     'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetCities',
+                    'value' => 'App\\Modules\\AkeedDotwAI\\GraphQL\\Queries\\SearchDotwHotelRooms',
                     'block' => false,
                   ),
                   'name' => 
@@ -12370,923 +2336,9 @@ Maps to DOTW productsLeftOnItinerary field.',
                 ),
               ),
             ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'List cities served by DOTW for a given country. Use city codes returned here as the destination input to searchHotels.',
-            'block' => false,
           ),
         ),
         4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'searchHotels',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchHotelsInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'SearchHotelsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwSearchHotels',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Search hotels by destination, dates, and room configuration via DOTW V4 searchhotels API. Results cached 2.5 minutes per company.',
-            'block' => false,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getRoomRates',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'GetRoomRatesInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetRoomRatesResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetRoomRates',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get detailed room rates for a specific hotel.
-
-Returns all room types and meal plans with full cancellation policies,
-allocationDetails tokens (required for blockRates), and transparent markup breakdown.
-
-NOTE: DOTW getRooms command does not return hotel metadata (name, city, star rating,
-image_url). These fields remain deferred (SEARCH-06 partial). Pass hotel_code from
-searchHotels to this query; the caller must maintain hotel name from their own context.
-
-Audit logged to dotw_audit_logs. NOT cached — rates change minute-to-minute and
-allocationDetails tokens expire. Always returns fresh data from DOTW API.',
-            'block' => true,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getBookingDetails',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'GetBookingDetailsInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetBookingDetailsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetBookingDetails',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get full details of an existing DOTW booking by booking code.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'searchBookings',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SearchBookingsInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'SearchBookingsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwSearchBookings',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Search DOTW bookings by date range and/or customer reference. At least one filter required.',
-            'block' => false,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'checkCancellation',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'CheckCancellationInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'CheckCancellationResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwCheckCancellation',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Check the cancellation charge for a confirmed DOTW booking without committing the cancellation.
-
-Calls DOTW cancelbooking with confirm=no. Returns the penalty charge that will be applied
-if cancelBooking is called. Use the returned charge value as penalty_applied in cancelBooking.
-
-This is step 1 of the two-step DOTW cancellation flow (CANCEL-01).',
-            'block' => true,
-          ),
-        ),
-        9 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getAllCountries',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetAllCountriesResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetAllCountries',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get all DOTW internal country codes. Use nationality/residenceCountry values from this list when building booking passenger details. (LOOKUP-01)',
-            'block' => false,
-          ),
-        ),
-        10 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getServingCountries',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetServingCountriesResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetServingCountries',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get countries for which DOTW has hotel inventory. Use to populate destination country selection in search UI. (LOOKUP-02)',
-            'block' => false,
-          ),
-        ),
-        11 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getHotelClassifications',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetHotelClassificationsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetHotelClassifications',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get hotel star rating classification codes. Use as minRating/maxRating filter values in searchHotels. (LOOKUP-03)',
-            'block' => false,
-          ),
-        ),
-        12 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getLocationIds',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetLocationIdsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetLocationIds',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get location filtering codes for hotel search. Use as location filters to narrow results to specific areas. (LOOKUP-04)',
-            'block' => false,
-          ),
-        ),
-        13 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getAmenityIds',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetAmenityIdsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetAmenityIds',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get amenity, leisure, and business facility codes merged from three DOTW commands. Use as amenity filter values in searchHotels. (LOOKUP-05, LOOKUP-06, LOOKUP-07)',
-            'block' => false,
-          ),
-        ),
-        14 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getPreferenceIds',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetPreferenceIdsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetPreferenceIds',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get hotel preference codes from DOTW. Use as preference filter values in hotel search requests. (LOOKUP-05 preference subset)',
-            'block' => false,
-          ),
-        ),
-        15 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'getChainIds',
-          ),
-          'arguments' => 
-          array (
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'GetChainIdsResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Queries\\DotwGetChainIds',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Get hotel chain affiliation codes from DOTW. Use to filter search results to specific hotel chains. (LOOKUP-07 chain subset)',
-            'block' => false,
-          ),
-        ),
-        16 => 
         array (
           'kind' => 'FieldDefinition',
           'name' => 
@@ -13426,15 +2478,15 @@ This is step 1 of the two-step DOTW cancellation flow (CANCEL-01).',
               'loc' => 
               array (
                 'start' => 4,
-                'end' => 61,
+                'end' => 62,
               ),
               'kind' => 'InputValueDefinition',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 52,
-                  'end' => 56,
+                  'start' => 53,
+                  'end' => 57,
                 ),
                 'kind' => 'Name',
                 'value' => 'page',
@@ -13443,16 +2495,16 @@ This is step 1 of the two-step DOTW cancellation flow (CANCEL-01).',
               array (
                 'loc' => 
                 array (
-                  'start' => 58,
-                  'end' => 61,
+                  'start' => 59,
+                  'end' => 62,
                 ),
                 'kind' => 'NamedType',
                 'name' => 
                 array (
                   'loc' => 
                   array (
-                    'start' => 58,
-                    'end' => 61,
+                    'start' => 59,
+                    'end' => 62,
                   ),
                   'kind' => 'Name',
                   'value' => 'Int',
@@ -15689,603 +4741,6 @@ This is step 1 of the two-step DOTW cancellation flow (CANCEL-01).',
                 ),
               ),
             ),
-          ),
-        ),
-        4 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'blockRates',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'BlockRatesInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'BlockRatesResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Mutations\\DotwBlockRates',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Lock a selected hotel rate for 3 minutes via DOTW blocking.
-
-Calls DOTW getRooms with blocking=true to reserve the rate, then creates a
-dotw_prebooks record. Returns prebook_key (UUID) and countdown_timer_seconds.
-
-BLOCK-08: A new blockRates call from the same (company, resayil_message_id) pair
-automatically expires any previous active prebook — only one active prebook per
-WhatsApp conversation at any time.
-
-Rejects if allocation is < 60 seconds from expiry — prompt re-search in that case.',
-            'block' => true,
-          ),
-        ),
-        5 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'createPreBooking',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'CreatePreBookingInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'CreatePreBookingResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Mutations\\DotwCreatePreBooking',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Confirm a hotel booking using a locked prebook_key from blockRates.
-Validates passenger details, calls DOTW confirmBooking, creates dotw_bookings record.
-Returns confirmation code and itinerary on success, or specific error with alternatives on failure.',
-            'block' => true,
-          ),
-        ),
-        6 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'saveBooking',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'SaveBookingInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'SaveBookingResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Mutations\\DotwSaveBooking',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Save a hotel booking as an itinerary for APR (non-refundable) rates. Returns itinerary_code to pass to bookItinerary.',
-            'block' => false,
-          ),
-        ),
-        7 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'bookItinerary',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'BookItineraryInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'BookItineraryResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Mutations\\DotwBookItinerary',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Confirm a previously saved itinerary (from saveBooking). Completes the APR booking flow.',
-            'block' => false,
-          ),
-        ),
-        8 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'cancelBooking',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'CancelBookingInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'CancelBookingResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Mutations\\DotwCancelBooking',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Confirm cancellation of a DOTW hotel booking with the penalty amount from checkCancellation.
-
-Calls DOTW cancelbooking with confirm=yes and penaltyApplied. APR (non-refundable) bookings
-are rejected before any DOTW call is made (VALID-02). Returns cancelled=true and
-products_left_on_itinerary on success.
-
-This is step 2 of the two-step DOTW cancellation flow (CANCEL-02).',
-            'block' => true,
-          ),
-        ),
-        9 => 
-        array (
-          'kind' => 'FieldDefinition',
-          'name' => 
-          array (
-            'kind' => 'Name',
-            'value' => 'deleteItinerary',
-          ),
-          'arguments' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'InputValueDefinition',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'input',
-              ),
-              'type' => 
-              array (
-                'kind' => 'NonNullType',
-                'type' => 
-                array (
-                  'kind' => 'NamedType',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'DeleteItineraryInput',
-                  ),
-                ),
-              ),
-              'directives' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Directive',
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'spread',
-                  ),
-                  'arguments' => 
-                  array (
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'type' => 
-          array (
-            'kind' => 'NonNullType',
-            'type' => 
-            array (
-              'kind' => 'NamedType',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'DeleteItineraryResponse',
-              ),
-            ),
-          ),
-          'directives' => 
-          array (
-            0 => 
-            array (
-              'kind' => 'Directive',
-              'name' => 
-              array (
-                'kind' => 'Name',
-                'value' => 'field',
-              ),
-              'arguments' => 
-              array (
-                0 => 
-                array (
-                  'kind' => 'Argument',
-                  'value' => 
-                  array (
-                    'kind' => 'StringValue',
-                    'value' => 'App\\GraphQL\\Mutations\\DotwDeleteItinerary',
-                    'block' => false,
-                  ),
-                  'name' => 
-                  array (
-                    'kind' => 'Name',
-                    'value' => 'resolver',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          'description' => 
-          array (
-            'kind' => 'StringValue',
-            'value' => 'Delete a saved (unconfirmed) itinerary from the APR flow.
-
-Calls DOTW deleteitinerary command to remove an itinerary created by saveBooking
-that has not yet been confirmed via bookItinerary. Only applicable for APR bookings.
-Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
-            'block' => true,
           ),
         ),
       ),
@@ -21047,15 +9502,15 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       'loc' => 
       array (
         'start' => 4,
-        'end' => 625,
+        'end' => 650,
       ),
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 78,
-          'end' => 91,
+          'start' => 79,
+          'end' => 92,
         ),
         'kind' => 'Name',
         'value' => 'PaginatorInfo',
@@ -21072,16 +9527,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 101,
-            'end' => 157,
+            'start' => 103,
+            'end' => 160,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 146,
-              'end' => 151,
+              'start' => 149,
+              'end' => 154,
             ),
             'kind' => 'Name',
             'value' => 'count',
@@ -21093,24 +9548,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 153,
-              'end' => 157,
+              'start' => 156,
+              'end' => 160,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 153,
-                'end' => 156,
+                'start' => 156,
+                'end' => 159,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 153,
-                  'end' => 156,
+                  'start' => 156,
+                  'end' => 159,
                 ),
                 'kind' => 'Name',
                 'value' => 'Int',
@@ -21124,8 +9579,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 101,
-              'end' => 139,
+              'start' => 103,
+              'end' => 141,
             ),
             'kind' => 'StringValue',
             'value' => 'Number of items in the current page.',
@@ -21136,16 +9591,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 165,
-            'end' => 217,
+            'start' => 170,
+            'end' => 223,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 200,
-              'end' => 211,
+              'start' => 206,
+              'end' => 217,
             ),
             'kind' => 'Name',
             'value' => 'currentPage',
@@ -21157,24 +9612,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 213,
-              'end' => 217,
+              'start' => 219,
+              'end' => 223,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 213,
-                'end' => 216,
+                'start' => 219,
+                'end' => 222,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 213,
-                  'end' => 216,
+                  'start' => 219,
+                  'end' => 222,
                 ),
                 'kind' => 'Name',
                 'value' => 'Int',
@@ -21188,8 +9643,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 165,
-              'end' => 193,
+              'start' => 170,
+              'end' => 198,
             ),
             'kind' => 'StringValue',
             'value' => 'Index of the current page.',
@@ -21200,16 +9655,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 225,
-            'end' => 292,
+            'start' => 233,
+            'end' => 301,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 278,
-              'end' => 287,
+              'start' => 287,
+              'end' => 296,
             ),
             'kind' => 'Name',
             'value' => 'firstItem',
@@ -21221,16 +9676,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 289,
-              'end' => 292,
+              'start' => 298,
+              'end' => 301,
             ),
             'kind' => 'NamedType',
             'name' => 
             array (
               'loc' => 
               array (
-                'start' => 289,
-                'end' => 292,
+                'start' => 298,
+                'end' => 301,
               ),
               'kind' => 'Name',
               'value' => 'Int',
@@ -21243,8 +9698,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 225,
-              'end' => 271,
+              'start' => 233,
+              'end' => 279,
             ),
             'kind' => 'StringValue',
             'value' => 'Index of the first item in the current page.',
@@ -21255,16 +9710,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 300,
-            'end' => 367,
+            'start' => 311,
+            'end' => 379,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 345,
-              'end' => 357,
+              'start' => 357,
+              'end' => 369,
             ),
             'kind' => 'Name',
             'value' => 'hasMorePages',
@@ -21276,24 +9731,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 359,
-              'end' => 367,
+              'start' => 371,
+              'end' => 379,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 359,
-                'end' => 366,
+                'start' => 371,
+                'end' => 378,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 359,
-                  'end' => 366,
+                  'start' => 371,
+                  'end' => 378,
                 ),
                 'kind' => 'Name',
                 'value' => 'Boolean',
@@ -21307,8 +9762,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 300,
-              'end' => 338,
+              'start' => 311,
+              'end' => 349,
             ),
             'kind' => 'StringValue',
             'value' => 'Are there more pages after this one?',
@@ -21319,16 +9774,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 375,
-            'end' => 440,
+            'start' => 389,
+            'end' => 455,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 427,
-              'end' => 435,
+              'start' => 442,
+              'end' => 450,
             ),
             'kind' => 'Name',
             'value' => 'lastItem',
@@ -21340,16 +9795,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 437,
-              'end' => 440,
+              'start' => 452,
+              'end' => 455,
             ),
             'kind' => 'NamedType',
             'name' => 
             array (
               'loc' => 
               array (
-                'start' => 437,
-                'end' => 440,
+                'start' => 452,
+                'end' => 455,
               ),
               'kind' => 'Name',
               'value' => 'Int',
@@ -21362,8 +9817,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 375,
-              'end' => 420,
+              'start' => 389,
+              'end' => 434,
             ),
             'kind' => 'StringValue',
             'value' => 'Index of the last item in the current page.',
@@ -21374,16 +9829,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 448,
-            'end' => 504,
+            'start' => 465,
+            'end' => 522,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 490,
-              'end' => 498,
+              'start' => 508,
+              'end' => 516,
             ),
             'kind' => 'Name',
             'value' => 'lastPage',
@@ -21395,24 +9850,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 500,
-              'end' => 504,
+              'start' => 518,
+              'end' => 522,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 500,
-                'end' => 503,
+                'start' => 518,
+                'end' => 521,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 500,
-                  'end' => 503,
+                  'start' => 518,
+                  'end' => 521,
                 ),
                 'kind' => 'Name',
                 'value' => 'Int',
@@ -21426,8 +9881,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 448,
-              'end' => 483,
+              'start' => 465,
+              'end' => 500,
             ),
             'kind' => 'StringValue',
             'value' => 'Index of the last available page.',
@@ -21438,16 +9893,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 512,
-            'end' => 559,
+            'start' => 532,
+            'end' => 580,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 546,
-              'end' => 553,
+              'start' => 567,
+              'end' => 574,
             ),
             'kind' => 'Name',
             'value' => 'perPage',
@@ -21459,24 +9914,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 555,
-              'end' => 559,
+              'start' => 576,
+              'end' => 580,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 555,
-                'end' => 558,
+                'start' => 576,
+                'end' => 579,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 555,
-                  'end' => 558,
+                  'start' => 576,
+                  'end' => 579,
                 ),
                 'kind' => 'Name',
                 'value' => 'Int',
@@ -21490,8 +9945,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 512,
-              'end' => 539,
+              'start' => 532,
+              'end' => 559,
             ),
             'kind' => 'StringValue',
             'value' => 'Number of items per page.',
@@ -21502,16 +9957,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 567,
-            'end' => 619,
+            'start' => 590,
+            'end' => 643,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 608,
-              'end' => 613,
+              'start' => 632,
+              'end' => 637,
             ),
             'kind' => 'Name',
             'value' => 'total',
@@ -21523,24 +9978,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 615,
-              'end' => 619,
+              'start' => 639,
+              'end' => 643,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 615,
-                'end' => 618,
+                'start' => 639,
+                'end' => 642,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 615,
-                  'end' => 618,
+                  'start' => 639,
+                  'end' => 642,
                 ),
                 'kind' => 'Name',
                 'value' => 'Int',
@@ -21554,8 +10009,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 567,
-              'end' => 601,
+              'start' => 590,
+              'end' => 624,
             ),
             'kind' => 'StringValue',
             'value' => 'Number of total available items.',
@@ -21580,15 +10035,15 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       'loc' => 
       array (
         'start' => 4,
-        'end' => 391,
+        'end' => 398,
       ),
       'kind' => 'ObjectTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 47,
-          'end' => 60,
+          'start' => 48,
+          'end' => 61,
         ),
         'kind' => 'Name',
         'value' => 'UserPaginator',
@@ -21657,16 +10112,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 71,
-            'end' => 247,
+            'start' => 73,
+            'end' => 250,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 129,
-              'end' => 142,
+              'start' => 132,
+              'end' => 145,
             ),
             'kind' => 'Name',
             'value' => 'paginatorInfo',
@@ -21678,24 +10133,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 144,
-              'end' => 158,
+              'start' => 147,
+              'end' => 161,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 144,
-                'end' => 157,
+                'start' => 147,
+                'end' => 160,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 144,
-                  'end' => 157,
+                  'start' => 147,
+                  'end' => 160,
                 ),
                 'kind' => 'Name',
                 'value' => 'PaginatorInfo',
@@ -21708,16 +10163,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 159,
-                'end' => 247,
+                'start' => 162,
+                'end' => 250,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 160,
-                  'end' => 165,
+                  'start' => 163,
+                  'end' => 168,
                 ),
                 'kind' => 'Name',
                 'value' => 'field',
@@ -21728,16 +10183,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 166,
-                    'end' => 246,
+                    'start' => 169,
+                    'end' => 249,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 176,
-                      'end' => 246,
+                      'start' => 179,
+                      'end' => 249,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'Nuwave\\Lighthouse\\Pagination\\PaginatorField@paginatorInfoResolver',
@@ -21747,8 +10202,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 166,
-                      'end' => 174,
+                      'start' => 169,
+                      'end' => 177,
                     ),
                     'kind' => 'Name',
                     'value' => 'resolver',
@@ -21761,8 +10216,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 71,
-              'end' => 120,
+              'start' => 73,
+              'end' => 122,
             ),
             'kind' => 'StringValue',
             'value' => 'Pagination information about the list of items.',
@@ -21773,16 +10228,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 258,
-            'end' => 384,
+            'start' => 263,
+            'end' => 390,
           ),
           'kind' => 'FieldDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 290,
-              'end' => 294,
+              'start' => 296,
+              'end' => 300,
             ),
             'kind' => 'Name',
             'value' => 'data',
@@ -21794,40 +10249,40 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 296,
-              'end' => 304,
+              'start' => 302,
+              'end' => 310,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 296,
-                'end' => 303,
+                'start' => 302,
+                'end' => 309,
               ),
               'kind' => 'ListType',
               'type' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 297,
-                  'end' => 302,
+                  'start' => 303,
+                  'end' => 308,
                 ),
                 'kind' => 'NonNullType',
                 'type' => 
                 array (
                   'loc' => 
                   array (
-                    'start' => 297,
-                    'end' => 301,
+                    'start' => 303,
+                    'end' => 307,
                   ),
                   'kind' => 'NamedType',
                   'name' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 297,
-                      'end' => 301,
+                      'start' => 303,
+                      'end' => 307,
                     ),
                     'kind' => 'Name',
                     'value' => 'User',
@@ -21842,16 +10297,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 305,
-                'end' => 384,
+                'start' => 311,
+                'end' => 390,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 306,
-                  'end' => 311,
+                  'start' => 312,
+                  'end' => 317,
                 ),
                 'kind' => 'Name',
                 'value' => 'field',
@@ -21862,16 +10317,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 312,
-                    'end' => 383,
+                    'start' => 318,
+                    'end' => 389,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 322,
-                      'end' => 383,
+                      'start' => 328,
+                      'end' => 389,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'Nuwave\\Lighthouse\\Pagination\\PaginatorField@dataResolver',
@@ -21881,8 +10336,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 312,
-                      'end' => 320,
+                      'start' => 318,
+                      'end' => 326,
                     ),
                     'kind' => 'Name',
                     'value' => 'resolver',
@@ -21895,8 +10350,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 258,
-              'end' => 281,
+              'start' => 263,
+              'end' => 286,
             ),
             'kind' => 'StringValue',
             'value' => 'A list of User items.',
@@ -21920,16 +10375,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
     array (
       'loc' => 
       array (
-        'start' => 21,
-        'end' => 301,
+        'start' => 22,
+        'end' => 309,
       ),
       'kind' => 'EnumTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 91,
-          'end' => 100,
+          'start' => 93,
+          'end' => 102,
         ),
         'kind' => 'Name',
         'value' => 'SortOrder',
@@ -21943,16 +10398,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 127,
-            'end' => 189,
+            'start' => 130,
+            'end' => 193,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 186,
-              'end' => 189,
+              'start' => 190,
+              'end' => 193,
             ),
             'kind' => 'Name',
             'value' => 'ASC',
@@ -21964,8 +10419,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 127,
-              'end' => 161,
+              'start' => 130,
+              'end' => 164,
             ),
             'kind' => 'StringValue',
             'value' => 'Sort records in ascending order.',
@@ -21976,16 +10431,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 215,
-            'end' => 279,
+            'start' => 221,
+            'end' => 286,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 275,
-              'end' => 279,
+              'start' => 282,
+              'end' => 286,
             ),
             'kind' => 'Name',
             'value' => 'DESC',
@@ -21997,8 +10452,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 215,
-              'end' => 250,
+              'start' => 221,
+              'end' => 256,
             ),
             'kind' => 'StringValue',
             'value' => 'Sort records in descending order.',
@@ -22010,8 +10465,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       array (
         'loc' => 
         array (
-          'start' => 21,
-          'end' => 65,
+          'start' => 22,
+          'end' => 66,
         ),
         'kind' => 'StringValue',
         'value' => 'Directions for ordering a list of records.',
@@ -22022,16 +10477,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
     array (
       'loc' => 
       array (
-        'start' => 21,
-        'end' => 276,
+        'start' => 22,
+        'end' => 281,
       ),
       'kind' => 'EnumTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 125,
-          'end' => 157,
+          'start' => 127,
+          'end' => 159,
         ),
         'kind' => 'Name',
         'value' => 'OrderByRelationAggregateFunction',
@@ -22045,16 +10500,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 184,
-            'end' => 254,
+            'start' => 187,
+            'end' => 258,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 227,
-              'end' => 232,
+              'start' => 231,
+              'end' => 236,
             ),
             'kind' => 'Name',
             'value' => 'COUNT',
@@ -22065,16 +10520,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 233,
-                'end' => 254,
+                'start' => 237,
+                'end' => 258,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 234,
-                  'end' => 238,
+                  'start' => 238,
+                  'end' => 242,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22085,16 +10540,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 239,
-                    'end' => 253,
+                    'start' => 243,
+                    'end' => 257,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 246,
-                      'end' => 253,
+                      'start' => 250,
+                      'end' => 257,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'count',
@@ -22104,8 +10559,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 239,
-                      'end' => 244,
+                      'start' => 243,
+                      'end' => 248,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22118,8 +10573,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 184,
-              'end' => 202,
+              'start' => 187,
+              'end' => 205,
             ),
             'kind' => 'StringValue',
             'value' => 'Amount of items.',
@@ -22131,8 +10586,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       array (
         'loc' => 
         array (
-          'start' => 21,
-          'end' => 99,
+          'start' => 22,
+          'end' => 100,
         ),
         'kind' => 'StringValue',
         'value' => 'Aggregate functions when ordering by a relation without specifying a column.',
@@ -22143,16 +10598,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
     array (
       'loc' => 
       array (
-        'start' => 21,
-        'end' => 616,
+        'start' => 22,
+        'end' => 633,
       ),
       'kind' => 'EnumTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 123,
-          'end' => 165,
+          'start' => 125,
+          'end' => 167,
         ),
         'kind' => 'Name',
         'value' => 'OrderByRelationWithColumnAggregateFunction',
@@ -22166,16 +10621,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 192,
-            'end' => 250,
+            'start' => 195,
+            'end' => 254,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 227,
-              'end' => 230,
+              'start' => 231,
+              'end' => 234,
             ),
             'kind' => 'Name',
             'value' => 'AVG',
@@ -22186,16 +10641,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 231,
-                'end' => 250,
+                'start' => 235,
+                'end' => 254,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 232,
-                  'end' => 236,
+                  'start' => 236,
+                  'end' => 240,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22206,16 +10661,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 237,
-                    'end' => 249,
+                    'start' => 241,
+                    'end' => 253,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 244,
-                      'end' => 249,
+                      'start' => 248,
+                      'end' => 253,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'avg',
@@ -22225,8 +10680,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 237,
-                      'end' => 242,
+                      'start' => 241,
+                      'end' => 246,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22239,8 +10694,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 192,
-              'end' => 202,
+              'start' => 195,
+              'end' => 205,
             ),
             'kind' => 'StringValue',
             'value' => 'Average.',
@@ -22251,16 +10706,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 276,
-            'end' => 334,
+            'start' => 282,
+            'end' => 341,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 311,
-              'end' => 314,
+              'start' => 318,
+              'end' => 321,
             ),
             'kind' => 'Name',
             'value' => 'MIN',
@@ -22271,16 +10726,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 315,
-                'end' => 334,
+                'start' => 322,
+                'end' => 341,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 316,
-                  'end' => 320,
+                  'start' => 323,
+                  'end' => 327,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22291,16 +10746,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 321,
-                    'end' => 333,
+                    'start' => 328,
+                    'end' => 340,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 328,
-                      'end' => 333,
+                      'start' => 335,
+                      'end' => 340,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'min',
@@ -22310,8 +10765,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 321,
-                      'end' => 326,
+                      'start' => 328,
+                      'end' => 333,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22324,8 +10779,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 276,
-              'end' => 286,
+              'start' => 282,
+              'end' => 292,
             ),
             'kind' => 'StringValue',
             'value' => 'Minimum.',
@@ -22336,16 +10791,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 360,
-            'end' => 418,
+            'start' => 369,
+            'end' => 428,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 395,
-              'end' => 398,
+              'start' => 405,
+              'end' => 408,
             ),
             'kind' => 'Name',
             'value' => 'MAX',
@@ -22356,16 +10811,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 399,
-                'end' => 418,
+                'start' => 409,
+                'end' => 428,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 400,
-                  'end' => 404,
+                  'start' => 410,
+                  'end' => 414,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22376,16 +10831,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 405,
-                    'end' => 417,
+                    'start' => 415,
+                    'end' => 427,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 412,
-                      'end' => 417,
+                      'start' => 422,
+                      'end' => 427,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'max',
@@ -22395,8 +10850,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 405,
-                      'end' => 410,
+                      'start' => 415,
+                      'end' => 420,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22409,8 +10864,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 360,
-              'end' => 370,
+              'start' => 369,
+              'end' => 379,
             ),
             'kind' => 'StringValue',
             'value' => 'Maximum.',
@@ -22421,16 +10876,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 444,
-            'end' => 498,
+            'start' => 456,
+            'end' => 511,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 475,
-              'end' => 478,
+              'start' => 488,
+              'end' => 491,
             ),
             'kind' => 'Name',
             'value' => 'SUM',
@@ -22441,16 +10896,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 479,
-                'end' => 498,
+                'start' => 492,
+                'end' => 511,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 480,
-                  'end' => 484,
+                  'start' => 493,
+                  'end' => 497,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22461,16 +10916,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 485,
-                    'end' => 497,
+                    'start' => 498,
+                    'end' => 510,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 492,
-                      'end' => 497,
+                      'start' => 505,
+                      'end' => 510,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'sum',
@@ -22480,8 +10935,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 485,
-                      'end' => 490,
+                      'start' => 498,
+                      'end' => 503,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22494,8 +10949,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 444,
-              'end' => 450,
+              'start' => 456,
+              'end' => 462,
             ),
             'kind' => 'StringValue',
             'value' => 'Sum.',
@@ -22506,16 +10961,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 524,
-            'end' => 594,
+            'start' => 539,
+            'end' => 610,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 567,
-              'end' => 572,
+              'start' => 583,
+              'end' => 588,
             ),
             'kind' => 'Name',
             'value' => 'COUNT',
@@ -22526,16 +10981,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 573,
-                'end' => 594,
+                'start' => 589,
+                'end' => 610,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 574,
-                  'end' => 578,
+                  'start' => 590,
+                  'end' => 594,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22546,16 +11001,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 579,
-                    'end' => 593,
+                    'start' => 595,
+                    'end' => 609,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 586,
-                      'end' => 593,
+                      'start' => 602,
+                      'end' => 609,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'count',
@@ -22565,8 +11020,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 579,
-                      'end' => 584,
+                      'start' => 595,
+                      'end' => 600,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22579,8 +11034,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 524,
-              'end' => 542,
+              'start' => 539,
+              'end' => 557,
             ),
             'kind' => 'StringValue',
             'value' => 'Amount of items.',
@@ -22592,8 +11047,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       array (
         'loc' => 
         array (
-          'start' => 21,
-          'end' => 97,
+          'start' => 22,
+          'end' => 98,
         ),
         'kind' => 'StringValue',
         'value' => 'Aggregate functions when ordering by a relation that may specify a column.',
@@ -22605,15 +11060,15 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       'loc' => 
       array (
         'start' => 12,
-        'end' => 278,
+        'end' => 285,
       ),
       'kind' => 'InputObjectTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 67,
-          'end' => 80,
+          'start' => 68,
+          'end' => 81,
         ),
         'kind' => 'Name',
         'value' => 'OrderByClause',
@@ -22627,16 +11082,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 99,
-            'end' => 170,
+            'start' => 101,
+            'end' => 173,
           ),
           'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 155,
-              'end' => 161,
+              'start' => 158,
+              'end' => 164,
             ),
             'kind' => 'Name',
             'value' => 'column',
@@ -22645,24 +11100,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 163,
-              'end' => 170,
+              'start' => 166,
+              'end' => 173,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 163,
-                'end' => 169,
+                'start' => 166,
+                'end' => 172,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 163,
-                  'end' => 169,
+                  'start' => 166,
+                  'end' => 172,
                 ),
                 'kind' => 'Name',
                 'value' => 'String',
@@ -22676,8 +11131,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 99,
-              'end' => 138,
+              'start' => 101,
+              'end' => 140,
             ),
             'kind' => 'StringValue',
             'value' => 'The column that is used for ordering.',
@@ -22688,16 +11143,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 188,
-            'end' => 264,
+            'start' => 193,
+            'end' => 270,
           ),
           'kind' => 'InputValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 247,
-              'end' => 252,
+              'start' => 253,
+              'end' => 258,
             ),
             'kind' => 'Name',
             'value' => 'order',
@@ -22706,24 +11161,24 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 254,
-              'end' => 264,
+              'start' => 260,
+              'end' => 270,
             ),
             'kind' => 'NonNullType',
             'type' => 
             array (
               'loc' => 
               array (
-                'start' => 254,
-                'end' => 263,
+                'start' => 260,
+                'end' => 269,
               ),
               'kind' => 'NamedType',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 254,
-                  'end' => 263,
+                  'start' => 260,
+                  'end' => 269,
                 ),
                 'kind' => 'Name',
                 'value' => 'SortOrder',
@@ -22737,8 +11192,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 188,
-              'end' => 230,
+              'start' => 193,
+              'end' => 235,
             ),
             'kind' => 'StringValue',
             'value' => 'The direction that is used for ordering.',
@@ -22762,16 +11217,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
     array (
       'loc' => 
       array (
-        'start' => 25,
-        'end' => 530,
+        'start' => 26,
+        'end' => 541,
       ),
       'kind' => 'EnumTypeDefinition',
       'name' => 
       array (
         'loc' => 
         array (
-          'start' => 128,
-          'end' => 135,
+          'start' => 130,
+          'end' => 137,
         ),
         'kind' => 'Name',
         'value' => 'Trashed',
@@ -22785,16 +11240,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 166,
-            'end' => 250,
+            'start' => 169,
+            'end' => 254,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 225,
-              'end' => 229,
+              'start' => 229,
+              'end' => 233,
             ),
             'kind' => 'Name',
             'value' => 'ONLY',
@@ -22805,16 +11260,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 230,
-                'end' => 250,
+                'start' => 234,
+                'end' => 254,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 231,
-                  'end' => 235,
+                  'start' => 235,
+                  'end' => 239,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22825,16 +11280,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 236,
-                    'end' => 249,
+                    'start' => 240,
+                    'end' => 253,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 243,
-                      'end' => 249,
+                      'start' => 247,
+                      'end' => 253,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'only',
@@ -22844,8 +11299,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 236,
-                      'end' => 241,
+                      'start' => 240,
+                      'end' => 245,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22858,8 +11313,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 166,
-              'end' => 196,
+              'start' => 169,
+              'end' => 199,
             ),
             'kind' => 'StringValue',
             'value' => 'Only return trashed results.',
@@ -22870,16 +11325,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 280,
-            'end' => 380,
+            'start' => 286,
+            'end' => 387,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 355,
-              'end' => 359,
+              'start' => 362,
+              'end' => 366,
             ),
             'kind' => 'Name',
             'value' => 'WITH',
@@ -22890,16 +11345,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 360,
-                'end' => 380,
+                'start' => 367,
+                'end' => 387,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 361,
-                  'end' => 365,
+                  'start' => 368,
+                  'end' => 372,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22910,16 +11365,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 366,
-                    'end' => 379,
+                    'start' => 373,
+                    'end' => 386,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 373,
-                      'end' => 379,
+                      'start' => 380,
+                      'end' => 386,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'with',
@@ -22929,8 +11384,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 366,
-                      'end' => 371,
+                      'start' => 373,
+                      'end' => 378,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -22943,8 +11398,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 280,
-              'end' => 326,
+              'start' => 286,
+              'end' => 332,
             ),
             'kind' => 'StringValue',
             'value' => 'Return both trashed and non-trashed results.',
@@ -22955,16 +11410,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
         array (
           'loc' => 
           array (
-            'start' => 410,
-            'end' => 504,
+            'start' => 419,
+            'end' => 514,
           ),
           'kind' => 'EnumValueDefinition',
           'name' => 
           array (
             'loc' => 
             array (
-              'start' => 473,
-              'end' => 480,
+              'start' => 483,
+              'end' => 490,
             ),
             'kind' => 'Name',
             'value' => 'WITHOUT',
@@ -22975,16 +11430,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
             array (
               'loc' => 
               array (
-                'start' => 481,
-                'end' => 504,
+                'start' => 491,
+                'end' => 514,
               ),
               'kind' => 'Directive',
               'name' => 
               array (
                 'loc' => 
                 array (
-                  'start' => 482,
-                  'end' => 486,
+                  'start' => 492,
+                  'end' => 496,
                 ),
                 'kind' => 'Name',
                 'value' => 'enum',
@@ -22995,16 +11450,16 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                 array (
                   'loc' => 
                   array (
-                    'start' => 487,
-                    'end' => 503,
+                    'start' => 497,
+                    'end' => 513,
                   ),
                   'kind' => 'Argument',
                   'value' => 
                   array (
                     'loc' => 
                     array (
-                      'start' => 494,
-                      'end' => 503,
+                      'start' => 504,
+                      'end' => 513,
                     ),
                     'kind' => 'StringValue',
                     'value' => 'without',
@@ -23014,8 +11469,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
                   array (
                     'loc' => 
                     array (
-                      'start' => 487,
-                      'end' => 492,
+                      'start' => 497,
+                      'end' => 502,
                     ),
                     'kind' => 'Name',
                     'value' => 'value',
@@ -23028,8 +11483,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
           array (
             'loc' => 
             array (
-              'start' => 410,
-              'end' => 444,
+              'start' => 419,
+              'end' => 453,
             ),
             'kind' => 'StringValue',
             'value' => 'Only return non-trashed results.',
@@ -23041,8 +11496,8 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
       array (
         'loc' => 
         array (
-          'start' => 25,
-          'end' => 98,
+          'start' => 26,
+          'end' => 99,
         ),
         'kind' => 'StringValue',
         'value' => 'Specify if you want to include or exclude trashed results from a query.',
@@ -23059,5 +11514,5 @@ Cannot delete confirmed bookings — use cancelBooking for those (CANCEL-03).',
   'schemaExtensions' => 
   array (
   ),
-  'hash' => '44901b6083548f47b8040581db8ca99dbf1609ba3db820acc3f63e9983bf0dd3',
+  'hash' => '41d53cfce9cee61401d3692afe7a0b4a63f81852deccedf659cba167e4663f65',
 );

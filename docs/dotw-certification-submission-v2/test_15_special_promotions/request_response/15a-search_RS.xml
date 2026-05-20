@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="searchhotels" tID="1775203302100001" ip="152.53.86.223" date="2026-04-03 08:01:42" version="4.0" elapsedTime="0.3746440410614">
+  <hotels>
+    <hotel hotelid="2344175">
+      <rooms>
+        <room adults="2" children="2" childrenages="8,12" extrabeds="0">
+          <roomType roomtypecode="81081345">
+            <name>EXECUTIVE KING ROOM</name>
+            <rateBases>
+              <rateBasis id="0">
+                <rateType currencyid="769">1</rateType>
+                <total>19.6021</total>
+              </rateBasis>
+              <rateBasis id="1331">
+                <rateType currencyid="769">1</rateType>
+                <total>24.5027</total>
+              </rateBasis>
+              <rateBasis id="1334">
+                <rateType currencyid="769">1</rateType>
+                <total>48.3183</total>
+              </rateBasis>
+              <rateBasis id="1335">
+                <rateType currencyid="769">1</rateType>
+                <total>72.592</total>
+              </rateBasis>
+            </rateBases>
+          </roomType>
+          <roomType roomtypecode="1429125705">
+            <name>ADJOINING, FAMILY SUITE</name>
+            <rateBases>
+              <rateBasis id="0">
+                <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                <total>49.8966</total>
+                <totalTaxes>5.2557</totalTaxes>
+                <propertyFees count="2">
+                  <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">4.2033</propertyFee>
+                  <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2641</propertyFee>
+                </propertyFees>
+              </rateBasis>
+              <rateBasis id="1331">
+                <rateType currencyid="769" notes="Strictly Non Refundable.">3</rateType>
+                <total>59.6167</total>
+                <totalTaxes>6.2802</totalTaxes>
+                <propertyFees count="2">
+                  <propertyFee runno="0" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="Yes">5.0236</propertyFee>
+                  <propertyFee runno="1" currencyid="769" currencyshort="KWD" name="Taxes and Fees" description="Taxes and Fees" includedinprice="No">1.2641</propertyFee>
+                </propertyFees>
+              </rateBasis>
+            </rateBases>
+          </roomType>
+        </room>
+      </rooms>
+    </hotel>
+  </hotels>
+  <successful>TRUE</successful>
+</result>

@@ -27,3 +27,14 @@ yarn-error.log
 /air-files
 composer.lock
 composer.lock
+
+# dotw-cli standalone package dependencies
+/packages/dotw-cli/vendor/
+/packages/dotw-cli/composer.lock
+
+# dotw-xml-cli standalone package dependencies
+/packages/dotw-xml-cli/vendor/
+/packages/dotw-xml-cli/composer.lock
+.githubworkflowsdeploy.yml.env
+.env.dusk.*
+.planning/

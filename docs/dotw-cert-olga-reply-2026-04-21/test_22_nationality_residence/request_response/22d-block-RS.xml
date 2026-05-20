@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="getrooms" tID="1777184119100003" ip="121.121.56.157" date="2026-04-26 06:15:19" version="4.0" elapsedTime="0.10962104797363">
+  <currencyShort>KWD</currencyShort>
+  <hotel id="1013275" name="Gateway Hotel">
+    <allowBook>yes</allowBook>
+    <rooms count="1">
+      <room runno="0" count="2" adults="2" children="0" childrenages="" extrabeds="0">
+        <roomType runno="0" roomtypecode="483146225">
+          <name>DELUXE ROOM.</name>
+          <twin>no</twin>
+          <roomInfo>
+            <maxOccupancy>3</maxOccupancy>
+            <maxAdultWithChildren>2</maxAdultWithChildren>
+            <minChildAge>0</minChildAge>
+            <maxChildAge>11</maxChildAge>
+            <maxAdult>3</maxAdult>
+            <maxExtraBed>1</maxExtraBed>
+            <maxChildren>1</maxChildren>
+          </roomInfo>
+          <specials count="0"/>
+          <rateBases count="1">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>checked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1777184119000002B1000B0</allocationDetails>
+              <minStay/>
+              <dateApplyMinStay/>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-25 12:59:59</toDate>
+                  <toDateDetails>Sat, 25 Jul 2026 12:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-25 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 25 Jul 2026 13:00:00</fromDateDetails>
+                  <amendCharge>10.4739<formatted>10.47</formatted></amendCharge>
+                  <cancelCharge>10.4739<formatted>10.47</formatted></cancelCharge>
+                  <charge>10.4739<formatted>10.47</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-08-24 23:00:00</fromDate>
+                  <fromDateDetails>Mon, 24 Aug 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>10.4739<formatted>10.47</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <tariffNotes><![CDATA[Rate Notes:
+
+Hotel Tariff Notes:
+Compulsory Tourism Dirham to be paid by guest directly to the hotel per room per night valid from 31st March 2014 Onward.
+No show and early departure will be subjected to 100% charge. No date, name and room changed allowed. Bookings including children will be based on sharing parents bedding, no separate bed for children is provided unless otherwise stated. Cancel and rebooking is not allowed
+
+Existing reservation cannot be cancelled and re-booked under lower promotion.
+Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality]]></tariffNotes>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <extraBedOnRequest>0</extraBedOnRequest>
+              <total>10.4739<formatted>10.47</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-08-24" day="Aug, 24 2026" wday="Monday">
+                  <price>10.4739<formatted>10.47</formatted></price>
+                  <freeStay>no</freeStay>
+                  <dayOnRequest>0</dayOnRequest>
+                  <including count="0"/>
+                </date>
+              </dates>
+              <leftToSell>9999</leftToSell>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <roomType runno="1" roomtypecode="650645755">
+          <name>DELUXE TWIN</name>
+          <twin>no</twin>
+          <roomInfo>
+            <maxOccupancy>2</maxOccupancy>
+            <maxAdultWithChildren>0</maxAdultWithChildren>
+            <minChildAge>0</minChildAge>
+            <maxChildAge>0</maxChildAge>
+            <maxAdult>2</maxAdult>
+            <maxExtraBed>0</maxExtraBed>
+            <maxChildren>0</maxChildren>
+          </roomInfo>
+          <specials count="0"/>
+          <rateBases count="1">
+            <rateBasis runno="0" id="0" description="Room Only">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1777184119000002B1000B1</allocationDetails>
+              <minStay/>
+              <dateApplyMinStay/>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-25 12:59:59</toDate>
+                  <toDateDetails>Sat, 25 Jul 2026 12:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-25 13:00:00</fromDate>
+                  <fromDateDetails>Sat, 25 Jul 2026 13:00:00</fromDateDetails>
+                  <amendCharge>10.4739<formatted>10.47</formatted></amendCharge>
+                  <cancelCharge>10.4739<formatted>10.47</formatted></cancelCharge>
+                  <charge>10.4739<formatted>10.47</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-08-24 23:00:00</fromDate>
+                  <fromDateDetails>Mon, 24 Aug 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>10.4739<formatted>10.47</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <tariffNotes><![CDATA[Rate Notes:
+
+Hotel Tariff Notes:
+Compulsory Tourism Dirham to be paid by guest directly to the hotel per room per night valid from 31st March 2014 Onward.
+No show and early departure will be subjected to 100% charge. No date, name and room changed allowed. Bookings including children will be based on sharing parents bedding, no separate bed for children is provided unless otherwise stated. Cancel and rebooking is not allowed
+
+Existing reservation cannot be cancelled and re-booked under lower promotion.
+Please note guests are not allowed to cancel existing bookings and rebook. The hotel has the right to reject the booking.
+The Tourism Dirham Fee charged per room per night is applicable when booking guest rooms &amp; suites and it will be collected directly at the property and is not reflected in the room rate.
+This hotel charges according to residency; therefore, if you hold residency in the hotels country of destination, please enter your country of residency as your nationality]]></tariffNotes>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>10.4739<formatted>10.47</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-08-24" day="Aug, 24 2026" wday="Monday">
+                  <price>10.4739<formatted>10.47</formatted></price>
+                  <freeStay>no</freeStay>
+                  <dayOnRequest>0</dayOnRequest>
+                  <including count="0"/>
+                </date>
+              </dates>
+              <leftToSell>9999</leftToSell>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <lookedForText>Room Number 1: 2 adult/s</lookedForText>
+      </room>
+    </rooms>
+    <extraMeals count="0"/>
+  </hotel>
+  <successful>TRUE</successful>
+</result>

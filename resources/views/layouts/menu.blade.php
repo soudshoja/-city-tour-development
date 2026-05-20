@@ -310,6 +310,28 @@
             <menuitem>
             <a href="{{ route('docs.user-documentation') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a>
+            <menu class="flex flex-col px-2">
+                <menuitem>
+                <a href="{{ route('docs.user-documentation') }}"
+                    class="text-xs justify-center text-center px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    User Docs
+                </a>
+                </menuitem>
+                <menuitem>
+                <a href="{{ route('docs.api-documentation') }}"
+                    class="text-xs justify-center text-center px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    API Docs
+                </a>
+                </menuitem>
+                @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
+                <menuitem>
+                <a href="{{ route('docs.developer-documentation') }}"
+                    class="text-xs justify-center text-center px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    Developer Docs
+                </a>
+                </menuitem>
+                @endif
+            </menu>
             </menuitem>
             <menuitem>
             <a href="#"

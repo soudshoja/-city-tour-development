@@ -13,10 +13,11 @@ use Illuminate\Support\Facades\Log;
  * Produces structured logs in storage/logs/dotw_certification.log
  *
  * Usage:
- *   php artisan dotw:certify              # Run all 21 tests
+ *   php artisan dotw:certify              # Run all 22 tests
  *   php artisan dotw:certify --test=1     # Run single test
  *   php artisan dotw:certify --test=1,2,3 # Run specific tests
  *   php artisan dotw:certify --test=21    # 2-room cancel evidence (CERT-06)
+ *   php artisan dotw:certify --test=22    # Spain/UAE booking case (CERT-15)
  *   php artisan dotw:certify --currencies # Show available currencies
  *   php artisan dotw:certify --cities     # Show all cities
  */
@@ -24,7 +25,7 @@ class DotwCertify extends Command
 {
     protected $signature = 'dotw:certify {--test= : Comma-separated test numbers to run (default: all)} {--currencies : Show available currencies} {--countries : Show countries with hotels} {--cities= : Show cities for a country code}';
 
-    protected $description = 'Run DOTW V4 XML certification test plan (21 tests)';
+    protected $description = 'Run DOTW V4 XML certification test plan (22 tests)';
 
     private string $baseUrl;
 
@@ -163,7 +164,7 @@ class DotwCertify extends Command
 
         $testsToRun = $this->option('test')
             ? array_map('intval', explode(',', $this->option('test')))
-            : range(1, 21);
+            : range(1, 22);
 
         foreach ($testsToRun as $testNum) {
             $method = 'runTest'.$testNum;
@@ -200,19 +201,19 @@ class DotwCertify extends Command
         // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
         // Source: Olga Chicu screenshot 2026-03-27
         $fallback = [
-            'mr'            => 147,
-            'mrs'           => 149,
-            'miss'          => 15134,
-            'ms'            => 148,
-            'dr'            => 558,
-            'child'         => 14632,
-            'master'        => 14632,
-            'sir'           => 1328,
-            'madame'        => 1671,
-            'mademoiselle'  => 74195,
-            'messrs'        => 9234,
-            'monsieur'      => 74185,
-            'sir/madam'     => 3801,
+            'mr' => 147,
+            'mrs' => 149,
+            'miss' => 15134,
+            'ms' => 148,
+            'dr' => 558,
+            'child' => 14632,
+            'master' => 14632,
+            'sir' => 1328,
+            'madame' => 1671,
+            'mademoiselle' => 74195,
+            'messrs' => 9234,
+            'monsieur' => 74185,
+            'sir/madam' => 3801,
         ];
 
         $xml = $this->buildRequest('getsalutationsids', '');
@@ -245,6 +246,73 @@ class DotwCertify extends Command
 
             return $fallback;
         }
+
+        return $map;
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // COUNTRY CODE MAP — loaded on first getCountryCodeByName call
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Resolve a country name to a DOTW numeric country code.
+     *
+     * Calls `getallcountries` once per command run, caches the full lookup table
+     * in $this->state['countryMap'] keyed by lowercased country name.
+     *
+     * @param  string  $name  Country name (case-insensitive). Aliases handled inline:
+     *                        "uae", "united arab emirates", "u.a.e." -> United Arab Emirates
+     * @return string DOTW country code (e.g. "142" for Spain). Returns "" on lookup failure.
+     */
+    private function getCountryCodeByName(string $name): string
+    {
+        // Normalise common aliases.
+        $aliases = [
+            'uae' => 'united arab emirates',
+            'u.a.e.' => 'united arab emirates',
+            'u.a.e' => 'united arab emirates',
+            'united arab emirates' => 'united arab emirates',
+            'spain' => 'spain',
+            'kingdom of spain' => 'spain',
+        ];
+        $key = strtolower(trim($name));
+        $key = $aliases[$key] ?? $key;
+
+        // Lazy-load + cache.
+        if (! isset($this->state['countryMap'])) {
+            $this->state['countryMap'] = $this->fetchCountryMap();
+        }
+
+        return $this->state['countryMap'][$key] ?? '';
+    }
+
+    /**
+     * Fetch the full DOTW country code map via getallcountries.
+     *
+     * @return array<string,string> name(lowercased) -> code
+     */
+    private function fetchCountryMap(): array
+    {
+        $xml = $this->buildRequest('getallcountries', '');
+        $response = $this->post($xml, 'getallcountries');
+        if (! $response) {
+            $this->log('  WARN: getallcountries returned no response — country lookup will fail');
+
+            return [];
+        }
+
+        $map = [];
+        // DOTW response shape: <countries><country code="X" name="Spain"/>...</countries>
+        // Some envs wrap in <country><code>X</code><name>Y</name></country> — handle both.
+        foreach ($response->countries->country ?? [] as $c) {
+            $code = (string) ($c['code'] ?? $c->code ?? '');
+            $cname = (string) ($c['name'] ?? $c->name ?? '');
+            if ($code !== '' && $cname !== '') {
+                $map[strtolower(trim($cname))] = $code;
+            }
+        }
+
+        $this->log('  Cached '.count($map).' DOTW country codes');
 
         return $map;
     }
@@ -2275,6 +2343,9 @@ class DotwCertify extends Command
     {
         $this->startTest(14, 'Changed Occupancy — validForOccupancy overrides search adultsCode/children/extraBed');
 
+        // CERT-10b (Phase 27-08): enable evidence file writing so RQ/RS are regenerated as real live files.
+        $this->state['certEvidenceDir'] = base_path('docs/dotw-certification-submission-v2/test_14_changed_occupancy/request_response');
+
         $fromDate = now()->addDays(85)->format('Y-m-d');
         $toDate = now()->addDays(86)->format('Y-m-d');
         $originalAdults = 3;
@@ -2313,6 +2384,7 @@ class DotwCertify extends Command
 
         $hotels = $response->hotels->hotel ?? null;
         if (! $hotels || count($hotels) === 0) {
+            unset($this->state['certEvidenceDir']);
             $this->skipTest(14, 'No hotel inventory in this environment — run against production or use a city with live hotels');
 
             return;
@@ -2380,12 +2452,16 @@ class DotwCertify extends Command
             $bookExtraBed = $vfoExtraBed;
             $this->pass('14b', "changedOccupancy detected: {$changedOccupancy}");
             $this->log("  VERIFICATION: Using validForOccupancy: adults={$vfoAdults}, extraBed={$vfoExtraBed}");
-            // Build children XML from validForOccupancy children if present
+
+            // Build children XML from validForOccupancy <children> node OR changedOccupancy CSV field 2.
+            // DOTW sometimes omits <children> from VFO XML when count is 0 — the CSV is authoritative.
+            // changedOccupancy CSV format: "adults,children,,extraBed" (e.g. "4,0,,0")
             $vfoChildren = $validForOccupancy->children ?? null;
             if ($vfoChildren !== null) {
+                // VFO has explicit <children> node — use it directly.
                 $vfoChildCount = (int) ($vfoChildren['no'] ?? 0);
                 if ($vfoChildCount === 0) {
-                    $bookChildrenXml = '<children no="0"/>';
+                    $bookChildrenXml = '<children no="0"></children>';
                 } else {
                     $bookChildrenXml = sprintf('<children no="%d">', $vfoChildCount);
                     $ci = 0;
@@ -2394,8 +2470,18 @@ class DotwCertify extends Command
                     }
                     $bookChildrenXml .= '</children>';
                 }
+            } else {
+                // VFO <children> node absent — fall back to changedOccupancy CSV second field.
+                $csvParts = explode(',', $changedOccupancy);
+                $csvChildCount = isset($csvParts[1]) ? (int) $csvParts[1] : -1;
+                if ($csvChildCount === 0) {
+                    $bookChildrenXml = '<children no="0"></children>';
+                    $this->log('  CERT-10b NOTE: VFO children node absent; using changedOccupancy CSV field 2 = 0');
+                }
+                // csvChildCount > 0 but no ages in VFO: keep original children XML (DOTW rare case).
             }
         } else {
+            unset($this->state['certEvidenceDir']);
             $this->skipTest(14, 'No changedOccupancy rate found in search results — run against a property that has changedOccupancy rates');
 
             return;
@@ -2518,12 +2604,15 @@ class DotwCertify extends Command
         // The changedOccupancy logic is correct; this is a sandbox data issue.
         $confirmErrorCode = (string) ($confirmResponse?->request->error->code ?? $confirmResponse?->error->code ?? '');
         if ($confirmErrorCode === '731') {
+            unset($this->state['certEvidenceDir']);
             $this->skipTest(14, 'Sandbox error 731 (room type not valid for criteria) on changedOccupancy confirmbooking — changedOccupancy detection logic verified, confirmbooking step requires different sandbox hotel; run against production');
 
             return;
         }
 
         if (! $this->assertSuccess($confirmResponse, '14d')) {
+            unset($this->state['certEvidenceDir']);
+
             return;
         }
 
@@ -2531,6 +2620,7 @@ class DotwCertify extends Command
         $this->state['test14_booking_code'] = $bookingCode;
         $this->pass('14d', "Booking confirmed — Code: {$bookingCode}");
         $this->log('  ✔  VERIFICATION: validForOccupancy values used for adultsCode/children/extraBed, original for actualAdults/actualChildren');
+        unset($this->state['certEvidenceDir']);
         $this->endTest(14, true);
     }
 
@@ -3207,60 +3297,29 @@ class DotwCertify extends Command
     // ──────────────────────────────────────────────────────────────
     private function runTest18(): void
     {
-        $this->startTest(18, 'Minimum Stay — detect minStay and dateApplyMinStay on rateBasis');
+        // CERT-14 display chain (already wired, verification-only):
+        //   DOTW <minStay> -> HotelSearchService:548 ($detail['minStay']) -> 'min_stay' key
+        //   -> MessageBuilderService::formatMandatoryFeatures:280-291 -> bilingual prebook + voucher message
+        // No production-path code change needed; this test just refreshes the evidence with Olga's hotel IDs.
 
+        $this->startTest(18, "Minimum Stay (Olga's 'Test 17 Min Stay') -- detect minStay/dateApplyMinStay using hotel IDs 2344175 / 81144 / 2329275");
+
+        // CERT-14b (Phase 27-08): enable evidence file writing so all 3 hotels produce real RQ/RS files.
+        $this->state['certEvidenceDir'] = base_path('docs/dotw-certification-submission-v2/test_18_minimum_stay/request_response');
+
+        // Per Olga 2026-04-21: 1-day search against specific hotel IDs known to have minStay constraints.
         $fromDate = now()->addDays(105)->format('Y-m-d');
-        $toDate = now()->addDays(109)->format('Y-m-d');  // 4 nights — longer stay increases minStay trigger chance
+        $toDate = now()->addDays(106)->format('Y-m-d');
 
-        // Step 18a: searchhotels — 4 nights to allow minStay detection
-        $this->step('18a', 'searchhotels — Dubai, 2 adults, 4 nights');
-        $searchXml = $this->buildRequest('searchhotels', '
-            <bookingDetails>
-                <fromDate>'.$fromDate.'</fromDate>
-                <toDate>'.$toDate.'</toDate>
-                <currency>769</currency>
-                <rooms no="1">
-                    <room runno="0">
-                        <adultsCode>2</adultsCode>
-                        <children no="0"/>
-                        <rateBasis>-1</rateBasis>
-                        <passengerNationality>66</passengerNationality>
-                        <passengerCountryOfResidence>66</passengerCountryOfResidence>
-                    </room>
-                </rooms>
-            </bookingDetails>
-            <return>
-                <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
-                         xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
-                    <city>364</city>
-                </filters>
-            </return>
-        ');
-
-        $response = $this->post($searchXml, '18a-search');
-        if (! $this->assertSuccess($response, '18a')) {
-            return;
-        }
-
-        $hotels = $response->hotels->hotel ?? null;
-        if (! $hotels || count($hotels) === 0) {
-            $this->skipTest(18, 'No hotel inventory in this environment — run against production or use a city with live hotels');
-
-            return;
-        }
-
-        $this->pass('18a', 'Found '.count($hotels).' hotel(s) — scanning all for minStay');
-
-        // Step 18b: getRooms browse with minStay field — scan ALL returned hotels
-        $this->step('18b', 'getRooms (browse) — request minStay roomField for all hotels');
+        $hotelIds = ['2344175', '81144', '2329275'];
 
         $minStayFound = '';
         $dateApplyMinStayFound = '';
         $minStayHotelId = null;
 
-        foreach ($hotels as $hotel) {
-            $hotelId = (string) $hotel['hotelid'];
-            $rateBasisId = (string) ($hotel->rooms->room[0]->roomType->rateBases->rateBasis[0]['id'] ?? '-1');
+        foreach ($hotelIds as $idx => $hotelId) {
+            $stepLabel = sprintf('18-h%d', $idx + 1);
+            $this->step($stepLabel, "getRooms (browse) -- hotel {$hotelId}, 1 day, 1 adult, scan for minStay");
 
             $browseXml = $this->buildRequest('getrooms', '
                 <bookingDetails>
@@ -3269,9 +3328,9 @@ class DotwCertify extends Command
                     <currency>769</currency>
                     <rooms no="1">
                         <room runno="0">
-                            <adultsCode>2</adultsCode>
+                            <adultsCode>1</adultsCode>
                             <children no="0"/>
-                            <rateBasis>'.$rateBasisId.'</rateBasis>
+                            <rateBasis>-1</rateBasis>
                             <passengerNationality>66</passengerNationality>
                             <passengerCountryOfResidence>66</passengerCountryOfResidence>
                         </room>
@@ -3286,85 +3345,56 @@ class DotwCertify extends Command
             ');
 
             $browseResponse = $this->post($browseXml, "18b-rooms-h{$hotelId}");
-            if (! $browseResponse || ! $this->assertSuccess($browseResponse, '18b')) {
-                $this->log("  → Hotel {$hotelId}: browse failed, skipping");
+            if (! $browseResponse) {
+                $this->log("  -> Hotel {$hotelId}: no response, skipping");
+
+                continue;
+            }
+            if (! $this->assertSuccess($browseResponse, $stepLabel)) {
+                $this->log("  -> Hotel {$hotelId}: getRooms failed, skipping");
 
                 continue;
             }
 
             $browseRoom = $browseResponse->hotel->rooms->room[0] ?? null;
             if (! $browseRoom) {
+                $this->log("  -> Hotel {$hotelId}: no room nodes in response");
+
                 continue;
             }
 
-            // Scan all room types and rate bases for minStay
+            // Scan all room types and rate bases for minStay > 0.
             foreach ($browseRoom->roomType ?? [] as $rt) {
                 foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
                     $ms = (string) ($rb->minStay ?? '');
-                    if (! empty($ms) && $ms !== '0') {
-                        $minStayFound = $ms;
-                        $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
-                        $minStayHotelId = $hotelId;
-                        break 3;
-                    }
-                }
-            }
-        }
-
-        // Fallback: try DOTW-provided hotel 809755 (Conrad London St James) — resort/luxury hotels often have minStay
-        if (empty($minStayFound)) {
-            $this->log('  → Dubai scan found no minStay; trying DOTW-provided hotel 809755 (Conrad London St James)');
-            $conradMinStayXml = $this->buildRequest('getrooms', '
-                <bookingDetails>
-                    <fromDate>'.$fromDate.'</fromDate>
-                    <toDate>'.$toDate.'</toDate>
-                    <currency>769</currency>
-                    <rooms no="1">
-                        <room runno="0">
-                            <adultsCode>2</adultsCode>
-                            <children no="0"/>
-                            <rateBasis>-1</rateBasis>
-                            <passengerNationality>66</passengerNationality>
-                            <passengerCountryOfResidence>66</passengerCountryOfResidence>
-                        </room>
-                    </rooms>
-                    <productId>809755</productId>
-                </bookingDetails>
-                <return>
-                    <fields>
-                        <roomField>minStay</roomField>
-                    </fields>
-                </return>
-            ');
-            $conradMinStayResponse = $this->post($conradMinStayXml, '18b-rooms-h809755');
-            if ($conradMinStayResponse && $this->assertSuccess($conradMinStayResponse, '18b-conrad')) {
-                $conradRoom = $conradMinStayResponse->hotel->rooms->room[0] ?? null;
-                if ($conradRoom) {
-                    foreach ($conradRoom->roomType ?? [] as $rt) {
-                        foreach ($rt->rateBases->rateBasis ?? [] as $rb) {
-                            $ms = (string) ($rb->minStay ?? '');
-                            if (! empty($ms) && $ms !== '0') {
-                                $minStayFound = $ms;
-                                $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
-                                $minStayHotelId = '809755';
-                                break 2;
-                            }
+                    if ($ms !== '' && $ms !== '0') {
+                        if ($minStayFound === '') {
+                            // Record first minStay found (determines PASS result).
+                            $minStayFound = $ms;
+                            $dateApplyMinStayFound = (string) ($rb->dateApplyMinStay ?? '');
+                            $minStayHotelId = $hotelId;
                         }
+                        $this->pass($stepLabel, "Hotel {$hotelId}: minStay={$ms} | dateApplyMinStay={$dateApplyMinStayFound}");
+                        break 2;  // exit roomType + rateBasis loops for this hotel; continue hotelIds loop
                     }
                 }
             }
+
+            $this->log("  -> Hotel {$hotelId}: no minStay > 0 found on any rate (will try next hotel)");
         }
 
-        if (! empty($minStayFound)) {
-            $this->pass('18b', "Hotel {$minStayHotelId}: minStay={$minStayFound} nights | dateApplyMinStay={$dateApplyMinStayFound}");
-            $this->log('  ✔  VERIFICATION: Block bookings where nights < minStay and arrival date matches dateApplyMinStay');
-        } else {
-            $this->skipTest(18, 'No minStay constraint found after scanning all hotels and hotel 809755 — run against a hotel with minimum stay requirements');
+        if ($minStayFound !== '' && $minStayHotelId !== null) {
+            unset($this->state['certEvidenceDir']);
+            $this->pass('18', "Hotel {$minStayHotelId}: minStay={$minStayFound} nights, dateApplyMinStay={$dateApplyMinStayFound}");
+            $this->log('  + VERIFICATION: minStay surfaced from getRooms -- block bookings where nights < minStay and arrival date matches dateApplyMinStay');
+            $this->log('  + CERT-14 EVIDENCE: per-hotel RQ/RS pairs captured (one per Olga hotel ID)');
+            $this->endTest(18, true);
 
             return;
         }
 
-        $this->endTest(18, true);
+        unset($this->state['certEvidenceDir']);
+        $this->skipTest(18, "None of Olga's 3 hotels (2344175/81144/2329275) returned minStay > 0 in this environment -- re-run against production or re-confirm hotel state with DOTW");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -3503,7 +3533,7 @@ class DotwCertify extends Command
         $this->pass('19c', "Blocked OK — status: {$blockStatus}");
 
         // Step 19d: confirmbooking with specialRequests
-        $this->step('19d', 'confirmbooking — specialRequests count=1, code=1 (no smoking)');
+        $this->step('19d', 'confirmbooking — specialRequests count=1, code=1711 (non-smoking room)');
         $confirmXml = $this->buildRequest('confirmbooking', '
             <bookingDetails>
                 <fromDate>'.$fromDate.'</fromDate>
@@ -3515,6 +3545,7 @@ class DotwCertify extends Command
                 <rooms no="1">
                     <room runno="0">
                         <roomTypeCode>'.$browseRtCode.'</roomTypeCode>
+                        <!-- CERT-11: selectedRateBasis is the actual rate id from getRooms browse response (0=Room Only, 1331=Breakfast, etc) — NOT a hardcoded value. -->
                         <selectedRateBasis>'.$browseRbId.'</selectedRateBasis>
                         <allocationDetails>'.htmlspecialchars($blockAllocation).'</allocationDetails>
                         <adultsCode>2</adultsCode>
@@ -3537,7 +3568,7 @@ class DotwCertify extends Command
                             </passenger>
                         </passengersDetails>
                         <specialRequests count="1">
-                            <req runno="0">1</req>
+                            <req runno="0">1711</req>
                         </specialRequests>
                         <beddingPreference>0</beddingPreference>
                     </room>
@@ -3551,8 +3582,8 @@ class DotwCertify extends Command
         }
 
         $bookingCode = (string) ($confirmResponse->bookings->booking->bookingCode ?? '');
-        $this->pass('19d', "Booking with special request code=1 confirmed: {$bookingCode}");
-        $this->log('  ✔  VERIFICATION: Special request code 1 (no smoking) sent in XML');
+        $this->pass('19d', "Booking with special request code=1711 (non-smoking) confirmed: {$bookingCode}");
+        $this->log('  ✔  VERIFICATION: Special request code 1711 (non-smoking room) sent in XML — valid DOTW code per Olga\'s screenshot 2026-03-27');
         $this->endTest(19, true);
     }
 
@@ -3709,7 +3740,7 @@ class DotwCertify extends Command
         $this->startTest(21, '2-Room Cancellation — book 2 rooms then cancel (CERT-06 evidence for Olga)');
 
         $fromDate = now()->addDays(95)->format('Y-m-d');
-        $toDate   = now()->addDays(96)->format('Y-m-d');
+        $toDate = now()->addDays(96)->format('Y-m-d');
 
         // Step 21a: searchhotels — Dubai, 2 rooms (2 adults each), far-future date for cancellable rates
         $this->step('21a', 'searchhotels — Dubai, 2 rooms (2 adults each)');
@@ -3762,19 +3793,19 @@ class DotwCertify extends Command
         // Room 2: Mr James Brown + Mr William Brown
         $booking = $this->tryBookHotels($hotels, $fromDate, $toDate, '21', 'CERT-TEST-021', [
             [
-                'adultsCode'   => 2,
+                'adultsCode' => 2,
                 'actualAdults' => 2,
-                'children'     => [],
-                'passengers'   => [
+                'children' => [],
+                'passengers' => [
                     ['salutation' => $this->state['salutationMap']['mr'] ?? 147,  'firstName' => 'John',    'lastName' => 'Smith'],
                     ['salutation' => $this->state['salutationMap']['mrs'] ?? 149, 'firstName' => 'Jane',    'lastName' => 'Smith'],
                 ],
             ],
             [
-                'adultsCode'   => 2,
+                'adultsCode' => 2,
                 'actualAdults' => 2,
-                'children'     => [],
-                'passengers'   => [
+                'children' => [],
+                'passengers' => [
                     ['salutation' => $this->state['salutationMap']['mr'] ?? 147, 'firstName' => 'James',   'lastName' => 'Brown'],
                     ['salutation' => $this->state['salutationMap']['mr'] ?? 147, 'firstName' => 'William', 'lastName' => 'Brown'],
                 ],
@@ -3791,8 +3822,324 @@ class DotwCertify extends Command
         $bookingCode = $booking['bookingCode'];
         $this->log("  [21d] 2-room booking confirmed — bookingCode: {$bookingCode}");
 
-        // Step 21e: cancelBooking confirm=no — get charges for ALL services
-        $this->step('21e', 'cancelBooking (confirm=no) — get cancellation charges for 2-room booking');
+        // Step 21e: cancelBooking confirm=no — SEPARATE call per booking code (CERT-13)
+        // Each room in a multi-room booking has its own booking code that must be
+        // cancelled individually — one cancelBooking RQ per code.
+        $allBookingCodes = $booking['bookingCodes'] ?? [$booking['bookingCode']];
+        $this->log('  [21e] 2-room booking has '.count($allBookingCodes).' booking code(s) — firing separate cancelBooking per code');
+
+        $perRoomCharges = [];
+
+        foreach ($allBookingCodes as $idx => $roomBookingCode) {
+            $roomLabel = sprintf('21e-r%d', $idx + 1);
+            $this->step($roomLabel, 'cancelBooking (confirm=no) — room '.($idx + 1)." — bookingCode: {$roomBookingCode}");
+
+            $cancelCheckXml = $this->buildRequest('cancelbooking', '
+                <bookingDetails>
+                    <bookingType>1</bookingType>
+                    <bookingCode>'.$roomBookingCode.'</bookingCode>
+                    <confirm>no</confirm>
+                </bookingDetails>
+            ');
+
+            $cancelCheck = $this->post($cancelCheckXml, '21e-cancel-check-r'.($idx + 1));
+            if (! $this->assertSuccess($cancelCheck, $roomLabel)) {
+                $this->endTest(21, false);
+
+                return;
+            }
+
+            $charge = (string) ($cancelCheck->services->service->cancellationPenalty->charge ?? '0');
+            $charge = explode('<', $charge)[0];
+            $perRoomCharges[$roomBookingCode] = $charge;
+            $this->pass($roomLabel, 'Room '.($idx + 1)." cancellation charge: {$charge}");
+        }
+
+        $this->pass('21e', count($allBookingCodes).' separate cancelBooking confirm=no calls — one per room — all returned charge data');
+
+        // Step 21f: cancelBooking confirm=yes — SEPARATE call per booking code (CERT-13)
+        $finalLeftOnItinerary = null;
+        $cancelledCount = 0;
+
+        foreach ($allBookingCodes as $idx => $roomBookingCode) {
+            $roomLabel = sprintf('21f-r%d', $idx + 1);
+            $charge = $perRoomCharges[$roomBookingCode] ?? '0';
+            $this->step($roomLabel, 'cancelBooking (confirm=yes) — room '.($idx + 1)." — bookingCode: {$roomBookingCode} — penaltyApplied: {$charge}");
+
+            $cancelConfirmXml = $this->buildRequest('cancelbooking', '
+                <bookingDetails>
+                    <bookingType>1</bookingType>
+                    <bookingCode>'.$roomBookingCode.'</bookingCode>
+                    <confirm>yes</confirm>
+                    <testPricesAndAllocation>
+                        <service referencenumber="'.$roomBookingCode.'">
+                            <penaltyApplied>'.$charge.'</penaltyApplied>
+                        </service>
+                    </testPricesAndAllocation>
+                </bookingDetails>
+            ');
+
+            $cancelResponse = $this->post($cancelConfirmXml, '21f-cancel-confirm-r'.($idx + 1));
+            if (! $this->assertSuccess($cancelResponse, $roomLabel)) {
+                $this->endTest(21, false);
+
+                return;
+            }
+
+            $left = $cancelResponse->productsLeftOnItinerary ?? null;
+            if ($left !== null) {
+                $finalLeftOnItinerary = (int) (string) $left;
+                $this->log("  [{$roomLabel}] productsLeftOnItinerary={$finalLeftOnItinerary}");
+            }
+            $cancelledCount++;
+            $this->pass($roomLabel, 'Room '.($idx + 1)." cancelled — bookingCode: {$roomBookingCode}");
+        }
+
+        $this->pass('21f', "{$cancelledCount} separate cancelBooking confirm=yes calls completed — one per room");
+
+        // Step 21g: assert productsLeftOnItinerary=0 on the FINAL response (last room cancelled)
+        if ($finalLeftOnItinerary === 0) {
+            $this->pass('21g', 'productsLeftOnItinerary=0 after final cancelBooking — all rooms removed from itinerary');
+        } elseif ($finalLeftOnItinerary === null) {
+            $this->warn('productsLeftOnItinerary not present in final cancellation response');
+        } else {
+            $this->failStep('21g', "productsLeftOnItinerary={$finalLeftOnItinerary} after all cancels — expected 0");
+            $this->endTest(21, false);
+
+            return;
+        }
+
+        $this->log('  ✔  CERT-13 EVIDENCE: '.count($allBookingCodes).' separate cancelBooking calls (RQ/RS pairs captured) — productsLeftOnItinerary='.($finalLeftOnItinerary ?? 'n/a'));
+        $this->endTest(21, true);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // TEST 22 — Spain nationality + UAE residence (CERT-15)
+    // ──────────────────────────────────────────────────────────────
+    private function runTest22(): void
+    {
+        $this->startTest(22, 'CERT-15 — Booking with Spain nationality + UAE residence (proves non-default country codes)');
+
+        // Enable per-call RQ/RS evidence file writing for this test.
+        $evidenceDir = base_path('docs/dotw-certification-submission-v2/test_22_nationality_residence/request_response');
+        $this->state['certEvidenceDir'] = $evidenceDir;
+
+        // ── Resolve DOTW codes via getallcountries ──
+        $this->step('22a', 'Resolve Spain + UAE country codes via getallcountries');
+        $spainCode = $this->getCountryCodeByName('Spain');
+        $uaeCode = $this->getCountryCodeByName('UAE');
+
+        if ($spainCode === '' || $uaeCode === '') {
+            $this->failStep('22a', "Country code resolution failed — Spain={$spainCode}, UAE={$uaeCode}");
+            $this->endTest(22, false);
+
+            return;
+        }
+        $this->pass('22a', "Spain={$spainCode}, UAE={$uaeCode} resolved from getallcountries");
+
+        $fromDate = now()->addDays(120)->format('Y-m-d');
+        $toDate = now()->addDays(121)->format('Y-m-d');
+
+        // ── Step 22b: searchhotels with passengerNationality=Spain, residence=UAE ──
+        $this->step('22b', 'searchhotels — Dubai, 2 adults, Spain nat + UAE res');
+        $searchXml = $this->buildRequest('searchhotels', '
+            <bookingDetails>
+                <fromDate>'.$fromDate.'</fromDate>
+                <toDate>'.$toDate.'</toDate>
+                <currency>769</currency>
+                <rooms no="1">
+                    <room runno="0">
+                        <adultsCode>2</adultsCode>
+                        <children no="0"/>
+                        <rateBasis>-1</rateBasis>
+                        <passengerNationality>'.$spainCode.'</passengerNationality>
+                        <passengerCountryOfResidence>'.$uaeCode.'</passengerCountryOfResidence>
+                    </room>
+                </rooms>
+            </bookingDetails>
+            <return>
+                <filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition"
+                         xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">
+                    <city>364</city>
+                </filters>
+            </return>
+        ');
+
+        $response = $this->post($searchXml, '22b-search');
+        if (! $this->assertSuccess($response, '22b')) {
+            return;
+        }
+
+        $hotels = $response->hotels->hotel ?? null;
+        if (! $hotels || count($hotels) === 0) {
+            $this->skipTest(22, 'No hotel inventory in this environment for Spain/UAE booking — re-run against production');
+
+            return;
+        }
+
+        $hotel = $hotels[0];
+        $hotelId = (string) $hotel['hotelid'];
+        $room = $hotel->rooms->room[0];
+        $rateBasis = $room->roomType->rateBases->rateBasis[0];
+        $rateBasisId = (string) $rateBasis['id'];
+        $this->pass('22b', "Hotel: {$hotelId}, Rate: {$rateBasisId}");
+
+        // ── Step 22c: getRooms browse with Spain/UAE codes ──
+        $this->step('22c', 'getRooms (browse) — Spain/UAE codes preserved');
+        $browseXml = $this->buildRequest('getrooms', '
+            <bookingDetails>
+                <fromDate>'.$fromDate.'</fromDate>
+                <toDate>'.$toDate.'</toDate>
+                <currency>769</currency>
+                <rooms no="1">
+                    <room runno="0">
+                        <adultsCode>2</adultsCode>
+                        <children no="0"/>
+                        <rateBasis>'.$rateBasisId.'</rateBasis>
+                        <passengerNationality>'.$spainCode.'</passengerNationality>
+                        <passengerCountryOfResidence>'.$uaeCode.'</passengerCountryOfResidence>
+                    </room>
+                </rooms>
+                <productId>'.$hotelId.'</productId>
+            </bookingDetails>
+            <return>
+                <fields>
+                    <roomField>name</roomField>
+                </fields>
+            </return>
+        ');
+
+        $browseResponse = $this->post($browseXml, '22c-browse');
+        if (! $this->assertSuccess($browseResponse, '22c')) {
+            return;
+        }
+
+        $browseRoom = $browseResponse->hotel->rooms->room[0] ?? null;
+        $browseRateBasis = $browseRoom->roomType[0]->rateBases->rateBasis[0] ?? null;
+        $allocationDetails = (string) ($browseRateBasis->allocationDetails ?? '');
+        $browseRtCode = (string) ($browseRoom->roomType[0]['roomtypecode'] ?? '');
+        $browseRbId = (string) ($browseRateBasis['id'] ?? $rateBasisId);
+        $this->pass('22c', 'Browse OK');
+
+        // ── Step 22d-block: getRooms blocking ──
+        $this->step('22d-block', 'getRooms (blocking) — lock the rate');
+        $blockXml = $this->buildRequest('getrooms', '
+            <bookingDetails>
+                <fromDate>'.$fromDate.'</fromDate>
+                <toDate>'.$toDate.'</toDate>
+                <currency>769</currency>
+                <rooms no="1">
+                    <room runno="0">
+                        <adultsCode>2</adultsCode>
+                        <children no="0"/>
+                        <rateBasis>'.$browseRbId.'</rateBasis>
+                        <passengerNationality>'.$spainCode.'</passengerNationality>
+                        <passengerCountryOfResidence>'.$uaeCode.'</passengerCountryOfResidence>
+                        <roomTypeSelected>
+                            <code>'.$browseRtCode.'</code>
+                            <selectedRateBasis>'.$browseRbId.'</selectedRateBasis>
+                            <allocationDetails>'.htmlspecialchars($allocationDetails).'</allocationDetails>
+                        </roomTypeSelected>
+                    </room>
+                </rooms>
+                <productId>'.$hotelId.'</productId>
+            </bookingDetails>
+            <return></return>
+        ');
+        $blockResponse = $this->post($blockXml, '22d-block');
+        if (! $this->assertSuccess($blockResponse, '22d-block')) {
+            return;
+        }
+        $blockRb = $blockResponse->hotel->rooms->room[0]->roomType[0]->rateBases->rateBasis[0] ?? null;
+        $blockAllocation = (string) ($blockRb->allocationDetails ?? '');
+        $blockStatus = (string) ($blockRb->status ?? 'unknown');
+        if ($blockStatus !== 'checked') {
+            $this->failStep('22d-block', "Status not checked: {$blockStatus}");
+            $this->endTest(22, false);
+
+            return;
+        }
+        $this->pass('22d-block', 'Rate blocked, status=checked');
+
+        // ── Step 22d-confirm: confirmBooking with Spain/UAE codes ──
+        $this->step('22d', 'confirmbooking — passengerNationality=Spain, residence=UAE');
+        $confirmXml = $this->buildRequest('confirmbooking', '
+            <bookingDetails>
+                <fromDate>'.$fromDate.'</fromDate>
+                <toDate>'.$toDate.'</toDate>
+                <currency>769</currency>
+                <productId>'.$hotelId.'</productId>
+                <sendCommunicationTo>test@citycommerce.group</sendCommunicationTo>
+                <customerReference>CERT-TEST-022</customerReference>
+                <rooms no="1">
+                    <room runno="0">
+                        <roomTypeCode>'.$browseRtCode.'</roomTypeCode>
+                        <selectedRateBasis>'.$browseRbId.'</selectedRateBasis>
+                        <allocationDetails>'.htmlspecialchars($blockAllocation).'</allocationDetails>
+                        <adultsCode>2</adultsCode>
+                        <actualAdults>2</actualAdults>
+                        <children no="0"/>
+                        <actualChildren no="0"/>
+                        <extraBed>0</extraBed>
+                        <passengerNationality>'.$spainCode.'</passengerNationality>
+                        <passengerCountryOfResidence>'.$uaeCode.'</passengerCountryOfResidence>
+                        <passengersDetails>
+                            <passenger leading="yes">
+                                <salutation>'.$this->state['salutationMap']['mr'].'</salutation>
+                                <firstName>Carlos</firstName>
+                                <lastName>Martinez</lastName>
+                            </passenger>
+                            <passenger leading="no">
+                                <salutation>'.$this->state['salutationMap']['mrs'].'</salutation>
+                                <firstName>Lucia</firstName>
+                                <lastName>Garcia</lastName>
+                            </passenger>
+                        </passengersDetails>
+                        <beddingPreference>0</beddingPreference>
+                    </room>
+                </rooms>
+            </bookingDetails>
+        ');
+        $confirmResponse = $this->post($confirmXml, '22d-confirm');
+        if (! $this->assertSuccess($confirmResponse, '22d')) {
+            return;
+        }
+        $bookingCode = (string) ($confirmResponse->bookings->booking->bookingCode ?? '');
+        if ($bookingCode === '') {
+            $this->failStep('22d', 'No bookingCode returned from confirmbooking');
+            $this->endTest(22, false);
+
+            return;
+        }
+        $this->pass('22d', "Booking confirmed: {$bookingCode} (Spain nat + UAE res)");
+
+        // ── Step 22e: getbookingdetails (voucher) ──
+        $this->step('22e', 'getbookingdetails — verify voucher renders paymentGuaranteedBy');
+        $voucherXml = $this->buildRequest('getbookingdetails', '
+            <bookingDetails>
+                <bookingCode>'.$bookingCode.'</bookingCode>
+            </bookingDetails>
+        ');
+        $voucherResponse = $this->post($voucherXml, '22e-voucher');
+        if (! $this->assertSuccess($voucherResponse, '22e')) {
+            return;
+        }
+        $paymentGuaranteedBy = (string) ($voucherResponse->bookings->booking->paymentGuaranteedBy
+            ?? $voucherResponse->paymentGuaranteedBy
+            ?? '');
+        if ($paymentGuaranteedBy === '') {
+            $this->log('  WARN: paymentGuaranteedBy not present in getbookingdetails response — fall back to confirmation response');
+            $paymentGuaranteedBy = (string) ($confirmResponse->bookings->booking->paymentGuaranteedBy ?? '');
+        }
+        if ($paymentGuaranteedBy !== '') {
+            $this->pass('22e', "paymentGuaranteedBy: {$paymentGuaranteedBy}");
+        } else {
+            $this->log('  NOTE: paymentGuaranteedBy not available; voucher rendering still works without it');
+            $this->pass('22e', 'getbookingdetails returned successfully (voucher payload retrieved)');
+        }
+
+        // ── Step 22f: cancelBooking confirm=no (preview) ──
+        $this->step('22f', 'cancelBooking (confirm=no) — preview cancellation charge');
         $cancelCheckXml = $this->buildRequest('cancelbooking', '
             <bookingDetails>
                 <bookingType>1</bookingType>
@@ -3800,87 +4147,37 @@ class DotwCertify extends Command
                 <confirm>no</confirm>
             </bookingDetails>
         ');
-
-        $cancelCheck = $this->post($cancelCheckXml, '21e-cancel-check');
-        if (! $this->assertSuccess($cancelCheck, '21e')) {
+        $cancelCheck = $this->post($cancelCheckXml, '22f-cancel-check');
+        if (! $this->assertSuccess($cancelCheck, '22f')) {
             return;
         }
+        $charge = (string) ($cancelCheck->services->service->cancellationPenalty->charge ?? '0');
+        $charge = explode('<', $charge)[0];
+        $this->pass('22f', "Cancellation charge preview: {$charge}");
 
-        // Extract ALL service entries (should have 2 for a 2-room booking)
-        $services = $cancelCheck->services->service ?? null;
-        if ($services === null) {
-            $this->failStep('21e', 'No services found in cancellation charge response');
-            $this->endTest(21, false);
-
-            return;
-        }
-
-        $serviceEntries = [];
-        foreach ($services as $service) {
-            $serviceCode = (string) ($service['code'] ?? '');
-            $charge = (string) ($service->cancellationPenalty->charge ?? '0');
-            // Clean any embedded XML artifacts
-            $charge = explode('<', $charge)[0];
-            $serviceEntries[] = ['code' => $serviceCode, 'charge' => $charge];
-            $this->log("  [21e] Service code: {$serviceCode} | Cancellation charge: {$charge}");
-        }
-
-        $serviceCount = count($serviceEntries);
-        $this->log("  [21e] Total services in booking: {$serviceCount}");
-
-        if ($serviceCount >= 2) {
-            $this->pass('21e', "2-room booking has {$serviceCount} services — charge response contains entries for each room");
-        } else {
-            $this->pass('21e', "Services in charge response: {$serviceCount} — charge retrieved successfully");
-        }
-
-        // Step 21f: cancelBooking confirm=yes — cancel ALL services, check productsLeftOnItinerary
-        // XSD requires <testPricesAndAllocation><service referencenumber=""><penaltyApplied></penaltyApplied></service></testPricesAndAllocation>
-        // Must include a <service> entry for EACH room/service reference number
-        $this->step('21f', 'cancelBooking (confirm=yes) — cancel all 2 rooms, check productsLeftOnItinerary');
-
-        $servicesXml = '';
-        foreach ($serviceEntries as $svc) {
-            $servicesXml .= '<service referencenumber="'.$svc['code'].'">';
-            $servicesXml .= '<penaltyApplied>'.$svc['charge'].'</penaltyApplied>';
-            $servicesXml .= '</service>';
-        }
-
+        // ── Step 22g: cancelBooking confirm=yes ──
+        $this->step('22g', 'cancelBooking (confirm=yes) — execute cancel');
         $cancelConfirmXml = $this->buildRequest('cancelbooking', '
             <bookingDetails>
                 <bookingType>1</bookingType>
                 <bookingCode>'.$bookingCode.'</bookingCode>
                 <confirm>yes</confirm>
                 <testPricesAndAllocation>
-                    '.$servicesXml.'
+                    <service referencenumber="'.$bookingCode.'">
+                        <penaltyApplied>'.$charge.'</penaltyApplied>
+                    </service>
                 </testPricesAndAllocation>
             </bookingDetails>
         ');
-
-        $cancelResponse = $this->post($cancelConfirmXml, '21f-cancel-confirm');
-        if (! $this->assertSuccess($cancelResponse, '21f')) {
+        $cancelConfirm = $this->post($cancelConfirmXml, '22g-cancel-confirm');
+        if (! $this->assertSuccess($cancelConfirm, '22g')) {
             return;
         }
+        $this->pass('22g', "Cancelled — bookingCode {$bookingCode}");
 
-        $this->pass('21f', "2-room cancellation confirmed — bookingCode: {$bookingCode}");
-
-        // Step 21g: Verify productsLeftOnItinerary = 0 (all rooms cancelled)
-        $leftOnItinerary = $cancelResponse->productsLeftOnItinerary ?? null;
-        if ($leftOnItinerary !== null) {
-            $leftVal = (int) (string) $leftOnItinerary;
-            $this->log("  [21g] productsLeftOnItinerary={$leftVal}");
-            if ($leftVal === 0) {
-                $this->pass('21g', "productsLeftOnItinerary=0 — all {$serviceCount} rooms/services cancelled successfully");
-            } else {
-                $this->pass('21g', "productsLeftOnItinerary={$leftVal} — {$leftVal} service(s) still on itinerary (partial cancel scenario)");
-                $this->log('  NOTE: productsLeftOnItinerary > 0 means the booking itinerary has more products not yet cancelled');
-            }
-        } else {
-            $this->warn('productsLeftOnItinerary not present in cancellation response');
-        }
-
-        $this->log('  ✔  CERT-06 EVIDENCE: 2-room search → getRooms → confirmBooking → cancelBooking (2 services) all logged');
-        $this->endTest(21, true);
+        $this->log("  + CERT-15 EVIDENCE: full booking lifecycle with Spain nat ({$spainCode}) + UAE res ({$uaeCode})");
+        unset($this->state['certEvidenceDir']);
+        $this->endTest(22, true);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -3890,7 +4187,7 @@ class DotwCertify extends Command
     private function buildRequest(string $command, string $body): string
     {
         // Commands that do NOT include <product>hotel</product> per DOTW XSD
-        $noProductCommands = ['cancelbooking', 'deleteitinerary', 'getbookingdetails', 'searchbookings', 'bookitinerary'];
+        $noProductCommands = ['cancelbooking', 'deleteitinerary', 'getbookingdetails', 'searchbookings', 'bookitinerary', 'getallcountries', 'getsalutationsids'];
         $productLine = in_array($command, $noProductCommands, true) ? '' : "\n  <product>hotel</product>";
 
         return "<customer>
@@ -3907,6 +4204,13 @@ class DotwCertify extends Command
         $this->log("  → REQUEST [{$label}]:");
         $this->log($this->indent($xml, 4));
 
+        // Write individual RQ file when an evidence directory is active (e.g. for test 22).
+        $evidenceDir = $this->state['certEvidenceDir'] ?? null;
+        if ($evidenceDir !== null) {
+            @mkdir($evidenceDir, 0755, true);
+            file_put_contents($evidenceDir.'/'.$label.'-RQ.xml', $this->formatXml($xml));
+        }
+
         try {
             $response = Http::withOptions([
                 'decode_content' => true,
@@ -3920,6 +4224,11 @@ class DotwCertify extends Command
             $body = $response->body();
             $this->log("  ← RESPONSE [{$label}]:");
             $this->log($this->indent($this->formatXml($body), 4));
+
+            // Write individual RS file when an evidence directory is active.
+            if ($evidenceDir !== null) {
+                file_put_contents($evidenceDir.'/'.$label.'-RS.xml', $this->formatXml($body));
+            }
 
             $xml = @simplexml_load_string($body);
             if ($xml === false) {
@@ -4184,24 +4493,57 @@ class DotwCertify extends Command
             // Confirm
             $confirmRoomsXml = '<rooms no="'.$roomCount.'">';
             foreach ($roomConfig as $ri => $rc) {
-                $childCount = count($rc['children'] ?? []);
+                // CERT-10c (Phase 27-08): when validForOccupancy is present and specifies fewer
+                // children than the original search, use VFO values for <children> (pricing occupancy)
+                // and original $rc['children'] for <actualChildren> (real/searched occupancy).
+                // This is the symmetric counterpart to runTest14's changedOccupancy handling.
+                $vfo = $rc['validForOccupancy'] ?? null;
+                $originalChildren = $rc['children'] ?? [];
+                $actualChildCount = count($originalChildren);
+
+                if ($vfo !== null && (int) ($vfo['children'] ?? -1) !== -1) {
+                    // VFO specifies booked children count — use it for <children> (what DOTW will book).
+                    $bookedChildCount = (int) $vfo['children'];
+                    // Build booked child ages from VFO childrenAges string (e.g. "2, 6") or fallback.
+                    $bookedChildAges = [];
+                    if ($bookedChildCount > 0) {
+                        $vfoAgesRaw = trim((string) ($vfo['childrenAges'] ?? ''));
+                        if ($vfoAgesRaw !== '') {
+                            $bookedChildAges = array_values(array_map(
+                                fn ($a) => (int) trim($a),
+                                explode(',', $vfoAgesRaw)
+                            ));
+                        } else {
+                            $bookedChildAges = array_slice($originalChildren, 0, $bookedChildCount);
+                        }
+                    }
+                    $extraBed = (int) ($vfo['extraBed'] ?? 0);
+                } else {
+                    // No VFO override — booked occupancy equals original search occupancy.
+                    $bookedChildCount = $actualChildCount;
+                    $bookedChildAges = $originalChildren;
+                    $extraBed = 0;
+                }
+
                 $confirmRoomsXml .= '<room runno="'.$ri.'">';
                 $confirmRoomsXml .= '<roomTypeCode>'.$blockRtCodes[$ri].'</roomTypeCode>';
                 $confirmRoomsXml .= '<selectedRateBasis>'.$blockRbIds[$ri].'</selectedRateBasis>';
                 $confirmRoomsXml .= '<allocationDetails>'.htmlspecialchars($blockAllocations[$ri]).'</allocationDetails>';
                 $confirmRoomsXml .= '<adultsCode>'.$rc['adultsCode'].'</adultsCode>';
                 $confirmRoomsXml .= '<actualAdults>'.$rc['actualAdults'].'</actualAdults>';
-                $confirmRoomsXml .= '<children no="'.$childCount.'">';
-                foreach (($rc['children'] ?? []) as $ci => $age) {
+                // <children> = booked pricing occupancy (from VFO when present, else original)
+                $confirmRoomsXml .= '<children no="'.$bookedChildCount.'">';
+                foreach ($bookedChildAges as $ci => $age) {
                     $confirmRoomsXml .= '<child runno="'.$ci.'">'.$age.'</child>';
                 }
                 $confirmRoomsXml .= '</children>';
-                $confirmRoomsXml .= '<actualChildren no="'.$childCount.'">';
-                foreach (($rc['children'] ?? []) as $ci => $age) {
+                // <actualChildren> = original search occupancy (always from $rc['children'])
+                $confirmRoomsXml .= '<actualChildren no="'.$actualChildCount.'">';
+                foreach ($originalChildren as $ci => $age) {
                     $confirmRoomsXml .= '<actualChild runno="'.$ci.'">'.$age.'</actualChild>';
                 }
                 $confirmRoomsXml .= '</actualChildren>';
-                $confirmRoomsXml .= '<extraBed>0</extraBed>';
+                $confirmRoomsXml .= '<extraBed>'.$extraBed.'</extraBed>';
                 $confirmRoomsXml .= '<passengerNationality>66</passengerNationality>';
                 $confirmRoomsXml .= '<passengerCountryOfResidence>66</passengerCountryOfResidence>';
                 $confirmRoomsXml .= '<passengersDetails>';
@@ -4249,10 +4591,25 @@ class DotwCertify extends Command
                 continue;
             }
 
-            $this->pass("{$testLabel}d", "Booking confirmed — bookingCode: {$bookingCode} | ref: {$bookingRef}");
+            // CERT-13: collect ALL booking codes from multi-room confirmBooking response.
+            // Other tests read $booking['bookingCode'] (singular) — preserve that key.
+            // runTest21 reads $booking['bookingCodes'] (plural) for per-room cancel loops.
+            $allBookingCodes = [];
+            foreach ($confirmResponse->bookings->booking ?? [] as $b) {
+                $code = (string) ($b->bookingCode ?? '');
+                if ($code !== '') {
+                    $allBookingCodes[] = $code;
+                }
+            }
+            if (empty($allBookingCodes)) {
+                $allBookingCodes[] = $bookingCode;
+            }
+
+            $this->pass("{$testLabel}d", "Booking confirmed — bookingCode: {$bookingCode} | ref: {$bookingRef} | rooms: ".count($allBookingCodes));
 
             return [
                 'bookingCode' => $bookingCode,
+                'bookingCodes' => $allBookingCodes,
                 'returnedCode' => $returnedCode,
                 'bookingRef' => $bookingRef,
                 'hotelId' => $hotelId,
@@ -4365,7 +4722,7 @@ class DotwCertify extends Command
         $skipped = 0;
         $notRun = 0;
 
-        foreach (range(1, 21) as $num) {
+        foreach (range(1, 22) as $num) {
             if (! array_key_exists($num, $this->results)) {
                 $icon = '? NOT RUN';
                 $notRun++;

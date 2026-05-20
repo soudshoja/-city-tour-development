@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/error",
+  "title": "DOTW CLI Error Response",
+  "description": "Canonical error envelope emitted to stderr (and stdout in --json mode) when any dotw:* command fails.",
+  "type": "object",
+  "required": ["status", "error_code", "message"],
+  "properties": {
+    "status": { "type": "string", "enum": ["error"] },
+    "error_code": {
+      "type": "string",
+      "description": "Machine-readable error code. Prefix: DOTW_E_",
+      "enum": [
+        "DOTW_E_INPUT",
+        "DOTW_E_API",
+        "DOTW_E_NO_INVENTORY",
+        "DOTW_E_BLOCK_FAILED",
+        "DOTW_E_PREBOOK_EXPIRED",
+        "DOTW_E_PREBOOK_NOT_FOUND",
+        "DOTW_E_BOOKING_NOT_FOUND",
+        "DOTW_E_ALREADY_CANCELLED",
+        "DOTW_E_PAYMENT",
+        "DOTW_E_PDF",
+        "DOTW_E_INTERNAL"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable error description."
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional debug fields (command-specific key/value pairs).",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "status": "error",
+      "error_code": "DOTW_E_PREBOOK_EXPIRED",
+      "message": "The rate lock has expired. Please run dotw:prebook again.",
+      "context": { "prebook_key": "abc123", "expired_at": "2026-05-01T12:03:00Z" }
+    }
+  ]
+}

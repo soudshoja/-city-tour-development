@@ -14,6 +14,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('supplier_companies', 'auto_process_pdf')) {
+            return;
+        }
+
         Schema::table('supplier_companies', function (Blueprint $table) {
             $table->boolean('auto_process_pdf')
                 ->default(false)

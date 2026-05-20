@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dotw-cli/cancel-execute",
+  "title": "dotw:cancel:execute Response",
+  "description": "Success response from dotw:cancel:execute --json. Confirms that the booking has been cancelled.",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success"] },
+    "data": {
+      "type": "object",
+      "required": ["booking_ref", "status", "cancelled_codes", "penalty_applied", "refund_due", "currency"],
+      "properties": {
+        "booking_ref": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["cancelled"],
+          "description": "Always 'cancelled' on successful execution."
+        },
+        "cancelled_codes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Numeric booking codes that were cancelled (one per room)."
+        },
+        "penalty_applied": { "type": "number", "description": "Total penalty deducted." },
+        "refund_due":      { "type": "number", "description": "Amount refunded to customer (total_fare - penalty_applied)." },
+        "currency":        { "type": "string" }
+      }
+    }
+  }
+}

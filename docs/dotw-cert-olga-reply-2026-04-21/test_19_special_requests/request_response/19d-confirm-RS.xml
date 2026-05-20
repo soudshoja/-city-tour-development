@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CERT-11 evidence: confirmbooking response — successful=TRUE, bookingCode=952858503 -->
+<!-- Voucher confirms: Additional Requests: Request a non-smoking room -->
+<!-- Cert run: 2026-04-25 17:07:29 GMT+4 -->
+<result command="confirmbooking" tID="1777136848100007" ip="175.137.157.2" date="2026-04-25 17:07:29" version="4.0" elapsedTime="1.4270429611206">
+  <returnedCode>952858493</returnedCode>
+  <bookings>
+    <booking runno="0">
+      <bookingCode>952858503</bookingCode>
+      <bookingReferenceNumber>HTL-WBD-952858503</bookingReferenceNumber>
+      <bookingStatus>2</bookingStatus>
+      <servicePrice>10.4739<formatted>10.47</formatted></servicePrice>
+      <mealsPrice>0<formatted>0.00</formatted></mealsPrice>
+      <price>10.4739<formatted>10.47</formatted></price>
+      <currency>769</currency>
+      <type>hotel</type>
+    </booking>
+  </bookings>
+  <successful>TRUE</successful>
+</result>

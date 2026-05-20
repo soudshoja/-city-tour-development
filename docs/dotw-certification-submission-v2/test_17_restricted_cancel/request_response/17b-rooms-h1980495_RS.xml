@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result command="getrooms" tID="1775203335100004" ip="152.53.86.223" date="2026-04-03 08:02:16" version="4.0" elapsedTime="0.44439101219177">
+  <currencyShort>KWD</currencyShort>
+  <hotel id="1980495" name="Rove Bur Dubai - Healthcare City">
+    <allowBook>yes</allowBook>
+    <rooms count="1">
+      <room runno="0" count="1" adults="2" children="0" childrenages="" extrabeds="0">
+        <roomType runno="0" roomtypecode="32990945">
+          <rateBases count="1">
+            <rateBasis runno="0" id="1331" description="Breakfast">
+              <status>unchecked</status>
+              <passengerNamesRequiredForBooking>1</passengerNamesRequiredForBooking>
+              <rateType currencyid="769" currencyshort="KWD" description="XML">1</rateType>
+              <allowsExtraMeals>true</allowsExtraMeals>
+              <allowsSpecialRequests>true</allowsSpecialRequests>
+              <allowsBeddingPreference>true</allowsBeddingPreference>
+              <allocationDetails>1775203335000008B1000B0</allocationDetails>
+              <cancellationRules count="3">
+                <rule runno="0">
+                  <toDate>2026-07-11 14:59:59</toDate>
+                  <toDateDetails>Sat, 11 Jul 2026 14:59:59</toDateDetails>
+                  <amendCharge>0<formatted>0.00</formatted></amendCharge>
+                  <cancelCharge>0<formatted>0.00</formatted></cancelCharge>
+                  <charge>0<formatted>0.00</formatted></charge>
+                </rule>
+                <rule runno="1">
+                  <fromDate>2026-07-11 15:00:00</fromDate>
+                  <fromDateDetails>Sat, 11 Jul 2026 15:00:00</fromDateDetails>
+                  <amendCharge>19.6937<formatted>19.69</formatted></amendCharge>
+                  <cancelCharge>19.6937<formatted>19.69</formatted></cancelCharge>
+                  <charge>19.6937<formatted>19.69</formatted></charge>
+                </rule>
+                <rule runno="2">
+                  <fromDate>2026-07-12 23:00:00</fromDate>
+                  <fromDateDetails>Sun, 12 Jul 2026 23:00:00</fromDateDetails>
+                  <noShowPolicy>true</noShowPolicy>
+                  <charge>19.6937<formatted>19.69</formatted></charge>
+                </rule>
+              </cancellationRules>
+              <withinCancellationDeadline>no</withinCancellationDeadline>
+              <isBookable>yes</isBookable>
+              <onRequest>0</onRequest>
+              <total>19.6937<formatted>19.69</formatted></total>
+              <dates count="1">
+                <date runno="0" datetime="2026-07-12" day="Jul, 12 2026" wday="Sunday">
+                  <price>19.6937<formatted>19.69</formatted></price>
+                </date>
+              </dates>
+            </rateBasis>
+          </rateBases>
+        </roomType>
+        <lookedForText>Room Number 1: 2 adult/s</lookedForText>
+      </room>
+    </rooms>
+    <extraMeals count="0"/>
+  </hotel>
+  <successful>TRUE</successful>
+</result>

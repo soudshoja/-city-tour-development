@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <!-- Integration tests read these from env; skip if absent -->
+        <env name="DOTW_CLI_USERNAME"     value=""/>
+        <env name="DOTW_CLI_PASSWORD"     value=""/>
+        <env name="DOTW_CLI_COMPANY_CODE" value=""/>
+        <env name="DOTW_CLI_ENDPOINT"     value="https://xml.dotwconnect.com/2018-09-01/Dotw.asmx"/>
+    </php>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

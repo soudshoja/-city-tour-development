@@ -83,6 +83,11 @@ php artisan optimize
 
 # Clear caches (development)
 php artisan optimize:clear
+
+# DOTW star rating backfill (Phase 35) — see .planning/phases/35-star-resolver/
+# Safe to re-run; idempotent; never overwrites existing non-null values.
+# Prerequisite: dotw_catalogs(type='classification') must be populated (run sync-catalogs first).
+php artisan akeed-dotwai:backfill-star-ratings [--from-city=<code>] [--dry-run]
 ```
 
 ## Document Processing System

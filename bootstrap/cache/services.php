@@ -58,6 +58,7 @@
     54 => 'App\\Providers\\AppServiceProvider',
     55 => 'Spatie\\Permission\\PermissionServiceProvider',
     56 => 'App\\Modules\\DotwAI\\Providers\\DotwAIServiceProvider',
+    57 => 'App\\Modules\\AkeedDotwAI\\AkeedDotwAIServiceProvider',
   ),
   'eager' => 
   array (
@@ -102,6 +103,7 @@
     38 => 'App\\Providers\\AppServiceProvider',
     39 => 'Spatie\\Permission\\PermissionServiceProvider',
     40 => 'App\\Modules\\DotwAI\\Providers\\DotwAIServiceProvider',
+    41 => 'App\\Modules\\AkeedDotwAI\\AkeedDotwAIServiceProvider',
   ),
   'deferred' => 
   array (

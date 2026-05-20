@@ -1,0 +1,495 @@
+svg:hover path { fill: blue; }
+.stat-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+
+/* ── Layout ── */
+.client-show-main {
+    @apply max-w-[1600px] mx-auto
+}
+
+.client-show-breadcrumb {
+    @apply flex items-center space-x-2 rtl:space-x-reverse text-sm mb-6 overflow-x-auto
+}
+
+.client-show-breadcrumb-link {
+    @apply text-gray-500 hover:text-gray-700 transition whitespace-nowrap
+}
+
+.client-show-breadcrumb-separator {
+    @apply text-gray-400
+}
+
+.client-show-breadcrumb-current {
+    @apply text-gray-800 font-semibold truncate max-w-[250px]
+}
+
+/* ── Page Header ── */
+.client-show-header {
+    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6
+}
+
+.client-show-header-left {
+    @apply flex items-center gap-4
+}
+
+.client-show-avatar {
+    @apply h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg
+}
+
+.client-show-name {
+    @apply text-2xl font-bold text-gray-900
+}
+
+.client-show-status-row {
+    @apply flex items-center gap-3 mt-1
+}
+
+.client-show-status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+}
+
+.client-show-civil-no {
+    @apply text-sm text-gray-500
+}
+
+.client-show-header-actions {
+    @apply flex items-center gap-2
+}
+
+.client-show-btn-credit-ledger {
+    @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200
+}
+
+.client-show-btn-edit-client {
+    @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-300 shadow-sm
+}
+
+/* ── Stats Cards ── */
+.client-show-stats-grid {
+    @apply grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6
+}
+
+.client-show-stat-card {
+    @apply bg-white rounded-xl border border-gray-200 p-5
+}
+
+.client-show-stat-header {
+    @apply flex items-center justify-between mb-3
+}
+
+.client-show-stat-label {
+    @apply text-xs font-semibold text-gray-500 uppercase tracking-wider
+}
+
+.client-show-stat-icon {
+    @apply h-8 w-8 rounded-lg flex items-center justify-center
+}
+
+.client-show-stat-value {
+    @apply text-2xl font-bold
+}
+
+.client-show-stat-currency {
+    @apply text-xs text-gray-500 mt-1
+}
+
+.client-show-stat-activity {
+    @apply flex items-baseline gap-4
+}
+
+.client-show-stat-divider {
+    @apply h-8 border-l border-gray-200
+}
+
+.client-show-stat-sub-label {
+    @apply text-xs text-gray-500
+}
+
+/* ── Main Content Grid ── */
+.client-show-content-grid {
+    @apply grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6
+}
+
+.client-show-sidebar {
+    @apply xl:col-span-1 space-y-6
+}
+
+.client-show-main-col {
+    @apply xl:col-span-2 space-y-6
+}
+
+/* ── Cards ── */
+.client-show-card {
+    @apply bg-white rounded-xl border border-gray-200 overflow-hidden
+}
+
+.client-show-card-header {
+    @apply px-5 py-4 border-b border-gray-100
+}
+
+.client-show-card-header-flex {
+    @apply px-5 py-4 border-b border-gray-100 flex items-center justify-between
+}
+
+.client-show-card-title {
+    @apply text-sm font-semibold text-gray-800 uppercase tracking-wider
+}
+
+.client-show-card-body {
+    @apply p-5 space-y-4
+}
+
+.client-show-card-body-p5 {
+    @apply p-5
+}
+
+/* ── Contact Details ── */
+.client-show-contact-item {
+    @apply flex items-start gap-3
+}
+
+.client-show-contact-icon {
+    @apply h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5
+}
+
+.client-show-field-label {
+    @apply text-xs text-gray-500 font-medium
+}
+
+.client-show-field-value {
+    @apply text-sm text-gray-900
+}
+
+.client-show-field-value-truncate {
+    @apply text-sm text-gray-900 truncate
+}
+
+/* ── Agent Info ── */
+.client-show-owner-label {
+    @apply text-xs text-gray-500 font-medium mb-1
+}
+
+.client-show-owner-row {
+    @apply flex items-center gap-2
+}
+
+.client-show-owner-avatar {
+    @apply h-7 w-7 rounded-full bg-indigo-100 flex items-center justify-center
+}
+
+.client-show-owner-avatar-text {
+    @apply text-xs font-semibold text-indigo-700
+}
+
+.client-show-owner-name {
+    @apply text-sm font-medium text-gray-900
+}
+
+.client-show-agent-separator {
+    @apply border-t border-gray-100 pt-4
+}
+
+.client-show-agent-label {
+    @apply text-xs text-gray-500 font-medium mb-2
+}
+
+.client-show-no-agents {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500
+}
+
+.client-show-agent-list {
+    @apply flex flex-wrap gap-2
+}
+
+.client-show-agent-tag {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100
+}
+
+/* ── Credit Overview ── */
+.client-show-credit-manage {
+    @apply text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors
+}
+
+.client-show-credit-view-all {
+    @apply text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors
+}
+
+.client-show-credit-summary-grid {
+    @apply grid grid-cols-3 gap-3 mb-4
+}
+
+.client-show-credit-summary-item {
+    @apply text-center p-3 rounded-lg
+}
+
+.client-show-credit-summary-label {
+    @apply text-xs font-medium
+}
+
+.client-show-credit-summary-value {
+    @apply text-sm font-bold
+}
+
+.client-show-credit-transactions-title {
+    @apply text-xs text-gray-500 font-medium uppercase tracking-wider
+}
+
+.client-show-credit-tx-row {
+    @apply flex items-center justify-between py-2
+}
+
+.client-show-credit-tx-left {
+    @apply flex items-center gap-2.5
+}
+
+.client-show-credit-type-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold
+}
+
+.client-show-credit-tx-desc {
+    @apply text-xs text-gray-500 truncate max-w-[120px]
+}
+
+.client-show-credit-tx-amount {
+    @apply text-xs font-semibold
+}
+
+.client-show-credit-empty {
+    @apply text-xs text-gray-400 text-center py-3
+}
+
+/* ── Section Count Badge ── */
+.client-show-count-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600
+}
+
+.client-show-section-title-row {
+    @apply flex items-center gap-2
+}
+
+/* ── Loading Spinner ── */
+.client-show-loading {
+    @apply py-10 text-center
+}
+
+.client-show-spinner {
+    @apply inline-block h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent
+}
+
+.client-show-loading-text {
+    @apply text-gray-400 text-sm mt-2
+}
+
+/* ── Payment Links Section ── */
+.client-show-payments-section {
+    @apply bg-white rounded-xl border border-gray-200 overflow-hidden mb-6
+}
+
+.client-show-btn-create-payment {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm
+}
+
+/* ── Modals ── */
+.client-show-modal-overlay {
+    @apply fixed z-10 inset-0 flex items-center justify-center bg-gray-800/60 backdrop-blur-sm
+}
+
+.client-show-modal-content-lg {
+    @apply bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 p-8 relative max-h-[90vh] overflow-y-auto
+}
+
+.client-show-modal-content-sm {
+    @apply bg-white rounded-xl p-6 w-full max-w-md shadow-2xl
+}
+
+.client-show-modal-close {
+    @apply absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors
+}
+
+.client-show-modal-close-inline {
+    @apply text-gray-400 hover:text-red-500 text-2xl leading-none
+}
+
+.client-show-modal-close-sm {
+    @apply text-gray-400 hover:text-red-500 text-xl
+}
+
+.client-show-modal-title {
+    @apply text-xl font-bold text-gray-800 mb-8 text-center
+}
+
+.client-show-modal-title-sm {
+    @apply text-lg font-bold text-gray-800
+}
+
+.client-show-modal-subtitle {
+    @apply text-gray-500 text-xs mt-1
+}
+
+.client-show-modal-header-row {
+    @apply flex items-center justify-between mb-6
+}
+
+.client-show-modal-header-row-sm {
+    @apply flex items-center justify-between mb-5
+}
+
+/* ── Credit Modal Tabs ── */
+.client-show-tab-bar {
+    @apply flex border-b border-gray-200 mb-5
+}
+
+.client-show-tab-btn {
+    @apply flex-1 py-2.5 text-sm font-semibold text-center transition-colors
+}
+
+/* ── Edit Client Modal Form ── */
+.client-show-form-grid {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-6
+}
+
+.client-show-form-col {
+    @apply space-y-5
+}
+
+.client-show-form-label {
+    @apply block text-xs font-medium text-gray-600 mb-1.5
+}
+
+.client-show-form-label-sm {
+    @apply block text-xs font-medium text-gray-600 mb-1
+}
+
+.client-show-form-label-agents {
+    @apply block text-xs font-medium text-gray-600 mb-3
+}
+
+.client-show-form-input {
+    @apply w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+}
+
+.client-show-form-input-sm {
+    @apply w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+}
+
+.client-show-form-textarea {
+    @apply w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+}
+
+.client-show-form-input-credit {
+    @apply border border-gray-300 p-2.5 rounded-lg text-sm text-black w-full
+}
+
+.client-show-form-select-credit {
+    @apply border border-gray-300 p-2.5 rounded-lg w-full text-sm
+}
+
+.client-show-form-select-full {
+    @apply block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2.5 text-sm
+}
+
+.client-show-form-hint {
+    @apply text-xs text-gray-400 mt-1
+}
+
+.client-show-form-footer {
+    @apply mt-8 pt-6 border-t border-gray-200 flex justify-end
+}
+
+.client-show-btn-primary {
+    @apply px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm
+}
+
+.client-show-btn-primary-sm {
+    @apply px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm shadow transition
+}
+
+.client-show-btn-primary-full {
+    @apply w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition
+}
+
+.client-show-btn-cancel {
+    @apply px-5 py-2 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm text-gray-700 transition
+}
+
+.client-show-modal-actions {
+    @apply flex justify-between mt-6
+}
+
+.client-show-modal-actions-refund {
+    @apply flex justify-between
+}
+
+/* ── Agent Manager ── */
+.client-show-agent-manager-section {
+    @apply mt-8 pt-6 border-t border-gray-200
+}
+
+.client-show-agent-chips-box {
+    @apply flex flex-wrap gap-2 min-h-[50px] p-3 border border-gray-300 rounded-lg bg-gray-50
+}
+
+.client-show-agent-chip {
+    @apply inline-flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm font-medium border border-blue-100
+}
+
+.client-show-agent-chip-remove {
+    @apply ml-2 text-blue-400 hover:text-blue-700 transition-colors
+}
+
+.client-show-agent-empty-text {
+    @apply text-gray-400 italic flex items-center text-sm
+}
+
+.client-show-agent-dropdown-btn {
+    @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-left flex justify-between items-center hover:border-gray-400 transition-colors
+}
+
+.client-show-agent-dropdown-label {
+    @apply text-gray-600 text-sm
+}
+
+.client-show-agent-dropdown-panel {
+    @apply absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-hidden
+}
+
+.client-show-agent-search-wrap {
+    @apply p-2 border-b border-gray-100
+}
+
+.client-show-agent-search-input {
+    @apply w-full px-3 py-2 pl-9 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+}
+
+.client-show-agent-search-icon-wrap {
+    @apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none
+}
+
+.client-show-agent-dropdown-scroll {
+    @apply max-h-48 overflow-y-auto
+}
+
+.client-show-agent-dropdown-item {
+    @apply w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm transition-colors
+}
+
+.client-show-agent-dropdown-empty {
+    @apply px-4 py-3 text-gray-400 italic text-sm
+}
+
+.client-show-agent-fallback {
+    @apply text-sm text-gray-500 p-3 bg-gray-50 border border-gray-200 rounded-lg
+}
+
+/* ── Shared icon sizes ── */
+.client-show-icon-sm {
+    @apply w-4 h-4
+}
+
+.client-show-icon-close {
+    @apply w-5 h-5
+}
+
+.client-show-icon-xs {
+    @apply w-3.5 h-3.5
+}

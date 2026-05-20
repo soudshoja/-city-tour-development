@@ -89,6 +89,10 @@ class DotwService
 
     /**
      * Rate basis code constants
+     *
+     * @deprecated 2026-05-20 (Phase 34) — verify against dotw_catalogs(type='meal_plan'),
+     *             slated for removal in Phase 35 once table parity is confirmed in production.
+     *             Kept as compile-time fallback for callers that haven't migrated yet.
      */
     public const RATE_BASIS_ALL = -1;
 
@@ -248,6 +252,115 @@ class DotwService
 
         $this->logger->info('DOTW searchHotels successful', [
             'hotel_count' => count($hotels),
+        ]);
+
+        return $hotels;
+    }
+
+    /**
+     * Search hotels and return full metadata for static-data pre-load.
+     *
+     * Calls searchhotels with <noPrice>true</noPrice> and a <fields> block so
+     * DOTW returns hotel name, address, city, country, and geo-coordinates
+     * alongside each hotel element — no pricing computation is performed.
+     *
+     * Returned array shape (per entry):
+     *   - hotel_id    (string)       DOTW hotelid attribute
+     *   - name        (string)       Hotel name from <hotelName> (empty string if absent)
+     *   - city_name   (string)       <cityName> child element; falls back to $cityName arg
+     *   - country_name (string|null) <countryName> child element
+     *   - star_rating  null          <rating> is a DOTW internal code (not 1–5 stars);
+     *                                always stored as null — enrich from a dedicated
+     *                                endpoint if star classification is required
+     *   - address     (string|null)  <address> child element
+     *   - latitude    (float|null)   <geoPoint><lat> child element
+     *   - longitude   (float|null)   <geoPoint><lng> child element
+     *
+     * @param  array  $params  Must contain: fromDate, toDate, currency, rooms, filters.
+     * @param  string  $cityName  Fallback city label when <cityName> is absent.
+     * @return array<int, array{hotel_id: string, name: string, city_name: string,
+     *                          country_name: string|null, star_rating: null,
+     *                          address: string|null, latitude: float|null,
+     *                          longitude: float|null}>
+     *
+     * @throws Exception If the DOTW request fails or returns an error response
+     */
+    public function searchHotelsWithMetadata(array $params, string $cityName = ''): array
+    {
+        $this->logger->info('DOTW searchHotelsWithMetadata request initiated', [
+            'from_date' => $params['fromDate'] ?? null,
+            'to_date' => $params['toDate'] ?? null,
+            'city_filter' => $params['filters']['city'] ?? null,
+        ]);
+
+        // Request static hotel metadata: suppress pricing, ask for named fields.
+        $params['noPrice'] = true;
+        $params['fields'] = [
+            'hotelName',
+            'address',
+            'cityName',
+            'countryName',
+            'rating',
+            'geoPoint',
+            'lastUpdated',
+        ];
+
+        $body = $this->buildSearchHotelsBody($params);
+        $xml = $this->wrapRequest('searchhotels', $body);
+
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) ($response->request->error->code ?? 'UNKNOWN');
+            $errorDetails = (string) ($response->request->error->details ?? 'Unknown error');
+
+            $this->logger->error('DOTW searchHotelsWithMetadata error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW searchHotelsWithMetadata error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $hotels = [];
+        $hotelElements = $response->xpath('//hotel');
+
+        foreach ($hotelElements as $hotel) {
+            $hotelId = (string) $hotel['hotelid'];
+
+            if ($hotelId === '') {
+                continue;
+            }
+
+            // <cityName> comes back from DOTW; fall back to caller-supplied label.
+            $resolvedCity = (string) ($hotel->cityName ?? '');
+            if ($resolvedCity === '') {
+                $resolvedCity = $cityName;
+            }
+
+            // <geoPoint> contains <lat> and <lng> child elements.
+            $lat = isset($hotel->geoPoint->lat) ? (float) $hotel->geoPoint->lat : null;
+            $lng = isset($hotel->geoPoint->lng) ? (float) $hotel->geoPoint->lng : null;
+
+            // <rating> is a DOTW internal numeric code (e.g. 561), not a 1–5 star value.
+            // We store null for star_rating; StarRatingResolver (Phase 35) decodes the
+            // raw code into a 1-5 int using the dotw_catalogs(type='classification') snapshot.
+            $hotels[] = [
+                'hotel_id' => $hotelId,
+                'name' => (string) ($hotel->hotelName ?? ''),
+                'city_name' => $resolvedCity,
+                'country_name' => ((string) ($hotel->countryName ?? '')) ?: null,
+                'star_rating' => null,
+                'rating' => (string) ($hotel->rating ?? ''),   // T35.2 — DOTW classification code for StarRatingResolver (same key as parseHotels)
+                'address' => ((string) ($hotel->address ?? '')) ?: null,
+                'latitude' => $lat,
+                'longitude' => $lng,
+            ];
+        }
+
+        $this->logger->info('DOTW searchHotelsWithMetadata complete', [
+            'hotel_count' => count($hotels),
+            'city_name' => $cityName,
         ]);
 
         return $hotels;
@@ -571,9 +684,9 @@ class DotwService
      * via bookitinerary. Only for APR flow — cannot delete confirmed bookings.
      *
      * @param  string  $itineraryCode  Code returned from saveBooking
-     * @return array  Deletion result
+     * @return array Deletion result
      *
-     * @throws Exception  If deletion fails
+     * @throws Exception If deletion fails
      */
     public function deleteItinerary(string $itineraryCode): array
     {
@@ -735,6 +848,49 @@ class DotwService
     }
 
     /**
+     * Get all cities globally in a single API call.
+     *
+     * Calls getservingcities with an empty body, which causes DOTW to return
+     * all ~25,000 cities across every country. Country association is not
+     * included in the response, so country_code will be null for rows inserted
+     * via this method.
+     *
+     * Use this instead of iterating getCityList() per-country — one call is
+     * ~219× faster and avoids per-country API failure surface.
+     *
+     * @return array List of cities with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getAllCities(): array
+    {
+        $this->logger->info('DOTW getAllCities request initiated (single global call)');
+
+        $xml = $this->wrapRequest('getservingcities', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+
+            $this->logger->error('DOTW getAllCities error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getAllCities error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $cities = $this->parseCityList($response);
+
+        $this->logger->info('DOTW getAllCities successful', [
+            'city_count' => count($cities),
+        ]);
+
+        return $cities;
+    }
+
+    /**
      * Get hotel star rating classifications
      *
      * @return array List of hotel classifications with codes
@@ -866,8 +1022,8 @@ class DotwService
 
         $commandCategoryMap = [
             'getamenitiesids' => 'amenity',
-            'getleisureids'   => 'leisure',
-            'getbusinessids'  => 'business',
+            'getleisureids' => 'leisure',
+            'getbusinessids' => 'business',
         ];
 
         foreach ($commandCategoryMap as $command => $category) {
@@ -879,7 +1035,7 @@ class DotwService
                     $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
                     $this->logger->warning("DOTW {$command} returned unsuccessful response", [
                         'error_code' => $errorCode,
-                        'category'   => $category,
+                        'category' => $category,
                     ]);
 
                     continue;
@@ -889,19 +1045,19 @@ class DotwService
 
                 foreach ($items as $item) {
                     $merged[] = [
-                        'code'     => $item['code'],
-                        'name'     => $item['name'],
+                        'code' => $item['code'],
+                        'name' => $item['name'],
                         'category' => $category,
                     ];
                 }
 
                 $this->logger->debug("DOTW {$command} parsed", [
-                    'count'    => count($items),
+                    'count' => count($items),
                     'category' => $category,
                 ]);
             } catch (\Exception $e) {
                 $this->logger->warning("DOTW {$command} failed — continuing with other categories", [
-                    'error'    => $e->getMessage(),
+                    'error' => $e->getMessage(),
                     'category' => $category,
                 ]);
             }
@@ -990,6 +1146,130 @@ class DotwService
     }
 
     /**
+     * Get DOTW room type codes (getroomtypeids).
+     *
+     * Room type codes (e.g. deluxe, suite, family) used for filtering and
+     * disambiguating room offerings in search responses.
+     *
+     * NOTE: Wrapper added 2026-05-20 (Phase 34). Endpoint may not be enabled on
+     * every DOTW account — callers should catch \Exception for partial-failure
+     * tolerance (the catalog sync command does).
+     *
+     * @return array List of room types with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getRoomTypeIds(): array
+    {
+        $this->logger->info('DOTW getRoomTypeIds request initiated');
+
+        $xml = $this->wrapRequest('getroomtypeids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+            $this->logger->error('DOTW getRoomTypeIds error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getRoomTypeIds error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $roomTypes = $this->parseGenericCodeItemsWithFallback($response, 'room_type', 'getroomtypeids');
+
+        $this->logger->info('DOTW getRoomTypeIds successful', [
+            'room_type_count' => count($roomTypes),
+        ]);
+
+        return $roomTypes;
+    }
+
+    /**
+     * Get DOTW special deal codes (getspecialsids).
+     *
+     * Special codes identify promotional rates or hotel deals (e.g. flash sales,
+     * last-minute specials) that can be used as filters in hotel search requests.
+     *
+     * NOTE: Wrapper added 2026-05-20 (Phase 34). Endpoint may not be enabled on
+     * every DOTW account — callers should catch \Exception for partial-failure
+     * tolerance (the catalog sync command does).
+     *
+     * @return array List of specials with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getSpecialsIds(): array
+    {
+        $this->logger->info('DOTW getSpecialsIds request initiated');
+
+        $xml = $this->wrapRequest('getspecialsids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+            $this->logger->error('DOTW getSpecialsIds error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getSpecialsIds error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $specials = $this->parseGenericCodeItemsWithFallback($response, 'special', 'getspecialsids');
+
+        $this->logger->info('DOTW getSpecialsIds successful', [
+            'special_count' => count($specials),
+        ]);
+
+        return $specials;
+    }
+
+    /**
+     * Get DOTW meal plan codes (getmealplanids).
+     *
+     * Meal plan codes (e.g. room only, bed & breakfast, half board) used for
+     * filtering search results and verifying parity with the hardcoded
+     * RATE_BASIS_* constants in this class.
+     *
+     * NOTE: Wrapper added 2026-05-20 (Phase 34). Endpoint may not be enabled on
+     * every DOTW account — callers should catch \Exception for partial-failure
+     * tolerance (the catalog sync command does).
+     *
+     * @return array List of meal plans with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getMealPlanIds(): array
+    {
+        $this->logger->info('DOTW getMealPlanIds request initiated');
+
+        $xml = $this->wrapRequest('getmealplanids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+            $this->logger->error('DOTW getMealPlanIds error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getMealPlanIds error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $mealPlans = $this->parseGenericCodeItemsWithFallback($response, 'meal_plan', 'getmealplanids');
+
+        $this->logger->info('DOTW getMealPlanIds successful', [
+            'meal_plan_count' => count($mealPlans),
+        ]);
+
+        return $mealPlans;
+    }
+
+    /**
      * Fetch salutation ID map from the DOTW API via getsalutationsids command.
      *
      * Returns an associative array keyed by lowercase salutation label mapped to
@@ -1011,20 +1291,23 @@ class DotwService
 
         // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
         // Source: Olga Chicu screenshot 2026-03-27
+        // @deprecated 2026-05-20 (Phase 34) — Migrated to dotw_catalogs(type='salutation') in
+        //             Phase 34. Will be removed in Phase 35 after stability verified.
+        //             See DotwCatalog::ofType('salutation') for the DB-backed source of truth.
         $fallback = [
-            'mr'            => 147,
-            'mrs'           => 149,
-            'miss'          => 15134,
-            'ms'            => 148,
-            'dr'            => 558,
-            'child'         => 14632,
-            'master'        => 14632,
-            'sir'           => 1328,
-            'madame'        => 1671,
-            'mademoiselle'  => 74195,
-            'messrs'        => 9234,
-            'monsieur'      => 74185,
-            'sir/madam'     => 3801,
+            'mr' => 147,
+            'mrs' => 149,
+            'miss' => 15134,
+            'ms' => 148,
+            'dr' => 558,
+            'child' => 14632,
+            'master' => 14632,
+            'sir' => 1328,
+            'madame' => 1671,
+            'mademoiselle' => 74195,
+            'messrs' => 9234,
+            'monsieur' => 74185,
+            'sir/madam' => 3801,
         ];
 
         $this->logger->info('DOTW getSalutationIds request initiated');
@@ -1144,6 +1427,14 @@ class DotwService
     /**
      * Build XML body for searchhotels command
      *
+     * Supports optional static-data enrichment via:
+     *   - $params['noPrice'] (bool)    — injects <noPrice>true</noPrice> into the
+     *                                    <filters> block so DOTW returns hotel
+     *                                    metadata without pricing computation overhead.
+     *   - $params['fields'] (string[]) — appends a <fields><field>...</field></fields>
+     *                                    block under <return> to request specific
+     *                                    hotel metadata fields (name, address, etc.).
+     *
      * @param  array  $params  Search parameters
      * @return string XML body
      */
@@ -1153,7 +1444,16 @@ class DotwService
 
         $filtersXml = '';
         if (! empty($params['filters'])) {
-            $filtersXml = $this->buildFilterXml($params['filters']);
+            $filtersXml = $this->buildFilterXml($params['filters'], (bool) ($params['noPrice'] ?? false));
+        }
+
+        $fieldsXml = '';
+        if (! empty($params['fields']) && is_array($params['fields'])) {
+            $fieldsXml = '<fields>';
+            foreach ($params['fields'] as $field) {
+                $fieldsXml .= sprintf('<field>%s</field>', htmlspecialchars((string) $field));
+            }
+            $fieldsXml .= '</fields>';
         }
 
         return sprintf(
@@ -1165,12 +1465,14 @@ class DotwService
     </bookingDetails>
     <return>
       %s
+      %s
     </return>',
             htmlspecialchars($params['fromDate'] ?? ''),
             htmlspecialchars($params['toDate'] ?? ''),
             htmlspecialchars($params['currency'] ?? ''),
             $roomsXml,
-            $filtersXml
+            $filtersXml,
+            $fieldsXml
         );
     }
 
@@ -1356,6 +1658,16 @@ class DotwService
     /**
      * Build <rooms> XML element from occupancy array
      *
+     * Per-room shape:
+     *   - 'adultsCode'   (int)         number of adults
+     *   - 'children'     (int[])       child ages
+     *   - 'rateBasis'    (?int|string) DOTW rate-basis id (0=RO, 1331=BB, etc.) or null
+     *   - 'userPickedMeal' (bool)      CERT-12: when true, preserve rateBasis verbatim
+     *                                  (including 0 for Room Only). When false/missing,
+     *                                  null/empty/0 all collapse to -1 (all rates).
+     *   - 'passengerNationality'        DOTW country code
+     *   - 'passengerCountryOfResidence' DOTW country code
+     *
      * @param  array  $rooms  Room occupancy details
      * @return string XML rooms element
      */
@@ -1371,10 +1683,27 @@ class DotwService
         foreach ($rooms as $index => $room) {
             $childrenXml = $this->buildChildrenXml($room['children'] ?? []);
 
-            // Guard: rateBasis 0 is not a valid DOTW code — use -1 (all rates) — CERT-03 fix
-            $rateBasis = (int) ($room['rateBasis'] ?? -1);
-            if ($rateBasis === 0) {
-                $rateBasis = -1;
+            // CERT-12 (supersedes CERT-03): rateBasis logic per Olga 2026-04-21 clarification.
+            //   - 0    = Room Only (VALID DOTW code)
+            //   - 1331 = Breakfast (VALID DOTW code)
+            //   - -1   = sentinel for "all rates" (used when caller has not picked)
+            //
+            // Rule: when the caller explicitly picks a meal plan, preserve the id verbatim
+            // (even 0). When no pick has happened (rateBasis missing or null), default to -1.
+            // userPickedMeal flag distinguishes the two cases — set true by BookingService
+            // when the user has selected a specific meal plan.
+            $userPickedMeal = (bool) ($room['userPickedMeal'] ?? false);
+            $rawRateBasis = $room['rateBasis'] ?? null;
+
+            if ($userPickedMeal && $rawRateBasis !== null && $rawRateBasis !== '') {
+                // User picked — preserve the id (0=RO, 1331=BB, etc.)
+                $rateBasis = (int) $rawRateBasis;
+            } else {
+                // No pick — default to -1 (all rates). Also catches null/empty/0 leaks.
+                $rateBasis = (int) ($rawRateBasis ?? -1);
+                if ($rateBasis === 0) {
+                    $rateBasis = -1;
+                }
             }
 
             $roomsXml .= sprintf(
@@ -1627,14 +1956,20 @@ class DotwService
      * Supports complex conditions with atomic conditions
      *
      * @param  array  $filters  Filter specifications
+     * @param  bool  $noPrice  When true, injects <noPrice>true</noPrice> so DOTW
+     *                         returns hotel metadata without pricing computation.
      * @return string XML filters element
      */
-    private function buildFilterXml(array $filters): string
+    private function buildFilterXml(array $filters, bool $noPrice = false): string
     {
         $filtersXml = '<filters xmlns:a="http://us.dotwconnect.com/xsd/atomicCondition" xmlns:c="http://us.dotwconnect.com/xsd/complexCondition">';
 
         if (isset($filters['city'])) {
             $filtersXml .= sprintf('<city>%s</city>', htmlspecialchars($filters['city']));
+        }
+
+        if ($noPrice) {
+            $filtersXml .= '<noPrice>true</noPrice>';
         }
 
         if (isset($filters['conditions']) && is_array($filters['conditions'])) {
@@ -1678,7 +2013,7 @@ class DotwService
     {
         try {
             $response = Http::withHeaders([
-                'Content-Type' => 'text/xml',
+                'Content-Type' => 'text/xml; charset=utf-8',
                 'Connection' => 'close',
                 // VALID-04: gzip compression required on all DOTW requests (certification test 12)
                 'Accept-Encoding' => 'gzip, deflate',
@@ -1686,7 +2021,8 @@ class DotwService
                 ->timeout($this->timeout)
                 ->connectTimeout(30)
                 ->withOptions(['decode_content' => true])
-                ->post($this->baseUrl, $xml);
+                ->withBody($xml, 'text/xml; charset=utf-8')
+                ->post($this->baseUrl);
 
             $this->logger->debug('DOTW API response received', [
                 'status' => $response->status(),
@@ -1779,8 +2115,19 @@ class DotwService
         $hotelElements = $response->xpath('//hotel');
 
         foreach ($hotelElements as $hotel) {
+            // Capture static metadata alongside pricing so callers can lazily
+            // enrich the dotwai_hotels catalog without a second DOTW request.
+            // These fields appear in the live searchhotels XML response; they
+            // are empty strings when DOTW omits them (no fields block requested).
             $hotelData = [
                 'hotelId' => (string) $hotel['hotelid'],
+                'rating' => (string) ($hotel->rating ?? ''),   // T35.2 — DOTW internal classification code; empty when fields block not requested
+                'hotelName' => (string) ($hotel->hotelName ?? ''),
+                'cityName' => (string) ($hotel->cityName ?? ''),
+                'countryName' => (string) ($hotel->countryName ?? ''),
+                'address' => ((string) ($hotel->address ?? '')) ?: null,
+                'latitude' => isset($hotel->geoPoint->lat) ? (float) $hotel->geoPoint->lat : null,
+                'longitude' => isset($hotel->geoPoint->lng) ? (float) $hotel->geoPoint->lng : null,
                 'rooms' => [],
             ];
 
@@ -1827,16 +2174,16 @@ class DotwService
      *
      * @param  SimpleXMLElement  $response  XML response
      * @return array Parsed rooms array with keys:
-     *   - roomTypeCode (string)
-     *   - roomName (string)
-     *   - specials (string[]) — promotional specials at roomType level (COMPLY-04)
-     *   - details (array[]) — one entry per rateBasis, each with:
-     *       id, status, price, taxes, allocationDetails, cancellationRules,
-     *       tariffNotes (string, COMPLY-03),
-     *       specialsApplied (string[], COMPLY-04),
-     *       minStay (string, COMPLY-06),
-     *       dateApplyMinStay (string, COMPLY-06),
-     *       propertyFees (array[], COMPLY-07)
+     *               - roomTypeCode (string)
+     *               - roomName (string)
+     *               - specials (string[]) — promotional specials at roomType level (COMPLY-04)
+     *               - details (array[]) — one entry per rateBasis, each with:
+     *               id, status, price, taxes, allocationDetails, cancellationRules,
+     *               tariffNotes (string, COMPLY-03),
+     *               specialsApplied (string[], COMPLY-04),
+     *               minStay (string, COMPLY-06),
+     *               dateApplyMinStay (string, COMPLY-06),
+     *               propertyFees (array[], COMPLY-07)
      */
     private function parseRooms(SimpleXMLElement $response): array
     {
@@ -1891,6 +2238,16 @@ class DotwService
                     'dateApplyMinStay' => (string) ($rateBasis->dateApplyMinStay ?? ''),
                     // COMPLY-07: property fees at rateBasis level
                     'propertyFees' => $propertyFees,
+                    // CERT-10b (Phase 27-08): validForOccupancy + changedOccupancy extracted from
+                    // rateBasis XML so that BookingService::buildConfirmParams can use real live data
+                    // instead of always falling back to original search occupancy.
+                    'validForOccupancy' => isset($rateBasis->validForOccupancy) ? [
+                        'adults' => (int) $rateBasis->validForOccupancy->adults,
+                        'children' => (int) ($rateBasis->validForOccupancy->children ?? 0),
+                        'childrenAges' => (string) ($rateBasis->validForOccupancy->childrenAges ?? ''),
+                        'extraBed' => (int) ($rateBasis->validForOccupancy->extraBed ?? 0),
+                    ] : null,
+                    'changedOccupancy' => (string) ($rateBasis->changedOccupancy ?? ''),
                 ];
             }
 
@@ -1914,12 +2271,12 @@ class DotwService
      *
      * @param  SimpleXMLElement  $rateBasis  Rate basis element
      * @return array Parsed rules, each with keys:
-     *   - fromDate (string)
-     *   - toDate (string)
-     *   - charge (float)
-     *   - cancelCharge (float)
-     *   - cancelRestricted (bool) — cancellation not permitted (COMPLY-05)
-     *   - amendRestricted (bool) — amendment not permitted (COMPLY-05)
+     *               - fromDate (string)
+     *               - toDate (string)
+     *               - charge (float)
+     *               - cancelCharge (float)
+     *               - cancelRestricted (bool) — cancellation not permitted (COMPLY-05)
+     *               - amendRestricted (bool) — amendment not permitted (COMPLY-05)
      */
     private function parseCancellationRules(SimpleXMLElement $rateBasis): array
     {
@@ -1949,8 +2306,28 @@ class DotwService
      */
     private function parseConfirmation(SimpleXMLElement $response): array
     {
+        // CERT-13: collect ALL booking codes from multi-room confirmBooking responses.
+        // Multi-room bookings return <bookings><booking><bookingCode>...</bookingCode></booking>...</bookings>.
+        // Single-room bookings may return a top-level <bookingCode> or a single-element <bookings> list.
+        $bookingCodes = [];
+        foreach ($response->bookings->booking ?? [] as $b) {
+            $code = (string) ($b->bookingCode ?? '');
+            if ($code !== '') {
+                $bookingCodes[] = $code;
+            }
+        }
+
+        // Derive the primary code: first from bookings list, fallback to top-level element.
+        $primaryCode = $bookingCodes[0] ?? (string) ($response->bookingCode ?? '');
+
+        // Ensure single-room legacy paths also have a bookingCodes array.
+        if (empty($bookingCodes) && $primaryCode !== '') {
+            $bookingCodes[] = $primaryCode;
+        }
+
         return [
-            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'bookingCode' => $primaryCode,
+            'bookingCodes' => $bookingCodes,
             'confirmationNumber' => (string) ($response->confirmationNumber ?? ''),
             'status' => (string) ($response->status ?? 'confirmed'),
             'paymentGuaranteedBy' => (string) ($response->paymentGuaranteedBy ?? ''),
@@ -1992,16 +2369,16 @@ class DotwService
      *
      * @param  SimpleXMLElement  $response  XML response
      * @return array Booking details with schema-required keys:
-     *   - bookingCode       (string) DOTW booking reference
-     *   - hotelCode         (string) DOTW hotel code
-     *   - fromDate          (string) check-in date
-     *   - toDate            (string) check-out date
-     *   - status            (string) booking status
-     *   - customerReference (string) customer's own reference
-     *   - totalAmount       (float)  total booking amount
-     *   - currency          (string) currency code
-     *   - passengerDetails  (array)  list of passenger objects (firstName, lastName, type)
-     *   — Backward-compat aliases (hotelName, checkIn, checkOut, totalPrice) also returned
+     *               - bookingCode       (string) DOTW booking reference
+     *               - hotelCode         (string) DOTW hotel code
+     *               - fromDate          (string) check-in date
+     *               - toDate            (string) check-out date
+     *               - status            (string) booking status
+     *               - customerReference (string) customer's own reference
+     *               - totalAmount       (float)  total booking amount
+     *               - currency          (string) currency code
+     *               - passengerDetails  (array)  list of passenger objects (firstName, lastName, type)
+     *               — Backward-compat aliases (hotelName, checkIn, checkOut, totalPrice) also returned
      */
     private function parseBookingDetail(SimpleXMLElement $response): array
     {
@@ -2010,28 +2387,28 @@ class DotwService
         foreach ($response->xpath('//passenger') as $pax) {
             $passengers[] = [
                 'firstName' => (string) ($pax->firstName ?? ''),
-                'lastName'  => (string) ($pax->lastName ?? ''),
-                'type'      => (string) ($pax->type ?? 'adult'),
+                'lastName' => (string) ($pax->lastName ?? ''),
+                'type' => (string) ($pax->type ?? 'adult'),
             ];
         }
 
         return [
             // Schema-required fields (BookingDetails non-null contract)
-            'bookingCode'       => (string) ($response->bookingCode ?? ''),
-            'hotelCode'         => (string) ($response->hotelCode ?? ''),
-            'fromDate'          => (string) ($response->fromDate ?? ''),
-            'toDate'            => (string) ($response->toDate ?? ''),
-            'status'            => (string) ($response->status ?? ''),
+            'bookingCode' => (string) ($response->bookingCode ?? ''),
+            'hotelCode' => (string) ($response->hotelCode ?? ''),
+            'fromDate' => (string) ($response->fromDate ?? ''),
+            'toDate' => (string) ($response->toDate ?? ''),
+            'status' => (string) ($response->status ?? ''),
             'customerReference' => (string) ($response->customerReference ?? ''),
-            'totalAmount'       => (float)  ($response->totalAmount ?? $response->totalPrice ?? 0),
-            'currency'          => (string) ($response->currency ?? ''),
-            'passengerDetails'  => $passengers,
+            'totalAmount' => (float) ($response->totalAmount ?? $response->totalPrice ?? 0),
+            'currency' => (string) ($response->currency ?? ''),
+            'passengerDetails' => $passengers,
 
             // Backward-compat aliases (keep existing callers unbroken)
-            'hotelName'  => (string) ($response->hotelName ?? ''),
-            'checkIn'    => (string) ($response->fromDate ?? $response->checkIn ?? ''),
-            'checkOut'   => (string) ($response->toDate ?? $response->checkOut ?? ''),
-            'totalPrice' => (float)  ($response->totalAmount ?? $response->totalPrice ?? 0),
+            'hotelName' => (string) ($response->hotelName ?? ''),
+            'checkIn' => (string) ($response->fromDate ?? $response->checkIn ?? ''),
+            'checkOut' => (string) ($response->toDate ?? $response->checkOut ?? ''),
+            'totalPrice' => (float) ($response->totalAmount ?? $response->totalPrice ?? 0),
         ];
     }
 
@@ -2048,8 +2425,8 @@ class DotwService
 
         foreach ($countryElements as $country) {
             $countries[] = [
-                'code' => (string) $country['code'] ?? '',
-                'name' => (string) $country ?? '',
+                'code' => (string) ($country->code ?? ''),
+                'name' => (string) ($country->name ?? ''),
             ];
         }
 
@@ -2069,8 +2446,8 @@ class DotwService
 
         foreach ($cityElements as $city) {
             $cities[] = [
-                'code' => (string) $city['code'] ?? '',
-                'name' => (string) $city ?? '',
+                'code' => (string) ($city->code ?? ''),
+                'name' => (string) ($city->name ?? ''),
             ];
         }
 
@@ -2086,13 +2463,22 @@ class DotwService
     private function parseClassifications(SimpleXMLElement $response): array
     {
         $classifications = [];
-        $classElements = $response->xpath('//classification');
+        // gethotelclassificationids returns:
+        //   <classification count="N"><option runno="0" value="559">Economy*</option>…</classification>
+        // We must select the <option> children, not the outer <classification> wrapper.
+        // Code is the 'value' attribute; name is the text content.
+        $classElements = $response->xpath('//classification/option');
 
         foreach ($classElements as $class) {
-            $classifications[] = [
-                'id' => (string) $class['id'] ?? '',
-                'name' => (string) $class ?? '',
-            ];
+            $id = (string) ($class['value'] ?? $class['id'] ?? '');
+            $name = (string) $class;
+
+            if ($id !== '') {
+                $classifications[] = [
+                    'id' => $id,
+                    'name' => $name,
+                ];
+            }
         }
 
         return $classifications;
@@ -2167,8 +2553,10 @@ class DotwService
         $elements = $response->xpath("//{$elementTag}");
 
         foreach ($elements as $element) {
-            $code = (string) ($element['code'] ?? '');
-            $name = (string) $element;
+            // Try child element <code>…</code> first (e.g. getservingcountries format),
+            // then fall back to attribute code="…" used by some other DOTW commands.
+            $code = (string) ($element->code ?? ($element['code'] ?? ''));
+            $name = (string) ($element->name ?? $element);
 
             if ($code !== '') {
                 $items[] = [

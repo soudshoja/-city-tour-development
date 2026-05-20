@@ -79,6 +79,7 @@ class AkeedDotwAIServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \App\Modules\AkeedDotwAI\Console\Commands\SyncHotelsCommand::class,
+                \App\Modules\AkeedDotwAI\Console\Commands\SyncCatalogsCommand::class,
             ]);
         }
     }

@@ -205,9 +205,10 @@ class CatalogSyncService
             $durationMs = (int) round((hrtime(true) - $typeStart) / 1_000_000);
 
             Log::channel('dotw')->info('[CatalogSyncService] type complete', [
-                'type'        => $type,
-                'rows'        => $rowsWritten,
-                'duration_ms' => $durationMs,
+                'type'         => $type,
+                'dotw_command' => self::TYPE_TO_DOTW_COMMAND[$type] ?? 'unknown',
+                'rows'         => $rowsWritten,
+                'duration_ms'  => $durationMs,
             ]);
 
             return ['type' => $type, 'rows' => $rowsWritten, 'duration_ms' => $durationMs, 'error' => null];

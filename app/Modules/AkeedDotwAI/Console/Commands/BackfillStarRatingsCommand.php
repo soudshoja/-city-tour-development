@@ -153,6 +153,7 @@ class BackfillStarRatingsCommand extends Command
                             'code' => $code,
                             'stars' => $stars,
                         ]);
+
                         continue;
                     }
 

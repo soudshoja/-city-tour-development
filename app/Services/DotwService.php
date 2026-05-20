@@ -1182,6 +1182,47 @@ class DotwService
     }
 
     /**
+     * Get DOTW special deal codes (getspecialsids).
+     *
+     * Special codes identify promotional rates or hotel deals (e.g. flash sales,
+     * last-minute specials) that can be used as filters in hotel search requests.
+     *
+     * NOTE: Wrapper added 2026-05-20 (Phase 34). Endpoint may not be enabled on
+     * every DOTW account — callers should catch \Exception for partial-failure
+     * tolerance (the catalog sync command does).
+     *
+     * @return array List of specials with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getSpecialsIds(): array
+    {
+        $this->logger->info('DOTW getSpecialsIds request initiated');
+
+        $xml = $this->wrapRequest('getspecialsids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+            $this->logger->error('DOTW getSpecialsIds error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getSpecialsIds error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $specials = $this->parseGenericCodeItemsWithFallback($response, 'special', 'getspecialsids');
+
+        $this->logger->info('DOTW getSpecialsIds successful', [
+            'special_count' => count($specials),
+        ]);
+
+        return $specials;
+    }
+
+    /**
      * Fetch salutation ID map from the DOTW API via getsalutationsids command.
      *
      * Returns an associative array keyed by lowercase salutation label mapped to

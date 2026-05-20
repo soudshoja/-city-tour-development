@@ -2463,13 +2463,22 @@ class DotwService
     private function parseClassifications(SimpleXMLElement $response): array
     {
         $classifications = [];
-        $classElements = $response->xpath('//classification');
+        // gethotelclassificationids returns:
+        //   <classification count="N"><option runno="0" value="559">Economy*</option>…</classification>
+        // We must select the <option> children, not the outer <classification> wrapper.
+        // Code is the 'value' attribute; name is the text content.
+        $classElements = $response->xpath('//classification/option');
 
         foreach ($classElements as $class) {
-            $classifications[] = [
-                'id' => (string) $class['id'] ?? '',
-                'name' => (string) $class ?? '',
-            ];
+            $id = (string) ($class['value'] ?? $class['id'] ?? '');
+            $name = (string) $class;
+
+            if ($id !== '') {
+                $classifications[] = [
+                    'id' => $id,
+                    'name' => $name,
+                ];
+            }
         }
 
         return $classifications;

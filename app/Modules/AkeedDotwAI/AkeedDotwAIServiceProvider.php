@@ -80,6 +80,7 @@ class AkeedDotwAIServiceProvider extends ServiceProvider
             $this->commands([
                 \App\Modules\AkeedDotwAI\Console\Commands\SyncHotelsCommand::class,
                 \App\Modules\AkeedDotwAI\Console\Commands\SyncCatalogsCommand::class,
+                \App\Modules\AkeedDotwAI\Console\Commands\BackfillStarRatingsCommand::class,   // T35.7
             ]);
         }
     }

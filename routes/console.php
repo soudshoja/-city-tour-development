@@ -43,3 +43,19 @@ Schedule::command('akeed-dotwai:sync-hotels', ['--all' => true])
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('akeed-dotwai:sync-hotels weekly run failed');
     });
+
+// Akeed-DOTW reference catalog sync (classifications, chains, locations, amenities, etc.)
+// — every Sunday at 04:00 KWT. Runs after sync-static (03:00) and sync-hotels (03:30).
+// Guarded by config('akeed_dotwai.enabled') so disabled deployments skip it.
+Schedule::command('akeed-dotwai:sync-catalogs')
+    ->weekly()
+    ->sundays()
+    ->at('04:00')
+    ->timezone('Asia/Kuwait')
+    ->withoutOverlapping(60)
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/sync-catalogs.log'))
+    ->when(fn () => config('akeed_dotwai.enabled'))
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('akeed-dotwai:sync-catalogs weekly run failed');
+    });

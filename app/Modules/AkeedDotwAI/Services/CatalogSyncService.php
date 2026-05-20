@@ -49,6 +49,26 @@ class CatalogSyncService
         'salutation'     => 'getSalutationIds',        // DotwService:1157 (returns label=>id map; normalized below)
     ];
 
+    /**
+     * Maps catalog type → actual DOTW XML command name.
+     *
+     * Used in observability logs so operators can file WebBeds permission
+     * tickets with the exact failing command name (R2/R3 acceptance gate).
+     *
+     * @var array<string, string>
+     */
+    private const TYPE_TO_DOTW_COMMAND = [
+        'classification' => 'gethotelclassificationids',
+        'chain'          => 'getchainids',
+        'location'       => 'getlocationids',
+        'amenity'        => 'getamenitiesids+getleisureids+getbusinessids',
+        'preference'     => 'getpreferencesids',
+        'meal_plan'      => 'getmealplanids',
+        'room_type'      => 'getroomtypeids',
+        'special'        => 'getspecialsids',
+        'salutation'     => 'getsalutationsids',
+    ];
+
     private DotwService $dotw;
 
     private int $delayMs;
@@ -59,9 +79,20 @@ class CatalogSyncService
      *                               NOTE: dotw_catalogs is a SINGLE GLOBAL TABLE — this only
      *                               changes the DOTW credentials used for the sync request,
      *                               not the storage scope (CONTEXT decision 9).
+     * @param  DotwService|null  $dotw  Optional DotwService instance for testing/DI. When null,
+     *                                  a new instance is created from the resolved company_id.
      */
-    public function __construct(?int $companyId = null)
+    public function __construct(?int $companyId = null, ?DotwService $dotw = null)
     {
+        $this->delayMs = (int) config('akeed_dotwai.catalog_sync.delay_ms', 200);
+
+        if ($dotw !== null) {
+            // Test / DI injection path: use the provided instance directly
+            $this->dotw = $dotw;
+
+            return;
+        }
+
         $resolvedCompanyId = $companyId
             ?? config('akeed_dotwai.catalog_sync.company_id')
             ?? config('akeed_dotwai.company_id');
@@ -71,8 +102,6 @@ class CatalogSyncService
         // If int, DotwService loads per-company credentials and throws RuntimeException
         // if the row is missing — the caller (SyncCatalogsCommand) handles that.
         $this->dotw = new DotwService(is_int($resolvedCompanyId) ? $resolvedCompanyId : null);
-
-        $this->delayMs = (int) config('akeed_dotwai.catalog_sync.delay_ms', 200);
     }
 
     /**
@@ -185,14 +214,15 @@ class CatalogSyncService
         } catch (\Exception $e) {
             $durationMs = (int) round((hrtime(true) - $typeStart) / 1_000_000);
 
-            // Extract DOTW command from the exception message (format: "DOTW <cmd> error [<code>]: <details>")
-            $dotwCommand = self::TYPE_TO_METHOD[$type] ?? $type;
+            // Extract DOTW command name + error code for operator escalation.
+            // R2/R3 gate: operators use these to file WebBeds permission tickets.
+            $dotwCommand = self::TYPE_TO_DOTW_COMMAND[$type] ?? (self::TYPE_TO_METHOD[$type] ?? $type);
             $errorCode   = $this->extractDotwErrorCode($e->getMessage());
 
             Log::channel('dotw')->warning('[CatalogSyncService] type failed', [
                 'type'         => $type,
-                'dotw_command' => $dotwCommand,
-                'error_code'   => $errorCode,
+                'dotw_command' => $dotwCommand, // exact DOTW XML command for WebBeds ticket
+                'error_code'   => $errorCode,   // DOTW error code (e.g., PERMISSION_DENIED)
                 'error'        => $e->getMessage(),
                 'duration_ms'  => $durationMs,
             ]);
@@ -341,7 +371,7 @@ class CatalogSyncService
                 ['type' => DotwCatalog::TYPE_SALUTATION, 'code' => $code],
                 [
                     'name'      => $name,
-                    'payload'   => ['label' => $name],
+                    'payload'   => json_encode(['label' => $name]),
                     'synced_at' => $now,
                     'updated_at' => $now,
                 ]

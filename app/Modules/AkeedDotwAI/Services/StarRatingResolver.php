@@ -99,16 +99,21 @@ class StarRatingResolver
     /**
      * Parse a catalog row name to a 1-5 star integer.
      *
-     * Two strategies:
+     * Three strategies (tried in order):
      * 1. Regex `/(\d)\s*[-–]?\s*star/i` — matches "5 Star", "4-Star Deluxe", "3 – Star" etc.
-     * 2. Bare single digit — matches "3", " 4 " etc. (DOTW sometimes uses bare ints).
+     * 2. Asterisk count — matches DOTW names like "Economy*", "Budget **", "Standard ***".
+     *    Counts trailing `*` characters (after optional spaces); maps 1-5 to that int.
+     * 3. Bare single digit — matches "3", " 4 " etc. (DOTW sometimes uses bare ints).
      *
-     * Accepts only digits in the range [1, 5]. Out-of-range digits (0, 6-9) return null.
+     * Accepts only values in the range [1, 5]. Out-of-range → null.
      */
     private static function parseStars(string $name): ?int
     {
         if (preg_match('/(\d)\s*[-–]?\s*star/i', $name, $m) === 1) {
             $n = (int) $m[1];
+        } elseif (preg_match('/\*+\s*$/', $name, $m) === 1) {
+            // Count trailing asterisks — "Economy*"=1, "Budget **"=2, "Standard ***"=3 …
+            $n = substr_count(rtrim($name), '*');
         } elseif (preg_match('/^\s*([1-5])\s*$/', $name, $m) === 1) {
             $n = (int) $m[1];
         } else {

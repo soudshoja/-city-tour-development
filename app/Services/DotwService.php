@@ -343,14 +343,15 @@ class DotwService
             $lng = isset($hotel->geoPoint->lng) ? (float) $hotel->geoPoint->lng : null;
 
             // <rating> is a DOTW internal numeric code (e.g. 561), not a 1–5 star value.
-            // We store null for star_rating; a dedicated enrichment step is needed if
-            // star classification is required.
+            // We store null for star_rating; StarRatingResolver (Phase 35) decodes the
+            // raw code into a 1-5 int using the dotw_catalogs(type='classification') snapshot.
             $hotels[] = [
                 'hotel_id' => $hotelId,
                 'name' => (string) ($hotel->hotelName ?? ''),
                 'city_name' => $resolvedCity,
                 'country_name' => ((string) ($hotel->countryName ?? '')) ?: null,
                 'star_rating' => null,
+                'rating' => (string) ($hotel->rating ?? ''),   // T35.2 — DOTW classification code for StarRatingResolver (same key as parseHotels)
                 'address' => ((string) ($hotel->address ?? '')) ?: null,
                 'latitude' => $lat,
                 'longitude' => $lng,
@@ -2120,6 +2121,7 @@ class DotwService
             // are empty strings when DOTW omits them (no fields block requested).
             $hotelData = [
                 'hotelId' => (string) $hotel['hotelid'],
+                'rating' => (string) ($hotel->rating ?? ''),   // T35.2 — DOTW internal classification code; empty when fields block not requested
                 'hotelName' => (string) ($hotel->hotelName ?? ''),
                 'cityName' => (string) ($hotel->cityName ?? ''),
                 'countryName' => (string) ($hotel->countryName ?? ''),

@@ -89,6 +89,10 @@ class DotwService
 
     /**
      * Rate basis code constants
+     *
+     * @deprecated 2026-05-20 (Phase 34) — verify against dotw_catalogs(type='meal_plan'),
+     *             slated for removal in Phase 35 once table parity is confirmed in production.
+     *             Kept as compile-time fallback for callers that haven't migrated yet.
      */
     public const RATE_BASIS_ALL = -1;
 
@@ -1223,6 +1227,48 @@ class DotwService
     }
 
     /**
+     * Get DOTW meal plan codes (getmealplanids).
+     *
+     * Meal plan codes (e.g. room only, bed & breakfast, half board) used for
+     * filtering search results and verifying parity with the hardcoded
+     * RATE_BASIS_* constants in this class.
+     *
+     * NOTE: Wrapper added 2026-05-20 (Phase 34). Endpoint may not be enabled on
+     * every DOTW account — callers should catch \Exception for partial-failure
+     * tolerance (the catalog sync command does).
+     *
+     * @return array List of meal plans with 'code' and 'name' keys
+     *
+     * @throws Exception If retrieval fails
+     */
+    public function getMealPlanIds(): array
+    {
+        $this->logger->info('DOTW getMealPlanIds request initiated');
+
+        $xml = $this->wrapRequest('getmealplanids', '');
+        $response = $this->post($xml);
+
+        if ((string) $response->successful !== 'TRUE') {
+            $errorCode = (string) $response->request->error->code ?? 'UNKNOWN';
+            $errorDetails = (string) $response->request->error->details ?? 'Unknown error';
+            $this->logger->error('DOTW getMealPlanIds error', [
+                'error_code' => $errorCode,
+                'error_details' => $errorDetails,
+            ]);
+
+            throw new Exception("DOTW getMealPlanIds error [{$errorCode}]: {$errorDetails}");
+        }
+
+        $mealPlans = $this->parseGenericCodeItemsWithFallback($response, 'meal_plan', 'getmealplanids');
+
+        $this->logger->info('DOTW getMealPlanIds successful', [
+            'meal_plan_count' => count($mealPlans),
+        ]);
+
+        return $mealPlans;
+    }
+
+    /**
      * Fetch salutation ID map from the DOTW API via getsalutationsids command.
      *
      * Returns an associative array keyed by lowercase salutation label mapped to
@@ -1244,6 +1290,9 @@ class DotwService
 
         // Correct DOTW value codes from getsalutationsids API (value attribute, not runno)
         // Source: Olga Chicu screenshot 2026-03-27
+        // @deprecated 2026-05-20 (Phase 34) — Migrated to dotw_catalogs(type='salutation') in
+        //             Phase 34. Will be removed in Phase 35 after stability verified.
+        //             See DotwCatalog::ofType('salutation') for the DB-backed source of truth.
         $fallback = [
             'mr' => 147,
             'mrs' => 149,

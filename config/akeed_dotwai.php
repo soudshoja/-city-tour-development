@@ -164,4 +164,38 @@ return [
     */
     'hotel_sync_delay_ms' => env('AKEED_DOTWAI_HOTEL_SYNC_DELAY_MS', 200),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Catalog Sync — Tuning
+    |--------------------------------------------------------------------------
+    |
+    | Controls the weekly akeed-dotwai:sync-catalogs run that snapshots all 11
+    | DOTW reference taxonomies into the dotw_catalogs table.
+    |
+    | delay_ms: Pacing between DOTW calls (millis). 11 commands × 200ms = ~2.2s
+    |   plus roundtrips. Increase if DOTW rate-limits catalog commands.
+    |
+    | skip_types: Comma-separated list of catalog types to skip from the default
+    |   'all' run (e.g. AKEED_DOTWAI_CATALOG_SYNC_SKIP=room_type,special).
+    |   Useful for debugging or working around known-broken commands.
+    |
+    | company_id: Override the company_id used for DOTW credentials during sync.
+    |   Defaults to akeed_dotwai.company_id (global default). Note: dotw_catalogs
+    |   is a SINGLE GLOBAL TABLE — UNIQUE(type, code) disregards company_id.
+    |   This env override changes the DOTW CREDENTIALS used for the sync, NOT
+    |   the storage scope. Multi-tenant catalog sync is NOT supported in Phase 34.
+    |
+    */
+    'catalog_sync' => [
+        // Pacing between DOTW calls (millis). 11 commands × 200ms = ~2.2s + roundtrips.
+        'delay_ms' => env('AKEED_DOTWAI_CATALOG_SYNC_DELAY_MS', 200),
+        // Skip these types from the default 'all' run (debugging / known-broken commands).
+        'skip_types' => array_filter(explode(',', env('AKEED_DOTWAI_CATALOG_SYNC_SKIP', ''))),
+        // Optional override of the company_id used for sync (defaults to akeed_dotwai.company_id).
+        // Single global table — UNIQUE(type, code) disregards company_id. This env override
+        // changes the DOTW credentials used for the sync, NOT the storage scope.
+        // Multi-tenant sync NOT supported in Phase 34.
+        'company_id' => env('AKEED_DOTWAI_CATALOG_SYNC_COMPANY_ID', null),
+    ],
+
 ];

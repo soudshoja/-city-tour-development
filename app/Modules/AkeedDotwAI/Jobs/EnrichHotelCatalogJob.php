@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AkeedDotwAI\Jobs;
 
+use App\Modules\AkeedDotwAI\Services\StarRatingResolver;
 use App\Modules\DotwAI\Models\DotwAIHotel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -46,6 +47,7 @@ class EnrichHotelCatalogJob implements ShouldQueue
     /**
      * @param  array<int, array{
      *   hotelId: string,
+     *   rating?: string,
      *   hotelName: string,
      *   cityName: string,
      *   countryName: string,
@@ -94,16 +96,44 @@ class EnrichHotelCatalogJob implements ShouldQueue
 
         try {
             // Bulk upsert: insert new rows, update name/city/country/address/coords
-            // on conflict. star_rating is intentionally excluded — the weekly sync
-            // owns that field (it always comes back null from live search anyway).
+            // on conflict. star_rating is intentionally EXCLUDED from the update-column
+            // list — we never want the bulk upsert to overwrite a non-null star_rating
+            // with NULL from a live search that didn't carry the fields block.
+            // The separate per-hotel UPDATE below handles star_rating writes safely.
             DotwAIHotel::upsert(
                 $upsertRows,
                 ['dotw_hotel_id'],
                 ['name', 'city', 'country', 'address', 'latitude', 'longitude'],
             );
 
+            // T35.3 — lazy star_rating backfill from DOTW <rating> code.
+            // Guard: only run when parseHotels emitted the 'rating' key in this response
+            // (it won't be present on callers that don't request the fields block).
+            // Each update only writes when resolver returns a non-null 1-5 int AND
+            // the existing row has star_rating IS NULL (never overwrites non-null values).
+            $filled = 0;
+            if (! empty($rows) && array_key_exists('rating', $rows[0])) {
+                /** @var StarRatingResolver $resolver */
+                $resolver = app(StarRatingResolver::class);
+                foreach ($rows as $h) {
+                    $code = (string) ($h['rating'] ?? '');
+                    if ($code === '') {
+                        continue;
+                    }
+                    $stars = $resolver->resolve($code);
+                    if ($stars === null) {
+                        continue;
+                    }
+                    $filled += DotwAIHotel::where('dotw_hotel_id', $h['hotelId'])
+                        ->whereNull('star_rating')
+                        ->update(['star_rating' => $stars]);
+                }
+            }
+
+            // Single structured log line per job run (F8 fix: merged upserted + star_filled).
             Log::channel('dotw')->info('[AkeedDotwAI] lazy hotel catalog enrichment', [
                 'upserted' => count($upsertRows),
+                'star_filled' => $filled,
             ]);
         } catch (\Throwable $e) {
             // Log and swallow — enrichment is best-effort.

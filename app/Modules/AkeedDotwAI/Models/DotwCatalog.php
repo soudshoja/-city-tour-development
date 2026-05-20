@@ -17,26 +17,36 @@ use Illuminate\Database\Eloquent\Model;
  * Populated by CatalogSyncService (Phase 34). Read by StarRatingResolver
  * (Phase 35) and AgentFilterResolver (Phase 37).
  *
- * @property string $type  One of DotwCatalog::ALL_TYPES
- * @property string $code  DOTW short numeric or word-keyed ID (VARCHAR 64)
- * @property string $name  Human-readable label
- * @property string|null $category  Sub-category (used for amenity/leisure/business)
- * @property array|null $payload  Reserved for richer future endpoints
- * @property \Illuminate\Support\Carbon $synced_at  Last sync timestamp
+ * @property string $type One of DotwCatalog::ALL_TYPES
+ * @property string $code DOTW short numeric or word-keyed ID (VARCHAR 64)
+ * @property string $name Human-readable label
+ * @property string|null $category Sub-category (used for amenity/leisure/business)
+ * @property array|null $payload Reserved for richer future endpoints
+ * @property \Illuminate\Support\Carbon $synced_at Last sync timestamp
  */
 class DotwCatalog extends Model
 {
     public const TYPE_CLASSIFICATION = 'classification';
-    public const TYPE_CHAIN          = 'chain';
-    public const TYPE_LOCATION       = 'location';
-    public const TYPE_AMENITY        = 'amenity';
-    public const TYPE_LEISURE        = 'leisure';
-    public const TYPE_BUSINESS       = 'business';
-    public const TYPE_PREFERENCE     = 'preference';
-    public const TYPE_MEAL_PLAN      = 'meal_plan';
-    public const TYPE_ROOM_TYPE      = 'room_type';
-    public const TYPE_SPECIAL        = 'special';
-    public const TYPE_SALUTATION     = 'salutation';
+
+    public const TYPE_CHAIN = 'chain';
+
+    public const TYPE_LOCATION = 'location';
+
+    public const TYPE_AMENITY = 'amenity';
+
+    public const TYPE_LEISURE = 'leisure';
+
+    public const TYPE_BUSINESS = 'business';
+
+    public const TYPE_PREFERENCE = 'preference';
+
+    public const TYPE_MEAL_PLAN = 'meal_plan';
+
+    public const TYPE_ROOM_TYPE = 'room_type';
+
+    public const TYPE_SPECIAL = 'special';
+
+    public const TYPE_SALUTATION = 'salutation';
 
     /**
      * All valid catalog type values.
@@ -68,7 +78,7 @@ class DotwCatalog extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'payload'   => 'array',
+        'payload' => 'array',
         'synced_at' => 'datetime',
     ];
 

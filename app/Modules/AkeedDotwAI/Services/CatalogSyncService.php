@@ -39,14 +39,14 @@ class CatalogSyncService
      */
     private const TYPE_TO_METHOD = [
         'classification' => 'getHotelClassifications', // DotwService:895 — returns id/name (normalized below)
-        'chain'          => 'getChainIds',             // DotwService:1115
-        'location'       => 'getLocationIds',          // DotwService:971
-        'amenity'        => 'getAmenityIds',           // DotwService:1012 (merges 3 commands; splits leisure+business)
-        'preference'     => 'getPreferenceIds',        // DotwService:1077
-        'meal_plan'      => 'getMealPlanIds',          // DotwService:T34.7
-        'room_type'      => 'getRoomTypeIds',          // DotwService:T34.5
-        'special'        => 'getSpecialsIds',          // DotwService:T34.6
-        'salutation'     => 'getSalutationIds',        // DotwService:1157 (returns label=>id map; normalized below)
+        'chain' => 'getChainIds',             // DotwService:1115
+        'location' => 'getLocationIds',          // DotwService:971
+        'amenity' => 'getAmenityIds',           // DotwService:1012 (merges 3 commands; splits leisure+business)
+        'preference' => 'getPreferenceIds',        // DotwService:1077
+        'meal_plan' => 'getMealPlanIds',          // DotwService:T34.7
+        'room_type' => 'getRoomTypeIds',          // DotwService:T34.5
+        'special' => 'getSpecialsIds',          // DotwService:T34.6
+        'salutation' => 'getSalutationIds',        // DotwService:1157 (returns label=>id map; normalized below)
     ];
 
     /**
@@ -59,14 +59,14 @@ class CatalogSyncService
      */
     private const TYPE_TO_DOTW_COMMAND = [
         'classification' => 'gethotelclassificationids',
-        'chain'          => 'getchainids',
-        'location'       => 'getlocationids',
-        'amenity'        => 'getamenitiesids+getleisureids+getbusinessids',
-        'preference'     => 'getpreferencesids',
-        'meal_plan'      => 'getmealplanids',
-        'room_type'      => 'getroomtypeids',
-        'special'        => 'getspecialsids',
-        'salutation'     => 'getsalutationsids',
+        'chain' => 'getchainids',
+        'location' => 'getlocationids',
+        'amenity' => 'getamenitiesids+getleisureids+getbusinessids',
+        'preference' => 'getpreferencesids',
+        'meal_plan' => 'getmealplanids',
+        'room_type' => 'getroomtypeids',
+        'special' => 'getspecialsids',
+        'salutation' => 'getsalutationsids',
     ];
 
     private DotwService $dotw;
@@ -120,12 +120,12 @@ class CatalogSyncService
         $start = hrtime(true);
 
         $typesToSync = $only ?? array_keys(self::TYPE_TO_METHOD);
-        $skipTypes   = (array) config('akeed_dotwai.catalog_sync.skip_types', []);
+        $skipTypes = (array) config('akeed_dotwai.catalog_sync.skip_types', []);
         $typesToSync = array_values(array_diff($typesToSync, $skipTypes));
 
-        $results   = [];
+        $results = [];
         $rowsTotal = 0;
-        $errors    = 0;
+        $errors = 0;
 
         foreach ($typesToSync as $type) {
             if (! isset(self::TYPE_TO_METHOD[$type])) {
@@ -155,15 +155,15 @@ class CatalogSyncService
         $durationMs = (int) round((hrtime(true) - $start) / 1_000_000);
 
         Log::channel('dotw')->info('[CatalogSyncService] sync complete', [
-            'rows_total'  => $rowsTotal,
-            'errors'      => $errors,
+            'rows_total' => $rowsTotal,
+            'errors' => $errors,
             'duration_ms' => $durationMs,
         ]);
 
         return [
-            'types'       => $results,
-            'rows_total'  => $rowsTotal,
-            'errors'      => $errors,
+            'types' => $results,
+            'rows_total' => $rowsTotal,
+            'errors' => $errors,
             'duration_ms' => $durationMs,
         ];
     }
@@ -205,10 +205,10 @@ class CatalogSyncService
             $durationMs = (int) round((hrtime(true) - $typeStart) / 1_000_000);
 
             Log::channel('dotw')->info('[CatalogSyncService] type complete', [
-                'type'         => $type,
+                'type' => $type,
                 'dotw_command' => self::TYPE_TO_DOTW_COMMAND[$type] ?? 'unknown',
-                'rows'         => $rowsWritten,
-                'duration_ms'  => $durationMs,
+                'rows' => $rowsWritten,
+                'duration_ms' => $durationMs,
             ]);
 
             return ['type' => $type, 'rows' => $rowsWritten, 'duration_ms' => $durationMs, 'error' => null];
@@ -218,14 +218,14 @@ class CatalogSyncService
             // Extract DOTW command name + error code for operator escalation.
             // R2/R3 gate: operators use these to file WebBeds permission tickets.
             $dotwCommand = self::TYPE_TO_DOTW_COMMAND[$type] ?? (self::TYPE_TO_METHOD[$type] ?? $type);
-            $errorCode   = $this->extractDotwErrorCode($e->getMessage());
+            $errorCode = $this->extractDotwErrorCode($e->getMessage());
 
             Log::channel('dotw')->warning('[CatalogSyncService] type failed', [
-                'type'         => $type,
+                'type' => $type,
                 'dotw_command' => $dotwCommand, // exact DOTW XML command for WebBeds ticket
-                'error_code'   => $errorCode,   // DOTW error code (e.g., PERMISSION_DENIED)
-                'error'        => $e->getMessage(),
-                'duration_ms'  => $durationMs,
+                'error_code' => $errorCode,   // DOTW error code (e.g., PERMISSION_DENIED)
+                'error' => $e->getMessage(),
+                'duration_ms' => $durationMs,
             ]);
 
             return ['type' => $type, 'rows' => 0, 'duration_ms' => $durationMs, 'error' => $e->getMessage()];
@@ -245,7 +245,7 @@ class CatalogSyncService
     private function persistGeneric(string $type, array $rows): int
     {
         $count = 0;
-        $now   = now();
+        $now = now();
 
         foreach ($rows as $row) {
             $code = (string) ($row['code'] ?? '');
@@ -273,12 +273,11 @@ class CatalogSyncService
      * Normalizes to 'code' for consistent storage.
      *
      * @param  array<array<string, string>>  $rows
-     * @return int
      */
     private function persistClassifications(array $rows): int
     {
         $count = 0;
-        $now   = now();
+        $now = now();
 
         foreach ($rows as $row) {
             // getHotelClassifications returns ['id' => ..., 'name' => ...]
@@ -313,11 +312,11 @@ class CatalogSyncService
     private function persistAmenityMerge(array $rows): int
     {
         $count = 0;
-        $now   = now();
+        $now = now();
 
         foreach ($rows as $row) {
-            $code     = (string) ($row['code'] ?? '');
-            $name     = (string) ($row['name'] ?? '');
+            $code = (string) ($row['code'] ?? '');
+            $name = (string) ($row['name'] ?? '');
             $category = (string) ($row['category'] ?? 'amenity');
 
             if ($code === '') {
@@ -346,12 +345,11 @@ class CatalogSyncService
      * Payload stores the original label for downstream lookup convenience.
      *
      * @param  array<string, int>|array<array<string, string>>  $rows
-     * @return int
      */
     private function persistSalutations(array $rows): int
     {
         $count = 0;
-        $now   = now();
+        $now = now();
 
         foreach ($rows as $label => $id) {
             // getSalutationIds returns label => int, not array rows
@@ -371,8 +369,8 @@ class CatalogSyncService
             DotwCatalog::updateOrInsert(
                 ['type' => DotwCatalog::TYPE_SALUTATION, 'code' => $code],
                 [
-                    'name'      => $name,
-                    'payload'   => json_encode(['label' => $name]),
+                    'name' => $name,
+                    'payload' => json_encode(['label' => $name]),
                     'synced_at' => $now,
                     'updated_at' => $now,
                 ]
@@ -404,7 +402,7 @@ class CatalogSyncService
     {
         try {
             $servingCountries = $this->dotw->getServingCountries();
-            $servingCodes     = collect($servingCountries)->pluck('code')->filter()->values()->all();
+            $servingCodes = collect($servingCountries)->pluck('code')->filter()->values()->all();
 
             DB::transaction(function () use ($servingCodes): void {
                 DB::table('dotwai_countries')->update(['is_serving' => false]);
@@ -420,10 +418,10 @@ class CatalogSyncService
             // Zero = serving-codes format mismatch (DOTW uses different code format than DB).
             // 100% = all countries served, which is implausible — likely a parse error.
             $totalCountries = DB::table('dotwai_countries')->count();
-            $servingCount   = DB::table('dotwai_countries')->where('is_serving', true)->count();
+            $servingCount = DB::table('dotwai_countries')->where('is_serving', true)->count();
 
             Log::channel('dotw')->info('[CatalogSyncService] is_serving backfill', [
-                'serving'         => count($servingCodes),
+                'serving' => count($servingCodes),
                 'written_serving' => $servingCount,
                 'total_countries' => $totalCountries,
             ]);
@@ -433,10 +431,10 @@ class CatalogSyncService
 
                 if ($pct === 0.0 || $pct >= 99.0) {
                     Log::channel('dotw')->warning('[CatalogSyncService] is_serving R4 gate: suspicious ratio', [
-                        'serving_pct'     => round($pct, 1),
-                        'serving_count'   => $servingCount,
+                        'serving_pct' => round($pct, 1),
+                        'serving_count' => $servingCount,
                         'total_countries' => $totalCountries,
-                        'action'          => 'Verify DOTW country code format matches dotwai_countries.code column. Escalate before Phase 35.',
+                        'action' => 'Verify DOTW country code format matches dotwai_countries.code column. Escalate before Phase 35.',
                     ]);
                 }
             }
@@ -476,8 +474,8 @@ class CatalogSyncService
             }
 
             $flags[$code] = [
-                'is_luxury'      => (bool) ($city['is_luxury'] ?? false),
-                'is_top_deal'    => (bool) ($city['is_top_deal'] ?? false),
+                'is_luxury' => (bool) ($city['is_luxury'] ?? false),
+                'is_top_deal' => (bool) ($city['is_top_deal'] ?? false),
                 'is_special_deal' => (bool) ($city['is_special_deal'] ?? false),
             ];
         }

@@ -42,8 +42,8 @@ class SyncCatalogsCommand extends Command
         if (! empty($requested)) {
             $unknown = array_diff($requested, DotwCatalog::ALL_TYPES);
             if (! empty($unknown)) {
-                $this->error('Unknown catalog types: ' . implode(', ', $unknown));
-                $this->line('Valid types: ' . implode(', ', DotwCatalog::ALL_TYPES));
+                $this->error('Unknown catalog types: '.implode(', ', $unknown));
+                $this->line('Valid types: '.implode(', ', DotwCatalog::ALL_TYPES));
 
                 return self::FAILURE;
             }
@@ -52,15 +52,15 @@ class SyncCatalogsCommand extends Command
         // Instantiate the sync service — may throw RuntimeException if DOTW
         // credentials are missing for the configured company_id.
         try {
-            $service = new CatalogSyncService();
+            $service = new CatalogSyncService;
         } catch (\RuntimeException $e) {
-            $this->error('DOTW credentials problem: ' . $e->getMessage());
+            $this->error('DOTW credentials problem: '.$e->getMessage());
             $this->line('Ensure company_dotw_credentials row exists for the configured company_id.');
 
             return self::FAILURE;
         }
 
-        $only   = ! empty($requested) ? $requested : null;
+        $only = ! empty($requested) ? $requested : null;
         $result = $service->syncAll($only);
 
         // Per-type output lines
@@ -68,7 +68,7 @@ class SyncCatalogsCommand extends Command
             $line = sprintf('[%s] %d rows in %dms', $type['type'], $type['rows'], $type['duration_ms']);
 
             if ($type['error'] !== null) {
-                $this->warn($line . ' — FAILED: ' . $type['error']);
+                $this->warn($line.' — FAILED: '.$type['error']);
             } else {
                 $this->info($line);
             }

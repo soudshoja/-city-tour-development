@@ -385,9 +385,30 @@ class CatalogSyncService
                 }
             });
 
+            // R4 sanity gate: is_serving=1 count should be between 1% and 99% of total rows.
+            // Zero = serving-codes format mismatch (DOTW uses different code format than DB).
+            // 100% = all countries served, which is implausible — likely a parse error.
+            $totalCountries = DB::table('dotwai_countries')->count();
+            $servingCount   = DB::table('dotwai_countries')->where('is_serving', true)->count();
+
             Log::channel('dotw')->info('[CatalogSyncService] is_serving backfill', [
-                'serving' => count($servingCodes),
+                'serving'         => count($servingCodes),
+                'written_serving' => $servingCount,
+                'total_countries' => $totalCountries,
             ]);
+
+            if ($totalCountries > 0) {
+                $pct = ($servingCount / $totalCountries) * 100;
+
+                if ($pct === 0.0 || $pct >= 99.0) {
+                    Log::channel('dotw')->warning('[CatalogSyncService] is_serving R4 gate: suspicious ratio', [
+                        'serving_pct'     => round($pct, 1),
+                        'serving_count'   => $servingCount,
+                        'total_countries' => $totalCountries,
+                        'action'          => 'Verify DOTW country code format matches dotwai_countries.code column. Escalate before Phase 35.',
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
             Log::channel('dotw')->warning('[CatalogSyncService] is_serving backfill failed', [
                 'error' => $e->getMessage(),

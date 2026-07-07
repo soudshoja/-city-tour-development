@@ -241,31 +241,43 @@
                                                                         $isLinked = $pivotRecord !== null;
                                                                         $isCompanyActive = $isLinked && $pivotRecord->is_active;
                                                                     @endphp
-                                                                    <div class="flex items-center justify-between p-3 rounded-lg border
-                                                                        {{ $isCompanyActive ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700' }}">
+                                                                    <div x-data="{ isActive: {{ $isCompanyActive ? 'true' : 'false' }}, loading: false }"
+                                                                        class="flex items-center justify-between p-3 rounded-lg border transition-all"
+                                                                        :class="isActive ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700'">
                                                                         <div class="flex items-center gap-3">
-                                                                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-                                                                                {{ $isCompanyActive ? 'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-300' : 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400' }}">
+                                                                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                                                                                :class="isActive ? 'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-300' : 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400'">
                                                                                 {{ strtoupper(substr($comp->name, 0, 2)) }}
                                                                             </div>
                                                                             <div>
                                                                                 <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $comp->name }}</p>
-                                                                                <p class="text-xs {{ $isCompanyActive ? 'text-green-600 dark:text-green-400' : ($isLinked ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500') }}">
-                                                                                    {{ $isCompanyActive ? 'Active' : ($isLinked ? 'Inactive' : 'Not linked') }}
+                                                                                <p class="text-xs transition-all"
+                                                                                    :class="isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'"
+                                                                                    x-text="isActive ? 'Active' : '{{ $isLinked ? 'Inactive' : 'Not linked' }}'">
                                                                                 </p>
                                                                             </div>
                                                                         </div>
-                                                                        @if($isCompanyActive)
-                                                                            <a href="{{ route('supplier-company.deactivate', ['supplier_id' => $supplier->id, 'company_id' => $comp->id]) }}"
-                                                                                class="px-3 py-1.5 text-xs font-medium rounded-md border border-red-300 text-red-600 bg-white hover:bg-red-50 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/50 transition-all">
-                                                                                Deactivate
-                                                                            </a>
-                                                                        @else
-                                                                            <a href="{{ route('supplier-company.activate', ['supplier_id' => $supplier->id, 'company_id' => $comp->id]) }}"
-                                                                                class="px-3 py-1.5 text-xs font-medium rounded-md border border-green-300 text-green-600 bg-white hover:bg-green-50 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/50 transition-all">
-                                                                                Activate
-                                                                            </a>
-                                                                        @endif
+                                                                        <button type="button" :disabled="loading"
+                                                                            class="px-3 py-1.5 text-xs font-medium rounded-md border transition-all disabled:opacity-50"
+                                                                            :class="isActive
+                                                                                ? 'border-red-300 text-red-600 bg-white hover:bg-red-50 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/50'
+                                                                                : 'border-green-300 text-green-600 bg-white hover:bg-green-50 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/50'"
+                                                                            @click="
+                                                                                loading = true;
+                                                                                let url = isActive
+                                                                                    ? '{{ route('supplier-company.deactivate', ['supplier_id' => $supplier->id, 'company_id' => $comp->id]) }}'
+                                                                                    : '{{ route('supplier-company.activate', ['supplier_id' => $supplier->id, 'company_id' => $comp->id]) }}';
+                                                                                fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                                                                                    .then(r => r.json())
+                                                                                    .then(data => {
+                                                                                        if (data.success) { isActive = !isActive; }
+                                                                                        else { alert(data.message || 'Something went wrong'); }
+                                                                                    })
+                                                                                    .catch(() => alert('Network error. Please try again.'))
+                                                                                    .finally(() => loading = false);
+                                                                            "
+                                                                            x-text="loading ? 'Please wait...' : (isActive ? 'Deactivate' : 'Activate')">
+                                                                        </button>
                                                                     </div>
                                                                 @endforeach
                                                             </div>

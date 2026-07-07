@@ -26,6 +26,7 @@ class SupplierCompanyController extends Controller
             ->toArray();
         $companies = $companies->map(function ($company) use ($activatedCompanies) {
             $company->is_active = in_array($company->id, $activatedCompanies);
+
             return $company;
         });
 
@@ -34,7 +35,7 @@ class SupplierCompanyController extends Controller
         //     return $company;
         // });
 
-        return view('supplier-company.index', compact( 'supplier', 'companies'));
+        return view('supplier-company.index', compact('supplier', 'companies'));
     }
 
     public function activateSupplierProcess(Supplier $supplier, Company $company)
@@ -47,26 +48,28 @@ class SupplierCompanyController extends Controller
                 ->first();
 
             if ($supplierCompany) {
-                
-                    try{
+
+                try {
 
                     $supplierCompany->is_active = true;
                     $supplierCompany->update();
-                    
+
                 } catch (Exception $e) {
 
-                    Log::error('Failed to activate supplier: ' . $e->getMessage());
+                    Log::error('Failed to activate supplier: '.$e->getMessage());
                     DB::rollBack();
+
                     return [
                         'status' => 'error',
-                        'message' => 'Failed to activate supplier'
+                        'message' => 'Failed to activate supplier',
                     ];
                 }
 
                 DB::commit();
+
                 return [
                     'status' => 'success',
-                    'message' => 'Supplier is already activated for this company.'
+                    'message' => 'Supplier is already activated for this company.',
                 ];
 
             }
@@ -76,8 +79,7 @@ class SupplierCompanyController extends Controller
                 ->where('company_id', $company->id)
                 ->exists();
 
-
-            if (!$credentials) {
+            if (! $credentials) {
                 SupplierCredential::create([
                     'supplier_id' => $supplier->id,
                     'company_id' => $company->id,
@@ -112,7 +114,7 @@ class SupplierCompanyController extends Controller
             $hasAtLeastOne = false;
 
             foreach ($types as $field => $accounts) {
-                if (!$supplier->$field) {
+                if (! $supplier->$field) {
                     continue;
                 }
 
@@ -122,7 +124,7 @@ class SupplierCompanyController extends Controller
                     ->where('company_id', $company->id)
                     ->first();
 
-                if (!$accountPayable) {
+                if (! $accountPayable) {
                     throw new \Exception("Account Payable group '{$accounts['payable']}' not found.");
                 }
 
@@ -130,7 +132,7 @@ class SupplierCompanyController extends Controller
                     ->where('company_id', $company->id)
                     ->first();
 
-                if (!$costAccount) {
+                if (! $costAccount) {
                     throw new \Exception("Supplier cost account '{$accounts['cost']}' not found.");
                 }
 
@@ -151,23 +153,23 @@ class SupplierCompanyController extends Controller
                 ];
 
                 // Generate unique code under each account
-                $newPayableCode = (int)$accountPayable->code + 1;
-                $newCostCode = (int)$costAccount->code + 1;
+                $newPayableCode = (int) $accountPayable->code + 1;
+                $newCostCode = (int) $costAccount->code + 1;
 
                 Account::create($data + [
                     'parent_id' => $accountPayable->id,
                     'root_id' => $accountPayable->root_id,
-                    'code' => (string)$newPayableCode,
+                    'code' => (string) $newPayableCode,
                 ]);
 
                 Account::create($data + [
                     'parent_id' => $costAccount->id,
                     'root_id' => $costAccount->root_id,
-                    'code' => (string)$newCostCode,
+                    'code' => (string) $newCostCode,
                 ]);
             }
 
-            if (!$hasAtLeastOne) {
+            if (! $hasAtLeastOne) {
                 throw new \Exception('Supplier must have at least one category checked.');
             }
 
@@ -236,7 +238,6 @@ class SupplierCompanyController extends Controller
             //     throw new \Exception('Supplier is not a flight, hotel, visa, insurance, or supported type.');
             // }
 
-
             // if (!$supplierCostAccount) {
             //     throw new Exception("Supplier cost account not found.");
             // }
@@ -246,7 +247,6 @@ class SupplierCompanyController extends Controller
             //     'company_id' => $company->id,
             //     'is_active' => true,
             // ]);
-
 
             // $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
             //     ->where('company_id', $company->id)
@@ -261,7 +261,6 @@ class SupplierCompanyController extends Controller
             //     'company_id' => $company->id,
             //     'supplier_company_id' => $supplierCompany->id,
             // ];
-
 
             // $accountPayableCode = (int)$accountPayable->code + 1;
 
@@ -293,10 +292,11 @@ class SupplierCompanyController extends Controller
             // ]);
         } catch (Exception $e) {
             DB::rollBack();
-            logger('Created Supplier Company Account Error: ' . $e->getMessage());
+            logger('Created Supplier Company Account Error: '.$e->getMessage());
+
             return [
                 'status' => 'error',
-                'message' => 'Failed to activate supplier: ' . $e->getMessage()
+                'message' => 'Failed to activate supplier: '.$e->getMessage(),
             ];
         }
 
@@ -304,7 +304,7 @@ class SupplierCompanyController extends Controller
 
         return [
             'status' => 'success',
-            'message' => 'Supplier activated successfully.'
+            'message' => 'Supplier activated successfully.',
         ];
 
     }
@@ -316,42 +316,63 @@ class SupplierCompanyController extends Controller
                 'company_id' => 'required|exists:companies,id',
             ]);
 
-            try{
+            try {
                 $supplier = Supplier::findOrFail($request->input('supplier_id'));
                 $company = Company::findOrFail($request->input('company_id'));
 
                 $response = $this->activateSupplierProcess($supplier, $company);
 
-                if($response['status'] === 'error') {
+                if ($response['status'] === 'error') {
+
+                    Log::error('[SUPPLIER COMPANY] Failed to activate supplier: '.$response['message']);
+
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => 'Failed to activate supplier'], 422);
+                    }
+
                     return redirect()->back()->with('error', $response['message']);
                 }
 
             } catch (Exception $e) {
-                return redirect()->back()->with('error', 'Failed to activate supplier: ' . $e->getMessage());
+
+                Log::error('[SUPPLIER COMPANY] Failed to activate supplier: '.$e->getMessage());
+
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Failed to activate supplier'], 422);
+                }
+
+                return redirect()->back()->with('error', 'Failed to activate supplier: '.$e->getMessage());
             }
-         
-            return redirect()->back()->with('success', 'Supplier activated successfully.'); 
-        } else if($supplier && $company) {
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Supplier activated successfully.']);
+            }
+
+            return redirect()->back()->with('success', 'Supplier activated successfully.');
+        } elseif ($supplier && $company) {
             try {
                 $this->activateSupplierProcess($supplier, $company);
             } catch (Exception $e) {
-                return redirect()->back()->with('error', 'Failed to activate supplier: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to activate supplier: '.$e->getMessage());
             }
 
             return redirect()->back()->with('success', 'Supplier activated successfully.');
         }
     }
 
-
     public function deactivateSupplier(Request $request, Supplier $supplier, Company $company)
     {
-        if(isset($request->supplier_id)) {
+        if (isset($request->supplier_id)) {
 
-            try{
+            try {
                 $supplierCompany = SupplierCompany::where('supplier_id', $request->supplier_id)
                     ->where('company_id', $request->company_id)
                     ->first();
-                if (!$supplierCompany) {
+                if (! $supplierCompany) {
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => 'Supplier is not activated for this company.'], 422);
+                    }
+
                     return redirect()->back()->with('error', 'Supplier is not activated for this company.');
                 }
                 $supplierCompany->is_active = false;
@@ -359,10 +380,18 @@ class SupplierCompanyController extends Controller
 
             } catch (Exception $e) {
 
-                Log::error('Failed to deactivate supplier: ' . $e->getMessage());
+                Log::error('Failed to deactivate supplier: '.$e->getMessage());
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Failed to deactivate supplier'], 422);
+                }
+
                 return redirect()->back()->with('error', 'Failed to deactivate supplier');
 
             }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Supplier deactivated successfully.']);
         }
 
         return redirect()->back()->with('success', 'Supplier deactivated successfully.');
@@ -379,7 +408,7 @@ class SupplierCompanyController extends Controller
                 'variance' => 0,
                 'company_id' => $companyId,
                 'parent_id' => $accountPayable->id,
-                'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
+                'code' => 'SUP'.$accountPayable->id.str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
             ]);
 
             SupplierCompany::firstOrCreate([
@@ -388,16 +417,17 @@ class SupplierCompanyController extends Controller
                 // 'account_id' => $account->id
             ]);
         } catch (Exception $e) {
-            logger('Created Supplier Company Error: ' . $e->getMessage());
+            logger('Created Supplier Company Error: '.$e->getMessage());
+
             return [
                 'status' => 'error',
-                'message' => 'Failed to create supplier company.'
+                'message' => 'Failed to create supplier company.',
             ];
         }
 
         return [
             'status' => 'success',
-            'message' => 'Supplier activated successfully.'
+            'message' => 'Supplier activated successfully.',
         ];
     }
 }

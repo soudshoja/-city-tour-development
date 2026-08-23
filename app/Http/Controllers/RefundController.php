@@ -1280,6 +1280,81 @@ class RefundController extends Controller
         Log::info("Cleaned up old transactions and journal entries for refund {$refund->refund_number}");
     }
 
+    /**
+     * Void a completed/processed refund. Admin + accountant only.
+     */
+    public function void(Refund $refund): RedirectResponse
+    {
+        $user = Auth::user();
+        if (!$user || !$user->hasAnyRole(['admin', 'accountant'])) {
+            abort(403, 'Only admin or accountant can void refunds.');
+        }
+
+        if ($refund->status === 'voided') {
+            return back()->with('error', 'Refund is already voided.');
+        }
+
+        $totalUsed = abs((float) Credit::where('refund_id', $refund->id)
+            ->where('type', Credit::INVOICE)
+            ->sum('amount'));
+
+        if ($totalUsed > 0) {
+            return back()->with(
+                'error',
+                "Cannot void: KWD " . number_format($totalUsed, 3) .
+                " of this refund's credit has been applied to invoices. " .
+                "Detach the credit from those invoices first, then retry."
+            );
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $jeCount = JournalEntry::where('type', 'refund')
+                ->where('voucher_number', (string) $refund->id)
+                ->delete();
+
+            $creditCount = Credit::where('refund_id', $refund->id)->delete();
+
+            $invoice = $refund->originalInvoice;
+            if ($invoice && in_array($invoice->status, [InvoiceStatus::REFUNDED->value, InvoiceStatus::PARTIAL_REFUND->value])) {
+                $otherActiveRefunds = Refund::where('invoice_id', $invoice->id)
+                    ->where('id', '!=', $refund->id)
+                    ->where('status', '!=', 'voided')
+                    ->count();
+                if ($otherActiveRefunds === 0) {
+                    $invoice->update(['status' => InvoiceStatus::PAID->value]);
+                }
+            }
+
+            $refund->refundDetails()->delete();
+            $refund->update(['status' => 'voided', 'updated_by' => $user->id]);
+            $refund->delete();
+
+            DB::commit();
+
+            Log::info('Refund voided', [
+                'refund_id' => $refund->id,
+                'refund_number' => $refund->refund_number,
+                'voided_by' => $user->id,
+                'journal_entries_reversed' => $jeCount,
+                'credits_removed' => $creditCount,
+            ]);
+
+            return redirect()->route('refunds.index')->with(
+                'status',
+                "Refund {$refund->refund_number} voided. Reversed {$jeCount} journal entries and {$creditCount} credit row(s)."
+            );
+        } catch (Throwable $e) {
+            DB::rollBack();
+            Log::error('Refund void failed', [
+                'refund_id' => $refund->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Void failed: ' . $e->getMessage());
+        }
+    }
+
     public function completeProcess(Refund $refund)
     {
         Log::info('Hit completeProcess()', ['refund_id' => $refund->id]);

@@ -117,6 +117,7 @@ class CreateClientCredit extends Command
     public function PaymentWithoutCredit()
     {
         $paidPayment = Payment::where('status', 'completed')
+            ->whereNull('invoice_id') // phantom-credit guard: invoice-linked payments settle via createInvoicePaymentCOA, never via client credit
             ->whereDoesntHave('credit')
             ->get();
         return $paidPayment;
@@ -124,6 +125,21 @@ class CreateClientCredit extends Command
 
     public function processCredit($creditPayment)
     {
+        // Phantom-credit guard: an invoice-linked payment is settled directly against the invoice
+        // via createInvoicePaymentCOA() (receivable credited). Creating a Topup credit here would
+        // duplicate the client's money as a phantom credit balance with no consumption (see
+        // project_citytour_phantom_credit_topup_no_consumption). Such payments never settle via credit.
+        if ($creditPayment->invoice_id) {
+            Log::info('create:client-credit skipped invoice-linked payment (settled via invoice COA).', [
+                'payment_id' => $creditPayment->id,
+                'invoice_id' => $creditPayment->invoice_id,
+            ]);
+            return [
+                'status'  => 'skipped',
+                'message' => 'Invoice-linked payment settled via invoice COA; no client credit created.',
+            ];
+        }
+
         $client = Client::findOrFail($creditPayment->client_id);
         $agent = Agent::find($creditPayment->agent_id);
 

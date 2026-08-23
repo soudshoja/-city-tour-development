@@ -17,6 +17,10 @@ class AgentNotificationSetting extends Model
     const CHANNEL_BOTH = 'both';
 
     const TYPE_TASK_CLOSE = 'task_close';
+    const TYPE_PAYMENT_LINK_UNINVOICED = 'payment_link_uninvoiced';
+    const TYPE_PRICE_REQUEST = 'price_request';
+    const TYPE_INVOICE_CREATED = 'invoice_created';
+    const TYPE_IATA_WALLET_CHANGE = 'iata_wallet_change';
 
     protected $fillable = [
         'agent_id',

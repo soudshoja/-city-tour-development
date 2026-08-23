@@ -152,13 +152,20 @@ class OpenAIClient implements AIClientInterface
             - `date_of_expiry`: Date of expiry in YYYY-MM-DD format
             - `place_of_birth`: Place of birth
             - `place_of_issue`: Place of issue
+            - `gender`: M or F only (normalize Male->M, Female->F; read the Sex field)
+            - `nationality_code`: the 3-letter country code exactly as printed on the passport / MRZ (e.g. KWT, USA, IRN, IND)
+            - `country_of_issue`: 3-letter ISO code of the issuing country (MRZ line 1, the 3 letters right after 'P<')
+            - `mrz_line1`: the FIRST line of the Machine-Readable Zone, transcribed EXACTLY including every '<' character
+            - `mrz_line2`: the SECOND MRZ line, transcribed EXACTLY including every '<' character
+            - `last_name`: the FULL surname from the MRZ (all components before '<<' in mrz_line1, space-joined, e.g. MOHAMED MOKHTAR FARRARA) - never truncate to one word
 
             Important guidelines:
             1. If a field is not found or not clearly visible, set its value to null
             2. Ensure all dates are in YYYY-MM-DD format
             3. Extract the full name exactly as it appears on the passport
             4. For passport number, include only the alphanumeric passport number without any prefixes
-            5. Return only valid JSON format without any additional text or explanations";
+            5. `first_name`, `middle_name` and `last_name` must contain ONLY letters and single spaces - NEVER include any '<' character or MRZ filler. The '<' characters belong ONLY in `mrz_line1`/`mrz_line2`
+            6. Return only valid JSON format without any additional text or explanations";
 
             $messages = [
                 [

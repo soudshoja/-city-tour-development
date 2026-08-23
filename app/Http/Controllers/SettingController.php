@@ -17,6 +17,7 @@ use Database\Seeders\SettingSeeder;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -48,6 +49,9 @@ class SettingController extends Controller
                 $activeTab = 'payment';
             }
         }
+        if ($activeTab === 'ai-config' && $user->role_id !== Role::ADMIN) {
+            $activeTab = 'payment';
+        }
 
         return view('settings.index', compact(
             'invoiceExpiryDefault',
@@ -61,7 +65,7 @@ class SettingController extends Controller
     public function saveTab(Request $request)
     {
         $request->validate([
-            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss,notifications',
+            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss,notifications,ai-config',
         ]);
 
         session(['settings_active_tab' => $request->tab]);
@@ -712,6 +716,217 @@ class SettingController extends Controller
     }
 
     /**
+     * AI Configuration (Settings > AI Configuration, admin only).
+     * Values live in the settings table (aicfg.* on company 1) and override
+     * config/ai.php at boot via AiConfigOverride. Blank/deleted = .env default.
+     */
+    public function getAiConfig()
+    {
+        if (Auth::user()->role_id !== Role::ADMIN) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        \App\Services\AiConfigOverride::apply();
+
+        $values = [];
+        $overridden = [];
+        $stored = Setting::where('company_id', 1)->where('key', 'like', 'aicfg.%')->pluck('value', 'key');
+        foreach (\App\Services\AiConfigOverride::MAP as $field => $paths) {
+            $v = config($paths[0]);
+            if (in_array($field, \App\Services\AiConfigOverride::CSV_FIELDS, true) && is_array($v)) {
+                $v = implode(', ', $v);
+            }
+            if (in_array($field, \App\Services\AiConfigOverride::SECRET_FIELDS, true)) {
+                $v = $v ? ('••••' . substr((string) $v, -4)) : '';
+            }
+            if (in_array($field, \App\Services\AiConfigOverride::BOOL_FIELDS, true)) {
+                $v = (bool) $v;
+            }
+            $values[$field] = $v;
+            $overridden[$field] = $stored->has("aicfg.$field");
+        }
+
+        // Effective fallback chain (custom aicfg.chain applied if set).
+        $chain = [];
+        foreach ((array) config('ai.chain', []) as $entry) {
+            $chain[] = [
+                'provider' => $entry['provider'] ?? 'openai',
+                'model' => $entry['model'] ?? '',
+            ];
+        }
+        $values['chain'] = $chain;
+        $overridden['chain'] = $stored->has('aicfg.chain');
+
+        return response()->json(['success' => true, 'values' => $values, 'overridden' => $overridden]);
+    }
+
+    public function updateAiConfig(Request $request)
+    {
+        if (Auth::user()->role_id !== Role::ADMIN) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $saved = [];
+        foreach (\App\Services\AiConfigOverride::MAP as $field => $paths) {
+            if (!$request->has($field)) {
+                continue;
+            }
+            $value = $request->input($field);
+            if (in_array($field, \App\Services\AiConfigOverride::BOOL_FIELDS, true)) {
+                $value = $request->boolean($field) ? '1' : '0';
+            } else {
+                $value = trim((string) $value);
+            }
+
+            // Secrets: blank means "keep as is" (the UI shows a mask, not the key).
+            if (in_array($field, \App\Services\AiConfigOverride::SECRET_FIELDS, true)) {
+                if ($value === '' ) {
+                    continue;
+                }
+                if ($value === '__clear__') {
+                    Setting::where('company_id', 1)->where('key', "aicfg.$field")->delete();
+                    $saved[] = $field . ' (cleared)';
+                    continue;
+                }
+                if (str_starts_with($value, '••••')) {
+                    continue; // the mask itself came back — no change
+                }
+            }
+
+            if ($value === '' && !in_array($field, \App\Services\AiConfigOverride::BOOL_FIELDS, true)) {
+                // Blank non-secret = revert to .env/config default.
+                Setting::where('company_id', 1)->where('key', "aicfg.$field")->delete();
+                $saved[] = $field . ' (default)';
+                continue;
+            }
+
+            Setting::updateOrCreate(
+                ['company_id' => 1, 'key' => "aicfg.$field"],
+                ['value' => $value, 'type' => 'string', 'description' => 'AI configuration override']
+            );
+            $saved[] = $field;
+        }
+
+        // Custom fallback chain: array of {provider: resayil|openai, model?: string}.
+        // Empty array (or all rows removed in the UI) = revert to the default chain.
+        if ($request->has('chain')) {
+            $chainIn = $request->input('chain');
+            $chain = [];
+            if (is_array($chainIn)) {
+                foreach (array_slice($chainIn, 0, 6) as $entry) {
+                    $provider = is_array($entry) ? ($entry['provider'] ?? null) : null;
+                    if (!in_array($provider, ['resayil', 'openai'], true)) {
+                        continue;
+                    }
+                    $model = is_array($entry) ? trim((string) ($entry['model'] ?? '')) : '';
+                    if (strlen($model) > 100) {
+                        continue;
+                    }
+                    $chain[] = $model !== ''
+                        ? ['provider' => $provider, 'model' => $model]
+                        : ['provider' => $provider];
+                }
+            }
+            if (count($chain) > 0) {
+                Setting::updateOrCreate(
+                    ['company_id' => 1, 'key' => 'aicfg.chain'],
+                    ['value' => json_encode($chain), 'type' => 'string', 'description' => 'AI configuration override']
+                );
+                $saved[] = 'chain (' . count($chain) . ' steps)';
+            } else {
+                Setting::where('company_id', 1)->where('key', 'aicfg.chain')->delete();
+                $saved[] = 'chain (default)';
+            }
+        }
+
+        Cache::forget(\App\Services\AiConfigOverride::CACHE_KEY);
+        Log::info('AI configuration updated', ['fields' => $saved, 'user_id' => Auth::id()]);
+
+        return response()->json(['success' => true, 'saved' => $saved]);
+    }
+
+    public function aiModels()
+    {
+        if (Auth::user()->role_id !== Role::ADMIN) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        \App\Services\AiConfigOverride::apply();
+        try {
+            $models = Cache::remember('aicfg_gateway_models', 60, function () {
+                $url = rtrim((string) config('ai.providers.resayil.url'), '/');
+                $key = (string) config('ai.providers.resayil.key');
+                $list = \Illuminate\Support\Facades\Http::withToken($key)->withoutVerifying()
+                    ->timeout(20)->get($url . '/models')->json();
+                $ids = [];
+                foreach (($list['data'] ?? (is_array($list) ? $list : [])) as $m) {
+                    $id = is_array($m) ? ($m['id'] ?? null) : $m;
+                    if ($id) {
+                        $ids[] = $id;
+                    }
+                }
+                sort($ids);
+                return $ids;
+            });
+            return response()->json(['success' => true, 'models' => $models]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Model list failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function aiTest(Request $request)
+    {
+        if (Auth::user()->role_id !== Role::ADMIN) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $type = $request->input('type', 'text');
+        \App\Services\AiConfigOverride::apply();
+        $t0 = microtime(true);
+        try {
+            if ($type === 'openai') {
+                $key = (string) config('ai.providers.openai.key');
+                if ($key === '') {
+                    return response()->json(['success' => false, 'seconds' => 0, 'message' => 'No OpenAI key configured.']);
+                }
+                $r = \Illuminate\Support\Facades\Http::withToken($key)->timeout(30)
+                    ->post(rtrim((string) config('ai.providers.openai.url'), '/') . '/chat/completions', [
+                        'model' => (string) config('ai.providers.openai.model'),
+                        'messages' => [['role' => 'user', 'content' => 'Say OK']],
+                        'max_tokens' => 1,
+                    ]);
+                $ok = $r->successful();
+                $msg = $ok ? 'OpenAI key works (live completion).' : ('OpenAI HTTP ' . $r->status() . ': '
+                    . substr((string) ($r->json()['error']['message'] ?? $r->body()), 0, 120));
+            } else {
+                $url = rtrim((string) config('ai.providers.resayil.url'), '/') . '/chat/completions';
+                $key = (string) config('ai.providers.resayil.key');
+                if ($type === 'vision') {
+                    $model = (string) config('ai.providers.resayil.model_passport');
+                    $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+                    $messages = [['role' => 'user', 'content' => [
+                        ['type' => 'text', 'text' => 'What color is this image? Answer with one word.'],
+                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/png;base64,' . $png]],
+                    ]]];
+                } else {
+                    $model = (string) config('ai.providers.resayil.model_text');
+                    $messages = [['role' => 'user', 'content' => 'Reply with exactly: OK']];
+                }
+                $r = \Illuminate\Support\Facades\Http::withToken($key)->withoutVerifying()->timeout(60)
+                    ->post($url, ['model' => $model, 'messages' => $messages, 'max_tokens' => 300]);
+                $ok = $r->successful() && isset($r->json()['choices'][0]['message']['content']);
+                $msg = $ok
+                    ? ($model . ' answered: ' . trim((string) $r->json()['choices'][0]['message']['content']))
+                    : ($model . ' HTTP ' . $r->status() . ': ' . substr($r->body(), 0, 150));
+            }
+            return response()->json(['success' => $ok, 'seconds' => round(microtime(true) - $t0, 1), 'message' => $msg]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'seconds' => round(microtime(true) - $t0, 1),
+                'message' => 'Test failed: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Get notification settings (company-wide from settings table).
      */
     public function getNotificationSettings(Request $request)
@@ -727,7 +942,7 @@ class SettingController extends Controller
         }
 
         try {
-            $prefixes = ['notification.unassigned_task', 'notification.autobill'];
+            $prefixes = ['notification.unassigned_task', 'notification.autobill', 'notification.invoice_created'];
             $settings = [];
 
             foreach ($prefixes as $prefix) {
@@ -802,6 +1017,7 @@ class SettingController extends Controller
             $descriptions = [
                 'notification.unassigned_task' => 'Unassigned task notification',
                 'notification.autobill' => 'Auto billing notification',
+                'notification.invoice_created' => 'Invoice created email notification',
             ];
             $desc = $descriptions[$prefix] ?? 'Notification setting';
 
@@ -872,22 +1088,36 @@ class SettingController extends Controller
             }
             $agents = $agentQuery->get();
 
+            $supportedTypes = [
+                AgentNotificationSetting::TYPE_TASK_CLOSE,
+                AgentNotificationSetting::TYPE_PAYMENT_LINK_UNINVOICED,
+                AgentNotificationSetting::TYPE_INVOICE_CREATED,
+            ];
+
             $settingsQuery = AgentNotificationSetting::where('company_id', $companyId)
-                ->where('notification_type', AgentNotificationSetting::TYPE_TASK_CLOSE);
+                ->whereIn('notification_type', $supportedTypes);
 
             if ($user->role_id === Role::AGENT) {
                 $settingsQuery->where('agent_id', $user->agent?->id);
             }
 
-            $settings = $settingsQuery->get()
-                ->keyBy('agent_id')
-                ->toArray();
+            // Group by agent_id, then by notification_type:
+            //   settings[agent_id][notification_type] = { id, channel, is_active, ... }
+            $settings = [];
+            foreach ($settingsQuery->get() as $row) {
+                $settings[$row->agent_id][$row->notification_type] = $row->toArray();
+            }
 
             return response()->json([
                 'success' => true,
                 'agents' => $agents,
                 'settings' => $settings,
                 'channelOptions' => AgentNotificationSetting::getChannelOptions(),
+                'typeOptions' => [
+                    AgentNotificationSetting::TYPE_TASK_CLOSE => 'Uninvoiced Task Reminder',
+                    AgentNotificationSetting::TYPE_PAYMENT_LINK_UNINVOICED => 'Uninvoiced Payment Link Reminder',
+                    AgentNotificationSetting::TYPE_INVOICE_CREATED => 'Invoice Notifications',
+                ],
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching agent notification settings', ['error' => $e->getMessage()]);

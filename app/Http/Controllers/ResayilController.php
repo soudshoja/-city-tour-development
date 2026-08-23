@@ -257,12 +257,16 @@ class ResayilController extends Controller
 
     public function handleWebhook(Request $request)
     {
+        // NOTE: this handler is NOT routed at /webhook/resayil — that URL goes to
+        // WhatsappController::handleResayilWebhook (see routes/web.php). Kept here
+        // only as a safety fallback in case a future route ever points back to it.
+        // The TaskActionRequest text-reply branch lives in WhatsappController.
         Log::debug('Resayil Webhook Received:', $request->all());
 
         $phone = $request->input('phone') ?? $request->input('messages.0.from');
         $message = $request->input('messages.0');
-        
-        if ($message && $message['type'] === 'image') {
+
+        if ($message && ($message['type'] ?? null) === 'image') {
             $mediaId = $message['image']['id'] ?? null;
             $mimeType = $message['image']['mimeType'] ?? null;
             $caption = $message['image']['caption'] ?? null;

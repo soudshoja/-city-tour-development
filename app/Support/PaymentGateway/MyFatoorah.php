@@ -104,7 +104,7 @@ class MyFatoorah
 
         $executePayload = [
             "PaymentMethodId"     => $paymentMethod->myfatoorah_id,
-            "InvoiceValue"        => $request->input('final_amount'),
+            "InvoiceValue"        => number_format((float) $request->input('final_amount'), 3, '.', ''),
             "CustomerName"        => $request->client_name,
             "CustomerEmail"       => $companyEmail,
             "MobileCountryCode"   => $payment->client->country_code ?? '+965',
@@ -119,7 +119,7 @@ class MyFatoorah
                 [
                     "ItemName"   => "Voucher " . $payment->voucher_number,
                     "Quantity"   => 1,
-                    "UnitPrice"  => $request->input('final_amount'),
+                    "UnitPrice"  => number_format((float) $request->input('final_amount'), 3, '.', ''),
                 ]
             ],
         ];
@@ -200,22 +200,55 @@ class MyFatoorah
                 break;
         }
 
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer $this->apiKey",
-            'Content-Type' => 'application/json',
-        ])->post("$this->baseUrl/GetPaymentStatus", [
-            "Key" => $key,
-            "KeyType" => $keyType
-        ]);
+        // MyFatoorah's GetPaymentStatus occasionally returns a transient non-2xx
+        // (rate-limit / 5xx) in the minute right after payment. A single failure used
+        // to make the caller (e.g. the webhook) give up and return 500, so completion
+        // waited for MyFatoorah's next ~3-min retry and the payer sat on "NOT PAID".
+        // Retry a few times in-request (this is a read-only, idempotent status check)
+        // with a short backoff and an explicit timeout so completion happens on the
+        // first webhook/callback instead.
+        $response = null;
+        $attempts = 0;
+        $maxAttempts = 3;
 
-        Log::info('[MYFATOORAH] GetPaymentStatus response', ['response' => $response->json()]);
+        do {
+            $attempts++;
 
-        if (!$response->successful()) {
-            $errorBody = $response->json();
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => "Bearer $this->apiKey",
+                    'Content-Type' => 'application/json',
+                ])->timeout(20)->post("$this->baseUrl/GetPaymentStatus", [
+                    "Key" => $key,
+                    "KeyType" => $keyType
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('[MYFATOORAH] GetPaymentStatus request exception', [
+                    'key' => $key,
+                    'key_type' => $keyType,
+                    'attempt' => $attempts,
+                    'error' => $e->getMessage(),
+                ]);
+                $response = null;
+            }
+
+            if ($response && $response->successful()) {
+                break;
+            }
+
+            if ($attempts < $maxAttempts) {
+                usleep(1500000 * $attempts); // 1.5s, then 3s
+            }
+        } while ($attempts < $maxAttempts);
+
+        if (!$response || !$response->successful()) {
+            $errorBody = $response ? $response->json() : null;
 
             Log::error('[MYFATOORAH] GetPaymentStatus failed', [
                 'key' => $key,
-                'key_type' => $keyType
+                'key_type' => $keyType,
+                'http_status' => $response ? $response->status() : null,
+                'attempts' => $attempts,
             ]);
 
             return [
@@ -225,6 +258,8 @@ class MyFatoorah
                 'response' => $errorBody
             ];
         }
+
+        Log::info('[MYFATOORAH] GetPaymentStatus response', ['response' => $response->json(), 'attempts' => $attempts]);
 
         $resData = $response->json();
 

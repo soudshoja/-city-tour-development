@@ -14,6 +14,7 @@ class Supplier extends Model
         'name',
         'auth_type',
         'is_manual',
+        'whatsapp_group',
         'has_hotel',
         'has_flight',
         'has_visa',
@@ -37,12 +38,23 @@ class Supplier extends Model
         'website',
         'payment_terms',
         'is_online',
+        'agency_commission',
     ];
 
     protected $casts = [
         'is_online' => 'bool',
         'is_manual' => 'bool',
+        'agency_commission' => 'decimal:2',
     ];
+
+    public function netOf($retail): float
+    {
+        $retail = (float) $retail;
+        $pct = (float) ($this->agency_commission ?? 0);
+        if ($pct <= 0) { return round($retail, 3); }
+        return round($retail * (1 - $pct / 100), 3);
+    }
+
     public function payableAccount()
     {
         return $this->hasOne(Account::class, 'supplier_id');

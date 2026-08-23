@@ -3,48 +3,49 @@
 namespace App\Http\Controllers;
 
 use App\Http\Traits\Converter;
-use App\Http\Traits\NotificationTrait;
+use App\Models\Client;
+use App\Models\ClientGroup;
+use App\Models\Invoice;
+use App\Models\Agent;
+use App\Models\Task;
+use App\Models\ClientAssignmentRequest;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
 use App\Models\Account;
-use App\Models\Agent;
 use App\Models\Branch;
 use App\Models\Charge;
-use App\Models\Client;
-use App\Models\ClientAssignmentRequest;
-use App\Models\ClientGroup;
-use App\Models\Company;
 use App\Models\Country;
-use App\Models\Credit;
-use App\Models\Invoice;
 use App\Models\JournalEntry;
-use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\RefundClient;
 use App\Models\Role;
-use App\Models\Task;
 use App\Models\Transaction;
-use App\Services\ChargeService;
-use Exception;
+use App\Models\Credit;
+use App\Models\InvoiceReceipt;
+use App\Enums\ChargeType;
+use App\Http\Traits\NotificationTrait;
+use App\Models\Company;
+use App\Models\InvoicePartial;
+use App\Models\Notification;
+use App\Models\PaymentMethod;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Services\ChargeService;
 
 class ClientStoreResponse
 {
     public string $status;
-
     public string $type;
-
     public string $message;
-
     public ?array $data;
-
     public ?int $task_id;
 
     public function __construct($status, $type, $message, $data = null, $task_id = null)
@@ -108,7 +109,7 @@ class ClientController extends Controller
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
             $clients = $clients->where(function ($query) use ($search) {
-                $searchTerm = '%'.strtolower($search).'%';
+                $searchTerm = '%' . strtolower($search) . '%';
                 $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm])
                     ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm])
                     ->orWhere('email', 'LIKE', $searchTerm)
@@ -136,13 +137,11 @@ class ClientController extends Controller
                         ->where('client_id', $client->id)
                         ->sum('amount');
                 }
-
                 return $client;
             });
         } else {
             $clients->getCollection()->transform(function ($client) {
                 $client->totalCredit = Credit::getTotalCreditsByClient($client->id);
-
                 return $client;
             });
         }
@@ -170,7 +169,8 @@ class ClientController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        if (! $request->company_id) { //this fallback is temporary until company_id is added in the form
+
+        if (!$request->company_id) { //this fallback is temporary until company_id is added in the form
             $companyId = Agent::find($request->agent_id)->branch->company_id;
 
             $request->merge(['company_id' => $companyId]);
@@ -197,7 +197,7 @@ class ClientController extends Controller
             $duplicateType = 'name_phone';
         }
 
-        $message = '';
+        $message  = '';
 
         if ($existingClient) {
             $duplicateResponse = $this->handleDuplicateClient($existingClient, $request->agent_id, $duplicateType);
@@ -220,6 +220,7 @@ class ClientController extends Controller
                 $duplicateResponse['message']
             );
         }
+
 
         try {
             DB::beginTransaction();
@@ -250,7 +251,7 @@ class ClientController extends Controller
                 $task->client_name = $client->full_name;
 
                 // Attempt to auto-enable
-                if (! $task->enabled && $task->is_complete) {
+                if (!$task->enabled && $task->is_complete) {
                     $task->enabled = true;
                 }
 
@@ -269,7 +270,7 @@ class ClientController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
-            logger('Error in storeProcess(): '.$e->getMessage());
+            logger('Error in storeProcess(): ' . $e->getMessage());
 
             return new ClientStoreResponse(
                 'error',
@@ -295,7 +296,7 @@ class ClientController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        if (! $request->company_id) { //this fallback is temporary until company_id is added in the form
+        if (!$request->company_id) { //this fallback is temporary until company_id is added in the form
             $companyId = Agent::find($request->agent_id)->branch->company_id;
 
             $request->merge(['company_id' => $companyId]);
@@ -303,7 +304,7 @@ class ClientController extends Controller
 
         $response = $this->storeProcess($request);
 
-        Log::info('Store process response: ', (array) $response);
+        Log::info('Store process response: ', (array)$response);
 
         $status = $response->status;
         $type = $response->type;
@@ -312,7 +313,6 @@ class ClientController extends Controller
         if ($status == 'error') {
             if ($type == 'duplicate' && Auth::user()->role_id == Role::AGENT) {
                 $data = $response->data;
-
                 return $this->showAssignmentRequestForm(
                     $data['existing_client'],
                     $data['current_agent'],
@@ -362,7 +362,7 @@ class ClientController extends Controller
                         'status' => 'success',
                         'type' => 'general',
                         'message' => 'Client assigned to AI Agent successfully.',
-                        'data' => $client,
+                        'data' => $client
                     ]);
                 } else {
 
@@ -370,7 +370,7 @@ class ClientController extends Controller
                         $ownerAgent,
                         $requestAgent,
                         $client,
-                        'Requesting assignment to existing client by '.$requestAgent->name
+                        'Requesting assignment to existing client by ' . $requestAgent->name
                     );
                 }
 
@@ -378,7 +378,7 @@ class ClientController extends Controller
                     'status' => 'error',
                     'type' => 'duplicate',
                     'message' => $response->message,
-                    'data' => $data,
+                    'data' => $data
                 ]);
             }
         }
@@ -388,21 +388,20 @@ class ClientController extends Controller
             'type' => $type,
             'message' => $message,
             'data' => $data,
-            'task_id' => $task_id,
+            'task_id' => $task_id
         ]);
     }
 
     /**
      * Check if a string is valid JSON.
      *
-     * @param  string  $string
+     * @param string $string
      * @return bool
      */
     private function isValidJson($string)
     {
         json_decode($string);
-
-        return json_last_error() === JSON_ERROR_NONE;
+        return (json_last_error() === JSON_ERROR_NONE);
     }
 
     /**
@@ -423,7 +422,7 @@ class ClientController extends Controller
             // return redirect()->back()->withInput()->with('error', $message);
             return [
                 'status' => 'error',
-                'message' => $message,
+                'message' => $message
             ];
         }
 
@@ -436,7 +435,7 @@ class ClientController extends Controller
 
             return [
                 'status' => 'error',
-                'message' => "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}",
+                'message' => "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}"
             ];
         }
 
@@ -450,7 +449,7 @@ class ClientController extends Controller
                 'existing_client' => $existingClient,
                 'current_agent' => $currentAgent,
                 'owner_agent' => $ownerAgent,
-                'duplicate_type' => $duplicateType,
+                'duplicate_type' => $duplicateType
             ],
         ];
     }
@@ -470,8 +469,8 @@ class ClientController extends Controller
                 'existing_client' => $existingClient,
                 'owner_agent' => $ownerAgent,
                 'duplicate_message' => $duplicateMessage,
-                'duplicate_type' => $duplicateType,
-            ],
+                'duplicate_type' => $duplicateType
+            ]
         ]);
     }
 
@@ -517,7 +516,7 @@ class ClientController extends Controller
         }
         $agents = $agentsQuery->get();
 
-        $paid = 0.0;
+        $paid   = 0.0;
         $unpaid = 0.0;
         $invoicesPart = Invoice::where('client_id', $id)->get(['id', 'amount', 'status']);
 
@@ -526,15 +525,14 @@ class ClientController extends Controller
             $paidPartials = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
 
             if ($invoice->status === 'paid') {
-                $paid += $total;
-
+                $paid   += $total;
                 continue;
             }
 
-            $paidOnInvoice = min($paidPartials, $total);
-            $outstanding = max(0.0, $total - $paidOnInvoice);
+            $paidOnInvoice   = min($paidPartials, $total);
+            $outstanding     = max(0.0, $total - $paidOnInvoice);
 
-            $paid += $paidOnInvoice;
+            $paid   += $paidOnInvoice;
             $unpaid += $outstanding;
         }
 
@@ -615,7 +613,7 @@ class ClientController extends Controller
         Gate::authorize('view', $client);
         $user = Auth::user();
 
-        $query = Payment::with(['agent', 'createdBy', 'paymentMethod', 'myFatoorahPayment'])
+        $query = Payment::with(['agent', 'createdBy', 'paymentMethod', 'myFatoorahPayment', 'appliedToInvoices.agent.branch'])
             ->where('client_id', $id)
             ->orderBy('created_at', 'desc');
 
@@ -628,7 +626,7 @@ class ClientController extends Controller
 
         $payments = $query->get()->map(function ($p) {
             $ref = $p->payment_reference
-                ? ($p->invoice_ref ? $p->payment_reference.'/'.$p->invoice_ref : $p->payment_reference)
+                ? ($p->invoice_ref ? $p->payment_reference . '/' . $p->invoice_ref : $p->payment_reference)
                 : 'N/A';
             if (strtolower($p->payment_gateway) == 'myfatoorah' && $p->myFatoorahPayment) {
                 $ref = $p->myFatoorahPayment->invoice_ref;
@@ -653,6 +651,10 @@ class ClientController extends Controller
                 'status' => $p->status,
                 'payment_gateway' => $p->payment_gateway,
                 'payment_method_id' => $p->payment_method_id,
+                'applied_invoices' => $p->appliedToInvoices->map(fn ($inv) => [
+                    'invoice_number' => $inv->invoice_number,
+                    'company_id' => $inv->agent?->branch?->company_id,
+                ])->values(),
             ];
         });
 
@@ -669,7 +671,6 @@ class ClientController extends Controller
         }
 
         $client = Client::findOrFail($id);
-
         return view('clients.edit', compact('client', 'agents')); // Ensure the view exists
     }
 
@@ -682,7 +683,7 @@ class ClientController extends Controller
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
-            'civil_no' => 'nullable|string|max:100|unique:clients,civil_no,'.$id,
+            'civil_no' => 'nullable|string|max:100|unique:clients,civil_no,' . $id,
             'email' => 'email',
             'status' => 'nullable',
             'phone' => 'string|max:15',
@@ -739,10 +740,10 @@ class ClientController extends Controller
                         $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
 
                         // You can now use the parsed text (e.g., for passport extraction)
-                        $openai = new OpenAiController;
+                        $openai = new OpenAiController();
                         $response = $openai->extractPassport($parsedText); // Pass the parsed text to OpenAI
 
-                        // Since extractPassport already returns the parsed data (not a JSON string),
+                        // Since extractPassport already returns the parsed data (not a JSON string), 
                         // we can use it directly as an array
                         if (isset($response['data'])) {
                             $this->updateClientPassport($client, $response['data']);
@@ -792,6 +793,7 @@ class ClientController extends Controller
         return redirect()->back()->with('success', 'Clients imported successfully.');
     }
 
+
     public function changeAgent(Request $request, $id)
     {
         // Validate the new agent ID
@@ -818,7 +820,7 @@ class ClientController extends Controller
 
         // Set headers for the response
         header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="'.$csvFileName.'"');
+        header('Content-Disposition: attachment; filename="' . $csvFileName . '"');
 
         // Add CSV header
         fputcsv($handle, ['Client Name', 'Client Email', 'Phone', 'Agent']);
@@ -836,6 +838,7 @@ class ClientController extends Controller
         fclose($handle);
         exit();
     }
+
 
     public function addToGroup(Request $request)
     {
@@ -895,9 +898,9 @@ class ClientController extends Controller
                     'relation' => $group->relation, // Include relation column
                 ];
             });
-
         return response()->json($childClients);
     }
+
 
     public function getParClients(int $childClientId)
     {
@@ -920,12 +923,13 @@ class ClientController extends Controller
         $client = Client::find($id);
 
         // Check if client exists
-        if (! $client) {
+        if (!$client) {
             return response()->json(['error' => 'Client not found'], 404);
         }
 
         return response()->json($client);
     }
+
 
     public function updateGroup(Request $request, int $id)
     {
@@ -936,7 +940,7 @@ class ClientController extends Controller
         ]);
 
         // Ensure that relation is a valid string
-        $relation = (string) $request->relation;
+        $relation = (string)$request->relation;
 
         // Log query parameters for debugging
         Log::info('Query parameters:', [
@@ -953,7 +957,7 @@ class ClientController extends Controller
         Log::info('clientGroup found:', ['clientGroup' => $clientGroup]);
 
         // If no client group is found, return an error response
-        if (! $clientGroup) {
+        if (!$clientGroup) {
             return response()->json([
                 'success' => false,
                 'message' => 'Client relationship not found!',
@@ -980,7 +984,6 @@ class ClientController extends Controller
             $clientGroup->save();
         } catch (\Exception $e) {
             Log::error('Error saving client group:', ['error' => $e->getMessage()]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update client relationship!',
@@ -997,16 +1000,47 @@ class ClientController extends Controller
 
     public function addCredit(Payment $payment)
     {
+        // Phantom-credit guard: an invoice-linked gateway payment is settled directly against
+        // the invoice via createInvoicePaymentCOA() (receivable credited, partial -> paid).
+        // Writing a Topup credit here would record the client's money a SECOND time as a client
+        // credit balance with no matching consumption, inflating their credit (see
+        // project_citytour_phantom_credit_topup_no_consumption). Such payments never settle via
+        // client credit, so addCredit is a no-op for them.
+        if ($payment->invoice_id) {
+            Log::info('addCredit skipped: invoice-linked payment is settled via invoice COA, not client credit.', [
+                'payment_id' => $payment->id,
+                'invoice_id' => $payment->invoice_id,
+            ]);
+
+            return [
+                'status'  => 'success',
+                'message' => 'Invoice-linked payment settled via invoice COA; no client credit created.',
+                'data'    => [
+                    'client_id'      => $payment->client_id,
+                    'credit'         => 0,
+                    'transaction_id' => null,
+                ],
+            ];
+        }
+
         $existingCredit = Credit::where('payment_id', $payment->id)
             ->where('type', Credit::TOPUP)
             ->exists();
 
         if ($existingCredit) {
+            // Idempotent no-op, NOT an error: the webhook, browser callback and reconciler
+            // all funnel here and can race (VOU-2026-03849 flashed this to the payer as
+            // "Error: Failed to add credit ..." on an already-PAID receipt page).
             Log::warning('Duplicate addCredit attempt blocked', ['payment_id' => $payment->id]);
-
             return [
-                'status' => 'error',
-                'message' => 'Credit has already been added for this payment.',
+                'status'        => 'success',
+                'already_added' => true,
+                'message'       => 'Credit was already added for this payment; duplicate skipped.',
+                'data'          => [
+                    'client_id'      => $payment->client_id,
+                    'credit'         => 0,
+                    'transaction_id' => null,
+                ],
             ];
         }
 
@@ -1015,7 +1049,7 @@ class ClientController extends Controller
         $companyId = $agent->branch->company->id;
 
         // STEP 1: Get charge configuration and calculate fee
-        $chargeRecord = Charge::where('name', 'LIKE', '%'.$payment->payment_gateway.'%')
+        $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
             ->where('company_id', $companyId)
             ->first();
 
@@ -1065,18 +1099,17 @@ class ClientController extends Controller
         DB::beginTransaction();
         try {
             Credit::create([
-                'company_id' => $companyId,
-                'client_id' => $client->id,
-                'type' => 'Topup',
-                'payment_id' => $payment->id,
-                'description' => 'Topup Credit via '.$payment->voucher_number,
-                'amount' => $clientCreditAmount,
+                'company_id'  => $companyId,
+                'client_id'   => $client->id,
+                'type'        => 'Topup',
+                'payment_id'  => $payment->id,
+                'description' => 'Topup Credit via ' . $payment->voucher_number,
+                'amount'      => $clientCreditAmount,
                 'gateway_fee' => $accountingFee,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create Credit record', ['error' => $e->getMessage()]);
-
             return ['status' => 'error', 'message' => 'Failed to create Credit record'];
         }
         DB::commit();
@@ -1092,7 +1125,7 @@ class ClientController extends Controller
                 ->where('company_id', $companyId)
                 ->first();
 
-            if (! $liabilitiesAccount) {
+            if (!$liabilitiesAccount) {
                 throw new \Exception('Liabilities account not found');
             }
 
@@ -1101,7 +1134,7 @@ class ClientController extends Controller
                 ->where('root_id', $liabilitiesAccount->id)
                 ->first();
 
-            if (! $clientAdvance) {
+            if (!$clientAdvance) {
                 throw new \Exception('Client Advance account not found');
             }
 
@@ -1110,7 +1143,7 @@ class ClientController extends Controller
                 ->where('parent_id', $clientAdvance->id)
                 ->first();
 
-            if (! $clientAdvancePaymentGateway) {
+            if (!$clientAdvancePaymentGateway) {
                 throw new \Exception('Client Advance Payment Gateway account not found');
             }
 
@@ -1121,7 +1154,7 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'credit',
                 'amount' => $clientCreditAmount,
-                'description' => 'Client Advance via '.$payment->voucher_number,
+                'description' => 'Client Advance via ' . $payment->voucher_number,
                 'payment_id' => $payment->id,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
@@ -1136,14 +1169,14 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' => $bankPaymentFee->id,
                     'transaction_date' => $payment->payment_date ?? now(),
-                    'description' => 'Client Pays by '.$client->full_name.' via (Assets): '.$bankPaymentFee->name,
+                    'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $assetAmount,
                     'credit' => 0,
                     'balance' => $bankPaymentFee->actual_balance + $assetAmount,
                     'name' => $bankPaymentFee->name,
                     'type' => 'bank',
                     'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $bankPaymentFee->id,
+                    'type_reference_id' => $bankPaymentFee->id
                 ]);
 
                 $bankPaymentFee->actual_balance += $assetAmount;
@@ -1159,13 +1192,13 @@ class ClientController extends Controller
                     'account_id' => $bankCOAFee->id,
                     'voucher_number' => $payment->voucher_number,
                     'transaction_date' => $payment->payment_date ?? now(),
-                    'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$bankCOAFee->name,
+                    'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
                     'debit' => $accountingFee,
                     'credit' => 0,
                     'balance' => $bankCOAFee->actual_balance + $accountingFee,
                     'name' => $bankCOAFee->name,
                     'type' => 'charges',
-                    'type_reference_id' => $bankCOAFee->id,
+                    'type_reference_id' => $bankCOAFee->id
                 ]);
 
                 $bankCOAFee->actual_balance += $accountingFee;
@@ -1181,13 +1214,13 @@ class ClientController extends Controller
                     'account_id' => $incomeAccount->id,
                     'voucher_number' => $payment->voucher_number,
                     'transaction_date' => $payment->payment_date ?? now(),
-                    'description' => 'Gateway Fee Recovery from Client: '.$client->full_name,
+                    'description' => 'Gateway Fee Recovery from Client: ' . $client->full_name,
                     'debit' => 0,
                     'credit' => $accountingFee,
                     'balance' => $incomeAccount->actual_balance + $accountingFee,
                     'name' => $incomeAccount->name,
                     'type' => 'income',
-                    'type_reference_id' => $incomeAccount->id,
+                    'type_reference_id' => $incomeAccount->id
                 ]);
 
                 $incomeAccount->actual_balance += $accountingFee;
@@ -1201,14 +1234,14 @@ class ClientController extends Controller
                 'company_id' => $companyId,
                 'account_id' => $clientAdvancePaymentGateway->id,
                 'transaction_date' => $payment->payment_date ?? now(),
-                'description' => 'Advance Payment in voucher number: '.$payment->voucher_number,
+                'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                 'debit' => 0,
                 'credit' => $clientCreditAmount,
                 'balance' => $clientAdvancePaymentGateway->actual_balance + $clientCreditAmount,
                 'name' => $client->full_name,
                 'type' => 'advance',
                 'voucher_number' => $payment->voucher_number,
-                'type_reference_id' => $client->id,
+                'type_reference_id' => $client->id
             ]);
 
             $clientAdvancePaymentGateway->actual_balance += $clientCreditAmount;
@@ -1231,9 +1264,8 @@ class ClientController extends Controller
             ];
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error adding JournalEntry: '.$e->getMessage());
-
-            return ['status' => 'error', 'message' => 'Failed to add JournalEntry: '.$e->getMessage()];
+            Log::error('Error adding JournalEntry: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Failed to add JournalEntry: ' . $e->getMessage()];
         }
     }
 
@@ -1277,7 +1309,7 @@ class ClientController extends Controller
                 ->where('company_id', $agent->branch->company->id)
                 ->first();
 
-            if (! $liabilities) {
+            if (!$liabilities) {
                 throw new Exception('Liabilities account not found');
             }
 
@@ -1286,7 +1318,7 @@ class ClientController extends Controller
                 ->where('parent_id', $liabilities->id)
                 ->first();
 
-            if (! $advances) {
+            if (!$advances) {
                 throw new Exception('Advances account not found');
             }
 
@@ -1296,7 +1328,7 @@ class ClientController extends Controller
                 ->where('root_id', $liabilities->id)
                 ->first();
 
-            if (! $clientAdvance) {
+            if (!$clientAdvance) {
                 throw new Exception('Client Advance account not found');
             }
 
@@ -1304,7 +1336,7 @@ class ClientController extends Controller
                 ->where('company_id', $agent->branch->company_id)
                 ->where('parent_id', $clientAdvance->id)
                 ->first();
-            if (! $paymentGateway) {
+            if (!$paymentGateway) {
                 throw new Exception('Payment Gateway account not found');
             }
 
@@ -1313,7 +1345,7 @@ class ClientController extends Controller
                 ->where('root_id', $liabilities->id)
                 ->first();
 
-            if (! $refundPayable) {
+            if (!$refundPayable) {
                 throw new Exception('Refund Payable account not found');
             }
 
@@ -1323,18 +1355,18 @@ class ClientController extends Controller
                 ->where('root_id', $liabilities->id)
                 ->first();
 
-            if (! $clientRefund) {
+            if (!$clientRefund) {
                 throw new Exception('Client Refund account not found');
             }
 
             $transaction = Transaction::create([
-                'branch_id' => $agent->branch->id,
-                'company_id' => $agent->branch->company->id,
-                'entity_id' => $agent->branch->company->id,
+                'branch_id' =>  $agent->branch->id,
+                'company_id' =>  $agent->branch->company->id,
+                'entity_id' =>  $agent->branch->company->id,
                 'entity_type' => 'client',
                 'transaction_type' => 'credit',
                 'amount' => $request->amount,
-                'description' => 'Client Refund of '.$client->full_name.' of '.$request->amount,
+                'description' => 'Client Refund of ' . $client->full_name . ' of ' . $request->amount,
                 'invoice_id' => null,
                 'reference_type' => 'Refund',
                 'reference_number' => null,
@@ -1345,36 +1377,38 @@ class ClientController extends Controller
                 'transaction_id' => $transaction->id,
                 'branch_id' => $agent->branch->id,
                 'company_id' => $agent->branch->company->id,
-                'account_id' => $paymentGateway->id,
+                'account_id' =>  $paymentGateway->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Deduct Client Advance: '.$client->full_name.' of '.$request->amount,
+                'description' => 'Deduct Client Advance: ' . $client->full_name . ' of ' . $request->amount,
                 'debit' => $request->amount,
                 'credit' => 0,
                 'balance' => null,
-                'name' => $client->full_name,
+                'name' =>  $client->full_name,
                 'type' => 'receivable',
                 'voucher_number' => null,
-                'type_reference_id' => $advances->id,
+                'type_reference_id' => $advances->id
             ]);
 
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'branch_id' => $agent->branch->id,
                 'company_id' => $agent->branch->company->id,
-                'account_id' => $clientRefund->id,
+                'account_id' =>  $clientRefund->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Debit Client Refund Payable: '.$client->full_name.' of '.$request->amount,
+                'description' => 'Debit Client Refund Payable: ' . $client->full_name . ' of ' . $request->amount,
                 'debit' => 0,
                 'credit' => $request->amount,
                 'balance' => null,
-                'name' => $client->full_name,
+                'name' =>  $client->full_name,
                 'type' => 'payable',
                 'voucher_number' => null,
-                'type_reference_id' => $refundPayable->id,
+                'type_reference_id' => $refundPayable->id
             ]);
 
             // $client->credit -= $request->amount;
             // $client->save();
+
+
 
             RefundClient::create([
                 'client_id' => $client->id,
@@ -1387,21 +1421,19 @@ class ClientController extends Controller
 
             try {
                 Credit::create([
-                    'company_id' => $agent->branch->company->id,
-                    'client_id' => $client->id,
-                    'type' => 'Refund Credit',
-                    'description' => 'Refund Credit for '.$client->full_name,
-                    'amount' => -($request->amount),
+                    'company_id'  => $agent->branch->company->id,
+                    'client_id'   => $client->id,
+                    'type'        => 'Refund Credit',
+                    'description' => 'Refund Credit for ' . $client->full_name,
+                    'amount'      => - ($request->amount),
                 ]);
             } catch (Exception $e) {
-                Log::error('Failed to create Credit: '.$e->getMessage());
-
+                Log::error('Failed to create Credit: ' . $e->getMessage());
                 return response()->json('Something Went Wrong', 500);
             }
         } catch (Exception $e) {
             DB::rollBack();
-            logger('Error processing refund: '.$e->getMessage());
-
+            logger('Error processing refund: ' . $e->getMessage());
             return [
                 'status' => 'error',
                 'message' => 'Failed to process refund',
@@ -1424,11 +1456,11 @@ class ClientController extends Controller
     {
         $client = Client::with('agent')->find($id);
 
-        if (! $client) {
+        if (!$client) {
             return response()->json(['error' => 'Client not found'], 404);
         }
 
-        if (! $client->agent) {
+        if (!$client->agent) {
             return response()->json(['error' => 'No agent assigned to this client'], 404);
         }
 
@@ -1444,7 +1476,6 @@ class ClientController extends Controller
     public function getCreditBalance($id)
     {
         $credit = Credit::getTotalCreditsByClient($id);
-
         return response()->json(['credit' => $credit]);
     }
 
@@ -1457,11 +1488,12 @@ class ClientController extends Controller
             ->selectRaw('SUM(GREATEST(amount,0)) total_in, SUM(LEAST(amount,0)) total_out')
             ->first();
 
-        $totalIn = $totals->total_in ?? 0;
+        $totalIn  = $totals->total_in  ?? 0;
         $totalOut = $totals->total_out ?? 0;
         $netBalance = $totalIn + $totalOut;
 
         $credits = (clone $base)
+            ->orderBy('created_at', 'asc')
             ->orderBy('id', 'asc')
             ->paginate(25)
             ->withQueryString();
@@ -1478,7 +1510,7 @@ class ClientController extends Controller
         if ($response->denied()) {
             return response()->json([
                 'status' => 'error',
-                'message' => $response->message() ?: 'You do not have permission to assign agents.',
+                'message' => $response->message() ?: 'You do not have permission to assign agents.'
             ], 403);
         }
 
@@ -1490,7 +1522,7 @@ class ClientController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Agents assigned successfully.',
+            'message' => 'Agents assigned successfully.'
         ]);
     }
 
@@ -1502,14 +1534,14 @@ class ClientController extends Controller
         $request->validate([
             'existing_client_id' => 'required|exists:clients,id',
             'owner_agent_id' => 'required|exists:agents,id',
-            'request_reason' => 'required|string|min:5|max:500',
+            'request_reason' => 'required|string|min:5|max:500'
         ]);
 
         $existingClient = Client::with('agent')->findOrFail($request->existing_client_id);
         $ownerAgent = Agent::findOrFail($request->owner_agent_id);
         $requestingAgent = Agent::where('user_id', Auth::id())->first();
 
-        if (! $requestingAgent) {
+        if (!$requestingAgent) {
             return redirect()->back()->with('error', 'Agent profile not found.');
         }
 
@@ -1530,7 +1562,7 @@ class ClientController extends Controller
             'requesting_agent_id' => $requestingAgent->id,
             'requesting_agent_name' => $requestingAgent->name,
             'request_reason' => $request->request_reason,
-            'timestamp' => now(),
+            'timestamp' => now()
         ]);
 
         // Send notification to owner agent
@@ -1557,16 +1589,16 @@ class ClientController extends Controller
             'requesting_agent_id' => $requestingAgent->id,
             'requesting_agent_name' => $requestingAgent->name,
             'client_id' => $existingClient->id,
-            'client_name' => $existingClient->first_name.' '.$existingClient->last_name,
+            'client_name' => $existingClient->first_name . ' ' . $existingClient->last_name,
             'reason' => $reason,
             'request_token' => $requestToken,
-            'timestamp' => now(),
+            'timestamp' => now()
         ]);
 
         // Create actionable notification data
         $data = [
             'user_id' => $ownerAgent->user_id,
-            'title' => 'Client Assignment Request',
+            'title' => "Client Assignment Request",
             'message' => "Agent {$requestingAgent->name} requests assignment to your client \"{$existingClient->first_name} {$existingClient->last_name}\". Reason: {$reason}",
             'type' => 'client_assignment_request',
             'data' => json_encode([
@@ -1582,9 +1614,9 @@ class ClientController extends Controller
                 'actions' => [
                     'approve_url' => route('clients.assignment.approve', ['token' => $requestToken]),
                     'deny_url' => route('clients.assignment.deny', ['token' => $requestToken]),
-                    'view_client_url' => route('clients.show', $existingClient->id),
-                ],
-            ]),
+                    'view_client_url' => route('clients.show', $existingClient->id)
+                ]
+            ])
         ];
 
         $this->storeNotification($data);
@@ -1608,7 +1640,7 @@ class ClientController extends Controller
     {
         $request = ClientAssignmentRequest::byToken($token)->active()->first();
 
-        if (! $request) {
+        if (!$request) {
             return redirect()->route('dashboard')->with('error', 'Assignment request not found or has expired.');
         }
 
@@ -1639,7 +1671,7 @@ class ClientController extends Controller
             $requestingAgent = $request->requestingAgent;
             $notificationData = [
                 'user_id' => $requestingAgent->user_id,
-                'title' => 'Assignment Request Approved',
+                'title' => "Assignment Request Approved",
                 'message' => "Your request to be assigned to client \"{$client->first_name} {$client->last_name}\" has been approved by {$ownerAgent->name}.",
                 'type' => 'assignment_approved',
                 'data' => json_encode([
@@ -1647,8 +1679,8 @@ class ClientController extends Controller
                     'client_name' => $client->full_name,
                     'approved_by' => $ownerAgent->name,
                     'approved_at' => now()->toISOString(),
-                    'view_client_url' => route('clients.show', $client->id),
-                ]),
+                    'view_client_url' => route('clients.show', $client->id)
+                ])
             ];
             $this->storeNotification($notificationData);
 
@@ -1659,7 +1691,7 @@ class ClientController extends Controller
                 'client_id' => $client->id,
                 'owner_agent_id' => $ownerAgent->id,
                 'requesting_agent_id' => $requestingAgent->id,
-                'approved_by' => Auth::id(),
+                'approved_by' => Auth::id()
             ]);
 
             return redirect()->route('clients.show', $client->id)
@@ -1668,9 +1700,8 @@ class ClientController extends Controller
             DB::rollBack();
             Log::error('Failed to approve assignment request', [
                 'token' => $token,
-                'error' => $e->getMessage(),
+                'error' => $e->getMessage()
             ]);
-
             return redirect()->route('dashboard')->with('error', 'Failed to approve assignment request.');
         }
     }
@@ -1682,7 +1713,7 @@ class ClientController extends Controller
     {
         $request = ClientAssignmentRequest::byToken($token)->active()->first();
 
-        if (! $request) {
+        if (!$request) {
             return redirect()->route('dashboard')->with('error', 'Assignment request not found or has expired.');
         }
 
@@ -1709,7 +1740,7 @@ class ClientController extends Controller
             $client = $request->client;
             $notificationData = [
                 'user_id' => $requestingAgent->user_id,
-                'title' => 'Assignment Request Denied',
+                'title' => "Assignment Request Denied",
                 'message' => "Your request to be assigned to client \"{$client->first_name} {$client->last_name}\" has been denied by {$ownerAgent->name}.",
                 'type' => 'assignment_denied',
                 'data' => json_encode([
@@ -1717,8 +1748,8 @@ class ClientController extends Controller
                     'client_name' => $client->full_name,
                     'denied_by' => $ownerAgent->name,
                     'denied_at' => now()->toISOString(),
-                    'reason' => $request->reason,
-                ]),
+                    'reason' => $request->reason
+                ])
             ];
             $this->storeNotification($notificationData);
 
@@ -1729,7 +1760,7 @@ class ClientController extends Controller
                 'client_id' => $client->id,
                 'owner_agent_id' => $ownerAgent->id,
                 'requesting_agent_id' => $requestingAgent->id,
-                'denied_by' => Auth::id(),
+                'denied_by' => Auth::id()
             ]);
 
             return redirect()->route('dashboard')
@@ -1738,12 +1769,12 @@ class ClientController extends Controller
             DB::rollBack();
             Log::error('Failed to deny assignment request', [
                 'token' => $token,
-                'error' => $e->getMessage(),
+                'error' => $e->getMessage()
             ]);
-
             return redirect()->route('dashboard')->with('error', 'Failed to deny assignment request.');
         }
     }
+
 
     // AJAX
 
@@ -1785,23 +1816,26 @@ class ClientController extends Controller
                 break;
             default:
 
-                Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: '.$user->id);
+                Log::warning('[SEARCH CLIENT] Unauthorized access attempt by user ID: ' . $user->id);
 
                 return response()->json([], 403);
         }
 
         $agentId = $request->input('agent_id') ?: $request->input('id');
         if ($agentId) {
-            $clientQuery->where('agent_id', $agentId);
+            $clientQuery->where(function ($q) use ($agentId) {
+                $q->where('agent_id', $agentId)
+                    ->orWhereHas('agents', fn($qq) => $qq->where('agent_id', $agentId));
+            });
         }
 
         if ($searchTerm) {
             $clientQuery->where(function ($query) use ($searchTerm) {
-                $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%'.$searchTerm.'%'])
-                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%'.$searchTerm.'%'])
-                    ->orWhere('email', 'LIKE', '%'.$searchTerm.'%')
-                    ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%'.$searchTerm.'%'])
-                    ->orWhere('address', 'LIKE', '%'.$searchTerm.'%');
+                $query->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhereRaw("CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')) LIKE ?", ['%' . $searchTerm . '%'])
+                    ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
             });
         }
 

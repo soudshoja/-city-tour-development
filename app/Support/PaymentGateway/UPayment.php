@@ -77,7 +77,7 @@ class UPayment
                 'reference' => $orderReference,
                 'description' => 'Payment for invoice: ' . $orderReference,
                 'currency' => $request->input('currency', 'KWD'),
-                'amount' => $request->input('final_amount'),
+                'amount' => number_format((float) $request->input('final_amount'), 3, '.', ''),
             ],
             'paymentGateway' => [
                 'src' => $paymentGateway,

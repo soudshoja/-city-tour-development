@@ -166,6 +166,8 @@ class AdminUsersController extends Controller
 
     public function newCompany()
     {
+        abort_unless((int) Auth::user()->role_id === Role::ADMIN, 403);
+
         $countries = Country::all(); // Fetch all countries from the `countries` table
         return view('admin.addnewCompany', compact('countries'));
     }
@@ -192,6 +194,7 @@ class AdminUsersController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless((int) Auth::user()->role_id === Role::ADMIN, 403);
 
         Log::info('Store function called with request data:', $request->all());
 
@@ -255,6 +258,8 @@ class AdminUsersController extends Controller
 
     public function ShowCompanies(Request $request)
     {
+        abort_unless((int) Auth::user()->role_id === Role::ADMIN, 403);
+
         // Retrieve all companies with their related nationality
         $companies = Company::with('nationality')->get(); // Eager load the nationality relationship
 

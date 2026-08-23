@@ -726,6 +726,32 @@ class ProcessAirFiles extends Command implements Isolatable
         $fileRealPath = $file->getRealPath();
         $fileName = $file->getFilename();
 
+        // Deterministic supplier-specific parsing for BOTH PDF attachments and
+        // body-only HTML emails (IndiGo / Accelya NDC ship the itinerary in the
+        // body). HTML routes via detectHtml() -> fromHtml(); PDF via detect().
+        $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $isHtml = ($ext === 'html' || $ext === 'htm');
+        if ($ext === 'pdf' || $isHtml) {
+            try {
+                $parserClass = $isHtml
+                    ? \App\Services\Parsers\SupplierPdfDetector::detectHtml(file_get_contents($fileRealPath))
+                    : \App\Services\Parsers\SupplierPdfDetector::detect($fileRealPath);
+                if ($parserClass !== null) {
+                    $this->info("Using deterministic parser: {$parserClass} for {$fileName}");
+                    $this->processSingleFileWithSupplierPdfParser($parserClass, $companyId, $companyName, $supplierName, $supplierId, $file);
+                    return;
+                }
+            } catch (\Throwable $detectErr) {
+                $this->logger->warning("Supplier parser detect threw, falling back to AI", [
+                    'file' => $fileName, 'error' => $detectErr->getMessage(),
+                ]);
+            }
+            if ($isHtml) {
+                $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'No HTML body parser matched', 'detectHtml returned null');
+                return;
+            }
+        }
+
         try {
             $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
 
@@ -885,23 +911,24 @@ class ProcessAirFiles extends Command implements Isolatable
                         $this->logger->info("Reissued task: keeping current file flight details, not overriding with original task.");
                     }
 
-                    if ($originalTask->agent_id) {
+                    // Prefer the agent identified by THIS file's C-line — for refund/void/reissue
+                    // that's the operator who actually performed the action. Fall back to the
+                    // original task's agent_id only if the file didn't carry an identifiable agent.
+                    $fileAgent = null;
+                    if ($agentAmadeusId || $agentName || $agentEmail) {
+                        $fileAgent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
+                    }
+                    if ($fileAgent) {
+                        $taskData['agent_id'] = $fileAgent->id;
+                        $this->logger->info("Using agent from this file's C-line: {$fileAgent->id} (action performed by this agent)");
+                    } elseif ($originalTask->agent_id) {
                         $taskData['agent_id'] = $originalTask->agent_id;
-                        $this->logger->info("Using agent from original task: {$originalTask->agent_id}");
+                        $this->logger->info("File data did not resolve to an agent; falling back to original task agent: {$originalTask->agent_id}");
                     } else {
-                        $this->logger->info("Original task has no agent, trying to find agent from file data.");
-                        if ($agentAmadeusId || $agentName || $agentEmail) {
-                            $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
-                        }
-                        if ($agent) {
-                            $taskData['agent_id'] = $agent->id;
-                            $this->logger->info("Agent found via file data: " . $taskData['agent_id']);
-                        } else {
-                            $taskData['agent_id'] = null;
-                            $taskData['enabled']  = false;
-                            $this->logger->warning("Agent not found for {$fileName} item {$index}.");
-                            $this->warn("Agent not found for {$fileName} item {$index}.");
-                        }
+                        $taskData['agent_id'] = null;
+                        $taskData['enabled']  = false;
+                        $this->logger->warning("Agent not found for {$fileName} item {$index}.");
+                        $this->warn("Agent not found for {$fileName} item {$index}.");
                     }
 
                     if ($originalTask->client_id) {
@@ -943,8 +970,70 @@ class ProcessAirFiles extends Command implements Isolatable
                 }
             }
 
+            // Inbound-mail attribution: when this file was dropped by the cPanel
+            // email ingestion, attribute the mailbox-owner agent. Guarded by
+            // Schema::hasTable so it is a no-op until email_ingests exists. No
+            // agent GATE on prod (keep permissive).
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('email_ingests')) {
+                    $ingestRow = \App\Models\EmailIngest::where('file_name', $fileName)->orderByDesc('id')->first();
+                    // Attribute the mailbox-owner agent ONLY when the booking landed in a
+                    // SINGLE mailbox. The ingest dedup flags multi-mailbox broadcasts in the
+                    // note -> leave those unassigned for manual handling. Re-resolve from the
+                    // mailbox so a historically-null ingest agent_id still attributes.
+                    if ($ingestRow && config('mail_ingest.attribute_agent') && empty($taskData['agent_id'])
+                        && empty($taskData['suppress_ingest_agent'])
+                        && stripos((string) $ingestRow->note, 'broadcast') === false) {
+                        $resolvedAgent = $ingestRow->agent_id
+                            ?: optional(\App\Models\Agent::where('ingest_email', $ingestRow->mailbox)->first())->id;
+                        if ($resolvedAgent) {
+                            $taskData['agent_id'] = $resolvedAgent;
+                            $this->logger->info("Agent {$resolvedAgent} attributed from inbound-mail ingest (single mailbox {$ingestRow->mailbox}) for {$fileName}.");
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->logger->warning("EmailIngest lookup failed for {$fileName}: " . $e->getMessage());
+            }
+
             $taskData['enabled'] = false;
             $taskData['file_name'] = $fileName;
+
+            // ─── AGENT GATE (citycomm — AIR files only) ──────────────────────
+            // Decided behavior: an AIR ticket whose acting agent is NOT registered
+            // must NOT load as a task. Scoped to .air so the email/NDC/PDF pipeline
+            // (mailbox-attributed) is unaffected.
+            //  (1) NEW issue with no resolved agent_id          -> hold.
+            //  (2) Modification (reissue/refund/void) whose ORIGINAL ticket is not
+            //      in the system (no original_task_id)          -> hold.
+            // Held .air files route to NOT LOADED/unregistered_agent/ via
+            // AirIngestController (it greps the UNREGISTERED_AGENT_REJECT marker).
+            // Recoverable: register the agent (or load the original) + re-drop file.
+            if (preg_match('/\.air$/i', (string) $fileName)) {
+                $isModification     = in_array($taskData['status'] ?? null, ['reissued', 'refund', 'void'], true);
+                $unregisteredIssue  = !$isModification && empty($taskData['agent_id']);
+                $orphanModification = $isModification && empty($taskData['original_task_id']);
+                if ($unregisteredIssue || $orphanModification) {
+                    $why = $orphanModification ? 'orphan_modification' : 'unregistered_agent';
+                    $this->warn("UNREGISTERED_AGENT_REJECT {$fileName} item {$index}");
+                    $this->logger->warning("AIR agent gate: holding file — {$why}", [
+                        'file_name' => $fileName, 'item_index' => $index, 'why' => $why,
+                        'status' => $taskData['status'] ?? null,
+                        'reference' => $taskData['reference'] ?? null,
+                        'original_reference' => $taskData['original_reference'] ?? null,
+                        'amadeus_id' => $taskData['agent_amadeus_id'] ?? null,
+                    ]);
+                    return [
+                        'success' => false,
+                        'index'   => $index,
+                        'reason'  => $why,
+                        'error'   => $orphanModification
+                            ? ("Held (orphan_modification): {$taskData['status']} ref=" . ($taskData['reference'] ?? '') . " — original not in system")
+                            : "Held (unregistered_agent): no registered agent matches this AIR ticket",
+                    ];
+                }
+            }
+            // ─── END AGENT GATE ──────────────────────────────────────────────
 
             $ruleConfig = new TaskRuleConfiguration();
 
@@ -1137,6 +1226,15 @@ class ProcessAirFiles extends Command implements Isolatable
                     }
                 } else {
                     $this->logger->warning("Unexpected response when toggling status for task {$task->id}");
+                }
+
+                // Cross-agent action acknowledgment (refund/void/reissue done by an agent
+                // other than the original task's agent). Service decides if a request row
+                // is needed and bundles multi-passenger AIR imports under one request.
+                try {
+                    app(\App\Services\TaskActionRequestService::class)->maybeCreateRequestFor($task);
+                } catch (\Throwable $e) {
+                    $this->logger->warning("TaskActionRequest creation failed for task {$task->id}: " . $e->getMessage());
                 }
             }
         } catch (Exception $e) {
@@ -1716,6 +1814,112 @@ class ProcessAirFiles extends Command implements Isolatable
                     $e->getMessage()
                 );
             }
+        }
+    }
+
+    /**
+     * Resolve a parser-detected supplier NAME to its supplier id so deterministic
+     * parsers that know the real carrier (e.g. AccelyaNdcParser distinguishing
+     * Oman Airways NDC from Emirates NDC — both routed through the emirates_ndc
+     * folder) tag the task with the correct supplier. Returns $fallbackId (the
+     * ingestion folder's supplier) when the name is empty or doesn't resolve.
+     */
+    protected function resolveSupplierIdByName(?string $name, $companyId, $fallbackId)
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return $fallbackId;
+        }
+        try {
+            $supplier = Supplier::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
+            return $supplier->id ?? $fallbackId;
+        } catch (\Throwable $e) {
+            $this->logger->warning('resolveSupplierIdByName failed: ' . $e->getMessage());
+            return $fallbackId;
+        }
+    }
+
+    protected function processSingleFileWithSupplierPdfParser(string $parserClass, $companyId, $companyName, $supplierName, $supplierId, $file)
+    {
+        $fileRealPath = $file->getRealPath();
+        $fileName = $file->getFilename();
+
+        try {
+            // HTML bodies build through the fromHtml() factory; PDFs through the
+            // file-path constructor. Downstream handling is identical.
+            $pdfExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $parser = ($pdfExt === 'html' || $pdfExt === 'htm')
+                ? $parserClass::fromHtml(file_get_contents($fileRealPath))
+                : new $parserClass($fileRealPath);
+            $tasksData = $parser->parseTaskSchema();
+
+            $this->info("Parser {$parserClass} found " . count($tasksData) . " passenger(s) in: {$fileName}");
+
+            $savedTasks  = [];
+            $failedTasks = [];
+
+            foreach ($tasksData as $index => $taskData) {
+                $passengerIndex = $index + 1;
+                $this->info("Processing passenger {$passengerIndex}/" . count($tasksData) . ": " . ($taskData['client_name'] ?? '(no name)'));
+
+                $normalizedTask = \App\Schema\TaskSchema::normalize($taskData);
+                if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+                    $normalizedTask['task_flight_details'] = \App\Schema\TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+                }
+
+                // Carrier-correct supplier: AccelyaNdcParser routes both Emirates
+                // and Oman NDC through one ingestion folder but detects the real
+                // carrier — retag the task to the parsed supplier_name when it
+                // resolves to a known supplier. Falls back to the folder's
+                // supplier id (no change for single-carrier parsers).
+                $taskSupplierId = $this->resolveSupplierIdByName($taskData['supplier_name'] ?? null, $companyId, $supplierId);
+                if ($taskSupplierId !== $supplierId) {
+                    $this->info("Retagging supplier for {$fileName} passenger {$passengerIndex}: folder #{$supplierId} → parsed '" . ($taskData['supplier_name'] ?? '') . "' #{$taskSupplierId}");
+                }
+
+                try {
+                    $taskResult = $this->processTaskData($companyId, $companyName, $supplierName, $taskSupplierId, $fileName, $taskData, $index);
+                    if ($taskResult['success']) {
+                        $savedTasks[] = $taskResult;
+                        $this->info("Saved task for passenger {$passengerIndex}: " . ($taskData['client_name'] ?? '(no name)'));
+                    } else {
+                        $failedTasks[] = $taskResult;
+                        $this->warn("Failed to save task for passenger {$passengerIndex}: " . ($taskResult['reason'] ?? 'unknown'));
+                    }
+                } catch (\Exception $e) {
+                    $failedTasks[] = ['success' => false, 'index' => $index, 'error' => $e->getMessage(), 'reason' => 'Exception during task data processing'];
+                    $this->error("Exception processing passenger {$passengerIndex}: " . $e->getMessage());
+                    $this->logger->error("Exception processing passenger via supplier parser", [
+                        'file_name' => $fileName,
+                        'passenger_index' => $passengerIndex,
+                        'parser_class' => $parserClass,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $successCount = count($savedTasks);
+            $totalCount   = count($tasksData);
+
+            if (count($failedTasks) === 0) {
+                $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+                $this->moveFileWithLogging(
+                    $fileRealPath, $successPath, $fileName,
+                    "Successfully processed all {$totalCount} passengers via {$parserClass}"
+                );
+            } else {
+                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                $this->moveFileWithLogging(
+                    $fileRealPath, $errorPath, $fileName,
+                    "Partial success: {$successCount}/{$totalCount} passengers processed successfully via {$parserClass}"
+                );
+            }
+        } catch (\Exception $e) {
+            $this->handleFileError(
+                $companyName, $supplierName, $fileRealPath, $fileName,
+                "{$parserClass} processing error",
+                $e->getMessage()
+            );
         }
     }
 }

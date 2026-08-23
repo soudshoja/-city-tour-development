@@ -22,6 +22,7 @@ use App\Models\JournalEntry;
 use App\Models\Role;
 use App\Models\SupplierCompany;
 use App\Models\BonusAgent;
+use App\Models\Country;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -91,7 +92,8 @@ class AgentController extends Controller
 
     public function show($id)
     {
-        $agent = Agent::with('agentType', 'branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
+        $agent = Agent::with('agentType', 'branch.company', 'tasks', 'invoices', 'clients', 'nationality')->findOrFail($id);
+        $countries = Country::orderBy('name')->get(['id', 'name', 'nationality']);
 
         // Paginate all sections when viewing the main page (agentsShow)
         $tasks = Task::with('agent', 'invoiceDetail')
@@ -209,6 +211,13 @@ class AgentController extends Controller
 
         $clientCount = Client::where('agent_id', $agent->id)->count();
 
+        // Clients belonging to THIS agent (direct agent_id OR client_agents
+        // pivot) for the "Auto-assign client" dropdown in the Edit Agent modal.
+        // Scoped to the agent's own clients only — not all company clients.
+        $assignableClients = $agent->clientQuery()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('agents.agentsShow', compact(
             'agent',
             'agentType',
@@ -228,6 +237,8 @@ class AgentController extends Controller
             'bonuses',
             'clientCount',
             'filterBonus',
+            'countries',
+            'assignableClients',
         ));
     }
 
@@ -304,11 +315,18 @@ class AgentController extends Controller
         try {
             $oldSalary = $agent->salary;
             $agent->update($request->all());
-            $user->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-            ]);
+
+            // Only touch user fields that were actually submitted. The Edit Agent
+            // modal (agentsShow.blade.php) doesn't include a password field, so
+            // a blanket update was wiping the user's login on every save
+            // (Hash::make(null) → real bcrypt hash of empty string).
+            $userPayload = [];
+            if ($request->filled('name'))     $userPayload['name'] = $request->name;
+            if ($request->filled('email'))    $userPayload['email'] = $request->email;
+            if ($request->filled('password')) $userPayload['password'] = Hash::make($request->password);
+            if (!empty($userPayload)) {
+                $user->update($userPayload);
+            }
 
             if ($request->salary != $oldSalary && $request->salary > 0) {
                 $companyId = $agent->branch->company_id;

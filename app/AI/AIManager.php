@@ -6,6 +6,8 @@ use App\AI\Contracts\AIClientInterface;
 use App\AI\Services\OpenAIClient;
 use App\AI\Services\AnythingLLMClient;
 use App\AI\Services\OpenWebUIClient;
+use App\AI\Services\ResayilClient;
+use App\AI\Services\FallbackAIClient;
 use App\AI\Support\AIResponse;
 use App\Models\Supplier;
 use Exception;
@@ -21,14 +23,41 @@ class AIManager
 
     protected function createClient(): AIClientInterface
     {
-        $provider = config('ai.default', 'openai');
-
-        return match ($provider) {
-            'openai' => new OpenAIClient(),
-            'anythingllm' => new AnythingLLMClient(),
-            'openwebui' => new OpenWebUIClient(),
-            default => throw new Exception("Unsupported AI provider: {$provider}")
+        $make = function (string $provider, ?string $model = null): AIClientInterface {
+            return match ($provider) {
+                'openai' => new OpenAIClient(),
+                'anythingllm' => new AnythingLLMClient(),
+                'openwebui' => new OpenWebUIClient(),
+                'resayil' => new ResayilClient($model),
+                default => throw new Exception("Unsupported AI provider: {$provider}")
+            };
         };
+
+        if (config('ai.fallback_enabled', false)) {
+            // Preferred: an explicit ordered chain (each entry: ['provider'=>..,'model'=>..]).
+            // Lets the same provider appear with different models, e.g.
+            // resayil:qwen3-vl:235b-instruct -> resayil:qwen3-vl:235b -> openai.
+            $chain = config('ai.chain');
+            if (is_array($chain) && count($chain) > 0) {
+                $clients = [];
+                foreach ($chain as $entry) {
+                    $provider = is_array($entry) ? ($entry['provider'] ?? 'openai') : $entry;
+                    $model = is_array($entry) ? ($entry['model'] ?? null) : null;
+                    $clients[] = $make($provider, $model);
+                }
+                return new FallbackAIClient($clients, (int) config('ai.retries', 2));
+            }
+
+            // Legacy two-tier primary/fallback.
+            $primary = config('ai.primary', config('ai.default', 'openai'));
+            $fallback = config('ai.fallback', 'openai');
+            if ($primary !== $fallback) {
+                return new FallbackAIClient([$make($primary), $make($fallback)], (int) config('ai.retries', 2));
+            }
+            return $make($primary);
+        }
+
+        return $make(config('ai.default', 'openai'));
     }
 
     public function getClient(): AIClientInterface

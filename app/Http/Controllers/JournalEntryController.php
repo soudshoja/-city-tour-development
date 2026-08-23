@@ -5,9 +5,52 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class JournalEntryController extends Controller
 {
+    public function all(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->input('date_to', now()->endOfMonth()->toDateString());
+        $accountId = $request->input('account_id');
+        $type = $request->input('type');
+
+        $query = JournalEntry::with(['account', 'transaction'])
+            ->where('company_id', $companyId)
+            ->whereDate('transaction_date', '>=', $dateFrom)
+            ->whereDate('transaction_date', '<=', $dateTo);
+
+        if ($accountId) {
+            $query->where('account_id', $accountId);
+        }
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $journalEntries = $query->orderBy('transaction_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(50)
+            ->withQueryString();
+
+        $accounts = Account::where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $types = JournalEntry::where('company_id', $companyId)
+            ->whereNotNull('type')
+            ->distinct()
+            ->orderBy('type')
+            ->pluck('type');
+
+        return view('journal_entries.all', compact(
+            'journalEntries', 'accounts', 'types', 'dateFrom', 'dateTo', 'accountId', 'type'
+        ));
+    }
+
     public function index($transactionId)
     {
         $journalEntries = JournalEntry::with(['agent', 'account', 'task', 'transaction'])
@@ -30,7 +73,13 @@ class JournalEntryController extends Controller
         $account = Account::findOrFail($accountId);
         $openingBalance = (float) ($account->opening_balance ?? 0);
 
-        $journalEntries = JournalEntry::with(['account', 'transaction', 'task', 'task.flightDetails', 'task.hotelDetails'])
+        $journalEntries = JournalEntry::with([
+                'account', 'transaction', 'task', 'task.flightDetails', 'task.hotelDetails',
+                'task.client', 'invoice.client',
+                'transaction.payment.client',
+                'transaction.payment.myFatoorahPayment',
+                'transaction.payment.paymentApplications.invoice',
+            ])
             ->where('account_id', $accountId)
             ->whereDate('transaction_date', '>=', $dateFrom)
             ->whereDate('transaction_date', '<=', $dateTo)

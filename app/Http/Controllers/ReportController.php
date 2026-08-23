@@ -626,7 +626,7 @@ class ReportController extends Controller
         }
 
         $journalEntries = JournalEntry::where('company_id', $companyId)
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween('transaction_date', [$from, $to])
             ->get();
 
         $entriesByAccount = $journalEntries->groupBy('account_id');
@@ -662,6 +662,33 @@ class ReportController extends Controller
             ];
         }
 
+        // P&L-2: also include profit-loss accounts the level-3 walk never reaches
+        // (e.g. a P&L account sitting ABOVE level 3, or off any level-3 branch).
+        // Each such account's OWN entries are counted once; its covered
+        // descendants, if any, were already summed above, so nothing is
+        // double-counted (the missed set is disjoint from the covered set).
+        $coveredIds = [];
+        foreach ($level3Accounts as $parent) {
+            $coveredIds[$parent->id] = true;
+            foreach ($descendantsCache[$parent->id] as $desc) {
+                $coveredIds[$desc->id] = true;
+            }
+        }
+        $missedPlAccounts = $allAccounts->filter(fn($a) =>
+            $a->report_type === Account::REPORT_TYPES['PROFIT_LOSS'] && !isset($coveredIds[$a->id]));
+        foreach ($missedPlAccounts as $acct) {
+            $ownAmount = $entriesByAccount->get($acct->id, collect())
+                ->sum(fn($j) => $j->credit - $j->debit);
+            if ($ownAmount == 0) {
+                continue;
+            }
+            $grouped[$acct->id] = [
+                'account' => $acct,
+                'amount' => $ownAmount,
+                'children' => [],
+            ];
+        }
+
         $incomeAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '4'));
         $expenseAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '5'));
 
@@ -672,6 +699,10 @@ class ReportController extends Controller
                 $relevantAccountIds->push($desc->id);
             }
         }
+        // P&L-2: include the missed profit-loss accounts in the yearly chart too.
+        foreach ($missedPlAccounts as $acct) {
+            $relevantAccountIds->push($acct->id);
+        }
         $relevantAccountIds = $relevantAccountIds->unique()->values();
 
         $yearStart = \Carbon\Carbon::createFromDate($year, 1, 1)->startOfYear();
@@ -679,12 +710,12 @@ class ReportController extends Controller
 
         $yearlyEntries = JournalEntry::where('company_id', $companyId)
             ->whereIn('account_id', $relevantAccountIds)
-            ->whereBetween('created_at', [$yearStart, $yearEnd])
+            ->whereBetween('transaction_date', [$yearStart, $yearEnd])
             ->get();
 
         $entriesByMonthAndAccount = [];
         foreach ($yearlyEntries as $entry) {
-            $monthKey = $entry->created_at->format('n');
+            $monthKey = \Carbon\Carbon::parse($entry->transaction_date)->format('n');
             $accountId = $entry->account_id;
 
             if (!isset($entriesByMonthAndAccount[$monthKey])) {
@@ -722,6 +753,14 @@ class ReportController extends Controller
 
                 if (str_starts_with($parent->code, '4')) $income += $total;
                 if (str_starts_with($parent->code, '5')) $expense += abs($total);
+            }
+
+            // P&L-2: add the missed profit-loss accounts' own monthly contribution.
+            foreach ($missedPlAccounts as $acct) {
+                $amount = ($monthEntries[$acct->id] ?? collect())
+                    ->sum(fn($j) => $j->credit - $j->debit);
+                if (str_starts_with($acct->code, '4')) $income += $amount;
+                if (str_starts_with($acct->code, '5')) $expense += abs($amount);
             }
 
             $monthlyLabels[] = \Carbon\Carbon::createFromDate($year, $m, 1)->format('M');

@@ -902,6 +902,11 @@ class InvoiceController extends Controller
 
             // Recalculate profit for all details since gateway fee changed
             $this->recalculateInvoiceCOA($invoice);
+
+            // Re-read DB-rounded DECIMAL values so the JSON response below doesn't
+            // serialize the raw computed ChargeService floats (under serialize_precision=100
+            // a value like 894.8 would leak its binary tail 894.79999999...).
+            $invoicePartial->refresh();
         } else {
             return response()->json(['message' => 'Invoice partial not found.'], 404);
         }
@@ -1364,11 +1369,151 @@ class InvoiceController extends Controller
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
 
+        // ---- BEGIN receivable-posting fix (INV ledger gap) ----
+        // Post accounting at invoice creation so the receivable appears in the client
+        // ledger. Mirrors RunAutoBilling/autoGenerateInvoice: create the Invoice transaction,
+        // post per-task journal entries (DR Clients / CR revenue / profit) via addJournalEntry,
+        // and set payment_type='full' (consistent with auto-billed invoices; also locks quick
+        // task add/remove so the ledger cannot desync). Without this, a manually-created invoice
+        // that is never paid carries zero journal entries and is invisible in the ledger.
+        try {
+            $invoice->load(['invoiceDetails', 'client']);
+            $postTasks = Task::with(['invoiceDetail' => function ($q) use ($invoice) {
+                $q->where('invoice_id', $invoice->id);
+            }, 'agent'])
+                ->whereIn('id', $invoice->invoiceDetails->pluck('task_id')->toArray())
+                ->get();
+
+            if ($postTasks->isNotEmpty()) {
+                $invoiceTransaction = Transaction::create([
+                    'company_id' => $postTasks[0]->company_id,
+                    'branch_id' => $postTasks[0]->agent->branch_id ?? null,
+                    'entity_id' => $postTasks[0]->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $invoice->amount,
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
+                    'invoice_id' => $invoice->id,
+                    'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
+                ]);
+
+                foreach ($postTasks as $postTask) {
+                    $postDetail = $postTask->invoiceDetail
+                        ?: $invoice->invoiceDetails->firstWhere('task_id', $postTask->id);
+
+                    $jeResponse = $this->addJournalEntry(
+                        $postTask,
+                        $invoice->id,
+                        $postDetail->id,
+                        $invoiceTransaction->id,
+                        optional($invoice->client)->full_name,
+                    );
+                    $jeResponse = json_decode($jeResponse->getContent(), true);
+
+                    if (empty($jeResponse['success'])) {
+                        throw new Exception('Journal entry failed: ' . ($jeResponse['message'] ?? 'Unknown error'));
+                    }
+                }
+
+                $invoice->payment_type = 'full';
+                $invoice->save();
+            }
+        } catch (Exception $e) {
+            Log::error('store(): failed to post invoice journal entries: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+            JournalEntry::where('invoice_id', $invoice->id)->delete();
+            Transaction::where('invoice_id', $invoice->id)->where('reference_type', 'Invoice')->delete();
+            $invoice->invoiceDetails()->delete();
+            $invoice->delete();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create invoice accounting entries',
+            ], 500);
+        }
+        // ---- END receivable-posting fix (INV ledger gap) ----
+
         return response()->json([
             'success' => true,
             'message' => 'Invoice created successfully!',
             'invoiceId' => $invoice->id,
         ]);
+    }
+
+    /**
+     * P1a: move a task's supplier cost from the Unbilled Supplier Cost asset (1430)
+     * to the per-supplier COGS expense at invoicing, so cost is matched to revenue.
+     * Posts a balanced pair (Dr COGS / Cr 1430 = task->total). Idempotent — skips if
+     * the task was already reclassified. Fail-safe: never breaks invoicing.
+     */
+    private function reclassifyUnbilledCostToCogs($task, $invoiceId, $invoiceDetailId, $transactionId, $agent, $companyId): void
+    {
+        try {
+            $amount = (float) ($task->total ?? 0);
+            if ($amount == 0) {
+                return;
+            }
+            if (JournalEntry::where('task_id', $task->id)->where('type', 'cogs_reclass')->exists()) {
+                return; // already reclassified
+            }
+            $unbilledCost = Account::where('company_id', $companyId)
+                ->where('code', '1430')->first();
+            $expensesRoot = Account::where('company_id', $companyId)
+                ->where('name', 'like', '%Expenses%')->first();
+            $supplierName = $task->supplier->name ?? null;
+            $supplierExpense = ($supplierName && $expensesRoot)
+                ? Account::where('company_id', $companyId)->where('name', $supplierName)
+                    ->where('root_id', $expensesRoot->id)->first()
+                : null;
+            if (!$unbilledCost || !$supplierExpense) {
+                Log::warning('P1a reclass skipped (accounts missing)', [
+                    'task_id' => $task->id,
+                    'has_unbilled' => (bool) $unbilledCost,
+                    'has_expense' => (bool) $supplierExpense,
+                ]);
+                return;
+            }
+            $date = optional(Invoice::find($invoiceId))->invoice_date ?? now();
+            $branchId = $agent->branch_id ?? null;
+
+            // Dr per-supplier COGS expense
+            JournalEntry::create([
+                'transaction_id' => $transactionId,
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'account_id' => $supplierExpense->id,
+                'task_id' => $task->id,
+                'agent_id' => $agent->id,
+                'invoice_id' => $invoiceId,
+                'invoice_detail_id' => $invoiceDetailId,
+                'transaction_date' => $date,
+                'description' => 'COGS recognized at invoicing (reclassified from unbilled): ' . ($supplierName ?? ''),
+                'name' => $supplierName,
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => 0,
+                'type' => 'cogs_reclass',
+            ]);
+            // Cr Unbilled Supplier Cost asset (1430)
+            JournalEntry::create([
+                'transaction_id' => $transactionId,
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'account_id' => $unbilledCost->id,
+                'task_id' => $task->id,
+                'agent_id' => $agent->id,
+                'invoice_id' => $invoiceId,
+                'invoice_detail_id' => $invoiceDetailId,
+                'transaction_date' => $date,
+                'description' => 'Clear unbilled supplier cost at invoicing: ' . ($supplierName ?? ''),
+                'name' => $supplierName,
+                'debit' => 0,
+                'credit' => $amount,
+                'balance' => 0,
+                'type' => 'cogs_reclass',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('P1a reclassifyUnbilledCostToCogs failed: ' . $e->getMessage(), ['task_id' => $task->id ?? null]);
+        }
     }
 
     public function addJournalEntry(
@@ -1587,6 +1732,10 @@ class InvoiceController extends Controller
                 'message' => 'Failed to create revenue entry',
             ]);
         }
+
+        // P1a: reclassify this task's supplier cost from the Unbilled asset (1430) to
+        // COGS expense, so cost is recognized in the same period as the revenue above.
+        $this->reclassifyUnbilledCostToCogs($task, $invoiceId, $invoiceDetailId, $transactionId, $agent, $companyId);
 
         // ENTRY 3: COMPANY GATEWAY PROFIT (Markup + Rounding)
         // Only when client paid AND there's profit from gateway charges
@@ -6192,16 +6341,20 @@ class InvoiceController extends Controller
             ], 404);
         }
 
-        $recipients = [];
+        // Staff recipients (agent/accountant) receive the detailed version (PNR, issued date,
+        // net price, payment method, payment summary); the client receives the plain version.
+        $staffRecipients = [];
+        $clientRecipients = [];
         $sentTo = [];
+        $clientEmail = strtolower(trim($invoice->client->email ?? ''));
 
         if ($request->boolean('send_to_agent') && $invoice->agent && $invoice->agent->email) {
-            $recipients[] = $invoice->agent->email;
+            $staffRecipients[] = $invoice->agent->email;
             $sentTo[] = "Agent ({$invoice->agent->name})";
         }
 
         if ($request->boolean('send_to_client') && $invoice->client && $invoice->client->email) {
-            $recipients[] = $invoice->client->email;
+            $clientRecipients[] = $invoice->client->email;
             $sentTo[] = "Client ({$invoice->client->full_name})";
         }
 
@@ -6209,13 +6362,19 @@ class InvoiceController extends Controller
             $customEmails = array_map('trim', explode(',', $request->custom_emails));
             foreach ($customEmails as $email) {
                 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $recipients[] = $email;
+                    if ($clientEmail !== '' && strtolower($email) === $clientEmail) {
+                        $clientRecipients[] = $email;
+                    } else {
+                        $staffRecipients[] = $email;
+                    }
                     $sentTo[] = $email;
                 }
             }
         }
 
-        $recipients = array_unique($recipients);
+        $clientRecipients = array_unique(array_map('strtolower', $clientRecipients));
+        $staffRecipients = array_diff(array_unique(array_map('strtolower', $staffRecipients)), $clientRecipients);
+        $recipients = array_merge($staffRecipients, $clientRecipients);
 
         if (empty($recipients)) {
             return response()->json([
@@ -6225,7 +6384,8 @@ class InvoiceController extends Controller
         }
 
         try {
-            $mailable = new \App\Mail\InvoiceMail($invoice->id);
+            $staffMailable = new \App\Mail\InvoiceMail($invoice->id, true);
+            $clientMailable = new \App\Mail\InvoiceMail($invoice->id, false);
 
             // if (app()->environment('local')) {
             //     $localEmail = env('EMAIL_LOCAL', 'it@alphia.net');
@@ -6246,8 +6406,12 @@ class InvoiceController extends Controller
             //     ]);
             // }
 
-            foreach ($recipients as $recipient) {
-                \Illuminate\Support\Facades\Mail::to($recipient)->send($mailable);
+            foreach ($staffRecipients as $recipient) {
+                \Illuminate\Support\Facades\Mail::to($recipient)->send($staffMailable);
+            }
+
+            foreach ($clientRecipients as $recipient) {
+                \Illuminate\Support\Facades\Mail::to($recipient)->send($clientMailable);
             }
 
             Log::info('Invoice email sent successfully', [

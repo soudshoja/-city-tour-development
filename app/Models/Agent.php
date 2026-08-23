@@ -18,15 +18,19 @@ class Agent extends Model
         'tbo_reference',
         'amadeus_id',
         'email',
+        'ingest_email',
         'type_id',
         'phone_number',
         'country_code',
+        'language',
+        'nationality_id',
         'branch_id',
         'commission',
         'salary',
         'target',
         'profit_account_id',
         'loss_account_id',
+        'auto_assign_client_id',
     ];
 
     public function branch()
@@ -48,6 +52,21 @@ class Agent extends Model
     public function clients()
     {
         return $this->belongsToMany(Client::class, 'client_agents', 'agent_id', 'client_id');
+    }
+
+    public function nationality()
+    {
+        return $this->belongsTo(Country::class, 'nationality_id');
+    }
+
+    /**
+     * The client that every clientless task assigned to this agent should be
+     * auto-assigned to. Drives TaskObserver::creating() so non-Amadeus tasks
+     * (which arrive with no client) become auto-bill eligible. Null = off.
+     */
+    public function autoAssignClient()
+    {
+        return $this->belongsTo(Client::class, 'auto_assign_client_id');
     }
 
     public function clientQuery()

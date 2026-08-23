@@ -7,6 +7,7 @@ use App\Models\Agent;
 use App\Models\Notification as ModelsNotification;
 use App\Models\Role;
 use App\Models\ClientAssignmentRequest;
+use App\Models\TaskActionRequest;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -106,8 +107,26 @@ class Notification extends Component
     public function getAssignmentRequestStatus($token)
     {
         if (!$token) return null;
-        
+
         return ClientAssignmentRequest::byToken($token)->first();
+    }
+
+    /**
+     * Is the cross-agent refund/void/reissue request still pending?
+     */
+    public function isTaskActionRequestPending($token)
+    {
+        if (!$token) return false;
+        return TaskActionRequest::byToken($token)->pending()->exists();
+    }
+
+    /**
+     * Get task action request status row.
+     */
+    public function getTaskActionRequestStatus($token)
+    {
+        if (!$token) return null;
+        return TaskActionRequest::byToken($token)->first();
     }
 
 

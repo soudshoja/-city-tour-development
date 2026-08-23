@@ -216,6 +216,54 @@ class SupplierController extends Controller
         return view('suppliers.SuppliersCreate');
     }
 
+    /**
+     * Resolve a WhatsApp group name typed on the supplier form to its stable
+     * group WID via the Resayil device group list (Suppliers > WhatsApp Group
+     * "Verify" button). Returns up to 10 matches [{wid, name}].
+     */
+    public function resolveWhatsappGroup(Request $request)
+    {
+        if (!in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $q = strtolower(trim((string) $request->input('q')));
+        if ($q === '') {
+            return response()->json(['success' => false, 'message' => 'Type the group name first.'], 422);
+        }
+
+        try {
+            $groups = Cache::remember('resayil_group_list', 60, function () {
+                $base = rtrim(config('services.resayil.base_url'), '/') . '/' . trim(config('services.resayil.version'), '/');
+                $tok = config('services.resayil.api_token');
+                $devices = Http::withHeaders(['Token' => $tok])->timeout(30)->get($base . '/devices')->json();
+                $devId = $devices[0]['id'] ?? ($devices['data'][0]['id'] ?? null);
+                if (!$devId) {
+                    return [];
+                }
+                $list = Http::withHeaders(['Token' => $tok])->timeout(30)->get($base . '/devices/' . $devId . '/groups')->json();
+                return is_array($list) ? $list : [];
+            });
+        } catch (\Throwable $e) {
+            Log::warning('resolveWhatsappGroup lookup failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'WhatsApp group lookup failed. Try again.'], 500);
+        }
+
+        $matches = [];
+        foreach ($groups as $g) {
+            $wid = (string) ($g['wid'] ?? '');
+            $name = (string) ($g['name'] ?? '');
+            if ($wid === '' || !str_ends_with($wid, '@g.us')) {
+                continue;
+            }
+            if ($q === strtolower($wid) || ($name !== '' && str_contains(strtolower($name), $q))) {
+                $matches[] = ['wid' => $wid, 'name' => $name !== '' ? $name : $wid];
+            }
+        }
+
+        return response()->json(['success' => true, 'matches' => array_slice($matches, 0, 10)]);
+    }
+
     public function store(Request $request)
     {
         Gate::authorize('create', Supplier::class);
@@ -233,6 +281,8 @@ class SupplierController extends Controller
             'country_id' => 'required|exists:countries,id',
             'is_online' => 'exclude_unless:has_hotel,on|boolean',
             'is_manual' => 'nullable|boolean',
+            'whatsapp_group' => 'nullable|string|max:190',
+            'agency_commission' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $hasHotel = $request->has('has_hotel');
@@ -256,6 +306,8 @@ class SupplierController extends Controller
             'country_id' => $request->input('country_id'),
             'is_online' => $isOnline,
             'is_manual' => $request->boolean('is_manual'),
+            'whatsapp_group' => trim((string) $request->input('whatsapp_group')) ?: null,
+            'agency_commission' => $request->input('agency_commission'),
         ]);
 
         if (!$supplier) {
@@ -287,6 +339,7 @@ class SupplierController extends Controller
             'country_id' => 'required|exists:countries,id',
             'is_online' => 'nullable|boolean',
             'is_manual' => 'nullable|boolean',
+            'whatsapp_group' => 'nullable|string|max:190',
             'surcharge_label.*.*' => 'nullable|string|max:100',
             'surcharge_amount.*.*' => 'nullable|numeric|min:0',
             'deleted_surcharges' => 'nullable|string',
@@ -298,6 +351,7 @@ class SupplierController extends Controller
             'is_void.*.*' => 'nullable|boolean',
             'reference.*.*' => 'nullable|string|max:100',
             'charge_behavior.*.*' => ['nullable', Rule::in(['single', 'repetitive'])],
+            'agency_commission' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $supplier = Supplier::findOrFail($id);
@@ -323,6 +377,8 @@ class SupplierController extends Controller
                 'has_ferry' => $request->has('has_ferry'),
                 'is_online' => $request->boolean('is_online'),
                 'is_manual' => $request->boolean('is_manual'),
+                'whatsapp_group' => trim((string) $request->input('whatsapp_group')) ?: null,
+                'agency_commission' => $request->input('agency_commission'),
             ]);
 
             if (strcasecmp(trim($oldName), trim($newName)) !== 0) {

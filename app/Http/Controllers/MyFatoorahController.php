@@ -274,7 +274,7 @@ return [
         }
     
         return [
-            'total'    => $invoice->amount,
+            'total'    => number_format((float) $invoice->amount, 3, '.', ''),
             'currency' => $invoice->currency ?? 'KWD',
             'client_name' => $invoice->client->full_name ?? 'Guest',
             'client_email' => $invoice->client->email ?? 'guest@example.com',

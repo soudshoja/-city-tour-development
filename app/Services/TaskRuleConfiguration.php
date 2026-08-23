@@ -23,6 +23,25 @@ class TaskRuleConfiguration
             throw new InvalidArgumentException("Task data must have a supplier_id to apply rules.");
         }
 
+        // When the parser already produced a self-consistent collection
+        // breakdown (price + tax + surcharge == total > 0), the AIR file
+        // carried explicit reissue money (e.g. the KS- selling total) —
+        // re-deriving on top of it corrupts the amounts (task 17840: an
+        // unparsed 0 became price -21 / tax 21). Rules exist to fill in
+        // missing money, not to rewrite parsed money.
+        $price = (float) ($taskData['price'] ?? 0);
+        $tax = (float) ($taskData['tax'] ?? 0);
+        $surcharge = (float) ($taskData['surcharge'] ?? 0);
+        $total = (float) ($taskData['total'] ?? 0);
+        if ($total > 0 && abs(($price + $tax + $surcharge) - $total) < 0.005) {
+            Log::info("Task rules skipped: parsed money already consistent", [
+                'company_id' => $companyId,
+                'supplier_id' => $supplierId,
+                'price' => $price, 'tax' => $tax, 'total' => $total,
+            ]);
+            return $taskData;
+        }
+
         $taskRules = $this->getRulesForTask($companyId, $supplierId);
         
         if ($taskRules->isEmpty()) {
@@ -104,6 +123,15 @@ class TaskRuleConfiguration
         }
 
         $newValue = (float) ($taskData[$columnName] ?? 0);
+        if ($newValue == 0.0) {
+            // The parser could not read this column (classic on exotic reissue
+            // fare lines) — subtracting the original from 0 fabricates a
+            // negative amount (task 17840: 0 - 21 = -21). Leave 0 for manual fill.
+            Log::info("MINUS_EXISTING skipped: new value is 0 (unparsed)", [
+                'rule_id' => $rule->id, 'column' => $columnName,
+            ]);
+            return $taskData;
+        }
         $existingValue = (float) ($existingTask->{$columnName} ?? 0);
         $calculatedValue = $newValue - $existingValue;
 
@@ -136,6 +164,14 @@ class TaskRuleConfiguration
 
         $price = (float) ($taskData['price'] ?? 0);
         $total = (float) ($taskData['total'] ?? 0);
+        if ($total == 0.0) {
+            // Total unparsed -> tax would become 0 - price (garbage) and
+            // overwrite a tax the parser DID read. Keep the parsed tax.
+            Log::info("TAX_CALCULATED skipped: total is 0 (unparsed)", [
+                'rule_id' => $rule->id,
+            ]);
+            return $taskData;
+        }
         $tax = $total - $price;
 
         Log::info("Applied TAX_CALCULATED rule", [

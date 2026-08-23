@@ -152,11 +152,11 @@ class TaskController extends Controller
         $defaultColumns = ['reference', 'type', 'gds-reference', 'amadeus-reference', 'bill-to', 'passenger-name', 'supplier-pay-date', 'agent-name', 'price', 'invoice', 'status', 'info', 'supplier'];
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
-        $sortBy = $request->query('sortBy', 'created_at');
-        $sortOrder = $request->query('sortOrder', 'desc');
-        $sortableColumns = ['supplier_pay_date', 'created_at'];
+        $sortBy = $request->query('sortBy', 'issued_date');
+        $sortOrder = strtolower($request->query('sortOrder', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $sortableColumns = ['issued_date', 'supplier_pay_date', 'created_at'];
         if (!in_array($sortBy, $sortableColumns)) {
-            $sortBy = 'created_at';
+            $sortBy = 'issued_date';
         }
 
         $query = Task::with([
@@ -307,13 +307,13 @@ class TaskController extends Controller
         $showVoid = $request->boolean('show_void', false);
         $statuses = (array) $request->input('status', $request->input('status[]', []));
 
-        if (!$showVoid) {
-            if (empty($statuses)) {
-                $query->where('status', '!=', 'void');
-            } else {
-                $query->whereIn('status', $statuses);
-            }
-        } elseif (!empty($statuses)) {
+        // "Show Void Tasks" ON -> force status='void' only (ignore stale status[] params).
+        // Default view excludes voids; explicit status[]= filters by those statuses.
+        if ($showVoid) {
+            $query->where('status', 'void');
+        } elseif (empty($statuses)) {
+            $query->where(function ($q) { $q->where('status', '!=', 'void')->orWhereHas('invoiceDetail'); }); // invoiced voids stay visible in Invoiced tab
+        } else {
             $query->whereIn('status', $statuses);
         }
 
@@ -557,7 +557,11 @@ class TaskController extends Controller
         }
 
         $taskCount = (clone $query)->count();
-        $tasks = $query->orderBy($sortBy, $sortOrder)
+        // The "Issued" column renders issued_date with supplier_pay_date as
+        // fallback — sort by the same expression so order matches the display.
+        $tasks = $query->when($sortBy === 'issued_date',
+                fn ($q) => $q->orderByRaw("COALESCE(issued_date, supplier_pay_date) $sortOrder"),
+                fn ($q) => $q->orderBy($sortBy, $sortOrder))
             ->orderBy('id', $sortOrder)
             ->paginate(20)
             ->withQueryString();
@@ -817,6 +821,30 @@ class TaskController extends Controller
             $request->merge(['status' => 'issued']);
         }
 
+        // ─── RateHawk hotel invoice/voucher auto-merge ──────────────────────
+        // RateHawk emails one hotel booking as TWO PDFs sharing the booking ID
+        // (reference): the invoice carries the price, the voucher carries
+        // room/board/cancellation policy. Fold the pair into a single task, and
+        // load RateHawk hotel tasks unassigned (B2B mail is a broadcast — no owner).
+        if (strtolower((string) $request->type) === 'hotel'
+            && (stripos((string) $request->supplier_name, 'rate hawk') !== false
+                || stripos((string) $request->supplier_name, 'tbo') !== false
+                || stripos((string) $request->supplier_name, 'heysam') !== false
+                || stripos((string) $request->supplier_name, 'magic') !== false
+                || stripos((string) $request->supplier_name, 'smile') !== false
+                || stripos((string) $request->supplier_name, 'gts beds') !== false)) {
+            // RateHawk B2B mail is a broadcast (no owner) -> unassign. TBO names the
+            // booking agent in the PDF ("Issued By"/"Consultant") so keep the resolved agent.
+            if (stripos((string) $request->supplier_name, 'rate hawk') !== false) {
+                $request->merge(['agent_id' => null]);
+            }
+            $rhMerged = $this->mergeRateHawkHotel($request);
+            if ($rhMerged !== null) {
+                return $rhMerged;
+            }
+        }
+        // ─── END RateHawk hotel auto-merge ──────────────────────────────────
+
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
@@ -862,9 +890,69 @@ class TaskController extends Controller
         }
 
         if ($existingTask) {
+            // Zero-price backfill (2026-08-10): a task created from a price-less
+            // document (e.g. a UK ETA "approved" notice that beat its payment
+            // email into the same batch, or an airline check-in mail) gets its
+            // money filled by the first sibling document carrying a positive
+            // amount. Request money is already KWD-converted at this point.
+            // Jazeera / Fly Dubai included too (2026-08-14, QY5PKK): a 0/0
+            // existing task means the fare was unreadable in the first doc,
+            // so a priced sibling is a backfill, NOT a reissue. Their reissue
+            // inference below only applies against a real existing total.
+            if (
+                round((float) $existingTask->price, 3) === 0.0
+                && round((float) $existingTask->total, 3) === 0.0
+                && (float) $request->total > 0
+            ) {
+                $existingTask->fill([
+                    'price'             => $request->price,
+                    'total'             => $request->total,
+                    'original_price'    => $request->original_price ?: $existingTask->original_price,
+                    'original_total'    => $request->original_total ?: $existingTask->original_total,
+                    'original_currency' => $request->original_currency ?: $existingTask->original_currency,
+                    'gds_reference'     => $existingTask->gds_reference ?: $request->gds_reference,
+                    'airline_reference' => $existingTask->airline_reference ?: $request->airline_reference,
+                ])->save();
+
+                // Keep the issuance ledger pair in step: the zero-price creation
+                // posted unbilled_cost / payable at 0.000 — restate them at the
+                // real amount. Only inert 0/0 legs are touched.
+                $zeroJes = \App\Models\JournalEntry::where('task_id', $existingTask->id)
+                    ->whereIn('type', ['unbilled_cost', 'payable'])
+                    ->where('debit', 0)->where('credit', 0)
+                    ->get();
+                foreach ($zeroJes as $je) {
+                    if ($je->type === 'unbilled_cost') {
+                        $je->debit = $request->total;
+                    } else {
+                        $je->credit = $request->total;
+                    }
+                    $je->balance = $request->total;
+                    $je->save();
+                }
+
+                Log::info('Zero-price task backfilled from priced sibling document', [
+                    'task_id'   => $existingTask->id,
+                    'reference' => $existingTask->reference,
+                    'total'     => $request->total,
+                    'jes'       => $zeroJes->pluck('id'),
+                    'file'      => $request->input('file_name'),
+                ]);
+
+                return response()->json([
+                    'status'  => 'success',
+                    'message' => 'Existing zero-price task backfilled with amount.',
+                    'data'    => $existingTask,
+                ], 200);
+            }
+
             if (
                 $existingTask->status === 'issued' && in_array($existingTask->supplier->name, ['Jazeera Airways', 'Fly Dubai'])
                 && (float)$existingTask->total !== (float)$request->total
+                // Only infer a reissue from a POSITIVE incoming fare. total=0 means the
+                // parser failed to read the doc (e.g. a booking invoice PDF) -> a phantom
+                // negative-total reissue that zeroes the supplier payable (XBIFGQ 2026-06-16).
+                && (float)$request->total > 0
             ) {
                 Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
@@ -928,26 +1016,12 @@ class TaskController extends Controller
 
         $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 
-        if ($request->supplier_id !== $amadeusId) {
-
-            Log::info("remove GDS and Airline references for non-Amadeus tasks", [
-                'supplier_id' => $request->supplier_id,
-                'gds_reference' => $request->gds_reference,
-                'airline_reference' => $request->airline_reference
-            ]);
-
-            // Use merge() to update the input array so $request->all() reflects changes
-            $request->merge([
-                'gds_reference' => null,
-                'airline_reference' => null
-            ]);
-
-            Log::info("GDS and Airline references removed for non-Amadeus supplier", [
-                'supplier_id' => $request->supplier_id,
-                'updated_gds_reference' => $request->gds_reference,
-                'updated_airline_reference' => $request->airline_reference
-            ]);
-        }
+        // Historical: non-Amadeus tickets had gds_reference / airline_reference
+        // nulled here on the assumption that only Amadeus produces meaningful
+        // PNR-style references. That's wrong for airline-direct suppliers
+        // (Jazeera, FlyDubai, Air Arabia, Emirates NDC, Oman NDC, IndiGo, etc.)
+        // which DO issue 6-char booking references. Their parsers set these
+        // fields correctly; respect them. (Ported from dev1 2026-06-02.)
 
         $supplierName = Supplier::where('id', $request->supplier_id)->value('name');
         if (strtolower($supplierName) !== 'amadeus') {
@@ -994,7 +1068,22 @@ class TaskController extends Controller
         ]);
 
         // Handle original task for non-issued statuses (reissued, refund, void, emd -> issued/reissued)
-        if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
+        if ($request->status === 'refund_void') {
+            // RFNX: link to the REFUND being cancelled (not the issue), so the
+            // reversal re-instates the sale instead of reversing the issue again.
+            // See 8M6864 / RFNX 2026-06-21.
+            $refundTask = Task::where('company_id', $request->company_id)
+                ->where('passenger_name', $request->passenger_name)
+                ->where(function ($q) use ($request) {
+                    $q->where('reference', $request->reference)
+                        ->orWhere('reference', $request->original_reference);
+                })
+                ->where('status', 'refund')
+                ->latest('id')->first();
+            if ($refundTask) {
+                $request->merge(['original_task_id' => $refundTask->id]);
+            }
+        } elseif (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
             $originalTask = Task::where('reference', $request->original_reference)
                 ->orWhere('reference', $request->reference)
                 ->where('passenger_name', $request->passenger_name)
@@ -1293,7 +1382,7 @@ class TaskController extends Controller
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
             $isZeroTotalSupplier = (str_contains($supplierName, 'trendy travel') || str_contains($supplierName, 'alam al raya travel')) && empty((float) $task->total);
-            $shouldProcessFinancials = ($offline && $task->is_complete || $task->status !== 'confirmed' || ($task->status == 'void' && $task->original_task_id)) && !$isZeroTotalSupplier;
+            $shouldProcessFinancials = ($offline && $task->is_complete || $task->status !== 'confirmed' || ($task->status == 'void' && $task->original_task_id) || ($task->status == 'refund_void' && $task->original_task_id)) && !$isZeroTotalSupplier;
 
             if ($shouldProcessFinancials) {
                 $supplierName = strtolower(optional($task->supplier)->name ?? '');
@@ -1745,7 +1834,7 @@ class TaskController extends Controller
 
     public function processTaskFinancial(Task $task)
     {
-        if (!in_array($task->status, ['issued', 'reissued', 'void', 'refund', 'emd'], true)) {
+        if (!in_array($task->status, ['issued', 'reissued', 'void', 'refund', 'emd', 'refund_void'], true)) {
             Log::info('Skipping financial processing for task: ' . $task->reference . ' - status: ' . $task->status);
             return;
         }
@@ -1753,7 +1842,7 @@ class TaskController extends Controller
 
         // Special handling for void tasks: they should process even if incomplete
         // as long as they have an original_task_id to reference
-        if ($task->status === 'void') {
+        if (in_array($task->status, ['void', 'refund_void'], true)) {
             if (!$task->original_task_id) {
                 Log::error('Cannot process financial for void task without original_task_id: ' . $task->reference, [
                     'is_complete' => $task->is_complete,
@@ -1983,6 +2072,10 @@ class TaskController extends Controller
                 Log::info('Processing EMD task financial for: ' . $task->reference);
                 $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount);
                 break;
+            case 'refund_void':
+                Log::info('Processing refund_void (RFNX) reversal of the refund for: ' . $task->reference);
+                $this->processVoidTask($task, $branchId);
+                break;
             case 'void':
                 Log::info('Processing void task financial for: ' . $task->reference);
                 $this->processVoidTask($task, $branchId);
@@ -2045,21 +2138,34 @@ class TaskController extends Controller
             throw new Exception('Transaction creation failed.');
         }
 
-        // Create expense journal entry (debit supplier cost)
+        // P1a: at issuance debit an ASSET (Unbilled Supplier Cost, acct 1430) instead
+        // of COGS expense. The supplier PAYABLE (credit, below) is unchanged — the
+        // liability is genuinely owed at issuance. The cost is reclassified from this
+        // asset to COGS at invoicing (InvoiceController::addJournalEntry) so it matches
+        // revenue. Falls back to the supplier expense account only if 1430 is missing.
+        $unbilledCostAccount = Account::where('company_id', $task->company_id)
+            ->where('code', '1430')
+            ->first();
+        if (!$unbilledCostAccount) {
+            Log::warning('P1a: Unbilled Supplier Cost account (1430) missing; falling back to supplier COGS for task ' . $task->reference);
+            $unbilledCostAccount = $supplierCost;
+        }
+
+        // Create the cost-side journal entry (debit Unbilled Supplier Cost asset)
         JournalEntry::create([
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
             'branch_id' => $branchId,
-            'account_id' => $supplierCost->id,
+            'account_id' => $unbilledCostAccount->id,
             'task_id' => $task->id,
             'agent_id' => $task->agent_id,
             'transaction_date' => $transactionDate,
-            'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
+            'description' => 'Unbilled supplier cost (asset) at issuance: ' . $supplierCompany->supplier->name,
             'name' => $supplierCompany->supplier->name,
             'debit' => $task->total,
             'credit' => 0,
             'balance' => $task->total,
-            'type' => 'payable',
+            'type' => 'unbilled_cost',
         ]);
 
         // Create liability journal entry - determine which account to use
@@ -2397,17 +2503,30 @@ class TaskController extends Controller
             'original_amount' => $originalAmount,
         ]);
 
+        // P1a: credit the account where the refunded booking's cost currently sits.
+        // If the original task was NOT invoiced, its cost is still in the Unbilled
+        // Supplier Cost asset (1430) -> credit 1430 so it clears. If invoiced (or there
+        // is no original link), the cost was reclassified to COGS -> credit the expense.
+        $costCreditAccount = $supplierCost;
+        if ($task->original_task_id
+            && !InvoiceDetail::where('task_id', $task->original_task_id)->whereNull('deleted_at')->exists()) {
+            $unbilledCost = Account::where('company_id', $task->company_id)->where('code', '1430')->first();
+            if ($unbilledCost) {
+                $costCreditAccount = $unbilledCost;
+            }
+        }
+
         JournalEntry::create([
             'transaction_date' => $transactionDate,
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
             'branch_id' => $branchId,
-            'account_id' => $supplierCost->id,
+            'account_id' => $costCreditAccount->id,
             'task_id' => $task->id,
             'agent_id' => $task->agent_id,
-            'description' => 'Refund Task - Supplier cost return (Expenses): ' . $supplierCost->name,
+            'description' => 'Refund Task - Supplier cost return: ' . $costCreditAccount->name,
             'debit' => 0,
-            'credit' => $task->total, // Always use converted amount for expense account
+            'credit' => $task->total, // Always use converted amount
             'name' => $supplier->name,
             'type' => 'refund',
         ]);
@@ -2853,6 +2972,26 @@ class TaskController extends Controller
                         'remarks' => "JE #{$entry->id} credit updated | " . $request->remarks,
                     ]);
                 }
+            }
+
+            // P1a: keep the COGS reclassification (Dr supplier COGS / Cr Unbilled 1430)
+            // in sync with the new supplier total. updateAdminFinancial only matches the
+            // issuance transaction (desc contains the reference), so without this the
+            // 1430 asset would not clear and COGS would understate after an amount edit.
+            $reclassEntries = JournalEntry::where('task_id', $task->id)
+                ->where('type', 'cogs_reclass')->get();
+            foreach ($reclassEntries as $entry) {
+                if (($entry->debit ?? 0) > 0) {
+                    $entry->debit = $newTotal;
+                    $entry->balance = $newTotal;
+                } else {
+                    $entry->credit = $newTotal;
+                    $entry->balance = $newTotal;
+                }
+                if (isset($entry->amount)) {
+                    $entry->amount = $newTotal;
+                }
+                $entry->save();
             }
 
             $invoiceDetail = $task->invoiceDetail;
@@ -3552,6 +3691,139 @@ class TaskController extends Controller
      * 
      * @return void
      */
+    /**
+     * RateHawk hotel invoice/voucher auto-merge. RateHawk emails one booking as two
+     * PDFs sharing the booking ID (reference): the invoice carries the price, the
+     * voucher carries room/board/cancellation policy. If a task for this booking
+     * already exists, fold the incoming file's fields into it (filling blanks) and
+     * return it — so the pair becomes ONE task instead of duplicates. Returns null
+     * when no sibling exists yet (caller then creates the task normally).
+     */
+    protected function mergeRateHawkHotel(Request $request): ?JsonResponse
+    {
+        $existing = Task::with('hotelDetails')
+            ->where('company_id', $request->company_id)
+            ->where('reference', $request->reference)
+            ->where('type', 'hotel')
+            ->where('supplier_id', $request->supplier_id)
+            ->orderBy('id')
+            ->first();
+
+        if (!$existing) {
+            return null;
+        }
+
+        $isEmpty = function ($v) {
+            return $v === null || $v === '' || (is_numeric($v) && round((float) $v, 3) === 0.0);
+        };
+        $hasInvoice = $existing->invoiceDetail()->exists();
+
+        // Non-financial scalars: fill only when the existing value is blank.
+        foreach (['issued_date', 'supplier_pay_date', 'cancellation_deadline',
+                  'cancellation_policy', 'venue', 'gds_reference', 'ticket_number'] as $f) {
+            $incoming = $request->input($f);
+            if (!$isEmpty($incoming) && $isEmpty($existing->{$f})) {
+                $existing->{$f} = $incoming;
+            }
+        }
+
+        // Financials: only when the existing task has no price AND was never invoiced
+        // (never rewrite a billed amount). The invoice file fills these; the voucher
+        // has none so it is a no-op.
+        if (!$hasInvoice && $isEmpty($existing->price) && !$isEmpty($request->input('price'))) {
+            foreach (['price', 'total', 'original_price', 'original_total',
+                      'original_currency', 'exchange_currency', 'exchange_rate'] as $f) {
+                $v = $request->input($f);
+                if (!$isEmpty($v)) {
+                    $existing->{$f} = $v;
+                }
+            }
+        }
+
+        // additional_info: append any incoming segment not already present.
+        $incInfo = trim((string) $request->input('additional_info'));
+        if ($incInfo !== '' && stripos((string) $existing->additional_info, $incInfo) === false) {
+            $existing->additional_info = trim(trim((string) $existing->additional_info) . ' | ' . $incInfo, ' |');
+        }
+
+        // Placeholder guest from a price-only document ("UNKNOWN GUEST") yields
+        // to the sibling document's real name (e.g. Smile proforma vs voucher).
+        $incName = trim((string) $request->input('client_name'));
+        $curName = trim((string) $existing->client_name);
+        if ($incName !== '' && stripos($incName, 'UNKNOWN') !== 0
+            && ($curName === '' || stripos($curName, 'UNKNOWN') === 0)) {
+            $existing->client_name = $incName;
+        }
+
+        // Heysam final identifiers: once the pair is merged, the supplier invoice
+        // number (numeric ticket_number) becomes the task reference; the CTK-<no>
+        // voucher key lives on in gds_reference (parser sets it without suffix).
+        if (stripos((string) $request->supplier_name, 'heysam') !== false) {
+            $tkt = (string) ($existing->ticket_number ?: $request->input('ticket_number'));
+            if (preg_match('/^\d{4,10}$/', $tkt) && str_starts_with((string) $existing->reference, 'CTK-')) {
+                $existing->reference = $tkt;
+            }
+        }
+
+        $existing->save();
+
+        // Hotel details: fill blanks; prefer the voucher's room_type/meal_type/adults
+        // (more specific than the invoice's guest count). Column-guarded so env
+        // schema drift (e.g. a missing `city` column) can't break the save.
+        // Parsers emit either a list of detail rows or a single assoc row (Smile).
+        $incHotel = data_get($request->task_hotel_details, '0') ?: $request->task_hotel_details;
+        if (is_array($incHotel) && !empty($incHotel)) {
+            $detail = $existing->hotelDetails;
+            if (!$detail) {
+                $this->saveHotelDetails([$incHotel], $existing->id);
+            } else {
+                $cols = \Illuminate\Support\Facades\Schema::getColumnListing($detail->getTable());
+                $put = function ($field, $value) use ($detail, $cols) {
+                    if (in_array($field, $cols, true)) {
+                        $detail->{$field} = $value;
+                    }
+                };
+                // Fill a blank hotel, and also replace a placeholder one — a
+                // price-only sibling (Smile proforma) stores "UNKNOWN HOTEL".
+                if (!empty($incHotel['hotel_name']) && stripos((string) $incHotel['hotel_name'], 'UNKNOWN') !== 0) {
+                    $curHotel = $detail->hotel_id
+                        ? (string) Hotel::whereKey($detail->hotel_id)->value('name') : '';
+                    if ($isEmpty($detail->hotel_id) || stripos($curHotel, 'UNKNOWN') === 0) {
+                        $hotel = Hotel::where('name', 'like', '%' . $incHotel['hotel_name'] . '%')->first()
+                            ?: Hotel::create(['name' => $incHotel['hotel_name']]);
+                        $put('hotel_id', $hotel->id);
+                    }
+                }
+                foreach (['check_in', 'check_out', 'city'] as $f) {
+                    if (empty($detail->{$f}) && !empty($incHotel[$f])) {
+                        $put($f, $incHotel[$f]);
+                    }
+                }
+                foreach (['room_type', 'meal_type', 'room_number', 'room_details'] as $f) {
+                    if (!empty($incHotel[$f])) {
+                        $put($f, $incHotel[$f]);
+                    }
+                }
+                if (!empty($incHotel['adults'])) {
+                    $put('adults', max((int) $detail->adults, (int) $incHotel['adults']));
+                }
+                $detail->save();
+            }
+        }
+
+        Log::info('RateHawk hotel auto-merge: folded file into existing task', [
+            'task_id'   => $existing->id,
+            'reference' => $request->reference,
+            'file'      => $request->input('file_name'),
+        ]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'RateHawk hotel booking merged into existing task.',
+            'data'    => $existing->fresh('hotelDetails'),
+        ], 200);
+    }
+
     public function saveHotelDetails(array $data, int $taskId)
     {
         try {
@@ -3690,6 +3962,7 @@ class TaskController extends Controller
                 'number_of_entries' => $data['number_of_entries'] ?? null,
                 'stay_duration' => $data['stay_duration'] ?? null,
                 'issuing_country' => $data['issuing_country'] ?? null,
+                'appointment_date' => $data['appointment_date'] ?? null,
                 'task_id' => $taskId
             ];
 
@@ -4465,8 +4738,26 @@ class TaskController extends Controller
     {
         Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
-        // Use task's issued_date as transaction_date
-        $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
+        // Idempotency guard (2026-06-03): if this void task already produced reversal
+        // JEs, bail — retries/re-fires otherwise duplicate the entire reversal set for
+        // the original task (cf. citycomm ticket 2683126506: 21x reversals).
+        if (JournalEntry::where('task_id', $voidTask->id)->exists()) {
+            Log::info('Skipping ReverseUnpaidVoidedTask: reversal already exists for void task', [
+                'void_task_id' => $voidTask->id,
+                'original_task_id' => $originalTask->id,
+                'reference' => $originalTask->reference,
+            ]);
+            return response()->json([
+                'status' => 'noop',
+                'message' => 'Void reversal already recorded for this task.',
+            ], 200);
+        }
+
+        // Use the original task's supplier_pay_date so the reversal lands in the same
+        // accounting period as issuance, not today. (was supplier_date — undefined attr)
+        $transactionDate = $originalTask->supplier_pay_date
+            ? Carbon::parse($originalTask->supplier_pay_date)
+            : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
         $branchIdFromJournal = $journalEntries->first()?->branch_id;
@@ -4850,6 +5141,24 @@ class TaskController extends Controller
             })
             ->get();
 
+        // P1b/Suspense fix: create the transfer transaction FIRST so the reversal of
+        // the old payable AND the new payment-method credit both land in ONE balanced
+        // transaction. Previously the reversed legs kept their old transaction_id and
+        // the new credit was single-legged -> unbalanced batch (the dominant Suspense
+        // driver: "Update payment account for ...").
+        $transaction = Transaction::create([
+            'branch_id' => $branchId,
+            'company_id' => $task->company_id,
+            'entity_id' => $task->company_id,
+            'entity_type' => 'company',
+            'transaction_type' => 'credit',
+            'amount' => $task->total,
+            'name' => $paymentMethodAccount->name,
+            'description' => 'Update payment account for: ' . $task->reference,
+            'reference_type' => 'Payment',
+            'transaction_date' => $task->supplier_pay_date ?? $task->issued_date ?? $task->created_at,
+        ]);
+
         if ($journalEntriesWithCreditorsChild->isNotEmpty()) {
             Log::info('Found ' . $journalEntriesWithCreditorsChild->count() . ' journal entries attached to child accounts of Creditors account for task ID: ' . $task->id);
 
@@ -4882,6 +5191,7 @@ class TaskController extends Controller
                 }
 
                 $reversedJournalEntry = $journalEntry->replicate();
+                $reversedJournalEntry->transaction_id = $transaction->id;
                 $reversedJournalEntry->description = 'Reversed: ' . $journalEntry->description;
                 $reversedJournalEntry->debit = $journalEntry->credit;
                 $reversedJournalEntry->credit = $journalEntry->debit;
@@ -4896,20 +5206,7 @@ class TaskController extends Controller
 
 
         try {
-            $transaction = Transaction::create([
-                'branch_id' => $branchId,
-                'company_id' => $task->company_id,
-                'entity_id' => $task->company_id,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'amount' => $task->total,
-                'name' => $paymentMethodAccount->name,
-                'description' => 'Update payment account for: ' . $task->reference,
-                'reference_type' => 'Payment',
-                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date ?? $task->created_at,
-            ]);
-
-            Log::info('Created new transaction for task ID: ' . $task->id . ' with ID: ' . $transaction->id);
+            Log::info('Using transfer transaction for task ID: ' . $task->id . ' with ID: ' . $transaction->id);
 
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
@@ -5777,6 +6074,7 @@ class TaskController extends Controller
                         'expiry_date' => $visaDetails['expiry_date'] ?? $task->visaDetails->expiry_date,
                         'number_of_entries' => $visaDetails['number_of_entries'] ?? $task->visaDetails->number_of_entries,
                         'stay_duration' => $visaDetails['stay_duration'] ?? $task->visaDetails->stay_duration,
+                        'appointment_date' => $visaDetails['appointment_date'] ?? $task->visaDetails->appointment_date,
                     ]);
 
                     // Update venue with issuing country
@@ -6322,6 +6620,7 @@ class TaskController extends Controller
                         'expiry_date' => $request->input('expiry_date'),
                         'number_of_entries' => $request->input('number_of_entries'),
                         'stay_duration' => $request->input('stay_duration'),
+                        'appointment_date' => $request->input('appointment_date'),
                     ]);
                 }
                 break;
@@ -6391,6 +6690,7 @@ class TaskController extends Controller
                             'expiry_date' => $details['expiry_date'] ?? $task->visaDetails->expiry_date,
                             'number_of_entries' => $details['number_of_entries'] ?? $task->visaDetails->number_of_entries,
                             'stay_duration' => $details['stay_duration'] ?? $task->visaDetails->stay_duration,
+                            'appointment_date' => $details['appointment_date'] ?? $task->visaDetails->appointment_date,
                         ]);
                     }
                     break;

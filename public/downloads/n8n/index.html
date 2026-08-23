@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N8n Workflow Downloads - Soud Laravel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-3xl mx-auto py-12 px-4">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">N8n Workflow Downloads</h1>
+        <p class="text-gray-600 mb-8">Download N8n workflow JSON files for the Soud Laravel document processing integration.</p>
+        
+        <div class="bg-white rounded-lg shadow divide-y">
+            <div class="p-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Workflows</h2>
+                <div class="space-y-2">
+                    <a href="workflows/supplier-document-processing.json" class="flex items-center justify-between p-3 bg-blue-50 rounded hover:bg-blue-100 transition">
+                        <div>
+                            <p class="font-medium text-blue-900">supplier-document-processing.json</p>
+                            <p class="text-sm text-blue-700">Main 18-node workflow (webhook → HMAC → supplier router → extraction → callback)</p>
+                        </div>
+                        <span class="text-blue-600 text-sm font-medium">25 KB</span>
+                    </a>
+                    <a href="workflows/supplier-document-processing.backup.json" class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
+                        <div>
+                            <p class="font-medium text-gray-900">supplier-document-processing.backup.json</p>
+                            <p class="text-sm text-gray-600">Pre-Wave 2 backup</p>
+                        </div>
+                        <span class="text-gray-500 text-sm">17 KB</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="p-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Extraction Nodes</h2>
+                <div class="space-y-2">
+                    <a href="nodes/pdf-processor.json" class="flex items-center justify-between p-3 bg-green-50 rounded hover:bg-green-100 transition">
+                        <div>
+                            <p class="font-medium text-green-900">pdf-processor.json</p>
+                            <p class="text-sm text-green-700">Apache Tika PDF extraction (port 9998)</p>
+                        </div>
+                        <span class="text-green-600 text-sm">4.3 KB</span>
+                    </a>
+                    <a href="nodes/image-processor.json" class="flex items-center justify-between p-3 bg-green-50 rounded hover:bg-green-100 transition">
+                        <div>
+                            <p class="font-medium text-green-900">image-processor.json</p>
+                            <p class="text-sm text-green-700">Gutenberg OCR image extraction (port 8080)</p>
+                        </div>
+                        <span class="text-green-600 text-sm">3.6 KB</span>
+                    </a>
+                    <a href="nodes/email-processor.json" class="flex items-center justify-between p-3 bg-green-50 rounded hover:bg-green-100 transition">
+                        <div>
+                            <p class="font-medium text-green-900">email-processor.json</p>
+                            <p class="text-sm text-green-700">Gmail API email extraction</p>
+                        </div>
+                        <span class="text-green-600 text-sm">4.1 KB</span>
+                    </a>
+                    <a href="nodes/air-processor.json" class="flex items-center justify-between p-3 bg-green-50 rounded hover:bg-green-100 transition">
+                        <div>
+                            <p class="font-medium text-green-900">air-processor.json</p>
+                            <p class="text-sm text-green-700">AIR file Laravel fallback (deferred processing)</p>
+                        </div>
+                        <span class="text-green-600 text-sm">1.8 KB</span>
+                    </a>
+                    <a href="nodes/schema-normalizer.json" class="flex items-center justify-between p-3 bg-green-50 rounded hover:bg-green-100 transition">
+                        <div>
+                            <p class="font-medium text-green-900">schema-normalizer.json</p>
+                            <p class="text-sm text-green-700">Unified task schema normalization</p>
+                        </div>
+                        <span class="text-green-600 text-sm">5.5 KB</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="p-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Credentials</h2>
+                <div class="space-y-2">
+                    <a href="credentials/laravel-webhook-secret.json" class="flex items-center justify-between p-3 bg-yellow-50 rounded hover:bg-yellow-100 transition">
+                        <div>
+                            <p class="font-medium text-yellow-900">laravel-webhook-secret.json</p>
+                            <p class="text-sm text-yellow-700">HMAC-SHA256 credential template (update secret before import)</p>
+                        </div>
+                        <span class="text-yellow-600 text-sm">225 B</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p class="text-amber-800 text-sm"><strong>Import Instructions:</strong> Open N8n → Workflows → Import from File → Upload <code>supplier-document-processing.json</code>. Then configure credentials (update the webhook secret to match your Laravel .env N8N_WEBHOOK_SECRET).</p>
+        </div>
+        
+        <div class="mt-4 text-center text-sm text-gray-500">
+            <a href="/docs/n8n-changelog" class="text-blue-600 hover:underline">View Full Changelog</a> · 
+            <a href="/docs/n8n-complete" class="text-blue-600 hover:underline">Developer Docs</a> · 
+            <a href="/docs/n8n-testing" class="text-blue-600 hover:underline">Testing Docs</a>
+        </div>
+    </div>
+</body>
+</html>

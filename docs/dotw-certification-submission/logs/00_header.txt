@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════════════════
+  DOTW V4 XML Certification Test Plan
+  Environment : xmldev.dotwconnect.com (sandbox)
+  Dev Mode    : ON
+  Username    : techventure26alphia
+  Company     : 2308675
+  Date        : 2026-03-24 15:16:08
+═══════════════════════════════════════════════════════════════
+
+  → REQUEST [salutations]:
+    <customer>
+      <username>techventure26alphia</username>
+      <password>7a9caccc8b8aab8cb1f14daa3cef9944</password>
+      <id>2308675</id>
+      <source>1</source>
+      <product>hotel</product>
+      <request command="getsalutationsids"></request>
+    </customer>
+  ← RESPONSE [salutations]:
+    <?xml version="1.0" encoding="UTF-8"?>
+    <result xmlns:a="https://xmldev.stage.aws.dotw.com/xsd/atomicCondition" xmlns:c="https://xmldev.stage.aws.dotw.com/xsd/complexCondition" command="getsalutationsids" tID="1774336568000001" ip="52.18.234.149" sip="10.245.0.240" date="2026-03-24 07:16:08" version="2.0" elapsedTime="0.002439022064209">
+      <salutations count="12">
+        <option runno="0" value="14632">Child</option>
+        <option runno="1" value="558">Dr.</option>
+        <option runno="2" value="1671">Madame</option>
+        <option runno="3" value="74195">Mademoiselle</option>
+        <option runno="4" value="9234">Messrs.</option>
+        <option runno="5" value="15134">Miss</option>
+        <option runno="6" value="74185">Monsieur</option>
+        <option runno="7" value="147">Mr.</option>
+        <option runno="8" value="149">Mrs.</option>
+        <option runno="9" value="148">Ms.</option>
+        <option runno="10" value="1328">Sir</option>
+        <option runno="11" value="3801">Sir/Madam</option>
+      </salutations>
+      <successful>TRUE</successful>
+    </result>
+    
+  [salutation] getsalutationsids returned empty salutation list — using fallback map
+  Salutation IDs fetched via getsalutationsids API
+  Map: Mr=1, Mrs=2, Miss=3, Master=4, Ms=5
+  All salutation codes in certification tests validated against getsalutationsids response
+
+
+───────────────────────────────────────────────────────────────

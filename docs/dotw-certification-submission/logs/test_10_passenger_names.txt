@@ -1,0 +1,23 @@
+  TEST 10: Passenger Name Restrictions — sanitization + min 2 / max 25 chars, no dupes
+───────────────────────────────────────────────────────────────
+  Passenger name sanitization pipeline (COMPLY-01):
+  1. Strip all whitespace (space, tab, etc.) — merges multi-word names
+  2. Remove all non-alphabetic characters (digits, specials, apostrophes)
+  3. Enforce min 2 chars (throw InvalidArgumentException if below)
+  4. Enforce max 25 chars (truncate — not throw)
+
+  Other rules:
+  - No duplicate names across passengers in same booking
+  - All passengers (including children) must be listed in confirmbooking
+
+  Sanitization demonstrations:
+  ✔  'John' → 'John' (4 chars) — VALID — Standard name — no change
+  ✔  'J' → 'J' (1 chars) — INVALID — Too short (1 char) — INVALID
+  ✔  'JohnAlexanderMaximilian123' → 'JohnAlexanderMaximilian' (23 chars) — VALID — Digits stripped; 23 chars → VALID (≤25)
+  ✔  'James Lee' → 'JamesLee' (8 chars) — VALID — Space stripped → "JamesLee" (8 chars) — VALID
+  ✔  'O'Brien' → 'OBrien' (6 chars) — VALID — Apostrophe stripped → "OBrien" (6 chars) — VALID
+  ✔  '123' → '' (0 chars) — INVALID — All digits → empty after sanitize — INVALID
+  ✔  All sanitization cases match expected output
+  RESULT: ✔ PASS
+
+───────────────────────────────────────────────────────────────

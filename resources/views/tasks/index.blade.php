@@ -904,7 +904,7 @@
 
                                             <div data-column="supplier-pay-date" class="group-item">
                                                 <span class="group-label">Issued</span>
-                                                <span class="group-value">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</span>
+                                                <span class="group-value">{{ $task->issued_date ? \Carbon\Carbon::parse($task->issued_date)->format('d-m-Y') : ($task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-') }}</span>
                                             </div>
 
                                             @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
@@ -975,6 +975,27 @@
                                                             {{ $task->invoiceDetail->invoice_number }}
                                                         </span>
                                                     </a>
+                                                    @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]))
+                                                        <a target="_blank" @click.stop
+                                                            href="{{ route('invoice.details', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}"
+                                                            class="inline-flex items-center gap-1">
+                                                            <span class="badge whitespace-nowrap px-2 py-0.5 rounded text-xs font-medium badge-outline-primary">
+                                                                Details
+                                                            </span>
+                                                        </a>
+                                                        {{-- Quick "Edit Invoice" beside Details — only when the invoice is still editable
+                                                             (unpaid or partially paid), so you don't have to open the invoice list. --}}
+                                                        @if (in_array($task->invoiceDetail?->invoice?->status, ['unpaid', 'partial'], true))
+                                                            <a target="_blank" @click.stop
+                                                                href="{{ route('invoice.edit', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}"
+                                                                data-tooltip="Edit invoice"
+                                                                class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm transition-all">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                                    <path d="m4.144 16.735.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281 5.1 5.1 0 0 1 2.346 1.372 5.1 5.1 0 0 1 1.384 2.346 1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184"/>
+                                                                </svg>
+                                                            </a>
+                                                        @endif
+                                                    @endif
                                                 @else
                                                     <span class="badge whitespace-nowrap px-2 py-0.5 rounded text-xs font-medium badge-outline-danger">
                                                         Not Yet
@@ -1545,6 +1566,7 @@
     window.allTaskTypes = @json($allTypes ?? []);
 
     window.companySuppliers = @json($suppliers->pluck('name')->all());
+    window.companyAgents = @json($agents->pluck('name')->values()->all());
     window.SUPPLIERS = @json($suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'has_hotel' => $s->has_hotel]));
 
     document.addEventListener('alpine:init', () => {
@@ -3179,7 +3201,8 @@
             },
             agent_name: {
                 label: "Agent Name",
-                type: "text"
+                type: "searchable",
+                options: window.companyAgents || []
             },
             status: {
                 label: "Status",
@@ -3478,8 +3501,13 @@
             if (!row.value || row.column === 'status') return;
             const col = filterConfig.columns[row.column];
             if (col && col.type === 'date-range') {
-                if (row.value.from) params.append(`${row.column}_from`, row.value.from);
-                if (row.value.to) params.append(`${row.column}_to`, row.value.to);
+                // Single-date selection (only one click in flatpickr range mode)
+                // is treated as same-day from..to so the backend whereDate
+                // BETWEEN filter matches just that one date.
+                if (row.value.from) {
+                    params.append(`${row.column}_from`, row.value.from);
+                    params.append(`${row.column}_to`, row.value.to || row.value.from);
+                }
             } else {
                 params.append(`${row.column}[]`, row.value);
             }
@@ -3502,8 +3530,9 @@
                 const to = params.get(`${key}_to`);
                 if (from || to) {
                     let value = '';
-                    if (from && to) value = `${from} to ${to}`;
-                    else if (from) value = `from ${from}`;
+                    if (from && to) {
+                        value = (from === to) ? from : `${from} to ${to}`;
+                    } else if (from) value = `from ${from}`;
                     else if (to) value = `to ${to}`;
                     filters.push({
                         key,

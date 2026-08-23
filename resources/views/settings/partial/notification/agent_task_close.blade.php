@@ -7,8 +7,10 @@
             <div class="main-set-info-text">
                 <p>Agent Notifications</p>
                 <ul>
-                    <li>Configure per-agent notification preferences (channel and status)</li>
-                    <li>Currently used for: Task close reminders (every 7 days, remind agents to close tasks and create invoices)</li>
+                    <li>Configure per-agent notification preferences for each reminder type independently</li>
+                    <li><strong>Uninvoiced Task Reminder</strong> — every 7 days at 10:00 / 22:00 KW, lists tasks not yet invoiced</li>
+                    <li><strong>Uninvoiced Payment Link Reminder</strong> — daily at 12:00 / 19:00 KW, lists paid payment links waiting on an invoice</li>
+                    <li>Each type has its own channel + active toggle. Set channel to Both for email + WhatsApp.</li>
                     <li>Uses the agent's email and phone from their profile</li>
                 </ul>
             </div>
@@ -43,9 +45,8 @@
                     <th>Agent</th>
                     <th class="main-set-hide-mobile">Email</th>
                     <th class="main-set-hide-mobile">Phone</th>
-                    <th>Type</th>
-                    <th>Channel</th>
-                    <th>Status</th>
+                    <th>Task Close Reminder</th>
+                    <th>Payment Link Reminder</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
@@ -67,20 +68,34 @@
                             <span class="main-set-text-sm main-set-text-gray-600" x-text="agent.phone_number || '-'"></span>
                         </td>
                         <td>
-                            <span x-show="getAgentSetting(agent.id)" class="main-set-text-sm main-set-text-gray-600" x-text="getTypeLabel(getAgentSetting(agent.id)?.notification_type)">
-                            </span>
-                            <span x-show="!getAgentSetting(agent.id)" class="main-set-text-sm main-set-text-gray-600">-</span>
+                            <template x-if="getAgentSetting(agent.id, 'task_close')?.is_active">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <span class="main-set-status-configured">Active</span>
+                                    <span class="main-set-badge" :class="getChannelBadgeClass(getAgentSetting(agent.id, 'task_close').channel)"
+                                          x-text="getChannelLabel(getAgentSetting(agent.id, 'task_close').channel)"></span>
+                                </div>
+                            </template>
+                            <template x-if="getAgentSetting(agent.id, 'task_close') && !getAgentSetting(agent.id, 'task_close').is_active">
+                                <span class="main-set-badge main-set-badge-yellow">Inactive</span>
+                            </template>
+                            <template x-if="!getAgentSetting(agent.id, 'task_close')">
+                                <span class="main-set-status-default">Not Set</span>
+                            </template>
                         </td>
                         <td>
-                            <span x-show="getAgentSetting(agent.id)" class="main-set-badge" :class="getChannelBadgeClass(getAgentSetting(agent.id)?.channel || 'email')"
-                                x-text="getChannelLabel(getAgentSetting(agent.id)?.channel || 'email')">
-                            </span>
-                            <span x-show="!getAgentSetting(agent.id)" class="main-set-text-sm main-set-text-gray-600">-</span>
-                        </td>
-                        <td>
-                            <span x-show="getAgentSetting(agent.id)?.is_active" class="main-set-status-configured">Active</span>
-                            <span x-show="getAgentSetting(agent.id) && !getAgentSetting(agent.id)?.is_active" class="main-set-badge main-set-badge-yellow">Inactive</span>
-                            <span x-show="!getAgentSetting(agent.id)" class="main-set-status-default">Not Set</span>
+                            <template x-if="getAgentSetting(agent.id, 'payment_link_uninvoiced')?.is_active">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <span class="main-set-status-configured">Active</span>
+                                    <span class="main-set-badge" :class="getChannelBadgeClass(getAgentSetting(agent.id, 'payment_link_uninvoiced').channel)"
+                                          x-text="getChannelLabel(getAgentSetting(agent.id, 'payment_link_uninvoiced').channel)"></span>
+                                </div>
+                            </template>
+                            <template x-if="getAgentSetting(agent.id, 'payment_link_uninvoiced') && !getAgentSetting(agent.id, 'payment_link_uninvoiced').is_active">
+                                <span class="main-set-badge main-set-badge-yellow">Inactive</span>
+                            </template>
+                            <template x-if="!getAgentSetting(agent.id, 'payment_link_uninvoiced')">
+                                <span class="main-set-status-default">Not Set</span>
+                            </template>
                         </td>
                         <td style="text-align: right;">
                             <button @click="openEditModal(agent)" class="main-set-edit-link">
@@ -137,46 +152,55 @@
                             </div>
                         </div>
 
-                        <div style="margin-bottom: 1rem;">
-                            <label class="main-set-form-label main-set-mb-2">Notification Channel</label>
-                            <div class="noti-channel-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 0;">
-                                <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot" :class="{'noti-channel-card-active': editingSetting.channel === 'email'}" style="padding: 0.75rem 0.5rem;">
-                                    <input type="radio" name="agent_channel" value="email" x-model="editingSetting.channel" class="noti-sr-only" @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
-                                    <svg class="noti-channel-icon" style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span class="noti-channel-title">Email</span>
-                                </label>
+                        <template x-for="(typeLabel, typeKey) in typeOptions" :key="typeKey">
+                            <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.75rem; background: #fafafa;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: #374151; cursor: pointer;">
+                                        <input type="checkbox" class="main-set-checkbox" x-model="editingSettings[typeKey].is_active"
+                                               @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
+                                        <span x-text="typeLabel"></span>
+                                    </label>
+                                    <span class="main-set-text-sm main-set-text-gray-600"
+                                          x-text="editingSettings[typeKey].is_active ? 'Active' : 'Inactive'"></span>
+                                </div>
 
-                                <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot" :class="{'noti-channel-card-active': editingSetting.channel === 'whatsapp'}" style="padding: 0.75rem 0.5rem;">
-                                    <input type="radio" name="agent_channel" value="whatsapp" x-model="editingSetting.channel" class="noti-sr-only" @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
-                                    <svg class="noti-channel-icon" style="width: 1.25rem; height: 1.25rem;" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                                    </svg>
-                                    <span class="noti-channel-title">WhatsApp</span>
-                                </label>
-
-                                <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot" :class="{'noti-channel-card-active': editingSetting.channel === 'both'}" style="padding: 0.75rem 0.5rem;">
-                                    <input type="radio" name="agent_channel" value="both" x-model="editingSetting.channel" class="noti-sr-only" @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
-                                    <svg class="noti-channel-icon" style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                                    </svg>
-                                    <span class="noti-channel-title">Both</span>
-                                </label>
+                                <div :style="!editingSettings[typeKey].is_active && 'opacity: 0.5; pointer-events: none;'">
+                                    <label class="main-set-form-label main-set-mb-2" style="font-size: 0.8125rem;">Notification Channel</label>
+                                    <div class="noti-channel-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 0; gap: 0.5rem;">
+                                        <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot"
+                                               :class="{'noti-channel-card-active': editingSettings[typeKey].channel === 'email'}"
+                                               style="padding: 0.5rem 0.5rem;">
+                                            <input type="radio" :name="'agent_channel_' + typeKey" value="email" x-model="editingSettings[typeKey].channel" class="noti-sr-only"
+                                                   @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
+                                            <svg class="noti-channel-icon" style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="noti-channel-title" style="font-size: 0.75rem;">Email</span>
+                                        </label>
+                                        <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot"
+                                               :class="{'noti-channel-card-active': editingSettings[typeKey].channel === 'whatsapp'}"
+                                               style="padding: 0.5rem 0.5rem;">
+                                            <input type="radio" :name="'agent_channel_' + typeKey" value="whatsapp" x-model="editingSettings[typeKey].channel" class="noti-sr-only"
+                                                   @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
+                                            <svg class="noti-channel-icon" style="width: 1rem; height: 1rem;" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                            </svg>
+                                            <span class="noti-channel-title" style="font-size: 0.75rem;">WhatsApp</span>
+                                        </label>
+                                        <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot"
+                                               :class="{'noti-channel-card-active': editingSettings[typeKey].channel === 'both'}"
+                                               style="padding: 0.5rem 0.5rem;">
+                                            <input type="radio" :name="'agent_channel_' + typeKey" value="both" x-model="editingSettings[typeKey].channel" class="noti-sr-only"
+                                                   @cannot('manageNotifications', 'App\Models\Setting') disabled @endcannot>
+                                            <svg class="noti-channel-icon" style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                            </svg>
+                                            <span class="noti-channel-title" style="font-size: 0.75rem;">Both</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="main-set-mb-4">
-                            <label class="main-set-form-label main-set-mb-2">Status</label>
-                            <div style="display: flex; gap: 1rem;">
-                                <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot" :class="{'noti-channel-card-active': editingSetting.is_active}" @click="editingSetting.is_active = true" style="padding: 0.75rem 1.25rem; flex: 1; cursor: pointer;">
-                                    <span class="noti-channel-title">Active</span>
-                                </label>
-                                <label class="noti-channel-card @cannot('manageNotifications', 'App\Models\Setting') pointer-events-none @endcannot" :class="{'noti-channel-card-active': !editingSetting.is_active}" @click="editingSetting.is_active = false" style="padding: 0.75rem 1.25rem; flex: 1; cursor: pointer;">
-                                    <span class="noti-channel-title">Inactive</span>
-                                </label>
-                            </div>
-                        </div>
+                        </template>
                     </div>
 
                     <div class="main-set-modal-footer">
@@ -185,11 +209,8 @@
                         </button>
                         <div class="main-set-modal-footer-right">
                             @can('manageNotifications', 'App\Models\Setting')
-                            <button type="button" x-show="editingSetting.id" @click="deleteSetting" class="main-set-btn main-set-btn-danger">
-                                Remove
-                            </button>
                             <button type="submit" :disabled="saving" class="main-set-btn main-set-btn-primary">
-                                <span x-show="!saving">Save</span>
+                                <span x-show="!saving">Save Changes</span>
                                 <span x-show="saving">Saving...</span>
                             </button>
                             @endcan
@@ -217,6 +238,30 @@
                             <p class="main-set-text-sm main-set-text-gray-600 main-set-mb-4">
                                 Updating <strong x-text="selectedAgents.length"></strong> agent(s)
                             </p>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label class="main-set-form-label main-set-mb-2">Reminder Type</label>
+                                <select x-model="bulkSetting.notification_type"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;">
+                                    <template x-for="(typeLabel, typeKey) in typeOptions" :key="typeKey">
+                                        <option :value="typeKey" x-text="typeLabel"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label class="main-set-form-label main-set-mb-2">Status</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <label class="noti-channel-card" :class="{'noti-channel-card-active': bulkSetting.is_active}"
+                                           @click="bulkSetting.is_active = true" style="padding: 0.5rem 1rem; flex: 1; cursor: pointer;">
+                                        <span class="noti-channel-title">Active</span>
+                                    </label>
+                                    <label class="noti-channel-card" :class="{'noti-channel-card-active': !bulkSetting.is_active}"
+                                           @click="bulkSetting.is_active = false" style="padding: 0.5rem 1rem; flex: 1; cursor: pointer;">
+                                        <span class="noti-channel-title">Inactive</span>
+                                    </label>
+                                </div>
+                            </div>
 
                             <div style="margin-bottom: 1rem;">
                                 <label class="main-set-form-label main-set-mb-2">Channel</label>

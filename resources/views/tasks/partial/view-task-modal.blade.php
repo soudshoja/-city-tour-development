@@ -402,17 +402,29 @@
                                             <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Visa Type</span>
                                             <p x-text="visa.visa_type" class="text-base font-bold text-gray-900 dark:text-white capitalize"></p>
                                         </div>
-                                        <div x-show="visa.country" class="space-y-1">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Country</span>
-                                            <p x-text="visa.country" class="text-base font-bold text-gray-900 dark:text-white"></p>
+                                        <div x-show="visa.application_number" class="space-y-1">
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Application Number</span>
+                                            <p x-text="visa.application_number" class="text-base font-bold text-gray-900 dark:text-white font-mono"></p>
                                         </div>
-                                        <div x-show="visa.processing_time" class="space-y-1">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Processing Time</span>
-                                            <p x-text="visa.processing_time" class="text-base font-bold text-gray-900 dark:text-white"></p>
+                                        <div x-show="visa.issuing_country" class="space-y-1">
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Issuing Country</span>
+                                            <p x-text="visa.issuing_country" class="text-base font-bold text-gray-900 dark:text-white"></p>
                                         </div>
-                                        <div x-show="visa.validity" class="space-y-1">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Validity</span>
-                                            <p x-text="visa.validity" class="text-base font-bold text-purple-600 dark:text-purple-400"></p>
+                                        <div x-show="visa.appointment_date" class="space-y-1">
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Appointment Date</span>
+                                            <p x-text="visa.appointment_date" class="text-base font-bold text-purple-600 dark:text-purple-400"></p>
+                                        </div>
+                                        <div x-show="visa.expiry_date" class="space-y-1">
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Expiry Date</span>
+                                            <p x-text="visa.expiry_date" class="text-base font-bold text-gray-900 dark:text-white font-mono"></p>
+                                        </div>
+                                        <div x-show="visa.number_of_entries" class="space-y-1">
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Number of Entries</span>
+                                            <p x-text="visa.number_of_entries" class="text-base font-bold text-gray-900 dark:text-white capitalize"></p>
+                                        </div>
+                                        <div x-show="visa.stay_duration" class="space-y-1">
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase">Stay Duration</span>
+                                            <p x-text="visa.stay_duration" class="text-base font-bold text-gray-900 dark:text-white"></p>
                                         </div>
                                     </div>
                                 </div>

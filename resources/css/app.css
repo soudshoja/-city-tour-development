@@ -10485,7 +10485,8 @@ nav > menu > menuitem {
 }
 
 menu menuitem a {
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
     display: block;
     padding: 8px;
     margin-top: 2px;

@@ -284,7 +284,7 @@
                                         <svg class="pl-meta-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                         <div>
                                             <span class="pl-meta-label">Reference</span>
-                                            <span class="pl-meta-value">{{ $paymentRef }}</span>
+                                            <span class="pl-meta-value"><x-payment-reference :payment="$payment" /></span>
                                         </div>
                                     </div>
                                 @endif
@@ -389,7 +389,7 @@
                                 </button>
                             </form>
 
-                            <a data-tooltip="View Invoice" target="_blank"
+                            <a data-tooltip="View Voucher" target="_blank"
                                 href="{{ route('payment.link.show', ['companyId' => $payment->agent?->branch?->company_id, 'voucherNumber' => $payment->voucher_number]) }}"
                                 class="pl-action pl-action-view">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -397,6 +397,49 @@
                                     <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12c0 1.64.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.19 22 13.639 22 12c0-1.64-.425-2.191-1.275-3.296C19.028 6.5 16.182 4 12 4Z"/>
                                 </svg>
                             </a>
+
+                            @php
+                                // Direct invoice payments (payments.invoice_id) and credit
+                                // applications both count as linked invoices
+                                $linkedInvoices = collect([$payment->invoice])->filter()
+                                    ->concat($payment->appliedToInvoices ?? collect())
+                                    ->unique('id')->values();
+                            @endphp
+                            @if ($linkedInvoices->count() > 0)
+                                @php $linkedCount = $linkedInvoices->count(); @endphp
+                                <div x-data="{ open: false }" class="relative inline-block">
+                                    <button type="button" @click="open = !open" @click.outside="open = false"
+                                        data-tooltip="Linked Invoices ({{ $linkedCount }})"
+                                        class="pl-action pl-action-view relative">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] leading-none rounded-full px-1.5 py-0.5 font-bold">{{ $linkedCount }}</span>
+                                    </button>
+                                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-2 z-50 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                                        <div class="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 bg-gray-50 border-b border-gray-100">Linked Invoices ({{ $linkedCount }})</div>
+                                        <div class="max-h-60 overflow-y-auto overflow-x-hidden">
+                                            @foreach ($linkedInvoices as $linkedInv)
+                                                @php $linkedCo = $linkedInv->agent?->branch?->company_id; @endphp
+                                                <div class="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-50 last:border-b-0">
+                                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => $linkedCo, 'invoiceNumber' => $linkedInv->invoice_number]) }}"
+                                                        class="text-sm text-blue-600 hover:underline font-medium">
+                                                        {{ $linkedInv->invoice_number }}
+                                                    </a>
+                                                    @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]))
+                                                        <a target="_blank" href="{{ route('invoice.details', ['companyId' => $linkedCo, 'invoiceNumber' => $linkedInv->invoice_number]) }}"
+                                                            class="inline-flex items-center text-gray-500 hover:text-blue-600" data-tooltip="Details">
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
 
                             <form action="{{ route('payment.link.payment.activation', $payment->id) }}" method="POST" class="inline-block">
                                 @csrf

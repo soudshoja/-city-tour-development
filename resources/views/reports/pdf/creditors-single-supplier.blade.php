@@ -238,8 +238,8 @@
                         @if($entry->task->reference)
                             <br><small>Ref: {{ $entry->task->reference }}</small>
                         @endif
-                        @if($entry->task->client_name)
-                            <br><small style="color: #2563eb;">Client: {{ $entry->task->client_name }}</small>
+                        @if($entry->task->passenger_name)
+                            <br><small style="color: #2563eb;">Passenger: {{ $entry->task->passenger_name }}</small>
                         @endif
                         @if($entry->task->amount)
                             <br><small style="color: #059669;">Task Amount: KD{{ number_format($entry->task->amount, 2) }}</small>

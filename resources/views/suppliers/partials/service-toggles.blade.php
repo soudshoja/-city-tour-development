@@ -80,4 +80,12 @@
             </div>
         </div>
     </div>
+
+    <div class="mt-4" @click.stop>
+        <label for="agency_commission" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agency Commission (%)</label>
+        <input type="number" name="agency_commission" id="agency_commission" min="0" max="100" step="0.01"
+            value="{{ old('agency_commission', $supplier->agency_commission) }}" placeholder="e.g. 25"
+            class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+        <p class="text-xs text-gray-400 mt-1">When set, the system records each task's net = retail price minus this %.</p>
+    </div>
 </div>

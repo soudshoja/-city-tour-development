@@ -293,8 +293,8 @@
                                     <div class="flex items-center space-x-2">
                                         <div class="text-sm">
                                             <div class="font-medium text-gray-900">{{ $entry->task->title ?? 'Task #' . $entry->task->id }}</div>
-                                            @if($entry->task->client_name)
-                                            <div class="text-xs text-blue-600">{{ $entry->task->client_name }}</div>
+                                            @if($entry->task->passenger_name)
+                                            <div class="text-xs text-blue-600">{{ $entry->task->passenger_name }}</div>
                                             @endif
                                         </div>
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -397,10 +397,10 @@
                                                 </h5>
 
                                                 <div class="space-y-2">
-                                                    @if($entry->task->client_name)
+                                                    @if($entry->task->passenger_name)
                                                     <div>
-                                                        <label class="block text-xs font-medium text-gray-700">Client Name</label>
-                                                        <p class="text-sm text-gray-900">{{ $entry->task->client_name }}</p>
+                                                        <label class="block text-xs font-medium text-gray-700">Passenger</label>
+                                                        <p class="text-sm text-gray-900">{{ $entry->task->passenger_name }}</p>
                                                     </div>
                                                     @endif
 
@@ -528,8 +528,8 @@
                             <div class="flex items-center space-x-2">
                                 <div class="text-sm">
                                     <div class="font-medium text-gray-900">{{ $entry->task->title ?? 'Task #' . $entry->task->id }}</div>
-                                    @if($entry->task->client_name)
-                                    <div class="text-xs text-blue-600">{{ $entry->task->client_name }}</div>
+                                    @if($entry->task->passenger_name)
+                                    <div class="text-xs text-blue-600">{{ $entry->task->passenger_name }}</div>
                                     @endif
                                 </div>
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -652,10 +652,10 @@
                                         </h4>
 
                                         <div class="space-y-3">
-                                            @if($entry->task->client_name)
+                                            @if($entry->task->passenger_name)
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700">Client Name</label>
-                                                <p class="text-sm text-gray-900">{{ $entry->task->client_name }}</p>
+                                                <label class="block text-sm font-medium text-gray-700">Passenger</label>
+                                                <p class="text-sm text-gray-900">{{ $entry->task->passenger_name }}</p>
                                             </div>
                                             @endif
 

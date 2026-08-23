@@ -26,6 +26,9 @@
             <button @click="activeSubTab = 'auto-billing'" class="noti-subtab-btn" :class="{'noti-subtab-btn-active': activeSubTab === 'auto-billing'}">
                 Auto Billing
             </button>
+            <button @click="activeSubTab = 'invoice-notification'" class="noti-subtab-btn" :class="{'noti-subtab-btn-active': activeSubTab === 'invoice-notification'}">
+                Invoice Notification
+            </button>
         </div>
 
         <div x-show="activeSubTab === 'unassigned-task'">
@@ -36,6 +39,9 @@
         </div>
         <div x-show="activeSubTab === 'auto-billing'" x-cloak>
             @include('settings.partial.notification.auto_billing')
+        </div>
+        <div x-show="activeSubTab === 'invoice-notification'" x-cloak>
+            @include('settings.partial.notification.invoice_notification')
         </div>
         @else
         <div>
@@ -56,23 +62,33 @@
             settings: {
                 'notification.unassigned_task': { channel: 'none', email: '', phone: '' },
                 'notification.autobill': { channel: 'none', email: '', phone: '' },
+                'notification.invoice_created': { channel: 'none', email: '', phone: '' },
             },
 
             agents: [],
             agentSettings: {},
+            channelOptions: { email: 'Email', whatsapp: 'WhatsApp', both: 'Both (Email & WhatsApp)' },
+            typeOptions: {
+                task_close: 'Uninvoiced Task Reminder',
+                payment_link_uninvoiced: 'Uninvoiced Payment Link Reminder',
+                invoice_created: 'Invoice Notifications',
+            },
+            supportedTypes: ['task_close', 'payment_link_uninvoiced', 'invoice_created'],
             searchQuery: '',
             selectedAgents: [],
             showEditModal: false,
             showBulkModal: false,
             editingAgent: null,
-            editingSetting: {
-                id: null,
-                channel: 'email',
-                is_active: true,
+            // Per-type editor state — one entry per supported type
+            editingSettings: {
+                task_close: { id: null, channel: 'both', is_active: true },
+                payment_link_uninvoiced: { id: null, channel: 'both', is_active: true },
+                invoice_created: { id: null, channel: 'both', is_active: true },
             },
             bulkSetting: {
-                channel: 'email',
+                channel: 'both',
                 is_active: true,
+                notification_type: 'task_close',
             },
 
             init() {
@@ -127,7 +143,9 @@
                     const data = await response.json();
                     if (data.success) {
                         this.agents = data.agents;
-                        this.agentSettings = data.settings;
+                        this.agentSettings = data.settings || {};
+                        if (data.channelOptions) this.channelOptions = data.channelOptions;
+                        if (data.typeOptions) this.typeOptions = data.typeOptions;
                     }
                 } catch (error) {
                     console.error('Error loading agent notifications:', error);
@@ -198,15 +216,34 @@
                 }
             },
 
-            getAgentSetting(agentId) {
-                return this.agentSettings[agentId] || null;
+            getAgentSetting(agentId, type) {
+                // Type-specific accessor (kept for backwards-compat with table refs)
+                const settings = this.agentSettings[agentId];
+                if (!settings) return null;
+                if (type) return settings[type] || null;
+                // No type given → return the first configured one (legacy fallback)
+                for (const t of this.supportedTypes) {
+                    if (settings[t]) return settings[t];
+                }
+                return null;
+            },
+
+            getAgentSettings(agentId) {
+                return this.agentSettings[agentId] || {};
+            },
+
+            isAnyTypeActive(agentId) {
+                const settings = this.agentSettings[agentId] || {};
+                return this.supportedTypes.some(t => settings[t]?.is_active);
+            },
+
+            activeTypeCount(agentId) {
+                const settings = this.agentSettings[agentId] || {};
+                return this.supportedTypes.reduce((n, t) => n + (settings[t]?.is_active ? 1 : 0), 0);
             },
 
             getTypeLabel(type) {
-                const labels = {
-                    'task_close': 'Task Close',
-                };
-                return labels[type] || type || '-';
+                return this.typeOptions[type] || type || '-';
             },
 
             getChannelLabel(channel) {
@@ -229,106 +266,63 @@
 
             openEditModal(agent) {
                 this.editingAgent = agent;
-                const existing = this.getAgentSetting(agent.id);
+                const existing = this.getAgentSettings(agent.id);
 
-                if (existing) {
-                    this.editingSetting = {
-                        id: existing.id,
-                        channel: existing.channel || 'email',
-                        is_active: existing.is_active ?? true,
-                    };
-                } else {
-                    this.editingSetting = {
-                        id: null,
-                        channel: 'email',
-                        is_active: true,
+                // Build one editor entry per supported type — pre-fill from existing row if any,
+                // otherwise default to channel=both + active=true (matches AgentObserver default)
+                const next = {};
+                for (const t of this.supportedTypes) {
+                    const row = existing[t];
+                    next[t] = {
+                        id: row?.id ?? null,
+                        channel: row?.channel || 'both',
+                        is_active: row ? !!row.is_active : true,
                     };
                 }
-
+                this.editingSettings = next;
                 this.showEditModal = true;
             },
 
             async saveAgentSetting() {
                 this.saving = true;
-
+                const aggregated = {};
                 try {
-                    const response = await fetch('{{ route("settings.agent-notifications.store") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            ...this.editingSetting,
-                            agent_id: this.editingAgent.id,
-                            company_id: this.companyId,
-                            notification_type: 'task_close',
-                        })
-                    });
+                    // Upsert each supported type — backend storeAgentNotification handles one type per call
+                    for (const t of this.supportedTypes) {
+                        const setting = this.editingSettings[t];
+                        const response = await fetch('{{ route("settings.agent-notifications.store") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                ...setting,
+                                agent_id: this.editingAgent.id,
+                                company_id: this.companyId,
+                                notification_type: t,
+                            })
+                        });
 
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        alert(data.message || 'Failed to save setting');
-                        return;
+                        const data = await response.json();
+                        if (!response.ok || !data.success) {
+                            alert((data && data.message) || `Failed to save ${this.getTypeLabel(t)}`);
+                            return;
+                        }
+                        aggregated[t] = data.setting || { ...setting, agent_id: this.editingAgent.id, notification_type: t };
                     }
 
-                    if (data.success) {
-                        this.agentSettings[this.editingAgent.id] = {
-                            ...this.editingSetting,
-                            ...data.setting,
-                            agent_id: this.editingAgent.id,
-                        };
-                        this.showEditModal = false;
-                        const alert = document.getElementById('custom-success-ajax-alert');
-                        if (alert) {
-                            alert.classList.remove('hidden');
-                            alert.querySelector('p').innerHTML = 'Agent notification saved successfully';
-                            setTimeout(() => alert.classList.add('hidden'), 3000);
-                        }
+                    this.agentSettings[this.editingAgent.id] = aggregated;
+                    this.showEditModal = false;
+                    const alert = document.getElementById('custom-success-ajax-alert');
+                    if (alert) {
+                        alert.classList.remove('hidden');
+                        alert.querySelector('p').innerHTML = 'Agent notification settings saved';
+                        setTimeout(() => alert.classList.add('hidden'), 3000);
                     }
                 } catch (error) {
                     console.error('Error saving:', error);
-                } finally {
-                    this.saving = false;
-                }
-            },
-
-            async deleteSetting() {
-                if (!confirm('Remove notification setting for this agent?')) return;
-
-                this.saving = true;
-
-                try {
-                    const response = await fetch('{{ route("settings.agent-notifications.delete", ["id" => "SETTING_ID"]) }}'.replace('SETTING_ID', this.editingSetting.id), {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        alert(data.message || 'Failed to delete setting');
-                        return;
-                    }
-
-                    if (data.success) {
-                        delete this.agentSettings[this.editingAgent.id];
-                        this.showEditModal = false;
-                        const alert = document.getElementById('custom-success-ajax-alert');
-                        if (alert) {
-                            alert.classList.remove('hidden');
-                            alert.querySelector('p').innerHTML = 'Notification setting removed';
-                            setTimeout(() => alert.classList.add('hidden'), 3000);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error deleting:', error);
                 } finally {
                     this.saving = false;
                 }
@@ -350,8 +344,9 @@
                         body: JSON.stringify({
                             agent_ids: this.selectedAgents,
                             company_id: this.companyId,
-                            notification_type: 'task_close',
-                            ...this.bulkSetting
+                            notification_type: this.bulkSetting.notification_type,
+                            channel: this.bulkSetting.channel,
+                            is_active: this.bulkSetting.is_active,
                         })
                     });
 

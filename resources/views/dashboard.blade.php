@@ -28,6 +28,103 @@
             }
         @endphp
 
+        @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('company') || auth()->user()->hasRole('accountant'))
+        <div class="mt-3 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md" x-data="aiStatusCard()" x-init="load()">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">AI Models Status</h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-400" x-text="checkedAt ? ('Last checked: ' + checkedAt) : ''"></span>
+                    @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('company'))
+                    <button @click="load(true)" :disabled="loading"
+                        class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                        <span x-show="!loading">Check now</span>
+                        <span x-show="loading">Checking…</span>
+                    </button>
+                    @endif
+                </div>
+            </div>
+            <div x-show="!probes.length && !loading" class="text-xs text-gray-400">No health check has run yet.</div>
+            <div x-show="stale && probes.length"
+                 class="mb-2 text-[11px] px-2 py-1 rounded border border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                Status unknown &mdash; this result is older than {{ \App\Services\AiHealthCheck::STALE_AFTER_MINUTES }} minutes,
+                so the scheduled check may not be running. Press &ldquo;Check now&rdquo; for a live result.
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <template x-for="p in probes" :key="p.label">
+                    <div class="flex items-center gap-2 p-2 rounded border" :class="tone(p).box">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" :class="tone(p).dot"></span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                <span x-text="p.label"></span>
+                                <span class="font-normal" :class="tone(p).text" x-text="' · ' + tone(p).word"></span>
+                            </p>
+                            <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate"
+                               x-text="p.model + (p.seconds ? (' · ' + p.seconds + 's') : '')"></p>
+                            <p x-show="p.message" class="text-[11px] truncate" :class="tone(p).text" x-text="p.message" :title="p.message"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        <script>
+            function aiStatusCard() {
+                return {
+                    probes: [],
+                    checkedAt: '',
+                    stale: false,
+                    loading: false,
+                    // Probe states (set server-side by App\Services\AiHealthCheck):
+                    //   ok        - responded
+                    //   degraded  - ONE failed probe. The models routinely show 40-120s
+                    //               tail latency, so a single miss is slow, not down.
+                    //   down      - failed two consecutive checks; admins were paged.
+                    //   disabled  - provider is not in the active fallback chain.
+                    // `stale` overrides all of them: the cached status is older than the
+                    // staleness window, so nothing on this card can be trusted.
+                    tone(p) {
+                        let s = p.state || (p.ok ? 'ok' : 'down');
+                        if (this.stale) s = 'stale';
+                        const map = {
+                            ok:       { box: 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800', dot: 'bg-emerald-500', text: 'text-gray-500 dark:text-gray-400',   word: 'OK' },
+                            degraded: { box: 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800',         dot: 'bg-amber-500',   text: 'text-amber-600 dark:text-amber-400', word: 'degraded / slow' },
+                            down:     { box: 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800',                 dot: 'bg-red-500',     text: 'text-red-600 dark:text-red-400',     word: 'DOWN' },
+                            disabled: { box: 'border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700',                dot: 'bg-gray-400',    text: 'text-gray-500 dark:text-gray-400',   word: 'not in use' },
+                            stale:    { box: 'border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700',                dot: 'bg-gray-400',    text: 'text-gray-500 dark:text-gray-400',   word: 'status unknown (stale)' },
+                        };
+                        return map[s] || map.down;
+                    },
+                    async load(fresh = false) {
+                        this.loading = true;
+                        try {
+                            const r = await fetch('{{ route('dashboard.ai-health') }}' + (fresh ? '?fresh=1' : ''), {
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                            });
+                            const d = await r.json();
+                            if (d.success && d.status) {
+                                this.probes = Object.values(d.status.probes || {});
+                                this.checkedAt = d.status.checked_at ? new Date(d.status.checked_at).toLocaleString() : '';
+                                this.stale = !!d.status.stale;
+                            } else {
+                                this.probes = [];
+                                this.checkedAt = '';
+                                this.stale = false;
+                            }
+                        } catch (e) {
+                            console.error('AI status load failed', e);
+                        } finally {
+                            this.loading = false;
+                        }
+                    }
+                }
+            }
+        </script>
+        @endif
+
+        
+        @if(auth()->user()->hasRole('admin'))
+            @include('uploader-status')
+        @endif
+
         <div class="grid {{ $gridCols }} gap-3 mt-3">
             @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant'))
                 <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">

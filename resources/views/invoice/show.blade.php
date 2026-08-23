@@ -350,7 +350,7 @@
                 @endphp
 
                 <tr x-data="{ open: false }" class="text-sm text-gray-700 text-center">
-                    <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A'}}</td>
+                    <td class="px-4 py-2 border"><x-payment-reference :partial="$partial" gatewayOnly /></td>
                     <td class="px-4 py-2 border">
                         <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
@@ -465,7 +465,7 @@
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                     </td>
-                    <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                    <td class="px-4 py-2 border"><x-payment-reference :partial="$partial" gatewayOnly /></td>
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
                         {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}
@@ -682,7 +682,7 @@
                                         {{ $partial->invoiceReceipt->transaction->reference_number }}
                                     </a>
                                 @else
-                                    <span class="text-gray-600 italic">{{ $partial->payment_gateway }} (Receipt pending)</span>
+                                    <span class="text-gray-600 italic"><x-payment-reference :partial="$partial" fallbackText="(Receipt pending)" /></span>
                                 @endif
                             @endif
                         </td>
@@ -705,21 +705,25 @@
                                 @if($partial->invoiceReceipt?->transaction?->reference_number)
                                     {{ $partial->invoiceReceipt->transaction->reference_number }}
                                 @else
-                                    <span class="italic">{{ $partial->payment_gateway }} (Receipt pending)</span>
+                                    <span class="italic"><x-payment-reference :partial="$partial" fallbackText="(Receipt pending)" /></span>
                                 @endif
-                            @elseif ($partial->payment?->payment_gateway === 'MyFatoorah')
-                                {{ $partial->payment->myfatoorahPayment->invoice_ref ?? $partial->payment->myfatoorahPayment->payload['Data']['InvoiceReference'] ?? 'N/A' }}
                             @else
-                                {{ $partial->payment->payment_reference ?? 'N/A' }}
+                                <x-payment-reference :partial="$partial" />
                             @endif
                         </td>
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
                         @if ($hasPaymentApplications || $paymentReferenceCredit)
-                            <td class="px-4 py-2 border">Client Credit</td>
+                            @php
+                                $isStaff = auth()->user() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::BRANCH, \App\Models\Role::ACCOUNTANT], true);
+                                $sourceGw = $hasPaymentApplications && $topupApps->isNotEmpty()
+                                    ? optional($topupApps->first()->payment)->payment_gateway
+                                    : null;
+                            @endphp
+                            <td class="px-4 py-2 border">Client Credit{{ $isStaff && $sourceGw ? ' ('.$sourceGw.')' : '' }}</td>
                         @else
-                            <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                            <td class="px-4 py-2 border"><x-payment-reference :partial="$partial" gatewayOnly /></td>
                         @endif
                         <td class="px-4 py-2 border">
                             {{ number_format(($partial->amount ?? 0) + ($partial->service_charge ?? 0) + ($partial->invoice_charge ?? 0), 3) }}

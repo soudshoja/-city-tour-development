@@ -14,6 +14,7 @@ return [
     'invoice_id' => 'رقم الفاتورة',
     'invoice_reference' => 'مرجع الفاتورة',
     'payment_gateway' => 'بوابة الدفع',
+    'payment_date' => 'تاريخ الدفع',
 
     'select_payment_method_alert' => 'يرجى اختيار طريقة الدفع قبل المتابعة.',
     'choose_payment_method' => 'اختر طريقة الدفع',

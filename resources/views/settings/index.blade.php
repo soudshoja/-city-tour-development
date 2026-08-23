@@ -120,6 +120,18 @@
                         {{ __('settings.notifications') }}
                     </button>
                     @endcan
+
+                    @if(auth()->user()->role_id === \App\Models\Role::ADMIN)
+                    <button
+                        @click="saveTab('ai-config')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'ai-config'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        AI Configuration
+                    </button>
+                    @endif
                 </nav>
             </div>
 
@@ -160,6 +172,12 @@
                     @include('settings.partial.notifications')
                 </div>
                 @endcan
+
+                @if(auth()->user()->role_id === \App\Models\Role::ADMIN)
+                <div x-show="activeTab === 'ai-config'" x-cloak>
+                    @include('settings.partial.ai_config')
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -193,6 +211,10 @@
                 window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
                 });
+            } else if ("{{ $activeTab }}" === 'ai-config') {
+                window.Alpine && Alpine.nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('ai-config-tab-loaded'));
+                });
             }
         });
 
@@ -209,6 +231,7 @@
                     'agent-charges': '{{ __('settings.agent_charges') }}',
                     'agent-loss': '{{ __('settings.agent_loss') }}',
                     'notifications': '{{ __('settings.notifications') }}',
+                    'ai-config': 'AI Configuration',
                 },
 
                 init() {
@@ -247,6 +270,8 @@
                         window.dispatchEvent(new CustomEvent('agent-loss-tab-loaded'));
                     } else if (tab === 'notifications') {
                         window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
+                    } else if (tab === 'ai-config') {
+                        window.dispatchEvent(new CustomEvent('ai-config-tab-loaded'));
                     }
                 },
 

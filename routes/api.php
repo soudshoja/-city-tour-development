@@ -175,3 +175,25 @@ Route::group([
 });
 
 require __DIR__ . '/auth.php';
+
+
+// Cygnet insurance sync trigger - hit by external scheduler every 15 min (key-protected)
+Route::get('/cygnet-sync', function (\Illuminate\Http\Request $request) {
+    if (!hash_equals((string) config('cygnet.sync_key'), (string) $request->query('key'))) {
+        abort(403);
+    }
+    \Illuminate\Support\Facades\Artisan::call('app:sync-cygnet-insurance');
+    return response()->json([
+        'ok' => true,
+        'ran_at' => now()->toDateTimeString(),
+        'output' => \Illuminate\Support\Facades\Artisan::output(),
+    ]);
+});
+
+// AIR source-capture ingestion (bearer AIR_INGEST_SECRET; controller self-auths) — 2026-06-02
+Route::post('/process-air-file', [\App\Http\Controllers\AirIngestController::class, 'processAirFile'])->name('air.process');
+Route::post('/air-heartbeat', [\App\Http\Controllers\AirIngestController::class, 'heartbeat'])->name('air.heartbeat');
+
+// AIR heartbeat alias — matches uploader's {API_BASE}/heartbeat — 2026-06-02
+Route::post('/heartbeat', [\App\Http\Controllers\AirIngestController::class, 'heartbeat'])->name('air.heartbeat.alias');
+    Route::post('/air-will-load', [\App\Http\Controllers\AirIngestController::class, 'willLoad'])->name('air.willload');

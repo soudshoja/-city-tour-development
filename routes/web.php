@@ -60,6 +60,7 @@ use Illuminate\Support\Facades\Storage;
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/ai-health-status', [DashboardController::class, 'aiHealthStatus'])->name('dashboard.ai-health');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -117,6 +118,13 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
         Route::put('/{user}/update-info', [AdminUsersController::class, 'updateInfo'])->name('users.updateInfo');
         Route::post('/set-company', [AdminUsersController::class, 'setCompany'])->name('users.set-company');
+
+        // Company invites — admin only. Gate enforced in-controller via
+        // CompanyInviteController::authorizeAdmin() (role_id === Role::ADMIN).
+        Route::get('/company-invites', [\App\Http\Controllers\CompanyInviteController::class, 'index'])->name('company-invites.index');
+        Route::post('/company-invites', [\App\Http\Controllers\CompanyInviteController::class, 'store'])->name('company-invites.store');
+        Route::post('/company-invites/{invite}/cancel', [\App\Http\Controllers\CompanyInviteController::class, 'cancel'])->name('company-invites.cancel');
+        Route::post('/company-invites/{invite}/resend', [\App\Http\Controllers\CompanyInviteController::class, 'resend'])->name('company-invites.resend');
     });
 
     Route::group([
@@ -230,6 +238,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
     ], function () {
+        Route::get('/resolve-whatsapp-group', [SupplierController::class, 'resolveWhatsappGroup'])->name('resolve-wa-group');
         Route::get('/{suppliersId}/export-excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');
         Route::get('/{suppliersId}/export-pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
@@ -387,6 +396,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'journal-entries',
         'as' => 'journal-entries.',
     ], function () {
+        Route::get('/all', [JournalEntryController::class, 'all'])->name('all');
         Route::get('/{transactionId}', [JournalEntryController::class, 'index'])->name('index');
         Route::get('/{accountId}/account', [JournalEntryController::class, 'show'])->name('show');
         Route::get('/{accountId}/export/pdf', [JournalEntryController::class, 'exportPdf'])->name('export.pdf');
@@ -539,6 +549,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{refund}/complete-process', [RefundController::class, 'completeProcess'])->name('complete_process');
         Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
         Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
+        Route::post('/{refund}/void', [RefundController::class, 'void'])->name('void');
         Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
         Route::get('/eligible-tasks', [RefundController::class, 'getEligibleTasks'])->name('eligible-tasks');
     });
@@ -741,6 +752,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-loss', [SettingController::class, 'storeAgentLoss'])->name('agent-loss.store');
         Route::post('/agent-loss/bulk-update', [SettingController::class, 'bulkUpdateAgentLoss'])->name('agent-loss.bulk-update');
         Route::delete('/agent-loss/{id}', [SettingController::class, 'deleteAgentLoss'])->name('agent-loss.delete');
+        Route::get('/ai', [SettingController::class, 'getAiConfig'])->name('ai');
+        Route::post('/ai', [SettingController::class, 'updateAiConfig'])->name('ai.update');
+        Route::get('/ai/models', [SettingController::class, 'aiModels'])->name('ai.models');
+        Route::post('/ai/test', [SettingController::class, 'aiTest'])->name('ai.test');
         Route::get('/notifications', [SettingController::class, 'getNotificationSettings'])->name('notifications');
         Route::post('/notifications', [SettingController::class, 'updateNotificationSetting'])->name('notifications.update');
         Route::get('/agent-notifications', [SettingController::class, 'getAgentNotifications'])->name('agent-notifications');
@@ -892,22 +907,19 @@ Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, '
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
-Route::get('/docs/developer', function () {
-    return view('docs.developer-documentation');
-})->name('docs.developer-documentation');
-Route::get('/docs/api', function () {
-    return view('docs.api-documentation');
-})->name('docs.api-documentation');
-Route::get('/docs/user', function () {
-    return view('docs.user-documentation');
-})->name('docs.user-documentation');
-Route::get('/docs/postman/download', function () {
-    $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
-    if (!file_exists($filePath)) {
-        abort(404, 'Postman collection file not found');
-    }
-    return response()->download($filePath, 'Task_Webhook_API.postman_collection.json');
-})->name('docs.postman.download');
+
+Route::group(['prefix' => 'docs', 'as' => 'docs.'], function () {
+    Route::get('/user', fn () => view('docs.user-documentation'))->name('user-documentation')->middleware('auth');
+    Route::get('/api', fn () => view('docs.api-documentation'))->name('api-documentation');
+    Route::get('/developer', fn () => view('docs.developer-documentation'))->name('developer-documentation');
+    Route::get('/postman/download', function () {
+        $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
+        if (!file_exists($filePath)) {
+            abort(404, 'Postman collection file not found');
+        }
+        return response()->download($filePath, 'Task_Webhook_API.postman_collection.json');
+    })->name('postman.download');
+});
 
 
 
@@ -1007,5 +1019,106 @@ Route::middleware(['auth', 'dotw_audit_access'])
         Route::redirect('api-tokens', '/admin/dotw', 301)->name('api-tokens');
     });
 
+// Task action requests — owner Approve/Deny via tokenized link from
+// in-app notification, email, or WhatsApp. No auth required (token is
+// sufficient entropy: 32 random chars, single-use via status check).
+Route::prefix('task-action-requests')->name('task-action-request.')->group(function () {
+    Route::get('/{token}', [\App\Http\Controllers\TaskActionRequestController::class, 'show'])->name('show');
+    Route::get('/{token}/approve', [\App\Http\Controllers\TaskActionRequestController::class, 'approve'])->name('approve');
+    Route::get('/{token}/deny', [\App\Http\Controllers\TaskActionRequestController::class, 'deny'])->name('deny');
+});
+
+// Public company self-registration (invite-token gated)
+Route::get('/register/company/{token}', [\App\Http\Controllers\CompanyRegistrationController::class, 'show'])
+    ->middleware('throttle:20,1')->name('company-register.show');
+Route::get('/register/company/{token}/agents-template', [\App\Http\Controllers\CompanyRegistrationController::class, 'agentsTemplate'])
+    ->middleware('throttle:20,1')->name('company-register.agents-template');
+Route::post('/register/company/{token}', [\App\Http\Controllers\CompanyRegistrationController::class, 'store'])
+    ->middleware('throttle:5,1')->name('company-register.store');
+
 require __DIR__ . '/auth.php';
+
+// ── AIR uploader dashboard actions (citycomm) — 2026-06-02 ──
+Route::middleware('auth')->prefix('air/uploader')->name('air.uploader.')->group(function () {
+
+    // Remove a stale/dead heartbeat row
+    Route::post('/remove-host', function (\Illuminate\Http\Request $r) {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $host = (string) $r->input('host_id', '');
+        if ($host !== '') {
+            \Illuminate\Support\Facades\DB::table('uploader_heartbeats')->where('host_id', $host)->delete();
+        }
+        return back();
+    })->name('remove-host');
+
+    // Review held + errored files with their reasons + the office (PCC) they belong to
+    Route::get('/logs', function () {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $base = '/home/citycomm/AIR';
+        $rows = [];
+        foreach (['NOT LOADED' => 'error', 'NOT LOADED/unregistered_agent' => 'held'] as $dir => $kind) {
+            foreach (glob("$base/$dir/*.AIR") ?: [] as $f) {
+                $reason = $kind;
+                $sc = $f . '.error.json';
+                if (is_file($sc)) {
+                    $j = json_decode(@file_get_contents($sc), true);
+                    $reason = $j['reason'] ?? $kind;
+                }
+                // Extract the office / PCC code(s) from the file content (cheap — first 800 bytes)
+                $office = '?';
+                $head = @file_get_contents($f, false, null, 0, 800);
+                if ($head && preg_match_all('/\b(KWIKT[0-9A-Z]{3,5})\b/', $head, $mm)) {
+                    $office = implode(', ', array_values(array_unique($mm[1])));
+                }
+                $rows[] = [
+                    'file'   => basename($f),
+                    'kind'   => $kind,
+                    'reason' => $reason,
+                    'office' => $office,
+                    'mtime'  => @filemtime($f) ?: 0,
+                ];
+            }
+        }
+        usort($rows, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
+        $shown = array_slice($rows, 0, 300);
+        // office summary (counts across ALL held/errored, not just shown)
+        $byOffice = [];
+        foreach ($rows as $r) { $byOffice[$r['office']] = ($byOffice[$r['office']] ?? 0) + 1; }
+        arsort($byOffice);
+        $h = '<!doctype html><html><head><meta charset="utf-8"><title>AIR Uploader Logs</title>'
+           . '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>'
+           . '<body class="p-4" style="background:#f5f7fa"><div class="container-fluid" style="max-width:1050px">'
+           . '<h5 class="mb-3">AIR Uploader — Held &amp; Errored Files '
+           . '<small class="text-muted">(' . count($rows) . ' total, showing ' . count($shown) . ')</small> '
+           . '<a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary float-end">&larr; Back</a></h5>';
+        // office summary chips
+        $h .= '<div class="mb-3">';
+        foreach ($byOffice as $off => $n) {
+            $h .= '<span class="badge bg-secondary-subtle text-secondary me-1">' . e($off) . ' &middot; ' . $n . '</span>';
+        }
+        $h .= '</div>';
+        $h .= '<table class="table table-sm table-hover bg-white"><thead class="table-light"><tr>'
+           . '<th>File</th><th>Office (PCC)</th><th>Type</th><th>Reason</th><th>When</th></tr></thead><tbody>';
+        foreach ($shown as $r) {
+            $badge = $r['kind'] === 'held'
+                ? '<span class="badge bg-warning text-dark">held</span>'
+                : '<span class="badge bg-danger">error</span>';
+            $h .= '<tr><td><code>' . e($r['file']) . '</code></td>'
+                . '<td><span class="badge bg-light text-dark border">' . e($r['office']) . '</span></td>'
+                . '<td>' . $badge . '</td>'
+                . '<td>' . e($r['reason']) . '</td>'
+                . '<td class="text-muted small">' . ($r['mtime'] ? date('Y-m-d H:i', $r['mtime']) : '-') . '</td></tr>';
+        }
+        if (empty($shown)) {
+            $h .= '<tr><td colspan="5" class="text-center text-muted py-4">No held or errored files.</td></tr>';
+        }
+        $h .= '</tbody></table>'
+            . '<p class="text-muted small"><span class="badge bg-warning text-dark">held</span> = withheld by the agent gate (unregistered agent / orphan modification) — recoverable. '
+            . '<span class="badge bg-danger">error</span> = genuine processing failure. '
+            . '<strong>Office (PCC)</strong> = the GDS office code(s) found in the file — lets you see which agency the ticket belongs to.</p>'
+            . '</div></body></html>';
+        return response($h);
+    })->name('logs');
+});
+
 require __DIR__.'/resailai-admin.php';

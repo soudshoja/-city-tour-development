@@ -46,11 +46,18 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('admin.dotw-audit-log-index', \App\Http\Livewire\Admin\DotwAuditLogIndex::class);
         Livewire::component('admin.dotw-api-token-index', \App\Http\Livewire\Admin\DotwApiTokenIndex::class);
 
+        \App\Services\AiConfigOverride::apply();
+
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Item::class, ItemPolicy::class);
         Gate::policy(Client::class, ClientPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(CoaCategory::class, COAPolicy::class);
+
+        Task::observe(\App\Observers\TaskObserver::class);
+        Agent::observe(\App\Observers\AgentObserver::class);
+        \App\Models\Invoice::observe(\App\Observers\InvoiceObserver::class);
+        \App\Models\InvoicePartial::observe(\App\Observers\InvoicePartialObserver::class);
 
         Gate::define('manage-system-settings', [SystemSettingPolicy::class, 'viewAny']);
         Gate::define('manage-email-tester', [SystemSettingPolicy::class, 'manageEmailTester']);

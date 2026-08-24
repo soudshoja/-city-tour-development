@@ -58,6 +58,22 @@
     <!-- Global Duplicate Client Warning Modal -->
     <x-duplicate-client-warning />
 
+    {{--
+        Module 5 — Resayil WhatsApp CRM drawer. Available from anywhere in
+        the authenticated app, gated on the same module flag the menu item
+        uses. Guest/login pages never include this layout, so no extra
+        @auth check is needed beyond the module lookup itself.
+    --}}
+    @php
+        $resayilDrawerUser = auth()->user();
+        $resayilDrawerCompanyId = $resayilDrawerUser ? getCompanyId($resayilDrawerUser) : null;
+        $resayilDrawerCompany = $resayilDrawerCompanyId ? \App\Models\Company::find($resayilDrawerCompanyId) : null;
+        $hasResayilDrawerModule = $resayilDrawerCompany && $resayilDrawerCompany->hasModule(\App\Support\Modules::RESAYIL);
+    @endphp
+    @if($hasResayilDrawerModule)
+        <x-resayil-drawer :embed-url="config('resayil.embed_url')" :not-configured="empty(config('resayil.embed_url'))" />
+    @endif
+
     @livewireScripts
 
 

@@ -9,6 +9,10 @@
     $menuCompanyId = $menuUser ? getCompanyId($menuUser) : null;
     $menuCompany = $menuCompanyId ? \App\Models\Company::find($menuCompanyId) : null;
     $hasAccountingModule = $menuCompany && $menuCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+    // Module 5 — Resayil WhatsApp CRM. Same fail-open-by-absence semantics
+    // as every other module flag (Company::hasModule()) — a company with no
+    // module.resayil row shows the item; module.resayil=false hides it.
+    $hasResayilModule = $menuCompany && $menuCompany->hasModule(\App\Support\Modules::RESAYIL);
 @endphp
 <nav class="w-full">
     <menu class="flex flex-wrap gap-8 mx-4">
@@ -150,6 +154,20 @@
             </menuitem>
         </menu>
         </menuitem>
+
+        {{-- Module 5 — Resayil WhatsApp CRM full-page view. No @can wrapper:
+             there is no dedicated Policy for this feature yet, so the
+             module flag alone gates it (still fully hides for companies
+             without the module, and the route itself 404s independently). --}}
+        @if($hasResayilModule)
+        <menuitem>
+        <a href="{{ route('resayil.index') }}"
+            class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full BoxShadow">
+            <x-icons.chat class="w-4 h-4" />
+            <span class="px-2 text-sm">Resayil</span>
+        </a>
+        </menuitem>
+        @endif
 
         <menuitem>
         <a class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full BoxShadow">

@@ -829,28 +829,10 @@ Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.
 Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
 
 
-// search for invoice creation
-
-// branch 
-Route::get('/search-branch', [InvoiceController::class, 'searchBranch'])->name('search.branch');
-Route::post('/select-branch', [InvoiceController::class, 'selectBranch'])->name('select.branch');
-
-// agent
-Route::get('/search-agent', [InvoiceController::class, 'searchAgent'])->name('search.agent');
-Route::post('/select-agent', [InvoiceController::class, 'selectAgent'])->name('select.agent');
-
-// client
-Route::get('/search-client', [InvoiceController::class, 'searchClient'])->name('search.client');
-Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name('select.client');
-
-
-// items 
-Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
-Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
-
 Route::group([
     'prefix' => 'receipt-voucher',
     'as' => 'receipt-voucher.',
+    'middleware' => ['auth'],
 ], function () {
     Route::get('/', [ReceiptVoucherController::class, 'index'])->name('index');
     Route::get('/create', [ReceiptVoucherController::class, 'create'])->name('create');
@@ -868,6 +850,7 @@ Route::group([
 Route::group([
     'prefix' => 'bank-payments',
     'as' => 'bank-payments.',
+    'middleware' => ['auth'],
 ], function () {
     Route::get('/create', [BankPaymentController::class, 'create'])->name('create');
     Route::post('/store', [BankPaymentController::class, 'store'])->name('store');
@@ -887,7 +870,7 @@ Route::get('/download-task', [ExportController::class, 'downloadTask'])->name('d
 Route::get('/download-client', [ExportController::class, 'downloadClient'])->name('download.client');
 Route::get('export-companies', [CompanyController::class, 'exportCsv'])->name('companies.exportCsv');
 Route::get('export-agents', [AgentController::class, 'exportCsv'])->name('agents.exportCsv');
-Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv');
+Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv')->middleware('auth');
 
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 

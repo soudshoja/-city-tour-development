@@ -62,6 +62,17 @@ class JournalEntryController extends Controller
 
         $journalEntries = $this->getJournalEntries($journalEntries);
 
+        // getJournalEntries() returns a RedirectResponse (not the paginator)
+        // when the company's root accounts are missing and there were real
+        // entries to classify. Passing that straight through compact() used
+        // to render it as $journalEntries in the view instead of actually
+        // redirecting, which blew up as "Undefined property
+        // ResponseHeaderBag::$transaction_id" the moment Blade iterated its
+        // public properties (headers/original/exception).
+        if ($journalEntries instanceof \Illuminate\Http\RedirectResponse) {
+            return $journalEntries;
+        }
+
         return view('journal_entries.index', compact('journalEntries', 'transactionId'));
     }
 
@@ -94,14 +105,22 @@ class JournalEntryController extends Controller
 
     public function getJournalEntries($journalEntries, float $startingBalance = 0)
     {
-        $assets = Account::where('name', 'Assets')->first();
-        $liabilities = Account::where('name', 'Liabilities')->first();
-        $equity = Account::where('name', 'Equity')->first();
-        $income = Account::where('name', 'Income')->first();
-        $expenses = Account::where('name', 'Expenses')->first();
+        // A brand-new company with no chart of accounts seeded yet also has
+        // zero journal entries, so there is nothing here that actually
+        // needs a root account to classify. Only bail out when there are
+        // real entries that need Assets/Liabilities/Equity/Income/Expenses
+        // to compute a running balance — same "day one of onboarding"
+        // empty-state philosophy as CoaController::index().
+        if ($journalEntries->isNotEmpty()) {
+            $assets = Account::where('name', 'Assets')->first();
+            $liabilities = Account::where('name', 'Liabilities')->first();
+            $equity = Account::where('name', 'Equity')->first();
+            $income = Account::where('name', 'Income')->first();
+            $expenses = Account::where('name', 'Expenses')->first();
 
-        if (!$assets || !$liabilities || !$equity || !$income || !$expenses) {
-            return redirect()->back()->with('error', 'One or more accounts not found');
+            if (!$assets || !$liabilities || !$equity || !$income || !$expenses) {
+                return redirect()->back()->with('error', 'One or more accounts not found');
+            }
         }
 
         $runningBalance = $startingBalance;

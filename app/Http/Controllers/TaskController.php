@@ -250,37 +250,41 @@ class TaskController extends Controller
             ->where('company_id', $companyId)
             ->first();
 
-        if (!$liabilities) {
-            Log::error('Liabilities account not found for company ID: ' . $companyId);
-            return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
+        $creditorsAccount = $liabilities
+            ? Account::where('name', 'Creditors')
+                ->where('company_id', $companyId)
+                ->where('root_id', $liabilities->id)
+                ->first()
+            : null;
+
+        // A freshly registered company with no chart of accounts seeded yet
+        // has neither of these rows. Task listing is a package-tier feature
+        // that must keep working regardless of accounting setup (see
+        // AccountingRouteGateTest::test_package_client_keeps_200_on_package_module_routes)
+        // and $listOfCreditors is only ever consumed by tasks/detail.blade.php,
+        // never by this index view — so degrade to an empty breakdown
+        // instead of redirecting the whole page away.
+        if (!$liabilities || !$creditorsAccount) {
+            Log::warning('Liabilities/Creditors account not found for company ID: ' . $companyId . ' - task list renders without creditor breakdown.');
+            $listOfCreditors = [];
+        } else {
+            $listOfCreditors = $creditorsAccount->children()->get()
+                ->where('company_id', $companyId)
+                ->mapToGroups(function ($account) {
+                    $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
+
+                    return [
+                        $group => [
+                            'id' => $account->id,
+                            'name' => $account->name,
+                            'parent_id' => $account->parent_id,
+                            'company_id' => $account->company_id,
+                            'code' => $account->code,
+                        ],
+                    ];
+                })
+                ->toArray();
         }
-
-        $creditorsAccount = Account::where('name', 'Creditors')
-            ->where('company_id', $companyId)
-            ->where('root_id', $liabilities->id)
-            ->first();
-
-        if (!$creditorsAccount) {
-            Log::error('Creditors account not found for company ID: ' . $companyId);
-            return redirect()->back()->with('error', 'Creditors account not found. Please contact the administrator.');
-        }
-
-        $listOfCreditors = $creditorsAccount->children()->get()
-            ->where('company_id', $companyId)
-            ->mapToGroups(function ($account) {
-                $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
-
-                return [
-                    $group => [
-                        'id' => $account->id,
-                        'name' => $account->name,
-                        'parent_id' => $account->parent_id,
-                        'company_id' => $account->company_id,
-                        'code' => $account->code,
-                    ],
-                ];
-            })
-            ->toArray();
 
         $paymentMethod = Account::where('parent_id', 39)
             ->where('company_id', $companyId)

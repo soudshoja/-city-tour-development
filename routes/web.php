@@ -47,6 +47,7 @@ use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ResayilController;
+use App\Http\Controllers\ResayilEmbedController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\ReminderController;
@@ -1180,6 +1181,17 @@ Route::middleware('auth')->prefix('air/uploader')->name('air.uploader.')->group(
             . '</div></body></html>';
         return response($h);
     })->name('logs');
+});
+
+// Module 5 — Resayil WhatsApp CRM full-page view. A TOP-LEVEL statement
+// (sibling to the air/uploader group immediately above, same indentation,
+// same explicit 'auth' pattern) — NOT nested inside it or any other group.
+// Gated by module:resayil (App\Http\Middleware\EnsureModuleEnabled — 404 for
+// companies without the module, never a 403, matching every other
+// module-gated route) and resayil.frame (App\Http\Middleware\ResayilFrameHeaders
+// — CSP so the Resayil iframe is actually allowed to load).
+Route::middleware(['auth', 'module:resayil', 'resayil.frame'])->group(function () {
+    Route::get('/resayil', [ResayilEmbedController::class, 'index'])->name('resayil.index');
 });
 
 require __DIR__.'/resailai-admin.php';

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AccountantView;
+use App\Http\Middleware\EnsureModuleEnabled;
 use App\Modules\ResailAI\Middleware\VerifyResailAIToken;
 use App\Modules\DotwAI\Http\Middleware\ResolveDotwAIContext;
 use Illuminate\Foundation\Application;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'dotw_audit_access' => \App\Http\Middleware\DotwAuditAccess::class,
             'verify.resailai.token' => VerifyResailAIToken::class,
             'dotwai.resolve' => ResolveDotwAIContext::class,
+            'module' => EnsureModuleEnabled::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,

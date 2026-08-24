@@ -1,3 +1,15 @@
+@php
+    // Computed once per render so accounting-only nav items can be hidden
+    // (not just left as dead links) for companies without the accounting
+    // module. Mirrors App\Policies\Concerns\RequiresCompanyModule::moduleEnabled()
+    // exactly (same helper, same module key) — the same check the route
+    // layer enforces via App\Http\Middleware\EnsureModuleEnabled
+    // (module:accounting) and every gated Policy method now runs first.
+    $menuUser = auth()->user();
+    $menuCompanyId = $menuUser ? getCompanyId($menuUser) : null;
+    $menuCompany = $menuCompanyId ? \App\Models\Company::find($menuCompanyId) : null;
+    $hasAccountingModule = $menuCompany && $menuCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+@endphp
 <nav class="w-full">
     <menu class="flex flex-wrap gap-8 mx-4">
         <menuitem>
@@ -37,29 +49,39 @@
         </a>
         <menu>
             @can('viewAny', 'App\Models\CoaCategory')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('coa.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Chart Of Account</a></menuitem>
+            @endif
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('bank-payments.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Voucher</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('receipt-voucher.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Receipt 
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Receipt
                 Voucher</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('receivable-details.receivable-create') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Receivable</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('payable-details.payable-create') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payable</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewAny', 'App\Models\Charge')
             <menuitem><div
@@ -73,17 +95,21 @@
             </menuitem>
             @endcan -->
             @can('viewCompanySummary', 'App\Models\Account')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('accounting.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
             </menuitem>
             <menuitem><a href="{{ route('journal-entries.all') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Journal Entries</a>
             </menuitem>
+            @endif
             @endcan
             @can('manageLocks', 'App\Models\User')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('lock-management.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Lock Management</a>
             </menuitem>
+            @endif
             @endcan
         </menu>
         </menuitem>
@@ -205,6 +231,7 @@
                 Reports</a>
             </menuitem> -->
             @can('viewAny', 'App\Models\Report')
+            @if($hasAccountingModule)
             <menuitem>
             <a href="{{ route('reports.paid-report') }}"
                 class="text-xs p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow w-full text-center break-words whitespace-normal">
@@ -217,6 +244,7 @@
                 Unpaid Acc Pay/Receive
             </a>
             </menuitem>
+            @endif
             @endcan
           <!--   @can('viewReconcile', 'App\Models\Report')
             <menuitem><a href="{{ route('reports.acc-reconcile') }}"
@@ -224,35 +252,48 @@
             </menuitem>
             @endcan -->
             @can('viewProfitLoss', 'App\Models\Report')
+            @if($hasAccountingModule)
             <menuitem><a href="{{ route('reports.profit-loss') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Profit & Loss</a>
             </menuitem>
+            @endif
             @endcan
+            {{-- 'viewSettlement' guards the bank-settlements report (payment
+            gateway funds settling to the bank), not the agent-loss settlement
+            feature — treated as accounting here, same as the route gate. --}}
             @can('viewSettlement', 'App\Models\Report')
+            @if($hasAccountingModule)
             <menuitem>
             <a href="{{ route('reports.settlements') }}"
                 class="block text-xs text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white shadow">
                 Bank Settlement
             </a>
             </menuitem>
+            @endif
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
+            @if($hasAccountingModule)
             <menuitem>
             <a href="{{ route('coa.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transaction List</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewCreditors', 'App\Models\Report')
+            @if($hasAccountingModule)
             <menuitem>
             <a href="{{ route('reports.creditors') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Creditors Report</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewDailySales', 'App\Models\Report')
+            @if($hasAccountingModule)
             <menuitem>
             <a href="{{ route('reports.daily-sales') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Daily Sales</a>
             </menuitem>
+            @endif
             @endcan
             @can('viewTaskReport', 'App\Models\Report')
             <menuitem>
@@ -344,6 +385,7 @@
             <!-- Main Menu Item -->
             <menuitem>
             @can('viewAny', App\Models\CurrencyExchange::class)
+            @if($hasAccountingModule)
             <a href="{{ route('exchange.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Currency
                 Exchange</a>
@@ -355,6 +397,7 @@
                 </a>
                 </menuitem>
             </menu>
+            @endif
             @endcan
             </menuitem>
 

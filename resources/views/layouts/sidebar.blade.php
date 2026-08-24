@@ -1,3 +1,14 @@
+@php
+    // Computed once per render so accounting-only widgets can be hidden for
+    // companies without the accounting module. Mirrors
+    // resources/views/layouts/menu.blade.php exactly (same helper, same
+    // module key) — the same check the route layer enforces via
+    // App\Http\Middleware\EnsureModuleEnabled (module:accounting).
+    $sidebarWidgetUser = auth()->user();
+    $sidebarWidgetCompanyId = $sidebarWidgetUser ? getCompanyId($sidebarWidgetUser) : null;
+    $sidebarWidgetCompany = $sidebarWidgetCompanyId ? \App\Models\Company::find($sidebarWidgetCompanyId) : null;
+    $hasAccountingModule = $sidebarWidgetCompany && $sidebarWidgetCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+@endphp
 <div class="sidebar">
     <div class="flex flex-col justify-between items-center space-y-4 mt-5">
         <div class="sidebar-logo">
@@ -81,6 +92,17 @@
         </div>
         @endcan
 
+        {{--
+            Unlike every other quick-access icon in this sidebar, this widget
+            previously had no permission or module check at all — any logged-in
+            user saw it regardless of role or company. Gated the same way
+            layouts/mobile-drawer.blade.php gates its own copy of this widget:
+            CurrencyExchangePolicy::viewAny already checks the accounting module
+            itself, $hasAccountingModule here is the same belt-and-suspenders
+            check menu.blade.php uses everywhere else.
+        --}}
+        @can('viewAny', App\Models\CurrencyExchange::class)
+        @if($hasAccountingModule)
         <div class="flex flex-col items-center"
             x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">
 
@@ -214,6 +236,8 @@
                 </div>
             </div>
         </div>
+        @endif
+        @endcan
 
         @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
         <x-sidebar-company

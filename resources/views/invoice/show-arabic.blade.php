@@ -68,6 +68,19 @@
 
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100">
 
+    @php
+        // credits.useCreditNow is gated on module:payment_gateway (routes/web.php,
+        // "MOVEMENT" side of ruling R1 — same class of action as charges/auto-billing),
+        // not accounting, so the "use credit now" trigger below must check that module
+        // or it stays hidden for a payment_gateway company that has no accounting.
+        // Mirrors resources/views/layouts/menu.blade.php's self-contained @php pattern
+        // (same helper), just against a different module key.
+        $showArabicUser = auth()->user();
+        $showArabicCompanyId = $showArabicUser ? getCompanyId($showArabicUser) : null;
+        $showArabicCompany = $showArabicCompanyId ? \App\Models\Company::find($showArabicCompanyId) : null;
+        $hasPaymentGatewayModule = $showArabicCompany && $showArabicCompany->hasModule(\App\Support\Modules::PAYMENT_GATEWAY);
+    @endphp
+
     @if (session('status'))
     <div class="bg-green-100 text-green-700 p-4 rounded mb-4">
         {{ session('status') }}
@@ -398,6 +411,10 @@
                     <td class="px-4 py-2 border">
                         {{ $partial->client->full_name }}
 
+                        {{-- credits.useCreditNow is gated on module:payment_gateway (ruling
+                             R1) — both the trigger and the modal it opens must stay hidden
+                             unless that module is on, or the "Yes" button below 404s. --}}
+                        @if ($hasPaymentGatewayModule)
                         @if ($creditBalance > 0 && $partial->status === 'unpaid')
                         <br>رصيد المحفظة: {{ number_format($creditBalance, 3) }} |
                         <button @click="open = true" type="button" class="text-blue-600 underline text">
@@ -438,6 +455,7 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
                     </td>
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}

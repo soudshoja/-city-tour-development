@@ -1,4 +1,15 @@
 <x-app-layout>
+    @php
+        // receipt-voucher.import carries EnsureModuleEnabled:accounting, so the
+        // "Receipt Voucher" import option further down must not render for a
+        // company without the accounting module. Mirrors
+        // resources/views/layouts/menu.blade.php exactly (same helper, same
+        // module key).
+        $invoiceEditUser = auth()->user();
+        $invoiceEditCompanyId = $invoiceEditUser ? getCompanyId($invoiceEditUser) : null;
+        $invoiceEditCompany = $invoiceEditCompanyId ? \App\Models\Company::find($invoiceEditCompanyId) : null;
+        $hasAccountingModule = $invoiceEditCompany && $invoiceEditCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+    @endphp
     <style>
         button[disabled] {
             opacity: 0.5;
@@ -1225,7 +1236,9 @@
                                                                 required>
                                                         <option value="placeholder" selected disabled>Select an option</option>
                                                         <option value="gateway">Payment Gateway</option>
+                                                        @if($hasAccountingModule)
                                                         <option value="receipt">Receipt Voucher</option>
+                                                        @endif
                                                         </select>
                                                     </div>
 
@@ -1279,6 +1292,10 @@
                                                         </div>
                                                     </div>
 
+                                                    {{-- receipt-voucher.import carries EnsureModuleEnabled:accounting —
+                                                         hidden alongside the option above, or "source" could still be
+                                                         driven to 'receipt' and the import would 404 on submit. --}}
+                                                    @if($hasAccountingModule)
                                                     <!-- Receipt Voucher section -->
                                                     <div x-show="source === 'receipt'" x-cloak>
                                                         <div class="mt-4">
@@ -1292,8 +1309,8 @@
                                                                 :items="$receiptVoucher
                                                                     ->filter(fn($r) => $r->transaction)
                                                                     ->map(fn($r) => [
-                                                                        'id'   => $r->transaction->reference_number, 
-                                                                        'name' => $r->transaction->reference_number 
+                                                                        'id'   => $r->transaction->reference_number,
+                                                                        'name' => $r->transaction->reference_number
                                                                                     .' — KWD '.number_format((float)$r->amount, 3),
                                                                     ])"
                                                                 :placeholder="'Select Receipt Voucher'"
@@ -1303,6 +1320,7 @@
 
                                                         </div>
                                                     </div>
+                                                    @endif
 
                                                     <!-- Success -->
                                                     <div id="successBox" class="hidden p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm"></div>

@@ -102,11 +102,28 @@ class CreditController extends Controller
 
     public function filter(Request $request)
     {
-        $request->validate([
+        // This endpoint is only ever called via fetch() from clients/index.blade.php
+        // (a plain fetch() sends neither X-Requested-With nor an Accept: */json
+        // header, so Illuminate\Http\Request::expectsJson() is false here).
+        // $request->validate() would therefore treat a validation failure as a
+        // normal browser request and 302-redirect back() instead of returning
+        // JSON — and since this route is gated module:crm while credits.index
+        // (a common "back" target) is gated module:accounting, that redirect
+        // could 404 for a package client with CRM but not accounting (R1/CRM-3).
+        // Build the validator manually so this endpoint ALWAYS answers in JSON,
+        // success or failure, and never redirects anywhere.
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'client_id' => 'required|exists:clients,id',
             'from' => 'required|date',
             'to' => 'required|date',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid filter parameters.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
         $credits = Credit::where('client_id', $request->client_id)
             ->whereDate('created_at', '>=', $request->from)

@@ -699,9 +699,22 @@ Route::middleware(['auth'])->group(function () {
         Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
         Route::put('update-auto', [CurrencyExchangeController::class, 'updateAuto'])->name('update.auto');
         Route::put('update-method/{id}', [CurrencyExchangeController::class, 'updateMethod'])->name('update.method');
-        Route::post('convert', [CurrencyExchangeController::class, 'convertFromSidebar'])->name('convert');
         Route::get('histories', [CurrencyExchangeController::class, 'allHistories'])->name('histories.all');
     });
+
+    // exchange/convert is deliberately OUTSIDE the exchange.* group above: it's
+    // a currency-conversion utility (used by tasks/index.blade.php to price a
+    // task in a non-KWD currency) rather than an accounting screen — a Task
+    // Uploader dependency, not an Accounting one. The rest of the exchange.*
+    // group (rate management screen, history, manual/auto rate edits) stays
+    // module:accounting since those really are ledger-FX-rate administration.
+    // The sidebar/mobile-drawer currency-converter WIDGET also posts here, but
+    // stays invisible to a non-accounting company via its own
+    // @if($hasAccountingModule) blade guard — this route-level change only
+    // affects direct/task-price callers.
+    Route::post('exchange/convert', [CurrencyExchangeController::class, 'convertFromSidebar'])
+        ->name('exchange.convert')
+        ->middleware('module:task_uploader');
 
     Route::get('update-rate', [SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
 

@@ -127,6 +127,11 @@ class AdminUsersControllerCoaTransactionTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => $payload['email']]);
 
         $company = \App\Models\Company::where('code', $payload['code'])->firstOrFail();
-        $this->assertGreaterThan(0, \App\Models\Account::where('company_id', $company->id)->count(), 'CoaSeeder must still have run for a genuinely new company.');
+        // Account uses the BelongsToCompany trait (a global scope that
+        // filters to Auth::user()'s OWN resolved company) — bypass it here,
+        // exactly like CompanyProvisioner::createMainBranch() already does,
+        // since we are asserting about the NEW company, not the acting
+        // admin's session-default company.
+        $this->assertGreaterThan(0, \App\Models\Account::withoutGlobalScopes()->where('company_id', $company->id)->count(), 'CoaSeeder must still have run for a genuinely new company.');
     }
 }

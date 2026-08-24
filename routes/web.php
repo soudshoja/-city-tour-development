@@ -109,10 +109,36 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Admin users
+    //
+    // Fix 4 (pre-pilot defect list, spec correction PKG-1) investigation
+    // result, 2026-08-25: the group-level 'role:admin' middleware below is
+    // DELIBERATELY left commented out — restoring it as written would be a
+    // *regression*, not a fix. It resolves via Spatie's RoleMiddleware
+    // (bootstrap/app.php: 'role' => RoleMiddleware::class), which checks
+    // $user->hasRole('admin') — a DIFFERENT authorization system from the
+    // one this app actually uses everywhere else in this file (the
+    // role_id integer column). Verified directly against the dev DB: a
+    // real admin (role_id === Role::ADMIN) exists with no Spatie 'admin'
+    // role assigned at all, and would be locked out by this line as
+    // written. It would also wrongly block company-owner (Role::COMPANY)
+    // access to routes below that intentionally allow it (users.edit,
+    // users.role, users.updateInfo — see their inline checks).
+    //
+    // What actually guards this group today (verified per-route, not
+    // assumed): users.index -> Gate::authorize('viewAny', User::class)
+    // (Spatie permission 'view user'); companies.index, companiesnew.new,
+    // companies.store, users.set-company -> inline
+    // role_id === Role::ADMIN; users.edit, users.role, users.updateInfo ->
+    // inline role_id in [ADMIN, COMPANY] (users.role and users.updateInfo
+    // had NO check at all before this fix — closed here); users.create ->
+    // intentionally open to any authenticated user (linked from
+    // agents/branches/clients/companies views for company-scoped
+    // self-service creation, not an admin-only action); company-invites.*
+    // -> CompanyInviteController::authorizeAdmin() (role_id === ADMIN) on
+    // every action, already correctly gated.
     Route::group([
         'prefix' => 'users',
         // 'as' => 'users.',
-        // 'middleware' => ['role:admin'],
     ], function () {
         Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('users.index');
         Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');

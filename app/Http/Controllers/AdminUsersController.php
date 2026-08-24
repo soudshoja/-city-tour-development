@@ -144,6 +144,20 @@ class AdminUsersController extends Controller
 
     public function storeRole(Request $request)
     {
+        // Fix 4 (pre-pilot defect list, spec correction PKG-1): this route
+        // (PUT /users/update-role, name `users.role`) had NO authorization
+        // check at all — any authenticated user, of any role_id and any
+        // company, could assign ANY role to ANY user in ANY company by
+        // simply POSTing role_id/user_id/company_id. Its only entry point
+        // is the "Assign Role" form in resources/views/users/edit.blade.php
+        // (route users.role), which is only reachable via editRole() —
+        // gated to [Role::ADMIN, Role::COMPANY]. Mirror that exact gate
+        // here (admin-only would wrongly lock out a company owner using a
+        // feature they currently have working).
+        if (!in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'role_id' => 'required|integer|exists:roles,id',
             'user_id' => 'required|integer|exists:users,id',
@@ -307,6 +321,19 @@ class AdminUsersController extends Controller
 
     public function updateInfo(Request $request, User $user)
     {
+        // Fix 4 (pre-pilot defect list, spec correction PKG-1): this route
+        // (PUT /users/{user}/update-info, name `users.updateInfo`) had NO
+        // authorization check — any authenticated user could rename,
+        // re-email, or set a new password for ANY other user's account.
+        // Its only entry point is resources/views/users/edit.blade.php,
+        // which is itself only reachable via editRole() — gated to
+        // [Role::ADMIN, Role::COMPANY]. Mirror that exact gate here rather
+        // than admin-only, so a legitimate company-owner editing their own
+        // company's users is not newly locked out.
+        if (!in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'name' => 'required|string',
             'email' => 'required|email|unique:users,email,' . $user->id,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\InvoicePartial;
 use App\Models\Refund;
 use App\Models\Account;
 use App\Models\Credit;
@@ -121,6 +122,114 @@ class CreditController extends Controller
                 'amount' => $credit->amount,
             ];
         }));
+    }
+
+    /**
+     * Apply the client's available credit balance against one existing,
+     * still-unpaid invoice split ("Pay Now with Credit" on invoice
+     * show/split views).
+     *
+     * Route: POST credits/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}
+     * (module:payment_gateway — see routes/web.php CREDITS group / R1).
+     *
+     * This is deliberately a different operation from
+     * InvoiceController::createInvoiceLinkWithClientCredit (route
+     * invoice.client-credit): that one decides full-vs-split for a fresh
+     * invoice and creates brand-new InvoicePartial rows from scratch.
+     * This one pays down ONE already-existing split by its own ID, so it
+     * cannot double-create partials on an invoice that already has some.
+     *
+     * $balanceCredit from the URL is never trusted for money math — it is
+     * only what the confirmation modal *showed* the user; the amount
+     * actually applied is recomputed here from the live credit balance and
+     * the split's live remaining amount.
+     */
+    public function useCreditNow(Request $request, $invoice, $invoicePartial, $balanceCredit)
+    {
+        $partial = InvoicePartial::with('invoice.agent.branch.company', 'client')->find($invoicePartial);
+
+        if (!$partial || !$partial->invoice || (int) $partial->invoice_id !== (int) $invoice) {
+            return redirect()->back()->with('error', 'Invoice split not found.');
+        }
+
+        // Tenant isolation: only the acting user's own company may draw
+        // down credit against one of its own invoice splits.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless(
+            $companyId && $partial->invoice->agent?->branch?->company_id === $companyId,
+            403,
+            'Unauthorized: this invoice split does not belong to your company.'
+        );
+
+        if ($partial->status !== 'unpaid') {
+            return redirect()->back()->with('error', 'This invoice split is not open for payment.');
+        }
+
+        $client = $partial->client;
+        $creditBalance = $client ? Credit::getTotalCreditsByClient($client->id) : 0;
+
+        if ($creditBalance <= 0) {
+            return redirect()->back()->with('error', 'Client has no available credit balance.');
+        }
+
+        $applyAmount = min((float) $partial->amount, (float) $creditBalance);
+
+        if ($applyAmount <= 0) {
+            return redirect()->back()->with('error', 'No credit is available to apply.');
+        }
+
+        $invoiceModel = $partial->invoice;
+
+        DB::beginTransaction();
+        try {
+            Credit::create([
+                'company_id'         => $companyId,
+                'branch_id'          => $invoiceModel->agent?->branch_id,
+                'client_id'          => $client->id,
+                'invoice_id'         => $partial->invoice_id,
+                'invoice_partial_id' => $partial->id,
+                'type'               => Credit::INVOICE,
+                'amount'             => -$applyAmount,
+                'description'        => "Client credit applied to split of invoice {$partial->invoice_number}",
+            ]);
+
+            $remaining = round($partial->amount - $applyAmount, 2);
+
+            if ($remaining <= 0) {
+                $partial->status = 'paid';
+                $partial->payment_gateway = 'Credit';
+            } else {
+                // Partial credit only: shrink the outstanding balance on
+                // this split and leave it open for the rest.
+                $partial->amount = $remaining;
+            }
+            $partial->save();
+
+            // Keep the parent invoice's own status in sync with its splits,
+            // the same rule InvoiceController::savePartial() uses.
+            $hasUnpaid = $invoiceModel->invoicePartials()->where('status', 'unpaid')->exists();
+            $hasPaid = $invoiceModel->invoicePartials()->where('status', 'paid')->exists();
+
+            if ($hasPaid && $hasUnpaid) {
+                $invoiceModel->status = 'partial';
+            } elseif ($hasPaid && !$hasUnpaid) {
+                $invoiceModel->status = 'paid';
+                $invoiceModel->paid_date = $invoiceModel->paid_date ?? now();
+            }
+            $invoiceModel->save();
+
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('useCreditNow failed: ' . $e->getMessage(), [
+                'invoice_partial_id' => $invoicePartial,
+                'requested_balance_credit' => $balanceCredit,
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to apply credit. Please try again.');
+        }
+
+        return redirect()->back()->with('success', 'Client credit applied to this invoice split.');
     }
 
     public function creditTopup(Request $request)

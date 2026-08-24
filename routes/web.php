@@ -754,22 +754,27 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // CREDITS
-    // CreditPolicy is classified as an accounting-module policy (see the
-    // Company/Policy discovery), and creditTopup() posts real Transaction +
-    // JournalEntry rows against COA accounts with zero authorization today —
-    // gate the whole controller as accounting. NOTE: this also hides the
-    // client credit-balance read (index/filter) from package clients, which
-    // is arguably Customer CRM information rather than accounting; flagged
-    // as an open product decision in the report rather than split here.
+    // R1 (.planning/specs/PACKAGE-OVERVIEW.md): client credits split by
+    // verb, not owned wholesale by one module.
+    //   - CRM owns the READ: the client's credit balance/history
+    //     (filter) is customer-relationship information a package client
+    //     needs regardless of whether they've bought accounting.
+    //   - Payment Gateway owns the MOVEMENT: useCreditNow (draw the
+    //     balance down against an invoice split) and creditTopup (add to
+    //     it) both post real Transaction + JournalEntry rows and are the
+    //     same class of "money moved" action as charges/auto-billing,
+    //     which already live under payment_gateway.
+    //   - index stays operator/accounting-only: its ADMIN branch lists
+    //     credits across every company, which is cross-tenant and has no
+    //     business behind a company-scoped package module.
     Route::group([
         'prefix' => 'credits',
         'as' => 'credits.',
-        'middleware' => ['module:accounting'],
     ], function () {
-        Route::get('/', [CreditController::class, 'index'])->name('index');
-        Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
-        Route::post('/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}', [CreditController::class, 'useCreditNow'])->name('useCreditNow');
-        Route::post('/topup', [CreditController::class, 'creditTopup'])->name('topup');
+        Route::get('/', [CreditController::class, 'index'])->name('index')->middleware('module:accounting');
+        Route::get('/filter', [CreditController::class, 'filter'])->name('filter')->middleware('module:crm');
+        Route::post('/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}', [CreditController::class, 'useCreditNow'])->name('useCreditNow')->middleware('module:payment_gateway');
+        Route::post('/topup', [CreditController::class, 'creditTopup'])->name('topup')->middleware('module:payment_gateway');
     });
 
     Route::group([

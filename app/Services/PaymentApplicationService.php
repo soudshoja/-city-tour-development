@@ -51,12 +51,18 @@ class PaymentApplicationService
         $invoice = Invoice::findOrFail($invoiceId);
         $invoiceAmount = $invoice->amount;
 
-        // Tenant isolation: the acting user may only apply credit to an invoice
-        // that belongs to their own company. Without this, one company's user
-        // could move another company's credit balance onto their own invoice.
-        $companyId = getCompanyId(Auth::user());
+        // Tenant isolation: every credit source drawn down below must belong
+        // to the SAME company as this invoice. Derived from the invoice's
+        // own agent->branch->company chain rather than Auth::user() — this
+        // service is also called from CreateBulkInvoicesJob (queued, no
+        // authenticated user), where getCompanyId(Auth::user()) resolved to
+        // null and made every call abort(403). The record itself is the
+        // authority here; interactive callers (InvoiceController) already
+        // verify the acting user owns this invoice's company BEFORE calling
+        // in, so this check still catches a caller that skips that step.
+        $companyId = $invoice->agent?->branch?->company_id;
         abort_unless(
-            $companyId && $invoice->agent?->branch?->company_id === $companyId,
+            $companyId,
             403,
             'Unauthorized: this invoice does not belong to your company.'
         );
@@ -532,11 +538,13 @@ class PaymentApplicationService
             'user_id' => Auth::id(),
         ]);
 
-        // Tenant isolation: the acting user may only link payments/credit into an
-        // invoice that belongs to their own company.
-        $companyId = getCompanyId(Auth::user());
+        // Tenant isolation: derived from the invoice's own record, not
+        // Auth::user() — see the matching comment in applyPaymentsToInvoice()
+        // above for why (this service also runs inside queued jobs with no
+        // authenticated user).
+        $companyId = $invoice->agent?->branch?->company_id;
         abort_unless(
-            $companyId && $invoice->agent?->branch?->company_id === $companyId,
+            $companyId,
             403,
             'Unauthorized: this invoice does not belong to your company.'
         );

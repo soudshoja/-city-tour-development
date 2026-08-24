@@ -4,17 +4,25 @@ namespace App\Policies;
 
 use App\Models\CoaCategory;
 use App\Models\User;
+use App\Policies\Concerns\RequiresCompanyModule;
+use App\Support\Modules;
 use Illuminate\Auth\Access\Response;
 
 class COAPolicy
 {
+    use RequiresCompanyModule;
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         if($user->hasRole('admin')) return true;
-        
+
         return $user->can('view coa');
     }
 
@@ -23,6 +31,10 @@ class COAPolicy
      */
     public function view(User $user, CoaCategory $coaCategory): bool
     {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         if($user->hasRole('admin')){
             return true;
         }
@@ -35,7 +47,10 @@ class COAPolicy
      */
     public function create(User $user): bool
     {
-        
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         return $user->can('create coa');
 
         return false;
@@ -46,6 +61,10 @@ class COAPolicy
      */
     public function update(User $user, CoaCategory $coaCategory): bool
     {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         return $user->can('update coa');
 
         return false;
@@ -56,6 +75,10 @@ class COAPolicy
      */
     public function delete(User $user, CoaCategory $coaCategory): bool
     {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         return $user->can('delete coa');
 
         return false;
@@ -66,6 +89,10 @@ class COAPolicy
      */
     public function restore(User $user, CoaCategory $coaCategory): bool
     {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         return false;
     }
 
@@ -74,6 +101,10 @@ class COAPolicy
      */
     public function forceDelete(User $user, CoaCategory $coaCategory): bool
     {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
         return false;
     }
 }

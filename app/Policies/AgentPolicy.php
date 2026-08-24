@@ -5,15 +5,23 @@ namespace App\Policies;
 use App\Models\Agent;
 use App\Models\Role;
 use App\Models\User;
+use App\Policies\Concerns\RequiresCompanyModule;
+use App\Support\Modules;
 use Illuminate\Auth\Access\Response;
 
 class AgentPolicy
 {
+    use RequiresCompanyModule;
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('accountant')) {
             return false;
         }
@@ -25,6 +33,10 @@ class AgentPolicy
      */
     public function view(User $user, Agent $agent): bool
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         // if($user->can('view agent')) return true;
 
         if($user->branch) {
@@ -45,6 +57,10 @@ class AgentPolicy
      */
     public function create(User $user): bool
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         return $user->can('create agent');
     }
 
@@ -52,7 +68,11 @@ class AgentPolicy
      * Determine whether the user can update the model.
      */
     public function update(User $user, Agent $agent): bool
-    { 
+    {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         return $user->role_id === Role::ADMIN || ( $user->role_id === Role::COMPANY && $user->company_id === $agent->branch()->company()->id);
     }
 
@@ -61,6 +81,10 @@ class AgentPolicy
      */
     public function delete(User $user, Agent $agent): bool
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
@@ -69,6 +93,10 @@ class AgentPolicy
      */
     public function restore(User $user, Agent $agent): bool
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
@@ -77,6 +105,10 @@ class AgentPolicy
      */
     public function forceDelete(User $user, Agent $agent): bool
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 }

@@ -4,9 +4,13 @@ namespace App\Policies;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Policies\Concerns\RequiresCompanyModule;
+use App\Support\Modules;
 
 class SettingPolicy
 {
+    use RequiresCompanyModule;
+
     public function viewAny(User $user)
     {
         return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
@@ -17,8 +21,17 @@ class SettingPolicy
         return $user->hasPermissionTo('setting company invoice');
     }
 
+    // The 6 methods below are agent-profit-specific (agent charge/loss
+    // settings). settingCompanyInvoice above and the 3 notification
+    // methods below stay ungated — they are general company settings, not
+    // part of the Agent Profit Calculation module.
+
     public function viewAgentCharges(User $user)
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) return true;
 
         return $user->can('view agent charges');
@@ -26,6 +39,10 @@ class SettingPolicy
 
     public function manageAgentCharges(User $user)
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) return true;
 
         return $user->can('manage agent charges');
@@ -33,6 +50,10 @@ class SettingPolicy
 
     public function bulkManageAgentCharges(User $user)
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) return true;
 
         return $user->can('manage agent charges') && !$user->agent;
@@ -40,6 +61,10 @@ class SettingPolicy
 
     public function viewAgentLoss(User $user)
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) return true;
 
         return $user->can('view agent loss');
@@ -47,6 +72,10 @@ class SettingPolicy
 
     public function manageAgentLoss(User $user)
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) return true;
 
         return $user->can('manage agent loss');
@@ -54,6 +83,10 @@ class SettingPolicy
 
     public function bulkManageAgentLoss(User $user)
     {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) return true;
 
         return $user->can('manage agent loss') && !$user->agent;

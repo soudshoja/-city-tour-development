@@ -49,11 +49,24 @@ return new class extends Migration
             $table->string('resayil_device_id')->nullable();
 
             // Account-scoped Resayil API token (NOT the reseller token) that
-            // POST /v1/devices/{id}/team requires. No documented reseller
+            // POST /devices/{id}/team requires. No documented reseller
             // endpoint returns this automatically as of 2026-08-24 — see the
             // Module 5 report. Encrypted at rest; populated manually per
             // company once/if obtained.
             $table->text('resayil_account_token')->nullable();
+
+            // The password TravelERP generated and set on THIS row's Resayil
+            // identity (the workspace/customer password on the admin row;
+            // the team-member login on every other row) — POST /customers
+            // and POST /devices/{id}/team both require us to choose one, and
+            // TravelERP is the source of truth for it (see
+            // .planning/RESAYIL-INTEGRATION-WORKAROUNDS.md §2.3/§3.1): we
+            // must be able to show it once during onboarding and re-assert
+            // it later to heal drift. Previously generated then discarded
+            // (unset()) immediately after the API call — fixed 2026-08-25.
+            // Encrypted at rest via the model's `encrypted` cast and hidden
+            // from array/JSON serialization; never logged.
+            $table->text('resayil_secret')->nullable();
 
             // Per-user team-member id (POST /v1/devices/{id}/team response
             // `id`), once actually created for this user.

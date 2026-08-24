@@ -26,15 +26,30 @@ use Illuminate\Support\Str;
  *     never re-created; every state transition is persisted so this can be
  *     called cheaply and repeatedly (e.g. on every embed page visit).
  *
- * HONEST LIMITATION (see the Module 5 report for full detail): step 2 — the
+ * CREDENTIAL OWNERSHIP (2026-08-25 -- see
+ * .planning/RESAYIL-INTEGRATION-WORKAROUNDS.md sections 2.3/3.1): TravelERP
+ * generates every Resayil password and is the source of truth for it. The
+ * secret set via POST /customers (admin/workspace row) or
+ * POST /devices/{id}/team (team-member row) is persisted encrypted on that
+ * row's resayil_secret column (Model-level `encrypted` cast + `$hidden`) so
+ * it can be shown once to the company admin during onboarding and
+ * re-asserted later to heal drift. It previously was generated, sent, and
+ * immediately discarded (unset()) -- which meant nobody could ever log in
+ * to the account TravelERP had just created for them. Guard rails: this
+ * value must never be written to a log line, an exception message, or a
+ * stored `meta` blob -- see redactSecret() below, applied to every
+ * logged/stored API response body since we cannot guarantee Resayil never
+ * echoes request fields back.
+ *
+ * HONEST LIMITATION (see the Module 5 report for full detail): step 2 -- the
  * actual API call to create a per-user Resayil "team member"
- * (POST /v1/devices/{deviceId}/team) — additionally requires (a) a WhatsApp
+ * (POST /v1/devices/{deviceId}/team) -- additionally requires (a) a WhatsApp
  * number already connected for the company (a human QR-scan pairing step
  * that cannot be automated via API) and (b) an ACCOUNT-scoped Resayil API
  * token for that company, which no documented reseller endpoint returns.
  * Neither is obtainable automatically today. Until both are set on the
  * company's admin ResayilAccount row (resayil_device_id /
- * resayil_account_token — populated manually), ensureUserProvisioned()
+ * resayil_account_token -- populated manually), ensureUserProvisioned()
  * returns status=pending_device rather than fabricating success.
  */
 class ResayilProvisioningService
@@ -114,7 +129,9 @@ class ResayilProvisioningService
         }
 
         // Server-generated secret — never the TravelERP password, never
-        // returned to the browser.
+        // returned to the browser. TravelERP owns this credential: it is
+        // persisted encrypted below (resayil_secret) rather than discarded,
+        // so it can be shown once during onboarding and re-asserted later.
         $secret = Str::password(32);
 
         $response = $this->resellerClient->post('/customers', [
@@ -125,30 +142,35 @@ class ResayilProvisioningService
             'country' => config('resayil.default_country', 'KW'),
         ]);
 
-        unset($secret);
-
         if ($response->failed()) {
+            unset($secret);
+
             Log::warning('resayil.provisioning.admin_failed', [
                 'company_id' => $companyId,
                 'user_id' => $user->id,
                 'status' => $response->status(),
-                'body' => $response->json() ?? $response->body(),
+                'body' => $this->redactSecret($response->json() ?? $response->body()),
             ]);
 
             return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
                 'status' => ResayilAccount::STATUS_ERROR,
-                'meta' => ['http_status' => $response->status(), 'body' => $response->json()],
+                'meta' => ['http_status' => $response->status(), 'body' => $this->redactSecret($response->json())],
             ]);
         }
 
         $customerId = $response->json('id');
 
-        return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+        $account = $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
             'resayil_customer_id' => $customerId,
             'resayil_email' => $user->email,
+            'resayil_secret' => $secret,
             'status' => ResayilAccount::STATUS_PROVISIONED,
             'provisioned_at' => now(),
         ]);
+
+        unset($secret);
+
+        return $account;
     }
 
     protected function provisionTeamMember(
@@ -187,6 +209,8 @@ class ResayilProvisioningService
             $adminRow->resayil_account_token,
         );
 
+        // Server-generated secret — same ownership model as provisionAdmin:
+        // persisted encrypted (resayil_secret) below, never discarded.
         $secret = Str::password(32);
         $colors = ['blue', 'azure', 'indigo', 'purple', 'pink', 'red', 'orange', 'yellow', 'lime', 'green', 'teal', 'cyan'];
 
@@ -198,30 +222,35 @@ class ResayilProvisioningService
             'color' => $colors[array_rand($colors)],
         ]);
 
-        unset($secret);
-
         if ($response->failed()) {
+            unset($secret);
+
             Log::warning('resayil.provisioning.team_member_failed', [
                 'company_id' => $companyId,
                 'user_id' => $user->id,
                 'status' => $response->status(),
-                'body' => $response->json() ?? $response->body(),
+                'body' => $this->redactSecret($response->json() ?? $response->body()),
             ]);
 
             return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_AGENT, [
                 'status' => ResayilAccount::STATUS_ERROR,
                 'resayil_customer_id' => $adminRow->resayil_customer_id,
-                'meta' => ['http_status' => $response->status(), 'body' => $response->json()],
+                'meta' => ['http_status' => $response->status(), 'body' => $this->redactSecret($response->json())],
             ]);
         }
 
-        return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_AGENT, [
+        $account = $this->save($existing, $user, $companyId, ResayilAccount::ROLE_AGENT, [
             'resayil_customer_id' => $adminRow->resayil_customer_id,
             'resayil_user_id' => $response->json('id'),
             'resayil_email' => $user->email,
+            'resayil_secret' => $secret,
             'status' => ResayilAccount::STATUS_PROVISIONED,
             'provisioned_at' => now(),
         ]);
+
+        unset($secret);
+
+        return $account;
     }
 
     /**
@@ -275,5 +304,32 @@ class ResayilProvisioningService
             'status' => $status,
             'meta' => $meta,
         ]);
+    }
+
+    /**
+     * Defense-in-depth: strip any password-shaped field from an API
+     * response body before it is logged or persisted into the `meta`
+     * column. We do not control what Resayil echoes back in an error body,
+     * and a generated secret must never reach a log line, an exception
+     * message, or a stored diagnostic blob.
+     *
+     * @param  mixed  $body
+     * @return mixed
+     */
+    protected function redactSecret(mixed $body): mixed
+    {
+        if (! is_array($body)) {
+            return $body;
+        }
+
+        $redactKeys = ['password', 'secret', 'resayil_secret'];
+
+        array_walk_recursive($body, function (&$value, $key) use ($redactKeys) {
+            if (is_string($key) && in_array(strtolower($key), $redactKeys, true)) {
+                $value = '[redacted]';
+            }
+        });
+
+        return $body;
     }
 }

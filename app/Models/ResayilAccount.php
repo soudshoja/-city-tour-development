@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $resayil_customer_id
  * @property string|null $resayil_device_id
  * @property string|null $resayil_account_token
+ * @property string|null $resayil_secret
  * @property string|null $resayil_user_id
  * @property string $status
  * @property string|null $resayil_email
@@ -53,6 +54,7 @@ class ResayilAccount extends Model
         'resayil_customer_id',
         'resayil_device_id',
         'resayil_account_token',
+        'resayil_secret',
         'resayil_user_id',
         'status',
         'resayil_email',
@@ -60,10 +62,22 @@ class ResayilAccount extends Model
         'meta',
     ];
 
+    /**
+     * Both Resayil secrets are credentials, not display data: never let them
+     * ride along in an ->toArray()/->toJson() (e.g. an API response body,
+     * a view dump, or a debug tool). They are surfaced only through an
+     * explicit, authorized accessor — never through default serialization.
+     */
+    protected $hidden = [
+        'resayil_account_token',
+        'resayil_secret',
+    ];
+
     protected $casts = [
         'provisioned_at' => 'datetime',
         'meta' => 'array',
         'resayil_account_token' => 'encrypted',
+        'resayil_secret' => 'encrypted',
     ];
 
     public function company()

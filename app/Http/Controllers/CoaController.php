@@ -122,9 +122,22 @@ class CoaController extends Controller
 
         foreach ($rootConfig as $rootName => $debitCreditType) {
             $rootAccount = $rootAccounts->firstWhere('name', $rootName);
+
             if ($rootAccount) {
                 $this->buildAccountTree($rootAccount, $childrenMap, $journalAggregates, $currencyAggregates, $debitCreditType);
+            } else {
+                // New/unseeded company: this root doesn't exist yet (a
+                // freshly registered company hasn't had a COA seeded, or
+                // this particular root was never created). Every
+                // coa.partials.* view does `${$name}->childAccounts` with
+                // no null guard, so leaving this null 500'd the whole page
+                // on day one of onboarding. Stand in an empty, unsaved
+                // root so the section renders with zero rows instead — a
+                // "needs setup" empty state rather than a crash.
+                $rootAccount = new Account(['name' => $rootName]);
+                $rootAccount->childAccounts = collect();
             }
+
             match ($rootName) {
                 'Assets'      => $assets = $rootAccount,
                 'Liabilities' => $liabilities = $rootAccount,

@@ -54,8 +54,18 @@ class ResayilProvisioningSecretTest extends TestCase
             'resayil.test_mode' => false,
         ]);
 
+        // Fix 2 (lookup-then-create) means provisionAdmin() now issues a
+        // GET /customers?email= lookup before any POST — respond "not
+        // found" to the GET so the POST (the thing this test is actually
+        // about) is genuinely exercised.
         Http::fake([
-            'api.resayil.io/v1/resellers/customers*' => Http::response(['id' => 'cust_evidence_1'], 200),
+            'api.resayil.io/v1/resellers/customers*' => function (\Illuminate\Http\Client\Request $request) {
+                if ($request->method() === 'GET') {
+                    return Http::response([], 200);
+                }
+
+                return Http::response(['id' => 'cust_evidence_1'], 200);
+            },
         ]);
 
         // Any log call during the success path must not carry the secret.
@@ -185,13 +195,21 @@ class ResayilProvisioningSecretTest extends TestCase
         // different depths — proving redactSecret() is not a single
         // top-level check.
         Http::fake([
-            'api.resayil.io/v1/resellers/customers*' => Http::response([
-                'message' => 'Validation error',
-                'password' => 'ECHOED-TOP-LEVEL-SECRET',
-                'errors' => [
-                    ['field' => 'password', 'secret' => 'ECHOED-NESTED-SECRET'],
-                ],
-            ], 422),
+            'api.resayil.io/v1/resellers/customers*' => function (\Illuminate\Http\Client\Request $request) {
+                if ($request->method() === 'GET') {
+                    // Lookup-then-create (Fix 2): "not found", so the code
+                    // proceeds to the POST this test is actually about.
+                    return Http::response([], 200);
+                }
+
+                return Http::response([
+                    'message' => 'Validation error',
+                    'password' => 'ECHOED-TOP-LEVEL-SECRET',
+                    'errors' => [
+                        ['field' => 'password', 'secret' => 'ECHOED-NESTED-SECRET'],
+                    ],
+                ], 422);
+            },
         ]);
 
         Log::shouldReceive('warning')

@@ -41,6 +41,13 @@ use Illuminate\Support\Str;
  * logged/stored API response body since we cannot guarantee Resayil never
  * echoes request fields back.
  *
+ * IDEMPOTENT CUSTOMER CREATION (2026-08-25, Fix 2): provisionAdmin() now
+ * looks up an existing Resayil customer by email before creating one, and
+ * treats a 409 from POST /customers as "go look it up" rather than a
+ * failure -- see lookupOrCreateCustomer() below. A retried onboarding, a
+ * resumed wizard, or a repaired company therefore reuses the existing
+ * customer instead of failing with a duplicate-email conflict.
+ *
  * HONEST LIMITATION (see the Module 5 report for full detail): step 2 -- the
  * actual API call to create a per-user Resayil "team member"
  * (POST /v1/devices/{deviceId}/team) -- additionally requires (a) a WhatsApp
@@ -128,6 +135,22 @@ class ResayilProvisioningService
             ]);
         }
 
+        // Fix 2: lookup-then-create. Any re-run of provisioning for an
+        // email that already exists as a Resayil customer (retried
+        // onboarding, resumed wizard, repaired company) must adopt that
+        // customer instead of blind-POSTing and hitting a 409.
+        $found = $this->findCustomerByEmail($user->email);
+
+        if ($found !== null) {
+            return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+                'resayil_customer_id' => $found['id'],
+                'resayil_email' => $user->email,
+                'status' => ResayilAccount::STATUS_PROVISIONED,
+                'provisioned_at' => now(),
+                'meta' => ['adopted' => true],
+            ]);
+        }
+
         // Server-generated secret — never the TravelERP password, never
         // returned to the browser. TravelERP owns this credential: it is
         // persisted encrypted below (resayil_secret) rather than discarded,
@@ -141,6 +164,29 @@ class ResayilProvisioningService
             'password' => $secret,
             'country' => config('resayil.default_country', 'KW'),
         ]);
+
+        // Race: two requests both found no existing customer and both
+        // POSTed. The loser gets a 409 back — resolve it by re-querying
+        // rather than surfacing a failure, so the whole method stays
+        // safely re-runnable under concurrency.
+        if ($response->status() === 409) {
+            $adopted = $this->findCustomerByEmail($user->email);
+
+            if ($adopted !== null) {
+                unset($secret);
+
+                return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+                    'resayil_customer_id' => $adopted['id'],
+                    'resayil_email' => $user->email,
+                    'status' => ResayilAccount::STATUS_PROVISIONED,
+                    'provisioned_at' => now(),
+                    'meta' => ['adopted' => true, 'adopted_after_conflict' => true],
+                ]);
+            }
+            // Fall through to the generic failure branch below if the
+            // 409-causing customer still can't be found (transient lookup
+            // failure) — retryable on the next call.
+        }
 
         if ($response->failed()) {
             unset($secret);
@@ -171,6 +217,51 @@ class ResayilProvisioningService
         unset($secret);
 
         return $account;
+    }
+
+    /**
+     * Look up an existing Resayil customer by exact email match against the
+     * reseller API. Returns the raw customer array (at least `id`) or null
+     * if none exists / the lookup itself failed (treated as "not found" so
+     * the caller falls back to create — never blocks provisioning on a
+     * flaky lookup).
+     *
+     * @return array<string,mixed>|null
+     */
+    protected function findCustomerByEmail(string $email): ?array
+    {
+        $response = $this->resellerClient->get('/customers', ['email' => $email]);
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        $body = $response->json();
+
+        // The endpoint may return either a bare array of customers or a
+        // paginated envelope (e.g. {"data": [...]} / {"items": [...]}) —
+        // handle both defensively rather than assuming one shape.
+        $candidates = $body['data'] ?? $body['items'] ?? $body['results'] ?? $body;
+
+        if (! is_array($candidates)) {
+            return null;
+        }
+
+        // A single-object response (not a list) also counts as a match.
+        if (isset($candidates['id']) && ! isset($candidates[0])) {
+            return $candidates;
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)
+                && isset($candidate['email'])
+                && strcasecmp((string) $candidate['email'], $email) === 0
+            ) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     protected function provisionTeamMember(

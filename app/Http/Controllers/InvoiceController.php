@@ -932,6 +932,22 @@ class InvoiceController extends Controller
             'companyId' => 'required',
         ]);
 
+        // Tenant isolation (SECURITY): companyId above is client-supplied and
+        // was previously trusted with no auth check at all — it only scoped
+        // WHICH invoice got loaded (whereHas('agent.branch.company', ...)
+        // below), never whether the acting user is actually a member of
+        // that company. Any authenticated user could submit another
+        // company's companyId + a guessed invoiceNumber and act on that
+        // invoice (mark it paid, change its gateway, post a credit/payment
+        // application against it). Require the acting user's own resolved
+        // company to match what was submitted, same guard shape as
+        // PaymentApplicationService's tenant checks.
+        abort_unless(
+            getCompanyId(Auth::user()) == $request->input('companyId'),
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
+
         $client = Client::find($request->input('clientId'));
         $balanceCredit = Credit::getTotalCreditsByClient($client->id);
         if ($request->boolean('credit', false)) {

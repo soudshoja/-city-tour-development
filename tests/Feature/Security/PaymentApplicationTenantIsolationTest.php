@@ -231,4 +231,111 @@ class PaymentApplicationTenantIsolationTest extends TestCase
         $this->assertSame(0, \App\Models\PaymentApplication::where('invoice_id', $invoiceA->id)->count());
         $this->assertSame(0, Credit::where('invoice_id', $invoiceA->id)->count());
     }
+
+    /**
+     * Regression coverage for the ACTOR direction of HF-1, distinct from
+     * every test above (which all mismatch the invoice's company against
+     * the credit/payment's company). Here the invoice and its credit
+     * BOTH belong to company B — internally consistent with each other —
+     * and only the ACTING USER belongs to a different company (A). Neither
+     * Invoice nor Credit carries a BelongsToCompany global scope (only
+     * Payment does), so PaymentApplicationService::applyPaymentsToInvoice()
+     * is called directly here (bypassing InvoiceController's own separate
+     * getCompanyId(Auth::user()) check on the invoice.apply-payments route)
+     * to prove the SERVICE itself — not just one particular controller
+     * wrapper — rejects an acting user who doesn't belong to the invoice's
+     * company. This is exactly the check a prior "fix" deleted, wrongly
+     * believing CreateBulkInvoicesJob needed it gone (it doesn't — see
+     * PaymentApplicationService::applyPaymentsToInvoice()'s own comment).
+     */
+    public function test_apply_payments_to_invoice_rejects_when_acting_user_belongs_to_a_different_company_than_the_invoice(): void
+    {
+        $tenantA = $this->createTenant(); // attacker
+        $tenantB = $this->createTenant(); // victim: owns both invoice AND credit
+
+        $invoiceB = Invoice::factory()->create([
+            'client_id' => $tenantB['client']->id,
+            'agent_id' => $tenantB['agent']->id,
+            'amount' => 100.00,
+            'sub_amount' => 100.00,
+        ]);
+
+        $creditB = $this->createCreditFor($tenantB, 100.00);
+
+        $this->actingAs($tenantA['user']);
+
+        $service = new \App\Services\PaymentApplicationService();
+
+        $threw = false;
+        try {
+            $service->applyPaymentsToInvoice($invoiceB->id, [
+                ['credit_id' => $creditB->id, 'amount' => 100.00],
+            ], 'full');
+        } catch (\Throwable $e) {
+            $threw = true;
+        }
+
+        $this->assertTrue(
+            $threw,
+            'A user of company A must not be able to apply company B\'s own credit to company B\'s own invoice, even though both belong to company B.'
+        );
+        $this->assertSame(100.00, (float) $creditB->fresh()->amount);
+        $this->assertSame('unpaid', $invoiceB->fresh()->status);
+    }
+
+    /**
+     * Same ACTOR-direction gap as above, for linkPaymentsToInvoicePartial()
+     * (the method savePartial() calls) — using a credit_id allocation
+     * rather than payment_id specifically because Credit carries no
+     * BelongsToCompany global scope (only Payment does), so this exercises
+     * ONLY the restored abort_unless() actor check, not that unrelated scope.
+     */
+    public function test_link_payments_to_invoice_partial_rejects_when_acting_user_belongs_to_a_different_company_than_the_invoice(): void
+    {
+        $tenantA = $this->createTenant(); // attacker
+        $tenantB = $this->createTenant(); // victim: owns invoice, partial, and credit
+
+        $invoiceB = Invoice::factory()->create([
+            'client_id' => $tenantB['client']->id,
+            'agent_id' => $tenantB['agent']->id,
+            'amount' => 50.00,
+            'sub_amount' => 50.00,
+        ]);
+
+        $creditB = $this->createCreditFor($tenantB, 50.00);
+
+        $invoicePartial = \App\Models\InvoicePartial::create([
+            'invoice_id' => $invoiceB->id,
+            'invoice_number' => $invoiceB->invoice_number,
+            'client_id' => $tenantB['client']->id,
+            'agent_id' => $tenantB['agent']->id,
+            'amount' => 50.00,
+            'status' => 'paid',
+            'type' => 'full',
+            'payment_gateway' => 'Credit',
+            'payment_method' => 'Credit Balance',
+            'service_charge' => 0,
+        ]);
+
+        $this->actingAs($tenantA['user']);
+
+        $service = new \App\Services\PaymentApplicationService();
+
+        $threw = false;
+        try {
+            $service->linkPaymentsToInvoicePartial($invoiceB, $invoicePartial, [
+                ['credit_id' => $creditB->id, 'amount' => 50.00],
+            ]);
+        } catch (\Throwable $e) {
+            $threw = true;
+        }
+
+        $this->assertTrue(
+            $threw,
+            'A user of company A must not be able to link company B\'s own credit to company B\'s own invoice partial.'
+        );
+        $this->assertSame(50.00, (float) $creditB->fresh()->amount);
+        $this->assertSame(0, \App\Models\PaymentApplication::where('invoice_id', $invoiceB->id)->count());
+        $this->assertSame(0, Credit::where('invoice_id', $invoiceB->id)->count());
+    }
 }

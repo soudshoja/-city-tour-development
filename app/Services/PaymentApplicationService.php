@@ -51,18 +51,43 @@ class PaymentApplicationService
         $invoice = Invoice::findOrFail($invoiceId);
         $invoiceAmount = $invoice->amount;
 
-        // Tenant isolation: every credit source drawn down below must belong
-        // to the SAME company as this invoice. Derived from the invoice's
-        // own agent->branch->company chain rather than Auth::user() — this
-        // service is also called from CreateBulkInvoicesJob (queued, no
-        // authenticated user), where getCompanyId(Auth::user()) resolved to
-        // null and made every call abort(403). The record itself is the
-        // authority here; interactive callers (InvoiceController) already
-        // verify the acting user owns this invoice's company BEFORE calling
-        // in, so this check still catches a caller that skips that step.
+        // Tenant isolation, part 1: every credit source drawn down below
+        // must belong to the SAME company as this invoice. Derived from the
+        // invoice's own agent->branch->company chain (not Auth::user()) so
+        // this half of the check works identically for an authenticated
+        // caller and a same-process synchronous job (see part 2 below for
+        // why "same-process" matters).
         $companyId = $invoice->agent?->branch?->company_id;
         abort_unless(
             $companyId,
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
+
+        // Tenant isolation, part 2 (SECURITY, restored): the ACTING USER, if
+        // there is one, must also belong to that same company. Without this,
+        // a user of company A could apply company B's own credit to company
+        // B's own invoice (both internally consistent with each other, so
+        // part 1 alone never notices) simply by supplying company B's ids —
+        // the invoice-side check above only proves the invoice HAS a
+        // company, not that the caller is entitled to act on it.
+        //
+        // This was previously deleted on the mistaken belief that
+        // CreateBulkInvoicesJob runs unauthenticated in a queue (it
+        // implements ShouldQueue, but its only call site,
+        // BulkInvoiceController::approve(), invokes it via
+        // CreateBulkInvoicesJob::dispatchSync() — always synchronous, in the
+        // same process, under the same authenticated session that just used
+        // Auth::user() a few lines earlier to authorize the approve() call
+        // itself). So Auth::check() is true there too, and the invoice this
+        // job creates always carries the same company as the BulkInvoice
+        // that gated dispatch — this check passes for it exactly as it
+        // would for any other interactive caller. A genuine unauthenticated
+        // caller (a real queued job, an artisan command) has no
+        // authenticated user at all, and is correctly exempted below rather
+        // than aborted.
+        abort_unless(
+            ! Auth::check() || getCompanyId(Auth::user()) === $companyId,
             403,
             'Unauthorized: this invoice does not belong to your company.'
         );
@@ -538,13 +563,19 @@ class PaymentApplicationService
             'user_id' => Auth::id(),
         ]);
 
-        // Tenant isolation: derived from the invoice's own record, not
-        // Auth::user() — see the matching comment in applyPaymentsToInvoice()
-        // above for why (this service also runs inside queued jobs with no
-        // authenticated user).
+        // Tenant isolation — see the matching two-part comment in
+        // applyPaymentsToInvoice() above: part 1 derives the invoice's own
+        // company, part 2 (restored) additionally requires the acting user,
+        // when there is one, to belong to that same company.
         $companyId = $invoice->agent?->branch?->company_id;
         abort_unless(
             $companyId,
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
+
+        abort_unless(
+            ! Auth::check() || getCompanyId(Auth::user()) === $companyId,
             403,
             'Unauthorized: this invoice does not belong to your company.'
         );

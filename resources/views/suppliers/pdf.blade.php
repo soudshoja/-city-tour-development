@@ -100,10 +100,17 @@ use Barryvdh\DomPDF\Facade\Pdf;
                 <th>Issued Date</th>
                 <th>Status</th>
                 <th>Info</th>
-                <th>Price Debit Credit Balance</th>
-                <th>Debit</th>
-                <th>Credit</th>
-                <th>Balance</th>
+                {{-- These 4 headers never carried real ledger data (this export
+                     builds no JournalEntry query at all) — they were leftover
+                     accounting-flavored labels over what these cells actually
+                     render (price / check-in / check-out). Relabeled to match
+                     resources/views/suppliers/excel.blade.php's equivalent
+                     columns and to stop echoing ledger vocabulary in a
+                     Task Uploader export. --}}
+                <th>Price</th>
+                <th></th>
+                <th>Check-in</th>
+                <th>Check-out</th>
             </tr>
         </thead>
         <tbody>

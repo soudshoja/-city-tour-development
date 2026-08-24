@@ -154,11 +154,21 @@ class SupplierController extends Controller
         }
         $companyId = getCompanyId(Auth::user());
 
+        // suppliers.show carries no module gate (suppliers are part of the
+        // Task Uploader package), but its view computes real ledger
+        // Total-Debit/Total-Credit/Balance figures from each task's
+        // JournalEntry rows. Only eager-load ledger data — and only let the
+        // view render it — when the company actually has accounting on;
+        // $JournalEntry/$payableAccount are otherwise unused by the view.
+        $company = $companyId ? Company::find($companyId) : null;
+        $hasAccountingModule = $company && $company->hasModule(\App\Support\Modules::ACCOUNTING);
+
         $supplier = Supplier::with([
-            'tasks' => fn($q) => $q->where('company_id', $companyId)->with(['agent', 'journalEntries']),
-            'payableAccount.childAccounts.journalEntries',
+            'tasks' => fn($q) => $q->where('company_id', $companyId)
+                ->with($hasAccountingModule ? ['agent', 'journalEntries'] : ['agent']),
             'country',
         ])
+            ->when($hasAccountingModule, fn($q) => $q->with('payableAccount.childAccounts.journalEntries'))
             ->whereHas('companies', function ($q) use ($companyId) {
                 $q->where('companies.id', $companyId);
             })
@@ -166,14 +176,16 @@ class SupplierController extends Controller
 
         $taskIds = $supplier->tasks->pluck('id');
 
-        $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
-            ->with(['task.agent', 'account'])
-            ->whereIn('task_id', $taskIds)
-            ->get();
+        $JournalEntry = $hasAccountingModule
+            ? JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
+                ->with(['task.agent', 'account'])
+                ->whereIn('task_id', $taskIds)
+                ->get()
+            : collect();
 
         $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
         $filteredTasks = $supplier->tasks;
-        $payableAccount = $supplier->payableAccount ?? null;
+        $payableAccount = $hasAccountingModule ? ($supplier->payableAccount ?? null) : null;
 
         $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
             ->where('company_id', $companyId)
@@ -187,7 +199,8 @@ class SupplierController extends Controller
             'filteredTasks',
             'payableAccount',
             'companyId',
-            'supplierCompany'
+            'supplierCompany',
+            'hasAccountingModule'
         ));
     }
 

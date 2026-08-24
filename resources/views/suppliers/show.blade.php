@@ -73,9 +73,16 @@
             });
         }
 
+        // Ledger figures: only computed when the company actually has the
+        // accounting module. This guard is deliberately in the view, not
+        // just "skip the eager load" in the controller — $task->journalEntries
+        // is a real Eloquent relation and would lazy-load the true numbers
+        // regardless of what the controller eager-loaded if this were called
+        // unconditionally.
+        $hasAccountingModule = $hasAccountingModule ?? false;
         $issuedTasks = $filteredTasks->filter(fn($task) => strtolower($task->status) === 'issued');
-        $totalDebit = $issuedTasks->flatMap->journalEntries->sum('debit');
-        $totalCredit = $issuedTasks->flatMap->journalEntries->sum('credit');
+        $totalDebit = $hasAccountingModule ? $issuedTasks->flatMap->journalEntries->sum('debit') : 0;
+        $totalCredit = $hasAccountingModule ? $issuedTasks->flatMap->journalEntries->sum('credit') : 0;
 
         $filteredTasks = $filteredTasks->sortByDesc(function($task) use ($dateField) {
             return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
@@ -112,6 +119,9 @@
             </form>
         </div>
 
+        {{-- Ledger summary — hidden for a company without the accounting
+             module (both the numbers above and this card grid). --}}
+        @if($hasAccountingModule)
         <div class="grid grid-cols-3 gap-4">
             <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <p class="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Total Debit</p>
@@ -126,6 +136,7 @@
                 <p class="text-xl font-bold text-blue-700 dark:text-blue-300 mt-1">{{ number_format($totalDebit - $totalCredit, 3) }}</p>
             </div>
         </div>
+        @endif
 
         <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="overflow-x-auto" style="max-height: 550px; overflow-y: auto;">
@@ -143,7 +154,7 @@
                             @if($supplierType === 'flight')
                                 <th>Departure</th>
                                 <th>Arrival</th>
-                            @elseif($supplierType === 'hotel')
+                            @elseif($supplierType === 'hotel' && $hasAccountingModule)
                                 <th>Debit</th>
                                 <th>Credit</th>
                                 <th>Balance</th>
@@ -159,7 +170,7 @@
                             @php
                                 $status = strtolower($task->status);
                                 $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                if ($supplierType === 'hotel') {
+                                if ($supplierType === 'hotel' && $hasAccountingModule) {
                                     $debit = $task->journalEntries->first()?->debit ?? 0;
                                     $credit = $task->journalEntries->first()?->credit ?? 0;
                                     $balance += $debit - $credit;
@@ -199,7 +210,7 @@
                                             {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
                                         @else - @endif
                                     </td>
-                                @elseif($supplierType === 'hotel')
+                                @elseif($supplierType === 'hotel' && $hasAccountingModule)
                                     <td>{{ $debit ?: '-' }}</td>
                                     <td>{{ $credit ?: '-' }}</td>
                                     <td>{{ $balance }}</td>
@@ -207,7 +218,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ ($supplierType === 'flight' || $supplierType === 'hotel') ? 10 : 7 }}" class="text-center text-gray-500 py-8">No entries found for selected dates.</td>
+                                <td colspan="{{ ($supplierType === 'flight' || ($supplierType === 'hotel' && $hasAccountingModule)) ? 10 : 7 }}" class="text-center text-gray-500 py-8">No entries found for selected dates.</td>
                             </tr>
                         @endforelse
                     </tbody>

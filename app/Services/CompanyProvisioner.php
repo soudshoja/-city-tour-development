@@ -8,6 +8,7 @@ use App\Models\CompanyInvite;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\CompanyRegistrationData;
+use App\Support\Entitlements\ApplyCompanyModulePreset;
 use Database\Seeders\CoaSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -32,8 +33,8 @@ class CompanyProvisioner
 
     public function __construct(
         private readonly SupplierActivationService $supplierActivation,
-    ) {
-    }
+        private readonly ApplyCompanyModulePreset $modulePreset,
+    ) {}
 
     public function provision(CompanyRegistrationData $data, ?CompanyInvite $invite = null): Company
     {
@@ -41,9 +42,27 @@ class CompanyProvisioner
 
         $company = DB::transaction(function () use ($data, $invite) {
             $company = $this->createOwnerAndCompany($data);
+
+            // Package-preset entitlement is a brand-new-company thing, not a
+            // company:provision --repair thing. firstOrCreate() inside
+            // createOwnerAndCompany() sets wasRecentlyCreated=true only when
+            // this call actually inserted the row; --repair always targets an
+            // EXISTING company (ProvisionCompany::handle() requires --company=ID
+            // to already resolve), so it always finds, never creates, and this
+            // stays false there. Without this guard, running --repair against
+            // one of the 3 pre-Phase-1 companies would silently flip them from
+            // fail-open (everything visible) onto the package preset
+            // (accounting off) — exactly what they must NOT do.
+            $isNewCompany = $company->wasRecentlyCreated;
+
             $this->createGdsPccs($company, $data);
             $this->createRolesAndPermissions($company);
             $this->seedChartOfAccounts($company);
+
+            if ($isNewCompany) {
+                $this->modulePreset->apply($company);
+            }
+
             $this->createMainBranch($company);
             $this->createSequencesRow($company);
             $this->copyDefaultSettings($company);

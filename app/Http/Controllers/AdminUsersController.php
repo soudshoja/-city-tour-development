@@ -234,6 +234,21 @@ class AdminUsersController extends Controller
             return redirect()->route('companies.index')->with('error', 'Error creating COA accounts.');
         }
 
+        // Path A (operator manual entry) is a real package-client provisioning
+        // path, not internal/demo company creation — see
+        // .planning/specs/PACKAGE-OVERVIEW.md §3.1/§3.2, correction PKG-2.
+        // Company::create() above always inserts a brand-new row (unlike Path
+        // B's CompanyProvisioner, there is no --repair variant of this method
+        // that revisits an existing company), so this always applies to a
+        // genuinely new company.
+        try {
+            app(\App\Support\Entitlements\ApplyCompanyModulePreset::class)->apply($company);
+        } catch (Exception $e) {
+            Log::error('Error applying module preset:', ['error' => $e->getMessage()]);
+
+            return redirect()->route('companies.index')->with('error', 'Error applying module entitlements.');
+        }
+
         $branchName = $company->name . ' - Main Branch';
         $branchEmail = $company->email;
 

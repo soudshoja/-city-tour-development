@@ -12,7 +12,17 @@
     </style>
     <div class="">
         @php
-        
+            // Computed once per render so accounting-only dashboard widgets
+            // (ledger-derived KPI cards, the AJAX stats fetch) can be hidden
+            // for companies without the accounting module. Mirrors
+            // resources/views/layouts/menu.blade.php exactly (same helper,
+            // same module key) — the same check the route layer enforces via
+            // App\Http\Middleware\EnsureModuleEnabled (module:accounting).
+            $dashboardUser = auth()->user();
+            $dashboardCompanyId = $dashboardUser ? getCompanyId($dashboardUser) : null;
+            $dashboardCompany = $dashboardCompanyId ? \App\Models\Company::find($dashboardCompanyId) : null;
+            $hasAccountingModule = $dashboardCompany && $dashboardCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+
             if (auth()->user()->hasRole('admin')) {
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3';
             } elseif (auth()->user()->hasRole('company')) {
@@ -225,7 +235,10 @@
                     </div>
                 @endif
 
-                @if (!empty($jazeeraCredit) && count($jazeeraCredit) > 0)
+                {{-- $jazeeraCredit is a JournalEntry query result (ledger data) — gated
+                     on accounting per ruling R8 exception aside, this card is not the
+                     documented exception, so it stays accounting-only. --}}
+                @if ($hasAccountingModule && !empty($jazeeraCredit) && count($jazeeraCredit) > 0)
                     <div class="flex-1 min-w-[45%] ml-0 md:ml-8">
                         <div class="mb-3">
                             <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Jazeera Airways Credit</h2>
@@ -345,6 +358,20 @@
                 </div>
             </div>
             <div class="my-5 w-full p-10 pt-5 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full" id="dashboard-stats-container">
+                {{--
+                    Payable Supplier / Total Receivable / Total Bank / Gateway
+                    Receivable all link to reports.* routes carrying
+                    EnsureModuleEnabled:accounting — hidden entirely when the
+                    company has no accounting module so a package client never
+                    sees a card that 404s.
+
+                    Profit Agent Wise is the agent_profit module (a package client
+                    pays for it separately) and per ruling R8 the "Total Loss" tile
+                    on that report is a deliberate ledger-derived exception, so this
+                    tile stays visible regardless of $hasAccountingModule — moved
+                    out of the accounting-only grids below.
+                --}}
+                @if($hasAccountingModule)
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <a href="{{ route('reports.payable-supplier') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
@@ -365,16 +392,32 @@
                         <span class="absolute top-2 right-2 text-green-400 dark:text-green-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                @endif
+                <div class="grid grid-cols-1 {{ $hasAccountingModule ? 'md:grid-cols-3' : 'md:grid-cols-1' }} gap-3 mt-3">
                     <a href="{{ route('reports.profit-agent') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Profit Agent Wise</p>
                         <p class="text-xs text-koromiko-400 dark:text-koromiko-200">Profit earned by agents</p>
                         <p id="stat-profit-agent" class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">
+                            @if($hasAccountingModule)
                             <span class="stat-loading animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-6 w-20 inline-block"></span>
+                            @else
+                            {{--
+                                reports.ajax.dashboard-stats (the only source for this
+                                figure) also carries EnsureModuleEnabled:accounting, so
+                                there is no gated-safe endpoint left to populate this
+                                tile's value from when accounting is off. Skipping the
+                                fetch (see script below) rather than showing "Error";
+                                a real fix needs a non-accounting-gated endpoint for
+                                just this agent_profit figure — flagged for backend
+                                follow-up, out of scope for a views-only change.
+                            --}}
+                            <span class="text-sm text-gray-400 dark:text-gray-500">—</span>
+                            @endif
                         </p>
                         <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.total-bank') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Total Bank</p>
@@ -393,6 +436,7 @@
                         </p>
                         <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
+                    @endif
                 </div>
             </div>
         @endif
@@ -617,7 +661,21 @@
         // }, ];
     } // end if (earningsEl)
 
+        // reports.ajax.dashboard-stats (and the JournalEntry-derived Jazeera
+        // Airways figures below) carry EnsureModuleEnabled:accounting, so a
+        // company without the accounting module gets a 404 from both — never
+        // fetch either in that case. displayJazeeraData() writes into every
+        // .jazeera-info element on the page, including the one inside the
+        // shared wallet dropdown (layouts/mobile-drawer.blade.php via
+        // layouts/profile.blade.php), so skipping it here also keeps ledger
+        // figures out of that shared widget, not just this page's own card.
+        const hasAccountingModule = @json($hasAccountingModule);
+
         document.addEventListener('DOMContentLoaded', () => {
+            if (!hasAccountingModule) {
+                return;
+            }
+
             const jazeeraData = @json($jazeeraCredit ?? []);
             // console.log('Jazeera Airways Credit Data:', jazeeraData);
 

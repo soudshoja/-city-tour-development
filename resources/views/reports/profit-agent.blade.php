@@ -34,9 +34,17 @@
                             <div class="pl-4 mt-1 space-y-1">
                                 @foreach($invoice->transactions as $transaction)
                                 <div class="flex items-center justify-between gap-2">
+                                    {{-- Ruling R8: the Agent Profit figure is allowed as an opaque,
+                                         ledger-derived number with NO drill-down into accounting for a
+                                         company without the module. Only link into the ledger when
+                                         accounting is actually on. --}}
+                                    @if($hasAccountingModule ?? false)
                                     <a href="{{ route('journal-entries.index', $transaction->id) }}" target="_blank" class="text-blue-600 dark:text-blue-400 text-sm hover:underline">
                                         Transaction ID: {{ $transaction->id }}
                                     </a>
+                                    @else
+                                    <span class="text-gray-600 dark:text-gray-400 text-sm">Transaction ID: {{ $transaction->id }}</span>
+                                    @endif
                                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $transaction->created_at }}</span>
                                 </div>
                                 @endforeach

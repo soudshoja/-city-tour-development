@@ -1449,9 +1449,18 @@ class ReportController extends Controller
     {
         $profitAgent = $this->getProfitAgent();
 
+        // Ruling R8 (PACKAGE-OVERVIEW.md): the ledger-derived profit figure
+        // itself is allowed here as an opaque number even without the
+        // accounting module — but the view's drill-down link into
+        // journal-entries.index must not exist for a company without it.
+        $companyId = getCompanyId(Auth::user());
+        $company = $companyId ? Company::find($companyId) : null;
+        $hasAccountingModule = $company && $company->hasModule(\App\Support\Modules::ACCOUNTING);
+
         return view('reports.profit-agent', [
             'agents' => $profitAgent['agents'],
             'sumProfitAgent' => $profitAgent['sumProfitAgent'],
+            'hasAccountingModule' => $hasAccountingModule,
         ]);
     }
 

@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\Payment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,34 @@ class SendAgentUninvoicedPaymentLinkReminders extends Command
         {--days=30 : Cap window in days (paid within last N days)}';
 
     protected $description = 'Send reminders to agents about paid payment links not yet invoiced';
+
+    /**
+     * Fix 5 (pre-pilot defect list): dedup guard. This command is
+     * scheduled twice daily (app/Console/Kernel.php: 12:00 + 19:00
+     * Asia/Kuwait, a 7-hour gap) via ->withoutOverlapping(), which only
+     * protects against the SAME Laravel-scheduled invocation overlapping
+     * itself — not a duplicated raw crontab line or a genuinely separate
+     * concurrent run. Nothing previously stopped the same agent being
+     * reminded twice back-to-back if either happened.
+     *
+     * Mechanism: a cache key per (agent, company), set only after a
+     * genuinely successful send (mirrors
+     * NotifyStaleTaskActionRequests::handle()'s escalated_at precedent —
+     * check-before, set-after-success-only, so a failed attempt is never
+     * counted as "already reminded" and can still retry). A cache key
+     * rather than a last_reminded_at column: this dev environment's
+     * CACHE_STORE=database, so it persists across separate CLI process
+     * invocations exactly like a DB column would, without adding a column
+     * to agent_notification_settings — a table whose migration has
+     * already run here (2026_02_26_104808), so a new column would need its
+     * own pending migration and "missing column" degrade-safely handling
+     * for no real benefit over the cache, which needs neither.
+     *
+     * The window (6h) is deliberately shorter than the 7h gap between the
+     * two legitimate daily runs, so the intended twice-daily cadence is
+     * preserved — only a genuine near-duplicate run is deduplicated.
+     */
+    public const DEDUP_WINDOW_HOURS = 6;
 
     public function handle(): int
     {
@@ -103,9 +132,15 @@ class SendAgentUninvoicedPaymentLinkReminders extends Command
                 continue;
             }
 
+            if ($this->wasRecentlyReminded($agent, $company)) {
+                $this->line("    Skipped: already reminded within the last " . self::DEDUP_WINDOW_HOURS . 'h.');
+                continue;
+            }
+
             try {
                 if ($this->sendReminder($agent, $company, $payments, $channel, $windowLabel, $locale)) {
                     $totalSent++;
+                    $this->markReminded($agent, $company);
                 }
             } catch (\Throwable $e) {
                 Log::error("[UninvoicedPaymentLinkReminder] Error for agent {$agent->id}: {$e->getMessage()}");
@@ -116,6 +151,24 @@ class SendAgentUninvoicedPaymentLinkReminders extends Command
         $this->info($isDryRun ? '[DRY RUN] Complete.' : "Done. Sent {$totalSent} reminder(s).");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Fix 5 dedup guard — see the class docblock for the full rationale.
+     */
+    private function dedupCacheKey(Agent $agent, Company $company): string
+    {
+        return "reminder:uninvoiced-payment-links:{$company->id}:{$agent->id}";
+    }
+
+    private function wasRecentlyReminded(Agent $agent, Company $company): bool
+    {
+        return Cache::has($this->dedupCacheKey($agent, $company));
+    }
+
+    private function markReminded(Agent $agent, Company $company): void
+    {
+        Cache::put($this->dedupCacheKey($agent, $company), now()->toIso8601String(), now()->addHours(self::DEDUP_WINDOW_HOURS));
     }
 
     private function sendReminder(Agent $agent, Company $company, $payments, string $channel, string $windowLabel, string $locale): bool

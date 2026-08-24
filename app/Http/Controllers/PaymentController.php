@@ -262,6 +262,33 @@ class PaymentController extends Controller
     }
 
     /**
+     * Atomically claim the next voucher sequence number for a company.
+     *
+     * The previous read-then-increment-then-save pattern (Sequence::firstOrCreate()
+     * followed by ++/save() with no lock) let two concurrent requests read the same
+     * current_sequence and both save the same incremented value, so two payments
+     * could be handed the identical voucher number (VOU-YYYY-NNNNN). Locking the
+     * sequence row for update inside a dedicated transaction, mirroring
+     * CreateBulkInvoicesJob::generateInvoiceNumber(), serializes concurrent callers
+     * so each one gets a distinct current_sequence.
+     */
+    private function nextVoucherNumber(int $companyId): string
+    {
+        return DB::transaction(function () use ($companyId) {
+            $voucherSequence = Sequence::where('company_id', $companyId)->lockForUpdate()->first();
+
+            if (! $voucherSequence) {
+                $voucherSequence = Sequence::create(['company_id' => $companyId, 'current_sequence' => 1]);
+            }
+
+            $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
+            $voucherSequence->increment('current_sequence');
+
+            return $voucherNumber;
+        });
+    }
+
+    /**
      * Process TBO booking after payment success
      * This method is called from all payment gateway callbacks
      * 
@@ -1126,11 +1153,7 @@ class PaymentController extends Controller
 
         $companyId = $invoice->agent->branch->company_id;
 
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-        $voucherSequence->current_sequence++;
-        $voucherSequence->save();
+        $voucherNumber = $this->nextVoucherNumber($companyId);
 
         $finalAmount = $data['total_amount'];
 
@@ -1968,9 +1991,7 @@ class PaymentController extends Controller
         DB::beginTransaction();
 
         try {
-            $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-            $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
-            $voucherSequence->increment('current_sequence');
+            $voucherNumber = $this->nextVoucherNumber($companyId);
 
             $data = [
                 'company_id' => $companyId,
@@ -2502,10 +2523,7 @@ class PaymentController extends Controller
         }
 
         $companyId = getCompanyId(Auth::user());
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-        $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
-        $voucherSequence->current_sequence++;
-        $voucherSequence->save();
+        $voucherNumber = $this->nextVoucherNumber($companyId);
 
         $payment->update([
             'voucher_number' => $voucherNumber,
@@ -2911,7 +2929,6 @@ class PaymentController extends Controller
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $client = Client::find($request->client_id);
         $agent = Agent::find($request->agent_id);
 
@@ -2923,12 +2940,8 @@ class PaymentController extends Controller
             return ['status' => 'error', 'message' => 'Agent cannot be found'];
         }
 
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-
         try {
-            $voucherSequence->current_sequence++;
-            $voucherSequence->save();
+            $voucherNumber = $this->nextVoucherNumber($companyId);
         } catch (Exception $e) {
             logger('Failed to save voucher sequence', [
                 'message' => $e->getMessage(),
@@ -3888,8 +3901,20 @@ class PaymentController extends Controller
                 $voucherNumber = $userDefinedField['voucher_number'] ?? null;
                 $process = $userDefinedField['process'] ?? 'invoice';
                 $partialId = $userDefinedField['invoice_partial_id'] ?? null;
+                $paymentId = $userDefinedField['payment_id'] ?? null;
 
-                $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
+                // Resolve by our own internal payment_id whenever MyFatoorah echoed it
+                // back (it always does; we send it in UserDefinedField on initiate).
+                // A bare orWhere('voucher_number', ...) across ALL companies' payments
+                // is a cross-tenant hazard: voucher numbers are sequential PER company,
+                // so two different companies can legitimately share the same
+                // voucher_number, letting this webhook resolve to and complete the
+                // wrong tenant's payment. Only fall back to payment_reference (the
+                // MyFatoorah-assigned invoice id, unique platform-wide) when payment_id
+                // is unavailable, and never fall back to voucher_number alone.
+                $payment = $paymentId
+                    ? Payment::find($paymentId)
+                    : ($invoiceId ? Payment::where('payment_reference', $invoiceId)->first() : null);
 
                 if (!$invoiceId || $invoiceStatus !== 'paid') {
                     if ($payment) {
@@ -4156,7 +4181,22 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed or cancelled. Please try again or contact support.');
             }
 
-            DB::transaction(function () use ($payment, $response, $process, $partialId, $paymentTransaction) {
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $response, $process, $partialId, $paymentTransaction, &$alreadyCompleted) {
+                // The status check above is only a fast-path snapshot: Tap can deliver
+                // the browser return AND the webhook for the same charge within
+                // milliseconds of each other. Re-check under a row lock, inside this
+                // transaction, so only one concurrent delivery can ever transition the
+                // payment to 'completed' and post money/journal entries; the other
+                // becomes a no-op.
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
+
                 $finalPaidAmount = $response['amount'] ?? $payment->amount;
 
                 $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
@@ -4232,6 +4272,22 @@ class PaymentController extends Controller
                     $transaction = Transaction::find($coaResult['transaction_id']);
                 }
             });
+
+            if ($alreadyCompleted) {
+                $payment->refresh();
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+                }
+
+                Log::info('Tap callback ignored: already completed by a concurrent delivery', ['payment_id' => $paymentId]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
 
             $tboResult = $this->processTBOBookingAfterPayment($payment);
 
@@ -4431,7 +4487,21 @@ class PaymentController extends Controller
             }
 
             // Process successful payment
-            DB::transaction(function () use ($payment, $responseData, $process, $partialId) {
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $responseData, $process, $partialId, &$alreadyCompleted) {
+                // The status check above is only a fast-path snapshot: KNET can deliver
+                // the browser return and a resend within milliseconds of each other.
+                // Re-check under a row lock, inside this transaction, so only one
+                // concurrent delivery can ever transition the payment to 'completed'
+                // and post money/journal entries; the other becomes a no-op.
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
+
                 $finalPaidAmount = floatval($responseData['amt'] ?? $payment->amount);
 
                 $paymentTransaction = $payment->paymentTransactions()
@@ -4535,6 +4605,22 @@ class PaymentController extends Controller
                     }
                 }
             });
+
+            if ($alreadyCompleted) {
+                $payment->refresh();
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+                }
+
+                Log::info('KNET callback ignored: already completed by a concurrent delivery', ['payment_id' => $paymentId]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
 
             $tboResult = $this->processTBOBookingAfterPayment($payment);
             if ($tboResult !== null) {
@@ -5355,7 +5441,20 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
             }
 
-            DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $partialId) {
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $partialId, &$alreadyCompleted) {
+                // The status check above is only a fast-path snapshot: UPayment can
+                // deliver the browser return and a resend within milliseconds of each
+                // other. Re-check under a row lock, inside this transaction, so only
+                // one concurrent delivery can ever transition the payment to
+                // 'completed' and post money/journal entries; the other becomes a no-op.
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
 
                 $paymentTransaction = $payment->paymentTransactions()
                     ->where('reference_number', $trackId)
@@ -5456,6 +5555,22 @@ class PaymentController extends Controller
                     }
                 }
             });
+
+            if ($alreadyCompleted) {
+                $payment->refresh();
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+                }
+
+                Log::info('[UPAYMENT] Callback ignored: already completed by a concurrent delivery', ['payment_id' => $payment->id]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
 
             // Process TBO booking if applicable (BEFORE sending notification)
             $tboResult = $this->processTBOBookingAfterPayment($payment);
@@ -5613,12 +5728,38 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
-            $payment->payment_reference = $data['transactionId'];
-            $payment->invoice_reference = $data['trackID'];
-            $payment->payment_date = $data['paidOn'] ?? now();
-            $payment->status = 'completed';
-            $payment->service_charge = $data['amount'] - $payment->amount;
-            $payment->save();
+            // The status check above is only a fast-path snapshot: Hesabe can deliver
+            // the browser return AND the webhook for the same order within
+            // milliseconds of each other. Claim the payment atomically under a row
+            // lock so only one concurrent delivery can transition it to 'completed';
+            // the other becomes a no-op instead of double-crediting/double-posting.
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $data, &$alreadyCompleted) {
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
+
+                $payment->payment_reference = $data['transactionId'];
+                $payment->invoice_reference = $data['trackID'];
+                $payment->payment_date = $data['paidOn'] ?? now();
+                $payment->status = 'completed';
+                $payment->service_charge = $data['amount'] - $payment->amount;
+                $payment->save();
+            });
+
+            if ($alreadyCompleted) {
+                Log::info('Hesabe callback ignored: already completed by a concurrent delivery', [
+                    'payment_id' => $payment->id,
+                ]);
+                $payment->refresh();
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
 
             $paymentTransaction = null;
 
@@ -5961,7 +6102,11 @@ class PaymentController extends Controller
 
         DB::beginTransaction();
         try {
-            $payment = Payment::where('voucher_number', $voucherNumber)->first();
+            // lockForUpdate() serializes this against any other delivery (retry,
+            // and against handleHesabeResponse's own claim) racing on the same
+            // payment row, so the "already processed" check right below is
+            // authoritative rather than a TOCTOU snapshot.
+            $payment = Payment::where('voucher_number', $voucherNumber)->lockForUpdate()->first();
 
             if (!$payment) {
                 Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
@@ -6329,7 +6474,11 @@ class PaymentController extends Controller
 
                 $gatewayAssetAccount = Account::find($chargeRecord->acc_fee_bank_id);
                 $gatewayExpenseAccount = Account::find($chargeRecord->acc_fee_id);
-                $receivableAccount = Account::where('name', 'Clients')->first();
+                // Company-scoped: this runs from unauthenticated gateway webhook/
+                // callback paths (BelongsToCompany's global scope is a no-op there),
+                // so an unscoped lookup would resolve whichever company's "Clients"
+                // account has the lowest id and post another tenant's receivable.
+                $receivableAccount = Account::where('name', 'Clients')->where('company_id', $companyId)->first();
 
                 if (!$gatewayAssetAccount || !$gatewayExpenseAccount || !$receivableAccount) {
                     throw new \Exception('One or more required financial accounts not found');
@@ -6827,10 +6976,7 @@ class PaymentController extends Controller
             ];
         }
 
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $company->id], ['current_sequence' => 1]);
-
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+        $voucherNumber = $this->nextVoucherNumber($company->id);
 
         $response = DB::transaction(function () use (
             $request,
@@ -6838,7 +6984,6 @@ class PaymentController extends Controller
             $company,
             $client,
             $agent,
-            $voucherSequence,
         ) {
             try {
                 $isAdvancedMode = $request->has('items') && is_array($request->items) && count($request->items) > 0;
@@ -6929,9 +7074,6 @@ class PaymentController extends Controller
                     'payment_methods_selected' => $request->payment_methods,
                     'payment_method_groups' => $groupIds->toArray(),
                 ]);
-
-                $voucherSequence->current_sequence++;
-                $voucherSequence->save();
 
                 Log::info('[MULTI PAYMENT METHOD] Payment created with voucher number: ' . $voucherNumber, [
                     'payment_id' => $payment->id,

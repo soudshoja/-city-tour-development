@@ -3163,7 +3163,14 @@ class InvoiceController extends Controller
 
     public function proformaGeneratePdf(int $companyId, string $invoiceNumber)
     {
+        // This route is public (no auth middleware), so $companyId is untrusted
+        // input from the URL: it MUST be used to scope the lookup, never just
+        // accepted as a display label, or any invoice number could be paired
+        // with any companyId to pull another company's invoice PDF.
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
             ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
             ->first();
 
@@ -3418,8 +3425,24 @@ class InvoiceController extends Controller
 
     public function generatePdf(int $companyId, string $invoiceNumber)
     {
+        // This route is public (no auth middleware), so $companyId is untrusted
+        // input from the URL: it MUST be used to scope the lookup, never just
+        // accepted as a display label, or any invoice number could be paired
+        // with any companyId to pull another company's invoice PDF.
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with('agent.branch.company', 'client', 'invoiceDetails')
+            ->first();
 
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        if (!$invoice) {
+            if (Auth::user()) {
+                return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+            }
+            return abort(404);
+        }
+
         Log::info('invoice', ['invoice' => $invoice]);
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice')->get();
         $invoiceDetails = $invoice->invoiceDetails;
@@ -6457,6 +6480,13 @@ class InvoiceController extends Controller
         ]);
 
         $clientId = $request->input('client_id');
+
+        // Tenant isolation: only surface credit balances belonging to a client
+        // of the acting user's own company.
+        $companyId = getCompanyId(Auth::user());
+        $client = Client::findOrFail($clientId);
+        abort_unless($companyId && $client->company_id === $companyId, 403, 'Unauthorized: client does not belong to your company.');
+
         $availablePayments = Credit::getAvailablePaymentsForClient($clientId);
 
         $response = [
@@ -6509,6 +6539,13 @@ class InvoiceController extends Controller
         ]);
 
         Log::info('[INVOICE] applyPaymentToInvoice - Validation passed');
+
+        // Tenant isolation: only allow applying credit to an invoice that belongs
+        // to the acting user's own company (PaymentApplicationService also
+        // re-verifies this, and each credit source, before mutating any balance).
+        $companyId = getCompanyId(Auth::user());
+        $invoice = Invoice::findOrFail($request->input('invoice_id'));
+        abort_unless($companyId && $invoice->agent?->branch?->company_id === $companyId, 403, 'Unauthorized: this invoice does not belong to your company.');
 
         $service = new PaymentApplicationService();
 
@@ -6571,6 +6608,12 @@ class InvoiceController extends Controller
     public function getInvoicePaymentHistory(int $invoiceId): JsonResponse
     {
         $invoice = Invoice::findOrFail($invoiceId);
+
+        // Tenant isolation: only expose payment-application history for an
+        // invoice belonging to the acting user's own company.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($companyId && $invoice->agent?->branch?->company_id === $companyId, 403, 'Unauthorized: this invoice does not belong to your company.');
+
         $service = new PaymentApplicationService();
         $applications = $service->getPaymentHistoryForInvoice($invoiceId);
 
@@ -6621,6 +6664,7 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
         Gate::authorize('manageLocks', User::class);
+        abort_unless($invoice->agent?->branch?->company_id === getCompanyId($user), 403, 'Unauthorized: this invoice does not belong to your company.');
 
         if ($invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is already locked.');
@@ -6641,6 +6685,7 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
         Gate::authorize('manageLocks', User::class);
+        abort_unless($invoice->agent?->branch?->company_id === getCompanyId($user), 403, 'Unauthorized: this invoice does not belong to your company.');
 
         if (!$invoice->isLocked()) {
             return redirect()->back()->with('error', 'Invoice is not locked.');
@@ -6662,6 +6707,8 @@ class InvoiceController extends Controller
      */
     public function getLossBearer(Invoice $invoice): JsonResponse
     {
+        abort_unless($invoice->agent?->branch?->company_id === getCompanyId(Auth::user()), 403, 'Unauthorized: this invoice does not belong to your company.');
+
         $effectiveSettings = $invoice->getEffectiveLossSettings();
 
         return response()->json([
@@ -6687,6 +6734,13 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.',
+            ], 403);
+        }
+
+        if ($invoice->agent?->branch?->company_id !== getCompanyId($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: this invoice does not belong to your company.',
             ], 403);
         }
 

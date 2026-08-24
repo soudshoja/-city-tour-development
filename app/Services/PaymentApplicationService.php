@@ -51,6 +51,16 @@ class PaymentApplicationService
         $invoice = Invoice::findOrFail($invoiceId);
         $invoiceAmount = $invoice->amount;
 
+        // Tenant isolation: the acting user may only apply credit to an invoice
+        // that belongs to their own company. Without this, one company's user
+        // could move another company's credit balance onto their own invoice.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless(
+            $companyId && $invoice->agent?->branch?->company_id === $companyId,
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
+
         // Calculate total credit selected
         $totalCreditSelected = array_sum(array_column($paymentAllocations, 'amount'));
 
@@ -170,6 +180,13 @@ class PaymentApplicationService
                 $requestedAmount = $allocation['amount'];
 
                 $sourceCredit = Credit::findOrFail($creditId);
+
+                // Tenant isolation: the credit being drawn down must belong to the
+                // same company as the invoice/acting user, otherwise this would
+                // transfer another company's funds onto this invoice.
+                if ($sourceCredit->company_id !== $companyId) {
+                    throw new Exception("Unauthorized: credit source {$sourceCredit->id} does not belong to your company.");
+                }
 
                 if ($sourceCredit->type === Credit::TOPUP) {
                     $availableBalance = Credit::getAvailableBalanceByPayment($sourceCredit->payment_id);
@@ -515,6 +532,15 @@ class PaymentApplicationService
             'user_id' => Auth::id(),
         ]);
 
+        // Tenant isolation: the acting user may only link payments/credit into an
+        // invoice that belongs to their own company.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless(
+            $companyId && $invoice->agent?->branch?->company_id === $companyId,
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
+
         $appliedPayments = [];
         $remainingToApply = $invoicePartial->amount;
 
@@ -529,6 +555,10 @@ class PaymentApplicationService
             if (isset($allocation['credit_id'])) {
                 $sourceCredit = Credit::findOrFail($allocation['credit_id']);
 
+                // Tenant isolation: the credit being drawn down must belong to the
+                // same company as the invoice/acting user.
+                abort_unless($sourceCredit->company_id === $companyId, 403, 'Unauthorized: credit source does not belong to your company.');
+
                 if ($sourceCredit->type === Credit::TOPUP) {
                     $paymentId = $sourceCredit->payment_id;
                     $voucherNumber = $sourceCredit->payment?->voucher_number ?? 'TOPUP';
@@ -542,6 +572,10 @@ class PaymentApplicationService
             } else {
                 $paymentId = $allocation['payment_id'];
                 $payment = Payment::findOrFail($paymentId);
+
+                // Tenant isolation: the payment being drawn down must belong to the
+                // same company as the invoice/acting user.
+                abort_unless($payment->company_id === $companyId, 403, 'Unauthorized: payment source does not belong to your company.');
                 $voucherNumber = $payment->voucher_number;
                 $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
             }

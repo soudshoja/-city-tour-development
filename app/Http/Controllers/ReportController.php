@@ -590,6 +590,8 @@ class ReportController extends Controller
 
     public function profitLoss(Request $request)
     {
+        Gate::authorize('viewProfitLoss', Report::class);
+
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
@@ -1643,19 +1645,20 @@ class ReportController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
+        // A falsy/orphaned companyId used to fall through with no company
+        // filter applied at all, silently returning every company's journal
+        // entries for the requested date. Fail closed instead.
+        abort_unless($companyId, 403);
+
         if (!$date) {
             return response()->json(['entries' => []]);
         }
 
-        $query = JournalEntry::whereDate('transaction_date', $date)
+        $entries = JournalEntry::whereDate('transaction_date', $date)
+            ->where('company_id', $companyId)
             ->with('account')
-            ->orderBy('id', 'desc');
-
-        if ($companyId) {
-            $query->where('company_id', $companyId);
-        }
-
-        $entries = $query->get()
+            ->orderBy('id', 'desc')
+            ->get()
             ->map(function ($entry) {
                 return [
                     'id' => $entry->id,

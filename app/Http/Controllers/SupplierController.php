@@ -193,12 +193,24 @@ class SupplierController extends Controller
 
     public function ledgerByDateRange(Request $request, $supplierId)
     {
+        Gate::authorize('view', Supplier::class);
+
         $fromDate = $request->input('fromDate');
         $toDate = $request->input('toDate');
+
+        // Task carries no BelongsToCompany scoping of its own, so without this
+        // the endpoint would let any authenticated user enumerate any other
+        // company's booking/task data (agent name, price, dates) for any
+        // supplier_id by simply varying it.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($companyId, 403);
 
         $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
             ->where('supplier_id', $supplierId)
             ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
             ->get();
 
         return response()->json([

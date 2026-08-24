@@ -93,9 +93,13 @@ Route::middleware(['auth'])->group(function () {
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
+    // Financial period locking is accounting-only: fold it into the
+    // module.accounting gate even though its own policy (UserPolicy::manageLocks)
+    // isn't company/module-scoped, so its UI stays consistently hidden.
     Route::group([
         'prefix' => 'lock-management',
         'as' => 'lock-management.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [LockManagementController::class, 'index'])->name('index');
         Route::post('/lock-by-period', [LockManagementController::class, 'lockByPeriod'])->name('lock-by-period');
@@ -245,14 +249,16 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');
         Route::post('/{supplierCompany}/update-surcharges', [SupplierController::class, 'updateSurcharges'])->name('update.surcharges');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
-        Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
+        // Ledger/journal endpoints inside the otherwise task_uploader-mapped
+        // 'suppliers' prefix — gate only these two, not the whole group.
+        Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger')->middleware('module:accounting');
         Route::get('/magic/get', [SupplierController::class, 'getMagicHoliday'])->name('magic.get');
         Route::get('/magic/credential', [SupplierController::class, 'getClientCredential'])->name('magic-credential');
         Route::get('/magic/request', [SupplierController::class, 'makeApiRequest'])->name('magic-request');
         Route::get('/magic/callback', [SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
         Route::get('/magic/provider', [SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
         Route::get('/magic/webhook-initiate/{id}', [SupplierController::class, 'magicReserveWebhook'])->name('magic-webhook');
-        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date');
+        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date')->middleware('module:accounting');
         Route::get('/', [SupplierController::class, 'index'])->name('index');
 
 
@@ -300,6 +306,7 @@ Route::middleware(['auth'])->group(function () {
     Route::group([
         'prefix' => 'coa',
         'as' => 'coa.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [CoaController::class, 'index'])->name('index');
         Route::post('/create', [CoaController::class, 'createAccounts'])->name('create');
@@ -315,24 +322,29 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/opening-balances', [CoaController::class, 'saveOpeningBalances'])->name('opening-balances.save');
     });
 
-    //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
-    Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
-    Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
-    Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
-    Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
+    // AccountingController — company ledger summary/transaction browser + the
+    // payable/receivable entry forms and their AJAX account-picker endpoints.
+    // All of it is accounting-only, so gate the whole block as one group.
+    Route::middleware(['module:accounting'])->group(function () {
+        //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
+        Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
+        Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
+        Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
+        Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
-    Route::get('/payable-details/payable-create', [AccountingController::class, 'createPayableDetail'])->name('payable-details.payable-create');
-    Route::post('/payable-details/payable-store', [AccountingController::class, 'storePayableDetail'])->name('payable-details.payable-store');
-    Route::get('/receivable-details/receivable-create', [AccountingController::class, 'createReceivableDetail'])->name('receivable-details.receivable-create');
-    Route::post('/receivable-details/receivable-store', [AccountingController::class, 'storeReceivableDetail'])->name('receivable-details.receivable-store');
-    Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
-    Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
-    Route::get('/get-branches-by-company', [AccountingController::class, 'getBranchByCompany'])->name('get.branches.by.company');
-    Route::get('/get-agents-by-branch-company', [AccountingController::class, 'getAgentByBranchCompany'])->name('get.agents.by.branch.company');
-    Route::get('/get-suppliers-by-company', [AccountingController::class, 'getSupplierByCompany'])->name('get.suppliers.by.company');
-    Route::get('/get-agents-clients-by-company', [AccountingController::class, 'getAgentClientByCompany'])->name('get.agents.clients.by.company');
-    Route::get('/get-bank-accounts-by-company', [AccountingController::class, 'getBankAccountByCompany'])->name('get.bank.accounts.by.company');
-    Route::get('/get-invoices-by-JournalEntry', [AccountingController::class, 'getInvoicesByJournalEntry'])->name('get.invoices.by.JournalEntry');
+        Route::get('/payable-details/payable-create', [AccountingController::class, 'createPayableDetail'])->name('payable-details.payable-create');
+        Route::post('/payable-details/payable-store', [AccountingController::class, 'storePayableDetail'])->name('payable-details.payable-store');
+        Route::get('/receivable-details/receivable-create', [AccountingController::class, 'createReceivableDetail'])->name('receivable-details.receivable-create');
+        Route::post('/receivable-details/receivable-store', [AccountingController::class, 'storeReceivableDetail'])->name('receivable-details.receivable-store');
+        Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
+        Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
+        Route::get('/get-branches-by-company', [AccountingController::class, 'getBranchByCompany'])->name('get.branches.by.company');
+        Route::get('/get-agents-by-branch-company', [AccountingController::class, 'getAgentByBranchCompany'])->name('get.agents.by.branch.company');
+        Route::get('/get-suppliers-by-company', [AccountingController::class, 'getSupplierByCompany'])->name('get.suppliers.by.company');
+        Route::get('/get-agents-clients-by-company', [AccountingController::class, 'getAgentClientByCompany'])->name('get.agents.clients.by.company');
+        Route::get('/get-bank-accounts-by-company', [AccountingController::class, 'getBankAccountByCompany'])->name('get.bank.accounts.by.company');
+        Route::get('/get-invoices-by-JournalEntry', [AccountingController::class, 'getInvoicesByJournalEntry'])->name('get.invoices.by.JournalEntry');
+    });
 
     //BRANCHES
     Route::group([
@@ -386,15 +398,21 @@ Route::middleware(['auth'])->group(function () {
     Route::group([
         'prefix' => 'transactions',
         'as' => 'transactions.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [TransactionController::class, 'index'])->name('index');
     });
 
 
     //JOURNAL ENTRY
+    // NOTE: prod additionally has a 'journal-entries/all' route (JournalEntryController@all)
+    // not present in local's base file (see prod-vs-local drift notes). Because this whole
+    // group carries the module gate, that prod-only route inherits it automatically once
+    // it's added here — no separate patch needed for it.
     Route::group([
         'prefix' => 'journal-entries',
         'as' => 'journal-entries.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/all', [JournalEntryController::class, 'all'])->name('all');
         Route::get('/{transactionId}', [JournalEntryController::class, 'index'])->name('index');
@@ -406,46 +424,63 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'reports',
         'as' => 'reports.',
     ], function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index');
+        // NOTE: this prefix mixes pure accounting reports with the
+        // Agent Profit Calculation module's reports (agent/profit-agent) and
+        // the Task Uploader/Customer CRM/Payment Gateway modules' reports
+        // (tasks/client/payment-gateways) — those must stay reachable for
+        // package clients, so module:accounting is chained per-route below
+        // instead of applied to the whole group.
+        Route::get('/', [ReportController::class, 'index'])->name('index')->middleware('module:accounting');
         Route::get('/agent', [ReportController::class, 'agentReport'])->name('agent');
         Route::match(['get', 'post'], '/client', [ReportController::class, 'clientReport'])->name('client');
         Route::match(['get', 'post'], '/client/pdf', [ReportController::class, 'clientReportPdf'])->name('client.pdf');
         Route::get('/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');
         Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
-        Route::get('/summary', [ReportController::class, 'summary'])->name('summary');
-        Route::get('/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
-        Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report');
-        Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report');
-        Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier');
+        Route::get('/summary', [ReportController::class, 'summary'])->name('summary')->middleware('module:accounting');
+        Route::get('/accsummary', [ReportController::class, 'accsummary'])->name('accsummary')->middleware('module:accounting');
+        Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report')->middleware('module:accounting');
+        Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report')->middleware('module:accounting');
+        Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier')->middleware('module:accounting');
         Route::get('/profit-agent', [ReportController::class, 'profitAgent'])->name('profit-agent');
-        Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');
-        Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank');
-        Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable');
-        Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
-        Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile');
-        Route::get('/settlements', [ReportController::class, 'settlementsReport'])->name('settlements');
+        Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable')->middleware('module:accounting');
+        Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank')->middleware('module:accounting');
+        Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable')->middleware('module:accounting');
+        Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list')->middleware('module:accounting');
+        Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile')->middleware('module:accounting');
+        // settlementsReport() is the *bank* settlements report (payment-gateway
+        // funds settling to the bank — see its 'Settles to Bank' query), not
+        // the agent-loss settlement feature; it's accounting content despite
+        // the ability name 'viewSettlement'.
+        Route::get('/settlements', [ReportController::class, 'settlementsReport'])->name('settlements')->middleware('module:accounting');
         Route::get('/settlements/entries/by-date', [ReportController::class, 'journalEntriesByDate'])
-            ->name('settlements.entries.by_date');
-        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
-        Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
-        Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
-        Route::match(['get', 'post'], '/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
-        Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
-        Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
+            ->name('settlements.entries.by_date')->middleware('module:accounting');
+        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss')->middleware('module:accounting');
+        Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors')->middleware('module:accounting');
+        Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf')->middleware('module:accounting');
+        Route::match(['get', 'post'], '/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales')->middleware('module:accounting');
+        // dailySalesPdf()/dailySalesPdfDownload() are currently dead code
+        // (target methods commented out in ReportController — pre-existing,
+        // not touched here); gating them anyway means a package client hits
+        // our 404 instead of ever reaching that broken controller method.
+        Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf')->middleware('module:accounting');
+        Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download')->middleware('module:accounting');
         Route::match(['get', 'post'], '/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
         Route::match(['get', 'post'], '/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
+        // payment-gateways report is gated by its own ReportPolicy::viewPaymentGatewaysReport
+        // check already (payment_gateway package module) — left out of module:accounting.
         Route::match(['get', 'post'], '/payment-gateways', [ReportController::class, 'paymentGateways'])->name('payment-gateways');
         Route::get('/payment-gateways/pdf', [ReportController::class, 'paymentGatewaysReportPdf'])->name('payment-gateways.pdf');
 
         // Trial Balance
-        Route::get('/trial-balance', [ReportController::class, 'trialBalance'])->name('trial-balance');
-        Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf'])->name('trial-balance.pdf');
-        Route::get('/trial-balance/export', [ReportController::class, 'trialBalanceExport'])->name('trial-balance.export');
-        Route::get('/trial-balance/validation', [ReportController::class, 'trialBalanceValidation'])->name('trial-balance.validation');
+        Route::get('/trial-balance', [ReportController::class, 'trialBalance'])->name('trial-balance')->middleware('module:accounting');
+        Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf'])->name('trial-balance.pdf')->middleware('module:accounting');
+        Route::get('/trial-balance/export', [ReportController::class, 'trialBalanceExport'])->name('trial-balance.export')->middleware('module:accounting');
+        Route::get('/trial-balance/validation', [ReportController::class, 'trialBalanceValidation'])->name('trial-balance.validation')->middleware('module:accounting');
 
         Route::group([
             'prefix' => 'ajax',
             'as' => 'ajax.',
+            'middleware' => ['module:accounting'],
         ], function () {
             Route::get('/dashboard-stats', [ReportController::class, 'getDashboardStats'])->name('dashboard-stats');
         });
@@ -657,6 +692,7 @@ Route::middleware(['auth'])->group(function () {
     Route::group([
         'prefix' => 'exchange',
         'as' => 'exchange.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('index', [CurrencyExchangeController::class, 'index'])->name('index');
         Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
@@ -718,9 +754,17 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // CREDITS
+    // CreditPolicy is classified as an accounting-module policy (see the
+    // Company/Policy discovery), and creditTopup() posts real Transaction +
+    // JournalEntry rows against COA accounts with zero authorization today —
+    // gate the whole controller as accounting. NOTE: this also hides the
+    // client credit-balance read (index/filter) from package clients, which
+    // is arguably Customer CRM information rather than accounting; flagged
+    // as an open product decision in the report rather than split here.
     Route::group([
         'prefix' => 'credits',
         'as' => 'credits.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [CreditController::class, 'index'])->name('index');
         Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
@@ -829,10 +873,23 @@ Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.
 Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
 
 
+// NOTE: this group sits outside the top-level Route::middleware(['auth'])
+// wrap above, and ReceiptVoucherController has no constructor middleware
+// either — before the prior security pass every one of these routes (not
+// just `.show`) had ZERO auth protection, not merely a missing module gate.
+// 'module:accounting' is added here alongside the already-present 'auth'.
+// `.show` keeps its existing ->withoutMiddleware(['auth']) exemption (it's
+// the client-facing shareable voucher link, same pattern as
+// invoice.show/payment.link.show) — widening that exemption to also skip
+// the module check would 404 it for EVERY company whenever an anonymous
+// visitor opens the link (no user means no company to check), which would
+// break today's legacy behavior. Closing that specific gap for
+// package-client companies is left to whoever wraps the stray links into
+// this route from the Invoice views (see report).
 Route::group([
     'prefix' => 'receipt-voucher',
     'as' => 'receipt-voucher.',
-    'middleware' => ['auth'],
+    'middleware' => ['auth', 'module:accounting'],
 ], function () {
     Route::get('/', [ReceiptVoucherController::class, 'index'])->name('index');
     Route::get('/create', [ReceiptVoucherController::class, 'create'])->name('create');
@@ -844,13 +901,16 @@ Route::group([
     Route::get('/fetch-journals-view', [ReceiptVoucherController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
     Route::post('/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('decline-reconcile');
     Route::post('/import', [ReceiptVoucherController::class, 'import'])->name('import');
-    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show')->withoutMiddleware(['auth', 'module:accounting']);
 });
 
+// Same pre-existing gap as receipt-voucher above: BankPaymentController has
+// no 'show' route at all, so no exemption is needed — every action here
+// gets both 'auth' and 'module:accounting'.
 Route::group([
     'prefix' => 'bank-payments',
     'as' => 'bank-payments.',
-    'middleware' => ['auth'],
+    'middleware' => ['auth', 'module:accounting'],
 ], function () {
     Route::get('/create', [BankPaymentController::class, 'create'])->name('create');
     Route::post('/store', [BankPaymentController::class, 'store'])->name('store');

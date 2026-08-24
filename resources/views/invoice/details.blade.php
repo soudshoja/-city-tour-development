@@ -528,7 +528,12 @@
                 </p>
                 @endif
             </section>
-            @if($journalEntries->isNotEmpty())
+            {{-- $hasAccountingModule gates this section for a company without the
+                 accounting module — the controller also skips building
+                 $journalEntries entirely in that case, this is belt-and-suspenders
+                 (mirrors the $hasAccountingModule pattern used elsewhere: menu,
+                 sidebar, dashboard, invoice/edit). --}}
+            @if(($hasAccountingModule ?? false) && $journalEntries->isNotEmpty())
             <section class="px-8 pt-2 pb-6">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Financial Ledger</h2>
                 <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded-lg">

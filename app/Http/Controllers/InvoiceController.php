@@ -4291,17 +4291,30 @@ class InvoiceController extends Controller
         }
         $company = Company::find($companyId);
 
-        $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
+        // invoice.details carries no module gate at all (it's an invoice
+        // page, and invoices belong to the package) — but it used to render
+        // a "Financial Ledger" table of real JournalEntry rows unconditionally,
+        // leaking accounting content to a company without the module. Only
+        // build the ledger data when accounting is actually on; the blade
+        // also checks this flag before rendering the section, matching the
+        // $hasAccountingModule pattern used by menu/sidebar/dashboard/edit.
+        $hasAccountingModule = $company && $company->hasModule(\App\Support\Modules::ACCOUNTING);
 
-        $journalEntries = JournalEntry::where(function ($q) use ($invoice, $taskIds) {
-            $q->where('invoice_id', $invoice->id)
-                ->orWhereIn('task_id', $taskIds);
-        })
-            ->get();
+        if ($hasAccountingModule) {
+            $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
 
-        $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
+            $journalEntries = JournalEntry::where(function ($q) use ($invoice, $taskIds) {
+                $q->where('invoice_id', $invoice->id)
+                    ->orWhereIn('task_id', $taskIds);
+            })
+                ->get();
 
-        return view('invoice.details', compact('invoice', 'company', 'journalEntries'));
+            $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
+        } else {
+            $journalEntries = collect();
+        }
+
+        return view('invoice.details', compact('invoice', 'company', 'journalEntries', 'hasAccountingModule'));
     }
 
     public function getTaskInvoiceStatus($taskId)

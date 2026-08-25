@@ -93,6 +93,15 @@
                     if (mq.addEventListener) mq.addEventListener('change', onChange);
                     else if (mq.addListener) mq.addListener(onChange); // Safari <14 fallback
                 }
+
+                // A wire:navigate transition swaps in the new page's <html>
+                // attributes, which wipes the .resayil-reflow class we put
+                // there. This store survives the navigation (it is global and
+                // the drawer node is persisted), so nothing here changes and
+                // no watcher fires — the drawer would stay locked open while
+                // the page silently stopped making room for it. Re-assert the
+                // DOM state after every navigation so the two cannot drift.
+                document.addEventListener('livewire:navigated', () => this._applyDomState());
             },
 
             // Reflow (page content shrinks to make room) only kicks in when

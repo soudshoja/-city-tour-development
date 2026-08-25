@@ -87,12 +87,10 @@
             </menuitem>
             @endif
             @endcan
-            @can('viewAny', 'App\Models\Charge')
-            <menuitem><div
-                data-tooltip="This feature has been relocated to Settings."
-                class="rounded-lg shadow-lg text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow cursor-not-allowed">Manage Charges</div>
-            </menuitem>
-            @endcan
+            {{-- "Manage Charges" moved to Settings (visible, highlighted "Coming soon"
+                 item — see settings/index.blade.php) instead of staying here as a dead
+                 disabled link. Same @can('viewAny', 'App\Models\Charge') gate as before,
+                 just relocated to where it structurally belongs. --}}
             <!-- @can('viewAny', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transactions</a>

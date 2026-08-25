@@ -61,6 +61,23 @@
                         {{ __('settings.terms_regulations') }}
                     </button>
 
+                    {{-- "Manage Charges" — relocated here from the Finances menu, where it
+                         was a dead disabled link to the retired charges.index page (see
+                         menu.blade.php history). Kept visible and highlighted per product
+                         decision rather than buried or removed outright: this is a roadmap
+                         item, not a broken link, so it gets an explicit "Coming soon" pill
+                         instead of a greyed-out/disabled look. Same @can gate as before. --}}
+                    @can('viewAny', 'App\Models\Charge')
+                    <button type="button" disabled aria-disabled="true"
+                        class="setting-sidebar-btn setting-sidebar-btn-soon">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="setting-sidebar-item-label">Manage Charges</span>
+                        <span class="main-tab-badge main-tab-badge-amber setting-sidebar-item-badge">Coming soon</span>
+                    </button>
+                    @endcan
+
                     @can('viewAny', 'App\Models\Charge')
                     <button
                         @click="saveTab('charges')"

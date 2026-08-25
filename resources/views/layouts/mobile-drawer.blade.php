@@ -284,7 +284,9 @@
                     @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
                     <a href="{{ route('docs.developer-documentation') }}" class="mobile-drawer-subitem">Developer Docs</a>
                     @endif
-                    <a href="#" class="mobile-drawer-subitem">Help</a>
+                    {{-- Help hidden from Settings per product decision (same treatment as
+                         layouts/menu.blade.php's desktop Settings submenu). --}}
+                    {{-- <a href="#" class="mobile-drawer-subitem">Help</a> --}}
                     @can('viewAny', App\Models\CurrencyExchange::class)
                     @if($hasAccountingModule)
                     <a href="{{ route('exchange.index') }}" class="mobile-drawer-subitem">Currency Exchange</a>

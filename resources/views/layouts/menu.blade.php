@@ -393,11 +393,17 @@
                 @endif
             </menu>
             </menuitem>
+            {{-- Help hidden from Settings per product decision. Also appears (same
+                 treatment applied) in layouts/mobile-drawer.blade.php's Settings
+                 submenu — no other occurrences found elsewhere in the app. Left as a
+                 comment rather than deleted so it's trivially restorable. --}}
+            {{--
             <menuitem>
             <a href="#"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help
             </a>
             </menuitem>
+            --}}
             <!-- Main Menu Item -->
             <menuitem>
             @can('viewAny', App\Models\CurrencyExchange::class)

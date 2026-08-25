@@ -334,7 +334,9 @@
         </div>
     </div>
 </div>
-<script>
+{{-- data-navigate-once: see navigation.blade.php — top-level const would be
+     re-declared on each wire:navigate transition and throw. --}}
+<script data-navigate-once>
     const __sidebarTranslations = {
         lastUpdated: "{{ __('menu.last_updated') }}",
         failedToConvert: "{{ __('menu.failed_to_convert') }}",

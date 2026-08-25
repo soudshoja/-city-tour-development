@@ -35,7 +35,12 @@
     </div>
 </header>
 
-<script>
+{{-- data-navigate-once: this block declares top-level let/const. Livewire's
+     wire:navigate re-executes body scripts on every transition, and a second
+      in the same global scope throws a SyntaxError that aborts
+     the page swap for this element. Running it once per real page load is the
+     correct lifetime for a declaration block anyway. --}}
+<script data-navigate-once>
     let walletData = null;
     let walletSessionExpiry = null;
     const WALLET_SESSION_DURATION = 60000;

@@ -176,13 +176,13 @@
         <menu>
             @can('viewAny', 'App\Models\User')
             <menuitem>
-            <a href="{{ route('users.index') }}"
+            <a href="{{ route('users.index') }}" wire:navigate
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Users List</a>
             </menuitem>
             @endcan
             @can('viewAny', 'App\Models\Company')
             <menuitem>
-            <a href="{{ route('companies.list') }}"
+            <a href="{{ route('companies.list') }}" wire:navigate
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Companies List</a>
             </menuitem>
             @endcan
@@ -342,7 +342,7 @@
         </a>
         <menu>
             <menuitem>
-            <a href="{{ route('settings.index') }}"
+            <a href="{{ route('settings.index') }}" wire:navigate
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a>
             @can('manage-system-settings')
             <menu class="flex px-2">

@@ -181,9 +181,9 @@
                     <x-icons.chevron-down class="w-4 h-4 transition-transform duration-200" x-bind:class="activeMenu === 'users' ? 'rotate-180' : ''" />
                 </button>
                 <div x-show="activeMenu === 'users'" x-collapse class="mobile-drawer-submenu">
-                    <a href="{{ route('users.index') }}" class="mobile-drawer-subitem">Users List</a>
+                    <a href="{{ route('users.index') }}" wire:navigate class="mobile-drawer-subitem">Users List</a>
                     @can('viewAny', 'App\Models\Company')
-                    <a href="{{ route('companies.list') }}" class="mobile-drawer-subitem">Companies List</a>
+                    <a href="{{ route('companies.list') }}" wire:navigate class="mobile-drawer-subitem">Companies List</a>
                     @endcan
                     @can('viewAny', App\Models\Branch::class)
                     <a href="{{ route('branches.index') }}" class="mobile-drawer-subitem">Branches List</a>
@@ -269,7 +269,7 @@
                     <x-icons.chevron-down class="w-4 h-4 transition-transform duration-200" x-bind:class="activeMenu === 'settings' ? 'rotate-180' : ''" />
                 </button>
                 <div x-show="activeMenu === 'settings'" x-collapse class="mobile-drawer-submenu">
-                    <a href="{{ route('settings.index') }}" class="mobile-drawer-subitem">Settings</a>
+                    <a href="{{ route('settings.index') }}" wire:navigate class="mobile-drawer-subitem">Settings</a>
                     @can('manage-system-settings')
                     <a href="{{ route('system-settings.index') }}" class="mobile-drawer-subitem">System Settings</a>
                     @endcan

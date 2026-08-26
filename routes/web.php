@@ -884,7 +884,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [ResayilAdminController::class, 'index'])->name('index');
 
         // JSON feed for the panel's Alpine poller / manual refresh.
-        Route::get('/overview-data', [ResayilAdminController::class, 'overviewData'])->name('overview');
+        // `throttle:resayil-overview-refresh` (registered in
+        // AppServiceProvider) only counts `?refresh=1` requests — the
+        // routine unthrottled 60 s poll is a cache read and does nothing
+        // to the reseller API. A forced refresh does one upstream call and
+        // one DB write per hit, and was unthrottled for every company user
+        // (abuse surface fix, wave 3).
+        Route::get('/overview-data', [ResayilAdminController::class, 'overviewData'])
+            ->middleware('throttle:resayil-overview-refresh')
+            ->name('overview');
 
         // Panel 4 — Billing. Payment history is a reseller read and needs
         // no company key; invoice PDFs do, and render the "available once

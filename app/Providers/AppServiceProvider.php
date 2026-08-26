@@ -14,8 +14,11 @@ use App\Policies\ClientPolicy;
 use App\Policies\COAPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\TaskPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Auth;
@@ -83,6 +86,34 @@ class AppServiceProvider extends ServiceProvider
             [Role::ADMIN, Role::COMPANY],
             true
         ));
+
+        /*
+         * Abuse surface fix — `GET /settings/whatsapp/overview-data?refresh=1`
+         * bypasses the panel's own 60 s cache on purpose (it is the explicit
+         * Refresh-button gesture), but that means it was ALSO unthrottled:
+         * every hit is one real call to the shared reseller API plus one
+         * `resayil_accounts` UPDATE, and one client could hammer it fast
+         * enough to affect every OTHER company on the platform. The routine
+         * 60 s poll (no `refresh` param) costs nothing extra and is served
+         * straight from cache, so it stays completely unthrottled here —
+         * only a forced refresh is limited.
+         *
+         * 6/minute per user (about one every 10 s) is generous for a human
+         * clicking Refresh — including someone watching a pause/resume take
+         * effect and re-checking a few times in a row — while cutting the
+         * demonstrated abuse (12 requests in 30 s, ~24/min) by 4x and
+         * capping it hard regardless of how much faster an attacker pushes.
+         * Applied to the `/overview-data` route only in routes/web.php.
+         */
+        RateLimiter::for('resayil-overview-refresh', function (Request $request) {
+            if (! $request->boolean('refresh')) {
+                return Limit::none();
+            }
+
+            $subject = optional($request->user())->id ?? $request->ip();
+
+            return Limit::perMinute(6)->by('resayil-refresh:'.$subject);
+        });
 
         // Register event listeners
         Event::listen(

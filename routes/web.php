@@ -54,6 +54,8 @@ use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\VoucherTemplateController;
+use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\PublicVoucherController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserSettingController;
 use App\Http\Controllers\LockManagementController;
@@ -241,7 +243,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/get-tasks', [TaskController::class, 'getTasks'])->name('get-tasks');
         Route::get('/search-original-tasks', [TaskController::class, 'searchOriginalTasks'])->name('search-original-tasks');
         Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
-        Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
+        // Step 4 (plan section 14.13): removed. GET /tasks/voucher pointed at
+        // TaskController::voucher, a method that never existed -- 500'd on
+        // every hit, zero real usage (grepped: no route('tasks.voucher') call
+        // anywhere in app/resources). The real per-task voucher UI now lives
+        // at GET vouchers/task/{task} (VoucherController::indexForTask), a
+        // fresh name rather than reclaiming this one, since the dead symbol
+        // carried no id and did not fit an issue-a-voucher action shape.
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
         Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
@@ -249,8 +257,34 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/supplier-task/{id}', [TaskController::class, 'supplierTask'])->name('supplier');
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
         Route::get('/get-tbo/{companyId}', [TaskController::class, 'getTboTask'])->name('get-tbo');
-        Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight')->withoutMiddleware(['auth']);
-        Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel')->withoutMiddleware(['auth']);
+        // Step 4 item 5 (plan section 11.3, section 15 V3): CLOSED. No usage of
+        // tasks.pdf.flight found anywhere outside the authenticated admin UI
+        // (resources/views/invoice/index.blade.php's staff-facing links), so
+        // auth is safely required again; flightPdf() below now also scopes
+        // its query by company_id.
+        Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight')->middleware('throttle:60,1');
+        // Step 4 item 5: NOT closed, deliberately, and flagged for the owner.
+        // grep -rn 'tasks/pdf' found TWO live production paths that build this
+        // exact unauthenticated URL and hand it to a real end customer with no
+        // Laravel session -- both inside files this session is forbidden to
+        // edit (accounting boundary, plan section 2):
+        //   - PaymentController::registerTBOBookingAsTask() (lines ~997, ~1096)
+        //     returns 'hotel_voucher_url' => route('tasks.pdf.hotel', ...) in the
+        //     JSON response of the fully public POST /api/payment/register-tbo-booking
+        //     webhook (routes/api.php:55, no auth middleware at all).
+        //   - InvoiceController::autoGenerateInvoice() (line ~6346) posts the same
+        //     URL as 'hotel_voucher' to an n8n webhook alongside the client's own
+        //     phone number and a WhatsApp message -- i.e. this URL is actively
+        //     forwarded to real clients today.
+        // Requiring auth here would break both flows for every real customer
+        // mid-booking. Per this feature's own binding boundary ("If you think
+        // you must change one, STOP and report instead"), this route stays
+        // public+unscoped and only gets a throttle as a partial mitigation. The
+        // real fix is for whoever owns PaymentController/InvoiceController to
+        // repoint those two call sites at the new tokenised travel-voucher.show
+        // route BEFORE this one can safely require auth -- reported to the owner,
+        // not silently worked around.
+        Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel')->withoutMiddleware(['auth'])->middleware('throttle:60,1');
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
@@ -884,6 +918,31 @@ Route::middleware(['auth'])->group(function () {
     });
 
     /*
+    | Voucher issue/send actions on a task or a package (Step 4, plan
+    | .planning/specs/VOUCHER-TEMPLATES.md section 10, section 16). A SIBLING
+    | of the settings group above (not nested — same reason as the
+    | Resayil Admin Center group directly below: nesting would prefix
+    | every name with settings.). Inherits 'auth' from the outer wrap;
+    | issuing/sending needs no dedicated permission (plan section 11.5 —
+    | normal authenticated task access is enough), and every method
+    | inside VoucherController still scopes explicitly by
+    | getCompanyId(Auth::user()) rather than trusting route-model-binding
+    | alone (plan section 2.4 discipline).
+    */
+    Route::group([
+        'prefix' => 'vouchers',
+        'as' => 'vouchers.',
+    ], function () {
+        Route::get('/task/{task}', [VoucherController::class, 'indexForTask'])->name('task.index');
+        Route::post('/task/{task}/issue', [VoucherController::class, 'issueForTask'])->name('task.issue');
+        Route::post('/task/{task}/attach-client', [VoucherController::class, 'attachClient'])->name('task.attach-client');
+        Route::post('/package/{package}/issue', [VoucherController::class, 'issueForPackage'])->name('package.issue');
+        Route::get('/{voucher}/download', [VoucherController::class, 'download'])->name('download');
+        Route::post('/{voucher}/send', [VoucherController::class, 'send'])->name('send');
+        Route::post('/{voucher}/cancel', [VoucherController::class, 'cancel'])->name('cancel');
+    });
+
+    /*
     | Module 5 — Resayil Admin Center (Settings -> WhatsApp).
     | Plan: .planning/specs/RESAYIL-ADMIN-CENTER.md §4.1 / §9.2.
     |
@@ -1050,6 +1109,28 @@ Route::group([
     Route::get('/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('fetchPaymentsByDate');
     Route::get('/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
     Route::post('/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('decline-reconcile');
+});
+
+/*
+| Public tokenised voucher route (Step 4 item 2, plan .planning/specs/VOUCHER-TEMPLATES.md
+| section 3.6 / section 11.1). Deliberately in this file region: OUTSIDE the top-level
+| Route::middleware(['auth'])->group(...) wrap, same as receipt-voucher/.show and
+| bank-payments above -- no exemption dance needed here because this whole
+| group carries no 'auth' middleware at all.  is UNTRUSTED URL input
+| (same caution as InvoiceController::generatePdf's own comment) -- every
+| lookup is TravelVoucher::scopeForPublicToken(, ), which
+| double-scopes by company_id AND token AND excludes every
+| TravelVoucher::PUBLICLY_DEAD_STATUSES status. throttle:30,1 because the
+| URL shape (companyId + token) is enumerable-shaped even though the
+| 64-char token itself is not guessable (plan section 11.1).
+*/
+Route::group([
+    'prefix' => 'travel-voucher',
+    'as' => 'travel-voucher.',
+    'middleware' => ['throttle:30,1'],
+], function () {
+    Route::get('/{companyId}/{token}', [PublicVoucherController::class, 'show'])->name('show');
+    Route::get('/{companyId}/{token}/pdf', [PublicVoucherController::class, 'pdf'])->name('pdf');
 });
 
 

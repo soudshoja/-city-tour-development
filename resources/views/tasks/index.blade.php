@@ -1377,6 +1377,19 @@
                     </button>
                 </li>
             </template>
+
+            {{-- Step 4 item 1 (plan section 10, section 16): issue/view/send a voucher
+                 for this task -- VoucherController::indexForTask. --}}
+            <template x-if="$store.actionMenu.data?.voucherUrl">
+                <li>
+                    <a :href="$store.actionMenu.data.voucherUrl" target="_blank" class="task-action-menu-item">
+                        <svg class="w-4 h-4 mr-2 text-blue-800" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Vouchers
+                    </a>
+                </li>
+            </template>
         </ul>
     </div>
 

@@ -111,4 +111,22 @@ class VoucherTemplate extends Model
     {
         return $query->where('company_id', $companyId);
     }
+
+    /**
+     * The one active template that actually applies for a company +
+     * task_type + language, following the §3.1 resolution rule: a
+     * company's own override row wins over the shipped system row when
+     * one exists (Step 4, plan §16 — reused from
+     * VoucherTemplateController::preview()'s identical inline query).
+     */
+    public static function resolveEffective(int $companyId, string $taskType, string $language): ?self
+    {
+        return static::query()
+            ->where('task_type', $taskType)
+            ->where('language', $language)
+            ->where('is_active', true)
+            ->visibleTo($companyId)
+            ->orderByRaw('company_id IS NOT NULL DESC')
+            ->first();
+    }
 }

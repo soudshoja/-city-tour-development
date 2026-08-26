@@ -98,4 +98,19 @@ final class VoucherCatalogue
     {
         return in_array(strtoupper($language), self::LANGUAGES, true);
     }
+
+    /**
+     * The catalogue task_type a real `tasks.type` value previews/issues
+     * against (Step 4, plan §16): the four typed tasks map 1:1, the five
+     * types with no detail table (GENERIC_TASK_TYPES) all fall to the one
+     * generic-segment design.
+     */
+    public static function catalogTaskTypeFor(string $taskType): string
+    {
+        if (in_array($taskType, self::GENERIC_TASK_TYPES, true)) {
+            return self::TASK_TYPE_GENERIC;
+        }
+
+        return $taskType;
+    }
 }

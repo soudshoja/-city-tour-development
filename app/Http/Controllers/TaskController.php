@@ -623,6 +623,10 @@ class TaskController extends Controller
                 'surcharge' => $task->surcharge ?? 0,
                 'isInvoicedAndPaid' => $isInvoicedAndPaid,
                 'showSwitchInvoice' => isset($switchInvoiceData[$task->id]),
+                // Step 4 item 1 (plan section 10, section 16): task-scoped Vouchers
+                // mini page (VoucherController::indexForTask) -- issue/view/
+                // download/send/cancel a voucher for this task.
+                'voucherUrl' => route('vouchers.task.index', $task->id),
             ]];
         });
 
@@ -4662,10 +4666,17 @@ class TaskController extends Controller
 
     public function flightPdf($taskId)
     {
-        $invoiceTask = Task::with(['flightDetails.countryFrom', 'flightDetails.countryTo', 'agent', 'client'])->findOrFail($taskId);
+        // Step 4 item 5 (plan section 11.3): this route now requires auth again
+        // (routes/web.php), so a real company context exists here -- scope the
+        // lookup by it explicitly rather than trusting a bare findOrFail(),
+        // matching the isolation discipline the rest of this feature follows.
+        $companyId = getCompanyId(Auth::user());
+        $invoiceTask = Task::with(['flightDetails.countryFrom', 'flightDetails.countryTo', 'agent', 'client'])
+            ->where('company_id', $companyId)
+            ->findOrFail($taskId);
 
         if ($invoiceTask->gds_reference) {
-            $tasks = Task::with(['flightDetails.countryFrom', 'flightDetails.countryTo', 'agent', 'client'])->where('gds_reference', $invoiceTask->gds_reference)->get();
+            $tasks = Task::with(['flightDetails.countryFrom', 'flightDetails.countryTo', 'agent', 'client'])->where('gds_reference', $invoiceTask->gds_reference)->where('company_id', $companyId)->get();
 
             Log::info("flightPdf: loaded tasks for GDS {$invoiceTask->gds_reference}", [
                 'count' => $tasks->count(),
@@ -4689,7 +4700,13 @@ class TaskController extends Controller
 
     public function hotelPdf($taskId)
     {
-        $invoiceTask = Task::with('company', 'hotelDetails.room', 'hotelDetails.hotel.country', 'agent', 'client')->findOrFail($taskId);
+        // Pre-existing bug fix (found live-verifying Step 4's legacy-route
+        // check): Hotel's relation method is countryRelation(), not
+        // country() -- this eager-load 500'd on EVERY hit before this fix
+        // (RelationNotFoundException), unrelated to and predating this
+        // feature. The view never actually reads hotel->country anyway, so
+        // this only fixes the crash, changes no rendered output.
+        $invoiceTask = Task::with('company', 'hotelDetails.room', 'hotelDetails.hotel.countryRelation', 'agent', 'client')->findOrFail($taskId);
         $tasks = $invoiceTask->reference ? Task::with(['agent', 'client', 'company'])->where('reference', $invoiceTask->reference)->get() : collect([$invoiceTask]);
 
         if ($tasks->isEmpty()) {

@@ -274,7 +274,8 @@
                     <h3>Operator</h3>
                     <p style="font-size:.8125rem;color:#4338ca;">{{ $overview['operator_note'] }}</p>
                     <p style="font-size:.75rem;color:#4338ca;margin-top:.4rem;">
-                        Automatic provisioning (ProvisionResayilWorkspace) ships in slice 2. Until then an admin row is created by an operator.
+                        Automatic provisioning is live: loading this page queues ProvisionResayilWorkspace (at most once every 5 minutes per company).
+                        Force it now with <code>php artisan resayil:provision-company {{ $companyId }} --sync</code>.
                     </p>
                 </div>
             @endif

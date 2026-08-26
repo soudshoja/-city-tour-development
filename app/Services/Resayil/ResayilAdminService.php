@@ -2,7 +2,10 @@
 
 namespace App\Services\Resayil;
 
+use App\Jobs\ProvisionResayilWorkspace;
+use App\Models\Company;
 use App\Models\ResayilAccount;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -280,18 +283,23 @@ class ResayilAdminService
         $row = ResayilAccount::adminFor($companyId);
 
         if (! $row) {
-            // No admin row at all. Slice 1 deliberately does NOT call
-            // ResayilProvisioningService::ensureUserProvisioned() here,
-            // even though plan §3.1 wires it into every Module-5 surface:
-            // its findCustomerByEmail() lookup relies on
-            // `GET /customers?email=` filtering server-side, and a live
-            // probe proved the API IGNORES that parameter (it returns the
-            // same first 20 of 97 rows either way). Calling it from a
-            // Settings page load would therefore blind-POST real customers
-            // onto the live platform on a broken idempotency check. That
-            // lookup is fixed, and the safety-net call added, in slice 2.
+            // No admin row at all. Slice 1 deliberately did NOT trigger
+            // provisioning here, because findCustomerByEmail() was relying
+            // on `GET /customers?email=`, which the live API IGNORES — a
+            // page load would have blind-POSTed real customers onto the
+            // live platform on a broken idempotency check. Wave 2 fixed
+            // that lookup (the working parameter is `search`), so the
+            // plan's §3.1 safety net can finally be wired in.
+            //
+            // It is a DISPATCH, not an inline call: a Settings page render
+            // must not wait on three round trips to an external API, and a
+            // Resayil outage must not turn this page into a slow one. The
+            // page keeps saying "not set up yet" until the worker lands the
+            // row — honest, and with no auto-reload loop for a company
+            // whose provisioning keeps failing.
             $base['state'] = self::STATE_NOT_PROVISIONED;
-            $base['operator_note'] = "No resayil_accounts admin row for company #{$companyId}.";
+            $base['operator_note'] = "No resayil_accounts admin row for company #{$companyId}."
+                .($this->dispatchProvisioning($companyId) ? ' ProvisionResayilWorkspace queued.' : '');
             $base['checklist'] = $this->checklist(null, null);
 
             return $base;
@@ -326,7 +334,10 @@ class ResayilAdminService
             $base['subscription'] = $device ? $this->projectSubscription($device) : null;
             $base['health'] = $device ? $this->projectHealth($device) : null;
             $base['checklist'] = $this->checklist($row, $base['device']);
-            $base['banners'] = $this->banners($base['device'], $base['subscription']);
+            $base['banners'] = array_merge(
+                $this->banners($base['device'], $base['subscription']),
+                $this->keyBanners($row),
+            );
 
             $this->persistSnapshot($row, $base);
 
@@ -673,7 +684,13 @@ class ResayilAdminService
                 'done' => $hasKey,
                 'hint' => $hasKey
                     ? null
-                    : 'Links automatically once your workspace finishes setting up.',
+                    : ($this->keyCaptureFailed($row)
+                        // THE FETCH RULE (plan §0, design law #4): say so in
+                        // plain words, at the exact point the client needs
+                        // it, and never pretend a step is merely pending
+                        // when it has actually failed.
+                        ? "Automatic linking didn't complete. Our team finishes this for you — nothing is needed from you."
+                        : 'Links automatically once your workspace finishes setting up.'),
             ],
             [
                 'key' => 'number',
@@ -694,6 +711,81 @@ class ResayilAdminService
                         : 'Available once a number is connected.'),
             ],
         ];
+    }
+
+    /**
+     * Has this company's silent account-key capture been tried and failed?
+     * Wave 2 writes meta.key_capture_failed on every unsuccessful attempt
+     * and clears it the moment a key is stored, so this is "failed AND
+     * still not linked", not "failed once, ever".
+     */
+    protected function keyCaptureFailed(?ResayilAccount $row): bool
+    {
+        if (! $row || $row->resayil_account_token) {
+            return false;
+        }
+
+        return is_array($row->meta) && isset($row->meta['key_capture_failed']);
+    }
+
+    /**
+     * §8 state N-3 — the workspace exists but no account key is linked.
+     *
+     * Client-facing copy only: which endpoint failed and why is an operator
+     * concern and stays in meta / the log. The client is told the truth
+     * (some features are not available yet) and told they do not have to do
+     * anything about it, which is accurate — the recovery path is ours.
+     *
+     * @return list<array<string,string>>
+     */
+    protected function keyBanners(?ResayilAccount $row): array
+    {
+        if (! $this->keyCaptureFailed($row)) {
+            return [];
+        }
+
+        return [[
+            'id' => 'N-3',
+            'tone' => 'info',
+            'title' => "We're still linking your workspace access.",
+            'body' => 'Your WhatsApp status, plan and payment history below are live and correct. A few extras — invoices and team access — switch on once linking finishes. Our team completes this; nothing is needed from you.',
+        ]];
+    }
+
+    /**
+     * Queue the silent provisioning job for a company that has no Resayil
+     * workspace yet, at most once every few minutes.
+     *
+     * The lock is the point: without it, one client sitting on this page
+     * with its 60 s poller would queue a job a minute, forever. Cache::add()
+     * is atomic on every driver this app uses, so two simultaneous page
+     * loads still produce one dispatch. Returns whether it actually queued.
+     */
+    protected function dispatchProvisioning(int $companyId): bool
+    {
+        try {
+            if (! Cache::add("resayil:admin:provision-dispatch:{$companyId}", 1, 300)) {
+                return false;
+            }
+
+            $company = Company::find($companyId);
+
+            if (! $company || ! $company->user_id || ! User::whereKey($company->user_id)->exists()) {
+                return false;
+            }
+
+            ProvisionResayilWorkspace::dispatch($companyId, $company->user_id);
+
+            return true;
+        } catch (\Throwable $e) {
+            // A page render must never fail because a queue write did.
+            Log::warning('resayil.admin.provision_dispatch_failed', [
+                'company_id' => $companyId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**

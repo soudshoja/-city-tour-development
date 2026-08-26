@@ -141,9 +141,17 @@ class ResayilAccount extends Model
      */
     public static function adminFor(int $companyId): ?self
     {
+        // orderBy('id') is not cosmetic. Two concurrent provisioning runs
+        // for the same company can, in the worst case, both insert an admin
+        // row (the unique key is on company_id + user_id, not on role). With
+        // no ordering, which workspace the panel shows would then be
+        // whatever the storage engine returned first, and could differ
+        // between two page loads. Oldest row wins, always: it is the one
+        // whose customer id every other row already copied.
         return static::query()
             ->forCompany($companyId)
             ->where('role', self::ROLE_ADMIN)
+            ->orderBy('id')
             ->first();
     }
 }

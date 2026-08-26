@@ -267,6 +267,11 @@ class ResayilAdminService
         $base = [
             'state' => self::STATE_NOT_CONFIGURED,
             'degraded' => false,
+            // True only once degraded() finds a persisted subscription_cache
+            // to fall back on. The view must not infer "we have data" from
+            // workspace/device being non-null — this flag is the single
+            // source of truth for whether there is anything to stand behind.
+            'snapshot_available' => false,
             'stale_since' => null,
             'fetched_at' => now()->toIso8601String(),
             'workspace' => null,
@@ -379,7 +384,12 @@ class ResayilAdminService
      * §8 state D-1 — the reseller API is unreachable or erroring. Render
      * the last-good snapshot with an amber "showing last known status from
      * {time}" line rather than an error page. With no snapshot to fall back
-     * on, the panel says plainly that the status could not be loaded.
+     * on (day one for every company — subscription_cache starts null and
+     * is only ever written by a successful fetch), `snapshot_available`
+     * stays false and the view must say plainly that the status could not
+     * be loaded, rather than falling through to the healthy-state cards
+     * with nulls that read as confident "not connected" / "no active plan"
+     * answers instead of "we don't know" (blocker 4).
      *
      * @param  array<string,mixed>  $base
      * @return array<string,mixed>
@@ -390,8 +400,9 @@ class ResayilAdminService
         $base['operator_note'] = $reason;
 
         $cache = $row->subscription_cache;
+        $base['snapshot_available'] = is_array($cache) && $cache !== [];
 
-        if (is_array($cache) && $cache !== []) {
+        if ($base['snapshot_available']) {
             $base['workspace'] = $cache['workspace'] ?? null;
             $base['device'] = $cache['device'] ?? null;
             $base['subscription'] = $cache['subscription'] ?? null;

@@ -182,6 +182,15 @@
         $health = $overview['health'] ?? null;
         $seats = $overview['seats'] ?? ['used' => 0, 'cap' => 0, 'reached' => false];
         $ready = $state === \App\Services\Resayil\ResayilAdminService::STATE_READY;
+        $degraded = $overview['degraded'] ?? false;
+        // Blocker 4: subscription_cache starts null for every company, so
+        // "no snapshot yet" is day-one state, not an edge case. When a live
+        // fetch just failed AND there is nothing earlier to fall back on,
+        // the panel must say so plainly rather than rendering the healthy
+        // cards' null-coalesced defaults ("Not connected yet", "No active
+        // plan") as if they were answers instead of unknowns.
+        $snapshotAvailable = $overview['snapshot_available'] ?? false;
+        $noDataAvailable = $degraded && ! $snapshotAvailable;
 
         $fmt = function ($value, $withTime = false) {
             if (empty($value)) {
@@ -332,6 +341,33 @@
         @else
             {{-- READY. Everything below renders from reseller reads only —
                  no company account key is involved anywhere in this slice. --}}
+
+        @if($noDataAvailable)
+            {{-- Blocker 4: a live fetch just failed and there is no
+                 earlier subscription_cache to fall back on.
+                 subscription_cache starts NULL for every company (this
+                 wave's own migration), so "no snapshot" is DAY ONE for
+                 EVERY company, not a rare edge case. The healthy cards
+                 below all null-coalesce to confident-sounding defaults —
+                 "Not connected yet", "No active plan", a neutral "Unknown"
+                 pill — that would read as real answers instead of "we
+                 don't know" if rendered with nothing behind them. Show
+                 nothing we can't stand behind instead. The header's
+                 Refresh button still shows ($ready stays true — `state`
+                 is genuinely READY, only this fetch failed), so retrying
+                 costs one click. --}}
+            <div class="rsa-state">
+                <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="">
+                <h2>We couldn't reach the WhatsApp service</h2>
+                <p>This is on our side, not a problem with your account. We don't have an earlier snapshot to fall back on while we retry — try Refresh in a moment, or check back shortly.</p>
+            </div>
+            @if($isOperator)
+                <div class="rsa-op">
+                    <h3>Operator</h3>
+                    <p style="font-size:.8125rem;"><code>{{ \Illuminate\Support\Str::limit((string) ($overview['operator_note'] ?? '—'), 600) }}</code></p>
+                </div>
+            @endif
+        @else
 
             @if($overview['degraded'] ?? false)
                 {{-- State D-1: reseller API unreachable. Last-known-good
@@ -642,6 +678,8 @@
                     </div>
                 </div>
             </div>
+
+        @endif {{-- $noDataAvailable --}}
         @endif
 
         {{-- Operator confirm modal for pause/resume (§9.4 destructive-action ladder). --}}

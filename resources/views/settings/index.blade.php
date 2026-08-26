@@ -151,30 +151,33 @@
                     @endif
 
                     {{-- Module 5 — Resayil Admin Center (Settings -> WhatsApp).
-                         A LINK OUT, not a tab: it follows the "Manage Charges"
-                         precedent above — a sidebar entry with no matching
-                         content-area panel, no tabLabels entry and no change to
-                         SettingController's tab whitelist — because the WhatsApp
-                         panels live on their own route with their own module and
-                         role gate. Styled with the same .setting-sidebar-btn
-                         classes, which carry no button-only properties and so
-                         render identically on an <a>.
+                         Redesign (2026-08-26): this used to be a plain <a>
+                         that navigated away from Settings to its own page —
+                         the owner's core complaint ("the inbox opens as its
+                         own page and leaves Settings"). It is now a real tab,
+                         matching every other entry in this sidebar: a
+                         saveTab() button plus a matching x-show panel below
+                         that @includes the same partial the standalone
+                         /settings/whatsapp route renders (resayil.admin.index
+                         still works as a direct link; it @includes the
+                         identical partial so the two never drift apart).
 
                          Gated by BOTH the module flag and the same
                          manage-resayil gate the route carries, so a user who
-                         would be 404'd or 403'd never sees the link at all. --}}
+                         would be 404'd or 403'd on the standalone route never
+                         sees the tab at all — SettingController::index()
+                         applies the identical check before it even builds
+                         $resayilOverview. --}}
                     @if(($currentCompanyId ?? null) && \App\Models\Company::find($currentCompanyId)?->hasModule(\App\Support\Modules::RESAYIL))
                     @can('manage-resayil')
-                    <a href="{{ route('resayil-admin.index') }}"
-                       class="setting-sidebar-btn {{ request()->routeIs('resayil-admin.*') ? 'setting-sidebar-btn-active' : '' }}">
+                    <button
+                        @click="saveTab('whatsapp')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'whatsapp'}"
+                        class="setting-sidebar-btn">
                         <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="" width="160" height="149"
                              class="setting-sidebar-icon" style="width:1.25rem;height:auto;object-fit:contain;">
                         <span class="setting-sidebar-item-label">WhatsApp</span>
-                        <svg class="setting-sidebar-item-badge" style="width:1rem;height:1rem;opacity:.45;" fill="none"
-                             stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </a>
+                    </button>
                     @endcan
                     @endif
                 </nav>
@@ -222,6 +225,22 @@
                 <div x-show="activeTab === 'ai-config'" x-cloak>
                     @include('settings.partial.ai_config')
                 </div>
+                @endif
+
+                @if(($currentCompanyId ?? null) && \App\Models\Company::find($currentCompanyId)?->hasModule(\App\Support\Modules::RESAYIL))
+                @can('manage-resayil')
+                <div x-show="activeTab === 'whatsapp'" x-cloak>
+                    @include('resayil.admin._panel', [
+                        'overview' => $resayilOverview,
+                        'companyId' => $currentCompanyId,
+                        'isOperator' => auth()->user()->role_id === \App\Models\Role::ADMIN,
+                        'activePanel' => $resayilActivePanel ?? 'overview',
+                        'embedUrl' => $resayilEmbedUrl ?? null,
+                        'notConfigured' => $resayilNotConfigured ?? true,
+                        'embedded' => true,
+                    ])
+                </div>
+                @endcan
                 @endif
             </div>
         </div>
@@ -277,6 +296,7 @@
                     'agent-loss': '{{ __('settings.agent_loss') }}',
                     'notifications': '{{ __('settings.notifications') }}',
                     'ai-config': 'AI Configuration',
+                    'whatsapp': 'WhatsApp',
                 },
 
                 init() {

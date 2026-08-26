@@ -56,9 +56,16 @@ class ResayilAdminController extends Controller
             'overview' => $overview,
             'companyId' => $companyId,
             'isOperator' => (int) $user->role_id === Role::ADMIN,
-            'activePanel' => in_array($request->query('panel'), ['overview', 'billing'], true)
+            'activePanel' => in_array($request->query('panel'), ['overview', 'billing', 'team', 'inbox'], true)
                 ? $request->query('panel')
                 : 'overview',
+            // Inbox tab (redesign §1 — the WhatsApp inbox now lives inside
+            // this section instead of the separate /resayil full page).
+            // Same server-configured URL as ResayilEmbedController and the
+            // drawer — never user input (SSRF guard, see
+            // App\Http\Middleware\ResayilFrameHeaders).
+            'embedUrl' => config('resayil.embed_url'),
+            'notConfigured' => empty(config('resayil.embed_url')),
         ]);
     }
 

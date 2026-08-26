@@ -822,7 +822,15 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'settings',
         'as' => 'settings.',
     ], function () {
-        Route::get('/', [SettingController::class, 'index'])->name('index');
+        // `resayil.frame` (redesign, 2026-08-26): the WhatsApp tab embedded
+        // on this page (SettingController::index() -> resayil.admin._panel)
+        // can render the same Resayil iframe as the standalone
+        // resayil-admin.index route, so this response needs the matching
+        // CSP frame-src header. Harmless for every user without WhatsApp
+        // access: ResayilFrameHeaders always emits SOME header (a bare
+        // `frame-src 'self'` when there is nothing to allow), it does not
+        // block anything this page did not already avoid framing.
+        Route::get('/', [SettingController::class, 'index'])->name('index')->middleware('resayil.frame');
 
         Route::group([
             'prefix' => 'invoice',
@@ -870,16 +878,19 @@ Route::middleware(['auth'])->group(function () {
     | this section exists); `can:manage-resayil` then 403s roles outside
     | {ADMIN, COMPANY} for companies that DO have the module.
     |
-    | `resayil.frame` is deliberately NOT applied: no panel here frames
-    | wa.resayil.io. Slice 1 renders entirely from server-proxied reseller
-    | reads, and the later Connect card uses a top-level popup, not an
-    | iframe. Adding the CSP middleware while RESAYIL_EMBED_URL is unset
-    | would emit `frame-src 'self'` and block any frame that was added.
+    | `resayil.frame` (redesign, 2026-08-26): NOW applied. The Inbox tab
+    | added by the redesign embeds the same <x-resayil-frame> iframe the
+    | drawer and /resayil full page already use, so this route needs the
+    | same CSP frame-src allowlist they carry. ResayilFrameHeaders degrades
+    | gracefully when RESAYIL_EMBED_URL is unset (emits a bare
+    | `frame-src 'self'`, which simply matches "no iframe on this page" —
+    | it does not error and does not block anything that isn't already
+    | absent).
     */
     Route::group([
         'prefix' => 'settings/whatsapp',
         'as' => 'resayil-admin.',
-        'middleware' => ['module:resayil', 'can:manage-resayil'],
+        'middleware' => ['module:resayil', 'can:manage-resayil', 'resayil.frame'],
     ], function () {
         Route::get('/', [ResayilAdminController::class, 'index'])->name('index');
 

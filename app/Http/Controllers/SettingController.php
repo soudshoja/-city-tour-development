@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Charge;
-use App\Models\PaymentMethod;
-use App\Models\PaymentMethodGroup;
-use App\Models\PaymentMethodChose;
-use App\Models\Role;
-use App\Models\Setting;
-use App\Models\UserSetting;
 use App\Models\Agent;
 use App\Models\AgentCharge;
 use App\Models\AgentLoss;
 use App\Models\AgentNotificationSetting;
-use Database\Seeders\SettingSeeder;
+use App\Models\Charge;
+use App\Models\Company;
+use App\Models\PaymentMethod;
+use App\Models\PaymentMethodChose;
+use App\Models\PaymentMethodGroup;
+use App\Models\Role;
+use App\Models\Setting;
+use App\Models\UserSetting;
+use App\Services\Resayil\ResayilAdminService;
+use App\Support\Modules;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +25,7 @@ use Illuminate\Support\Facades\Log;
 
 class SettingController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, ResayilAdminService $resayilAdmin)
     {
         $user = Auth::user();
         $companyId = getCompanyId($user);
@@ -45,12 +47,46 @@ class SettingController extends Controller
         ];
         if (isset($tabPermissions[$activeTab])) {
             [$ability, $model] = $tabPermissions[$activeTab];
-            if (!Gate::allows($ability, $model)) {
+            if (! Gate::allows($ability, $model)) {
                 $activeTab = 'payment';
             }
         }
         if ($activeTab === 'ai-config' && $user->role_id !== Role::ADMIN) {
             $activeTab = 'payment';
+        }
+
+        // Settings -> WhatsApp (redesign, 2026-08-26): the Resayil Admin
+        // Center now renders INSIDE this page as a tab instead of a
+        // separate route the sidebar linked out to. Same two gates the
+        // standalone resayil-admin.index route carries (module:resayil,
+        // can:manage-resayil) — checked here explicitly rather than
+        // relying on the view alone, so a user without access never even
+        // triggers the reseller-backed overview() call below.
+        $hasWhatsappAccess = $companyId
+            && Company::find($companyId)?->hasModule(Modules::RESAYIL)
+            && Gate::allows('manage-resayil');
+
+        if ($activeTab === 'whatsapp' && ! $hasWhatsappAccess) {
+            $activeTab = 'payment';
+        }
+
+        $resayilOverview = null;
+        $resayilActivePanel = 'overview';
+        $resayilEmbedUrl = null;
+        $resayilNotConfigured = true;
+
+        if ($hasWhatsappAccess) {
+            // overview() is cached per company (ResayilAdminService::overview,
+            // config('resayil.admin_cache_ttl'), default 60s) — this is a
+            // cache hit on every Settings load except the first one in that
+            // window, same cost the standalone page already paid on every
+            // visit. Only fetched for a user who can actually see the tab.
+            $resayilOverview = $resayilAdmin->overview($companyId);
+            $resayilActivePanel = in_array($request->query('panel'), ['overview', 'billing', 'team', 'inbox'], true)
+                ? $request->query('panel')
+                : 'overview';
+            $resayilEmbedUrl = config('resayil.embed_url');
+            $resayilNotConfigured = empty($resayilEmbedUrl);
         }
 
         return view('settings.index', compact(
@@ -59,13 +95,17 @@ class SettingController extends Controller
             'activeTab',
             'invoiceWhatsappSetting',
             'bearerOptions',
+            'resayilOverview',
+            'resayilActivePanel',
+            'resayilEmbedUrl',
+            'resayilNotConfigured',
         ));
     }
 
     public function saveTab(Request $request)
     {
         $request->validate([
-            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss,notifications,ai-config',
+            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss,notifications,ai-config,whatsapp',
         ]);
 
         session(['settings_active_tab' => $request->tab]);
@@ -84,7 +124,7 @@ class SettingController extends Controller
 
         $companyId = getCompanyId($user);
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'success' => false,
                 'message' => 'No company selected.',
@@ -102,7 +142,7 @@ class SettingController extends Controller
             ]
         );
 
-        if (!$setting) {
+        if (! $setting) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update invoice expiry days.',
@@ -143,6 +183,7 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching charges', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch charges.',
@@ -191,6 +232,7 @@ class SettingController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error('Error fetching payment methods', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch payment methods.',
@@ -241,6 +283,7 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching agent charges', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch agent charge settings.',
@@ -328,7 +371,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save setting: ' . $e->getMessage(),
+                'message' => 'Failed to save setting: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -401,7 +444,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update settings: ' . $e->getMessage(),
+                'message' => 'Failed to update settings: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -476,7 +519,7 @@ class SettingController extends Controller
             })
                 ->with([
                     'branch:id,name',
-                    'lossAccount:id,name,code'
+                    'lossAccount:id,name,code',
                 ])
                 ->select('id', 'name', 'email', 'branch_id', 'type_id', 'commission', 'loss_account_id');
 
@@ -500,6 +543,7 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching agent loss settings', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch agent loss settings.',
@@ -590,7 +634,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save setting: ' . $e->getMessage(),
+                'message' => 'Failed to save setting: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -662,7 +706,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update settings: ' . $e->getMessage(),
+                'message' => 'Failed to update settings: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -737,7 +781,7 @@ class SettingController extends Controller
                 $v = implode(', ', $v);
             }
             if (in_array($field, \App\Services\AiConfigOverride::SECRET_FIELDS, true)) {
-                $v = $v ? ('••••' . substr((string) $v, -4)) : '';
+                $v = $v ? ('••••'.substr((string) $v, -4)) : '';
             }
             if (in_array($field, \App\Services\AiConfigOverride::BOOL_FIELDS, true)) {
                 $v = (bool) $v;
@@ -768,7 +812,7 @@ class SettingController extends Controller
 
         $saved = [];
         foreach (\App\Services\AiConfigOverride::MAP as $field => $paths) {
-            if (!$request->has($field)) {
+            if (! $request->has($field)) {
                 continue;
             }
             $value = $request->input($field);
@@ -780,12 +824,13 @@ class SettingController extends Controller
 
             // Secrets: blank means "keep as is" (the UI shows a mask, not the key).
             if (in_array($field, \App\Services\AiConfigOverride::SECRET_FIELDS, true)) {
-                if ($value === '' ) {
+                if ($value === '') {
                     continue;
                 }
                 if ($value === '__clear__') {
                     Setting::where('company_id', 1)->where('key', "aicfg.$field")->delete();
-                    $saved[] = $field . ' (cleared)';
+                    $saved[] = $field.' (cleared)';
+
                     continue;
                 }
                 if (str_starts_with($value, '••••')) {
@@ -793,10 +838,11 @@ class SettingController extends Controller
                 }
             }
 
-            if ($value === '' && !in_array($field, \App\Services\AiConfigOverride::BOOL_FIELDS, true)) {
+            if ($value === '' && ! in_array($field, \App\Services\AiConfigOverride::BOOL_FIELDS, true)) {
                 // Blank non-secret = revert to .env/config default.
                 Setting::where('company_id', 1)->where('key', "aicfg.$field")->delete();
-                $saved[] = $field . ' (default)';
+                $saved[] = $field.' (default)';
+
                 continue;
             }
 
@@ -815,7 +861,7 @@ class SettingController extends Controller
             if (is_array($chainIn)) {
                 foreach (array_slice($chainIn, 0, 6) as $entry) {
                     $provider = is_array($entry) ? ($entry['provider'] ?? null) : null;
-                    if (!in_array($provider, ['resayil', 'openai'], true)) {
+                    if (! in_array($provider, ['resayil', 'openai'], true)) {
                         continue;
                     }
                     $model = is_array($entry) ? trim((string) ($entry['model'] ?? '')) : '';
@@ -832,7 +878,7 @@ class SettingController extends Controller
                     ['company_id' => 1, 'key' => 'aicfg.chain'],
                     ['value' => json_encode($chain), 'type' => 'string', 'description' => 'AI configuration override']
                 );
-                $saved[] = 'chain (' . count($chain) . ' steps)';
+                $saved[] = 'chain ('.count($chain).' steps)';
             } else {
                 Setting::where('company_id', 1)->where('key', 'aicfg.chain')->delete();
                 $saved[] = 'chain (default)';
@@ -857,7 +903,7 @@ class SettingController extends Controller
                 $url = rtrim((string) config('ai.providers.resayil.url'), '/');
                 $key = (string) config('ai.providers.resayil.key');
                 $list = \Illuminate\Support\Facades\Http::withToken($key)->withoutVerifying()
-                    ->timeout(20)->get($url . '/models')->json();
+                    ->timeout(20)->get($url.'/models')->json();
                 $ids = [];
                 foreach (($list['data'] ?? (is_array($list) ? $list : [])) as $m) {
                     $id = is_array($m) ? ($m['id'] ?? null) : $m;
@@ -866,11 +912,13 @@ class SettingController extends Controller
                     }
                 }
                 sort($ids);
+
                 return $ids;
             });
+
             return response()->json(['success' => true, 'models' => $models]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Model list failed: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Model list failed: '.$e->getMessage()], 500);
         }
     }
 
@@ -890,23 +938,23 @@ class SettingController extends Controller
                     return response()->json(['success' => false, 'seconds' => 0, 'message' => 'No OpenAI key configured.']);
                 }
                 $r = \Illuminate\Support\Facades\Http::withToken($key)->timeout(30)
-                    ->post(rtrim((string) config('ai.providers.openai.url'), '/') . '/chat/completions', [
+                    ->post(rtrim((string) config('ai.providers.openai.url'), '/').'/chat/completions', [
                         'model' => (string) config('ai.providers.openai.model'),
                         'messages' => [['role' => 'user', 'content' => 'Say OK']],
                         'max_tokens' => 1,
                     ]);
                 $ok = $r->successful();
-                $msg = $ok ? 'OpenAI key works (live completion).' : ('OpenAI HTTP ' . $r->status() . ': '
-                    . substr((string) ($r->json()['error']['message'] ?? $r->body()), 0, 120));
+                $msg = $ok ? 'OpenAI key works (live completion).' : ('OpenAI HTTP '.$r->status().': '
+                    .substr((string) ($r->json()['error']['message'] ?? $r->body()), 0, 120));
             } else {
-                $url = rtrim((string) config('ai.providers.resayil.url'), '/') . '/chat/completions';
+                $url = rtrim((string) config('ai.providers.resayil.url'), '/').'/chat/completions';
                 $key = (string) config('ai.providers.resayil.key');
                 if ($type === 'vision') {
                     $model = (string) config('ai.providers.resayil.model_passport');
                     $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
                     $messages = [['role' => 'user', 'content' => [
                         ['type' => 'text', 'text' => 'What color is this image? Answer with one word.'],
-                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/png;base64,' . $png]],
+                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/png;base64,'.$png]],
                     ]]];
                 } else {
                     $model = (string) config('ai.providers.resayil.model_text');
@@ -916,13 +964,14 @@ class SettingController extends Controller
                     ->post($url, ['model' => $model, 'messages' => $messages, 'max_tokens' => 300]);
                 $ok = $r->successful() && isset($r->json()['choices'][0]['message']['content']);
                 $msg = $ok
-                    ? ($model . ' answered: ' . trim((string) $r->json()['choices'][0]['message']['content']))
-                    : ($model . ' HTTP ' . $r->status() . ': ' . substr($r->body(), 0, 150));
+                    ? ($model.' answered: '.trim((string) $r->json()['choices'][0]['message']['content']))
+                    : ($model.' HTTP '.$r->status().': '.substr($r->body(), 0, 150));
             }
+
             return response()->json(['success' => $ok, 'seconds' => round(microtime(true) - $t0, 1), 'message' => $msg]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'seconds' => round(microtime(true) - $t0, 1),
-                'message' => 'Test failed: ' . $e->getMessage()]);
+                'message' => 'Test failed: '.$e->getMessage()]);
         }
     }
 
@@ -959,6 +1008,7 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching notification settings', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch notification settings.',
@@ -973,7 +1023,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+        if (! in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.',
@@ -989,7 +1039,7 @@ class SettingController extends Controller
 
         $companyId = getCompanyId($user);
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'success' => false,
                 'message' => 'No company selected.',
@@ -1052,6 +1102,7 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to save notification setting', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to save notification setting.',
@@ -1121,6 +1172,7 @@ class SettingController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching agent notification settings', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch agent notification settings.',
@@ -1135,7 +1187,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!Gate::allows('manageNotifications', Setting::class)) {
+        if (! Gate::allows('manageNotifications', Setting::class)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.',
@@ -1150,7 +1202,7 @@ class SettingController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        if ($user->role_id === Role::AGENT && (!$user->agent || $validated['agent_id'] != $user->agent->id)) {
+        if ($user->role_id === Role::AGENT && (! $user->agent || $validated['agent_id'] != $user->agent->id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.',
@@ -1197,7 +1249,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save setting: ' . $e->getMessage(),
+                'message' => 'Failed to save setting: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1209,7 +1261,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!Gate::allows('manageNotifications', Setting::class)) {
+        if (! Gate::allows('manageNotifications', Setting::class)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
@@ -1264,7 +1316,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update settings: ' . $e->getMessage(),
+                'message' => 'Failed to update settings: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1276,7 +1328,7 @@ class SettingController extends Controller
     {
         $user = Auth::user();
 
-        if (!Gate::allows('manageNotifications', Setting::class)) {
+        if (! Gate::allows('manageNotifications', Setting::class)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
@@ -1294,7 +1346,7 @@ class SettingController extends Controller
                 ], 403);
             }
 
-            if ($user->role_id === Role::AGENT && (!$user->agent || $setting->agent_id != $user->agent->id)) {
+            if ($user->role_id === Role::AGENT && (! $user->agent || $setting->agent_id != $user->agent->id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized access.',

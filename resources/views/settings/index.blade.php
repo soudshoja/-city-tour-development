@@ -149,6 +149,34 @@
                         AI Configuration
                     </button>
                     @endif
+
+                    {{-- Module 5 — Resayil Admin Center (Settings -> WhatsApp).
+                         A LINK OUT, not a tab: it follows the "Manage Charges"
+                         precedent above — a sidebar entry with no matching
+                         content-area panel, no tabLabels entry and no change to
+                         SettingController's tab whitelist — because the WhatsApp
+                         panels live on their own route with their own module and
+                         role gate. Styled with the same .setting-sidebar-btn
+                         classes, which carry no button-only properties and so
+                         render identically on an <a>.
+
+                         Gated by BOTH the module flag and the same
+                         manage-resayil gate the route carries, so a user who
+                         would be 404'd or 403'd never sees the link at all. --}}
+                    @if(($currentCompanyId ?? null) && \App\Models\Company::find($currentCompanyId)?->hasModule(\App\Support\Modules::RESAYIL))
+                    @can('manage-resayil')
+                    <a href="{{ route('resayil-admin.index') }}"
+                       class="setting-sidebar-btn {{ request()->routeIs('resayil-admin.*') ? 'setting-sidebar-btn-active' : '' }}">
+                        <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="" width="160" height="149"
+                             class="setting-sidebar-icon" style="width:1.25rem;height:auto;object-fit:contain;">
+                        <span class="setting-sidebar-item-label">WhatsApp</span>
+                        <svg class="setting-sidebar-item-badge" style="width:1rem;height:1rem;opacity:.45;" fill="none"
+                             stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                    @endcan
+                    @endif
                 </nav>
             </div>
 

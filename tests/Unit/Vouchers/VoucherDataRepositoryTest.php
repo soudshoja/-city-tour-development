@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit\Services\Vouchers;
+namespace Tests\Unit\Vouchers;
 
 use App\Models\Client;
 use App\Models\Company;
@@ -28,7 +28,7 @@ use Tests\TestCase;
  *
  * Run ONLY as:
  *   DB_TEST_DATABASE=city_tour_test_v_env4 DB_DATABASE_MAP=city_tour_test_v_env4_map \
- *   php artisan test tests/Unit/Services/Vouchers/VoucherDataRepositoryTest.php
+ *   php artisan test tests/Unit/Vouchers/VoucherDataRepositoryTest.php
  * Never against city_tour_test, laravel_testing, or map_data_citytour.
  */
 class VoucherDataRepositoryTest extends TestCase

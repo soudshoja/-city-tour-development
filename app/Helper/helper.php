@@ -7,7 +7,19 @@ if(!function_exists('getCompanyId')){
     {
         switch ($user->role_id) {
             case Role::ADMIN:
-            return (int) session('company_id', 1);
+            // A platform operator (role 1) has no company of their own —
+            // they must explicitly choose one first (the sidebar company
+            // switcher, AdminUsersController, writes session('company_id')).
+            // Defaulting to company 1 here silently attributed every
+            // not-yet-chosen operator action to company 1's REAL data —
+            // this is exactly the bug that let an operator's page view
+            // create a team member on a live customer's WhatsApp account
+            // (Resayil Admin Center security fix, 2026-08). Refuse to
+            // resolve rather than guess: callers must already treat this
+            // as nullable (the return type is ?int), and every Resayil
+            // action built since checks for null and asks the operator to
+            // pick a company instead of acting on their behalf.
+            return session()->has('company_id') ? (int) session('company_id') : null;
             case Role::COMPANY:
             return $user->company?->id;
             case Role::BRANCH:

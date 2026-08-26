@@ -184,6 +184,19 @@ class ResayilAdminController extends Controller
         // can:manage-resayil (which admits COMPANY too).
         abort_unless((int) $user->role_id === Role::ADMIN, 403);
 
+        // ENVIRONMENT SAFETY. There is no Resayil sandbox: dev and production
+        // share one reseller account, so disabling a device from a dev demo
+        // takes a REAL customer's WhatsApp number off the air. City Travelers'
+        // number is online with 8 agents and live traffic — a stray click here
+        // is an outage for a trading company, not a test. Off by default; see
+        // config/resayil.php subscription_control_enabled.
+        if (! config('resayil.subscription_control_enabled')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Subscription control is switched off in this environment. It acts on the live WhatsApp platform, so it is enabled deliberately rather than left available while testing.',
+            ], 409);
+        }
+
         $companyId = getCompanyId($user);
 
         if ($companyId === null) {

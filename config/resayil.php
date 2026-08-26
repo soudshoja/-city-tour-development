@@ -125,6 +125,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | subscription_control_enabled
+    |--------------------------------------------------------------------------
+    |
+    | Pause/resume calls POST /v1/resellers/devices/{id}/disable|enable against
+    | the LIVE Resayil platform — there is no sandbox. Dev and production share
+    | one reseller account, so a pause clicked while demoing on dev takes a real
+    | customer's WhatsApp number OFF THE AIR. City Travelers' number
+    | (+96522210017) is online with 8 agents and real traffic; a stray click is
+    | a genuine outage for a trading company, not a test.
+    |
+    | So the lever ships DISABLED. The button still renders (an operator should
+    | see the control exists) but the server refuses and explains why. Turn it on
+    | deliberately, per environment, when collections actually need it:
+    |
+    |     RESAYIL_SUBSCRIPTION_CONTROL_ENABLED=true
+    |
+    */
+    'subscription_control_enabled' => (bool) env('RESAYIL_SUBSCRIPTION_CONTROL_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Admin Center — reseller read cache TTL (seconds)
     |--------------------------------------------------------------------------
     |

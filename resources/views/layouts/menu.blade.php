@@ -161,7 +161,11 @@
         <menuitem>
         <a href="{{ route('resayil.index') }}"
             class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full BoxShadow">
-            <x-icons.chat class="w-4 h-4" />
+            {{-- Real Resayil brand mark - same asset as the drawer badge and
+                 launcher bubble. Explicit width/height stop the row shifting
+                 on load; h-4 matches the sibling menu icons. --}}
+            <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt=""
+                width="160" height="149" class="h-4 w-auto shrink-0">
             <span class="px-2 text-sm">Resayil</span>
         </a>
         </menuitem>

@@ -36,7 +36,8 @@ class ProvisionResayilWorkspaceCommand extends Command
                             {company : Company id, or company code}
                             {--sync : Run now in this process instead of queueing}
                             {--dry-run : Report what would happen and change nothing}
-                            {--recapture-key : Re-read and re-validate the account key even if one is already stored}';
+                            {--recapture-key : Re-read and re-validate the account key even if one is already stored}
+                            {--confirm-adoption : Link a pending adoption candidate (status=adoption_pending) and capture its key. Run ONLY after verifying OUTSIDE this app that the candidate really belongs to this company — see class docblock, blocker 2b}';
 
     protected $description = 'Create (or repair) a company Resayil workspace and capture its account API key';
 
@@ -70,6 +71,15 @@ class ProvisionResayilWorkspaceCommand extends Command
         // A boolean, never the value and never its length.
         $this->line('Account key    : '.($row?->resayil_account_token ? 'linked ('.($row->key_source ?: 'unknown source').')' : 'not linked'));
         $this->line('');
+
+        // Security fix (2026-08-26, blocker 2b): an adoption-pending row
+        // (see ResayilProvisioningService::recordAdoptionCandidate()) is
+        // handled entirely separately, and requires no owner-email check —
+        // confirmAdoption() works purely from the company id and the
+        // candidate already recorded in meta.
+        if ($this->option('confirm-adoption')) {
+            return $this->handleConfirmAdoption($company, $row, $provisioning);
+        }
 
         if (! $owner) {
             $this->error('This company has no owner user (companies.user_id), so there is no email to open a workspace under.');
@@ -122,10 +132,63 @@ class ProvisionResayilWorkspaceCommand extends Command
         return $account->resayil_customer_id ? self::SUCCESS : self::FAILURE;
     }
 
+    /**
+     * Handle `--confirm-adoption` — the ONLY path that links a candidate
+     * recorded by recordAdoptionCandidate() and captures its key. See
+     * ResayilProvisioningService::confirmAdoption() and the class docblock
+     * (blocker 2b): this is a deliberate human checkpoint, not something
+     * any automatic path in this app ever reaches on its own.
+     */
+    protected function handleConfirmAdoption(Company $company, ?ResayilAccount $row, ResayilProvisioningService $provisioning): int
+    {
+        if (! $row || $row->status !== ResayilAccount::STATUS_ADOPTION_PENDING) {
+            $this->error('Nothing to confirm — this company\'s admin row is not in status=adoption_pending.');
+
+            return self::FAILURE;
+        }
+
+        $candidate = is_array($row->meta) ? ($row->meta['adoption_candidate'] ?? []) : [];
+
+        $this->comment('Pending adoption candidate:');
+        $this->line('  Resayil customer id    : '.($candidate['customer_id'] ?? '—'));
+        $this->line('  Resayil customer email : '.($candidate['email'] ?? '—'));
+        $this->line('  Found at               : '.($candidate['found_at'] ?? '—'));
+        $this->line('');
+        $this->warn('This will link the candidate above as this company\'s permanent Resayil workspace and capture its LIVE account API key.');
+        $this->warn('Proceed only if you have verified, outside this app, that it belongs to this company.');
+
+        if ($this->option('dry-run')) {
+            $this->comment('Dry run — nothing was changed.');
+
+            return self::SUCCESS;
+        }
+
+        try {
+            $account = $provisioning->confirmAdoption($company->id);
+        } catch (\RuntimeException $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->line('');
+        $this->line('Result         : status='.$account->status);
+        $this->line('Workspace id   : '.($account->resayil_customer_id ?: '—'));
+        $this->line('Account key    : '.($account->resayil_account_token ? 'LINKED ('.($account->key_source ?: 'unknown source').')' : 'NOT linked'));
+
+        return $account->resayil_customer_id ? self::SUCCESS : self::FAILURE;
+    }
+
     protected function plannedAction(?ResayilAccount $row): string
     {
+        if ($row?->status === ResayilAccount::STATUS_ADOPTION_PENDING) {
+            return 'A Resayil customer matching this email was already found but NOT adopted — ownership was unproven (see meta.adoption_candidate). '
+                .'Re-run with --confirm-adoption after verifying, outside this app, that it belongs to this company.';
+        }
+
         if (! $row?->resayil_customer_id) {
-            return 'Would look up the owner email on Resayil, adopt the customer if it exists, otherwise create one — then capture and validate its account key.';
+            return 'Would look up the owner email on Resayil. If no existing customer is found, would create one and capture its key. '
+                .'If one IS found, it will be recorded for review — NOT auto-adopted (security fix, blocker 2b) — and needs --confirm-adoption afterwards.';
         }
 
         if ($this->option('recapture-key')) {

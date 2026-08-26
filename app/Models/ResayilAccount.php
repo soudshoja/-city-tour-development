@@ -45,6 +45,21 @@ class ResayilAccount extends Model
 
     public const STATUS_ERROR = 'error';
 
+    /**
+     * Security fix (2026-08-26, blocker 2b): a Resayil customer was found
+     * under this user's email, but ownership was never proven — email
+     * equality against a live customer of a THIRD-PARTY system is not
+     * proof this TravelERP company controls that account. This status
+     * means "candidate recorded, nothing linked, nothing captured" — see
+     * ResayilProvisioningService::recordAdoptionCandidate() /
+     * confirmAdoption(). No workspace card, subscription, payment history
+     * or account key is ever rendered from a row in this status: unlike
+     * every other status, `resayil_customer_id` is deliberately left NULL
+     * until a human confirms the match via
+     * `resayil:provision-company --confirm-adoption`.
+     */
+    public const STATUS_ADOPTION_PENDING = 'adoption_pending';
+
     protected $table = 'resayil_accounts';
 
     protected $fillable = [

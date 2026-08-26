@@ -305,6 +305,30 @@
                 </div>
             @endif
 
+        @elseif($state === \App\Services\Resayil\ResayilAdminService::STATE_ADOPTION_PENDING)
+            {{-- Security fix, blocker 2b: a Resayil customer matching this
+                 email was found, but nothing was adopted or captured —
+                 ownership was never proven. No workspace/subscription/
+                 payment data renders here (there is none to show; the row
+                 has no linked customer id), and there is no client-facing
+                 action: linking requires a human operator to confirm it
+                 out-of-band via `resayil:provision-company --confirm-adoption`. --}}
+            <div class="rsa-state">
+                <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="">
+                <h2>We're still linking your WhatsApp workspace</h2>
+                <p>We found an existing Resayil account under this email. Our team is confirming it belongs to your company before linking it — nothing is needed from you.</p>
+            </div>
+            @if($isOperator)
+                <div class="rsa-op">
+                    <h3>Operator</h3>
+                    <p style="font-size:.8125rem;">Candidate: <code>{{ \Illuminate\Support\Str::limit((string) ($overview['operator_note'] ?? '—'), 600) }}</code></p>
+                    <p style="font-size:.75rem;margin-top:.4rem;">
+                        Confirm after verifying ownership out-of-band:
+                        <code>php artisan resayil:provision-company {{ $companyId }} --sync --confirm-adoption</code>
+                    </p>
+                </div>
+            @endif
+
         @else
             {{-- READY. Everything below renders from reseller reads only —
                  no company account key is involved anywhere in this slice. --}}

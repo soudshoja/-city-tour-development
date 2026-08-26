@@ -206,20 +206,24 @@ class ResayilProvisioningService
         // email that already exists as a Resayil customer (retried
         // onboarding, resumed wizard, repaired company) must adopt that
         // customer instead of blind-POSTing and hitting a 409.
+        //
+        // SECURITY FIX (2026-08-26, blocker 2b): this used to adopt AND
+        // capture the found customer's live account key immediately, on
+        // the strength of an email match alone. Email equality against a
+        // live customer of a third-party system (Resayil) is not proof
+        // THIS TravelERP company owns that account — proven live: a
+        // throwaway company registered with a real unrelated customer's
+        // email silently adopted that customer's workspace and captured
+        // its API key, which then rendered the stranger's details and
+        // payments to the client. There is no reseller endpoint that
+        // proves ownership, so per the plan's FETCH RULE the correct move
+        // when we cannot establish it is to NOT adopt and NOT capture —
+        // record the candidate and surface it for a human instead. See
+        // recordAdoptionCandidate() / confirmAdoption().
         $found = $this->findCustomerByEmail($user->email);
 
         if ($found !== null) {
-            $row = $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
-                'resayil_customer_id' => $found['id'],
-                'resayil_email' => $user->email,
-                'status' => ResayilAccount::STATUS_PROVISIONED,
-                'provisioned_at' => now(),
-                'meta' => $this->mergeMeta($existing, ['adopted' => true]),
-            ]);
-
-            // An adopted customer already has its auto-generated key; it is
-            // exactly as capturable as a freshly created one.
-            return $this->captureAccountKey($row);
+            return $this->recordAdoptionCandidate($existing, $user, $companyId, $found);
         }
 
         // Server-generated secret — never the TravelERP password, never
@@ -271,18 +275,14 @@ class ResayilProvisioningService
         if ($response->status() === 409) {
             $adopted = $this->findCustomerByEmail($user->email);
 
+            // Same rule as the lookup-then-create branch above (blocker
+            // 2b): a 409 proves Resayil already has a customer under this
+            // email, not that it belongs to this company. Record it for a
+            // human, never adopt/capture on the spot.
             if ($adopted !== null) {
                 unset($secret);
 
-                $row = $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
-                    'resayil_customer_id' => $adopted['id'],
-                    'resayil_email' => $user->email,
-                    'status' => ResayilAccount::STATUS_PROVISIONED,
-                    'provisioned_at' => now(),
-                    'meta' => $this->mergeMeta($existing, ['adopted' => true, 'adopted_after_conflict' => true]),
-                ]);
-
-                return $this->captureAccountKey($row);
+                return $this->recordAdoptionCandidate($existing, $user, $companyId, $adopted);
             }
             // Fall through to the generic failure branch below if the
             // 409-causing customer still can't be found (transient lookup
@@ -326,6 +326,89 @@ class ResayilProvisioningService
         // response does not carry apiKeys (verified live), so this is a
         // second, separate read of the DETAIL endpoint.
         return $this->captureAccountKey($account);
+    }
+
+    /**
+     * Record that Resayil already has a customer under this user's email,
+     * WITHOUT adopting it or capturing its key (security fix, blocker 2b —
+     * see the class docblock and provisionAdmin() call sites).
+     *
+     * Deliberately does NOT set resayil_customer_id: every other panel and
+     * read in this app treats that column as "this row is this company's
+     * linked workspace" and would immediately start rendering the
+     * candidate's name, subscription and payment history to the wrong
+     * company if it were set here. The candidate id is kept only in
+     * `meta.adoption_candidate` (non-secret) for a human to review.
+     *
+     * The only way forward from here is confirmAdoption() — reachable
+     * solely via `php artisan resayil:provision-company --confirm-adoption`,
+     * an explicit operator action. Nothing automatic (this service's own
+     * retry paths, the queued job, the idempotent page-load safety net)
+     * ever calls it.
+     */
+    protected function recordAdoptionCandidate(?ResayilAccount $existing, User $user, int $companyId, array $candidate): ResayilAccount
+    {
+        Log::warning('resayil.provisioning.adoption_candidate_found', [
+            'company_id' => $companyId,
+            'user_id' => $user->id,
+            'candidate_customer_id' => $candidate['id'] ?? null,
+        ]);
+
+        return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+            'status' => ResayilAccount::STATUS_ADOPTION_PENDING,
+            'resayil_email' => $user->email,
+            'meta' => $this->mergeMeta($existing, [
+                'adoption_candidate' => [
+                    'customer_id' => $candidate['id'] ?? null,
+                    'email' => $candidate['email'] ?? null,
+                    'found_at' => now()->toIso8601String(),
+                ],
+            ]),
+        ]);
+    }
+
+    /**
+     * Complete an adoption previously flagged by recordAdoptionCandidate()
+     * — the ONLY path that links `meta.adoption_candidate` onto
+     * `resayil_customer_id` and captures its key. Called exclusively from
+     * `resayil:provision-company --confirm-adoption`, run by a human
+     * operator who has checked, outside this app, that the candidate
+     * really belongs to this company. Never invoked automatically.
+     *
+     * @throws \RuntimeException if there is nothing pending to confirm
+     */
+    public function confirmAdoption(int $companyId): ResayilAccount
+    {
+        $row = ResayilAccount::adminFor($companyId);
+
+        if (! $row || $row->status !== ResayilAccount::STATUS_ADOPTION_PENDING) {
+            throw new \RuntimeException("Company #{$companyId} has no pending Resayil adoption to confirm.");
+        }
+
+        $candidateId = $row->meta['adoption_candidate']['customer_id'] ?? null;
+
+        if (! is_string($candidateId) || $candidateId === '') {
+            throw new \RuntimeException("Company #{$companyId}'s adoption-pending row is missing its candidate customer id.");
+        }
+
+        $meta = is_array($row->meta) ? $row->meta : [];
+        unset($meta['adoption_candidate']);
+        $meta['adopted'] = true;
+        $meta['adopted_confirmed_at'] = now()->toIso8601String();
+
+        $row->forceFill([
+            'resayil_customer_id' => $candidateId,
+            'status' => ResayilAccount::STATUS_PROVISIONED,
+            'provisioned_at' => now(),
+            'meta' => $meta,
+        ])->save();
+
+        Log::info('resayil.provisioning.adoption_confirmed', [
+            'company_id' => $companyId,
+            'customer_id' => $candidateId,
+        ]);
+
+        return $this->captureAccountKey($row);
     }
 
     /**

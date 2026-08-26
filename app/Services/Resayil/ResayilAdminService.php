@@ -68,6 +68,14 @@ class ResayilAdminService
     /** Admin row is in error (§8 N-2). */
     public const STATE_ERROR = 'error';
 
+    /**
+     * A Resayil customer matching this email was found but NOT adopted —
+     * ownership was never proven (security fix, blocker 2b). Waiting on a
+     * human operator to confirm via
+     * `resayil:provision-company --confirm-adoption`.
+     */
+    public const STATE_ADOPTION_PENDING = 'adoption_pending';
+
     /** Workspace known — reseller reads drive the panels. */
     public const STATE_READY = 'ready';
 
@@ -309,6 +317,21 @@ class ResayilAdminService
             $base['state'] = self::STATE_ERROR;
             $base['operator_note'] = is_array($row->meta)
                 ? json_encode($this->redact($row->meta))
+                : null;
+            $base['checklist'] = $this->checklist($row, null);
+
+            return $base;
+        }
+
+        if ($row->status === ResayilAccount::STATUS_ADOPTION_PENDING) {
+            // Security fix (blocker 2b): resayil_customer_id is
+            // deliberately unset on this row, so nothing below can
+            // accidentally render a stranger's workspace. Operator note
+            // carries the candidate id/email — never a secret, this row
+            // never had a key captured at all.
+            $base['state'] = self::STATE_ADOPTION_PENDING;
+            $base['operator_note'] = is_array($row->meta)
+                ? json_encode($this->redact($row->meta['adoption_candidate'] ?? []))
                 : null;
             $base['checklist'] = $this->checklist($row, null);
 

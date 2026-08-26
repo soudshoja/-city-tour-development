@@ -56,9 +56,10 @@
     52 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
     53 => 'App\\Providers\\AIServiceProvider',
     54 => 'App\\Providers\\AppServiceProvider',
-    55 => 'Spatie\\Permission\\PermissionServiceProvider',
-    56 => 'App\\Modules\\DotwAI\\Providers\\DotwAIServiceProvider',
-    57 => 'App\\Modules\\AkeedDotwAI\\AkeedDotwAIServiceProvider',
+    55 => 'App\\Providers\\AccountingServiceProvider',
+    56 => 'Spatie\\Permission\\PermissionServiceProvider',
+    57 => 'App\\Modules\\DotwAI\\Providers\\DotwAIServiceProvider',
+    58 => 'App\\Modules\\AkeedDotwAI\\AkeedDotwAIServiceProvider',
   ),
   'eager' => 
   array (
@@ -101,9 +102,10 @@
     36 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
     37 => 'App\\Providers\\AIServiceProvider',
     38 => 'App\\Providers\\AppServiceProvider',
-    39 => 'Spatie\\Permission\\PermissionServiceProvider',
-    40 => 'App\\Modules\\DotwAI\\Providers\\DotwAIServiceProvider',
-    41 => 'App\\Modules\\AkeedDotwAI\\AkeedDotwAIServiceProvider',
+    39 => 'App\\Providers\\AccountingServiceProvider',
+    40 => 'Spatie\\Permission\\PermissionServiceProvider',
+    41 => 'App\\Modules\\DotwAI\\Providers\\DotwAIServiceProvider',
+    42 => 'App\\Modules\\AkeedDotwAI\\AkeedDotwAIServiceProvider',
   ),
   'deferred' => 
   array (

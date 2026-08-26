@@ -85,6 +85,28 @@ class ResayilEmbedController extends Controller
     public function provision(Request $request, ResayilProvisioningService $provisioning): RedirectResponse
     {
         $user = $request->user();
+
+        // A PLATFORM OPERATOR MUST CHOOSE A COMPANY EXPLICITLY BEFORE THIS RUNS.
+        //
+        // This action creates a real, billable third-party Resayil workspace,
+        // so it must never be attributed to a guessed company. getCompanyId()
+        // falls back to company 1 for an operator who has not used the sidebar
+        // company switcher — harmless for reads, but for THIS action it would
+        // silently create or link a workspace against City Travelers' real
+        // account. That exact mechanism (operator page view -> company-1
+        // fallback -> live write) was proven during the 2026-08 security
+        // verification.
+        //
+        // Guarding it here, at the one irreversible external write, rather than
+        // by making getCompanyId() return null globally: that broader change
+        // was tried and reverted because ~100 call sites assume an operator
+        // always resolves to a company, and it 404'd the whole gated surface.
+        if ((int) $user->role_id === \App\Models\Role::ADMIN && ! session()->has('company_id')) {
+            return back()->withErrors([
+                'resayil' => 'Choose a company first — use the company switcher, then set up WhatsApp for it. This creates a real WhatsApp workspace, so it is never done for a guessed company.',
+            ]);
+        }
+
         $companyId = getCompanyId($user);
 
         if ($companyId === null) {

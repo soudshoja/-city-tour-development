@@ -53,11 +53,37 @@ use Illuminate\Support\Str;
  * (POST /v1/devices/{deviceId}/team) -- additionally requires (a) a WhatsApp
  * number already connected for the company (a human QR-scan pairing step
  * that cannot be automated via API) and (b) an ACCOUNT-scoped Resayil API
- * token for that company, which no documented reseller endpoint returns.
- * Neither is obtainable automatically today. Until both are set on the
- * company's admin ResayilAccount row (resayil_device_id /
- * resayil_account_token -- populated manually), ensureUserProvisioned()
- * returns status=pending_device rather than fabricating success.
+ * token for that company. (b) IS NOW SOLVED -- see ACCOUNT KEY CAPTURE
+ * below. (a) still is not: until a number is paired and its id is on the
+ * admin row (resayil_device_id), ensureUserProvisioned() returns
+ * status=pending_device rather than fabricating success.
+ *
+ * ACCOUNT KEY CAPTURE (2026-08-26, wave 2 -- plan
+ * .planning/specs/RESAYIL-ADMIN-CENTER.md sections 2.1-2.3 and slice 2 of
+ * section 10). Resayil auto-generates a per-customer account API key at
+ * customer-creation time. It is READABLE by the reseller, but ONLY from the
+ * DETAIL endpoint:
+ *
+ *     GET /v1/resellers/customers/{id}   -> full object, apiKeys[] included
+ *     GET /v1/resellers/customers        -> SLIM projection, NO apiKeys AT ALL
+ *
+ * Both re-verified live on 2026-08-26 against a throwaway customer that was
+ * created, read and then DELETEd. The POST /customers response does not
+ * carry apiKeys either, so the re-read is mandatory, not an optimisation.
+ * Reading the list endpoint and concluding "this customer has no key" is the
+ * single easiest way to get this wrong.
+ *
+ * A candidate key is NEVER stored on the strength of its shape. captureAccountKey()
+ * proves it first with GET {account_base_url}/devices under `Token: {candidate}`:
+ * a 2xx (even an empty array, which is what a brand-new customer returns)
+ * is the only thing that promotes a string to a stored credential. A failed
+ * validation stores NOTHING and records a redacted reason in meta, which the
+ * Admin Center renders as the plan's FETCH RULE fallback state.
+ *
+ * The captured value lands on resayil_accounts.resayil_account_token, which
+ * has an `encrypted` cast and is in the model's $hidden list, with
+ * key_source='auto'. It must never be logged, echoed, returned to a browser,
+ * put in a queue payload, or written into meta.
  */
 class ResayilProvisioningService
 {
@@ -127,6 +153,47 @@ class ResayilProvisioningService
         return $this->provisionTeamMember($user, $companyId, $adminRow, $existing);
     }
 
+    /**
+     * Provision (or repair) ONE company's Resayil workspace, with the
+     * company stated explicitly rather than derived from the user.
+     *
+     * This is the entry point for anything that runs OUTSIDE an HTTP
+     * request — the ProvisionResayilWorkspace job and the
+     * resayil:provision-company command. ensureUserProvisioned() derives
+     * the company with getCompanyId(), and that helper returns
+     * `session('company_id', 1)` for a role-1 ADMIN user. There is no
+     * session in a queue worker, so an admin-owned company provisioned
+     * through that path would silently be attributed to COMPANY 1. Taking
+     * the id as an argument removes the whole class of mistake.
+     *
+     * Idempotent: an existing admin row is never re-created — it is only
+     * asked whether its account key still needs capturing.
+     */
+    public function provisionCompanyAdmin(int $companyId, User $owner): ResayilAccount
+    {
+        if (! Schema::hasTable('resayil_accounts')) {
+            return $this->transientResult($owner, $companyId, ResayilAccount::STATUS_NOT_CONFIGURED, [
+                'reason' => 'resayil_accounts table does not exist yet (migration not run).',
+            ]);
+        }
+
+        $adminRow = ResayilAccount::adminFor($companyId);
+
+        if ($adminRow) {
+            // The workspace already exists. The only thing that may still
+            // be outstanding is the account key — capture is a no-op when
+            // one is already stored.
+            return $this->captureAccountKey($adminRow);
+        }
+
+        $existing = ResayilAccount::query()
+            ->forCompany($companyId)
+            ->where('user_id', $owner->id)
+            ->first();
+
+        return $this->provisionAdmin($owner, $companyId, $existing);
+    }
+
     protected function provisionAdmin(User $user, int $companyId, ?ResayilAccount $existing): ResayilAccount
     {
         if (! $this->resellerClient->configured() || config('resayil.test_mode')) {
@@ -142,13 +209,17 @@ class ResayilProvisioningService
         $found = $this->findCustomerByEmail($user->email);
 
         if ($found !== null) {
-            return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+            $row = $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
                 'resayil_customer_id' => $found['id'],
                 'resayil_email' => $user->email,
                 'status' => ResayilAccount::STATUS_PROVISIONED,
                 'provisioned_at' => now(),
-                'meta' => ['adopted' => true],
+                'meta' => $this->mergeMeta($existing, ['adopted' => true]),
             ]);
+
+            // An adopted customer already has its auto-generated key; it is
+            // exactly as capturable as a freshly created one.
+            return $this->captureAccountKey($row);
         }
 
         // Server-generated secret — never the TravelERP password, never
@@ -157,13 +228,41 @@ class ResayilProvisioningService
         // so it can be shown once during onboarding and re-asserted later.
         $secret = Str::password(32);
 
-        $response = $this->resellerClient->post('/customers', [
-            'displayName' => $user->name ?? $user->email,
-            'email' => $user->email,
-            'accountType' => 'business',
-            'password' => $secret,
-            'country' => config('resayil.default_country', 'KW'),
-        ]);
+        // `companyName` is MANDATORY for accountType=business. Without it
+        // the API answers 400 "Company name is required for business
+        // accounts" — reproduced live on 2026-08-26, and the reason every
+        // new company's provisioning was landing in status=error before
+        // this wave. The documented Customer model lists companyName as an
+        // optional field; the live API disagrees.
+        try {
+            $response = $this->resellerClient->post('/customers', [
+                'displayName' => $user->name ?? $user->email,
+                'email' => $user->email,
+                'accountType' => 'business',
+                'companyName' => $this->companyNameFor($companyId, $user),
+                'password' => $secret,
+                'country' => config('resayil.default_country', 'KW'),
+            ]);
+        } catch (\Throwable $e) {
+            // retry(throw: false) suppresses throwing on a failed HTTP
+            // *response* only — a DNS/connect failure still throws. This is
+            // reached from a queued job AND from an embed page render, and
+            // the app has no custom error pages, so it must degrade rather
+            // than escape. A transient state, deliberately NOT written as
+            // status=error: the row stays retryable on the next run.
+            unset($secret);
+
+            Log::warning('resayil.provisioning.admin_exception', [
+                'company_id' => $companyId,
+                'user_id' => $user->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+                'status' => ResayilAccount::STATUS_PENDING,
+                'meta' => $this->mergeMeta($existing, ['unreachable_at' => now()->toIso8601String()]),
+            ]);
+        }
 
         // Race: two requests both found no existing customer and both
         // POSTed. The loser gets a 409 back — resolve it by re-querying
@@ -175,13 +274,15 @@ class ResayilProvisioningService
             if ($adopted !== null) {
                 unset($secret);
 
-                return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
+                $row = $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
                     'resayil_customer_id' => $adopted['id'],
                     'resayil_email' => $user->email,
                     'status' => ResayilAccount::STATUS_PROVISIONED,
                     'provisioned_at' => now(),
-                    'meta' => ['adopted' => true, 'adopted_after_conflict' => true],
+                    'meta' => $this->mergeMeta($existing, ['adopted' => true, 'adopted_after_conflict' => true]),
                 ]);
+
+                return $this->captureAccountKey($row);
             }
             // Fall through to the generic failure branch below if the
             // 409-causing customer still can't be found (transient lookup
@@ -200,7 +301,10 @@ class ResayilProvisioningService
 
             return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_ADMIN, [
                 'status' => ResayilAccount::STATUS_ERROR,
-                'meta' => ['http_status' => $response->status(), 'body' => $this->redactSecret($response->json())],
+                'meta' => $this->mergeMeta($existing, [
+                    'http_status' => $response->status(),
+                    'body' => $this->redactSecret($response->json()),
+                ]),
             ]);
         }
 
@@ -216,7 +320,275 @@ class ResayilProvisioningService
 
         unset($secret);
 
-        return $account;
+        // The whole point of wave 2: the customer exists, so its
+        // auto-generated account key exists too — go and prove it, then
+        // store it. Never inside the same call as the create: the POST
+        // response does not carry apiKeys (verified live), so this is a
+        // second, separate read of the DETAIL endpoint.
+        return $this->captureAccountKey($account);
+    }
+
+    /**
+     * Read, VALIDATE and store this company's Resayil account API key.
+     *
+     * Idempotent and safe to re-run: a row that already holds a token is
+     * returned untouched unless $force is set. Never throws — a failure is
+     * recorded on the row (redacted) and surfaced by the Admin Center as
+     * the FETCH RULE fallback, because a company must never be left half
+     * provisioned by an exception escaping into a page render or a queue
+     * worker's retry loop.
+     *
+     * SECURITY: the captured value is written straight onto the encrypted
+     * column and is never returned, logged, or copied into meta. The only
+     * things that reach meta are the key's non-secret id/alias and a
+     * failure reason.
+     */
+    public function captureAccountKey(ResayilAccount $row, bool $force = false): ResayilAccount
+    {
+        if (! $row->exists) {
+            return $row;
+        }
+
+        if ($row->resayil_account_token && ! $force) {
+            return $row;
+        }
+
+        if (! $row->resayil_customer_id) {
+            return $row;
+        }
+
+        if (! $this->resellerClient->configured() || config('resayil.test_mode')) {
+            return $row;
+        }
+
+        $result = $this->fetchAccountKey($row->resayil_customer_id);
+
+        if (! ($result['ok'] ?? false) || ! is_string($result['key'] ?? null) || $result['key'] === '') {
+            Log::warning('resayil.provisioning.key_capture_failed', [
+                'company_id' => $row->company_id,
+                'reason' => $result['reason'] ?? 'unknown',
+                'http_status' => $result['http_status'] ?? null,
+            ]);
+
+            $meta = is_array($row->meta) ? $row->meta : [];
+            $meta['key_capture_failed'] = [
+                'at' => now()->toIso8601String(),
+                'reason' => $result['reason'] ?? 'unknown',
+                'http_status' => $result['http_status'] ?? null,
+            ];
+            unset($meta['key_captured_at']);
+
+            $row->forceFill(['meta' => $meta])->save();
+
+            return $row;
+        }
+
+        $meta = is_array($row->meta) ? $row->meta : [];
+        unset($meta['key_capture_failed'], $meta['reconnect_needed']);
+        $meta['key_captured_at'] = now()->toIso8601String();
+        // Non-secret identifiers only. NEVER the value.
+        $meta['key_id'] = $result['key_id'] ?? null;
+        $meta['key_alias'] = $result['alias'] ?? null;
+
+        $row->forceFill([
+            'resayil_account_token' => $result['key'],
+            'key_source' => ResayilAccount::KEY_SOURCE_AUTO,
+            'meta' => $meta,
+        ])->save();
+
+        // Log the EVENT, never the credential — not even a prefix or a
+        // length, which would narrow a brute force.
+        Log::info('resayil.provisioning.key_captured', [
+            'company_id' => $row->company_id,
+            'key_id' => $result['key_id'] ?? null,
+            'alias' => $result['alias'] ?? null,
+        ]);
+
+        return $row;
+    }
+
+    /**
+     * Fetch a customer's account API key from the DETAIL endpoint and prove
+     * it works before handing it back.
+     *
+     * @return array{ok:bool,key:?string,key_id:?string,alias:?string,reason:?string,http_status:?int}
+     */
+    public function fetchAccountKey(string $customerId): array
+    {
+        $fail = fn (string $reason, ?int $status = null): array => [
+            'ok' => false, 'key' => null, 'key_id' => null, 'alias' => null,
+            'reason' => $reason, 'http_status' => $status,
+        ];
+
+        try {
+            // DETAIL endpoint. The list endpoint omits apiKeys entirely —
+            // see the class docblock. Do not "optimise" this into the list.
+            $response = $this->resellerClient->get('/customers/'.$customerId);
+        } catch (\Throwable $e) {
+            // Connection-level failure: ResayilClient::retry(throw: false)
+            // suppresses throwing only for failed HTTP *responses*.
+            Log::warning('resayil.provisioning.key_detail_exception', [
+                'customer_id' => $customerId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $fail('detail_read_exception');
+        }
+
+        if ($response->failed()) {
+            Log::warning('resayil.provisioning.key_detail_failed', [
+                'customer_id' => $customerId,
+                'status' => $response->status(),
+                'body' => $this->redactSecret($response->json()),
+            ]);
+
+            return $fail('detail_read_failed', $response->status());
+        }
+
+        $body = $response->json();
+        $keys = is_array($body) ? ($body['apiKeys'] ?? null) : null;
+
+        if (! is_array($keys) || $keys === []) {
+            // A deleted (status 20) customer returns an empty apiKeys[] —
+            // observed live. So does a customer whose keys were all
+            // revoked. Both are "no credential to capture", not an error to
+            // retry forever.
+            return $fail('no_api_keys');
+        }
+
+        $entry = static::selectApiKey($keys);
+
+        if ($entry === null) {
+            return $fail('no_usable_api_key');
+        }
+
+        $candidate = (string) $entry['value'];
+
+        // NEVER store an unproven string as a credential. A 2xx here —
+        // including the empty `[]` a brand-new customer returns — is the
+        // only proof that this value is a working ACCOUNT key.
+        try {
+            $probe = new ResayilClient(
+                config('resayil.account_base_url', 'https://api.resayil.io/v1'),
+                $candidate,
+            );
+
+            $validation = $probe->get('/devices');
+        } catch (\Throwable $e) {
+            Log::warning('resayil.provisioning.key_validation_exception', [
+                'customer_id' => $customerId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $fail('validation_exception');
+        }
+
+        if (! $validation->successful()) {
+            Log::warning('resayil.provisioning.key_validation_failed', [
+                'customer_id' => $customerId,
+                'status' => $validation->status(),
+            ]);
+
+            return $fail('validation_failed', $validation->status());
+        }
+
+        return [
+            'ok' => true,
+            'key' => $candidate,
+            'key_id' => isset($entry['id']) ? (string) $entry['id'] : null,
+            'alias' => isset($entry['alias']) ? (string) $entry['alias'] : null,
+            'reason' => null,
+            'http_status' => $validation->status(),
+        ];
+    }
+
+    /**
+     * Choose which apiKeys[] entry to adopt (plan §2.3): the `isDefault`
+     * one, falling back to the first with `status: 50` (= active), falling
+     * back to the first entry that carries a value at all.
+     *
+     * Static and pure so it can be unit-tested without a database, a
+     * company, or a network.
+     *
+     * Real customers accumulate many keys — City Travelers holds 13, one
+     * per integration. Borrowing `Default` is the plan's deliberate choice:
+     * the reseller API offers no way to MINT a dedicated key (V-1b, still
+     * open), and revoking or rotating someone's Default key would break
+     * their other integrations. So we read it and never touch it.
+     *
+     * @param  array<int,mixed>  $apiKeys
+     * @return array<string,mixed>|null
+     */
+    public static function selectApiKey(array $apiKeys): ?array
+    {
+        $usable = [];
+
+        foreach ($apiKeys as $entry) {
+            if (is_array($entry) && is_string($entry['value'] ?? null) && $entry['value'] !== '') {
+                $usable[] = $entry;
+            }
+        }
+
+        if ($usable === []) {
+            return null;
+        }
+
+        $active = fn (array $e): bool => (int) ($e['status'] ?? 0) === 50;
+        $default = fn (array $e): bool => ($e['isDefault'] ?? false) === true;
+
+        foreach ($usable as $entry) {
+            if ($default($entry) && $active($entry)) {
+                return $entry;
+            }
+        }
+
+        foreach ($usable as $entry) {
+            if ($default($entry)) {
+                return $entry;
+            }
+        }
+
+        foreach ($usable as $entry) {
+            if ($active($entry)) {
+                return $entry;
+            }
+        }
+
+        return $usable[0];
+    }
+
+    /**
+     * The company name Resayil requires on a business account. Falls back
+     * through the user's own name to their email so a company row with a
+     * blank name can never produce the 400 this field exists to avoid.
+     */
+    protected function companyNameFor(int $companyId, User $user): string
+    {
+        $name = Company::query()->whereKey($companyId)->value('name');
+
+        $name = is_string($name) ? trim($name) : '';
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return trim((string) ($user->name ?? '')) ?: $user->email;
+    }
+
+    /**
+     * Merge new diagnostic keys into an existing row's meta instead of
+     * replacing it wholesale. The admin row's meta is a small audit trail
+     * (admin_contact_phone, subscription_actions, key_captured_at) that a
+     * re-run of provisioning must not silently erase.
+     *
+     * @param  array<string,mixed>  $additions
+     * @return array<string,mixed>
+     */
+    protected function mergeMeta(?ResayilAccount $existing, array $additions): array
+    {
+        $current = is_array($existing?->meta) ? $existing->meta : [];
+
+        return array_merge($current, $additions);
     }
 
     /**
@@ -226,11 +598,33 @@ class ResayilProvisioningService
      * the caller falls back to create — never blocks provisioning on a
      * flaky lookup).
      *
+     * THE FILTER PARAMETER IS `search`, NOT `email` (established live,
+     * 2026-08-26). `?email=`, `?q=`, `?query=`, `?filter=` and `?term=` are
+     * all silently IGNORED — each returns the same unfiltered first 20 of
+     * ~97 customers, which made this method a coin flip: a customer that
+     * happened to fall outside page 1 was reported "not found", the caller
+     * blind-POSTed, and the API answered 409. `?search=<email>` returns
+     * exactly the matching row (and `[]` for no match), so lookup-then-create
+     * is now genuinely idempotent rather than accidentally so for recent
+     * customers only.
+     *
+     * `search` is a fuzzy match, so the exact strcasecmp() check below is
+     * load-bearing, not belt-and-braces: it stops a substring match on a
+     * different customer's address from being adopted as this one.
+     *
      * @return array<string,mixed>|null
      */
     protected function findCustomerByEmail(string $email): ?array
     {
-        $response = $this->resellerClient->get('/customers', ['email' => $email]);
+        try {
+            $response = $this->resellerClient->get('/customers', ['search' => $email]);
+        } catch (\Throwable $e) {
+            Log::warning('resayil.provisioning.customer_lookup_exception', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
 
         if ($response->failed()) {
             return null;
@@ -326,7 +720,10 @@ class ResayilProvisioningService
             return $this->save($existing, $user, $companyId, ResayilAccount::ROLE_AGENT, [
                 'status' => ResayilAccount::STATUS_ERROR,
                 'resayil_customer_id' => $adminRow->resayil_customer_id,
-                'meta' => ['http_status' => $response->status(), 'body' => $this->redactSecret($response->json())],
+                'meta' => $this->mergeMeta($existing, [
+                    'http_status' => $response->status(),
+                    'body' => $this->redactSecret($response->json()),
+                ]),
             ]);
         }
 
@@ -413,7 +810,15 @@ class ResayilProvisioningService
             return $body;
         }
 
-        $redactKeys = ['password', 'secret', 'resayil_secret'];
+        // Extended for wave 2 (plan §9.1): this class now reads a response
+        // body that legitimately CONTAINS a live account key
+        // (apiKeys[].value), so `value`, `token`, `key` and friends join the
+        // list. Over-redacting a diagnostic is always cheaper than
+        // under-redacting a credential.
+        $redactKeys = [
+            'password', 'secret', 'resayil_secret', 'token',
+            'apikey', 'api_key', 'key', 'authcode', 'value',
+        ];
 
         array_walk_recursive($body, function (&$value, $key) use ($redactKeys) {
             if (is_string($key) && in_array(strtolower($key), $redactKeys, true)) {

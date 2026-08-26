@@ -56,11 +56,29 @@ class ResayilAccount extends Model
         'resayil_account_token',
         'resayil_secret',
         'resayil_user_id',
+        'resayil_webhook_id',
+        'webhook_nonce',
+        'key_source',
+        'device_paired_at',
+        'device_health',
+        'health_checked_at',
+        'subscription_cache',
         'status',
         'resayil_email',
         'provisioned_at',
         'meta',
     ];
+
+    /**
+     * Admin-row `key_source` values (plan §4.2): how this company's
+     * account token was obtained. 'auto' = silently captured from
+     * GET /resellers/customers/{id} apiKeys[] at provisioning time
+     * (slice 2); 'pasted' = the owner pasted it into the Panel 2
+     * recovery card. Slice 1 writes neither — it needs no account key.
+     */
+    public const KEY_SOURCE_AUTO = 'auto';
+
+    public const KEY_SOURCE_PASTED = 'pasted';
 
     /**
      * Both Resayil secrets are credentials, not display data: never let them
@@ -75,7 +93,12 @@ class ResayilAccount extends Model
 
     protected $casts = [
         'provisioned_at' => 'datetime',
+        'device_paired_at' => 'datetime',
+        'health_checked_at' => 'datetime',
         'meta' => 'array',
+        // Price-free, token-free projection only — see the §4.2 delta
+        // migration's note and ResayilAdminService::project*().
+        'subscription_cache' => 'array',
         'resayil_account_token' => 'encrypted',
         'resayil_secret' => 'encrypted',
     ];
@@ -103,5 +126,24 @@ class ResayilAccount extends Model
     public function scopeProvisioned($query)
     {
         return $query->where('status', self::STATUS_PROVISIONED);
+    }
+
+    /**
+     * The single admin row that owns a company's Resayil workspace
+     * identity (customer id, device id, account token).
+     *
+     * TENANT ISOLATION (plan §9.3): every Admin Center read resolves its
+     * Resayil ids from THIS row, derived from the authenticated user's
+     * company — never from a route parameter or request body. The
+     * reseller token can see all 97 customers on the platform, so this
+     * lookup is the only thing standing between one company and
+     * another's data. Do not add an overload that takes an id from input.
+     */
+    public static function adminFor(int $companyId): ?self
+    {
+        return static::query()
+            ->forCompany($companyId)
+            ->where('role', self::ROLE_ADMIN)
+            ->first();
     }
 }

@@ -91,4 +91,49 @@ return [
     */
     'max_auto_users' => (int) env('RESAYIL_MAX_AUTO_USERS', 9),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Center — offered plans and the number-creation kill switch
+    |--------------------------------------------------------------------------
+    |
+    | offered_plans: the ONLY billing plan codes this platform resells
+    | (owner decision D-3, plan §5.4 — Platform Enterprise). There is no
+    | client-facing plan picker; this list exists so the other gateway and
+    | io plan codes the Resayil API accepts are scoped away rather than
+    | offered, and so Panel 1 can label a plan code it did not sell.
+    |
+    | NEVER put a price here. No Resayil price is rendered to a client in
+    | any surface, ever (owner decision D-1, §5.2) — the owner invoices
+    | clients on their own combined billing, outside Resayil.
+    |
+    | device_creation_enabled: the V-4 kill switch (§5.4). POST /devices is
+    | documented to start a PAID subscription the moment it is called, and
+    | whether it succeeds against the reseller's prepaid credit pool (vs
+    | erroring for a missing card) has deliberately NOT been probed live —
+    | it spends real money. Until V-4 is answered, slice 3's Create button
+    | ships disabled behind this flag and the panel shows a support CTA
+    | instead. Slice 1 does not read it; it is declared here so slice 3
+    | needs no config change of its own.
+    |
+    */
+    'offered_plans' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('RESAYIL_OFFERED_PLANS', 'io-enterprise'))
+    ))),
+
+    'device_creation_enabled' => (bool) env('RESAYIL_DEVICE_CREATION_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Center — reseller read cache TTL (seconds)
+    |--------------------------------------------------------------------------
+    |
+    | Plan §5.1: reseller reads are cached 60 s PER COMPANY. The cache key
+    | always carries the company id — a global key (as in the pre-existing
+    | `resayil_group_list` in SupplierController) would leak one company's
+    | devices into another company's panel.
+    |
+    */
+    'admin_cache_ttl' => (int) env('RESAYIL_ADMIN_CACHE_TTL', 60),
+
 ];

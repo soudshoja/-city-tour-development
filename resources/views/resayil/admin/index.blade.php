@@ -581,7 +581,30 @@
                             <div class="rsa-kv"><dt>Device status</dt><dd><code>{{ $device['status'] ?? '—' }}</code></dd></div>
                             <div class="rsa-kv"><dt>Session</dt><dd><code>{{ $device['session_status'] ?? '—' }}</code></dd></div>
                             <div class="rsa-kv"><dt>Plan code</dt><dd><code>{{ $subscription['plan_code'] ?? '—' }}</code></dd></div>
-                            <div class="rsa-kv"><dt>Snapshot</dt><dd><code>{{ ($overview['cached'] ?? false) ? 'cached' : 'live' }} · {{ $fmt($overview['fetched_at'] ?? null, true) }}</code></dd></div>
+                            <div class="rsa-kv">
+                                <dt>Snapshot</dt>
+                                <dd>
+                                    <code>
+                                        {{--
+                                            Blocker 5: this line must never claim "live" during
+                                            a failed fetch, whether that failure is the one that
+                                            just happened (cached=false) or one still being served
+                                            out of the short degraded-TTL cache (cached=true) — in
+                                            both cases the underlying reseller call did not
+                                            succeed, so neither "live" nor "cached" (which
+                                            elsewhere means "a recent HEALTHY read") is honest here.
+                                        --}}
+                                        @if($degraded)
+                                            unavailable
+                                        @elseif($overview['cached'] ?? false)
+                                            cached
+                                        @else
+                                            live
+                                        @endif
+                                        · {{ $fmt($overview['fetched_at'] ?? null, true) }}
+                                    </code>
+                                </dd>
+                            </div>
                         </dl>
 
                         @if($device)

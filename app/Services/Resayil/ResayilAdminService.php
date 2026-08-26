@@ -2,10 +2,14 @@
 
 namespace App\Services\Resayil;
 
+use App\Models\Accountant;
+use App\Models\Agent;
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\ResayilAccount;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -278,6 +282,8 @@ class ResayilAdminService
             'subscription' => null,
             'health' => null,
             'seats' => $this->seats($companyId),
+            'agents' => [],
+            'team' => $this->emptyTeam(),
             'checklist' => [],
             'banners' => [],
             'operator_note' => null,
@@ -372,6 +378,16 @@ class ResayilAdminService
             $base['device'] = $device ? $this->projectDevice($device) : null;
             $base['subscription'] = $device ? $this->projectSubscription($device) : null;
             $base['health'] = $device ? $this->projectHealth($device) : null;
+            // Seats come from the DEVICE (subscription.agents = included,
+            // agents[] = in use), not from local rows or a config constant.
+            $base['seats'] = $this->seats($companyId, $device);
+            // Team panel (§4 of the redesign): the same agents[] the seat
+            // count already reads, projected to an allow-list and matched
+            // against this company's own TravelERP users by email. No
+            // extra Resayil call — agents[] came back on the SAME /devices
+            // request `seats()` already used above.
+            $base['agents'] = $device ? $this->projectAgents($device) : [];
+            $base['team'] = $device ? $this->team($companyId, $base['agents']) : $this->emptyTeam();
             $base['checklist'] = $this->checklist($row, $base['device']);
             $base['banners'] = array_merge(
                 $this->banners($base['device'], $base['subscription']),
@@ -418,6 +434,15 @@ class ResayilAdminService
             $base['device'] = $cache['device'] ?? null;
             $base['subscription'] = $cache['subscription'] ?? null;
             $base['health'] = $cache['health'] ?? null;
+            $base['agents'] = $cache['agents'] ?? [];
+            // Team is re-matched against LIVE TravelERP users rather than
+            // trusted from the cached blob: user records (name, email,
+            // resayil_email alias) can change between the last successful
+            // Resayil read and now, and re-matching is a local DB read only
+            // — it costs nothing extra during a degraded fetch.
+            $base['team'] = $base['agents'] !== []
+                ? $this->team($row->company_id, $base['agents'])
+                : $this->emptyTeam();
             $base['stale_since'] = optional($row->health_checked_at)->toIso8601String();
         }
 
@@ -443,6 +468,7 @@ class ResayilAdminService
                     'device' => $payload['device'],
                     'subscription' => $payload['subscription'],
                     'health' => $payload['health'],
+                    'agents' => $payload['agents'] ?? [],
                 ],
                 'device_health' => $payload['device']['session_status'] ?? null,
                 'health_checked_at' => now(),
@@ -493,7 +519,11 @@ class ResayilAdminService
      */
     protected function fetchPrimaryDevice(string $customerId): ?array
     {
-        $response = $this->reseller->get('/devices', ['user' => $customerId]);
+        // include=agents expands agents[] from bare ObjectIds into real records
+        // (displayName, email, role, status, lastLoginAt) — without it the seat
+        // panel can only count anonymous ids, and staff cannot be matched to
+        // TravelERP users by email.
+        $response = $this->reseller->get('/devices', ['user' => $customerId, 'include' => 'agents']);
 
         if ($response->failed()) {
             Log::warning('resayil.admin.devices_failed', [
@@ -678,25 +708,247 @@ class ResayilAdminService
     }
 
     /**
-     * Seat meter (§5.1) — purely local: provisioned rows vs the configured
-     * included-seat cap. No API call.
+     * Seat meter (§5.1) — read from the DEVICE, which is the only place the
+     * truth lives.
      *
-     * @return array<string,int|bool>
+     * This used to count local resayil_accounts rows against
+     * config('resayil.max_auto_users'), and reported both as if they were the
+     * customer's real seat allocation. Both numbers were fiction: City
+     * Travelers rendered "1 of 9" while Resayil said 8 included and 8 in use —
+     * the customer was at full capacity and the panel showed them nearly empty.
+     * `max_auto_users` is OUR provisioning cap, not the plan's entitlement, and
+     * the local row count only ever tracked workspaces WE created.
+     *
+     * Real source:
+     *   included = device.billing.subscription.agents
+     *   in use   = count(device.agents)
+     *
+     * Returns nulls when there is no device yet (nothing to report) so the view
+     * can omit the meter rather than draw a confident 0 of 0.
+     *
+     * @param  array<string,mixed>|null  $device  raw reseller device payload
+     * @return array<string,int|bool|null>
      */
-    protected function seats(int $companyId): array
+    protected function seats(int $companyId, ?array $device = null): array
     {
-        $cap = (int) config('resayil.max_auto_users', 9);
+        $subscription = data_get($device, 'billing.subscription');
+        $cap = $subscription ? (int) data_get($subscription, 'agents', 0) : 0;
 
-        $used = ResayilAccount::query()
-            ->forCompany($companyId)
-            ->provisioned()
-            ->count();
+        $agents = data_get($device, 'agents');
+        $agents = is_array($agents) ? $agents : [];
+
+        // NOTE ON THE COUNT. subscription.agents (the included-seat number) and
+        // the length of agents[] do not always agree: City Travelers reads 8
+        // included but returns 9 expanded agents, the extra one being the
+        // workspace owner, who does not appear to consume a seat. Rather than
+        // pick a number and be confidently wrong — which is exactly what the
+        // previous "1 of 9" did — report both honestly and let the view show
+        // the overage plainly if there is one.
+        $used = count($agents);
+
+        if (! $device || $cap <= 0) {
+            return ['used' => null, 'cap' => null, 'reached' => false, 'known' => false];
+        }
 
         return [
             'used' => $used,
             'cap' => $cap,
-            'reached' => $cap > 0 && $used >= $cap,
+            'reached' => $used >= $cap,
+            'known' => true,
         ];
+    }
+
+    /**
+     * Team panel (redesign §4) — the raw device.agents[] projected to an
+     * allow-list. `include=agents` on the /devices call (see
+     * fetchPrimaryDevice()) expands each entry from a bare id into a real
+     * record: displayName, email, role, status, lastLoginAt, lastSeenAt,
+     * language, timezone, initials, color. Nothing token-shaped is on this
+     * object per the API's own documented shape, but this is still an
+     * explicit allow-list (same rule as projectSubscription()) rather than
+     * a passthrough, so a field Resayil adds later does not appear here
+     * without a deliberate decision.
+     *
+     * @param  array<string,mixed>  $device
+     * @return list<array<string,mixed>>
+     */
+    protected function projectAgents(array $device): array
+    {
+        $agents = data_get($device, 'agents');
+        $agents = is_array($agents) ? $agents : [];
+
+        $out = [];
+
+        foreach ($agents as $agent) {
+            if (! is_array($agent)) {
+                continue;
+            }
+
+            $out[] = [
+                'display_name' => $agent['displayName'] ?? null,
+                'email' => $agent['email'] ?? null,
+                'role' => $agent['role'] ?? null,
+                'status' => $agent['status'] ?? null,
+                'last_login_at' => $agent['lastLoginAt'] ?? null,
+                'last_seen_at' => $agent['lastSeenAt'] ?? null,
+                'language' => $agent['language'] ?? null,
+                'timezone' => $agent['timezone'] ?? null,
+                'initials' => $agent['initials'] ?? null,
+                'color' => $agent['color'] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    protected function emptyTeam(): array
+    {
+        return [
+            'matched' => [],
+            'resayil_only' => [],
+            'travelerp_only' => [],
+            'counts' => ['agents' => 0, 'matched' => 0, 'resayil_only' => 0, 'travelerp_only' => 0],
+        ];
+    }
+
+    /**
+     * Match Resayil WhatsApp agents to TravelERP portal users by email,
+     * case-insensitively (redesign §4/§5).
+     *
+     * MATCH KEY: each TravelERP user's effective email is
+     * COALESCE(users.resayil_email, users.email) — resayil_email is a
+     * nullable per-user alias (see the add_resayil_email_to_users_table
+     * migration) for the case the two systems disagree on which address
+     * belongs to the same person. Proven live: City Travelers' admin signs
+     * into TravelERP as saeid@citytravelers.co but holds the WhatsApp seat
+     * under shoja@citytravelers.co — no amount of case-folding reconciles
+     * two genuinely different addresses, so the alias is what closes that
+     * gap; case-insensitive comparison alone closes the OTHER kind of
+     * mismatch this platform has (Nouby@ vs nouby@, MAGED@CITYTRAVELERS.CO).
+     *
+     * Produces three groups, never fewer than the truth:
+     *   matched         — a Resayil agent AND a TravelERP user, paired.
+     *   resayil_only    — a Resayil agent with no matching TravelERP user
+     *                      (an external contact, a WhatsApp-only login, or
+     *                      simply nobody entered an alias for them yet).
+     *   travelerp_only  — a TravelERP user this company's WhatsApp roster
+     *                      never mentioned (no access).
+     *
+     * @param  list<array<string,mixed>>  $agents  from projectAgents()
+     * @return array<string,mixed>
+     */
+    protected function team(int $companyId, array $agents): array
+    {
+        $users = $this->companyUsers($companyId);
+
+        $byEmail = [];
+        foreach ($users as $user) {
+            $effective = trim((string) ($user->resayil_email ?: $user->email));
+            if ($effective === '') {
+                continue;
+            }
+            // First match wins on a genuine duplicate — should not happen
+            // (two users sharing an effective email), but a silent
+            // overwrite would hide the duplicate rather than just picking
+            // one deterministically.
+            $key = mb_strtolower($effective);
+            if (! isset($byEmail[$key])) {
+                $byEmail[$key] = $user;
+            }
+        }
+
+        $matched = [];
+        $resayilOnly = [];
+        $claimedUserIds = [];
+
+        foreach ($agents as $agent) {
+            $email = trim((string) ($agent['email'] ?? ''));
+            $user = $email !== '' ? ($byEmail[mb_strtolower($email)] ?? null) : null;
+
+            if ($user) {
+                $matched[] = [
+                    'agent' => $agent,
+                    'user_name' => $user->name,
+                    'user_email' => $user->email,
+                    'user_role' => $this->portalRoleLabel((int) $user->role_id),
+                ];
+                $claimedUserIds[] = $user->id;
+            } else {
+                $resayilOnly[] = $agent;
+            }
+        }
+
+        $travelerpOnly = $users
+            ->reject(fn (User $u) => in_array($u->id, $claimedUserIds, true))
+            ->map(fn (User $u) => [
+                'name' => $u->name,
+                'email' => $u->email,
+                'role' => $this->portalRoleLabel((int) $u->role_id),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'matched' => $matched,
+            'resayil_only' => $resayilOnly,
+            'travelerp_only' => $travelerpOnly,
+            'counts' => [
+                'agents' => count($agents),
+                'matched' => count($matched),
+                'resayil_only' => count($resayilOnly),
+                'travelerp_only' => count($travelerpOnly),
+            ],
+        ];
+    }
+
+    /**
+     * Every TravelERP user under one company, across all four ways a user
+     * belongs to one (see app/Helper/helper.php::getCompanyId): the
+     * company owner, plus every BRANCH/AGENT/ACCOUNTANT user reachable
+     * through that company's branches. There is no `users.company_id`
+     * column — TravelERP's tenancy is Company -> Branch -> {Agent,
+     * Accountant}, so this walks the same path getCompanyId() walks, in
+     * reverse.
+     *
+     * @return \Illuminate\Support\Collection<int,User>
+     */
+    protected function companyUsers(int $companyId): Collection
+    {
+        $ownerId = Company::query()->whereKey($companyId)->value('user_id');
+        $branchIds = Branch::query()->where('company_id', $companyId)->pluck('id');
+
+        $ids = collect([$ownerId])
+            ->merge(Branch::query()->where('company_id', $companyId)->pluck('user_id'))
+            ->merge(Agent::query()->whereIn('branch_id', $branchIds)->pluck('user_id'))
+            ->merge(Accountant::query()->whereIn('branch_id', $branchIds)->pluck('user_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return User::query()
+            ->whereIn('id', $ids)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'resayil_email', 'role_id']);
+    }
+
+    /**
+     * Client-facing label for a TravelERP role id — the Team panel's
+     * "portal staff without access" list must read like the rest of the
+     * app, not print a raw role_id.
+     */
+    protected function portalRoleLabel(int $roleId): string
+    {
+        return match ($roleId) {
+            \App\Models\Role::ADMIN => 'Platform admin',
+            \App\Models\Role::COMPANY => 'Owner',
+            \App\Models\Role::BRANCH => 'Branch',
+            \App\Models\Role::AGENT => 'Agent',
+            \App\Models\Role::ACCOUNTANT => 'Accountant',
+            default => 'Staff',
+        };
     }
 
     /**
@@ -796,7 +1048,6 @@ class ResayilAdminService
             'body' => 'Your WhatsApp status, plan and payment history below are live and correct. A few extras — invoices and team access — switch on once linking finishes. Our team completes this; nothing is needed from you.',
         ]];
     }
-
 
     /**
      * In-panel banners for the §8 N-8..N-12 conditions. Every one carries
@@ -1099,9 +1350,6 @@ class ResayilAdminService
      * persisted (§9.1 — extends the provisioning service's key list with
      * token/apikey/key/authcode). We do not control what Resayil echoes in
      * an error body, and a key must never reach a log line.
-     *
-     * @param  mixed  $body
-     * @return mixed
      */
     protected function redact(mixed $body): mixed
     {

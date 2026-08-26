@@ -62,6 +62,28 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-system-settings', [SystemSettingPolicy::class, 'viewAny']);
         Gate::define('manage-email-tester', [SystemSettingPolicy::class, 'manageEmailTester']);
 
+        /*
+         * Resayil Admin Center (Settings -> WhatsApp), plan §9.2.
+         *
+         * ADMIN (1, the platform operator) and COMPANY (2, the agency
+         * owner) only. BRANCH/AGENT/ACCOUNTANT/CLIENT get nothing in v1 —
+         * agents consume WhatsApp through the drawer and are provisioned
+         * automatically, so they have no reason to reach the workspace,
+         * subscription, or the operator pause lever. Extending to
+         * BRANCH (read-only Panel 1) or ACCOUNTANT (read-only Panel 4) is
+         * open decision U-8 and is a one-line change to this array.
+         *
+         * Applied as `can:manage-resayil` on the whole route group, layered
+         * UNDER `module:resayil` so an un-entitled company gets a 404
+         * (invisible) before this gate can 403 (which would confirm the
+         * section exists).
+         */
+        Gate::define('manage-resayil', fn (\App\Models\User $user) => in_array(
+            (int) $user->role_id,
+            [Role::ADMIN, Role::COMPANY],
+            true
+        ));
+
         // Register event listeners
         Event::listen(
             CheckConfirmedOrIssuedTask::class,

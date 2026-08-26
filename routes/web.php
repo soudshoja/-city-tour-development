@@ -46,6 +46,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\ResayilAdminController;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\ResayilEmbedController;
 use App\Http\Controllers\SettingController;
@@ -851,6 +852,50 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-notifications', [SettingController::class, 'storeAgentNotification'])->name('agent-notifications.store');
         Route::post('/agent-notifications/bulk-update', [SettingController::class, 'bulkUpdateAgentNotifications'])->name('agent-notifications.bulk-update');
         Route::delete('/agent-notifications/{id}', [SettingController::class, 'deleteAgentNotification'])->name('agent-notifications.delete');
+    });
+
+    /*
+    | Module 5 — Resayil Admin Center (Settings -> WhatsApp).
+    | Plan: .planning/specs/RESAYIL-ADMIN-CENTER.md §4.1 / §9.2.
+    |
+    | A SIBLING of the `settings` group above, deliberately NOT nested
+    | inside it: nesting would prefix every route name with `settings.`
+    | and silently turn `resayil-admin.index` into
+    | `settings.resayil-admin.index`, breaking every route() call.
+    |
+    | It sits inside the outer auth group, so 'auth' is inherited and is
+    | not repeated here. Middleware ORDER MATTERS: `module:resayil` runs
+    | first and 404s a company without the module (EnsureModuleEnabled
+    | aborts 404, never 403, so an un-entitled company cannot even learn
+    | this section exists); `can:manage-resayil` then 403s roles outside
+    | {ADMIN, COMPANY} for companies that DO have the module.
+    |
+    | `resayil.frame` is deliberately NOT applied: no panel here frames
+    | wa.resayil.io. Slice 1 renders entirely from server-proxied reseller
+    | reads, and the later Connect card uses a top-level popup, not an
+    | iframe. Adding the CSP middleware while RESAYIL_EMBED_URL is unset
+    | would emit `frame-src 'self'` and block any frame that was added.
+    */
+    Route::group([
+        'prefix' => 'settings/whatsapp',
+        'as' => 'resayil-admin.',
+        'middleware' => ['module:resayil', 'can:manage-resayil'],
+    ], function () {
+        Route::get('/', [ResayilAdminController::class, 'index'])->name('index');
+
+        // JSON feed for the panel's Alpine poller / manual refresh.
+        Route::get('/overview-data', [ResayilAdminController::class, 'overviewData'])->name('overview');
+
+        // Panel 4 — Billing. Payment history is a reseller read and needs
+        // no company key; invoice PDFs do, and render the "available once
+        // linked" state until slice 2 captures one.
+        Route::get('/billing/payments', [ResayilAdminController::class, 'payments'])->name('billing.payments');
+
+        // Operator collections lever (§5.5, owner decision D-2). ADMIN
+        // role only — re-checked inside the controller, because this gate
+        // admits COMPANY too. Pausing takes a live WhatsApp number dark.
+        Route::post('/device/pause', [ResayilAdminController::class, 'pauseDevice'])->name('device.pause');
+        Route::post('/device/resume', [ResayilAdminController::class, 'resumeDevice'])->name('device.resume');
     });
 
     Route::group([

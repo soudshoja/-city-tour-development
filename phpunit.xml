@@ -22,8 +22,22 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="mysql_testing"/>
-        <env name="DB_DATABASE" value="city_tour_test"/>
+        <env name="DB_CONNECTION" value="mysql_testing" force="true"/>
+        <env name="DB_DATABASE" value="city_tour_test" force="true"/>
+        <!--
+            SAFETY (see .planning/P1-VERIFICATION-FINDINGS.json): the mysql_testing
+            connection in config/database.php reads its database name from
+            DB_TEST_DATABASE, NOT DB_DATABASE. .env sets DB_TEST_DATABASE to
+            laravel_testing (the PRIMARY local application database). Without
+            this override, RefreshDatabase would wipe laravel_testing on every
+            test run. DB_DATABASE_MAP is also overridden so the mysql_map
+            connection (used by 2025_06_05_122511_create_tables_for_magic_holiday
+            and 2025_06_10_161525_update_map_city_tables) never touches the real
+            map_data_citytour database during tests. force="true" guarantees these
+            win even if the shell/CI environment already exports the .env values.
+        -->
+        <env name="DB_TEST_DATABASE" value="city_tour_test" force="true"/>
+        <env name="DB_DATABASE_MAP" value="city_tour_test_map" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

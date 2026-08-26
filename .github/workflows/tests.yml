@@ -94,8 +94,10 @@ jobs:
       run: |
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "CREATE DATABASE IF NOT EXISTS map_data_citytour CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "CREATE DATABASE IF NOT EXISTS city_tour_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "CREATE DATABASE IF NOT EXISTS city_tour_test_map CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "GRANT ALL PRIVILEGES ON map_data_citytour.* TO 'laravel_user'@'%';"
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "GRANT ALL PRIVILEGES ON city_tour_test.* TO 'laravel_user'@'%';"
+        mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "GRANT ALL PRIVILEGES ON city_tour_test_map.* TO 'laravel_user'@'%';"
         mysql -h 127.0.0.1 -P 3306 -u root -plaravel_test_password -e "FLUSH PRIVILEGES;"
 
     - name: Verify Database Connection

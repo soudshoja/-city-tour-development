@@ -106,6 +106,51 @@ return [
             ]) : [],
         ],
 
+        // P1 fix round 4 (BLOCKING #2 — .planning/P1-VERIFICATION-FINDINGS.json): a SECOND,
+        // independent connection to the exact same physical database as `mysql` above — every
+        // credential/host/database value below is read from the SAME env vars `mysql` uses, so
+        // this always targets whatever `mysql` targets (including under phpunit.xml's forced
+        // DB_DATABASE=city_tour_test override during tests: both connections see that override,
+        // so both land in the same disposable test database).
+        //
+        // WHY A SEPARATE CONNECTION, NOT JUST A SEPARATE TABLE: Laravel's DB::connection($name)
+        // returns one PDO/transaction-state object per distinct connection NAME, cached for the
+        // life of the request — reusing the name 'mysql' would reuse the SAME PDO handle
+        // PostingService::post() already has an open transaction on, so anything written "through
+        // it" would just become part of that same transaction and roll back with it. A genuinely
+        // different connection name gets its own PDO handle with its OWN, independent transaction
+        // state — writing through it while `mysql`'s transaction is still open, uncommitted, and
+        // about to roll back has no effect on what this connection sees or commits. MySQL/InnoDB
+        // does not serialize or block one session's plain autocommit INSERT behind another
+        // session's still-open transaction on unrelated rows, so this write proceeds immediately.
+        //
+        // USED EXCLUSIVELY by App\Models\IdempotencyKeyRejection (see that model's own docblock)
+        // to record a rejected post() attempt SO THE RECORD SURVIVES the very transaction rollback
+        // that PostingService::post() triggers by throwing SupersededIdempotencyKeyException — a
+        // record written on the `mysql`/`mysql_testing` connection inside that same transaction
+        // would vanish the instant the rollback runs, defeating the entire point of "make this
+        // visible to an admin". No other class should use this connection: it exists for exactly
+        // one durability requirement, not as a general-purpose second database handle.
+        'accounting_audit' => [
+            'driver' => 'mysql',
+            'url' => env('DB_URL'),
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

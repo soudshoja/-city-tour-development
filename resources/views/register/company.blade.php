@@ -44,7 +44,11 @@
         <div x-show="step === 2" x-cloak>
             <h2 class="font-semibold mb-2">Administrator account</h2>
             <input name="owner_name" value="{{ old('owner_name') }}" placeholder="Full name" required class="border rounded p-2 w-full mb-2">
-            <input name="owner_email" type="email" value="{{ old('owner_email') }}" placeholder="Login email" required class="border rounded p-2 w-full mb-2">
+            {{-- Must match the email this invite was sent to (server-enforced
+                 in CompanyRegistrationRequest::withValidator()) — prefilled
+                 so that's the normal path, not a surprise validation error. --}}
+            <input name="owner_email" type="email" value="{{ old('owner_email', $invite->email) }}" placeholder="Login email" required class="border rounded p-2 w-full mb-2">
+            <p class="text-xs text-gray-500 mb-2" style="margin-top:-0.5rem;">Must match the email this invitation was sent to.</p>
             <input name="owner_password" type="password" placeholder="Password (min 8)" required class="border rounded p-2 w-full mb-2">
             <input name="owner_password_confirmation" type="password" placeholder="Confirm password" required class="border rounded p-2 w-full mb-2">
         </div>

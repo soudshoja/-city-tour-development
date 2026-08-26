@@ -4,8 +4,10 @@ namespace App\Http\Requests;
 
 use App\Exports\AgentsTemplateExport;
 use App\Imports\AgentsFileImport;
+use App\Models\CompanyInvite;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 
 class CompanyRegistrationRequest extends FormRequest
@@ -13,6 +15,58 @@ class CompanyRegistrationRequest extends FormRequest
     public function authorize(): bool
     {
         return true;   // token gate happens in the controller
+    }
+
+    /**
+     * SECURITY FIX (2026-08-26 — wave-2 adversarial verification, blocker
+     * 2a): `owner_email` used to be validated only as `required|email|
+     * unique:users,email` — nothing tied it to the invite this
+     * registration link was actually sent to. Anyone holding a valid
+     * invite link could type ANY email into "Login email", including a
+     * real stranger's — and that email becomes both this company's
+     * TravelERP login AND the identity CompanyProvisioner's post-commit
+     * job later searches for on Resayil (ResayilProvisioningService::
+     * findCustomerByEmail()). Proven live: a throwaway company registered
+     * with an unrelated real customer's email adopted that customer's
+     * Resayil account and captured its live API key.
+     *
+     * The invite (`CompanyInvite.email`) is the only pre-established trust
+     * anchor here — an admin created it and Mail::to()'d the token link to
+     * that specific address (CompanyInviteController::store()), so only
+     * whoever controls that inbox can reach this form at all. Binding
+     * `owner_email` to it closes the gap without inventing a new
+     * verification step. We REJECT a mismatch (a clear validation error)
+     * rather than silently overwriting the submitted value with the
+     * invite's: silently substituting a value the user can see they typed
+     * would be confusing ("why did my login become a different email?")
+     * and looks like a bug, not a security control — an explicit rejection
+     * tells the registrant exactly what to fix.
+     *
+     * `company_email` (a separate field, prefilled from the invite but
+     * intentionally left editable — it is the general company contact
+     * address, not a login) is NOT constrained here: it plays no part in
+     * either authentication or the Resayil lookup, so there is nothing to
+     * protect by locking it.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $token = $this->route('token');
+            $invite = $token ? CompanyInvite::where('token', $token)->first() : null;
+
+            if (! $invite || ! $invite->email) {
+                return;   // no invite to bind to — the controller's own token check handles this
+            }
+
+            $ownerEmail = (string) $this->input('owner_email');
+
+            if ($ownerEmail !== '' && strcasecmp($ownerEmail, $invite->email) !== 0) {
+                $validator->errors()->add(
+                    'owner_email',
+                    'The administrator login email must match the email this invitation was sent to ('.$invite->email.').'
+                );
+            }
+        });
     }
 
     /**

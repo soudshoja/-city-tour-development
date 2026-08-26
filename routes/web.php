@@ -53,6 +53,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TermController;
+use App\Http\Controllers\VoucherTemplateController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserSettingController;
 use App\Http\Controllers\LockManagementController;
@@ -860,6 +861,26 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-notifications', [SettingController::class, 'storeAgentNotification'])->name('agent-notifications.store');
         Route::post('/agent-notifications/bulk-update', [SettingController::class, 'bulkUpdateAgentNotifications'])->name('agent-notifications.bulk-update');
         Route::delete('/agent-notifications/{id}', [SettingController::class, 'deleteAgentNotification'])->name('agent-notifications.delete');
+
+        /*
+        | Voucher Templates gallery (.planning/specs/VOUCHER-TEMPLATES.md
+        | §16 step 3, §8). Both routes read-only, both scoped to
+        | getCompanyId(Auth::user()) inside the controller — deliberately
+        | INSIDE this authenticated `settings` group, unlike the `terms`
+        | route group elsewhere in this file, which the plan documents as
+        | a known, unfixed hole (unauthenticated + no company scoping on
+        | its mutations, §11.4). Nothing under this prefix mutates
+        | anything: no create/edit/delete route exists here at all
+        | (plan §14.8 — clients pick among shipped designs, they do not
+        | edit or upload their own).
+        */
+        Route::group([
+            'prefix' => 'voucher-templates',
+            'as' => 'voucher-templates.',
+        ], function () {
+            Route::get('/', [VoucherTemplateController::class, 'gallery'])->name('index');
+            Route::get('/preview/{taskType}/{language}', [VoucherTemplateController::class, 'preview'])->name('preview');
+        });
     });
 
     /*

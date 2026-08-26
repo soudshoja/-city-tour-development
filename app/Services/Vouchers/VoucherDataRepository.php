@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
 use App\Models\TaskHotelDetail;
@@ -257,12 +258,82 @@ class VoucherDataRepository
     }
 
     // ------------------------------------------------------------------
+    // Gallery / preview support (plan §8, §16 step 3)
+    //
+    // "Preview is auth-only, GET, renders HTML inline... no travel_vouchers
+    // row created" (§8). These are lookups, not booking-content reads, but
+    // they still touch tasks — kept here rather than in the controller so
+    // every company_id-scoped read in this feature funnels through the one
+    // class the plan names (§2.6), even the "which task do we preview
+    // against" ones.
+    // ------------------------------------------------------------------
+
+    /**
+     * The company's most recently created task of one real `tasks.type`
+     * value, for the gallery's "preview against your own booking" card
+     * (plan §8). Null when the company has none yet — the caller falls
+     * back to a sample fixture.
+     */
+    public function latestTaskForType(int $companyId, string $taskType): ?Task
+    {
+        return Task::where('company_id', $companyId)
+            ->where('type', $taskType)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * The company's most recent task among the five types with no detail
+     * table (plan §0/§5/§7) — what the Generic Segment catalogue card
+     * previews against.
+     */
+    public function latestTaskForGenericTypes(int $companyId): ?Task
+    {
+        return Task::where('company_id', $companyId)
+            ->whereIn('type', VoucherCatalogue::GENERIC_TASK_TYPES)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Company branding + voucher-meta + terms only, no task/type content —
+     * for a sample-fixture preview (plan §8: "no booking of that type
+     * yet... render from a shipped fixture payload"). VoucherSampleFixtures
+     * merges this real company shell with its fabricated type block, so a
+     * SAMPLE-watermarked card still wears the company's own logo/terms
+     * rather than fake branding too. Still funnels through this class
+     * (§2.6) — a fixture's company/terms data is real, only the booking
+     * content is fabricated.
+     */
+    public function shellForCompany(int $companyId, ?VoucherTemplate $template, array $voucherMeta = []): array
+    {
+        $this->assertTemplateBelongsToCompany($template, $companyId);
+
+        $language = $voucherMeta['language'] ?? ($template->language ?? VoucherTemplate::LANGUAGE_EN);
+
+        return [
+            'company' => $this->companyBlock($companyId),
+            'voucher' => $this->voucherMetaBlock($voucherMeta, $language),
+            'terms' => $this->termsBlock($template, $companyId, $language),
+        ];
+    }
+
+    // ------------------------------------------------------------------
     // Common blocks
     // ------------------------------------------------------------------
 
     protected function companyBlock(int $companyId): array
     {
         $company = Company::find($companyId);
+
+        // Voucher-only branding extras (plan §3.5, §14.4, §14.10): the
+        // `companies` table is frozen to us (§2.5), so a duty/emergency
+        // phone and a footer strapline live as `settings` rows instead —
+        // `voucher.duty_phone` / `voucher.footer_note`. No column added
+        // anywhere. No editing UI ships in this step (that is Phase C,
+        // §14.4); a row set directly is honoured the moment it exists.
+        $dutyPhone = $this->voucherSetting($companyId, 'voucher.duty_phone');
+        $footerNote = $this->voucherSetting($companyId, 'voucher.footer_note');
 
         if (! $company) {
             return [
@@ -275,6 +346,8 @@ class VoucherDataRepository
                 'whatsapp' => null,
                 'socials' => ['facebook' => null, 'instagram' => null, 'snapchat' => null, 'tiktok' => null],
                 'currency' => null,
+                'duty_phone' => $dutyPhone,
+                'footer_note' => $footerNote,
             ];
         }
 
@@ -293,7 +366,21 @@ class VoucherDataRepository
                 'tiktok' => $company->tiktok,
             ],
             'currency' => $company->currency,
+            'duty_phone' => $dutyPhone,
+            'footer_note' => $footerNote,
         ];
+    }
+
+    /**
+     * A single `settings` row's value for this company, or null. The
+     * column is literally named `key` (plan §3.5 — backtick it in raw
+     * SQL; Eloquent's query builder already does so here).
+     */
+    protected function voucherSetting(int $companyId, string $key): ?string
+    {
+        $value = Setting::where('company_id', $companyId)->where('key', $key)->value('value');
+
+        return $value !== null && $value !== '' ? $value : null;
     }
 
     /**

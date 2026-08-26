@@ -61,6 +61,24 @@
                         {{ __('settings.terms_regulations') }}
                     </button>
 
+                    {{-- Voucher Templates (plan .planning/specs/VOUCHER-TEMPLATES.md
+                         §16 step 3). A gallery of the shipped designs, next
+                         to Terms as the plan names it. No @can wrapper: same
+                         as the Terms tab above, this page has no dedicated
+                         permission yet (plan §11.5 is explicitly
+                         [USER-DECIDE] and unresolved) — visible to anyone
+                         who reaches Settings, matching the existing Terms
+                         precedent rather than inventing a new gate alone. --}}
+                    <button
+                        @click="saveTab('voucher-templates')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'voucher-templates'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Voucher Templates
+                    </button>
+
                     {{-- "Manage Charges" — relocated here from the Finances menu, where it
                          was a dead disabled link to the retired charges.index page (see
                          menu.blade.php history). Kept visible and highlighted per product
@@ -195,6 +213,9 @@
                 <div x-show="activeTab === 'terms'" x-cloak>
                     @include('settings.partial.terms_condition')
                 </div>
+                <div x-show="activeTab === 'voucher-templates'" x-cloak>
+                    @include('settings.partial.voucher_templates')
+                </div>
                 @can('viewAny', 'App\Models\Charge')
                 <div x-show="activeTab === 'charges'" x-cloak x-ref="chargesTab">
                     @include('settings.partial.charges')
@@ -290,6 +311,7 @@
                 tabLabels: {
                     'payment': '{{ __('settings.payment') }}',
                     'terms': '{{ __('settings.terms_regulations') }}',
+                    'voucher-templates': 'Voucher Templates',
                     'charges': '{{ __('settings.payment_gateways') }}',
                     'payment-methods': '{{ __('settings.payment_methods') }}',
                     'agent-charges': '{{ __('settings.agent_charges') }}',
@@ -303,6 +325,8 @@
                     // Load data for the active tab on page load
                     if (this.activeTab === 'terms') {
                         this.loadTemplates();
+                    } else if (this.activeTab === 'voucher-templates') {
+                        this.loadVoucherCards();
                     }
                 },
 
@@ -323,6 +347,8 @@
 
                     if (tab === 'terms') {
                         this.loadTemplates();
+                    } else if (tab === 'voucher-templates') {
+                        this.loadVoucherCards();
                     } else if (tab === 'charges') {
                         window.dispatchEvent(new CustomEvent('charges-tab-loaded'));
                     } else if (tab === 'payment') {
@@ -398,6 +424,41 @@
                         console.error('Error loading templates:', error);
                     } finally {
                         this.loadingTemplates = false;
+                    }
+                },
+
+                // Voucher Templates (plan §16 step 3, §8) — read-only
+                // gallery, no create/edit/delete state to track: each card
+                // just needs its preview URLs and whether it is showing a
+                // real booking or a labelled sample.
+                voucherCards: [],
+                loadingVoucherCards: false,
+                voucherCardsError: null,
+
+                async loadVoucherCards() {
+                    if (this.voucherCards.length > 0) return;
+
+                    this.loadingVoucherCards = true;
+                    this.voucherCardsError = null;
+
+                    try {
+                        const response = await fetch('{{ route("settings.voucher-templates.index") }}', {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.voucherCards = data.cards;
+                        } else {
+                            this.voucherCardsError = data.message || 'Could not load voucher templates.';
+                        }
+                    } catch (error) {
+                        console.error('Error loading voucher templates:', error);
+                        this.voucherCardsError = 'Could not load voucher templates.';
+                    } finally {
+                        this.loadingVoucherCards = false;
                     }
                 },
 

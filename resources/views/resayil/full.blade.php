@@ -14,6 +14,54 @@
             </div>
         </div>
 
+        @if(session('success'))
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if($errors->has('resayil'))
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+                {{ $errors->first('resayil') }}
+            </div>
+        @endif
+
+        @if(!$workspaceProvisioned)
+            {{--
+                Honest not-set-up state (security fix, 2026-08-26): this page
+                used to silently CREATE a Resayil workspace/team member on
+                every visit, for any role, with no confirmation. It now only
+                ever renders whatever exists — the button below is the one
+                explicit, CSRF-protected, ADMIN/COMPANY-gated action that may
+                write anything, and a non-owner sees a plain explanation
+                instead of a button that isn't theirs to press.
+            --}}
+            <div class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-white/5 dark:text-gray-300">
+                <svg class="mt-0.5 h-5 w-5 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 8v5m0 3h.01" />
+                </svg>
+                <div class="flex-1">
+                    @if($adoptionPending)
+                        <p class="font-medium text-gray-900 dark:text-white">We're still linking your WhatsApp workspace</p>
+                        <p class="mt-0.5">We found an existing Resayil account under this email and our team is confirming it belongs to your company before linking it. Nothing is needed from you.</p>
+                    @else
+                        <p class="font-medium text-gray-900 dark:text-white">Your company's WhatsApp workspace isn't set up yet</p>
+                        @if($canProvision)
+                            <p class="mt-0.5">Set it up now, or our team will arrange it for you.</p>
+                            <form method="POST" action="{{ route('resayil.provision') }}" class="mt-2">
+                                @csrf
+                                <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">
+                                    Set up WhatsApp
+                                </button>
+                            </form>
+                        @else
+                            <p class="mt-0.5">Ask your company admin to set it up in Settings &rarr; WhatsApp.</p>
+                        @endif
+                    @endif
+                </div>
+            </div>
+        @endif
+
         @if($capReached)
             {{--
                 Cap-warning state: a normal product limit, not a failure.

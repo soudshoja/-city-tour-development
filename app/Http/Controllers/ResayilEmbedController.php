@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\ResayilAccount;
+use App\Models\Role;
 use App\Services\Resayil\ResayilProvisioningService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -20,10 +23,30 @@ use Illuminate\View\View;
  * Access is gated entirely by the `module:resayil` route middleware
  * (routes/web.php) — a company without the module gets a 404 before this
  * controller ever runs.
+ *
+ * SECURITY FIX (2026-08-26 — wave-2 adversarial verification, blockers 1 & 3):
+ * index() used to call ResayilProvisioningService::ensureUserProvisioned()
+ * inline, on every GET, with no role check. That single line meant:
+ *  - the first agent/branch/accountant user to open this page became the
+ *    company's PERMANENT Resayil workspace identity (an external customer
+ *    account was created under their name/email);
+ *  - combined with getCompanyId()'s old ADMIN-falls-back-to-company-1 bug,
+ *    a platform operator merely viewing this page — for ANY company, or
+ *    none at all — could get silently enrolled as a Resayil TEAM MEMBER on
+ *    a real customer's live WhatsApp number (proven against company 1,
+ *    City Travelers, in verification).
+ *
+ * index() is now READ-ONLY: it renders whatever Resayil state already
+ * exists locally and never makes an outbound call. The only thing that may
+ * create or link a Resayil identity is provision(), which is an explicit
+ * POST, CSRF-protected like every other POST route in this app, and gated
+ * by `can:manage-resayil` on the route (ADMIN + COMPANY only — the same
+ * gate as Settings -> WhatsApp). A GET here can no longer write anything,
+ * for any role.
  */
 class ResayilEmbedController extends Controller
 {
-    public function index(Request $request, ResayilProvisioningService $provisioning): View
+    public function index(Request $request): View
     {
         $user = $request->user();
         $companyId = getCompanyId($user);
@@ -31,16 +54,62 @@ class ResayilEmbedController extends Controller
 
         $embedUrl = config('resayil.embed_url');
 
-        // Idempotent — cheap when already provisioned/terminal, at most one
-        // outbound HTTP call the first time a company's first user visits.
-        $account = $provisioning->ensureUserProvisioned($user);
+        // READ-ONLY lookup. No provisioning call — a page render must
+        // never cause an external write (see class docblock). The admin
+        // row (if any) already exists because a company owner explicitly
+        // provisioned it via provision() below, the post-signup queued
+        // job, or an operator running `resayil:provision-company --sync`.
+        $adminRow = $companyId ? ResayilAccount::adminFor($companyId) : null;
 
         return view('resayil.full', [
             'embedUrl' => $embedUrl,
             'notConfigured' => empty($embedUrl),
-            'account' => $account,
-            'capReached' => $company ? $provisioning->capReached($company) : false,
+            'workspaceProvisioned' => (bool) $adminRow?->resayil_customer_id,
+            'adoptionPending' => $adminRow?->status === ResayilAccount::STATUS_ADOPTION_PENDING,
+            'canProvision' => $user && in_array((int) $user->role_id, [Role::ADMIN, Role::COMPANY], true),
+            'capReached' => $company ? app(ResayilProvisioningService::class)->capReached($company) : false,
             'maxAutoUsers' => (int) config('resayil.max_auto_users', 9),
         ]);
+    }
+
+    /**
+     * Explicit, role-gated action that sets up (or repairs) this company's
+     * Resayil workspace. This is the ONLY place left that may create an
+     * external Resayil customer from Module 5 — see class docblock.
+     *
+     * The route applies `can:manage-resayil` (ADMIN + COMPANY only); this
+     * method does not re-check the role itself, matching the pattern
+     * already used by every other route in the `resayil-admin.` group
+     * (ResayilAdminController) — the gate lives on the route.
+     */
+    public function provision(Request $request, ResayilProvisioningService $provisioning): RedirectResponse
+    {
+        $user = $request->user();
+        $companyId = getCompanyId($user);
+
+        if ($companyId === null) {
+            return back()->withErrors([
+                'resayil' => 'Select a company before setting up WhatsApp.',
+            ]);
+        }
+
+        $account = $provisioning->provisionCompanyAdmin($companyId, $user);
+
+        return match ($account->status) {
+            ResayilAccount::STATUS_PROVISIONED => back()->with(
+                'success',
+                'Your WhatsApp workspace is set up.'
+            ),
+            ResayilAccount::STATUS_ADOPTION_PENDING => back()->with(
+                'success',
+                'We found an existing Resayil account under this email. Our team is confirming it belongs to your company before linking it — nothing is broken meanwhile.'
+            ),
+            ResayilAccount::STATUS_LIMIT_REACHED => back()->withErrors([
+                'resayil' => 'Your company has reached its included WhatsApp seats. Contact your account manager to add more.',
+            ]),
+            default => back()->withErrors([
+                'resayil' => "We couldn't finish setting up WhatsApp right now. Please try again shortly, or contact support if it keeps happening.",
+            ]),
+        };
     }
 }

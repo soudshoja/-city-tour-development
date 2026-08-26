@@ -1261,8 +1261,23 @@ Route::middleware('auth')->prefix('air/uploader')->name('air.uploader.')->group(
 // companies without the module, never a 403, matching every other
 // module-gated route) and resayil.frame (App\Http\Middleware\ResayilFrameHeaders
 // — CSP so the Resayil iframe is actually allowed to load).
+//
+// The GET below is READ-ONLY on purpose (security fix, 2026-08-26 —
+// blockers 1 & 3): it used to also provision a Resayil workspace/team
+// member as a side effect of the page render, with no role check. Any
+// action that creates or links an external Resayil identity now lives on
+// the POST route in its OWN middleware group directly below, which layers
+// `can:manage-resayil` (ADMIN + COMPANY only) UNDER `module:resayil` —
+// same gate as Settings -> WhatsApp, and CSRF-protected like every other
+// POST route in this app. `resayil.frame` is intentionally NOT applied to
+// the POST: it sets a frame-ancestors CSP for the iframe response, which a
+// redirect-back action has no use for.
 Route::middleware(['auth', 'module:resayil', 'resayil.frame'])->group(function () {
     Route::get('/resayil', [ResayilEmbedController::class, 'index'])->name('resayil.index');
+});
+
+Route::middleware(['auth', 'module:resayil', 'can:manage-resayil'])->group(function () {
+    Route::post('/resayil/provision', [ResayilEmbedController::class, 'provision'])->name('resayil.provision');
 });
 
 require __DIR__.'/resailai-admin.php';

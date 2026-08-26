@@ -42,9 +42,7 @@
     @if($notConfigured)
         {{-- Graceful "not configured" state — never a broken iframe. --}}
         <div class="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-            <span class="grid h-14 w-14 place-items-center rounded-full bg-gray-100 ring-1 ring-gray-200 dark:bg-gray-700 dark:ring-gray-600">
-                <x-icons.chat class="h-7 w-7 text-gray-400 dark:text-gray-500" />
-            </span>
+            <img src="{{ asset('images/ResayilLogoFull.png') }}" alt="Resayil" width="420" height="362" class="h-auto w-[180px]">
             <h3 class="text-base font-semibold text-gray-900 dark:text-white">Resayil isn't connected yet</h3>
             <p class="max-w-xs text-sm text-gray-500 dark:text-gray-400">
                 An administrator needs to set the Resayil embed URL for this environment before WhatsApp conversations can show up here.

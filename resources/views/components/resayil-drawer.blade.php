@@ -211,7 +211,7 @@
         title="Resayil — WhatsApp conversations"
         class="fixed bottom-5 right-5 z-40 grid h-14 w-14 cursor-pointer place-items-center rounded-full border border-gray-200 bg-white shadow-lg ring-1 ring-black/5 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800"
     >
-        <x-icons.chat class="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+        <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="Resayil" width="160" height="149" class="h-7 w-auto">
     </button>
 
     {{-- Outside-click catcher — only needed in overlay mode. While the
@@ -263,7 +263,7 @@
         <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
             <div class="flex items-center gap-2.5">
                 <span class="grid h-9 w-9 place-items-center rounded-lg bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-600">
-                    <x-icons.chat class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="Resayil" width="160" height="149" class="h-5 w-auto">
                 </span>
                 <div class="leading-tight">
                     <p class="text-sm font-semibold text-gray-900 dark:text-white">Resayil</p>

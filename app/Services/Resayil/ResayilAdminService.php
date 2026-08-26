@@ -2,7 +2,6 @@
 
 namespace App\Services\Resayil;
 
-use App\Jobs\ProvisionResayilWorkspace;
 use App\Models\Company;
 use App\Models\ResayilAccount;
 use App\Models\User;
@@ -311,8 +310,20 @@ class ResayilAdminService
             // row — honest, and with no auto-reload loop for a company
             // whose provisioning keeps failing.
             $base['state'] = self::STATE_NOT_PROVISIONED;
-            $base['operator_note'] = "No resayil_accounts admin row for company #{$companyId}."
-                .($this->dispatchProvisioning($companyId) ? ' ProvisionResayilWorkspace queued.' : '');
+            // NO DISPATCH HERE. Rendering a page must not queue an external
+            // write. The earlier version dispatched ProvisionResayilWorkspace
+            // from this line, which meant a single Settings page view — or one
+            // of its routine 60s JSON polls — queued a job whose handle() calls
+            // POST /v1/resellers/customers. Six such jobs accumulated for one
+            // company during verification. They never fired only because this
+            // application has no queue worker; the moment anyone ran
+            // `artisan queue:work` here they would all have created real,
+            // billable third-party Resayil accounts.
+            //
+            // Provisioning is now exclusively an explicit, CSRF-protected,
+            // role-gated action: POST /resayil/provision
+            // (ResayilEmbedController::provision).
+            $base['operator_note'] = "No resayil_accounts admin row for company #{$companyId}.";
             $base['checklist'] = $this->checklist(null, null);
 
             return $base;
@@ -786,41 +797,6 @@ class ResayilAdminService
         ]];
     }
 
-    /**
-     * Queue the silent provisioning job for a company that has no Resayil
-     * workspace yet, at most once every few minutes.
-     *
-     * The lock is the point: without it, one client sitting on this page
-     * with its 60 s poller would queue a job a minute, forever. Cache::add()
-     * is atomic on every driver this app uses, so two simultaneous page
-     * loads still produce one dispatch. Returns whether it actually queued.
-     */
-    protected function dispatchProvisioning(int $companyId): bool
-    {
-        try {
-            if (! Cache::add("resayil:admin:provision-dispatch:{$companyId}", 1, 300)) {
-                return false;
-            }
-
-            $company = Company::find($companyId);
-
-            if (! $company || ! $company->user_id || ! User::whereKey($company->user_id)->exists()) {
-                return false;
-            }
-
-            ProvisionResayilWorkspace::dispatch($companyId, $company->user_id);
-
-            return true;
-        } catch (\Throwable $e) {
-            // A page render must never fail because a queue write did.
-            Log::warning('resayil.admin.provision_dispatch_failed', [
-                'company_id' => $companyId,
-                'exception' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-    }
 
     /**
      * In-panel banners for the §8 N-8..N-12 conditions. Every one carries

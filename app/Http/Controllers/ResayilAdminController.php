@@ -82,8 +82,47 @@ class ResayilAdminController extends Controller
 
         return response()->json([
             'success' => true,
-            'overview' => $service->overview($companyId, $fresh),
+            'overview' => $this->forAudience($service->overview($companyId, $fresh), $request),
         ])->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Strip the operator-only fields from an overview payload before it is
+     * serialised to a client.
+     *
+     * The Blade view already hides these behind @if($isOperator); this JSON
+     * feed did not, and the page polls it every 60 s for EVERY user of the
+     * section. operator_note is a raw diagnostic — upstream error bodies,
+     * internal endpoint paths, infrastructure hostnames — written for the
+     * platform operator, not for the agency owner whose browser was
+     * receiving it. No credential and no cross-tenant data ever reached it,
+     * but none of it is a client's business either, and wave 2 puts key
+     * capture diagnostics into the same field.
+     *
+     * Resayil ids go the same way: a COMPANY user has nothing to do with a
+     * customer id or device id, and echoing them invites someone to try
+     * them somewhere.
+     *
+     * @param  array<string,mixed>  $overview
+     * @return array<string,mixed>
+     */
+    protected function forAudience(array $overview, Request $request): array
+    {
+        if ((int) $request->user()->role_id === Role::ADMIN) {
+            return $overview;
+        }
+
+        $overview['operator_note'] = null;
+
+        if (isset($overview['workspace']) && is_array($overview['workspace'])) {
+            unset($overview['workspace']['customer_id']);
+        }
+
+        if (isset($overview['device']) && is_array($overview['device'])) {
+            unset($overview['device']['id']);
+        }
+
+        return $overview;
     }
 
     /**

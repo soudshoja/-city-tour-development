@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProvisionResayilWorkspace;
 use App\Models\Company;
 use App\Models\CompanyGdsPcc;
 use App\Models\CompanyInvite;
@@ -89,6 +90,23 @@ class CompanyProvisioner
                     'company_id' => $company->id, 'email' => $mail['email'], 'error' => $e->getMessage(),
                 ]);
             }
+        }
+
+        // Module 5 (plan .planning/specs/RESAYIL-ADMIN-CENTER.md section 3.1):
+        // create this company's Resayil WhatsApp workspace and capture its
+        // account API key. Dispatched AFTER the commit for exactly the same
+        // reason the welcome mail above is: it makes an external HTTP call,
+        // and an external HTTP call must never be able to roll back a company
+        // that has otherwise been fully provisioned. The job is idempotent
+        // and re-runnable (php artisan resayil:provision-company), so a queue
+        // that happens to be down right now costs a delay, not a broken
+        // company.
+        try {
+            ProvisionResayilWorkspace::dispatch($company->id, $company->user_id);
+        } catch (\Throwable $e) {
+            Log::warning('CompanyProvisioner: could not queue Resayil workspace provisioning', [
+                'company_id' => $company->id, 'error' => $e->getMessage(),
+            ]);
         }
 
         return $company;

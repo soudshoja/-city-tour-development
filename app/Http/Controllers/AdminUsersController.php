@@ -301,6 +301,19 @@ class AdminUsersController extends Controller
 
         $branchResponse = json_decode($branchResponse->getContent(), true);
 
+        // Module 5 (plan .planning/specs/RESAYIL-ADMIN-CENTER.md section 3.1):
+        // Path A creates a real package client, so it gets the same silent
+        // Resayil workspace provisioning Path B (CompanyProvisioner) does.
+        // Queued, and after every commit above, so a Resayil outage can never
+        // affect a company that has already been created. Idempotent and
+        // re-runnable via php artisan resayil:provision-company.
+        try {
+            \App\Jobs\ProvisionResayilWorkspace::dispatch($company->id, $company->user_id);
+        } catch (\Throwable $e) {
+            Log::warning('AdminUsersController: could not queue Resayil workspace provisioning', [
+                'company_id' => $company->id, 'error' => $e->getMessage(),
+            ]);
+        }
 
         return redirect()->route('companies.index')->with($branchResponse['status'], $branchResponse['message']);
     }

@@ -20,6 +20,10 @@
     $terms = $payload['terms'] ?? null;
     $isPdf = $isPdf ?? false;
     $sample = $sample ?? false;
+    // Only rendered as its own section for more than one applicant sharing
+    // this booking's reference — a lone applicant already reads naturally
+    // from the Applicant block above (BLOCKER B1 owner memo).
+    $roster = $visa['roster'] ?? [];
 
     $L = $lang === 'ARB' ? [
         'title' => 'تأكيد تأشيرة', 'badge' => 'تأكيد تأشيرة',
@@ -30,6 +34,7 @@
         'issuing_country' => 'الدولة المصدرة', 'booked_by' => 'وكيل الحجز',
         'no_data' => 'لا تتوفر بيانات تأشيرة مفصلة لهذا الحجز.',
         'days' => 'يوم',
+        'travellers' => 'المتقدمون',
     ] : [
         'title' => 'Visa Confirmation', 'badge' => 'Visa Confirmation',
         'client_info' => 'Applicant', 'name' => 'Name', 'email' => 'Email', 'phone' => 'Phone',
@@ -39,6 +44,7 @@
         'issuing_country' => 'Issuing Country', 'booked_by' => 'Booking Agent',
         'no_data' => 'No detailed visa data is available for this booking.',
         'days' => 'days',
+        'travellers' => 'Applicants',
     ];
 
     $fmtDate = function ($v) {
@@ -90,6 +96,23 @@
                         </tr></table>
                     </div>
                 </div>
+
+                @if(count($roster) > 1)
+                    <div class="v-section">
+                        <p class="v-section-title">{{ $L['travellers'] }} ({{ count($roster) }})</p>
+                        <table class="v-table">
+                            <thead><tr><th>{{ $L['name'] }}</th><th>{{ $L['app_no'] }}</th></tr></thead>
+                            <tbody>
+                            @foreach($roster as $person)
+                                <tr>
+                                    <td>{{ $person['name'] ?? '—' }}</td>
+                                    <td>{{ $person['application_number'] ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             @else
                 <div class="v-section">
                     <div class="v-note">{{ $L['no_data'] }}</div>

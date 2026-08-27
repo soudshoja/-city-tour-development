@@ -34,6 +34,7 @@
         'booked_by' => 'وكيل الحجز',
         'honest_note' => 'يعرض هذا السند من بيانات نصية عامة — لا تتوفر بيانات منظمة لهذا النوع من الخدمة بعد.',
         'no_data' => 'لا تتوفر تفاصيل إضافية لهذه الخدمة.',
+        'travellers' => 'المسافرون',
     ] : [
         'title' => 'Service Voucher', 'badge' => 'Service Voucher',
         'client_info' => 'Client', 'name' => 'Name', 'email' => 'Email', 'phone' => 'Phone',
@@ -41,6 +42,7 @@
         'booked_by' => 'Booking Agent',
         'honest_note' => 'This voucher is rendered from free-text booking notes — no structured data exists for this service type yet.',
         'no_data' => 'No further details are available for this service.',
+        'travellers' => 'Travellers',
     ];
 
     $fmtDate = function ($v) {
@@ -49,6 +51,9 @@
     };
 
     $typeLabel = $segment['type_label'] ?: $L['badge'];
+    // Only rendered as its own section for more than one traveller sharing
+    // this booking's reference (BLOCKER B1 owner memo).
+    $roster = $segment['roster'] ?? [];
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $lang === 'ARB' ? 'ar' : 'en' }}" dir="{{ $lang === 'ARB' ? 'rtl' : 'ltr' }}">
@@ -97,6 +102,17 @@
                 @endif
                 <p style="font-size:9.5px;color:#94a3b8;margin-top:8px;">{{ $L['honest_note'] }}</p>
             </div>
+
+            @if(count($roster) > 1)
+                <div class="v-section">
+                    <p class="v-section-title">{{ $L['travellers'] }} ({{ count($roster) }})</p>
+                    <div class="v-card">
+                        @foreach($roster as $person)
+                            <p class="v-value" style="margin-bottom:4px;">{{ $person['name'] ?? '—' }}</p>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             @if(!empty($agent['name']))
                 <p style="font-size:10px;color:#64748b;margin:0 0 18px 0;">{{ $L['booked_by'] }}: {{ $agent['name'] }}</p>

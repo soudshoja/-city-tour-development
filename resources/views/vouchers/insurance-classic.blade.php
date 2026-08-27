@@ -23,6 +23,9 @@
     $terms = $payload['terms'] ?? null;
     $isPdf = $isPdf ?? false;
     $sample = $sample ?? false;
+    // Only rendered as its own section for more than one insured person
+    // sharing this booking's reference (BLOCKER B1 owner memo).
+    $roster = $insurance['roster'] ?? [];
 
     $L = $lang === 'ARB' ? [
         'title' => 'إشعار تغطية تأمينية', 'badge' => 'إشعار تغطية تأمينية',
@@ -34,6 +37,7 @@
         'no_data' => 'لا تتوفر بيانات تأمين مفصلة لهذا الحجز.',
         'disclaimer' => 'هذا إشعار تأكيد صادر عن وكالتنا وليس وثيقة التأمين الرسمية الصادرة عن شركة التأمين. يرجى الاحتفاظ بالوثيقة الرسمية عند استلامها لأي مطالبة.',
         'days' => 'يوم',
+        'travellers' => 'المؤمن عليهم',
     ] : [
         'title' => 'Insurance Cover Note', 'badge' => 'Insurance Cover Note',
         'client_info' => 'Insured', 'name' => 'Name', 'email' => 'Email', 'phone' => 'Phone',
@@ -44,6 +48,7 @@
         'no_data' => 'No detailed insurance data is available for this booking.',
         'disclaimer' => 'This is a confirmation note issued by our agency, not the insurer\'s official policy document. Please keep the official policy for any claim.',
         'days' => 'days',
+        'travellers' => 'Insured Travellers',
     ];
 
     $fmtDate = function ($v) {
@@ -96,6 +101,23 @@
                     </div>
                     <p style="font-size:9.5px;color:#94a3b8;margin-top:8px;">{{ $L['disclaimer'] }}</p>
                 </div>
+
+                @if(count($roster) > 1)
+                    <div class="v-section">
+                        <p class="v-section-title">{{ $L['travellers'] }} ({{ count($roster) }})</p>
+                        <table class="v-table">
+                            <thead><tr><th>{{ $L['name'] }}</th><th>{{ $L['doc_ref'] }}</th></tr></thead>
+                            <tbody>
+                            @foreach($roster as $person)
+                                <tr>
+                                    <td>{{ $person['name'] ?? '—' }}</td>
+                                    <td>{{ $person['document_reference'] ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             @else
                 <div class="v-section">
                     <div class="v-note">{{ $L['no_data'] }}</div>

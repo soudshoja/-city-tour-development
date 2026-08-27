@@ -23,7 +23,10 @@
         hotel: {hotel:{name,address,city,state,country,phone,rating,...},
                 check_in,check_out,nights,booking_time,room_reference,
                 room_type,room_name,room_amount,meal_type_label,
-                is_refundable,supplements}|null,
+                is_refundable,supplements,
+                roster:[{task_id,guest_name}]}|null,   -- BLOCKER B1: the live
+                (void/superseded-excluded) guest list for this stay, shared
+                booking block above rendered once regardless of guest count
         segment: {...}|null,   -- when hotel is null (no detail row, §7)
         voucher: {number,version,issued_at,language,qr_url},
         terms: {title,content}|null,
@@ -42,6 +45,11 @@
     $terms = $payload['terms'] ?? null;
     $isPdf = $isPdf ?? false;
     $sample = $sample ?? false;
+    // Guest roster only renders as its own section when there is more than
+    // one traveller on this stay — a lone guest already reads naturally
+    // from the Guest Information block above (BLOCKER B1 owner memo: never
+    // a table with one row).
+    $roster = $hotel['roster'] ?? [];
 
     $L = $lang === 'ARB' ? [
         'title' => 'سند حجز فندقي',
@@ -59,6 +67,7 @@
         'cancellation' => 'سياسة الإلغاء', 'no_hotel_data' => 'لا تتوفر بيانات فندق مفصلة لهذا الحجز.',
         'booked_by' => 'وكيل الحجز',
         'nights_unit' => 'ليالي',
+        'guests' => 'الضيوف',
     ] : [
         'title' => 'Hotel Voucher',
         'badge' => 'Hotel Voucher',
@@ -75,6 +84,7 @@
         'cancellation' => 'Cancellation Policy', 'no_hotel_data' => 'No detailed hotel data is available for this booking.',
         'booked_by' => 'Booking Agent',
         'nights_unit' => 'nights',
+        'guests' => 'Guests',
     ];
 
     $fmtDate = function ($v) {
@@ -159,6 +169,17 @@
                         </tr></table>
                     </div>
                 </div>
+
+                @if(count($roster) > 1)
+                    <div class="v-section">
+                        <p class="v-section-title">{{ $L['guests'] }} ({{ count($roster) }})</p>
+                        <div class="v-card">
+                            @foreach($roster as $guest)
+                                <p class="v-value" style="margin-bottom:4px;">{{ $guest['guest_name'] ?? '—' }}</p>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
                 @if(!empty($task['cancellation_policy']))
                     <div class="v-section">

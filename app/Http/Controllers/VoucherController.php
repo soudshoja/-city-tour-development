@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Models\TaskPackage;
 use App\Models\TravelVoucher;
 use App\Models\VoucherTemplate;
+use App\Services\Vouchers\Exceptions\VoucherSubjectDeadException;
 use App\Services\Vouchers\VoucherSendService;
 use App\Services\Vouchers\VoucherService;
 use Illuminate\Http\JsonResponse;
@@ -91,7 +92,14 @@ class VoucherController extends Controller
             return $this->respond($request, false, "No active {$catalogType}/{$language} voucher template is available.", 422);
         }
 
-        $voucher = $this->vouchers->issue($task, $template, $language, $companyId, Auth::id());
+        // F4: refuse a dead task (void, or superseded by a later task)
+        // with a clear staff-facing message instead of a silent no-op or
+        // an exception page.
+        try {
+            $voucher = $this->vouchers->issue($task, $template, $language, $companyId, Auth::id());
+        } catch (VoucherSubjectDeadException $e) {
+            return $this->respond($request, false, $e->getMessage(), 422);
+        }
 
         return $this->respond($request, true, "Voucher {$voucher->voucher_number} issued.", 200, [
             'voucher' => $this->voucherPayload($voucher, $companyId),
@@ -132,11 +140,27 @@ class VoucherController extends Controller
      * Staff-authenticated PDF download -- distinct from the public token
      * route (this one is reachable for ANY status, including a cancelled
      * voucher, so staff always keep their own record).
+     *
+     * F5: same ARB language guard PublicVoucherController::pdf() already
+     * enforces -- VoucherService::renderPdf() is a deliberate no-op for
+     * TravelVoucher::LANGUAGE_AR (dompdf cannot shape Arabic), so an ARB
+     * voucher should never have a servable pdf_path in the first place.
+     * This route had NO guard at all before this fix: five legacy ARB
+     * rows (travel_vouchers ids 13, 15, 17, 19, 21) still carried a
+     * non-null pdf_path with a real file on disk, and this staff route
+     * would happily stream it (verified live: HTTP 200, magic %PDF,
+     * 887001 bytes for id 13). The rows themselves are cleared to
+     * pdf_path=NULL as part of this same fix; this guard additionally
+     * stops anything reaching that state from being served, ever.
      */
     public function download(TravelVoucher $voucher)
     {
         $companyId = getCompanyId(Auth::user());
         abort_if(! $companyId || (int) $voucher->company_id !== $companyId, 404);
+
+        if ($voucher->language === TravelVoucher::LANGUAGE_AR) {
+            abort(404, 'A PDF is not available for Arabic vouchers -- use the voucher\'s public link instead.');
+        }
 
         if (! $voucher->pdf_path || ! Storage::disk('local')->exists($voucher->pdf_path)) {
             abort(404, 'Voucher PDF not found.');

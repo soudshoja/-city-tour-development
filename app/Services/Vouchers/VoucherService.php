@@ -8,6 +8,7 @@ use App\Models\TravelVoucher;
 use App\Models\VoucherNumberSequence;
 use App\Models\VoucherTemplate;
 use App\Services\Vouchers\Exceptions\VoucherCompanyMismatchException;
+use App\Services\Vouchers\Exceptions\VoucherSubjectDeadException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -50,12 +51,18 @@ class VoucherService
      * caller resolves $template (VoucherTemplate::resolveEffective()) and
      * is responsible for it actually matching $subject's type -- this
      * method only guards company ownership, not type/template pairing.
+     *
+     * F4: a Task subject that is itself dead (status=void, or superseded
+     * by another task's original_task_id) is refused with
+     * VoucherSubjectDeadException rather than silently issuing a voucher
+     * for it -- see assertSubjectNotDead() below.
      */
     public function issue(Model $subject, VoucherTemplate $template, string $language, int $companyId, ?int $userId): TravelVoucher
     {
         $this->assertSubjectSupported($subject);
         $this->assertSubjectBelongsToCompany($subject, $companyId);
         $this->assertTemplateBelongsToCompany($template, $companyId);
+        $this->assertSubjectNotDead($subject, $companyId);
 
         return DB::transaction(function () use ($subject, $template, $language, $companyId, $userId) {
             $voucherNumber = $this->nextVoucherNumber($companyId);
@@ -291,6 +298,34 @@ class VoucherService
     {
         if (! $subject instanceof Task && ! $subject instanceof TaskPackage) {
             throw new InvalidArgumentException('Voucher subject must be a Task or TaskPackage, got: '.get_class($subject));
+        }
+    }
+
+    /**
+     * F4: refuse to issue a voucher for a dead Task — its own status is
+     * 'void', or another task in this company points at it via
+     * original_task_id (it has been superseded). Packages are not
+     * checked here (a package's own member tasks are each already
+     * subject to this same rule wherever they are issued individually;
+     * this step does not extend the check into per-item package
+     * validation, which is out of scope).
+     */
+    protected function assertSubjectNotDead(Model $subject, int $companyId): void
+    {
+        if (! $subject instanceof Task) {
+            return;
+        }
+
+        if ($subject->status === 'void') {
+            throw VoucherSubjectDeadException::forTask($subject->id, 'the task itself is void.');
+        }
+
+        $isSuperseded = Task::where('company_id', $companyId)
+            ->where('original_task_id', $subject->id)
+            ->exists();
+
+        if ($isSuperseded) {
+            throw VoucherSubjectDeadException::forTask($subject->id, 'it has been superseded by a later task (reissued/refunded/voided).');
         }
     }
 

@@ -544,15 +544,15 @@ class VoucherDataRepository
                 $resolvedType = $blocks['flight'] !== null ? 'flight' : 'generic';
                 break;
             case 'hotel':
-                $blocks['hotel'] = $this->hotelBlock($task);
+                $blocks['hotel'] = $this->hotelBlock($task, $companyId);
                 $resolvedType = $blocks['hotel'] !== null ? 'hotel' : 'generic';
                 break;
             case 'visa':
-                $blocks['visa'] = $this->visaBlock($task);
+                $blocks['visa'] = $this->visaBlock($task, $companyId);
                 $resolvedType = $blocks['visa'] !== null ? 'visa' : 'generic';
                 break;
             case 'insurance':
-                $blocks['insurance'] = $this->insuranceBlock($task);
+                $blocks['insurance'] = $this->insuranceBlock($task, $companyId);
                 $resolvedType = $blocks['insurance'] !== null ? 'insurance' : 'generic';
                 break;
         }
@@ -561,7 +561,7 @@ class VoucherDataRepository
         // usable generic segment behind it (plan §7: "always, never an
         // error, never an empty hole").
         if ($resolvedType === 'generic') {
-            $blocks['segment'] = $this->genericSegmentBlock($task);
+            $blocks['segment'] = $this->genericSegmentBlock($task, $companyId);
         }
 
         $blocks['resolved_type'] = $resolvedType;
@@ -633,10 +633,19 @@ class VoucherDataRepository
     /**
      * Sibling tasks sharing this task's resolved gds_reference (Task's own
      * accessor, which falls back to the original task's PNR on a
-     * reissue/void chain — plan §13-BIS/V9), scoped to $companyId. A task
-     * with no PNR at all — or whose PNR matches nothing else, which
-     * should not happen but is handled honestly if it does — is its own
-     * one-row roster.
+     * reissue/void chain — plan §13-BIS/V9), scoped to $companyId, reduced
+     * to the LIVE set via liveSiblings() (BLOCKER B1). A task with no PNR
+     * at all — or whose PNR matches nothing else, which should not happen
+     * but is handled honestly if it does — is its own one-row roster.
+     *
+     * BLOCKER B1, proven live on PNR 7NSYZS / task 19646: a naive
+     * gds_reference match with no status filter and no dedupe returned 15
+     * sibling rows for 5 real passengers (5 superseded originals + 5 void
+     * tasks reusing the same dead ticket numbers + 5 live tickets) — and
+     * status filtering alone does NOT fix it, because 10 of those 15 dead
+     * rows still carry status=issued (the superseded originals were never
+     * re-statused). liveSiblings() is the fix: it walks original_task_id
+     * supersession + void self-exclusion instead of trusting status.
      */
     protected function flightRoster(Task $task, int $companyId): array
     {
@@ -650,7 +659,13 @@ class VoucherDataRepository
             $siblings = collect([$task]);
         }
 
-        return $siblings->map(function (Task $sibling) {
+        $live = $this->liveSiblings($siblings);
+
+        if ($live->isEmpty()) {
+            $live = collect([$task]);
+        }
+
+        return $live->map(function (Task $sibling) {
             $detail = TaskFlightDetail::where('task_id', $sibling->id)->where('is_ancillary', false)->first();
 
             return [
@@ -666,12 +681,108 @@ class VoucherDataRepository
     }
 
     /**
+     * Reduce a sibling task set (same PNR, or same `reference` for a
+     * non-flight booking) to the current, live record per traveller
+     * (BLOCKER B1 owner memo — "when 5 passengers in a PNR ... common
+     * information which we don't need to duplicate, same goes with hotel
+     * and other task types").
+     *
+     * A task referenced by another sibling's `original_task_id` has been
+     * superseded and is dead, REGARDLESS of what status the superseding
+     * task itself carries — a void points backward at what it voided
+     * (status=void), and a silent-update reissue does the very same thing
+     * without ever touching status (verified live on hotel ref SRH44243:
+     * task 13264, status=issued, carries original_task_id=13112, and
+     * 13112's own status stayed 'confirmed' forever). Filtering on status
+     * alone is NOT sufficient in either case.
+     *
+     * A sibling whose own status is `void` is always dead too, whether or
+     * not a replacement can yet be matched for it (plan §13-BIS/V9: ~16%
+     * of voids have no original_task_id chain at all).
+     *
+     * Defensive: a traveller appearing twice with no supersession chain
+     * at all (no void, no original_task_id either way) collapses to the
+     * newest — highest id — row, keyed by travellerDedupeKey().
+     */
+    protected function liveSiblings(Collection $siblings): Collection
+    {
+        $deadIds = [];
+
+        foreach ($siblings as $sibling) {
+            if (! empty($sibling->original_task_id)) {
+                $deadIds[$sibling->original_task_id] = true;
+            }
+            if ($sibling->status === 'void') {
+                $deadIds[$sibling->id] = true;
+            }
+        }
+
+        $live = $siblings->reject(fn (Task $s) => isset($deadIds[$s->id]));
+
+        return $live
+            ->groupBy(fn (Task $s) => $this->travellerDedupeKey($s))
+            ->map(fn (Collection $group) => $group->sortByDesc('id')->first())
+            ->values();
+    }
+
+    /** Case-insensitive traveller identity for liveSiblings()'s defensive same-key collapse. */
+    protected function travellerDedupeKey(Task $task): string
+    {
+        $name = $task->passenger_name ?: $task->client_name;
+
+        if ($name === null || trim($name) === '') {
+            return 'task-'.$task->id;
+        }
+
+        return strtoupper(trim($name));
+    }
+
+    /**
+     * Sibling tasks sharing this task's `reference` column (the hotel/
+     * visa/insurance/generic analogue of flightRoster()'s gds_reference
+     * grouping — the established precedent for this is the legacy
+     * TaskController::hotelPdf, which already groups hotel tasks by
+     * `reference`, TaskController.php:4710), scoped to $companyId and
+     * optionally to one `tasks.type` (so an accidental cross-type
+     * `reference` collision never blends, say, a visa and a hotel task
+     * into one roster).
+     *
+     * $hotelId additionally scopes to one physical hotel via
+     * task_hotel_details — verified live that a bare `reference` match
+     * can span two different hotels under one code (ref SRH44243: "The
+     * Lodge Suites" id=2974 and "Loung Suites" id=2976) — blending those
+     * would misattribute a guest to the wrong property's info block.
+     */
+    protected function siblingTasksByReference(Task $task, int $companyId, ?string $type = null, ?int $hotelId = null): Collection
+    {
+        $reference = $task->reference;
+
+        if (empty($reference)) {
+            return collect([$task]);
+        }
+
+        $query = Task::where('company_id', $companyId)->where('reference', $reference);
+
+        if ($type !== null) {
+            $query->where('type', $type);
+        }
+
+        if ($hotelId !== null) {
+            $query->whereHas('hotelDetails', fn ($q) => $q->where('hotel_id', $hotelId));
+        }
+
+        $siblings = $query->orderBy('id')->get();
+
+        return $siblings->isEmpty() ? collect([$task]) : $siblings;
+    }
+
+    /**
      * task_hotel_details + hotels (plan §6 hotel row). Decodes
      * cancellation_policy the same defensive way as taskCommonBlock (the
      * task-level column, not a hotel-detail column) and room_details JSON
      * exactly as TaskController::hotelPdf does.
      */
-    protected function hotelBlock(Task $task): ?array
+    protected function hotelBlock(Task $task, int $companyId): ?array
     {
         $detail = TaskHotelDetail::where('task_id', $task->id)->with('hotel')->first();
 
@@ -715,10 +826,32 @@ class VoucherDataRepository
             'meal_type_label' => self::BOARD_LABELS[$detail->meal_type] ?? $detail->meal_type,
             'is_refundable' => $detail->is_refundable === null ? null : (bool) $detail->is_refundable,
             'supplements' => $detail->supplements,
+            'roster' => $this->hotelRoster($task, $companyId, $detail->hotel_id),
         ];
     }
 
-    protected function visaBlock(Task $task): ?array
+    /**
+     * Guest roster for one hotel stay (BLOCKER B1 owner memo: "same goes
+     * with hotel and other task types"). Reduced to the live set with the
+     * same void/supersession logic as flightRoster() — only guest names
+     * repeat per traveller, never the hotel/stay/room block above it.
+     */
+    protected function hotelRoster(Task $task, int $companyId, ?int $hotelId): array
+    {
+        $siblings = $this->siblingTasksByReference($task, $companyId, 'hotel', $hotelId);
+        $live = $this->liveSiblings($siblings);
+
+        if ($live->isEmpty()) {
+            $live = collect([$task]);
+        }
+
+        return $live->map(fn (Task $sibling) => [
+            'task_id' => $sibling->id,
+            'guest_name' => $sibling->passenger_name ?: $sibling->client_name,
+        ])->all();
+    }
+
+    protected function visaBlock(Task $task, int $companyId): ?array
     {
         $detail = TaskVisaDetail::where('task_id', $task->id)->first();
 
@@ -734,10 +867,11 @@ class VoucherDataRepository
             'number_of_entries' => $detail->number_of_entries,
             'stay_duration' => $detail->stay_duration,
             'issuing_country' => $detail->issuing_country,
+            'roster' => $this->travellerRoster($task, $companyId, 'visa', 'application_number'),
         ];
     }
 
-    protected function insuranceBlock(Task $task): ?array
+    protected function insuranceBlock(Task $task, int $companyId): ?array
     {
         $detail = TaskInsuranceDetail::where('task_id', $task->id)->first();
 
@@ -754,7 +888,43 @@ class VoucherDataRepository
             'date' => $detail->date,
             'document_reference' => $detail->document_reference,
             'paid_leaves' => $detail->paid_leaves,
+            'roster' => $this->travellerRoster($task, $companyId, 'insurance', 'document_reference'),
         ];
+    }
+
+    /**
+     * Traveller roster shared by visaBlock()/insuranceBlock() (BLOCKER B1
+     * owner memo: "Visa / insurance / generic: same principle — shared
+     * booking block once, per-person rows beneath"). Each visa/insurance
+     * task still owns its own detail row (application_number, dates,
+     * etc. are genuinely per-person, unlike a flight leg or a hotel
+     * stay), so this only adds the sibling NAME list for context — it
+     * never merges another sibling's detail row into the one rendered
+     * above. $detailField names the one per-person identifier (visa's
+     * application_number / insurance's document_reference) worth
+     * carrying alongside each name so two travellers on the same
+     * `reference` stay distinguishable.
+     */
+    protected function travellerRoster(Task $task, int $companyId, string $type, string $detailField): array
+    {
+        $siblings = $this->siblingTasksByReference($task, $companyId, $type);
+        $live = $this->liveSiblings($siblings);
+
+        if ($live->isEmpty()) {
+            $live = collect([$task]);
+        }
+
+        $detailModel = $type === 'visa' ? TaskVisaDetail::class : TaskInsuranceDetail::class;
+
+        return $live->map(function (Task $sibling) use ($detailModel, $detailField) {
+            $detail = $detailModel::where('task_id', $sibling->id)->first();
+
+            return [
+                'task_id' => $sibling->id,
+                'name' => $sibling->passenger_name ?: $sibling->client_name,
+                $detailField => $detail->{$detailField} ?? null,
+            ];
+        })->all();
     }
 
     /**
@@ -765,13 +935,24 @@ class VoucherDataRepository
      * hole"). $task->venue/additional_info verified live to carry
      * genuinely printable free text for transfers (plan §0).
      */
-    protected function genericSegmentBlock(Task $task): array
+    protected function genericSegmentBlock(Task $task, int $companyId): array
     {
+        $siblings = $this->siblingTasksByReference($task, $companyId, $task->type);
+        $live = $this->liveSiblings($siblings);
+
+        if ($live->isEmpty()) {
+            $live = collect([$task]);
+        }
+
         return [
             'type_label' => $task->type ? Str::title(str_replace(['_', '-'], ' ', $task->type)) : 'Service',
             'venue' => $task->venue,
             'additional_info' => $task->additional_info,
             'date' => optional($task->issued_date)?->toDateString(),
+            'roster' => $live->map(fn (Task $sibling) => [
+                'task_id' => $sibling->id,
+                'name' => $sibling->passenger_name ?: $sibling->client_name,
+            ])->all(),
         ];
     }
 

@@ -63,11 +63,13 @@ class PublicVoucherController extends Controller
      * link never hard-fails just because a stored file was cleaned up.
      *
      * BLOCKER B2 -- an Arabic voucher never gets a live-rendered fallback
-     * here. dompdf embeds unshaped base Arabic-block letters with no
-     * cursive joining and no RTL mirroring (proven live 2026-08-27:
-     * VCH-000011 contained 478 Arabic-block codepoints U+0600-U+06FF and
-     * ZERO Arabic Presentation Forms-B codepoints -- see
-     * vouchers/partials/styles.blade.php for the full finding). Plan §12
+     * here. dompdf (barryvdh/laravel-dompdf, this app's only PDF engine)
+     * performs no Arabic shaping and no bidi reordering, full stop --
+     * checked against a real rendered file (VCH-000011, hotel/ARB) 2026-08-27
+     * (see vouchers/partials/styles.blade.php for the full finding; the
+     * exact codepoint counts are deliberately NOT cited here -- two
+     * independent extractors of that same PDF disagreed with each other
+     * and neither is trustworthy enough to cite). Plan §12
      * restored: "PDF attachment = EN templates only in v1" --
      * VoucherService::renderPdf() never stores a pdf_path for an ARB
      * voucher in the first place (so the branch below never has a stored

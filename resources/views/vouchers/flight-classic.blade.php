@@ -21,7 +21,10 @@
                  airline,flight_number,ticket_number,class_type,
                  baggage_allowed,flight_meal,seat_no,...}],
                  ancillaries:[...], roster:[{passenger_name,ticket_number,
-                 seat_no,baggage_allowed,flight_meal,class_type}]}|null,
+                 ticket_numbers:[...],seat_no,baggage_allowed,flight_meal,
+                 class_type}]}|null, -- one row per TRAVELLER, not per task;
+                 ticket_numbers can hold more than one live ticket for the
+                 same person (verified live PNR 72MBFY),
         segment: {...}|null,  -- when flight is null (no detail rows, §7)
         voucher, terms, money|null, payment|null,
       ]
@@ -151,7 +154,17 @@
                             @foreach($flight['roster'] as $p)
                                 <tr>
                                     <td>{{ $p['passenger_name'] ?? '—' }}</td>
-                                    <td>{{ $p['ticket_number'] ?? '—' }}</td>
+                                    <td>
+                                        {{-- One row per traveller (VoucherDataRepository::flightRoster()) --
+                                             a traveller genuinely holding several live tickets at once
+                                             (verified live on PNR 72MBFY) prints every one of them here,
+                                             one per line, never just the first. --}}
+                                        @if(!empty($p['ticket_numbers']))
+                                            {!! implode('<br>', array_map('e', $p['ticket_numbers'])) !!}
+                                        @else
+                                            {{ $p['ticket_number'] ?? '—' }}
+                                        @endif
+                                    </td>
                                     <td>{{ $p['seat_no'] ?? '—' }}</td>
                                     <td>{{ $p['flight_meal'] ?? '—' }}</td>
                                 </tr>

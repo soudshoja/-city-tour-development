@@ -686,30 +686,223 @@ class VoucherDataRepository
             $live = collect([$task]);
         }
 
-        return $live->map(function (Task $sibling) {
-            $detail = TaskFlightDetail::where('task_id', $sibling->id)->where('is_ancillary', false)->first();
+        if ($live->isEmpty()) {
+            return [];
+        }
 
-            return [
-                'task_id' => $sibling->id,
-                // F3/R2: passenger_name is NULL on real data (verified live
-                // on PNR 17937089) -- client_name carries the actual name
-                // there. Never render blank when a real name exists.
-                'passenger_name' => $sibling->passenger_name ?: $sibling->client_name,
-                'ticket_number' => $sibling->ticket_number,
-                'seat_no' => $detail->seat_no ?? null,
-                'baggage_allowed' => $detail->baggage_allowed ?? null,
-                'flight_meal' => $detail->flight_meal ?? null,
-                'class_type' => $detail->class_type ?? null,
-            ];
-        })->all();
+        return $this->buildFlightTravellerRoster($live);
+    }
+
+    /**
+     * Collapses the surviving flight siblings for a PNR into ONE row per
+     * TRAVELLER, never one row per task (owner memo: "when 5 passengers
+     * in a PNR there is comment information we don't need to
+     * duplicate"). Grouping happens by travellerKey() first (passenger_
+     * name/client_name, a trailing (CHD)/(INF) marker stripped for
+     * matching only), then within each traveller the live rows are
+     * reduced to their CURRENT ticket(s) by normalizeTicketKey(). Built
+     * and measured against the four shapes verified live 2026-08-27:
+     *
+     *  - PNR 75H38H: the SAME physical ticket ingested three times (bare
+     *    at 16:00, bare again at 22:00, plate-prefixed in September) --
+     *    normalizeTicketKey() collapses all three rows to the one
+     *    newest-task-id representative, so the ticket prints once.
+     *  - PNR 78OZUB: every one of the 20 sibling rows carries
+     *    status=reissued with original_task_id NULL (nothing points
+     *    backward), and there are two ticket families (…2833184714-717,
+     *    then …2833184817-820), each itself re-ingested two or three
+     *    times. Per traveller: the same-family duplicates collapse
+     *    first, then the reissue rule below keeps only the family with
+     *    the higher normalised serial and drops the other.
+     *  - PNR 17937089: passenger_name is NULL on every row (client_name
+     *    carries the real name) and there is no void/original_task_id
+     *    chain anywhere. Each traveller's ticket is stored twice as two
+     *    different truncations of one 9-digit number, neither of which
+     *    shares a hyphen suffix with the other, so they do not collapse
+     *    into each other -- both print together on that traveller's one
+     *    row, which is still correct: one row per real traveller.
+     *  - PNR 72MBFY: the counter-case that must NOT collapse. One
+     *    passenger, three tasks, all status=issued, no void, no
+     *    original_task_id chain, three genuinely different ticket
+     *    numbers on three different plate codes, three different
+     *    prices. No reissued row anywhere means the "otherwise" branch
+     *    applies: all three tickets are real live documents and all
+     *    three print together on the one row for that passenger.
+     */
+    protected function buildFlightTravellerRoster(Collection $live): array
+    {
+        $details = TaskFlightDetail::whereIn('task_id', $live->pluck('id'))
+            ->where('is_ancillary', false)
+            ->get()
+            ->keyBy('task_id');
+
+        $groups = [];
+        $order = [];
+
+        foreach ($live as $sibling) {
+            $key = $this->travellerKey($sibling);
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = collect();
+                $order[] = $key;
+            }
+
+            $groups[$key]->push($sibling);
+        }
+
+        $rows = [];
+        foreach ($order as $key) {
+            $rows[] = $this->buildFlightTravellerRow($groups[$key], $details);
+        }
+
+        usort($rows, fn (array $a, array $b) => $a['_min_id'] <=> $b['_min_id']);
+
+        return array_map(function (array $row) {
+            unset($row['_min_id']);
+
+            return $row;
+        }, $rows);
+    }
+
+    /**
+     * One traveller's roster row from every surviving sibling task the
+     * grouping in buildFlightTravellerRoster() matched to them.
+     */
+    protected function buildFlightTravellerRow(Collection $rows, Collection $detailsByTaskId): array
+    {
+        // Step 1: rows sharing a normalised ticket are the same physical
+        // document (PNR 75H38H) -- collapse each such group to its
+        // newest task id.
+        $ticketGroups = [];
+        $ticketOrder = [];
+
+        foreach ($rows as $r) {
+            $normalized = $this->normalizeTicketKey($r->ticket_number);
+            $key = $normalized !== '' ? $normalized : ('__no_ticket_'.$r->id);
+
+            if (! isset($ticketGroups[$key])) {
+                $ticketGroups[$key] = collect();
+                $ticketOrder[] = $key;
+            }
+
+            $ticketGroups[$key]->push($r);
+        }
+
+        $representatives = collect($ticketOrder)
+            ->map(fn (string $key) => $ticketGroups[$key]->sortByDesc('id')->first())
+            ->values();
+
+        // Step 2: a reissue supersedes the family it replaced (PNR
+        // 78OZUB) -- keep only the highest normalised ticket serial and
+        // drop the rest. Without any reissued row, every remaining
+        // distinct ticket is genuinely still held (PNR 72MBFY / 17937089)
+        // and all of them stay.
+        $hasReissued = $rows->contains(fn (Task $r) => $r->status === 'reissued');
+
+        if ($hasReissued && $representatives->count() > 1) {
+            $best = $representatives->sortByDesc(function (Task $t) {
+                $normalized = $this->normalizeTicketKey($t->ticket_number);
+
+                return is_numeric($normalized) ? (float) $normalized : -INF;
+            })->first();
+
+            $representatives = collect([$best]);
+        }
+
+        $representatives = $representatives->sortBy('id')->values();
+
+        // Display name always tracks whichever row is newest overall,
+        // even one whose ticket family got dropped above -- that is what
+        // carries the (CHD)/(INF) marker or its absence (PNR 78OZUB:
+        // ALDAIHANI/ALZAIN vs ALDAIHANI/ALZAIN(CHD)). Per-passenger detail
+        // columns (seat/meal/baggage) belong to the newest KEPT row only.
+        $newestOverall = $rows->sortByDesc('id')->first();
+        $newestKept = $representatives->sortByDesc('id')->first();
+        $detail = $detailsByTaskId->get($newestKept->id);
+
+        $ticketNumbers = $representatives
+            ->map(fn (Task $t) => $t->ticket_number)
+            ->filter(fn (?string $v) => ! empty($v))
+            ->values()
+            ->all();
+
+        return [
+            'task_id' => $newestKept->id,
+            // F3/R2: passenger_name is NULL on real data (verified live
+            // on PNR 17937089) -- client_name carries the actual name
+            // there. Never render blank when a real name exists.
+            'passenger_name' => $newestOverall->passenger_name ?: $newestOverall->client_name,
+            'ticket_number' => ! empty($ticketNumbers) ? implode(', ', $ticketNumbers) : null,
+            'ticket_numbers' => $ticketNumbers,
+            'seat_no' => $detail->seat_no ?? null,
+            'baggage_allowed' => $detail->baggage_allowed ?? null,
+            'flight_meal' => $detail->flight_meal ?? null,
+            'class_type' => $detail->class_type ?? null,
+            '_min_id' => $rows->min('id'),
+        ];
+    }
+
+    /**
+     * Groups a task into one traveller for roster collapsing (flight AND,
+     * via collapseDuplicateDocuments(), visa/insurance): uppercased,
+     * trimmed passenger_name (falling back to client_name), with a
+     * trailing (CHD)/(INF)/(CHILD)/(INFANT) marker stripped for MATCHING
+     * ONLY -- the marker itself is never part of a traveller's identity,
+     * only a hint that the display name should still show whatever the
+     * newest row actually carries (PNR 78OZUB: ALDAIHANI/ALZAIN vs
+     * ALDAIHANI/ALZAIN(CHD) are the same person). A row with neither name
+     * falls back to its own task id, which can never collide with
+     * another row's key, so it can never wrongly merge with anyone.
+     */
+    protected function travellerKey(Task $task): string
+    {
+        $name = $task->passenger_name ?: $task->client_name;
+
+        if (empty($name)) {
+            return 'TASK#'.$task->id;
+        }
+
+        $normalized = strtoupper(trim($name));
+        $normalized = trim((string) preg_replace('/\s*\((?:CHD|INF|CHILD|INFANT)\)\s*$/', '', $normalized));
+
+        return $normalized !== '' ? $normalized : 'TASK#'.$task->id;
+    }
+
+    /**
+     * Normalises a per-traveller document value (a flight ticket_number,
+     * or a visa/insurance identifier) to the digits after its LAST hyphen
+     * -- a bare ticket ('2833184813') and the same ticket re-ingested
+     * with a plate-code prefix ('T-K077-2833184813') both normalise to
+     * '2833184813' (verified live on PNR 75H38H). A value with no hyphen
+     * at all normalises to itself (uppercased/trimmed) unchanged, which
+     * is what keeps genuinely distinct identifiers (visa/insurance
+     * document references, PNR 72MBFY's three unrelated ticket serials)
+     * from ever colliding.
+     */
+    protected function normalizeTicketKey(?string $raw): string
+    {
+        if ($raw === null) {
+            return '';
+        }
+
+        $trimmed = trim($raw);
+
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $pos = strrpos($trimmed, '-');
+
+        return strtoupper($pos === false ? $trimmed : substr($trimmed, $pos + 1));
     }
 
     /**
      * Reduce a sibling task set (same PNR, or same `reference` for a
-     * non-flight booking) to the current, live record per traveller
-     * (BLOCKER B1 owner memo — "when 5 passengers in a PNR ... common
-     * information which we don't need to duplicate, same goes with hotel
-     * and other task types").
+     * non-flight booking) to the LIVE set — never dead, but NOT yet
+     * collapsed down to one row per traveller; that grouping happens one
+     * layer up (buildFlightTravellerRoster() for flight,
+     * collapseDuplicateDocuments() for visa/insurance) because "live" and
+     * "current per traveller" turned out to be two different questions.
      *
      * A task referenced by another sibling's `original_task_id` has been
      * superseded and is dead, REGARDLESS of what status the superseding
@@ -720,39 +913,54 @@ class VoucherDataRepository
      * 13112's own status stayed 'confirmed' forever). Filtering on status
      * alone is NOT sufficient in either case.
      *
-     * A sibling whose own status is `void` is always dead too, whether or
-     * not a replacement can yet be matched for it (plan §13-BIS/V9: ~16%
-     * of voids have no original_task_id chain at all).
+     * A sibling whose own status is `void` or `refund` is always dead
+     * too, whether or not a replacement can yet be matched for it (plan
+     * §13-BIS/V9: ~16% of voids have no original_task_id chain at all) —
+     * a refunded ticket is not a travel document, regardless of chain.
      *
-     * CORRECTED 2026-08-27 (owner measurement): this method used to also
-     * collapse same-key rows by NAME, on the theory of "a traveller
-     * appearing twice with no supersession chain". That was wrong and
-     * measurably destructive — verified live on PNR 72MBFY: 3 tasks, all
-     * status=issued, no void, no original_task_id chain, ONE passenger
-     * (EL SANEH/HANAN MRS) holding THREE genuinely different ticket
-     * numbers on three different plate codes. The name-collapse silently
-     * dropped two of those three real ticket documents; the sweep across
-     * every multi-task PNR found 294 PNRs (17.4%) losing at least one
-     * live, distinct-ticket task this way (571 tasks suppressed). Two
-     * rows for the same person holding two different tickets are two
-     * real ticket documents and both must print — a name is never a
-     * dedupe key here again.
+     * CORRECTED 2026-08-27 (owner measurement, second pass): the real
+     * defect was never the dedupe KEY, it is that the same physical
+     * ticket is present in `tasks` several times from repeated ingestion,
+     * with nothing marking which row is current. Two earlier fixes each
+     * chased one half of this and broke the other half:
      *
-     * A same-session first attempt at a replacement collapse (group by
-     * non-empty ticket_number) was ALSO measurably wrong and is not
-     * shipped: `ticket_number` is per-passenger-unique for a flight
-     * task, but verified live on hotel ref CMT32218906820 (task 8725,
-     * 4 real guests, one room, all status=issued/live) every one of the
-     * 4 sibling rows shares the exact same ticket_number
-     * ('CMT32218906820' — the shared booking reference, not a per-guest
-     * value) — that collapse silently merged 4 live guests down to 2.
-     * `ticket_number` is therefore not a safe collision key across task
-     * types, and no other column is a safe substitute either. This
-     * method now does ONLY the void/original_task_id exclusion above —
-     * no further collapsing of any kind. A genuine duplicate ROW (the
-     * defensive case this used to guard) has not been observed in real
-     * data; NOT deduping is measurably safer than every dedupe key tried
-     * so far.
+     *  - collapsing by NAME (first pass) silently dropped real tickets:
+     *    PNR 72MBFY has 3 tasks, all status=issued, no void, no
+     *    original_task_id chain, ONE passenger holding THREE genuinely
+     *    different ticket numbers on three different plate codes — a
+     *    name-based collapse suppressed 571 live tasks across 294 PNRs
+     *    (17.4%) this way.
+     *  - removing ALL collapsing (this method's previous state) went the
+     *    other way: PNR 75H38H has 3 real passengers and 9 task rows —
+     *    every ticket ingested three times (bare at 16:00, bare again at
+     *    22:00, plate-prefixed in September) — with no collapse at all
+     *    that is 9 rows for 3 people. PNR 78OZUB is worse: 4 real
+     *    travellers, 20 rows, EVERY row status=reissued with
+     *    original_task_id NULL (nothing points backward), two ticket
+     *    families each re-ingested 2-3 times — 20 passenger rows for 4
+     *    people, none of it flagged dead by status or supersession. PNR
+     *    17937089: 4 real travellers, 8 rows, passenger_name NULL on all
+     *    of them (client_name carries the name), each traveller's ticket
+     *    stored twice as two different 8-character truncations of one
+     *    9-digit number. Zero-collapsing suppressed nothing but printed
+     *    622 extra rows across 323 PNRs.
+     *
+     * `ticket_number` itself is also not a safe collision key ACROSS task
+     * types even once ticket duplication is handled correctly: verified
+     * live on hotel ref CMT32218906820 (task 8725, 4 real guests, one
+     * room, all status=issued/live), every one of the 4 sibling rows
+     * shares the exact same ticket_number ('CMT32218906820' — the shared
+     * booking reference, not a per-guest value) — collapsing hotel rows
+     * on ticket_number would silently merge 4 live guests down to 2.
+     *
+     * This method therefore stays deliberately narrow — void/refund/
+     * original_task_id exclusion ONLY, no ticket-level collapsing at all
+     * — and every caller that needs "current ticket per traveller" (not
+     * just "not dead") does that collapsing itself, scoped correctly per
+     * task type: buildFlightTravellerRoster() normalises ticket_number by
+     * its last-hyphen suffix and only ever compares it WITHIN one
+     * traveller's own rows, never across travellers and never across a
+     * hotel booking's shared reference.
      */
     protected function liveSiblings(Collection $siblings): Collection
     {
@@ -765,9 +973,9 @@ class VoucherDataRepository
     }
 
     /**
-     * The void/supersession rule liveSiblings() rejects on, extracted so
-     * callers can also ask "is THIS one task, specifically, dead?" without
-     * re-deriving the whole live set (F2/F4).
+     * The void/refund/supersession rule liveSiblings() rejects on,
+     * extracted so callers can also ask "is THIS one task, specifically,
+     * dead?" without re-deriving the whole live set (F2/F4).
      */
     protected function deadSiblingIds(Collection $siblings): array
     {
@@ -777,7 +985,7 @@ class VoucherDataRepository
             if (! empty($sibling->original_task_id)) {
                 $deadIds[$sibling->original_task_id] = true;
             }
-            if ($sibling->status === 'void') {
+            if (in_array($sibling->status, ['void', 'refund'], true)) {
                 $deadIds[$sibling->id] = true;
             }
         }
@@ -921,6 +1129,15 @@ class VoucherDataRepository
      * with hotel and other task types"). Reduced to the live set with the
      * same void/supersession logic as flightRoster() — only guest names
      * repeat per traveller, never the hotel/stay/room block above it.
+     *
+     * Deliberately does NOT run collapseDuplicateDocuments(): a hotel
+     * task has no reliable per-guest identifier to normalise and collapse
+     * on — `ticket_number` is the shared booking reference here, not a
+     * per-guest value (verified live on hotel ref CMT32218906820, task
+     * 8725 — 4 real guests, one room, every row sharing the exact same
+     * ticket_number 'CMT32218906820'). Collapsing on it would merge those
+     * 4 live guests down to 2. Every surviving sibling row stays its own
+     * roster row.
      */
     protected function hotelRoster(Task $task, int $companyId, ?int $hotelId): array
     {
@@ -1007,6 +1224,19 @@ class VoucherDataRepository
      * application_number / insurance's document_reference) worth
      * carrying alongside each name so two travellers on the same
      * `reference` stay distinguishable.
+     *
+     * Same re-ingestion problem flightRoster() was built to handle can
+     * happen here too — the same traveller's same application_number/
+     * document_reference landing twice in `tasks` — so live rows are run
+     * through collapseDuplicateDocuments() before rendering: a genuine
+     * re-ingested repeat (same traveller, same normalised identifier)
+     * collapses to its newest task id, while a traveller who genuinely
+     * holds two DIFFERENT identifiers keeps both rows, exactly like
+     * flightRoster() keeps two genuinely different tickets (PNR 72MBFY).
+     * This still renders one row per surviving distinct document, not one
+     * merged row per traveller — visa/insurance keep their current
+     * reference-based grouping shape; only literal re-ingestion repeats
+     * are removed.
      */
     protected function travellerRoster(Task $task, int $companyId, string $type, string $detailField): array
     {
@@ -1020,8 +1250,15 @@ class VoucherDataRepository
 
         $detailModel = $type === 'visa' ? TaskVisaDetail::class : TaskInsuranceDetail::class;
 
-        return $live->map(function (Task $sibling) use ($detailModel, $detailField) {
-            $detail = $detailModel::where('task_id', $sibling->id)->first();
+        $detailsByTaskId = $detailModel::whereIn('task_id', $live->pluck('id'))->get()->keyBy('task_id');
+
+        $live = $this->collapseDuplicateDocuments(
+            $live,
+            fn (Task $sibling) => $detailsByTaskId->get($sibling->id)?->{$detailField}
+        );
+
+        return $live->map(function (Task $sibling) use ($detailsByTaskId, $detailField) {
+            $detail = $detailsByTaskId->get($sibling->id);
 
             return [
                 'task_id' => $sibling->id,
@@ -1029,6 +1266,47 @@ class VoucherDataRepository
                 $detailField => $detail->{$detailField} ?? null,
             ];
         })->all();
+    }
+
+    /**
+     * The hotel/visa/insurance/generic analogue of the ticket-collapse
+     * inside buildFlightTravellerRow() — used ONLY where a genuine
+     * per-guest identifier exists ($documentResolver). Within each
+     * traveller (travellerKey()), rows sharing a normalised
+     * ($normalizeTicketKey()) document value are the same physical
+     * document re-ingested twice and collapse to the newest task id; a
+     * traveller with no document value, or two DIFFERENT document
+     * values, is never merged — every distinct document keeps its own
+     * row. hotelRoster() deliberately never calls this: `ticket_number`
+     * on a hotel task is the shared booking reference, not a per-guest
+     * value (verified live on hotel ref CMT32218906820, task 8725 — 4
+     * real guests, one room, all sharing the exact same ticket_number
+     * 'CMT32218906820'), so there is no safe per-guest identifier to
+     * collapse on for hotel and this must not be called for it.
+     */
+    protected function collapseDuplicateDocuments(Collection $live, \Closure $documentResolver): Collection
+    {
+        $groups = [];
+        $order = [];
+
+        foreach ($live as $sibling) {
+            $normalized = $this->normalizeTicketKey($documentResolver($sibling));
+            $key = $normalized !== '' ? $this->travellerKey($sibling).'|'.$normalized : 'row#'.$sibling->id;
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = collect();
+                $order[] = $key;
+            }
+
+            $groups[$key]->push($sibling);
+        }
+
+        $result = collect();
+        foreach ($order as $key) {
+            $result->push($groups[$key]->sortByDesc('id')->first());
+        }
+
+        return $result->sortBy('id')->values();
     }
 
     /**

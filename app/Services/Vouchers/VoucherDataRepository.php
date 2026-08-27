@@ -797,19 +797,62 @@ class VoucherDataRepository
         // drop the rest. Without any reissued row, every remaining
         // distinct ticket is genuinely still held (PNR 72MBFY / 17937089)
         // and all of them stay.
-        $hasReissued = $rows->contains(fn (Task $r) => $r->status === 'reissued');
-
-        if ($hasReissued && $representatives->count() > 1) {
-            $best = $representatives->sortByDesc(function (Task $t) {
-                $normalized = $this->normalizeTicketKey($t->ticket_number);
-
-                return is_numeric($normalized) ? (float) $normalized : -INF;
-            })->first();
-
-            $representatives = collect([$best]);
+        //
+        // BUG 3 fix, verified live on PNR 8HUQ7U / passenger ALBUSAIRI:
+        // task 15442 (reissued, ticket T-K229-9559097132) numerically
+        // outranked three OTHER live tasks -- 15443/15572/15573 (issued,
+        // TMCD229-1943551617/...396/...397) -- and dropped all three,
+        // including 15573, the voucher's own anchor. TMCD is a different
+        // document series (ancillary/EMD) from a T- air ticket with its
+        // own independent numbering; comparing raw magnitude across
+        // series is meaningless. The collapse below therefore only ever
+        // compares representatives that share the same document
+        // type-prefix (documentTypePrefix() -- the letters before the
+        // digits, e.g. "T-K229-", "TMCD229-", or "" for bare digits with
+        // no prefix); a reissued flag on a row only supersedes other rows
+        // in ITS OWN prefix group, never a different document series, and
+        // every genuinely-live document across every prefix group still
+        // prints on the traveller's row (same outcome as PNR 72MBFY).
+        $reissuedPrefixes = [];
+        foreach ($rows as $r) {
+            if ($r->status === 'reissued') {
+                $reissuedPrefixes[$this->documentTypePrefix($r->ticket_number)] = true;
+            }
         }
 
-        $representatives = $representatives->sortBy('id')->values();
+        $prefixGroups = [];
+        $prefixOrder = [];
+        foreach ($representatives as $rep) {
+            $prefix = $this->documentTypePrefix($rep->ticket_number);
+
+            if (! isset($prefixGroups[$prefix])) {
+                $prefixGroups[$prefix] = collect();
+                $prefixOrder[] = $prefix;
+            }
+
+            $prefixGroups[$prefix]->push($rep);
+        }
+
+        $kept = collect();
+        foreach ($prefixOrder as $prefix) {
+            $group = $prefixGroups[$prefix];
+
+            if (($reissuedPrefixes[$prefix] ?? false) && $group->count() > 1) {
+                $best = $group->sortByDesc(function (Task $t) {
+                    $normalized = $this->normalizeTicketKey($t->ticket_number);
+
+                    return is_numeric($normalized) ? (float) $normalized : -INF;
+                })->first();
+
+                $kept->push($best);
+            } else {
+                foreach ($group as $r) {
+                    $kept->push($r);
+                }
+            }
+        }
+
+        $representatives = $kept->sortBy('id')->values();
 
         // Display name always tracks whichever row is newest overall,
         // even one whose ticket family got dropped above -- that is what
@@ -853,6 +896,20 @@ class VoucherDataRepository
      * ALDAIHANI/ALZAIN(CHD) are the same person). A row with neither name
      * falls back to its own task id, which can never collide with
      * another row's key, so it can never wrongly merge with anyone.
+     *
+     * BUG 1 fix, verified live on PNR VMU4YN: 6 real passengers, each
+     * ingested twice -- once as "Mr. Mubarak ALHAJERI" (period after the
+     * honorific) and once as "Mr Mubarak ALHAJERI" (no period) -- with
+     * nothing else different between the pair. A period is never
+     * meaningful inside a passenger name, so every `.` is stripped from
+     * the whole name before keying (not just from honorific tokens --
+     * simpler and just as safe, since a stray period anywhere else in a
+     * name carries no identity either). Any whitespace left behind by the
+     * removal is collapsed so "MR. MUBARAK" and "MR MUBARAK" key
+     * identically. This must NOT merge distinct real people: 72MBFY (one
+     * person, 3 tickets, no periods in the name) and 17937089 (4 distinct
+     * real people whose names differ by more than punctuation) are
+     * unaffected.
      */
     protected function travellerKey(Task $task): string
     {
@@ -864,6 +921,8 @@ class VoucherDataRepository
 
         $normalized = strtoupper(trim($name));
         $normalized = trim((string) preg_replace('/\s*\((?:CHD|INF|CHILD|INFANT)\)\s*$/', '', $normalized));
+        $normalized = str_replace('.', '', $normalized);
+        $normalized = trim((string) preg_replace('/\s+/', ' ', $normalized));
 
         return $normalized !== '' ? $normalized : 'TASK#'.$task->id;
     }
@@ -894,6 +953,36 @@ class VoucherDataRepository
         $pos = strrpos($trimmed, '-');
 
         return strtoupper($pos === false ? $trimmed : substr($trimmed, $pos + 1));
+    }
+
+    /**
+     * BUG 3: the document TYPE prefix -- everything up to and including
+     * the LAST hyphen, uppercased -- of a per-traveller document value.
+     * 'T-K229-9559097132' -> 'T-K229-'; 'TMCD229-1943551617' -> 'TMCD229-'
+     * (the type-series letters/digits sit before that single hyphen); a
+     * value with no hyphen at all (bare digits, or any identifier with no
+     * series marker) normalises to '' so every such value groups
+     * together as one series. Used ONLY to decide which documents are
+     * allowed to compete in the reissue-collapse in
+     * buildFlightTravellerRow() -- never to decide whether two rows are
+     * the SAME document (that is normalizeTicketKey()'s job, on the
+     * digits AFTER the last hyphen).
+     */
+    protected function documentTypePrefix(?string $raw): string
+    {
+        if ($raw === null) {
+            return '';
+        }
+
+        $trimmed = trim($raw);
+
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $pos = strrpos($trimmed, '-');
+
+        return $pos === false ? '' : strtoupper(substr($trimmed, 0, $pos + 1));
     }
 
     /**

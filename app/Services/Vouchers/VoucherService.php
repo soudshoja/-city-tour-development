@@ -86,6 +86,31 @@ class VoucherService
      * Both exist; the history is deliberately visible on the original's
      * public link (owner's own words: "we show them the action on
      * original and generate new one").
+     *
+     * BLOCKER B3 fix: the original's public page (HTML and, when its own
+     * language is EN, PDF) must actually SAY it was superseded and name
+     * the replacement -- before this fix the original kept serving its
+     * unchanged pre-supersede snapshot forever (only `status` and
+     * `superseded_by_id` were written; nothing re-rendered). The status
+     * flip + link is presentation state layered on top of the still-frozen
+     * `snapshot` (TravelVoucher::crossReferenceContext(), computed fresh
+     * from `superseded_by_id` at render time -- see PublicVoucherController
+     * and renderPdf() below), so re-rendering the STORED PDFs here is only
+     * needed to keep those files in sync with the same live facts the
+     * public HTML route already recomputes on every request.
+     *
+     * BOTH sides are re-rendered, in this order, and only AFTER the
+     * `superseded_by_id` link is saved -- verified live 2026-08-27: issue()
+     * (called on $newTask below) renders the NEW voucher's PDF from
+     * inside its OWN transaction step, before $original->superseded_by_id
+     * is set, so at that point $new->crossReferenceContext() still finds
+     * no `previousVersion` and its stored PDF silently omits the "replaces
+     * VCH-xxx" line while the live HTML route (computed fresh on every
+     * request, well after this transaction commits) already shows it
+     * correctly -- a real PDF/HTML mismatch caught by actually diffing
+     * the rendered PDF text against the HTML output, not just re-reading
+     * the code. Re-rendering $new here, after the link exists, is what
+     * fixes it.
      */
     public function supersede(TravelVoucher $original, Task $newTask, VoucherTemplate $template, string $language, int $companyId, ?int $userId, string $reason): TravelVoucher
     {
@@ -103,7 +128,10 @@ class VoucherService
                 'superseded_by_id' => $new->id,
             ])->save();
 
-            return $new;
+            $this->renderPdf($original, $original->voucherTemplate, $companyId);
+            $this->renderPdf($new, $new->voucherTemplate, $companyId);
+
+            return $new->fresh();
         });
     }
 
@@ -203,13 +231,30 @@ class VoucherService
      * disk('public')). Same view_key the public HTML route and the
      * Settings-gallery preview both already render, so the PDF and the
      * public HTML are always pixel-identical for identical data.
+     *
+     * BLOCKER B2 -- restored plan section 12: "PDF attachment = EN templates
+     * only in v1". dompdf cannot shape Arabic (proven live 2026-08-27, see
+     * vouchers/partials/styles.blade.php for the codepoint evidence that
+     * overturns the earlier "renders well" finding), so an ARB voucher
+     * never gets a stored PDF at all -- `pdf_path` stays null and this
+     * method is a deliberate no-op for one. Called again from supersede()
+     * on the ORIGINAL voucher purely to keep its stored file in sync with
+     * the cross-reference banner (BLOCKER B3); for an ARB original that
+     * again resolves to this same no-op, which is correct -- it never had
+     * a file to begin with.
      */
     protected function renderPdf(TravelVoucher $voucher, VoucherTemplate $template, int $companyId): void
     {
+        if ($voucher->language === TravelVoucher::LANGUAGE_AR) {
+            return;
+        }
+
         $pdf = Pdf::loadView($template->view_key, [
             'payload' => $voucher->snapshot,
             'isPdf' => true,
             'sample' => false,
+            'voucherStatus' => $voucher->status,
+            'crossReference' => $voucher->crossReferenceContext(),
         ]);
 
         $filename = "{$voucher->voucher_number}-v{$voucher->version}.pdf";

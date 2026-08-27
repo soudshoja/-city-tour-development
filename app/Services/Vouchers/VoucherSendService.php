@@ -34,6 +34,14 @@ use Illuminate\Support\Facades\Storage;
  *
  * Gated on the company's module.resayil (plan section 10.2, section 14.17) --
  * issuing/downloading a voucher needs no module, only this send path does.
+ *
+ * BLOCKER B2 -- an ARB voucher never has a PDF to attach at all
+ * (VoucherService::renderPdf() is a deliberate no-op for language ARB,
+ * restoring plan section 12: "PDF attachment = EN templates only in v1"). For
+ * one, send() below sends the public link as a plain WhatsApp text
+ * message instead -- an intentional format switch, not the pdf_missing
+ * failure path (that stays reserved for an EN voucher whose file really
+ * is unexpectedly gone).
  */
 class VoucherSendService
 {
@@ -67,12 +75,39 @@ class VoucherSendService
             return $this->failure('no_client', 'No client phone number is attached to this booking yet.');
         }
 
+        $caption = $this->caption($voucher, $companyId, $client);
+
+        // BLOCKER B2 -- Arabic: text the working public link, never a PDF
+        // (plan section 12, restored -- see this class's own docblock).
+        if ($voucher->language === TravelVoucher::LANGUAGE_AR) {
+            $response = (new ResayilController)->message(
+                $phone,
+                $countryCode ?? '+965',
+                $caption,
+                null,
+                null,
+                null,
+                true // same non-production PHONE_LOCAL guard as the document() branch below
+            );
+
+            if (! ($response['success'] ?? false)) {
+                Log::error('VoucherSendService: arabic link send failed', [
+                    'voucher_id' => $voucher->id,
+                    'voucher_number' => $voucher->voucher_number,
+                    'error' => $response['error'] ?? 'unknown',
+                ]);
+
+                return $this->failure('send_failed', $response['error'] ?? 'Failed to send the voucher via WhatsApp.');
+            }
+
+            return $this->markSent($voucher, $countryCode, $phone, $senderId);
+        }
+
         if (! $voucher->pdf_path || ! Storage::disk('local')->exists($voucher->pdf_path)) {
             return $this->failure('pdf_missing', 'The voucher PDF could not be found. Try re-issuing the voucher.');
         }
 
         $pdfAbsolutePath = Storage::disk('local')->path($voucher->pdf_path);
-        $caption = $this->caption($voucher, $companyId, $client);
 
         $resayil = new ResayilController;
         $fileId = $this->resolveFileId($resayil, $voucher, $pdfAbsolutePath);
@@ -104,6 +139,18 @@ class VoucherSendService
             $voucher->resayil_file_id = $response['new_file_id'];
         }
 
+        return $this->markSent($voucher, $countryCode, $phone, $senderId);
+    }
+
+    /**
+     * Shared "record the send" tail for both the Arabic text-link branch
+     * and the EN PDF-document branch above -- persists sent_to_phone/
+     * sent_at/sent_by (any resayil_file_id update the caller made to
+     * $voucher is already staged on the instance, so this single save()
+     * covers both) and returns the same success shape either way.
+     */
+    protected function markSent(TravelVoucher $voucher, ?string $countryCode, string $phone, ?int $senderId): array
+    {
         $voucher->sent_to_phone = ($countryCode ?? '').$phone;
         $voucher->sent_at = now();
         $voucher->sent_by = $senderId;

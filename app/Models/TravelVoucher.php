@@ -157,6 +157,40 @@ class TravelVoucher extends Model
     }
 
     /**
+     * BLOCKER B3 fix — bidirectional cross-referencing (§13-BIS.A, owner's
+     * own words: "original voucher shows re-issued and shows new
+     * reference, and the new one should have old and new reference").
+     * Presentation state derived fresh from the `superseded_by_id` /
+     * `previousVersion` relations — NEVER written into the frozen
+     * `snapshot` (the snapshot stays an immutable event; this is computed
+     * at render time by whoever is about to show/PDF the voucher, exactly
+     * like $isPdf/$sample are already siblings of `payload`, never inside
+     * it). Deliberately silent (every key null) for a path-B
+     * (`VoucherService::updateInPlaceAfterVoid()`) voucher — that flow
+     * never touches `superseded_by_id`, so there is nothing to show,
+     * matching §13-BIS.B's "no trace of the void reaches any
+     * client-facing surface" requirement.
+     */
+    public function crossReferenceContext(): array
+    {
+        $this->loadMissing(['supersededBy', 'previousVersion']);
+
+        $supersededBy = $this->supersededBy;
+        $previous = $this->previousVersion;
+
+        return [
+            'supersededByReference' => $supersededBy?->voucher_number,
+            'supersededByUrl' => $supersededBy
+                ? route('travel-voucher.show', ['companyId' => $supersededBy->company_id, 'token' => $supersededBy->token])
+                : null,
+            'previousReference' => $previous?->voucher_number,
+            'previousUrl' => $previous
+                ? route('travel-voucher.show', ['companyId' => $previous->company_id, 'token' => $previous->token])
+                : null,
+        ];
+    }
+
+    /**
      * The public token route's only allowed lookup shape: exact
      * company_id + token match, and still in a publicly-resolvable status.
      * The companyId segment double-scopes the token (plan §11.1) — never

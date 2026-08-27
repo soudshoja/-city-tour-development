@@ -72,6 +72,9 @@
         ])
 
         <div class="vb">
+            @include('vouchers.partials.status_banner', [
+                'voucherStatus' => $voucherStatus ?? null, 'crossReference' => $crossReference ?? null, 'lang' => $lang,
+            ])
             <div class="v-section">
                 <p class="v-section-title">{{ $L['client_info'] }}</p>
                 <div class="v-card">

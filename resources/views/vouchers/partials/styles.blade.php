@@ -11,16 +11,33 @@
     (the header split, label/value rows) uses plain HTML tables, exactly
     the proven pattern already in resources/views/invoice/pdf/invoice.blade.php.
 
-    One font stack for BOTH languages: 'DejaVu Sans' is bundled with
-    dompdf and — verified live on this server 2026-08-27, dompdf v3.1.0 —
-    shapes joined, right-to-left Arabic correctly (table cell text,
-    mixed Latin/Arabic, ligatures all render properly; see the session
-    notes for the two rendered probes). That is a correction of the
-    original plan's caution that "dompdf cannot shape Arabic": on this
-    dompdf version it can, at least for the text this app would ever put
-    on a voucher. Kept as the ONLY font everywhere (not just for `dir=rtl`
-    templates) so an HTML preview and its PDF render pixel-identical
-    typography — the single-source-of-truth requirement (plan §12).
+    One font stack for BOTH languages: 'DejaVu Sans' is bundled with dompdf.
+
+    BLOCKER B2 -- CORRECTED 2026-08-27, do not re-open without re-reading
+    this note. An earlier pass claimed "Arabic actually renders well" in
+    the dompdf PDF output and used that to overturn the original plan's
+    caution ("dompdf cannot shape Arabic", plan §12). That claim was
+    checked against a real rendered file and was FALSE: VCH-000011
+    (hotel/ARB) contains 478 codepoints in the Arabic block
+    (U+0600-U+06FF) and ZERO codepoints in Arabic Presentation Forms-B
+    (U+FE70-U+FEFF) -- dompdf embedded unshaped, unjoined base letters, so
+    rendered Arabic text draws as disconnected glyphs with RTL blocks
+    left-aligned rather than mirrored. The plan's original caution was right;
+    the "verified live" claim that overturned it was not actually checked
+    against output. **dompdf cannot shape Arabic on this server, full
+    stop.**
+
+    The fix is NOT a different font here -- it is that dompdf never gets
+    asked to render Arabic at all: VoucherService::renderPdf() is a
+    no-op for TravelVoucher::LANGUAGE_AR (plan §12 restored: "PDF
+    attachment = EN templates only in v1"), and
+    PublicVoucherController::pdf() never falls back to a live dompdf
+    render for one either. 'DejaVu Sans' stays the ONE font for every
+    language ONLY because the HTML route (browsers shape Arabic
+    correctly on their own) is the sole ARB rendering path left -- an EN
+    PDF and its HTML preview still render pixel-identical typography,
+    which is all this single-source-of-truth stack needs to guarantee
+    once ARB has no PDF path to be identical to.
 --}}
 <style>
     * { box-sizing: border-box; }
@@ -57,6 +74,15 @@
         background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.4);
         font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px;
     }
+
+    /* ---- status / cross-reference banner (BLOCKER B3, §13-BIS.A) ---- */
+    .v-status-note { margin: 0 0 16px; padding: 11px 14px; border-radius: 6px; border: 1px solid; font-size: 11px; line-height: 1.55; }
+    .v-status-note-title { margin: 0 0 3px; font-weight: bold; }
+    .v-status-note-body { margin: 0; }
+    .v-status-note a { color: inherit; font-weight: bold; text-decoration: underline; }
+    .v-status-note-reissued { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .v-status-note-refunded { background: #fefce8; border-color: #fde68a; color: #854d0e; }
+    .v-status-note-replaces { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
 
     /* ---- body ---- */
     .vb { padding: 22px; }

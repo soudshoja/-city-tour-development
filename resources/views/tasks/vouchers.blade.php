@@ -99,7 +99,12 @@
                             <td>
                                 <div class="vch-actions">
                                     <a class="vch-btn vch-btn-outline" :href="row.public_url" target="_blank">View</a>
-                                    <a class="vch-btn vch-btn-outline" :href="row.download_url">PDF</a>
+                                    {{-- BLOCKER B2: dompdf cannot shape Arabic (vouchers/partials/styles.blade.php
+                                         has the codepoint evidence) -- an ARB voucher never gets a PDF file at
+                                         all (VoucherService::renderPdf() is a no-op for it), so this button is
+                                         honest about that instead of linking to a 404. --}}
+                                    <a class="vch-btn vch-btn-outline" :href="row.download_url" x-show="row.language !== 'ARB'">PDF</a>
+                                    <span class="vch-empty" style="padding:0;font-size:11px;" x-show="row.language === 'ARB'" title="PDF is not offered for Arabic vouchers -- the web page is sent as a link instead.">PDF: N/A (ARB)</span>
                                     <button type="button" class="vch-btn vch-btn-primary" @click="send(row)" :disabled="row.sending">
                                         <span x-show="!row.sending">Send</span>
                                         <span x-show="row.sending">Sending&hellip;</span>

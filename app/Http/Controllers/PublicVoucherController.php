@@ -25,6 +25,13 @@ use Illuminate\View\View;
  * Renders from `snapshot` only -- never re-resolves live data (plan
  * section 11.1: "render from snapshot, else 404"), so this controller never
  * touches VoucherDataRepository at all.
+ *
+ * BLOCKER B3 (§13-BIS.A cross-referencing) and BLOCKER B2 (Arabic PDF)
+ * both add PRESENTATION state alongside `payload` -- `voucherStatus` and
+ * `crossReference` (TravelVoucher::crossReferenceContext(), computed
+ * fresh from the live `superseded_by_id` / `previousVersion` relations)
+ * are never written into the frozen snapshot; they ride next to it in the
+ * view array exactly like `$isPdf`/`$sample` already do.
  */
 class PublicVoucherController extends Controller
 {
@@ -43,6 +50,8 @@ class PublicVoucherController extends Controller
             'payload' => $voucher->snapshot,
             'isPdf' => false,
             'sample' => false,
+            'voucherStatus' => $voucher->status,
+            'crossReference' => $voucher->crossReferenceContext(),
         ]);
     }
 
@@ -52,6 +61,19 @@ class PublicVoucherController extends Controller
      * the private disk; falls back to rendering the frozen snapshot again
      * on the fly only if that file is somehow missing, so the public PDF
      * link never hard-fails just because a stored file was cleaned up.
+     *
+     * BLOCKER B2 -- an Arabic voucher never gets a live-rendered fallback
+     * here. dompdf embeds unshaped base Arabic-block letters with no
+     * cursive joining and no RTL mirroring (proven live 2026-08-27:
+     * VCH-000011 contained 478 Arabic-block codepoints U+0600-U+06FF and
+     * ZERO Arabic Presentation Forms-B codepoints -- see
+     * vouchers/partials/styles.blade.php for the full finding). Plan §12
+     * restored: "PDF attachment = EN templates only in v1" --
+     * VoucherService::renderPdf() never stores a pdf_path for an ARB
+     * voucher in the first place (so the branch below never has a stored
+     * file to serve for one), and this fallback must not paper over that
+     * by generating a broken PDF on the fly. An ARB voucher gets an
+     * honest "view it as a web page" response instead.
      */
     public function pdf(int $companyId, string $token): Response
     {
@@ -62,6 +84,12 @@ class PublicVoucherController extends Controller
 
         if (! $voucher || ! $voucher->voucherTemplate) {
             return $this->unavailable();
+        }
+
+        if ($voucher->language === TravelVoucher::LANGUAGE_AR) {
+            return response()->view('vouchers.public.pdf-unavailable-arabic', [
+                'link' => route('travel-voucher.show', ['companyId' => $companyId, 'token' => $token]),
+            ], 200);
         }
 
         $filename = "{$voucher->voucher_number}.pdf";
@@ -77,6 +105,8 @@ class PublicVoucherController extends Controller
             'payload' => $voucher->snapshot,
             'isPdf' => true,
             'sample' => false,
+            'voucherStatus' => $voucher->status,
+            'crossReference' => $voucher->crossReferenceContext(),
         ]);
 
         return $pdf->stream($filename);

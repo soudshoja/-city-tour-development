@@ -78,7 +78,7 @@
                 <p class="v-section-title">{{ $L['client_info'] }}</p>
                 <div class="v-card">
                     <table class="v-grid" role="presentation"><tr>
-                        <td><p class="v-label">{{ $L['name'] }}</p><p class="v-value">{{ $client['name'] ?? ($task['passenger_name'] ?? '—') }}</p></td>
+                        <td><p class="v-label">{{ $L['name'] }}</p><p class="v-value">{{ $client['name'] ?? $task['passenger_name'] ?? $task['client_name'] ?? '—' }}</p></td>
                         <td><p class="v-label">{{ $L['email'] }}</p><p class="v-value">{{ $client['email'] ?? '—' }}</p></td>
                         <td><p class="v-label">{{ $L['phone'] }}</p><p class="v-value">{{ $client['phone'] ?? '—' }}</p></td>
                     </tr></table>

@@ -579,6 +579,19 @@ class VoucherDataRepository
      */
     protected function flightBlock(Task $task, int $companyId): ?array
     {
+        $roster = $this->flightRoster($task, $companyId);
+
+        // F4/R3: flightRoster() returns [] only when the anchor task
+        // itself is dead (void or superseded) with no live sibling to
+        // show instead. Rendering this task's OWN leg/ticket data in
+        // that case would still print the dead ticket even though the
+        // Passengers table is empty -- degrade the whole block to the
+        // generic segment fallback (plan §7's existing degrade path,
+        // resolveTypeBlocks()) instead, which carries no ticket number.
+        if (empty($roster)) {
+            return null;
+        }
+
         $legs = TaskFlightDetail::where('task_id', $task->id)
             ->where('is_ancillary', false)
             ->with(['countryFrom', 'countryTo', 'airportFrom', 'airportTo', 'airline'])
@@ -600,7 +613,7 @@ class VoucherDataRepository
                 'flight_number' => $a->flight_number,
                 'ticket_number' => $a->ticket_number,
             ])->all(),
-            'roster' => $this->flightRoster($task, $companyId),
+            'roster' => $roster,
         ];
     }
 
@@ -660,8 +673,16 @@ class VoucherDataRepository
         }
 
         $live = $this->liveSiblings($siblings);
+        $live = $this->ensureAnchorPresent($task, $siblings, $live);
 
-        if ($live->isEmpty()) {
+        // F4/R3: only fall back to the anchor when the anchor is itself
+        // live. An anchor that is dead with no live sibling either must
+        // resolve to an EMPTY roster, never its own dead ticket
+        // (verified live on PNR 9VKQJP / task 8001, status=void, sole
+        // sibling 8002 also void -- flightBlock() below turns this empty
+        // roster into a full degrade to the generic segment block, so no
+        // leg/ticket data from the dead task prints either).
+        if ($live->isEmpty() && ! $this->isAnchorDead($task, $siblings)) {
             $live = collect([$task]);
         }
 
@@ -670,7 +691,10 @@ class VoucherDataRepository
 
             return [
                 'task_id' => $sibling->id,
-                'passenger_name' => $sibling->passenger_name,
+                // F3/R2: passenger_name is NULL on real data (verified live
+                // on PNR 17937089) -- client_name carries the actual name
+                // there. Never render blank when a real name exists.
+                'passenger_name' => $sibling->passenger_name ?: $sibling->client_name,
                 'ticket_number' => $sibling->ticket_number,
                 'seat_no' => $detail->seat_no ?? null,
                 'baggage_allowed' => $detail->baggage_allowed ?? null,
@@ -700,11 +724,48 @@ class VoucherDataRepository
      * not a replacement can yet be matched for it (plan §13-BIS/V9: ~16%
      * of voids have no original_task_id chain at all).
      *
-     * Defensive: a traveller appearing twice with no supersession chain
-     * at all (no void, no original_task_id either way) collapses to the
-     * newest — highest id — row, keyed by travellerDedupeKey().
+     * CORRECTED 2026-08-27 (owner measurement): this method used to also
+     * collapse same-key rows by NAME, on the theory of "a traveller
+     * appearing twice with no supersession chain". That was wrong and
+     * measurably destructive — verified live on PNR 72MBFY: 3 tasks, all
+     * status=issued, no void, no original_task_id chain, ONE passenger
+     * (EL SANEH/HANAN MRS) holding THREE genuinely different ticket
+     * numbers on three different plate codes. The name-collapse silently
+     * dropped two of those three real ticket documents; the sweep across
+     * every multi-task PNR found 294 PNRs (17.4%) losing at least one
+     * live, distinct-ticket task this way (571 tasks suppressed). Two
+     * rows for the same person holding two different tickets are two
+     * real ticket documents and both must print — a name is never a
+     * dedupe key here again.
+     *
+     * The only dedupe left is for a TRUE duplicate row: two sibling
+     * records sharing the same non-empty ticket_number (the newest —
+     * highest id — wins). A blank ticket_number is never treated as a
+     * collision key, so every ticketless row stays its own group.
      */
     protected function liveSiblings(Collection $siblings): Collection
+    {
+        $deadIds = $this->deadSiblingIds($siblings);
+
+        $live = $siblings->reject(fn (Task $s) => isset($deadIds[$s->id]));
+
+        return $live
+            ->groupBy(function (Task $s) {
+                $ticket = trim((string) $s->ticket_number);
+
+                return $ticket !== '' ? 'ticket:'.$ticket : 'task:'.$s->id;
+            })
+            ->map(fn (Collection $group) => $group->sortByDesc('id')->first())
+            ->sortBy('id')
+            ->values();
+    }
+
+    /**
+     * The void/supersession rule liveSiblings() rejects on, extracted so
+     * callers can also ask "is THIS one task, specifically, dead?" without
+     * re-deriving the whole live set (F2/F4).
+     */
+    protected function deadSiblingIds(Collection $siblings): array
     {
         $deadIds = [];
 
@@ -717,24 +778,35 @@ class VoucherDataRepository
             }
         }
 
-        $live = $siblings->reject(fn (Task $s) => isset($deadIds[$s->id]));
-
-        return $live
-            ->groupBy(fn (Task $s) => $this->travellerDedupeKey($s))
-            ->map(fn (Collection $group) => $group->sortByDesc('id')->first())
-            ->values();
+        return $deadIds;
     }
 
-    /** Case-insensitive traveller identity for liveSiblings()'s defensive same-key collapse. */
-    protected function travellerDedupeKey(Task $task): string
+    /** Is $task itself void, or superseded by another sibling in $siblings pointing at it? */
+    protected function isAnchorDead(Task $task, Collection $siblings): bool
     {
-        $name = $task->passenger_name ?: $task->client_name;
+        return isset($this->deadSiblingIds($siblings)[$task->id]);
+    }
 
-        if ($name === null || trim($name) === '') {
-            return 'task-'.$task->id;
+    /**
+     * F2, owner measurement on PNR 17937089 / task 5534: the voucher's
+     * own subject task fell out of its own roster — 8 tasks, all
+     * status=confirmed, no void/supersession chain, `passenger_name`
+     * NULL on every row, rendering task 5534 produced 4 rows (5538-5541)
+     * that did NOT include 5534 or its own ticket 19833251. The anchor
+     * must appear in its own roster whenever it is itself live — as an
+     * explicit guarantee here, not as an accident of ids/ordering/dedupe.
+     */
+    protected function ensureAnchorPresent(Task $task, Collection $siblings, Collection $live): Collection
+    {
+        if ($this->isAnchorDead($task, $siblings)) {
+            return $live; // Dead anchor: F4's empty-roster fallback handles this, not this method.
         }
 
-        return strtoupper(trim($name));
+        if ($live->contains(fn (Task $s) => $s->id === $task->id)) {
+            return $live;
+        }
+
+        return $live->push($task)->sortBy('id')->values();
     }
 
     /**
@@ -790,6 +862,16 @@ class VoucherDataRepository
             return null;
         }
 
+        $roster = $this->hotelRoster($task, $companyId, $detail->hotel_id);
+
+        // F4/R3 analogue for hotel: an anchor that is itself dead with no
+        // live sibling either must never render its own stay/room block
+        // — degrade to the generic segment fallback instead, which
+        // carries no room/rate/reference data from the dead booking.
+        if (empty($roster)) {
+            return null;
+        }
+
         $roomDetails = $this->decodeJsonObject($detail->room_details);
         $roomName = $roomDetails['name'] ?? $detail->room_type;
 
@@ -826,7 +908,7 @@ class VoucherDataRepository
             'meal_type_label' => self::BOARD_LABELS[$detail->meal_type] ?? $detail->meal_type,
             'is_refundable' => $detail->is_refundable === null ? null : (bool) $detail->is_refundable,
             'supplements' => $detail->supplements,
-            'roster' => $this->hotelRoster($task, $companyId, $detail->hotel_id),
+            'roster' => $roster,
         ];
     }
 
@@ -840,8 +922,9 @@ class VoucherDataRepository
     {
         $siblings = $this->siblingTasksByReference($task, $companyId, 'hotel', $hotelId);
         $live = $this->liveSiblings($siblings);
+        $live = $this->ensureAnchorPresent($task, $siblings, $live);
 
-        if ($live->isEmpty()) {
+        if ($live->isEmpty() && ! $this->isAnchorDead($task, $siblings)) {
             $live = collect([$task]);
         }
 
@@ -859,6 +942,14 @@ class VoucherDataRepository
             return null;
         }
 
+        $roster = $this->travellerRoster($task, $companyId, 'visa', 'application_number');
+
+        // F4/R3 analogue for visa: degrade to the generic fallback rather
+        // than render a dead anchor's own visa detail row.
+        if (empty($roster)) {
+            return null;
+        }
+
         return [
             'visa_type' => $detail->visa_type,
             'application_number' => $detail->application_number,
@@ -867,7 +958,7 @@ class VoucherDataRepository
             'number_of_entries' => $detail->number_of_entries,
             'stay_duration' => $detail->stay_duration,
             'issuing_country' => $detail->issuing_country,
-            'roster' => $this->travellerRoster($task, $companyId, 'visa', 'application_number'),
+            'roster' => $roster,
         ];
     }
 
@@ -876,6 +967,14 @@ class VoucherDataRepository
         $detail = TaskInsuranceDetail::where('task_id', $task->id)->first();
 
         if (! $detail) {
+            return null;
+        }
+
+        $roster = $this->travellerRoster($task, $companyId, 'insurance', 'document_reference');
+
+        // F4/R3 analogue for insurance: degrade to the generic fallback
+        // rather than render a dead anchor's own insurance detail row.
+        if (empty($roster)) {
             return null;
         }
 
@@ -888,7 +987,7 @@ class VoucherDataRepository
             'date' => $detail->date,
             'document_reference' => $detail->document_reference,
             'paid_leaves' => $detail->paid_leaves,
-            'roster' => $this->travellerRoster($task, $companyId, 'insurance', 'document_reference'),
+            'roster' => $roster,
         ];
     }
 
@@ -909,8 +1008,9 @@ class VoucherDataRepository
     {
         $siblings = $this->siblingTasksByReference($task, $companyId, $type);
         $live = $this->liveSiblings($siblings);
+        $live = $this->ensureAnchorPresent($task, $siblings, $live);
 
-        if ($live->isEmpty()) {
+        if ($live->isEmpty() && ! $this->isAnchorDead($task, $siblings)) {
             $live = collect([$task]);
         }
 
@@ -939,8 +1039,9 @@ class VoucherDataRepository
     {
         $siblings = $this->siblingTasksByReference($task, $companyId, $task->type);
         $live = $this->liveSiblings($siblings);
+        $live = $this->ensureAnchorPresent($task, $siblings, $live);
 
-        if ($live->isEmpty()) {
+        if ($live->isEmpty() && ! $this->isAnchorDead($task, $siblings)) {
             $live = collect([$task]);
         }
 

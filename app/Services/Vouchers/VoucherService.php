@@ -303,12 +303,22 @@ class VoucherService
 
     /**
      * F4: refuse to issue a voucher for a dead Task — its own status is
-     * 'void', or another task in this company points at it via
+     * 'void' or 'refund', or another task in this company points at it via
      * original_task_id (it has been superseded). Packages are not
      * checked here (a package's own member tasks are each already
      * subject to this same rule wherever they are issued individually;
      * this step does not extend the check into per-item package
      * validation, which is out of scope).
+     *
+     * BUG 2 fix, verified live on PNR 4J9RCM: task 19621 (status=refund,
+     * original_task_id=18254) had no guard against issuing it directly --
+     * VoucherDataRepository::deadSiblingIds() already excludes a `refund`
+     * status from ROSTER rendering (so it renders zero passenger rows),
+     * but that exclusion never reached this issuance guard, so the
+     * voucher endpoint still returned HTTP 200 for a refunded task with
+     * no travel details behind it. `refund` now refuses issuance the same
+     * way `void` always has, with the same clean staff-facing message
+     * pattern.
      */
     protected function assertSubjectNotDead(Model $subject, int $companyId): void
     {
@@ -318,6 +328,10 @@ class VoucherService
 
         if ($subject->status === 'void') {
             throw VoucherSubjectDeadException::forTask($subject->id, 'the task itself is void.');
+        }
+
+        if ($subject->status === 'refund') {
+            throw VoucherSubjectDeadException::forTask($subject->id, 'the task itself is a refund.');
         }
 
         $isSuperseded = Task::where('company_id', $companyId)

@@ -738,24 +738,28 @@ class VoucherDataRepository
      * real ticket documents and both must print — a name is never a
      * dedupe key here again.
      *
-     * The only dedupe left is for a TRUE duplicate row: two sibling
-     * records sharing the same non-empty ticket_number (the newest —
-     * highest id — wins). A blank ticket_number is never treated as a
-     * collision key, so every ticketless row stays its own group.
+     * A same-session first attempt at a replacement collapse (group by
+     * non-empty ticket_number) was ALSO measurably wrong and is not
+     * shipped: `ticket_number` is per-passenger-unique for a flight
+     * task, but verified live on hotel ref CMT32218906820 (task 8725,
+     * 4 real guests, one room, all status=issued/live) every one of the
+     * 4 sibling rows shares the exact same ticket_number
+     * ('CMT32218906820' — the shared booking reference, not a per-guest
+     * value) — that collapse silently merged 4 live guests down to 2.
+     * `ticket_number` is therefore not a safe collision key across task
+     * types, and no other column is a safe substitute either. This
+     * method now does ONLY the void/original_task_id exclusion above —
+     * no further collapsing of any kind. A genuine duplicate ROW (the
+     * defensive case this used to guard) has not been observed in real
+     * data; NOT deduping is measurably safer than every dedupe key tried
+     * so far.
      */
     protected function liveSiblings(Collection $siblings): Collection
     {
         $deadIds = $this->deadSiblingIds($siblings);
 
-        $live = $siblings->reject(fn (Task $s) => isset($deadIds[$s->id]));
-
-        return $live
-            ->groupBy(function (Task $s) {
-                $ticket = trim((string) $s->ticket_number);
-
-                return $ticket !== '' ? 'ticket:'.$ticket : 'task:'.$s->id;
-            })
-            ->map(fn (Collection $group) => $group->sortByDesc('id')->first())
+        return $siblings
+            ->reject(fn (Task $s) => isset($deadIds[$s->id]))
             ->sortBy('id')
             ->values();
     }

@@ -16,28 +16,35 @@
     BLOCKER B2 -- CORRECTED 2026-08-27, do not re-open without re-reading
     this note. An earlier pass claimed "Arabic actually renders well" in
     the dompdf PDF output and used that to overturn the original plan's
-    caution ("dompdf cannot shape Arabic", plan §12). That claim was
-    checked against a real rendered file and was FALSE: VCH-000011
-    (hotel/ARB) contains 478 codepoints in the Arabic block
-    (U+0600-U+06FF) and ZERO codepoints in Arabic Presentation Forms-B
-    (U+FE70-U+FEFF) -- dompdf embedded unshaped, unjoined base letters, so
-    rendered Arabic text draws as disconnected glyphs with RTL blocks
-    left-aligned rather than mirrored. The plan's original caution was right;
-    the "verified live" claim that overturned it was not actually checked
-    against output. **dompdf cannot shape Arabic on this server, full
-    stop.**
+    caution ("dompdf cannot shape Arabic", plan §12).
+
+    That claim was checked against a real rendered file (VCH-000011,
+    hotel/ARB) and did not hold up -- but the exact codepoint counts are
+    NOT settled and this note deliberately does not restate a number:
+    two independent extractors of the same PDF disagreed with each other
+    (a hand-rolled ToUnicode walker reported zero Arabic codepoints and
+    Latin mojibake; a separate CMap-coverage census reported Arabic
+    mappings present with zero Arabic Presentation Forms-B). Neither
+    extractor is trustworthy enough to cite, so no arithmetic from either
+    one belongs here. What is NOT in dispute and needs no re-measuring:
+    dompdf (barryvdh/laravel-dompdf, this app's only PDF engine) performs
+    no Arabic shaping and no bidi reordering, full stop. The plan's
+    original caution was right; the "verified live" claim that overturned
+    it was not actually checked against output.
 
     The fix is NOT a different font here -- it is that dompdf never gets
-    asked to render Arabic at all: VoucherService::renderPdf() is a
-    no-op for TravelVoucher::LANGUAGE_AR (plan §12 restored: "PDF
-    attachment = EN templates only in v1"), and
-    PublicVoucherController::pdf() never falls back to a live dompdf
-    render for one either. 'DejaVu Sans' stays the ONE font for every
-    language ONLY because the HTML route (browsers shape Arabic
-    correctly on their own) is the sole ARB rendering path left -- an EN
-    PDF and its HTML preview still render pixel-identical typography,
-    which is all this single-source-of-truth stack needs to guarantee
-    once ARB has no PDF path to be identical to.
+    asked to render Arabic at all. Every PDF-serving path is guarded
+    against TravelVoucher::LANGUAGE_AR: VoucherService::renderPdf() is a
+    deliberate no-op for it (plan §12 restored: "PDF attachment = EN
+    templates only in v1"), PublicVoucherController::pdf() never falls
+    back to a live dompdf render for one, and VoucherController::download()
+    carries the same guard (added alongside this note). An ARB voucher is
+    always delivered as the HTML link and never as a PDF. 'DejaVu Sans'
+    stays the ONE font for every language ONLY because the HTML route
+    (browsers shape Arabic correctly on their own) is the sole ARB
+    rendering path left -- an EN PDF and its HTML preview still render
+    pixel-identical typography, which is all this single-source-of-truth
+    stack needs to guarantee once ARB has no PDF path to be identical to.
 --}}
 <style>
     * { box-sizing: border-box; }

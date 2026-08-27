@@ -1,4 +1,4 @@
-<!--
+{{--
     The public voucher link's dead-end page (Step 4 item 2, plan section
     13-BIS.C / section 11.1). Shown for a token that does not resolve at all,
     or resolves to a voucher whose status is one of
@@ -7,7 +7,22 @@
     no "Cancel V", no reason, no stale booking data -- a customer holding
     a dead link only ever sees this, per the owner's own instruction
     ("we don't show any details of void or old data for it").
--->
+
+    THIS MUST STAY A BLADE-SYNTAX COMMENT, NEVER a raw HTML angle-bracket
+    one -- a raw comment compiles straight into the response body and is
+    readable by any customer via View Source (found doing exactly that on
+    2026-08-27: it named "Cancel V", listed every PUBLICLY_DEAD_STATUSES
+    value, and quoted the owner). A Blade-syntax comment is stripped at
+    compile time and never reaches the client at all -- but see this
+    file's own git history for why even that guarantee needs a second
+    warning: do not nest an example of the comment delimiters themselves
+    inside comment prose like this one, or paste this paragraph's own
+    wording back in verbatim -- Blade's comment regex is non-greedy and
+    closes on the FIRST closing delimiter it finds, so a delimiter pair
+    typed as a literal example inside the text ends the comment early and
+    leaks everything after it straight into the page, which is exactly
+    what happened here the first time this note was written.
+--}}
 <!DOCTYPE html>
 <html lang="en">
 <head>

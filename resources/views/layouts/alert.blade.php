@@ -39,6 +39,17 @@
     </div>
     @endif
 
+    @if(session('warning'))
+    <div class="flex items-center justify-between rounded bg-yellow-400 p-3.5 text-yellow-900" role="alert">
+        <div class="grid">
+            <p>
+                {{ session('warning') }}
+            </p>
+        </div>
+        <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+    </div>
+    @endif
+
     @if(session('error'))
     <div class="flex items-center justify-between rounded bg-red-500 p-3.5 text-white dark:bg-danger-dark-light" role="alert">
         <div class="grid">

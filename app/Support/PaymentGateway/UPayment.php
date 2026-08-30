@@ -13,10 +13,13 @@ class UPayment
 {
     protected $configService;
 
-    public function __construct()
+    protected ?int $companyId;
+
+    public function __construct(?int $companyId = null)
     {
         // Initialize with your UPayment configuration
         $this->configService = new GatewayConfigService;
+        $this->companyId = $companyId;
     }
 
     public function makeCharge(Request $request)
@@ -37,7 +40,7 @@ class UPayment
             'currency' => 'required|string|max:10',
         ]);
 
-        $uPaymentConfig = $this->configService->getUPaymentConfig();
+        $uPaymentConfig = $this->configService->getUPaymentConfig($this->companyId);
 
         if ($uPaymentConfig['status'] === 'error') {
             $payment = Payment::find($request->input('payment_id'));
@@ -140,7 +143,7 @@ class UPayment
     public function getPaymentStatus($trackId)
     {
 
-        $uPaymentConfig = $this->configService->getUPaymentConfig();
+        $uPaymentConfig = $this->configService->getUPaymentConfig($this->companyId);
 
         if ($uPaymentConfig['status'] === 'error') {
             return [

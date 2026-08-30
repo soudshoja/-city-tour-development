@@ -59,12 +59,31 @@
                     <p class="main-section-subtitle">{{ $totalRefunds }} {{ Str::plural('task', $totalRefunds) }} that require refund</p>
                 </div>
 
-                <button type="button" onclick="openTaskSelectionModal()" data-tooltip-left="Add Task Refund" class="main-action-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-2">
+                    @if (($filterAgents ?? collect())->isNotEmpty())
+                        {{-- W4.U §b — "Agent visibility: refund list filterable by agent" (w4-brief.md §4). --}}
+                        <form method="GET" action="{{ route('refunds.index') }}">
+                            @foreach(request()->except(['agent_id', 'page']) as $key => $value)
+                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endforeach
+                            <select name="agent_id" onchange="this.form.submit()" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5">
+                                <option value="">All agents</option>
+                                @foreach ($filterAgents as $filterAgent)
+                                    <option value="{{ $filterAgent->id }}" {{ (string) request('agent_id') === (string) $filterAgent->id ? 'selected' : '' }}>
+                                        {{ $filterAgent->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
+
+                    <button type="button" onclick="openTaskSelectionModal()" data-tooltip-left="Add Task Refund" class="main-action-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div class="main-table-container">

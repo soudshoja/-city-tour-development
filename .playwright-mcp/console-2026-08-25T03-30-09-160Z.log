@@ -1,0 +1,22 @@
+[    1304ms] [LOG] Active Tab: payment @ https://development.citycommerce.group/settings:5867
+[  117819ms] SyntaxError: Failed to execute 'replaceWith' on 'Element': Identifier 'walletData' has already been declared
+    at swapCurrentPageWithNewHtml (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7754:19)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7949:11
+    at preventAlpineFromPickingUpDomChanges (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:8026:5)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7939:9
+    at prefetches.<computed>.whenFinished (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7484:9)
+    at storeThePrefetchedHtmlForWhenALinkIsClicked (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7468:11)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7917:11
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7460:7
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7447:7
+[  117819ms] SyntaxError: Failed to execute 'replaceWith' on 'Element': Identifier '__sidebarTranslations' has already been declared
+    at swapCurrentPageWithNewHtml (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7754:19)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7949:11
+    at preventAlpineFromPickingUpDomChanges (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:8026:5)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7939:9
+    at prefetches.<computed>.whenFinished (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7484:9)
+    at storeThePrefetchedHtmlForWhenALinkIsClicked (https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7468:11)
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7917:11
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7460:7
+    at https://development.citycommerce.group/livewire/livewire.js?id=df3a17f2:7447:7
+[  121243ms] [WARNING] The resource https://development.citycommerce.group/build/assets/app-tpo1jr80.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://development.citycommerce.group/users/adminsList:0

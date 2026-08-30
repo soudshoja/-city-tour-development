@@ -185,5 +185,20 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // P2.5.F (p2_5-brief.md §P2.5.F): "add an accounting channel in config/logging.php writing
+        // to both [file and DB]." The DB half is written directly by
+        // App\Services\Accounting\AccountingLog::event()/write() (see that class's own docblock
+        // for why a plain helper was chosen over a custom Monolog handler on this channel) — this
+        // channel itself is the "keep file logs" half: a dedicated accounting audit file, separate
+        // from the default laravel.log, so the 15 accounting.* events this wave mirrors stay
+        // groupable on disk the same way every other domain channel here already does.
+        'accounting' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/accounting/accounting.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 60),
+            'replace_placeholders' => true,
+        ],
+
     ],
 ];

@@ -1,0 +1,137 @@
+- generic [active] [ref=f139e1]:
+  - banner [ref=f139e3]:
+    - paragraph [ref=f139e5]: CityTourApp
+    - generic [ref=f139e6]:
+      - generic [ref=f139e7]:
+        - link [ref=f139e8] [cursor=pointer]:
+          - /url: https://development.citycommerce.group
+          - img "Logo" [ref=f139e9]
+        - navigation [ref=f139e11]:
+          - list [ref=f139e12]:
+            - generic [ref=f139e13] [cursor=pointer]:
+              - generic [ref=f139e14]: Tasks
+              - list:
+                - generic:
+                  - link "Tasks list":
+                    - /url: https://development.citycommerce.group/tasks
+                - generic:
+                  - link "Outstanding":
+                    - /url: https://development.citycommerce.group/payment/outstanding
+            - generic [ref=f139e21] [cursor=pointer]:
+              - generic [ref=f139e22]: Finances
+              - list
+            - generic [ref=f139e28] [cursor=pointer]:
+              - generic [ref=f139e29]: Invoices
+              - list:
+                - generic:
+                  - link "Invoices List":
+                    - /url: https://development.citycommerce.group/invoices
+                - generic:
+                  - link "Invoices Link":
+                    - /url: https://development.citycommerce.group/invoices/link
+                - generic:
+                  - link "Payment Link":
+                    - /url: https://development.citycommerce.group/payment/link
+                - generic:
+                  - link "Refund":
+                    - /url: https://development.citycommerce.group/refunds
+                - generic:
+                  - link "Auto Billing":
+                    - /url: https://development.citycommerce.group/auto-billing
+                - generic:
+                  - link "Reminder":
+                    - /url: https://development.citycommerce.group/reminder
+            - link "Resayil" [ref=f139e38] [cursor=pointer]:
+              - /url: https://development.citycommerce.group/resayil
+            - generic [ref=f139e40] [cursor=pointer]:
+              - generic [ref=f139e41]: Users
+              - list:
+                - generic:
+                  - link "Users List":
+                    - /url: https://development.citycommerce.group/users/adminsList
+                - generic:
+                  - link "Branches List":
+                    - /url: https://development.citycommerce.group/branches
+                - generic:
+                  - link "Agents List":
+                    - /url: https://development.citycommerce.group/agents
+                - generic:
+                  - link "Clients List":
+                    - /url: https://development.citycommerce.group/clients
+            - generic [ref=f139e51] [cursor=pointer]:
+              - generic [ref=f139e52]: Reports
+              - list:
+                - generic:
+                  - link "Task Report":
+                    - /url: https://development.citycommerce.group/reports/tasks
+                - generic:
+                  - link "Client Report":
+                    - /url: https://development.citycommerce.group/reports/client
+                - generic:
+                  - link "Payment Gateways Report":
+                    - /url: https://development.citycommerce.group/reports/payment-gateways
+            - generic [ref=f139e61] [cursor=pointer]:
+              - generic [ref=f139e62]: Settings
+              - list:
+                - generic:
+                  - link "Settings":
+                    - /url: https://development.citycommerce.group/settings
+                - generic:
+                  - link "Suppliers":
+                    - /url: https://development.citycommerce.group/suppliers
+                - generic:
+                  - link "Manage Roles":
+                    - /url: https://development.citycommerce.group/role
+                - generic:
+                  - link "Documentations":
+                    - /url: https://development.citycommerce.group/docs/user
+                  - list:
+                    - generic:
+                      - link "User Docs":
+                        - /url: https://development.citycommerce.group/docs/user
+                    - generic:
+                      - link "API Docs":
+                        - /url: https://development.citycommerce.group/docs/api
+                    - generic:
+                      - link "Developer Docs":
+                        - /url: https://development.citycommerce.group/docs/developer
+      - generic [ref=f139e70]:
+        - generic [ref=f139e72] [cursor=pointer]
+        - generic [ref=f139e77] [cursor=pointer]
+        - generic [ref=f139e82] [cursor=pointer]
+  - main [ref=f139e86]:
+    - generic [ref=f139e88]:
+      - generic [ref=f139e89]:
+        - generic [ref=f139e90]:
+          - link "Dashboard" [ref=f139e92] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f139e101] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f139e109] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f139e115] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Language" [ref=f139e121] [cursor=pointer]
+        - generic [ref=f139e128] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f139e129]
+      - generic [ref=f139e132]:
+        - generic [ref=f139e133]:
+          - navigation [ref=f139e134]:
+            - link "Dashboard" [ref=f139e135] [cursor=pointer]:
+              - /url: https://development.citycommerce.group
+            - generic [ref=f139e136]: ">"
+            - link "Settings" [ref=f139e137] [cursor=pointer]:
+              - /url: https://development.citycommerce.group/settings
+            - generic [ref=f139e138]: ">"
+            - generic [ref=f139e139]: WhatsApp
+          - generic [ref=f139e142]:
+            - heading "WhatsApp" [level=1] [ref=f139e143]
+            - paragraph [ref=f139e144]: Your WhatsApp business workspace, number and subscription.
+          - generic [ref=f139e145]:
+            - heading "Your WhatsApp workspace isn't set up yet" [level=2] [ref=f139e146]
+            - paragraph [ref=f139e147]: WhatsApp service is arranged for your company by our team — there's nothing for you to configure here. Once your workspace and number are live, this page will show your connection status, plan and usage.
+            - paragraph [ref=f139e148]: Need it sooner? Contact your account manager.
+        - generic [ref=f139e149]: © 2024 - 2025 City Tour. Version 1.0
+  - button "Open Resayil" [ref=f139e152] [cursor=pointer]:
+    - img "Resayil" [ref=f139e153]

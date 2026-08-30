@@ -20,6 +20,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 class CreditController extends Controller
@@ -99,6 +100,18 @@ class CreditController extends Controller
         return redirect()->route('credits.index')->with('success', 'Credit created successfully.');
     }
 
+    /**
+     * AJAX credit-ledger rows backing clients.index's statement panel
+     * (resources/views/clients/index.blade.php's ledgerUrlTemplate /
+     * fetch('/credits/filter?client_id=...')). 'exists:clients,id' only
+     * proves the id is a real client, not that it belongs to the caller,
+     * so authorize against the same ClientPolicy::view() that
+     * ClientController::showCredit() already uses for the equivalent
+     * server-rendered statement -- a cross-company user gets a 403 here
+     * exactly as it does there. See tests/Feature/Security/
+     * ClientCreditStatementAccessTest.php and
+     * CreditFilterTenantIsolationTest.php.
+     */
     public function filter(Request $request)
     {
         $request->validate([
@@ -106,6 +119,9 @@ class CreditController extends Controller
             'from' => 'required|date',
             'to' => 'required|date',
         ]);
+
+        $client = Client::findOrFail($request->client_id);
+        Gate::authorize('view', $client);
 
         $credits = Credit::where('client_id', $request->client_id)
             ->whereDate('created_at', '>=', $request->from)

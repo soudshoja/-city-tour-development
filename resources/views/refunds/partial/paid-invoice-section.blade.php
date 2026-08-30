@@ -102,6 +102,19 @@
                 </div>
             </div>
             <input type="hidden" name="tasks[{{ $loopIndex }}][total_nett_refund_charge]" value="0" class="total-net-refund-charge">
+
+            <div class="col-span-full"><hr class="my-4"></div>
+
+            {{-- W4.U §b — editable "supplier net" override (w4-brief.md §4 process decisions:
+                 "supplier_refund_amount ... editable when the airline's actual refund differs").
+                 Defaults to cost − penalty, same as RefundPostingService::supplierRefundAmount(). --}}
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Supplier Refund Amount</label>
+                <input type="number" step="0.001" name="tasks[{{ $loopIndex }}][supplier_refund_amount]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
+                    value="{{ old('tasks.' . $loopIndex . '.supplier_refund_amount', ($isEditing && isset($refundDetail) && $refundDetail && $refundDetail->supplier_refund_amount !== null)
+                        ? number_format($refundDetail->supplier_refund_amount, 3, '.', '') : number_format(max(0, $refundTaskCost), 3, '.', '')) }}">
+                <p class="text-xs text-gray-500 mt-1">What the supplier actually refunds. Leave as-is unless the airline's confirmed refund differs from the computed penalty split.</p>
+            </div>
         </div>
     </div>
 </fieldset>

@@ -120,6 +120,19 @@
                         {{ __('settings.notifications') }}
                     </button>
                     @endcan
+
+                    {{-- W4.U §a — Accounting settings tab. --}}
+                    @can('viewAccountingSettings', 'App\Models\Setting')
+                    <button
+                        @click="saveTab('accounting')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'accounting'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path>
+                        </svg>
+                        {{ __('settings.accounting') }}
+                    </button>
+                    @endcan
                 </nav>
             </div>
 
@@ -160,6 +173,11 @@
                     @include('settings.partial.notifications')
                 </div>
                 @endcan
+                @can('viewAccountingSettings', 'App\Models\Setting')
+                <div x-show="activeTab === 'accounting'" x-cloak>
+                    @include('settings.partial.accounting')
+                </div>
+                @endcan
             </div>
         </div>
     </div>
@@ -193,6 +211,10 @@
                 window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
                 });
+            } else if ("{{ $activeTab }}" === 'accounting') {
+                window.Alpine && Alpine.nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('accounting-tab-loaded'));
+                });
             }
         });
 
@@ -209,6 +231,7 @@
                     'agent-charges': '{{ __('settings.agent_charges') }}',
                     'agent-loss': '{{ __('settings.agent_loss') }}',
                     'notifications': '{{ __('settings.notifications') }}',
+                    'accounting': '{{ __('settings.accounting') }}',
                 },
 
                 init() {
@@ -247,6 +270,8 @@
                         window.dispatchEvent(new CustomEvent('agent-loss-tab-loaded'));
                     } else if (tab === 'notifications') {
                         window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
+                    } else if (tab === 'accounting') {
+                        window.dispatchEvent(new CustomEvent('accounting-tab-loaded'));
                     }
                 },
 

@@ -29,10 +29,10 @@ class Hesabe
     protected $ivKey;
     protected $accessCode;
 
-    public function __construct()
+    public function __construct(?int $companyId = null)
     {
         $configService = new GatewayConfigService();
-        $hesabeConfig = $configService->getHesabeConfig();
+        $hesabeConfig = $configService->getHesabeConfig($companyId);
 
         if ($hesabeConfig['status'] === 'error') {
             Log::error('[HESABE] Configuration error', [
@@ -79,6 +79,32 @@ class Hesabe
                 'message' => 'Company not found for the agent.',
             ];
         }
+
+        // Re-resolve the gateway config scoped to the payment's own company --
+        // the constructor may have loaded config unscoped (companyId null,
+        // as PaymentController constructs this class with no args), so the
+        // full Hesabe credential set used for the actual charge must be
+        // re-fetched here to avoid leaking another company's credentials.
+        $configService = new GatewayConfigService();
+        $scopedConfig = $configService->getHesabeConfig($company->id);
+
+        if ($scopedConfig['status'] === 'error') {
+            Log::error('[HESABE] Configuration error for company', [
+                'company_id' => $company->id,
+                'message' => $scopedConfig['message'],
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $scopedConfig['message'],
+            ];
+        }
+
+        $this->apiKey = $scopedConfig['data']['api_key'];
+        $this->baseUrl = $scopedConfig['data']['base_url'];
+        $this->merchantCode = $scopedConfig['data']['merchant_code'];
+        $this->ivKey = $scopedConfig['data']['iv_key'];
+        $this->accessCode = $scopedConfig['data']['access_code'];
 
         $orderReference = $request->input('invoice_number');
         $paymentMethodId = $request->input('payment_method_id');
@@ -136,11 +162,15 @@ class Hesabe
         //     $requestData['variable3'] = $request->payment_transaction_id;
         // }
 
+        // Deliberately excludes api_key / iv_key / access_code: together they are
+        // the complete Hesabe credential set for this merchant, and an IV key +
+        // access code are meaningfully more sensitive than a single API key --
+        // no partial value (not even a fingerprint) should be logged here.
         Log::info('[HESABE] CheckoutPayment request data', [
-            'data' => $requestData,
-            'api_key' => $this->apiKey,
-            'iv_key' => $this->ivKey,
-            'access_code' => $this->accessCode,
+            'amount' => $requestData['amount'] ?? null,
+            'currency' => $requestData['currency'] ?? null,
+            'payment_type' => $requestData['paymentType'] ?? null,
+            'order_reference' => $requestData['orderReferenceNumber'] ?? null,
         ]);
 
 

@@ -1,0 +1,4 @@
+[   17763ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/coa:0
+[   18202ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/reports/trial-balance:0
+[   18623ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/journal-entries/all:0
+[   19758ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/users:0

@@ -576,11 +576,16 @@
             @if (auth()->user() &&
             (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
             <div class="flex gap-2 mt-2" id="invoice-link">
+                @php
+                    $shareableInvoiceLink = ($isPublicInvoiceRequest ?? false)
+                        ? $invoice->publicUrl('show', [], 'en')
+                        : route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]);
+                @endphp
                 <p>
-                    {{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}
+                    {{ $shareableInvoiceLink }}
                 </p>
                 <button
-                    onclick="copyToClipboard('{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}')">
+                    onclick="copyToClipboard('{{ $shareableInvoiceLink }}')">
                     <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
                 </button>
 
@@ -604,7 +609,7 @@
             <div class="text-right">
                 <div class="flex justify-end mb-4">
                     <button
-                        onclick="window.open('{{ route('invoice.show-arabic', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}', '_blank')"
+                        onclick="window.open('{{ ($isPublicInvoiceRequest ?? false) ? $invoice->publicUrl('show', [], 'ar') : route('invoice.show-arabic', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}', '_blank')"
                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                         عرض الفاتورة بالعربية
                     </button>

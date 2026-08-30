@@ -21,8 +21,12 @@ class Task extends Model
         'supplier_id',
         'type',
         'status',
+        'ticket_status',
+        'client_status',
+        'deadline_at',
         'supplier_status',
         'original_task_id',
+        'import_key',
         'client_name',
         'client_ref',
         'is_n8n_booking',
@@ -36,6 +40,11 @@ class Task extends Model
         'iata_number',
         'issued_date',
         'expiry_date',
+        // P2.5.D (p2_5-brief.md §P2.5.D): the travel/check-in date RevenueRecognitionService
+        // reads to release an `at_travel` service's deferred sale — see the migration's own
+        // docblock for why this is a new, type-agnostic column rather than reusing an existing
+        // date field.
+        'travel_date',
         'duration',
         'payment_type',
         'payment_method_account_id',
@@ -91,6 +100,8 @@ class Task extends Model
     protected $casts = [
         'issued_date' => 'datetime',
         'expiry_date' => 'datetime',
+        'travel_date' => 'date',
+        'deadline_at' => 'datetime',
         'supplier_pay_date' => 'datetime',
         'cancellation_deadline' => 'datetime',
         'is_complete' => 'bool',
@@ -106,6 +117,76 @@ class Task extends Model
     //         }
     //     });
     // }
+
+    /**
+     * W6.I "Importer contract" item 3 (w6-brief.md; importer-status-contract.md Table 4). Every
+     * task-creation path (TaskController::store(), TaskWebhook::createTaskWithDetails(), Magic
+     * Holiday's processSingleReservation() via store(), the bulk/AI upload path) funnels through
+     * `Task::create()`/`new Task` + `->save()`, so hooking `import_key` computation here — rather
+     * than hand-editing each call site — is the one place that guarantees every creation path gets
+     * it for free, matching this sub-wave's own "surgical edits only" constraint on the 7k-line
+     * TaskController. Never overwrites an explicitly-set `import_key` (a caller that already knows
+     * its own key, e.g. a future bulk-reimport tool, is respected verbatim).
+     */
+    protected static function booted()
+    {
+        static::creating(function (Task $task) {
+            if (empty($task->import_key)) {
+                $task->import_key = self::computeImportKey(
+                    $task->ticket_number,
+                    $task->airline_reference,
+                    $task->issued_date,
+                    $task->reference,
+                    $task->passenger_name
+                );
+            }
+        });
+    }
+
+    /**
+     * W6.I "Importer contract" item 3. Pure function -- `ticket_no+airline_code+issue_date`,
+     * fallback `reference+passenger_name+issue_date` when no ticket number exists (EMD, some bulk
+     * sources). Returns null when neither shape has enough data to build a stable key (never a
+     * key built from partial/empty pieces, which could collide across genuinely different
+     * bookings). `$airlineCode` is this schema's own `airline_reference` column -- there is no
+     * separate "airline code" field on `tasks` (grepped; reported to the owner in this sub-wave's
+     * build report as a naming substitution, not a design gap).
+     */
+    public static function computeImportKey(
+        ?string $ticketNumber,
+        ?string $airlineCode,
+        $issueDate,
+        ?string $reference,
+        ?string $passengerName
+    ): ?string {
+        $ticketNumber = $ticketNumber !== null ? trim($ticketNumber) : null;
+        $airlineCode = $airlineCode !== null ? trim($airlineCode) : null;
+        $reference = $reference !== null ? trim($reference) : null;
+        $passengerName = $passengerName !== null ? trim($passengerName) : null;
+
+        $issueDateKey = null;
+        if (! empty($issueDate)) {
+            try {
+                $issueDateKey = Carbon::parse($issueDate)->toDateString();
+            } catch (\Exception $e) {
+                $issueDateKey = null;
+            }
+        }
+
+        if ($issueDateKey === null) {
+            return null;
+        }
+
+        if (! empty($ticketNumber) && ! empty($airlineCode)) {
+            return 'TKT:'.$ticketNumber.':'.$airlineCode.':'.$issueDateKey;
+        }
+
+        if (! empty($reference) && ! empty($passengerName)) {
+            return 'REF:'.$reference.':'.$passengerName.':'.$issueDateKey;
+        }
+
+        return null;
+    }
 
     public function getRequiredColumns(): array
     {

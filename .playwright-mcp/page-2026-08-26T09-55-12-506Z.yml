@@ -1,0 +1,133 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - generic: Switch Company
+    - banner [ref=f5e3]:
+      - paragraph [ref=f5e5]: CityTourApp
+      - navigation [ref=f5e9]:
+        - list [ref=f5e10]:
+          - generic [ref=f5e11] [cursor=pointer]:
+            - generic [ref=f5e12]: Tasks
+            - list
+          - generic [ref=f5e19] [cursor=pointer]:
+            - generic [ref=f5e20]: Finances
+            - list
+          - generic [ref=f5e26] [cursor=pointer]:
+            - generic [ref=f5e27]: Invoices
+            - list:
+              - generic:
+                - link "Reminder":
+                  - /url: https://development.citycommerce.group/reminder
+          - generic [ref=f5e35] [cursor=pointer]:
+            - generic [ref=f5e36]: Users
+            - list:
+              - generic:
+                - link "Users List":
+                  - /url: https://development.citycommerce.group/users/adminsList
+              - generic:
+                - link "Companies List":
+                  - /url: https://development.citycommerce.group/companies
+              - generic:
+                - link "Branches List":
+                  - /url: https://development.citycommerce.group/branches
+          - generic [ref=f5e46] [cursor=pointer]:
+            - generic [ref=f5e47]: Reports
+            - list
+          - generic [ref=f5e56] [cursor=pointer]:
+            - generic [ref=f5e57]: Settings
+            - list:
+              - generic:
+                - link "Settings":
+                  - /url: https://development.citycommerce.group/settings
+                - list:
+                  - generic:
+                    - link "System Setting":
+                      - /url: https://development.citycommerce.group/system-settings
+              - generic:
+                - link "Manage Roles":
+                  - /url: https://development.citycommerce.group/role
+              - generic:
+                - link "Documentations":
+                  - /url: https://development.citycommerce.group/docs/user
+                - list:
+                  - generic:
+                    - link "User Docs":
+                      - /url: https://development.citycommerce.group/docs/user
+                  - generic:
+                    - link "API Docs":
+                      - /url: https://development.citycommerce.group/docs/api
+                  - generic:
+                    - link "Developer Docs":
+                      - /url: https://development.citycommerce.group/docs/developer
+  - main [ref=f5e65]:
+    - generic [ref=f5e67]:
+      - generic [ref=f5e68]:
+        - generic [ref=f5e69]:
+          - link [ref=f5e71] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+            - img "Logo" [ref=f5e72]
+          - link "Dashboard" [ref=f5e74] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f5e83] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - button "Switch Company" [ref=f5e91] [cursor=pointer]
+          - button "Language" [ref=f5e96] [cursor=pointer]
+        - generic [ref=f5e102]:
+          - generic [ref=f5e104] [cursor=pointer]
+          - generic [ref=f5e109] [cursor=pointer]
+          - generic [ref=f5e114] [cursor=pointer]
+        - generic [ref=f5e119] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f5e120]
+      - generic [ref=f5e123]:
+        - generic [ref=f5e124]:
+          - generic [ref=f5e126]:
+            - heading "AI Models Status" [level=2] [ref=f5e127]
+            - button "Checking…" [disabled] [ref=f5e129]
+          - generic [ref=f5e130]:
+            - generic [ref=f5e131]:
+              - heading "AIR File Uploader Status" [level=3] [ref=f5e132]
+              - generic [ref=f5e135]:
+                - link "review logs" [ref=f5e136] [cursor=pointer]:
+                  - /url: https://development.citycommerce.group/air/uploader/logs
+                - button "refresh" [ref=f5e137] [cursor=pointer]
+            - generic [ref=f5e138]:
+              - generic [ref=f5e139]:
+                - generic [ref=f5e140]: Today · 26 Aug 2026
+                - generic [ref=f5e141]: 1,506 files in flow
+              - generic [ref=f5e142]:
+                - generic [ref=f5e143]:
+                  - generic [ref=f5e144]: "1"
+                  - generic [ref=f5e145]: ✓ Loaded
+                - generic [ref=f5e146]:
+                  - generic [ref=f5e147]: 1,160
+                  - generic [ref=f5e148]: ⏸ Held
+                - generic [ref=f5e149]:
+                  - generic [ref=f5e150]: "345"
+                  - generic [ref=f5e151]: ⚠ Errors
+              - generic [ref=f5e155]: Loaded = today · Held = withheld by agent gate (unregistered / orphan modification) — recoverable, not failures · Errors = genuine processing failures
+            - generic [ref=f5e157]:
+              - generic [ref=f5e158]:
+                - generic [ref=f5e159]:
+                  - generic [ref=f5e160]:
+                    - generic [ref=f5e162]: OFFLINE
+                    - generic [ref=f5e163]: — DESKTOP-7P9ET8H
+                  - generic [ref=f5e164]: v2.0-multitarget
+                - generic [ref=f5e165]:
+                  - generic [ref=f5e166]: "Last seen: 5h 55m ago (2026-08-26 12:00:11)"
+                  - generic [ref=f5e167]: "Files today: 0 · Total: 1 · idle"
+                  - generic [ref=f5e168]: ✓ No errors
+              - generic [ref=f5e169]:
+                - generic [ref=f5e170]:
+                  - generic [ref=f5e171]:
+                    - generic [ref=f5e173]: OFFLINE
+                    - generic [ref=f5e174]: — FAST_COMO
+                  - generic [ref=f5e175]: v2.0-multitarget
+                - generic [ref=f5e176]:
+                  - generic [ref=f5e177]: "Last seen: 5h 55m ago (2026-08-26 11:59:48)"
+                  - generic [ref=f5e178]: "Files today: 1 · Total: 167 · idle"
+                  - 'generic "[dev1] 234132_00.AIR: http=200" [ref=f5e179]': "⏸ Last hold: [dev1] 234132_00.AIR: http=200 (normal — gate rejection)"
+          - generic [ref=f5e182]:
+            - heading "3" [level=1] [ref=f5e183]
+            - paragraph [ref=f5e184]: Total Branches
+          - generic [ref=f5e186]: ⚠️ Missing IATA credentials. Please update your company profile with the IATA Code, Client ID, and Client Secret.
+        - generic [ref=f5e188]: © 2024 - 2025 City Tour. Version 1.0

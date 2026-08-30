@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Events\Accounting\GatewayRefundStatusChanged;
+use App\Listeners\Accounting\HandleGatewayRefundStatusChanged;
 use App\Models\Account;
 use App\Observers\AccountObserver;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -19,6 +22,15 @@ use Illuminate\Support\ServiceProvider;
  * existing behavior today (mission scope: pure addition, flag-OFF, wired to nothing) — and,
  * post round-4, remains a no-op even after 'accounting.engine.enabled' is turned on for P2's
  * first feeder, since the two flags are now independent.
+ *
+ * W4.R fix (verify finding #3): this codebase has no `EventServiceProvider`/`withEvents()`
+ * auto-discovery (confirmed by grep — `AppServiceProvider::boot()` used to be the only other
+ * place any `Event::listen()` call existed, for the unrelated `CheckConfirmedOrIssuedTask` ->
+ * `ProcessTaskFinancials` pair; W6.S deleted that pair as dead code with zero emitters, see
+ * App\Services\TaskStatusService::dispatchFinancial() for its live replacement — this provider's
+ * own registration below is unaffected), so `GatewayRefundStatusChanged` ->
+ * `HandleGatewayRefundStatusChanged` must be registered explicitly, following that same
+ * convention, in this accounting-specific provider rather than the generic `AppServiceProvider`.
  */
 class AccountingServiceProvider extends ServiceProvider
 {
@@ -30,5 +42,10 @@ class AccountingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Account::observe(AccountObserver::class);
+
+        Event::listen(
+            GatewayRefundStatusChanged::class,
+            HandleGatewayRefundStatusChanged::class
+        );
     }
 }

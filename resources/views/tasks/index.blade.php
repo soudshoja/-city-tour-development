@@ -9,6 +9,18 @@
                 class="relative w-12 h-12 flex items-center justify-center DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 rounded-full shadow-sm">
                 <span class="text-xl font-bold text-white">{{ $taskCount }}</span>
             </div>
+            {{-- W6.U "Follow-up tab" (owner addition, 2026-08-28): on-hold/confirmed tasks
+                 sorted by deadline_at, with a counter badge on the uploader tab. --}}
+            @can('viewFollowUp', \App\Models\Task::class)
+                <a href="{{ route('tasks.follow-up') }}"
+                    x-data="{ count: 0 }"
+                    x-init="fetch('{{ route('tasks.follow-up.count') }}', { headers: { 'Accept': 'application/json' } }).then(r => r.json()).then(d => { if (d.success) count = d.count; }).catch(() => {})"
+                    class="relative flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Follow-up</span>
+                    <span x-show="count > 0" x-cloak x-text="count" class="min-w-[1.25rem] h-5 flex items-center justify-center bg-amber-500 text-white text-xs font-bold rounded-full px-1"></span>
+                </a>
+            @endcan
         </div>
         <div class="flex items-center gap-3">
             <div data-tooltip-left="Reload"
@@ -895,6 +907,31 @@
                                                     @if ($task->status === 'reissued' && $task->originalTask) title="Reissued from {{ $task->originalTask->flightDetails->ticket_number ?? '' }}" @endif>
                                                     {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
                                                 </span>
+                                                {{-- W6.U: ticket_status / client_status badges alongside the legacy status badge,
+                                                     following this same group-badge pattern (w6-brief.md "Task list/detail"). --}}
+                                                @if ($task->ticket_status)
+                                                    <span class="group-badge ml-1 {{ match($task->ticket_status) {
+                                                        'issued' => 'bg-emerald-100 text-emerald-700',
+                                                        'void' => 'bg-gray-200 text-gray-500',
+                                                        'reissued' => 'bg-indigo-100 text-indigo-700',
+                                                        'refunded' => 'bg-orange-100 text-orange-700',
+                                                        'emd' => 'bg-cyan-100 text-cyan-700',
+                                                        default => 'bg-gray-100 text-gray-600',
+                                                    } }}" title="Ticket status">
+                                                        {{ ucwords($task->ticket_status) }}
+                                                    </span>
+                                                @endif
+                                                @if ($task->client_status)
+                                                    <span class="group-badge ml-1 {{ match($task->client_status) {
+                                                        'open' => 'bg-slate-100 text-slate-700',
+                                                        'credited' => 'bg-amber-100 text-amber-700',
+                                                        'refunded' => 'bg-rose-100 text-rose-700',
+                                                        'rebilled' => 'bg-violet-100 text-violet-700',
+                                                        default => 'bg-gray-100 text-gray-600',
+                                                    } }}" title="Client status">
+                                                        {{ ucwords($task->client_status) }}
+                                                    </span>
+                                                @endif
                                             </div>
 
                                             <div data-column="supplier" class="group-item">
@@ -1255,6 +1292,13 @@
                                     class="flex px-5 py-3 gap-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-sm items-center transition-colors duration-200">
                                     <span class="text-sm text-white" x-text="selectedTasks.length > 1 ? 'Bulk Edit' : 'Edit Task'"></span>
                                 </button>
+                                {{-- W6.U "Bulk void" (w6-brief.md "W6.U -- UI"): multi-select + mode selector,
+                                     POST /tasks/bulk-void; per-task result table when per_task_report. --}}
+                                <button type="button"
+                                    @click="$dispatch('open-bulk-void', { ids: selectedTasks })"
+                                    class="flex px-5 py-3 gap-3 bg-red-600 hover:bg-red-700 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                    <span class="text-sm text-white">Bulk void</span>
+                                </button>
                                 <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
                                     class="flex cursor-pointer items-center justify-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
@@ -1303,6 +1347,7 @@
     </div>
 
     @include('tasks.partial.view-task-modal')
+    @include('tasks.partial.bulk-void-modal')
 
     {{-- GLOBAL DOM--}}
     <div class="task-action-menu"

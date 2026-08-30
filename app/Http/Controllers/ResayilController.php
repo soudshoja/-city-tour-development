@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\IncomingMedia;
+use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -12,13 +13,13 @@ use Illuminate\Support\Facades\Log;
 
 class ResayilController extends Controller
 {
-
     protected $url;
+
     protected $token;
 
     public function __construct()
     {
-        $this->url = config('services.resayil.base_url') . config('services.resayil.version') . '/';
+        $this->url = config('services.resayil.base_url').config('services.resayil.version').'/';
         $this->token = config('services.whatsapp.token');
     }
 
@@ -30,19 +31,18 @@ class ResayilController extends Controller
         $footer = null,
         $buttons = null,
         $isDummyNumber = true,
-        )
-    {
-        $url = $this->url . 'messages';
-      
+    ) {
+        $url = $this->url.'messages';
+
         if (str_starts_with($phone, '+')) {
             $phoneNumber = $phone;
-        } else {   
-            $phoneNumber = $country_code . $phone;
+        } else {
+            $phoneNumber = $country_code.$phone;
         }
 
-        if(app()->environment() !== 'production' && $isDummyNumber) {
+        if (app()->environment() !== 'production' && $isDummyNumber) {
             $phoneNumber = env('PHONE_LOCAL', '+60193058463');
-            $message = "This is a test message from local environment.\n\n" . $message;
+            $message = "This is a test message from local environment.\n\n".$message;
         }
 
         $payload = [
@@ -71,35 +71,37 @@ class ResayilController extends Controller
 
         if ($response->failed()) {
             Log::error("Error in sending Resayil: {$response->body()}");
+
             return [
                 'success' => false,
                 'error' => $response->body(),
-                'status' => $response->status()
+                'status' => $response->status(),
             ];
         } else {
             $data = json_decode($response, true);
             Log::debug('Resayil API Response:', $data ?? []);
 
-            if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
+            if (! empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
                 return ['success' => true];
             }
 
             return [
                 'success' => false,
-                'response' => $data
+                'response' => $data,
             ];
         }
     }
 
     public function uploadFile($filePath)
     {
-        $url = config('services.resayil.base_url') . config('services.resayil.version') . '/files';
+        $url = config('services.resayil.base_url').config('services.resayil.version').'/files';
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             Log::error("File not found for upload: {$filePath}");
+
             return [
                 'success' => false,
-                'error' => 'File not found'
+                'error' => 'File not found',
             ];
         }
 
@@ -113,35 +115,36 @@ class ResayilController extends Controller
 
         if ($response->failed()) {
             Log::error("Error uploading file to Resayil: {$response->body()}");
+
             return [
                 'success' => false,
                 'error' => $response->body(),
-                'status' => $response->status()
+                'status' => $response->status(),
             ];
         }
 
         $data = $response->json();
         Log::debug('Resayil File Upload Response:', $data ?? []);
 
-        if (!empty($data[0]['id'])) {
+        if (! empty($data[0]['id'])) {
             return [
                 'success' => true,
                 'file_id' => $data[0]['id'],
                 'expires_at' => $data[0]['expiresAt'] ?? null,
                 'created_at' => $data[0]['createdAt'] ?? null,
-                'file_data' => $data[0]
+                'file_data' => $data[0],
             ];
         }
 
         return [
             'success' => false,
-            'response' => $data
+            'response' => $data,
         ];
     }
 
     public function getFileInfo($fileId)
     {
-        $url = config('services.resayil.base_url') . config('services.resayil.version') . "/files/{$fileId}";
+        $url = config('services.resayil.base_url').config('services.resayil.version')."/files/{$fileId}";
 
         $response = Http::withHeaders([
             'Token' => $this->token,
@@ -149,10 +152,11 @@ class ResayilController extends Controller
 
         if ($response->failed()) {
             Log::error("Error getting file info from Resayil: {$response->body()}");
+
             return [
                 'success' => false,
                 'error' => $response->body(),
-                'status' => $response->status()
+                'status' => $response->status(),
             ];
         }
 
@@ -162,7 +166,7 @@ class ResayilController extends Controller
         return [
             'success' => true,
             'data' => $data,
-            'is_active' => ($data['status'] ?? null) === 'active'
+            'is_active' => ($data['status'] ?? null) === 'active',
         ];
     }
 
@@ -176,12 +180,12 @@ class ResayilController extends Controller
     ) {
         if ($fileId) {
             $fileInfo = $this->getFileInfo($fileId);
-            
+
             if ($fileInfo['success'] && ($fileInfo['is_active'] ?? false)) {
                 $uploadResult = [
                     'success' => true,
                     'file_id' => $fileId,
-                    'was_reuploaded' => false
+                    'was_reuploaded' => false,
                 ];
             } else {
                 Log::info("File {$fileId} is not active, uploading new file");
@@ -192,18 +196,18 @@ class ResayilController extends Controller
             $uploadResult = $this->uploadFile($filePath);
             $uploadResult['was_reuploaded'] = true;
         }
-        
-        if (!($uploadResult['success'] ?? false)) {
+
+        if (! ($uploadResult['success'] ?? false)) {
             return $uploadResult;
         }
 
         $fileId = $uploadResult['file_id'];
-        $url = $this->url . 'messages';
+        $url = $this->url.'messages';
 
         if (str_starts_with($phone, '+')) {
             $phoneNumber = $phone;
         } else {
-            $phoneNumber = $country_code . $phone;
+            $phoneNumber = $country_code.$phone;
         }
 
         if (app()->environment() !== 'production' && $isDummyNumber) {
@@ -227,31 +231,32 @@ class ResayilController extends Controller
 
         if ($response->failed()) {
             Log::error("Error in sending document via Resayil: {$response->body()}");
+
             return [
                 'success' => false,
                 'error' => $response->body(),
-                'status' => $response->status()
+                'status' => $response->status(),
             ];
         }
 
         $data = json_decode($response, true);
         Log::debug('Resayil Document API Response:', $data ?? []);
 
-        if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
+        if (! empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
             $result = ['success' => true];
-            
+
             if ($uploadResult['was_reuploaded'] ?? false) {
                 $result['new_file_id'] = $uploadResult['file_id'];
                 $result['expires_at'] = $uploadResult['expires_at'] ?? null;
                 $result['created_at'] = $uploadResult['created_at'] ?? null;
             }
-            
+
             return $result;
         }
 
         return [
             'success' => false,
-            'response' => $data
+            'response' => $data,
         ];
     }
 
@@ -261,7 +266,7 @@ class ResayilController extends Controller
 
         $phone = $request->input('phone') ?? $request->input('messages.0.from');
         $message = $request->input('messages.0');
-        
+
         if ($message && $message['type'] === 'image') {
             $mediaId = $message['image']['id'] ?? null;
             $mimeType = $message['image']['mimeType'] ?? null;
@@ -294,7 +299,15 @@ class ResayilController extends Controller
         $invoiceNumber = $request->invoiceNumber;
         $companyName = $client->agent->branch->company->name;
 
-        $invoiceLink = route('invoice.show', ['companyId' => $client->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber]);
+        // Client-facing link: invoice.show now requires a logged-in,
+        // same-company staff session (see InvoiceController's
+        // authorizeStaffInvoiceAccess()), so a client shared this over
+        // WhatsApp needs the signed, unauthenticated '.public' variant
+        // instead -- see Invoice::publicUrl().
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company')
+            ->firstOrFail();
+        $invoiceLink = $invoice->publicUrl('show');
 
         $message = "Dear {$client->full_name},\n\nYour invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your invoice:\n{$invoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
@@ -307,10 +320,10 @@ class ResayilController extends Controller
         } else {
 
             Log::error('Failed to send WhatsApp message via Resayil', [
-                'response' => $response
+                'response' => $response,
             ]);
 
-            if($response['status'] == 400){
+            if ($response['status'] == 400) {
                 return back()->withErrors(['error' => 'Invalid phone number format. Please check the client\'s phone number.']);
             } elseif ($response['status'] == 401) {
                 return back()->withErrors(['error' => 'Unauthorized access. Please check your Resayil API token.']);
@@ -328,7 +341,7 @@ class ResayilController extends Controller
             'client_id' => 'required|exists:clients,id',
             'invoiceNumber' => 'required|string',
         ]);
-        
+
         $client = Client::findOrFail($request->client_id);
         $invoiceNumber = $request->invoiceNumber;
         $companyName = $client->agent->branch->company->name;
@@ -337,8 +350,18 @@ class ResayilController extends Controller
             ->where('client_id', $client->id)
             ->first();
 
-        // Assuming you have a method to generate the partial invoice link
-        $partialInvoiceLink = route('invoice.split', ['invoiceNumber' => $invoiceNumber, 'clientId' => $client->id, 'partialId' => $invoicePartial->id]);
+        // Client-facing link: invoice.split now requires a logged-in,
+        // same-company staff session (see InvoiceController's
+        // authorizeStaffInvoiceAccess()), so a client shared this over
+        // WhatsApp needs the signed, unauthenticated '.public' variant
+        // instead -- see Invoice::publicUrl().
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company')
+            ->firstOrFail();
+        $partialInvoiceLink = $invoice->publicUrl('split', [
+            'clientId' => $client->id,
+            'partialId' => $invoicePartial->id,
+        ]);
 
         $message = "Dear {$client->full_name},\n\nYour partial invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your partial invoice:\n{$partialInvoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
@@ -350,8 +373,9 @@ class ResayilController extends Controller
             return back()->with('success', 'Partial invoice link successfully shared via WhatsApp message through Resayil!');
         } else {
             Log::error('Failed to send WhatsApp message via Resayil', [
-                'response' => $response
+                'response' => $response,
             ]);
+
             return back()->withErrors(['error' => 'Failed to send message.']);
         }
     }
@@ -369,8 +393,8 @@ class ResayilController extends Controller
         $companyName = $payment->agent->branch->company->name;
 
         // Assuming you have a method to generate the payment link
-        $paymentLink = route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number ]);
-       
+        $paymentLink = route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]);
+
         $message = "Dear {$client->full_name},\n\nYour payment link for voucher #{$payment->voucher_number} is now ready.\n\nPlease click the following link to complete your payment:\n{$paymentLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
@@ -379,8 +403,9 @@ class ResayilController extends Controller
             return back()->with('success', 'Payment link successfully shared via WhatsApp message through Resayil!');
         } else {
             Log::error('Failed to send WhatsApp message via Resayil', [
-                'response' => $response
+                'response' => $response,
             ]);
+
             return back()->withErrors(['error' => 'Failed to send message.']);
         }
     }
@@ -392,24 +417,25 @@ class ResayilController extends Controller
         $client_id = null,
         $agent_id = null,
         $invoice_id = null
-    ) {   
+    ) {
         Log::info('Starting to send the reminder through Resayil');
-        Log::info('Phone: ' . $country_code . $phone);
-        Log::info('Message: ' . $message);
-        
+        Log::info('Phone: '.$country_code.$phone);
+        Log::info('Message: '.$message);
+
         $response = $this->message($phone, $country_code, $message);
 
         Log::info('Resayil API Response: ', $response);
         if ($response['success'] ?? false) {
             Log::info('Successfully sent the reminder');
+
             return [
                 'success' => true,
-                'message' => 'Reminder sent successfully'
+                'message' => 'Reminder sent successfully',
             ];
         }
 
         Log::error('Failed to send WhatsApp message via Resayil', [
-            'response' => $response
+            'response' => $response,
         ]);
 
         $errorMessage = 'Something went wrong while sending the message';
@@ -427,7 +453,7 @@ class ResayilController extends Controller
         return [
             'success' => false,
             'error' => $errorMessage,
-            'response' => $response
+            'response' => $response,
         ];
     }
 }

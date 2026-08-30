@@ -34,10 +34,18 @@ use App\Models\Transaction;
 use App\Models\UpaymentPayment;
 use App\Models\User;
 use App\Models\UserSetting;
+use App\Exceptions\Accounting\LegacyInvoiceCoaFailureException;
+use App\Exceptions\Accounting\PaymentUnattributedException;
+use App\Exceptions\Accounting\PostingException;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LineDraft;
+use App\Services\Accounting\PaymentIdempotencyKey;
+use App\Services\Accounting\PostingSeam;
 use App\Services\ChargeService;
 use App\Services\GatewayConfigService;
 use App\Services\HesabeCrypt;
 use App\Services\TBOHolidayService;
+use App\Services\TrialBalanceService;
 use App\Support\PaymentGateway\Hesabe;
 use App\Support\PaymentGateway\Knet;
 use App\Support\PaymentGateway\MyFatoorah;
@@ -255,6 +263,33 @@ class PaymentController extends Controller
         $year = now()->year;
 
         return sprintf('VOU-%s-%05d', $year, $sequence);
+    }
+
+    /**
+     * Atomically claim the next voucher sequence number for a company.
+     *
+     * The previous read-then-increment-then-save pattern (Sequence::firstOrCreate()
+     * followed by ++/save() with no lock) let two concurrent requests read the same
+     * current_sequence and both save the same incremented value, so two payments
+     * could be handed the identical voucher number (VOU-YYYY-NNNNN). Locking the
+     * sequence row for update inside a dedicated transaction, mirroring
+     * CreateBulkInvoicesJob::generateInvoiceNumber(), serializes concurrent callers
+     * so each one gets a distinct current_sequence.
+     */
+    private function nextVoucherNumber(int $companyId): string
+    {
+        return DB::transaction(function () use ($companyId) {
+            $voucherSequence = Sequence::where('company_id', $companyId)->lockForUpdate()->first();
+
+            if (! $voucherSequence) {
+                $voucherSequence = Sequence::create(['company_id' => $companyId, 'current_sequence' => 1]);
+            }
+
+            $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
+            $voucherSequence->increment('current_sequence');
+
+            return $voucherNumber;
+        });
     }
 
     /**
@@ -1122,11 +1157,7 @@ class PaymentController extends Controller
 
         $companyId = $invoice->agent->branch->company_id;
 
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-        $voucherSequence->current_sequence++;
-        $voucherSequence->save();
+        $voucherNumber = $this->nextVoucherNumber($companyId);
 
         $finalAmount = $data['total_amount'];
 
@@ -1978,9 +2009,7 @@ class PaymentController extends Controller
         DB::beginTransaction();
 
         try {
-            $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-            $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
-            $voucherSequence->increment('current_sequence');
+            $voucherNumber = $this->nextVoucherNumber($companyId);
 
             $data = [
                 'company_id' => $companyId,
@@ -2523,10 +2552,7 @@ class PaymentController extends Controller
         }
 
         $companyId = getCompanyId(Auth::user());
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-        $voucherNumber = $this->generateVoucherNumber($voucherSequence->current_sequence);
-        $voucherSequence->current_sequence++;
-        $voucherSequence->save();
+        $voucherNumber = $this->nextVoucherNumber($companyId);
 
         $payment->update([
             'voucher_number' => $voucherNumber,
@@ -2864,7 +2890,6 @@ class PaymentController extends Controller
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $client = Client::find($request->client_id);
         $agent = Agent::find($request->agent_id);
 
@@ -2876,12 +2901,8 @@ class PaymentController extends Controller
             return ['status' => 'error', 'message' => 'Agent cannot be found'];
         }
 
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-
         try {
-            $voucherSequence->current_sequence++;
-            $voucherSequence->save();
+            $voucherNumber = $this->nextVoucherNumber($companyId);
         } catch (Exception $e) {
             logger('Failed to save voucher sequence', [
                 'message' => $e->getMessage(),
@@ -3838,8 +3859,20 @@ class PaymentController extends Controller
                 $voucherNumber = $userDefinedField['voucher_number'] ?? null;
                 $process = $userDefinedField['process'] ?? 'invoice';
                 $partialId = $userDefinedField['invoice_partial_id'] ?? null;
+                $paymentId = $userDefinedField['payment_id'] ?? null;
 
-                $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
+                // Resolve by our own internal payment_id whenever MyFatoorah echoed it
+                // back (it always does; we send it in UserDefinedField on initiate).
+                // A bare orWhere('voucher_number', ...) across ALL companies' payments
+                // is a cross-tenant hazard: voucher numbers are sequential PER company,
+                // so two different companies can legitimately share the same
+                // voucher_number, letting this webhook resolve to and complete the
+                // wrong tenant's payment. Only fall back to payment_reference (the
+                // MyFatoorah-assigned invoice id, unique platform-wide) when payment_id
+                // is unavailable, and never fall back to voucher_number alone.
+                $payment = $paymentId
+                    ? Payment::find($paymentId)
+                    : ($invoiceId ? Payment::where('payment_reference', $invoiceId)->first() : null);
 
                 if (! $invoiceId || $invoiceStatus !== 'paid') {
                     if ($payment) {
@@ -3890,14 +3923,52 @@ class PaymentController extends Controller
 
                 try {
                     $this->processMyFatoorahPaymentCompletion($payment, $statusResponse['data'], $process, $partialId, true);
+                } catch (PostingException $e) {
+                    // D4 (W2 orchestrator decision): this is the user's own browser landing
+                    // on MyFatoorah's CallBackUrl (route('payments.callback')) — the separate
+                    // handleWebhookFatoorah is the true server-to-server path — so a genuine
+                    // engine failure must never be downgraded to the generic message below.
+                    // processMyFatoorahPaymentCompletion()'s own DB::rollBack() has already
+                    // rolled the payment completion back whole.
+                    $idempotencyKey = PaymentIdempotencyKey::forGatewayPayment(
+                        'MyFatoorah',
+                        $payment->id,
+                        ! empty($partialId) ? [$partialId] : null
+                    );
+
+                    Log::error('MyFatoorah callback accounting posting exception', [
+                        'payment_id' => $payment->id,
+                        'exception_class' => get_class($e),
+                        'idempotency_key' => $idempotencyKey,
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+
+                    return redirect()->route('payment.failed')->with('error', sprintf(
+                        'Accounting posting failed (%s). Reference: %s. Payment not completed.',
+                        class_basename($e),
+                        $idempotencyKey
+                    ));
                 } catch (Exception $e) {
+                    // R-1 fix (W2.2): payments.callback carries no auth middleware -- this is
+                    // a public route. $e here is whatever processMyFatoorahPaymentCompletion()
+                    // raised that was NOT a PostingException (including a legacy COA failure's
+                    // \RuntimeException, whose message is now the safe sentence
+                    // createInvoicePaymentCOA()'s own catch produces, but also any other
+                    // \Exception that method can throw) -- never assume its ->getMessage() is
+                    // safe to print. Full detail stays in the log; the flash carries a fixed
+                    // sentence plus the payment's own voucher_number as the correlation id.
                     Log::error('MyFatoorah callback processing failed', [
                         'payment_id' => $payment->id,
+                        'exception_class' => get_class($e),
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
 
-                    return redirect()->to($receiptInfo['url'])->with('error', 'Error: '.$e->getMessage());
+                    return redirect()->to($receiptInfo['url'])->with('error', sprintf(
+                        'Payment could not be completed. Reference: %s. Please contact support.',
+                        $payment->voucher_number ?: $payment->id
+                    ));
                 }
 
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
@@ -3911,6 +3982,76 @@ class PaymentController extends Controller
         }
     }
 
+    /**
+     * D6 (W2/mf-error): three sites in this controller record a gateway *failure* as a
+     * Transaction row keyed (payment_id, 'Payment') -- handleMyFatoorahError's topup branch,
+     * handleTapCallback, handleKnetResponse. `transactions_payment_id_reference_type_unique`
+     * (P0 hotfix migration 2026_08_24_000001) allows at most one row per (payment_id,
+     * reference_type) pair, and at HEAD every one of the three writes a plain
+     * `Transaction::create()`. Residual 20 fix (W2.1) -- corrected: this does NOT 1062 raw and
+     * uncaught for all three at HEAD. Only `handleMyFatoorahError`'s topup branch has no
+     * surrounding try/catch, so a redelivered failure notification for the SAME payment
+     * (gateway retry, or a user revisiting a failed return-url) genuinely does 1062 there with a
+     * raw, uncaught UniqueConstraintViolationException. `handleTapCallback` and
+     * `handleKnetResponse` wrap this same write in their own outer `catch (Throwable $e)`, so at
+     * HEAD the identical collision is swallowed into their generic "Something went wrong. Please
+     * contact support." response instead of propagating raw -- silent rather than uncaught, but
+     * still wrong: the failure Transaction that redelivery was trying to record never gets
+     * written, with no indication to the caller that anything failed to persist.
+     * These are LEGACY-side audit/log writes, not double-entry documents: confirmed by reading
+     * -- none of the three sites (nor anything hooked to Transaction::created/booted, nor any
+     * registered observer; `grep -rn "Transaction::observe"` returns zero hits) ever creates a
+     * JournalEntry row for it, and Transaction's own `type`/`type_reference_id`/`posting_status`
+     * columns (the ones the engine and ledger-balance queries key on) are left unset/null on
+     * all three writes. So they carry no accounting impact and are correctly NOT routed through
+     * PostingSeam -- there is no draft to build.
+     *
+     * withTrashed(): the same (payment_id, reference_type) slot is not freed by a soft delete
+     * (no deleted_at in the unique key), and several unrelated cleanup paths DO soft-delete
+     * Transaction rows by invoice_id (e.g. InvoiceController's `Transaction::where('invoice_id',
+     * ...)->delete()|Transaction::where('id', $receipt->transaction_id)->delete()`), which these
+     * three writes are all reachable from (each sets 'invoice_id' => $payment->invoice_id). A
+     * plain (non-trashed) lookup would miss such a row and still 1062 on the create.
+     *
+     * firstOrCreate() itself is safe under genuine concurrent redelivery: Laravel's
+     * `Builder::createOrFirst()` (which `firstOrCreate()` calls when its own first `first()`
+     * lookup misses) wraps the INSERT in a savepoint-if-needed and, on ANY
+     * UniqueConstraintViolationException, re-queries by the exact same $searchAttributes and
+     * returns that row -- or rethrows the original exception if nothing matches, so an unrelated
+     * unique-constraint collision is never silently misreported as this one. $searchAttributes
+     * here is always exactly {payment_id, reference_type: 'Payment'}, the only unique index any
+     * of these three creates can ever collide on (none of them sets idempotency_key).
+     *
+     * @param  array<string, mixed>  $searchAttributes  Exactly ['payment_id' => .., 'reference_type' => 'Payment'].
+     * @param  array<string, mixed>  $createAttributes  Every other column HEAD's Transaction::create() call wrote.
+     */
+    private function firstOrCreateFailureTransaction(array $searchAttributes, array $createAttributes): Transaction
+    {
+        $transaction = Transaction::withTrashed()->firstOrCreate($searchAttributes, $createAttributes);
+
+        if (! $transaction->wasRecentlyCreated) {
+            // Residual 10 fix (W2.1): withTrashed() means a soft-deleted row satisfies
+            // this lookup with zero visibility into that fact, and the caller then
+            // treats the returned Transaction as if it were live. A fresh row is not
+            // an option here -- $searchAttributes is exactly the unique index this
+            // method exists to respect, so a second INSERT would just 1062. restore()
+            // is the only safe choice when the hit is trashed; log every reuse
+            // (trashed or not) so a redelivery landing on an existing row is never
+            // silent.
+            Log::warning('firstOrCreateFailureTransaction reused an existing row instead of creating one', [
+                'transaction_id' => $transaction->id,
+                'search' => $searchAttributes,
+                'was_trashed' => $transaction->trashed(),
+            ]);
+
+            if ($transaction->trashed()) {
+                $transaction->restore();
+            }
+        }
+
+        return $transaction;
+    }
+
     public function handleMyFatoorahError(Request $request)
     {
         Log::error('[MYFATOORAH] error callback', [
@@ -3918,6 +4059,15 @@ class PaymentController extends Controller
             'query' => $request->query(),
             'input' => $request->input(),
         ]);
+
+        // R-2 fix (W2.2): a redelivered payments.error for a payment whose failure was
+        // already recorded (firstOrCreateFailureTransaction() below returned an existing
+        // row, not a fresh one) must not re-fire the notification/WhatsApp/flash below --
+        // that residual-9 early return only covered a completed TOPUP (`! $payment->invoice_id`);
+        // a completed INVOICE payment fell through to here on every redelivery. This flag
+        // covers both shapes because it keys off whether the write actually happened, not
+        // off invoice_id.
+        $failureAlreadyRecorded = false;
 
         if ($request->has('invoice_id')) {
 
@@ -3927,20 +4077,37 @@ class PaymentController extends Controller
 
             $invoice = Invoice::with('agent.branch', 'client')->find($request->input('invoice_id'));
             $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
-            Transaction::create([
-                'branch_id' => $invoice->agent->branch->id,
-                'company_id' => $invoice->agent->branch->company->id,
-                'entity_id' => $invoice->agent->branch->company->id,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'amount' => $invoice->amount,
-                'description' => 'MyFatoorah payment failed: '.$invoice->invoice_number,
-                'invoice_id' => $invoice->id,
-                'payment_id' => $invoice->payment->id,
-                'payment_reference' => $invoice->payment->payment_reference,
-                'reference_type' => 'Invoice',
-                'transaction_date' => now(),
-            ]);
+
+            // Residual 13 fix (W2.1): mirror the D5 guard already used by
+            // handleTapCallback/handleKnetResponse -- payments.agent_id is
+            // nullable()->nullOnDelete(), so never let an unattributed chain crash this
+            // Transaction::create() uncaught; alert and skip the write instead of
+            // guessing a company_id.
+            $unattributedCompanyId = $invoice?->agent?->branch?->company?->id;
+
+            if ($unattributedCompanyId === null) {
+                Log::critical('accounting.payment_unattributed', [
+                    'invoice_id' => $invoice?->id,
+                    'payment_id' => $invoice?->payment?->id,
+                    'gateway' => 'MyFatoorah',
+                    'reason' => 'invoice->agent->branch->company chain unresolved (agent likely deleted/unlinked)',
+                ]);
+            } else {
+                Transaction::create([
+                    'branch_id' => $invoice->agent->branch->id,
+                    'company_id' => $unattributedCompanyId,
+                    'entity_id' => $unattributedCompanyId,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $invoice->amount,
+                    'description' => 'MyFatoorah payment failed: '.$invoice->invoice_number,
+                    'invoice_id' => $invoice->id,
+                    'payment_id' => $invoice->payment->id,
+                    'payment_reference' => $invoice->payment->payment_reference,
+                    'reference_type' => 'Invoice',
+                    'transaction_date' => now(),
+                ]);
+            }
         }
 
         if ($request->has('payment_id')) {
@@ -3950,25 +4117,90 @@ class PaymentController extends Controller
             ]);
 
             $payment = Payment::with('client', 'agent.branch')->find($request->input('payment_id'));
-            Transaction::create([
-                'branch_id' => $payment->agent->branch->id,
-                'company_id' => $payment->agent->branch->company->id,
-                'entity_id' => $payment->agent->branch->company->id,
-                'entity_type' => 'company',
-                'transaction_type' => 'debit',
-                'amount' => $payment->amount,
-                'description' => 'Topup failed by '.$payment->client->full_name,
-                'payment_id' => $payment->id,
-                'invoice_id' => $payment->invoice_id,
-                'payment_reference' => $payment->payment_reference,
-                'reference_type' => 'Payment',
-                'transaction_date' => now(),
-            ]);
+
+            // Residual 9 fix (W2.1): a replayed payments.error notification for a TOPUP
+            // payment that has ALREADY completed via ClientController::addCredit()'s own
+            // success write -- which shares this exact (payment_id, 'Payment') slot, see
+            // firstOrCreateFailureTransaction()'s own docblock -- must not fire a false
+            // "payment failed" notification over a payment that actually succeeded.
+            // Scoped to `! $payment->invoice_id` (a genuine topup, addCredit()'s own domain)
+            // deliberately: an INVOICE payment already 'completed' via the engine's OWN
+            // 'Receipt' document (a different reference_type entirely, no collision, no wrong
+            // document) is the mf-error lane's own cross-flip coexistence scenario
+            // (PaymentControllerTransactionDedupTest) and must still write its legacy
+            // 'Payment' row here exactly as before.
+            if ($payment && $payment->status === 'completed' && ! $payment->invoice_id) {
+                Log::info('[MYFATOORAH] error callback ignored: payment already completed', [
+                    'payment_id' => $payment->id,
+                ]);
+
+                $process = $payment->invoice ? 'invoice' : 'topup';
+                $partialId = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('id');
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
+            // Residual 13 fix (W2.1): mirror the D5 guard already used by
+            // handleTapCallback/handleKnetResponse -- payments.agent_id is
+            // nullable()->nullOnDelete(), so never let an unattributed chain crash this
+            // write uncaught; alert and skip it instead of guessing a company_id.
+            $unattributedCompanyId = $payment->agent?->branch?->company?->id;
+
+            if ($unattributedCompanyId === null) {
+                Log::critical('accounting.payment_unattributed', [
+                    'payment_id' => $payment->id,
+                    'voucher_number' => $payment->voucher_number,
+                    'amount' => $payment->amount,
+                    'gateway' => 'MyFatoorah',
+                    'reason' => 'payment->agent->branch->company chain unresolved (agent likely deleted/unlinked)',
+                ]);
+            } else {
+                // D6 (W2/mf-error): made idempotent on (payment_id, reference_type) -- see
+                // firstOrCreateFailureTransaction()'s own docblock just above this method.
+                $failureTransaction = $this->firstOrCreateFailureTransaction(
+                    ['payment_id' => $payment->id, 'reference_type' => 'Payment'],
+                    [
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $unattributedCompanyId,
+                        'entity_id' => $unattributedCompanyId,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $payment->amount,
+                        'description' => 'Topup failed by '.$payment->client->full_name,
+                        'invoice_id' => $payment->invoice_id,
+                        'payment_reference' => $payment->payment_reference,
+                        'transaction_date' => now(),
+                    ]
+                );
+
+                // R-b fix (W2b): wasRecentlyCreated only means "a (payment_id,'Payment') row
+                // already existed" -- not "we already notified about THIS failure". A genuine
+                // second failure after paymentLinkReinitiate() resets $payment->status to
+                // 'initiate' hits this same row (firstOrCreateFailureTransaction() is keyed on
+                // payment_id+reference_type only) and must still notify; so must a genuine
+                // first-ever failure that happens to land on a soft-deleted row restore()'d by
+                // firstOrCreateFailureTransaction(). 'completed' is the only status that means
+                // this failure report is stale/redelivered -- a superset of residual 9's own
+                // topup-only early return above, but here covering invoice payments too.
+                $failureAlreadyRecorded = $payment->status === 'completed';
+            }
         }
 
         $process = $payment->invoice ? 'invoice' : 'topup';
         $partialId = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('id');
         $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
+
+        if ($failureAlreadyRecorded) {
+            Log::info('[MYFATOORAH] error callback ignored: failure already recorded for this payment', [
+                'payment_id' => $payment->id,
+            ]);
+
+            // R-b fix (W2b): keep HEAD's flash on this path too -- payment.link.show
+            // (the target for a topup) renders session('error'); the invoice details view
+            // does not, so this is a no-op for invoices and restores the message for topups.
+            return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
+        }
 
         Log::info('[MYFATOORAH] prepare notification for failed payment', [
             'user_id' => $receiptInfo['agent']->user_id,
@@ -4064,22 +4296,43 @@ class PaymentController extends Controller
             if ($response['status'] !== 'CAPTURED') {
                 Log::warning('Tap payment failed or cancelled', ['status' => $response['status'], 'tap_id' => $tapId]);
 
-                $transaction = Transaction::create([
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'entity_id' => $payment->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $payment->amount,
-                    'description' => 'Tap payment failed for '.$payment->client->full_name,
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'payment_reference' => $response['id'],
-                    'reference_type' => 'Payment',
-                    'transaction_date' => now(),
-                ]);
+                // D5: payments.agent_id is nullable()->nullOnDelete(); deleting the Agent
+                // NULLs it on every live payment. Unlike the unguarded chain this replaces,
+                // never let that turn into an ErrorException swallowed by this method's own
+                // outer catch — post nothing and alert instead of guessing a company_id.
+                $unattributedCompanyId = $payment->agent?->branch?->company?->id;
+                $transaction = null;
 
-                if ($paymentTransaction) {
+                if ($unattributedCompanyId === null) {
+                    Log::critical('accounting.payment_unattributed', [
+                        'payment_id' => $payment->id,
+                        'voucher_number' => $payment->voucher_number,
+                        'amount' => $payment->amount,
+                        'gateway' => 'Tap',
+                        'reason' => 'payment->agent->branch->company chain unresolved (agent likely deleted/unlinked)',
+                    ]);
+                } else {
+                    // D6 (W2/mf-error): made idempotent on (payment_id, reference_type) -- see
+                    // firstOrCreateFailureTransaction()'s own docblock, just above
+                    // handleMyFatoorahError.
+                    $transaction = $this->firstOrCreateFailureTransaction(
+                        ['payment_id' => $payment->id, 'reference_type' => 'Payment'],
+                        [
+                            'branch_id' => $payment->agent->branch->id,
+                            'company_id' => $unattributedCompanyId,
+                            'entity_id' => $unattributedCompanyId,
+                            'entity_type' => 'company',
+                            'transaction_type' => 'debit',
+                            'amount' => $payment->amount,
+                            'description' => 'Tap payment failed for '.$payment->client->full_name,
+                            'invoice_id' => $payment->invoice_id,
+                            'payment_reference' => $response['id'],
+                            'transaction_date' => now(),
+                        ]
+                    );
+                }
+
+                if ($paymentTransaction && $transaction) {
                     $paymentTransaction->transaction_id = $transaction->id;
                     $paymentTransaction->save();
                 }
@@ -4101,7 +4354,22 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed or cancelled. Please try again or contact support.');
             }
 
-            DB::transaction(function () use ($payment, $response, $process, $partialId, $paymentTransaction) {
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $response, $process, $partialId, $paymentTransaction, &$alreadyCompleted) {
+                // The status check above is only a fast-path snapshot: Tap can deliver
+                // the browser return AND the webhook for the same charge within
+                // milliseconds of each other. Re-check under a row lock, inside this
+                // transaction, so only one concurrent delivery can ever transition the
+                // payment to 'completed' and post money/journal entries; the other
+                // becomes a no-op.
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
+
                 $finalPaidAmount = $response['amount'] ?? $payment->amount;
 
                 $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
@@ -4177,6 +4445,22 @@ class PaymentController extends Controller
                 }
             });
 
+            if ($alreadyCompleted) {
+                $payment->refresh();
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+                }
+
+                Log::info('Tap callback ignored: already completed by a concurrent delivery', ['payment_id' => $paymentId]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
             $tboResult = $this->processTBOBookingAfterPayment($payment);
 
             if ($tboResult !== null) {
@@ -4232,15 +4516,55 @@ class PaymentController extends Controller
 
                             return redirect()->route('payment.failed')->with('error', $apiResponse['message'] ?? 'Booking API failed.');
                         } catch (Throwable $e) {
-                            Log::error('Hotel booking API crashed', ['error' => $e->getMessage()]);
+                            // R-1 fix (W2.2): payment.failed is public/unauthenticated (Tap's
+                            // own return URL). $e is whatever WhatsAppHotelController::
+                            // hotelBookingDetails() crashed with -- never a PostingException,
+                            // so its ->getMessage() must never reach the flash. Full detail
+                            // stays in the log; the flash carries only a fixed sentence plus
+                            // the payment's own voucher_number as the correlation id.
+                            Log::error('Hotel booking API crashed', [
+                                'payment_id' => $payment->id,
+                                'exception_class' => get_class($e),
+                                'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString(),
+                            ]);
 
-                            return redirect()->route('payment.failed')->with('error', 'Booking process failed: '.$e->getMessage());
+                            return redirect()->route('payment.failed')->with('error', sprintf(
+                                'Booking process failed. Reference: %s. Please contact support.',
+                                $payment->voucher_number ?: $payment->id
+                            ));
                         }
                     }
                 }
             }
 
             return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+        } catch (PostingException $e) {
+            // D4 (W2 orchestrator decision): tap-callback is the user's own browser landing
+            // on the gateway's return URL (route('tap.callback'), no separate webhook exists
+            // for Tap), so a genuine engine failure must never be downgraded to the generic
+            // message below — surface the exception's own class and the idempotency key that
+            // makes a retry of this same event safe, and never claim success. The
+            // DB::transaction() above has already rolled the payment completion back whole.
+            $idempotencyKey = PaymentIdempotencyKey::forGatewayPayment(
+                'Tap',
+                $payment->id,
+                ! empty($partialId) ? [$partialId] : null
+            );
+
+            Log::error('Tap callback accounting posting exception', [
+                'payment_id' => $payment->id,
+                'exception_class' => get_class($e),
+                'idempotency_key' => $idempotencyKey,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('payment.failed')->with('error', sprintf(
+                'Accounting posting failed (%s). Reference: %s. Payment not completed.',
+                class_basename($e),
+                $idempotencyKey
+            ));
         } catch (Throwable $e) {
             Log::error('Tap callback exception', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
@@ -4340,20 +4664,40 @@ class PaymentController extends Controller
                     'track_id' => $responseData['trackid'] ?? '',
                 ]);
 
-                Transaction::create([
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'entity_id' => $payment->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $payment->amount,
-                    'description' => 'KNET payment failed for '.$payment->client->full_name,
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'payment_reference' => $responseData['paymentid'] ?? null,
-                    'reference_type' => 'Payment',
-                    'transaction_date' => now(),
-                ]);
+                // D5: payments.agent_id is nullable()->nullOnDelete(); deleting the Agent
+                // NULLs it on every live payment. Unlike the unguarded chain this replaces,
+                // never let that turn into an ErrorException swallowed by this method's own
+                // outer catch — post nothing and alert instead of guessing a company_id.
+                $unattributedCompanyId = $payment->agent?->branch?->company?->id;
+
+                if ($unattributedCompanyId === null) {
+                    Log::critical('accounting.payment_unattributed', [
+                        'payment_id' => $payment->id,
+                        'voucher_number' => $payment->voucher_number,
+                        'amount' => $payment->amount,
+                        'gateway' => 'KNET',
+                        'reason' => 'payment->agent->branch->company chain unresolved (agent likely deleted/unlinked)',
+                    ]);
+                } else {
+                    // D6 (W2/mf-error): made idempotent on (payment_id, reference_type) -- see
+                    // firstOrCreateFailureTransaction()'s own docblock, just above
+                    // handleMyFatoorahError.
+                    $this->firstOrCreateFailureTransaction(
+                        ['payment_id' => $payment->id, 'reference_type' => 'Payment'],
+                        [
+                            'branch_id' => $payment->agent->branch->id,
+                            'company_id' => $unattributedCompanyId,
+                            'entity_id' => $unattributedCompanyId,
+                            'entity_type' => 'company',
+                            'transaction_type' => 'debit',
+                            'amount' => $payment->amount,
+                            'description' => 'KNET payment failed for '.$payment->client->full_name,
+                            'invoice_id' => $payment->invoice_id,
+                            'payment_reference' => $responseData['paymentid'] ?? null,
+                            'transaction_date' => now(),
+                        ]
+                    );
+                }
 
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
@@ -4385,7 +4729,21 @@ class PaymentController extends Controller
             }
 
             // Process successful payment
-            DB::transaction(function () use ($payment, $responseData, $process, $partialId) {
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $responseData, $process, $partialId, &$alreadyCompleted) {
+                // The status check above is only a fast-path snapshot: KNET can deliver
+                // the browser return and a resend within milliseconds of each other.
+                // Re-check under a row lock, inside this transaction, so only one
+                // concurrent delivery can ever transition the payment to 'completed'
+                // and post money/journal entries; the other becomes a no-op.
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
+
                 $finalPaidAmount = floatval($responseData['amt'] ?? $payment->amount);
 
                 $paymentTransaction = $payment->paymentTransactions()
@@ -4490,6 +4848,22 @@ class PaymentController extends Controller
                 }
             });
 
+            if ($alreadyCompleted) {
+                $payment->refresh();
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+                }
+
+                Log::info('KNET callback ignored: already completed by a concurrent delivery', ['payment_id' => $paymentId]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
             $tboResult = $this->processTBOBookingAfterPayment($payment);
             if ($tboResult !== null) {
                 if ($tboResult['success']) {
@@ -4528,6 +4902,33 @@ class PaymentController extends Controller
             Log::info('KNET payment processed successfully', ['payment_id' => $payment->id]);
 
             return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+        } catch (PostingException $e) {
+            // D4 (W2 orchestrator decision): knet-response is the user's own browser landing
+            // on KNET's single responseURL (route('knet.response') — Knet.php builds no
+            // separate notification URL), so a genuine engine failure must never be
+            // downgraded to the generic message below — surface the exception's own class
+            // and the idempotency key that makes a retry of this same event safe, and never
+            // claim success. The DB::transaction() above has already rolled the payment
+            // completion back whole.
+            $idempotencyKey = PaymentIdempotencyKey::forGatewayPayment(
+                'KNET',
+                $payment->id,
+                ! empty($partialId) ? [$partialId] : null
+            );
+
+            Log::error('KNET Response accounting posting exception', [
+                'payment_id' => $payment->id,
+                'exception_class' => get_class($e),
+                'idempotency_key' => $idempotencyKey,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('payment.failed')->with('error', sprintf(
+                'Accounting posting failed (%s). Reference: %s. Payment not completed.',
+                class_basename($e),
+                $idempotencyKey
+            ));
         } catch (\Throwable $e) {
             Log::error('KNET Response exception', [
                 'message' => $e->getMessage(),
@@ -4928,6 +5329,23 @@ class PaymentController extends Controller
                             'payment_reference' => $invoiceId,
                             'new_status' => $invoiceStatus,
                         ]);
+                    } catch (PostingException $e) {
+                        // D4 (W2 orchestrator decision): this is MyFatoorah's genuine
+                        // server-to-server webhook (routes/api.php, POST, HMAC-verified, no
+                        // auth middleware) — a genuine engine failure must be let to
+                        // propagate so it reaches Laravel's own exception handler as an HTTP
+                        // 500, prompting MyFatoorah to retry the same notification; the
+                        // idempotency key on the draft this failed to post makes that retry
+                        // safe. processMyFatoorahPaymentCompletion()'s own DB::rollBack() has
+                        // already rolled the payment completion back whole.
+                        Log::critical('accounting.payment_posting_failed_webhook', [
+                            'gateway' => 'MyFatoorah',
+                            'payment_id' => $payment->id,
+                            'exception_class' => get_class($e),
+                            'message' => $e->getMessage(),
+                        ]);
+
+                        throw $e;
                     } catch (Exception $e) {
                         Log::error('MF Webhook: payment processing failed', [
                             'payment_id' => $payment->id,
@@ -4985,6 +5403,20 @@ class PaymentController extends Controller
         DB::beginTransaction();
 
         try {
+            // Webhook, browser callback and reconciler can all reach here for the
+            // same payment within seconds; the loser of that race must exit as a
+            // no-op instead of re-writing the row and double-posting money/journal
+            // entries. The lockForUpdate read serializes concurrent completions.
+            $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+            if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                DB::commit();
+                Log::info('MyFatoorah completion skipped: payment already completed', [
+                    'payment_id' => $payment->id,
+                ]);
+
+                return;
+            }
+
             $finalPaidAmount = $statusData['InvoiceValue'];
             $transaction = $statusData['InvoiceTransactions'][0] ?? [];
 
@@ -5072,6 +5504,20 @@ class PaymentController extends Controller
             }
 
             DB::commit();
+        } catch (PostingException $e) {
+            // D4: explicit ahead of the generic catch below for clarity, though today it is
+            // functionally a no-op — the generic catch already rolls back and rethrows the
+            // exact same exception unconditionally for every case, PostingException
+            // included. Kept explicit so a future edit to the generic branch (e.g. adding a
+            // non-rethrowing fallback) cannot silently start swallowing engine failures here.
+            DB::rollBack();
+            Log::error('MyFatoorah payment processing failed', [
+                'payment_id' => $payment->id,
+                'exception_class' => get_class($e),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('MyFatoorah payment processing failed', [
@@ -5189,7 +5635,20 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
             }
 
-            DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $partialId) {
+            $alreadyCompleted = false;
+
+            DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $partialId, &$alreadyCompleted) {
+                // The status check above is only a fast-path snapshot: UPayment can
+                // deliver the browser return and a resend within milliseconds of each
+                // other. Re-check under a row lock, inside this transaction, so only
+                // one concurrent delivery can ever transition the payment to
+                // 'completed' and post money/journal entries; the other becomes a no-op.
+                $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                    $alreadyCompleted = true;
+
+                    return;
+                }
 
                 $paymentTransaction = $payment->paymentTransactions()
                     ->where('reference_number', $trackId)
@@ -5291,6 +5750,22 @@ class PaymentController extends Controller
                 }
             });
 
+            if ($alreadyCompleted) {
+                $payment->refresh();
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+                }
+
+                Log::info('[UPAYMENT] Callback ignored: already completed by a concurrent delivery', ['payment_id' => $payment->id]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
             // Process TBO booking if applicable (BEFORE sending notification)
             $tboResult = $this->processTBOBookingAfterPayment($payment);
             if ($tboResult !== null) {
@@ -5328,6 +5803,32 @@ class PaymentController extends Controller
             );
 
             return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+        } catch (PostingException $e) {
+            // D4 (W2 orchestrator decision): uPayment-callback is the user's own browser
+            // landing on the gateway's returnUrl (route('uPayment.callback')) — the separate
+            // notificationUrl (handleUPaymentNoti) is a no-op stub that never reaches
+            // createInvoicePaymentCOA — so a genuine engine failure must never be downgraded
+            // to the generic message below. The DB::transaction() above has already rolled
+            // the payment completion back whole.
+            $idempotencyKey = PaymentIdempotencyKey::forGatewayPayment(
+                'UPayment',
+                $payment->id,
+                ! empty($partialId) ? [$partialId] : null
+            );
+
+            Log::error('UPayment callback accounting posting exception', [
+                'payment_id' => $payment->id,
+                'exception_class' => get_class($e),
+                'idempotency_key' => $idempotencyKey,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('payment.failed')->with('error', sprintf(
+                'Accounting posting failed (%s). Reference: %s. Payment not completed.',
+                class_basename($e),
+                $idempotencyKey
+            ));
         } catch (\Exception $e) {
             Log::error('UPayment callback exception', [
                 'message' => $e->getMessage(),
@@ -5429,10 +5930,17 @@ class PaymentController extends Controller
 
             $paymentToken = $data['paymentToken'] ?? null;
 
-            $raw = $data['variable2'] ?? null;
-            $partialId = $raw ? intval($raw) : null;
-
-            Log::info('Extracted Hesabe variable2 (partialId):', ['raw' => $raw, 'parsed' => $partialId]);
+            // R-c fix (W2b): restored at its TRUE HEAD position -- before the payment lookup
+            // and its own "Payment record not found" early return, not after. The W2.2 fix
+            // below it (relocated here after the lookup) meant an unresolvable
+            // orderReferenceNumber logged nothing, the exact diagnostic-loss class
+            // residual-5/residual-14 exist to prevent. $partialId is no longer derived from
+            // this value (see the residual-5 fix just below), so only the raw gateway-echoed
+            // value is logged here; the derived value is logged separately once $payment and
+            // $partialId are both known.
+            Log::info('Extracted Hesabe variable2 (partialId):', [
+                'raw' => $data['variable2'] ?? null,
+            ]);
 
             $payment = Payment::where('voucher_number', $voucherNumber)->first();
             if (! $payment) {
@@ -5440,6 +5948,18 @@ class PaymentController extends Controller
 
                 return redirect()->route('payment.failed')->with('error', 'Payment record not found');
             }
+
+            // Residual 5 fix (W2.1): derive $partialId from the SAME source
+            // handleHesabeWebhook() uses — invoice_partials by payment id — instead of
+            // the gateway-echoed $data['variable2']. Return-URL and webhook are two
+            // deliveries of the same event; deriving from two different sources gave
+            // them two different PaymentIdempotencyKey values for it.
+            $partialId = $payment->invoice ? $payment->invoice->invoicePartials()->where('payment_id', $payment->id)->value('id') : null;
+
+            Log::info('Hesabe callback: derived partialId from invoice_partials', [
+                'payment_id' => $payment->id,
+                'partial_id' => $partialId,
+            ]);
 
             if ($payment->status === 'completed') {
                 Log::info('Hesabe callback: Payment already processed', [
@@ -5451,12 +5971,101 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
-            $payment->payment_reference = $data['transactionId'];
-            $payment->invoice_reference = $data['trackID'];
-            $payment->payment_date = $data['paidOn'] ?? now();
-            $payment->status = 'completed';
-            $payment->service_charge = $data['amount'] - $payment->amount;
-            $payment->save();
+            // The status check above is only a fast-path snapshot: Hesabe can deliver
+            // the browser return AND the webhook for the same order within
+            // milliseconds of each other. Claim the payment atomically under a row
+            // lock so only one concurrent delivery can transition it to 'completed';
+            // the other becomes a no-op instead of double-crediting/double-posting.
+            $alreadyCompleted = false;
+
+            try {
+                DB::transaction(function () use ($payment, $data, $process, $partialId, &$alreadyCompleted) {
+                    $lockedPayment = Payment::lockForUpdate()->find($payment->id);
+                    if (! $lockedPayment || $lockedPayment->status === 'completed') {
+                        $alreadyCompleted = true;
+
+                        return;
+                    }
+
+                    $payment->payment_reference = $data['transactionId'];
+                    $payment->invoice_reference = $data['trackID'];
+                    $payment->payment_date = $data['paidOn'] ?? now();
+                    $payment->status = 'completed';
+                    $payment->service_charge = $data['amount'] - $payment->amount;
+                    $payment->save();
+
+                    // D1 (W2 orchestrator decision): post inside the SAME transaction that
+                    // holds Payment::lockForUpdate(), atomic with payment completion. HEAD
+                    // instead ran this call in an independent DB::beginTransaction() further
+                    // down, started only AFTER this transaction had already committed — so a
+                    // COA failure there left the payment 'completed' with zero accounting
+                    // rows behind it. Moving the call in here closes that gap.
+                    if ($process === 'invoice') {
+                        $coaResult = $this->createInvoicePaymentCOA(
+                            payment: $payment,
+                            finalPaidAmount: (float) $data['amount'],
+                            gatewayName: 'Hesabe',
+                            partialIds: $partialId ? [$partialId] : null,
+                            paymentReference: $data['transactionId'] ?? null
+                        );
+
+                        if (! $coaResult['success']) {
+                            throw new LegacyInvoiceCoaFailureException($coaResult['message']);
+                        }
+                    }
+                });
+            } catch (PostingException $e) {
+                // D4: hesabe-callback is the user's own browser landing on the gateway's
+                // return URL (route('hesabe.response') — handleHesabeWebhook is the separate
+                // server-to-server path), so a genuine engine failure must never be
+                // downgraded to a generic message. The DB::transaction() above has already
+                // rolled the payment completion back whole.
+                $idempotencyKey = PaymentIdempotencyKey::forGatewayPayment(
+                    'Hesabe',
+                    $payment->id,
+                    $partialId ? [$partialId] : null
+                );
+
+                Log::error('Hesabe callback accounting posting exception', [
+                    'payment_id' => $payment->id,
+                    'exception_class' => get_class($e),
+                    'idempotency_key' => $idempotencyKey,
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return redirect()->route('payment.failed')->with('error', sprintf(
+                    'Accounting posting failed (%s). Reference: %s. Payment not completed.',
+                    class_basename($e),
+                    $idempotencyKey
+                ));
+            } catch (LegacyInvoiceCoaFailureException $e) {
+                // Legacy-path COA failure (createInvoicePaymentCOA's own catch(\Exception)
+                // branch, not an engine PostingException) — same message HEAD's own
+                // $coaResult['message'] branch surfaced, just from its new location. Narrowed
+                // from a bare \RuntimeException catch (residual 4): PDOException/QueryException
+                // also extend \RuntimeException, so that wider catch silently turned a transient
+                // DB failure into this same terminal "Payment Failed" redirect with raw SQL in
+                // the session flash. Those now propagate uncaught (-> HTTP 500) instead.
+                // R-1 fix (W2.2): $e->getMessage() here is safe to flash BY CONSTRUCTION, not
+                // by luck -- createInvoicePaymentCOA()'s own catch(\Exception) is the ONLY
+                // place this exception's message is built, and that catch now always returns
+                // a fixed sentence + voucher correlation id, never $e->getMessage() of whatever
+                // it caught. See that catch for the full reasoning.
+                Log::error('Failed to create journal entry for invoice payment', ['message' => $e->getMessage()]);
+
+                return redirect()->route('payment.failed')->with('error', $e->getMessage());
+            }
+
+            if ($alreadyCompleted) {
+                Log::info('Hesabe callback ignored: already completed by a concurrent delivery', [
+                    'payment_id' => $payment->id,
+                ]);
+                $payment->refresh();
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
 
             $paymentTransaction = null;
 
@@ -5599,21 +6208,15 @@ class PaymentController extends Controller
                     'response' => $addCreditResponse,
                 ]);
             } elseif ($process === 'invoice') {
+                // Residual 14 fix (W2.1): restores the operator-log line HEAD carried on
+                // this path (any alert/runbook grepping it went silent after the D1 move).
                 Log::info('Starting to process the invoice for successful callback from Hesabe');
 
-                $coaResult = $this->createInvoicePaymentCOA(
-                    payment: $payment,
-                    finalPaidAmount: (float) $data['amount'],
-                    gatewayName: 'Hesabe',
-                    partialIds: $partialId ? [$partialId] : null,
-                    paymentReference: $data['transactionId'] ?? null
-                );
-
-                if (! $coaResult['success']) {
-                    Log::error('Failed to create journal entry for invoice payment', ['message' => $coaResult['message']]);
-
-                    return redirect()->to($receiptInfo['url'])->with('error', $coaResult['message']);
-                }
+                // D1: the createInvoicePaymentCOA() call that used to live here has moved
+                // into the lockForUpdate transaction above (see the comment there) so it
+                // posts atomically with the payment completion instead of in this separate,
+                // unlocked transaction. Nothing left to do for the invoice case in this block.
+                Log::info('Hesabe callback: invoice payment COA already posted atomically with completion');
             }
 
             $agent = $payment->agent;
@@ -5805,7 +6408,11 @@ class PaymentController extends Controller
 
         DB::beginTransaction();
         try {
-            $payment = Payment::where('voucher_number', $voucherNumber)->first();
+            // lockForUpdate() serializes this against any other delivery (retry,
+            // and against handleHesabeResponse's own claim) racing on the same
+            // payment row, so the "already processed" check right below is
+            // authoritative rather than a TOCTOU snapshot.
+            $payment = Payment::where('voucher_number', $voucherNumber)->lockForUpdate()->first();
 
             if (! $payment) {
                 Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
@@ -6079,6 +6686,21 @@ class PaymentController extends Controller
 
                 return response()->json(['message' => 'Payment failed processed'], 200);
             }
+        } catch (PostingException $e) {
+            // D4 (W2 orchestrator decision): this is Hesabe's genuine server-to-server
+            // webhook (route registered in routes/api.php, POST, no auth middleware) — a
+            // genuine engine failure must be let to propagate so it reaches Laravel's own
+            // exception handler as an HTTP 500, prompting Hesabe to retry the same
+            // notification; the idempotency key on the draft this failed to post makes that
+            // retry safe. Never downgrade it to the generic 500 below.
+            DB::rollback();
+            Log::critical('accounting.payment_posting_failed_webhook', [
+                'gateway' => 'Hesabe',
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            throw $e;
         } catch (Exception $e) {
             DB::rollback();
             Log::error('Hesabe webhook: Exception occurred', [
@@ -6167,25 +6789,43 @@ class PaymentController extends Controller
                     $this->completeRefundIfApplicable($payment);
                 }
 
-                $chargeRecord = Charge::where('name', 'LIKE', "%{$gatewayName}%")
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if (! $chargeRecord) {
-                    throw new \Exception("Charge record not found for gateway: {$gatewayName}");
-                }
-
-                $gatewayAssetAccount = Account::find($chargeRecord->acc_fee_bank_id);
-                $gatewayExpenseAccount = Account::find($chargeRecord->acc_fee_id);
-                $receivableAccount = Account::where('name', 'Clients')->first();
-
-                if (! $gatewayAssetAccount || ! $gatewayExpenseAccount || ! $receivableAccount) {
-                    throw new \Exception('One or more required financial accounts not found');
-                }
-
+                // R3 seam cutover (KEY: coa-seam / B1). $accountingFee/$paidBy/$netAmount are
+                // computed here, in this shared pre-branch section, because BOTH the legacy
+                // closure below and the ON-path engine draft need the identical fee/net-amount
+                // arithmetic — and ChargeService::calculate() has no throw path at all (a
+                // missing/zero charge config simply returns a zero-fee result; see that
+                // method's own "no charge configuration found" branch), so computing it here
+                // instead of after the account checks changes no observable success/failure
+                // outcome versus HEAD.
+                //
+                // What HEAD ran at this exact point instead — `Charge::where('name','LIKE',...)`,
+                // `Account::find($chargeRecord->acc_fee_bank_id/acc_fee_id)`, and HF-6's
+                // `Account::where('name','Clients')->where('company_id',...)` — is LEGACY-ONLY
+                // account resolution by name/FK, exactly what the ON path must never do
+                // (ACCOUNT RESOLUTION on ON paths: AccountResolver / purpose codes only). All
+                // three lookups, and the "Charge record not found" / "One or more required
+                // financial accounts not found" guards that depend on them, have moved
+                // verbatim into $legacy below — including HF-6's own line, untouched — so they
+                // run ONLY when the legacy closure actually executes, never as a side effect of
+                // building the ON-path draft. Reordering them after this arithmetic can't
+                // change which exception fires or the final rolled-back state on failure either
+                // way (this whole method body runs inside ONE DB::transaction — any exception
+                // anywhere rolls every prior write in this closure back to nothing), for the
+                // same "no throw path here" reason as above.
                 $chargeResult = ChargeService::calculate($payment->amount, $companyId, $payment->payment_method_id, $gatewayName);
                 $accountingFee = $chargeResult['accountingFee'] ?? 0;
-                $paidBy = $chargeResult['paidBy'] ?? 'Company';
+                // W4.D fix round 2: this read the wrong key ('paidBy', camelCase — never present in
+                // ChargeService::calculate()'s return array, which only has 'paid_by', snake_case;
+                // see that method's own return statement, and this file's OWN correct read of the
+                // same key at line ~3174) and so ALWAYS fell through to the 'Company' default
+                // regardless of the gateway's actual configured bearer. That silently broke the
+                // $feeDescription label below (always "Company Pays Gateway Fee", even when the
+                // client was configured to bear it) and would have made the new
+                // createGatewayFeeRecoveryEntries() gross-up call below equally dead — gated on
+                // $paidBy === 'Client', which this bug made unreachable. Corrected to the real key.
+                $paidBy = $chargeResult['paid_by'] ?? 'Company';
+                $markupProfit = (float) ($chargeResult['markup_profit'] ?? 0);
+                $roundingProfit = (float) ($chargeResult['rounding_profit'] ?? 0);
 
                 $payment->gateway_fee = $accountingFee;
                 $payment->save();
@@ -6200,21 +6840,18 @@ class PaymentController extends Controller
                     'gateway' => $gatewayName,
                 ]);
 
-                $transaction = Transaction::create([
-                    'branch_id' => $invoice->agent->branch->id,
-                    'company_id' => $companyId,
-                    'entity_id' => $companyId,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $finalPaidAmount,
-                    'description' => "{$gatewayName} payment success: {$invoice->invoice_number}",
-                    'invoice_id' => $invoice->id,
-                    'payment_id' => $payment->id,
-                    'payment_reference' => $paymentReference ?? $payment->payment_reference,
-                    'reference_type' => 'Invoice',
-                    'transaction_date' => now(),
-                ]);
-
+                // The invoiceDetail/client existence check HEAD ran AFTER Transaction::create()
+                // runs here instead, in this shared pre-branch section — the ON-path draft
+                // needs this same data (invoiceDetailId, the client's own id/name) to build its
+                // lines, and there is no way to know "does this document even have a valid
+                // invoice detail/client" without resolving it before deciding which path to
+                // take. DOCUMENTED DEVIATION: on the OFF path this means a failing check here
+                // no longer happens after Transaction::create() has already run (and would have
+                // been rolled back) — the only observable difference is that HEAD's ordering
+                // would have consumed one MySQL AUTO_INCREMENT value on `transactions.id`
+                // before rolling back (InnoDB auto_increment counters are NOT transactional),
+                // which this ordering does not. The return value, the exception message, and
+                // the final persisted state (nothing — full rollback either way) are identical.
                 $invoiceDetail = InvoiceDetail::where('invoice_number', $invoice->invoice_number)->first();
                 $client = $invoice->client;
 
@@ -6222,99 +6859,367 @@ class PaymentController extends Controller
                     throw new \Exception('Invoice detail or client not found');
                 }
 
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $invoice->agent->branch->id,
-                    'company_id' => $companyId,
-                    'invoice_id' => $invoice->id,
-                    'account_id' => $receivableAccount->id,
-                    'invoice_detail_id' => $invoiceDetail->id,
-                    'transaction_date' => now(),
-                    'description' => "Client payment received via {$gatewayName}",
-                    'debit' => 0,
-                    'credit' => $finalPaidAmount,
-                    'balance' => $invoiceDetail->task_price - $finalPaidAmount,
-                    'name' => $client->full_name,
-                    'type' => 'receivable',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $receivableAccount->id,
-                ]);
+                // ── Legacy closure: VERBATIM HEAD behaviour — the Charge/Account lookups moved
+                // in from the shared section above (per the comment there) are the ONLY
+                // structural change; every value, order, and failure this closure can produce
+                // is otherwise byte-identical to HEAD, including HF-6's own tenant-scoped
+                // "Clients" lookup below, untouched. ─────────────────────────────────────────
+                $legacy = function () use (
+                    $payment, $invoice, $companyId, $gatewayName, $finalPaidAmount, $paymentReference,
+                    $invoiceDetail, $client, $accountingFee, $paidBy, $netAmount
+                ) {
+                    $chargeRecord = Charge::where('name', 'LIKE', "%{$gatewayName}%")
+                        ->where('company_id', $companyId)
+                        ->first();
 
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $invoice->agent->branch->id,
-                    'company_id' => $companyId,
-                    'invoice_id' => $invoice->id,
-                    'account_id' => $gatewayAssetAccount->id,
-                    'invoice_detail_id' => $invoiceDetail->id,
-                    'transaction_date' => now(),
-                    'description' => 'Net payment received',
-                    'debit' => $netAmount,
-                    'credit' => 0,
-                    'balance' => $gatewayAssetAccount->actual_balance + $netAmount,
-                    'name' => $gatewayAssetAccount->name,
-                    'type' => 'bank',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $gatewayAssetAccount->id,
-                ]);
+                    if (! $chargeRecord) {
+                        throw new \Exception("Charge record not found for gateway: {$gatewayName}");
+                    }
 
-                $gatewayAssetAccount->actual_balance += $netAmount;
-                $gatewayAssetAccount->save();
+                    $gatewayAssetAccount = Account::find($chargeRecord->acc_fee_bank_id);
+                    $gatewayExpenseAccount = Account::find($chargeRecord->acc_fee_id);
+                    // Company-scoped: this runs from unauthenticated gateway webhook/
+                    // callback paths (BelongsToCompany's global scope is a no-op there),
+                    // so an unscoped lookup would resolve whichever company's "Clients"
+                    // account has the lowest id and post another tenant's receivable.
+                    $receivableAccount = Account::where('name', 'Clients')->where('company_id', $companyId)->first(); // HF-2: tenant-scoped lookup (2026-08-27)
 
-                $feeDescription = ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$gatewayExpenseAccount->name;
+                    if (! $gatewayAssetAccount || ! $gatewayExpenseAccount || ! $receivableAccount) {
+                        if (! $receivableAccount) {
+                            // HF-2: tenant-scoped lookup (2026-08-27) — never fall back to an
+                            // unscoped query and never auto-create the account; log the exact
+                            // (company, name, feeder) so support can fix the company's chart
+                            // of accounts, then fail the same way as any other missing account.
+                            Log::error('accounting.legacy_account_unresolved', [ // HF-2: tenant-scoped lookup (2026-08-27)
+                                'company_id' => $companyId,
+                                'name' => 'Clients',
+                                'feeder' => $gatewayName,
+                            ]);
+                        }
 
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $invoice->agent->branch->id,
-                    'company_id' => $companyId,
-                    'invoice_id' => $invoice->id,
-                    'account_id' => $gatewayExpenseAccount->id,
-                    'invoice_detail_id' => $invoiceDetail->id,
-                    'transaction_date' => now(),
-                    'description' => $feeDescription,
-                    'debit' => $accountingFee,
-                    'credit' => 0,
-                    'balance' => $gatewayExpenseAccount->actual_balance + $accountingFee,
-                    'name' => $gatewayExpenseAccount->name,
-                    'type' => 'charges',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $gatewayExpenseAccount->id,
-                ]);
+                        throw new \Exception('One or more required financial accounts not found');
+                    }
 
-                $gatewayExpenseAccount->actual_balance += $accountingFee;
-                $gatewayExpenseAccount->save();
+                    $transaction = Transaction::create([
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $companyId,
+                        'entity_id' => $companyId,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $finalPaidAmount,
+                        'description' => "{$gatewayName} payment success: {$invoice->invoice_number}",
+                        'invoice_id' => $invoice->id,
+                        'payment_id' => $payment->id,
+                        'payment_reference' => $paymentReference ?? $payment->payment_reference,
+                        'reference_type' => 'Invoice',
+                        'transaction_date' => now(),
+                    ]);
 
-                Log::info('[INVOICE COA] Journal entries created successfully', [
-                    'transaction_id' => $transaction->id,
-                    'payment_id' => $payment->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'credit_receivable' => $finalPaidAmount,
-                    'debit_gateway_asset' => $netAmount,
-                    'debit_gateway_fee' => $accountingFee,
-                    'balanced' => ($finalPaidAmount == ($netAmount + $accountingFee)) ? 'YES' : 'NO',
-                ]);
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $companyId,
+                        'invoice_id' => $invoice->id,
+                        'account_id' => $receivableAccount->id,
+                        'invoice_detail_id' => $invoiceDetail->id,
+                        'transaction_date' => now(),
+                        'description' => "Client payment received via {$gatewayName}",
+                        'debit' => 0,
+                        'credit' => $finalPaidAmount,
+                        'balance' => $invoiceDetail->task_price - $finalPaidAmount,
+                        'name' => $client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $receivableAccount->id,
+                    ]);
+
+                    // Ledger-derived balances (accounts.actual_balance is a hand-maintained
+                    // decimal(10,2) column that has drifted from the journal entries — up to
+                    // 41.5% of accounts disagree with the ledger, and the column truncates
+                    // 3-decimal-place fils amounts it can't even represent). These reads
+                    // happen before their respective JournalEntry rows below are inserted, so
+                    // they reflect the balance *prior to* this transaction, matching the
+                    // original actual_balance reads they replace.
+                    $trialBalanceService = app(TrialBalanceService::class);
+                    $gatewayAssetLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $gatewayAssetAccount->id);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $companyId,
+                        'invoice_id' => $invoice->id,
+                        'account_id' => $gatewayAssetAccount->id,
+                        'invoice_detail_id' => $invoiceDetail->id,
+                        'transaction_date' => now(),
+                        'description' => 'Net payment received',
+                        'debit' => $netAmount,
+                        'credit' => 0,
+                        'balance' => $gatewayAssetLedgerBalance + $netAmount,
+                        'name' => $gatewayAssetAccount->name,
+                        'type' => 'bank',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $gatewayAssetAccount->id,
+                    ]);
+
+                    // Legacy actual_balance write kept in place — W1 (cutting this feeder over
+                    // to PostingService, which does not maintain actual_balance) has not
+                    // happened yet, so this column must keep working for any code that still
+                    // reads it until that cutover ships.
+                    $gatewayAssetAccount->actual_balance += $netAmount;
+                    $gatewayAssetAccount->save();
+
+                    $feeDescription = ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$gatewayExpenseAccount->name;
+
+                    $gatewayExpenseLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $gatewayExpenseAccount->id);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $companyId,
+                        'invoice_id' => $invoice->id,
+                        'account_id' => $gatewayExpenseAccount->id,
+                        'invoice_detail_id' => $invoiceDetail->id,
+                        'transaction_date' => now(),
+                        'description' => $feeDescription,
+                        'debit' => $accountingFee,
+                        'credit' => 0,
+                        'balance' => $gatewayExpenseLedgerBalance + $accountingFee,
+                        'name' => $gatewayExpenseAccount->name,
+                        'type' => 'charges',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $gatewayExpenseAccount->id,
+                    ]);
+
+                    // Legacy actual_balance write kept in place — same reasoning as above.
+                    $gatewayExpenseAccount->actual_balance += $accountingFee;
+                    $gatewayExpenseAccount->save();
+
+                    Log::info('[INVOICE COA] Journal entries created successfully', [
+                        'transaction_id' => $transaction->id,
+                        'payment_id' => $payment->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'credit_receivable' => $finalPaidAmount,
+                        'debit_gateway_asset' => $netAmount,
+                        'debit_gateway_fee' => $accountingFee,
+                        'balanced' => ($finalPaidAmount == ($netAmount + $accountingFee)) ? 'YES' : 'NO',
+                    ]);
+
+                    return $transaction;
+                };
+
+                // ── Engine draft (ON path): a BALANCED document — Dr GATEWAY_CLEARING_{gateway}
+                // (+ Dr GATEWAY_FEE_EXPENSE_{gateway} when the gateway actually charges a fee —
+                // PostingService rejects a zero-amount line, and ChargeService::calculate() can
+                // genuinely return accountingFee = 0 for a company with no fee configured for
+                // this gateway, so that third leg is OMITTED rather than posted at 0, keeping
+                // the document a real balanced 2-line receipt in that case) / Cr
+                // RECEIVABLE_CONTROL (this document always settles a real invoice —
+                // $invoice->id is always set here — so, matching the CheckMyFatoorahPayments
+                // precedent's own invoice_id-based policy split, this is always
+                // RECEIVABLE_CONTROL, never CLIENT_ADVANCE). GATEWAY_CLEARING_{gateway} is
+                // already seeded by SystemAccountsSeeder::resolveGatewayClearing() for every
+                // gateway config('accounting.purpose_codes.gateways') lists — no missing code
+                // there. GATEWAY_FEE_EXPENSE_{gateway} is a NEW purpose code this lane adds
+                // (PROPOSED — see report), mapped by the new
+                // SystemAccountsSeeder::resolveGatewayFeeExpense() to the same per-gateway
+                // "<Gateway> Charges" leaves under "Payment Gateway Charges" (Expenses) that
+                // CoaSeeder already seeds for MyFatoorah/Tap/Hesabe (a company with no
+                // per-gateway split there, e.g. Knet/uPayment today, reports a gap instead of
+                // guessing — same conservative philosophy as every other SystemAccountsSeeder
+                // resolver; an UnmappedPurposeException there is a genuine engine-path failure,
+                // propagated per the catch(PostingException) below, never silently skipped).
+                //
+                // type_reference_id (LineDraft::$partyAccountRef): the legacy receivable
+                // JournalEntry above writes `type_reference_id => $receivableAccount->id` — the
+                // ACCOUNT's own id, not a party id — which never matched the client/supplier/
+                // agent id shape AccountingController::filterLedgers()'s per-client filter
+                // actually filters on (the exact same dead/wrong value the W1.1 MyFatoorah
+                // cutover already documented and chose not to reproduce, for the same reason —
+                // see CheckMyFatoorahPayments's own engine-draft comment). Not reproduced here
+                // either: partyAccountRef below is the client's REAL id, so the per-client
+                // ledger filter actually finds this line once the engine is ON.
+                $gatewayKey = strtoupper($gatewayName);
+
+                $lines = [
+                    new LineDraft(
+                        purposeCode: 'RECEIVABLE_CONTROL',
+                        accountId: null,
+                        side: 'credit',
+                        amount: (float) $finalPaidAmount,
+                        currency: config('accounting.engine.base_currency'),
+                        originalAmount: (float) $finalPaidAmount,
+                        exchangeRate: 1.0,
+                        transactionType: 'CUSTOMERCREDITED',
+                        partyAccountRef: $client->id,
+                        description: "Client payment received via {$gatewayName}",
+                        invoiceId: $invoice->id,
+                        invoiceDetailId: $invoiceDetail->id,
+                        ledgerType: 'receivable',
+                        partyName: $client->full_name,
+                        voucherNumber: $payment->voucher_number,
+                    ),
+                    new LineDraft(
+                        purposeCode: "GATEWAY_CLEARING_{$gatewayKey}",
+                        accountId: null,
+                        side: 'debit',
+                        amount: (float) $netAmount,
+                        currency: config('accounting.engine.base_currency'),
+                        originalAmount: (float) $netAmount,
+                        exchangeRate: 1.0,
+                        transactionType: 'GATEWAYDEBITED',
+                        description: 'Net payment received',
+                        invoiceId: $invoice->id,
+                        invoiceDetailId: $invoiceDetail->id,
+                        ledgerType: 'bank',
+                        voucherNumber: $payment->voucher_number,
+                    ),
+                ];
+
+                if ($accountingFee > 0.0) {
+                    $lines[] = new LineDraft(
+                        purposeCode: "GATEWAY_FEE_EXPENSE_{$gatewayKey}",
+                        accountId: null,
+                        side: 'debit',
+                        amount: $accountingFee,
+                        currency: config('accounting.engine.base_currency'),
+                        originalAmount: $accountingFee,
+                        exchangeRate: 1.0,
+                        transactionType: 'CCCHARGES',
+                        // Deliberately does NOT read $gatewayExpenseAccount->name — that
+                        // account is resolved by the legacy closure above, from
+                        // Charge::acc_fee_id, an ad hoc FK lookup the ON path must never
+                        // depend on (see this method's shared-section comment above). Same
+                        // paidBy semantics as legacy's $feeDescription, a synthetic
+                        // gateway-name suffix instead of the legacy-resolved account's own
+                        // name.
+                        description: ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$gatewayName,
+                        invoiceId: $invoice->id,
+                        invoiceDetailId: $invoiceDetail->id,
+                        ledgerType: 'charges',
+                        voucherNumber: $payment->voucher_number,
+                    );
+                }
+
+                $idempotencyKey = PaymentIdempotencyKey::forGatewayPayment($gatewayName, $payment->id, $partialIds);
+
+                $draft = new DocumentDraft(
+                    companyId: $companyId,
+                    branchId: $invoice->agent->branch->id,
+                    docType: 'RV', // Receipt Voucher — money received from the client via gateway
+                    subType: $gatewayKey,
+                    docDate: now(),
+                    narration: "{$gatewayName} payment success: {$invoice->invoice_number}",
+                    lines: $lines,
+                    idempotencyKey: $idempotencyKey,
+                    sourceType: 'Receipt',
+                    sourceId: $payment->id,
+                    invoiceId: $invoice->id,
+                    userId: null, // gateway webhook/callback — no authenticated actor; never Auth::user()
+                    paymentReference: $paymentReference ?? $payment->payment_reference,
+                    // D3 (W2 orchestrator decision): payment_id is carried ONLY by the
+                    // original receipt document — PostingService::repost()/reverse() keep it
+                    // off any replacement/reversal header, so the (payment_id, reference_type)
+                    // unique index never collides on a correction of this document.
+                    paymentId: $payment->id,
+                );
+
+                $result = app(PostingSeam::class)->post($draft, $legacy, 'payment.invoice_coa');
+
+                // PostingSeam::post() returns: the legacy closure's own return value (a
+                // Transaction model) on the OFF path; a PostedDocument on the ON path; or a
+                // bare `null` — ONLY on the OFF path, and only when the engine had already
+                // posted this exact (company_id, idempotency_key) pair before a kill-switch
+                // flip (see PostingSeam::post()'s own docblock, W1.1 FIX ROUND / S1) — every
+                // feeder must tolerate it. This method's own return shape
+                // (['success','message','transaction_id']) is unchanged for every one of this
+                // method's nine call sites, so the null case is resolved to the SAME
+                // already-posted transaction's id here, rather than leaking the null upward.
+                if ($result === null) {
+                    // Residual 15 fix (W2.1): withoutGlobalScopes() also lifts Transaction's
+                    // own SoftDeletes scope, so without this the resolution could hand back a
+                    // soft-deleted row's id as "the already-posted transaction" for this key.
+                    $alreadyPosted = Transaction::withoutGlobalScopes()
+                        ->where('company_id', $companyId)
+                        ->where('idempotency_key', $idempotencyKey)
+                        ->whereNull('deleted_at')
+                        ->first(['id']);
+
+                    $transactionId = $alreadyPosted?->id;
+                } elseif ($result instanceof \App\Services\Accounting\PostedDocument) {
+                    $transactionId = $result->transaction->id;
+                } else {
+                    // Legacy path: $legacy() returned the Transaction model it created.
+                    $transactionId = $result->id;
+                }
+
+                // W4.D fix round 2: gross up the client-borne gateway fee HERE — the one place
+                // $paidBy is known from the payment's REAL PaymentMethod/Charge configuration
+                // (ChargeService::calculate() above), dated THIS payment. See
+                // InvoiceController::createGatewayFeeRecoveryEntries()'s own docblock for the full
+                // rationale (Accounting Gap/22-plan-amendments.md rev 3 §4.1 gateway_fee row,
+                // ruling B10 — the fee "cannot post with the invoice"). The method itself is a
+                // no-op when $paidBy !== 'Client' or the gross-up amount is <= 0, matching every
+                // other feeder's "the method decides whether there's anything to post" convention.
+                $invoiceController = app(InvoiceController::class);
+                $invoiceController->createGatewayFeeRecoveryEntries(
+                    payment: $payment,
+                    invoice: $invoice,
+                    companyId: $companyId,
+                    branchId: $invoice->agent->branch->id,
+                    gatewayName: $gatewayName,
+                    paidBy: $paidBy,
+                    accountingFee: $accountingFee,
+                    markupProfit: $markupProfit,
+                    roundingProfit: $roundingProfit,
+                    postingDate: now(),
+                    invoiceDetail: $invoiceDetail,
+                    partialIds: $partialIds,
+                    paymentReference: $paymentReference ?? $payment->payment_reference,
+                );
 
                 // Recalculate profit after each payment (deduct gateway fees progressively)
-                $invoiceController = app(InvoiceController::class);
                 $invoiceController->recalculateInvoiceCOA($invoice);
 
                 return [
                     'success' => true,
                     'message' => 'Invoice payment COA created successfully',
-                    'transaction_id' => $transaction->id,
+                    'transaction_id' => $transactionId,
                 ];
             });
+        } catch (PostingException $e) {
+            // D4 (W2 orchestrator decision): a genuine engine correctness failure must never be
+            // downgraded to this method's own generic ['success' => false] shape — PostingSeam
+            // has already Log::critical'd it with its concrete class. Propagate untouched so
+            // the caller (one of this method's nine call sites) can surface the exception's own
+            // class and the idempotency key, never a generic string.
+            throw $e;
         } catch (\Exception $e) {
+            // R-1 fix (W2.2): this catch is the ONLY place a legacy-path COA failure's
+            // message is born. $coaResult['message'] is what every one of this method's
+            // nine call sites (several of which throw it straight into a public,
+            // unauthenticated redirect -- e.g. handleHesabeResponse's
+            // LegacyInvoiceCoaFailureException) can end up flashing verbatim to a
+            // customer's browser via payment.failed. $e can be ANY \Exception the legacy
+            // closure raised, including a QueryException whose ->getMessage() is the raw
+            // SQL statement plus every bound value. Never let that reach the caller: keep
+            // the full exception (class, message, trace) in Log::error only, and hand back
+            // a fixed, safe sentence plus a correlation id support can grep this same log
+            // entry by. voucher_number is the customer-facing reference already printed on
+            // receipts; fall back to the internal id on the rare row that has none.
             Log::error('[INVOICE COA] Failed to create COA entries', [
                 'payment_id' => $payment->id,
                 'gateway' => $gatewayName,
+                'exception_class' => get_class($e),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'Error creating COA: '.$e->getMessage(),
+                'message' => sprintf(
+                    'Error creating COA. Reference: %s.',
+                    $payment->voucher_number ?: $payment->id
+                ),
                 'transaction_id' => null,
             ];
         }
@@ -6512,18 +7417,38 @@ class PaymentController extends Controller
                 ],
             ];
         } else {
+            // M1 null guard (residual 13, W2.1): payments.agent_id is
+            // nullable()->nullOnDelete() (see the D5 guard's own comment in
+            // handleTapCallback/handleKnetResponse), and this method runs unconditionally,
+            // BEFORE either D5 guard, on every success and failure path that shares it.
+            // An unattributed chain used to crash on the bare deref below -- swallowed
+            // generically by the caller's own outer catch(Throwable) -- so
+            // accounting.payment_unattributed never fired for the case it was built for.
+            $companyId = $payment->agent?->branch?->company_id;
+
+            if ($companyId === null) {
+                Log::critical('accounting.payment_unattributed', [
+                    'payment_id' => $payment->id,
+                    'voucher_number' => $payment->voucher_number,
+                    'amount' => $payment->amount,
+                    'reason' => 'payment->agent->branch->company_id chain unresolved (agent likely deleted/unlinked)',
+                ]);
+
+                throw new PaymentUnattributedException($payment->id);
+            }
+
             $route = $isInvoice
                 ? [
                     'name' => 'invoice.show',
                     'params' => [
-                        'companyId' => $payment->agent->branch->company_id,
+                        'companyId' => $companyId,
                         'invoiceNumber' => $payment->invoice->invoice_number,
                     ],
                 ]
                 : [
                     'name' => 'payment.link.show',
                     'params' => [
-                        'companyId' => $payment->agent->branch->company_id,
+                        'companyId' => $companyId,
                         'voucherNumber' => $payment->voucher_number,
                     ],
                 ];
@@ -6679,10 +7604,7 @@ class PaymentController extends Controller
             ];
         }
 
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $company->id], ['current_sequence' => 1]);
-
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+        $voucherNumber = $this->nextVoucherNumber($company->id);
 
         $response = DB::transaction(function () use (
             $request,
@@ -6690,7 +7612,6 @@ class PaymentController extends Controller
             $company,
             $client,
             $agent,
-            $voucherSequence,
         ) {
             try {
                 $isAdvancedMode = $request->has('items') && is_array($request->items) && count($request->items) > 0;
@@ -6781,9 +7702,6 @@ class PaymentController extends Controller
                     'payment_methods_selected' => $request->payment_methods,
                     'payment_method_groups' => $groupIds->toArray(),
                 ]);
-
-                $voucherSequence->current_sequence++;
-                $voucherSequence->save();
 
                 Log::info('[MULTI PAYMENT METHOD] Payment created with voucher number: '.$voucherNumber, [
                     'payment_id' => $payment->id,

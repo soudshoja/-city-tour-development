@@ -1083,13 +1083,40 @@
 
                                                 <div>
                                                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                                                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
-                                                    @if($task->status === 'issued') bg-green-100 text-green-700
-                                                    @elseif($task->status === 'confirmed') bg-blue-100 text-blue-700
-                                                    @else bg-gray-100 text-gray-700
-                                                    @endif">
-                                                        {{ ucfirst($task->status) }}
-                                                    </span>
+                                                    <div class="flex flex-wrap items-center gap-1">
+                                                        <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+                                                        @if($task->status === 'issued') bg-green-100 text-green-700
+                                                        @elseif($task->status === 'confirmed') bg-blue-100 text-blue-700
+                                                        @else bg-gray-100 text-gray-700
+                                                        @endif">
+                                                            {{ ucfirst($task->status) }}
+                                                        </span>
+                                                        {{-- W6.U: ticket_status / client_status badges alongside the legacy status
+                                                             badge, following the same pattern already used in tasks/index.blade.php. --}}
+                                                        @if ($task->ticket_status)
+                                                        <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full {{ match($task->ticket_status) {
+                                                            'issued' => 'bg-emerald-100 text-emerald-700',
+                                                            'void' => 'bg-gray-200 text-gray-500',
+                                                            'reissued' => 'bg-indigo-100 text-indigo-700',
+                                                            'refunded' => 'bg-orange-100 text-orange-700',
+                                                            'emd' => 'bg-cyan-100 text-cyan-700',
+                                                            default => 'bg-gray-100 text-gray-600',
+                                                        } }}" title="Ticket status">
+                                                            {{ ucwords($task->ticket_status) }}
+                                                        </span>
+                                                        @endif
+                                                        @if ($task->client_status)
+                                                        <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full {{ match($task->client_status) {
+                                                            'open' => 'bg-slate-100 text-slate-700',
+                                                            'credited' => 'bg-amber-100 text-amber-700',
+                                                            'refunded' => 'bg-rose-100 text-rose-700',
+                                                            'rebilled' => 'bg-violet-100 text-violet-700',
+                                                            default => 'bg-gray-100 text-gray-600',
+                                                        } }}" title="Client status">
+                                                            {{ ucwords($task->client_status) }}
+                                                        </span>
+                                                        @endif
+                                                    </div>
                                                 </div>
 
                                                 <div>
@@ -1505,6 +1532,115 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {{-- W6.U 'Task actions' (w6-brief.md 'W6.U -- UI'): void / void-with-fee /
+                                     reissue on the full-page task detail view, matching the pattern already
+                                     shipped on tasks/partial/view-task-modal.blade.php in this same wave.
+                                     Server-rendered gate first (TaskPolicy) then a scoped Alpine component
+                                     posts through TaskController -> TaskStatusService -> PostingSeam; the
+                                     routes themselves re-authorize and re-check preconditions regardless of
+                                     what this UI shows/hides. --}}
+                                @php
+                                $taskIsLocked = (bool) ($task->invoiceDetail?->invoice?->is_locked);
+                                @endphp
+                                @if (auth()->user()->can('void', $task) || auth()->user()->can('reissue', $task))
+                                <div class="bg-white rounded-lg shadow-sm border border-red-100"
+                                    x-data="taskActionPanel({{ $task->id }})">
+                                    <div class="px-4 sm:px-6 py-4 bg-slate-50 rounded-t-lg flex items-center justify-between flex-wrap gap-2">
+                                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            Task actions
+                                        </h2>
+                                        @if ($taskIsLocked)
+                                        <span class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded-full">Invoice locked</span>
+                                        @endif
+                                    </div>
+                                    <div class="p-4 sm:p-6">
+                                        <div class="flex flex-wrap gap-2 mb-3">
+                                            @if (auth()->user()->can('void', $task))
+                                            <button type="button" :disabled="{{ $taskIsLocked ? 'true' : 'false' }}"
+                                                @click="openPanel('void')"
+                                                :class="panel === 'void' ? 'ring-2 ring-red-400' : ''"
+                                                class="px-4 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed text-red-700 font-semibold text-sm rounded-lg transition">
+                                                Void
+                                            </button>
+                                            <button type="button" :disabled="{{ $taskIsLocked ? 'true' : 'false' }}"
+                                                @click="openPanel('void-fee')"
+                                                :class="panel === 'void-fee' ? 'ring-2 ring-red-400' : ''"
+                                                class="px-4 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed text-red-700 font-semibold text-sm rounded-lg transition">
+                                                Void with fee
+                                            </button>
+                                            @endif
+                                            @if (auth()->user()->can('reissue', $task))
+                                            <button type="button" :disabled="{{ $taskIsLocked ? 'true' : 'false' }}"
+                                                @click="openPanel('reissue')"
+                                                :class="panel === 'reissue' ? 'ring-2 ring-indigo-400' : ''"
+                                                class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed text-indigo-700 font-semibold text-sm rounded-lg transition">
+                                                Reissue
+                                            </button>
+                                            @endif
+                                        </div>
+
+                                        <div x-show="errorMsg" x-cloak class="mb-3 text-sm font-medium text-red-700 bg-red-50 rounded-lg px-3 py-2" x-text="errorMsg"></div>
+                                        <div x-show="successMsg" x-cloak class="mb-3 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2" x-text="successMsg"></div>
+
+                                        <!-- Void confirm panel -->
+                                        <div x-show="panel === 'void'" x-cloak class="bg-gray-50 rounded-lg p-4 space-y-3">
+                                            <p class="text-sm text-gray-700">This reverses the ticket and the client's sale line for <strong>{{ $task->reference }}</strong>. This cannot be undone (a correction afterwards would be a new reversal, not an edit).</p>
+                                            <button type="button" :disabled="busy" @click="submitVoid(false)" class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-sm rounded-lg transition">
+                                                <span x-show="!busy">Confirm void</span>
+                                                <span x-show="busy">Voiding&hellip;</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Void-with-fee panel -->
+                                        <div x-show="panel === 'void-fee'" x-cloak class="bg-gray-50 rounded-lg p-4 space-y-3">
+                                            <div>
+                                                <label class="text-sm font-medium text-gray-700 block mb-1">Fee amount (KWD)</label>
+                                                <input type="number" step="0.001" min="0" x-model.number="feeAmount" class="w-40 border border-gray-300 rounded-md px-3 py-2 text-sm">
+                                                <p x-show="feeSchedule" class="text-xs text-gray-500 mt-1">
+                                                    Schedule fee: <span x-text="feeSchedule?.schedule_fee"></span> KWD.
+                                                    <span x-show="feeSchedule?.override_policy === 'needs_approval'">A different amount will require approval before it posts.</span>
+                                                </p>
+                                            </div>
+                                            <button type="button" :disabled="busy" @click="submitVoid(true)" class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-sm rounded-lg transition">
+                                                <span x-show="!busy">Confirm void with fee</span>
+                                                <span x-show="busy">Voiding&hellip;</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Reissue panel -->
+                                        <div x-show="panel === 'reissue'" x-cloak class="bg-gray-50 rounded-lg p-4 space-y-3">
+                                            <div class="relative">
+                                                <label class="text-sm font-medium text-gray-700 block mb-1">Link the new (replacement) task</label>
+                                                <input type="text" x-model="reissueSearch" @input.debounce.300ms="searchReissueTargets()" placeholder="Search by reference or client"
+                                                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                                                <div x-show="reissueResults.length > 0" x-cloak class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                                    <template x-for="result in reissueResults" :key="result.id">
+                                                        <button type="button" @click="selectReissueTarget(result)" class="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50">
+                                                            <span x-text="result.reference"></span> &mdash; <span x-text="result.client_name"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+
+                                            <div x-show="reissuePreview" x-cloak class="bg-indigo-50 rounded-lg p-3 text-sm">
+                                                <div class="flex justify-between"><span>Old sell</span><span x-text="reissuePreview?.old_sell"></span></div>
+                                                <div class="flex justify-between"><span>New sell</span><span x-text="reissuePreview?.new_sell"></span></div>
+                                                <div class="flex justify-between font-bold border-t border-indigo-200 mt-1 pt-1">
+                                                    <span x-text="reissuePreview?.fare_difference?.type === 'dbn' ? 'Client owes (DBN)' : (reissuePreview?.fare_difference?.type === 'crn' ? 'Client credited (CRN)' : 'No fare difference')"></span>
+                                                    <span x-text="reissuePreview?.fare_difference?.amount"></span>
+                                                </div>
+                                            </div>
+
+                                            <button type="button" :disabled="busy || !reissueSelected" @click="submitReissue()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-lg transition">
+                                                <span x-show="!busy">Confirm reissue</span>
+                                                <span x-show="busy">Reissuing&hellip;</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
 
                             </div>
 
@@ -2616,6 +2752,156 @@
             button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full',
                 'text-sm', 'transition', 'duration-150');
             button.disabled = false;
+        }
+
+        // W6.U 'Task actions' (w6-brief.md 'W6.U -- UI'): void / void-with-fee / reissue, on the
+        // full-page task detail view. Mirrors the Alpine component already shipped inline on
+        // tasks/partial/view-task-modal.blade.php in this same wave -- each action is a thin
+        // fetch() against TaskController -> TaskStatusService -> PostingSeam; the server-rendered
+        // auth()->can() gate above (and the disabled attribute on a locked invoice) is UX
+        // only -- the routes themselves re-authorize and re-check preconditions.
+        function taskActionPanel(taskId) {
+            return {
+                panel: null, // null | 'void' | 'void-fee' | 'reissue'
+                busy: false,
+                errorMsg: null,
+                successMsg: null,
+                feeAmount: null,
+                feeSchedule: null,
+                reissueSearch: '',
+                reissueResults: [],
+                reissueSelected: null,
+                reissuePreview: null,
+
+                openPanel(panel) {
+                    this.errorMsg = null;
+                    this.successMsg = null;
+                    this.panel = this.panel === panel ? null : panel;
+
+                    if (this.panel === 'void-fee') {
+                        this.loadFeePreview();
+                    }
+                },
+
+                async loadFeePreview() {
+                    try {
+                        const res = await fetch(`/tasks/${taskId}/void-fee-preview`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.feeSchedule = data;
+                            this.feeAmount = data.schedule_fee;
+                        }
+                    } catch (e) {
+                        console.error('Error loading fee preview:', e);
+                    }
+                },
+
+                async submitVoid(withFee) {
+                    this.busy = true;
+                    this.errorMsg = null;
+                    this.successMsg = null;
+                    try {
+                        const body = {};
+                        if (withFee) body.fee = this.feeAmount ?? 0;
+
+                        const res = await fetch(`/tasks/${taskId}/void`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify(body)
+                        });
+                        const data = await res.json();
+
+                        if (res.status === 202 && data.pending_approval) {
+                            this.successMsg = data.message + ' (request #' + data.pending_action_id + ')';
+                            this.panel = null;
+                        } else if (data.success) {
+                            this.successMsg = 'Task voided.';
+                            this.panel = null;
+                            setTimeout(() => window.location.reload(), 800);
+                        } else {
+                            this.errorMsg = data.message || 'Failed to void task.';
+                        }
+                    } catch (e) {
+                        this.errorMsg = 'Network error while voiding task.';
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+
+                async searchReissueTargets() {
+                    if (!this.reissueSearch || this.reissueSearch.length < 2) {
+                        this.reissueResults = [];
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`/tasks/search-original-tasks?id=${taskId}&search=${encodeURIComponent(this.reissueSearch)}`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        this.reissueResults = await res.json();
+                    } catch (e) {
+                        console.error('Error searching reissue targets:', e);
+                    }
+                },
+
+                async selectReissueTarget(task) {
+                    this.reissueSelected = task;
+                    this.reissueResults = [];
+                    this.reissueSearch = task.reference;
+
+                    try {
+                        const res = await fetch(`/tasks/${taskId}/reissue-preview?new_task_id=${task.id}`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const data = await res.json();
+                        if (data.success) this.reissuePreview = data;
+                    } catch (e) {
+                        console.error('Error loading reissue preview:', e);
+                    }
+                },
+
+                async submitReissue() {
+                    if (!this.reissueSelected) {
+                        this.errorMsg = 'Pick a task to reissue into first.';
+                        return;
+                    }
+                    this.busy = true;
+                    this.errorMsg = null;
+                    this.successMsg = null;
+                    try {
+                        const res = await fetch(`/tasks/${taskId}/reissue`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({ new_task_id: this.reissueSelected.id })
+                        });
+                        const data = await res.json();
+
+                        if (res.status === 202 && data.pending_approval) {
+                            this.successMsg = data.message + ' (request #' + data.pending_action_id + ')';
+                            this.panel = null;
+                        } else if (data.success) {
+                            this.successMsg = 'Task reissued.';
+                            this.panel = null;
+                            setTimeout(() => window.location.reload(), 800);
+                        } else {
+                            this.errorMsg = data.message || 'Failed to reissue task.';
+                        }
+                    } catch (e) {
+                        this.errorMsg = 'Network error while reissuing task.';
+                    } finally {
+                        this.busy = false;
+                    }
+                }
+            };
         }
     </script>
 

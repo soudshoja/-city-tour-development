@@ -43,6 +43,19 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'update agent', 'group' => 'agent']);
         Permission::firstOrCreate(['name' => 'delete agent', 'group' => 'agent']);
         Permission::firstOrCreate(['name' => 'view task price', 'group' => 'task']);
+        // W6.S (w6-brief.md "Consolidation + fixes" item 3): void/reissue/bulkVoid/switchInvoice
+        // abilities added to TaskPolicy. Registered as ordinary, explicitly-grantable permissions
+        // -- same convention as every other 'task' permission above -- rather than an
+        // accountant-default bypass, since none of the pre-existing task abilities auto-grant
+        // accountant either.
+        Permission::firstOrCreate(['name' => 'void task', 'group' => 'task']);
+        Permission::firstOrCreate(['name' => 'reissue task', 'group' => 'task']);
+        Permission::firstOrCreate(['name' => 'bulk void task', 'group' => 'task']);
+        Permission::firstOrCreate(['name' => 'switch invoice task', 'group' => 'task']);
+        // W6.U "Task actions" (void-with-fee / reissue-with-fee approval step) --
+        // TaskPolicy::approveFeeOverride(). Same explicitly-grantable convention as the four
+        // W6.S permissions immediately above.
+        Permission::firstOrCreate(['name' => 'approve task fee override', 'group' => 'task']);
         Permission::firstOrCreate(['name' => 'create invoice', 'group' => 'invoice']);
         Permission::firstOrCreate(['name' => 'view invoice', 'group' => 'invoice']);
         Permission::firstOrCreate(['name' => 'update invoice', 'group' => 'invoice']);

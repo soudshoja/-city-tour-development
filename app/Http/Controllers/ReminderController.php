@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Reminder;
-use App\Models\Invoice;
-use App\Models\Payment;
 use App\Models\Agent;
 use App\Models\Client;
-use App\Http\Controllers\ResayilController;
-use Illuminate\Support\Facades\Log;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Reminder;
 use App\Models\Role;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ReminderController extends Controller
@@ -24,10 +23,10 @@ class ReminderController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             if ($companyId) {
-                $agentIds = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->pluck('id');
+                $agentIds = Agent::whereHas('branch', fn ($q) => $q->where('company_id', $companyId))->pluck('id');
             }
         } elseif ($user->role_id == Role::COMPANY) {
-            $agentIds = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))->pluck('id');
+            $agentIds = Agent::whereHas('branch', fn ($q) => $q->where('company_id', $companyId))->pluck('id');
         } elseif ($user->role_id == Role::BRANCH) {
             $agentIds = Agent::where('branch_id', $user->branch->id)->pluck('id');
         } elseif ($user->role_id == Role::AGENT) {
@@ -41,7 +40,7 @@ class ReminderController extends Controller
         $sortDirection = $request->get('direction', 'asc');
 
         $allowedSorts = ['invoice_number', 'due_date', 'client_name', 'agent_name'];
-        if (!in_array($sortField, $allowedSorts)) {
+        if (! in_array($sortField, $allowedSorts)) {
             $sortField = 'due_date';
         }
         $sortDirection = $sortDirection === 'desc' ? 'desc' : 'asc';
@@ -52,10 +51,10 @@ class ReminderController extends Controller
                 'agent',
                 'reminders' => function ($query) {
                     $query->orderBy('scheduled_at', 'asc');
-                }
+                },
             ]);
 
-        if (!$user->role_id == Role::ADMIN || $companyId) {
+        if (! $user->role_id == Role::ADMIN || $companyId) {
             $query->whereIn('invoices.agent_id', $agentIds);
         }
 
@@ -69,7 +68,7 @@ class ReminderController extends Controller
                 ->orderBy('agents.name', $sortDirection)
                 ->select('invoices.*');
         } else {
-            $query->orderBy('invoices.' . $sortField, $sortDirection);
+            $query->orderBy('invoices.'.$sortField, $sortDirection);
         }
 
         // Search filter
@@ -94,7 +93,7 @@ class ReminderController extends Controller
             ->orderBy('group_id')
             ->orderBy('scheduled_at');
 
-        if (!$user->role_id == Role::ADMIN || $companyId) {
+        if (! $user->role_id == Role::ADMIN || $companyId) {
             $paymentRemindersQuery->whereIn('agent_id', $agentIds);
         }
 
@@ -105,7 +104,7 @@ class ReminderController extends Controller
             ->orderBy('created_at', 'desc')
             ->orderBy('scheduled_at', 'asc');
 
-        if (!$user->role_id == Role::ADMIN || $companyId) {
+        if (! $user->role_id == Role::ADMIN || $companyId) {
             $allRemindersQuery->whereIn('agent_id', $agentIds);
         }
 
@@ -192,7 +191,7 @@ class ReminderController extends Controller
 
         if ($targetType === 'invoice') {
             Log::info('Target type is Invoice. Searching the target invoice');
-            $invoice = Invoice::with(['client', 'agent'])->findOrFail($request->invoice_id);
+            $invoice = Invoice::with(['client', 'agent.branch.company'])->findOrFail($request->invoice_id);
 
             $clientId = $invoice->client_id;
             $agentId = $invoice->agent_id;
@@ -200,10 +199,14 @@ class ReminderController extends Controller
             $paymentId = null;
 
             $formattedDueDate = \Carbon\Carbon::parse($invoice->due_date)->format('jS F Y');
-            $invoiceLink = route('invoice.show', [
-                'companyId' => $client->agent->branch->company_id,
-                'invoiceNumber' => $invoice->invoice_number,
-            ]);
+            // Client-facing link: invoice.show now requires a logged-in,
+            // same-company staff session (see InvoiceController's
+            // authorizeStaffInvoiceAccess()), so a reminder sent to the
+            // client needs the signed, unauthenticated '.public' variant
+            // instead -- see Invoice::publicUrl(). The agent reminder below
+            // reuses the same link, so it also becomes signed; that's fine,
+            // an authenticated agent can still open it.
+            $invoiceLink = $invoice->publicUrl('show');
 
             $clientMessageText = "Please be reminded that you have an outstanding payment to invoice {$invoice->invoice_number} of {$invoice->currency} {$invoice->amount} that was past due on {$formattedDueDate}.{$additionalInfo}\n\nPlease click the following link to make the payment to the invoice:\n{$invoiceLink}\n\nShould you require further assistance, feel free to reach out our support team.";
 
@@ -237,7 +240,7 @@ class ReminderController extends Controller
         $intervalValue = (int) ($request->value ?? 1);
         $intervalUnit = $request->unit ?? 'days';
 
-        $resayil = new ResayilController();
+        $resayil = new ResayilController;
         $createdReminders = [];
         $firstReminderSent = false;
 
@@ -278,8 +281,8 @@ class ReminderController extends Controller
                 }
 
                 // Determine status based on results
-                $clientSuccess = !$sendToClient || $clientResult['success'];
-                $agentSuccess = !$sendToAgent || $agentResult['success'];
+                $clientSuccess = ! $sendToClient || $clientResult['success'];
+                $agentSuccess = ! $sendToAgent || $agentResult['success'];
 
                 if ($clientSuccess && $agentSuccess) {
                     $status = 'sent';
@@ -297,7 +300,7 @@ class ReminderController extends Controller
                     ? now()->addHours($intervalValue * $i)
                     : now()->addDays($intervalValue * $i);
 
-                Log::info("Reminder #{$reminderNumber} - Scheduled for: " . $scheduledAt->format('Y-m-d H:i:s'));
+                Log::info("Reminder #{$reminderNumber} - Scheduled for: ".$scheduledAt->format('Y-m-d H:i:s'));
             }
 
             $reminder = Reminder::create([
@@ -331,12 +334,16 @@ class ReminderController extends Controller
 
         if ($firstReminderSent) {
             $recipients = [];
-            if ($sendToClient) $recipients[] = "Client ({$clientCountryCode}{$clientPhone})";
-            if ($sendToAgent) $recipients[] = "Agent ({$agentCountryCode}{$agentPhone})";
+            if ($sendToClient) {
+                $recipients[] = "Client ({$clientCountryCode}{$clientPhone})";
+            }
+            if ($sendToAgent) {
+                $recipients[] = "Agent ({$agentCountryCode}{$agentPhone})";
+            }
 
             $message = $reminderCount > 1
-                ? "First reminder sent to " . implode(' & ', $recipients) . "! {$reminderCount} reminders scheduled in total."
-                : "Reminder sent to " . implode(' & ', $recipients);
+                ? 'First reminder sent to '.implode(' & ', $recipients)."! {$reminderCount} reminders scheduled in total."
+                : 'Reminder sent to '.implode(' & ', $recipients);
 
             return redirect()->back()->with('success', $message);
         } else {
@@ -367,6 +374,6 @@ class ReminderController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', $invoices->count() . ' reminders created!');
+        return redirect()->back()->with('success', $invoices->count().' reminders created!');
     }
 }

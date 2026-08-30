@@ -1,0 +1,418 @@
+- generic [active] [ref=f36e1]:
+  - link "Skip to content" [ref=f36e2] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=f36e3]:
+    - generic [ref=f36e4]:
+      - link "TravelERP home" [ref=f36e5] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=f36e9]:
+          - text: TravelERP
+          - generic [ref=f36e10]: Agency operations platform
+      - navigation "Primary" [ref=f36e11]:
+        - link "Modules" [ref=f36e12] [cursor=pointer]:
+          - /url: "#modules"
+        - link "How it works" [ref=f36e13] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "By the numbers" [ref=f36e14] [cursor=pointer]:
+          - /url: "#numbers"
+        - link "Get in touch" [ref=f36e15] [cursor=pointer]:
+          - /url: "#contact"
+      - generic [ref=f36e16]:
+        - button "Switch to Arabic" [ref=f36e17] [cursor=pointer]:
+          - generic [ref=f36e21]: العربية
+        - link "Contact" [ref=f36e22] [cursor=pointer]:
+          - /url: "#contact"
+  - main [ref=f36e23]:
+    - generic [ref=f36e24]:
+      - generic [ref=f36e26]:
+        - paragraph [ref=f36e27]: Operations platform for travel agencies
+        - heading "Every booking becomes a task. Every task becomes revenue you can track." [level=1] [ref=f36e28]
+        - paragraph [ref=f36e29]: TravelERP turns booking documents — GDS ticket files, supplier PDFs, WhatsApp photos, inbox emails, and supplier APIs — into structured tasks automatically, then carries each one through invoicing, payment collection, and agent profit calculation without re-typing a thing.
+        - generic [ref=f36e30]:
+          - status "Registration opens in Phase 3, not yet available" [ref=f36e31]:
+            - generic [ref=f36e33]: Request early access — opening soon
+          - link "See the five modules" [ref=f36e34] [cursor=pointer]:
+            - /url: "#modules"
+        - paragraph [ref=f36e35]:
+          - strong [ref=f36e36]: Built for travel agencies
+          - text: booking flights, hotels, visas, insurance, tours, cruises, cars, rail, esim, events, lounges, and ferries across multiple branches and agents.
+      - generic "Production usage figures" [ref=f36e38]:
+        - generic [ref=f36e39]:
+          - generic [ref=f36e40]: 11,119
+          - generic [ref=f36e41]: Tasks processed
+        - generic [ref=f36e42]:
+          - generic [ref=f36e43]: 4,216
+          - generic [ref=f36e44]: Payments processed
+        - generic [ref=f36e45]:
+          - generic [ref=f36e46]: 1,936
+          - generic [ref=f36e47]: Client records
+        - generic [ref=f36e48]:
+          - generic [ref=f36e49]: "22"
+          - generic [ref=f36e50]: Active agents
+    - generic [ref=f36e52]:
+      - generic [ref=f36e53]:
+        - paragraph [ref=f36e54]: The platform
+        - heading "Five modules, one system, running on real production data." [level=2] [ref=f36e55]
+      - article [ref=f36e56]:
+        - generic [ref=f36e57]:
+          - generic [ref=f36e58]:
+            - generic [ref=f36e59]: "01"
+            - generic [ref=f36e60]: Live in production
+          - heading "Task Uploader" [level=3] [ref=f36e68]
+          - paragraph [ref=f36e69]: Drop in a booking document from anywhere it arrives — GDS ticket file, supplier PDF, WhatsApp photo, inbox email, or a supplier's own booking API — and it becomes a structured task automatically, no retyping.
+          - list [ref=f36e70]:
+            - listitem [ref=f36e71]:
+              - generic [ref=f36e74]: "Six live intake channels: watched per-supplier folders scanned on a schedule, manual upload, inbound email parsing, WhatsApp media via the Resayil webhook, a generic API/n8n webhook endpoint, and direct supplier API integrations (TBO Holidays, Magic Holiday, DOTW hotel supply)."
+            - listitem [ref=f36e75]:
+              - generic [ref=f36e78]: "Six parsing methods feed one common task shape: a dedicated Amadeus GDS regex parser, AI-based extraction for PDFs and free-form documents, GPT-4o vision passport-image extraction that auto-creates the client record, a text-receipt regex parser, an email-body AI extractor, and Excel/CSV bulk import."
+            - listitem [ref=f36e79]:
+              - generic [ref=f36e82]: 12 task types — flight, hotel, visa, insurance, tour, cruise, car, rail, esim, event, lounge, ferry — each with its own detail schema.
+            - listitem [ref=f36e83]:
+              - generic [ref=f36e86]: "Built-in safeguards: duplicate-file detection, per-supplier surcharge and auto-billing rules, agent/branch auto-resolution, original-task linking for reissue/refund/void tracking, and a processing lock so overlapping runs never double-import a file."
+            - listitem [ref=f36e87]:
+              - generic [ref=f36e90]: Multi-passenger files split automatically into one task per traveler; connecting flights are captured as linked segments on the same task.
+          - generic [ref=f36e91]:
+            - generic [ref=f36e92]:
+              - generic [ref=f36e93]: 11,119
+              - generic [ref=f36e94]: tasks processed
+            - generic [ref=f36e95]:
+              - generic [ref=f36e96]: "95"
+              - generic [ref=f36e97]: active supplier companies
+            - generic [ref=f36e98]:
+              - generic [ref=f36e99]: "83"
+              - generic [ref=f36e100]: intake folders watched
+            - generic [ref=f36e101]:
+              - generic [ref=f36e102]: 9 / 12
+              - generic [ref=f36e103]: task types live
+        - generic [ref=f36e105]:
+          - generic [ref=f36e106]: TASK · 01
+          - generic [ref=f36e112]:
+            - generic [ref=f36e113]:
+              - generic [ref=f36e114]: 11,119
+              - generic [ref=f36e115]: tasks processed
+            - generic [ref=f36e116]:
+              - generic [ref=f36e117]: "95"
+              - generic [ref=f36e118]: active supplier companies
+          - generic [ref=f36e120]:
+            - generic [ref=f36e121]: Document in
+            - generic [ref=f36e125]: Task out
+      - article [ref=f36e126]:
+        - generic [ref=f36e127]:
+          - generic [ref=f36e128]:
+            - generic [ref=f36e129]: "02"
+            - generic [ref=f36e130]: Live in production
+          - heading "Payment Gateway" [level=3] [ref=f36e136]
+          - paragraph [ref=f36e137]: Take a payment however the client wants to pay — KNET, card, Apple Pay, bank transfer, or a shareable link sent straight to WhatsApp — and the money is reconciled to the right invoice automatically.
+          - list [ref=f36e138]:
+            - listitem [ref=f36e139]:
+              - generic [ref=f36e142]: Four gateways wired end-to-end with live callback and webhook handling — MyFatoorah, Hesabe, Tap, and UPayment — each with its own routes and a payment-method sync command that pulls available methods in automatically. KNET is accepted as a payment method through all four; it isn't a separate integration.
+            - listitem [ref=f36e143]:
+              - generic [ref=f36e146]: "Shareable payment links: an agent generates a link per invoice, or for a partial-payment shortage, and sends it by email or directly through WhatsApp — the client pays without ever logging in."
+            - listitem [ref=f36e147]:
+              - generic [ref=f36e150]: Split and multi-gateway payments on a single invoice, plus payment-method "groups" so a company can offer a curated subset of gateways per invoice or client.
+            - listitem [ref=f36e151]:
+              - generic [ref=f36e154]: Every payment tracks its own gateway fee and settles against the correct company bank account.
+            - listitem [ref=f36e155]:
+              - generic [ref=f36e158]: "Automated background reconciliation: a scheduled job polls gateway status, with a backfill command to repair historical gaps."
+          - generic [ref=f36e159]:
+            - generic [ref=f36e160]:
+              - generic [ref=f36e161]: 4,216
+              - generic [ref=f36e162]: payments processed
+            - generic [ref=f36e163]:
+              - generic [ref=f36e164]: 3,908
+              - generic [ref=f36e165]: via MyFatoorah
+            - generic [ref=f36e166]:
+              - generic [ref=f36e167]: "136"
+              - generic [ref=f36e168]: split / multi-gateway
+            - generic [ref=f36e169]:
+              - generic [ref=f36e170]: 1,902
+              - generic [ref=f36e171]: invoices on record
+        - generic [ref=f36e173]:
+          - generic [ref=f36e174]: PAY · 02
+          - generic [ref=f36e179]:
+            - generic [ref=f36e180]:
+              - generic [ref=f36e181]: 4,216
+              - generic [ref=f36e182]: payments processed
+            - generic [ref=f36e183]:
+              - generic [ref=f36e184]: 1,902
+              - generic [ref=f36e185]: invoices on record
+          - generic [ref=f36e187]:
+            - generic [ref=f36e188]: Invoice
+            - generic [ref=f36e192]: Reconciled
+      - article [ref=f36e193]:
+        - generic [ref=f36e194]:
+          - generic [ref=f36e195]:
+            - generic [ref=f36e196]: "03"
+            - generic [ref=f36e197]: Live in production
+          - heading "Customer CRM" [level=3] [ref=f36e204]
+          - paragraph [ref=f36e205]: One profile per client — every task, invoice, credit, and payment they've ever had, who's allowed to talk to them, and a one-tap way to send them a payment reminder on WhatsApp.
+          - list [ref=f36e206]:
+            - listitem [ref=f36e207]:
+              - generic [ref=f36e210]: A full client profile screen showing paid vs. unpaid totals, running credit balance, credit history, task count, and invoice count in one view.
+            - listitem [ref=f36e211]:
+              - generic [ref=f36e214]: "Corporate and family client groups: a company account and its individual travelers can be managed together through parent/sub-client linking."
+            - listitem [ref=f36e215]:
+              - generic [ref=f36e218]: "Client ownership and duplicate protection: when two agents try to create the same client, an assignment-request workflow routes it for approval instead of silently duplicating the record."
+            - listitem [ref=f36e219]:
+              - generic [ref=f36e222]: A client credit wallet — top-ups, balance tracking, and credit applied directly against invoices.
+            - listitem [ref=f36e223]:
+              - generic [ref=f36e226]: Automated payment reminders on a schedule, plus a screen listing every unpaid invoice by due date with sent reminders tracked per invoice.
+            - listitem [ref=f36e227]:
+              - generic [ref=f36e230]: Client data entry straight from a passport photo — GPT-4o vision extracts name, passport number, civil number, date of birth, nationality, and expiry into a new or existing client record.
+        - generic [ref=f36e232]:
+          - generic [ref=f36e233]:
+            - generic [ref=f36e234]: 1,936
+            - generic [ref=f36e235]: client records
+          - generic [ref=f36e236]:
+            - generic [ref=f36e237]: 5,472
+            - generic [ref=f36e238]: credit transactions
+          - generic [ref=f36e239]:
+            - generic [ref=f36e240]: 1,902
+            - generic [ref=f36e241]: invoices linked
+          - generic [ref=f36e242]:
+            - generic [ref=f36e243]: "22"
+            - generic [ref=f36e244]: agents / 3 branches
+      - article [ref=f36e245]:
+        - generic [ref=f36e246]:
+          - generic [ref=f36e247]:
+            - generic [ref=f36e248]: "04"
+            - generic [ref=f36e249]: Live in production
+          - heading "Agent Profit Calculation" [level=3] [ref=f36e256]
+          - paragraph [ref=f36e257]: Every booking shows exactly how much the agency made and how much the agent earns from it — under four different pay structures the owner picks per agent — calculated automatically every month, with a built-in way to recover money when an agent's bookings run at a loss.
+          - list [ref=f36e258]:
+            - listitem [ref=f36e259]:
+              - generic [ref=f36e262]: "Four selectable commission models per agent, computed live off real invoice data: salary-only, commission-only, salary-plus-commission, and a target-gated profit-share model that only pays out once the agent's monthly profit clears a set target."
+            - listitem [ref=f36e263]:
+              - generic [ref=f36e266]: An automated monthly commission run that snapshots salary, target, rate, total commission, and total profit per agent for permanent history.
+            - listitem [ref=f36e267]:
+              - generic [ref=f36e270]: Per-invoice profit stored at the line-item level, so every task's margin is auditable back to the original booking, not just a monthly total.
+            - listitem [ref=f36e271]:
+              - generic [ref=f36e274]: A profit-by-agent report and dashboard totals showing each agent's running contribution and the company-wide sum.
+            - listitem [ref=f36e275]:
+              - generic [ref=f36e278]: An agent settlement system for recovering shortfalls when bookings run at a loss — settled automatically against the agent's accumulated profit balance, or by a payment link they pay directly — with a running settlement number and paid/remaining tracking.
+          - generic [ref=f36e279]:
+            - generic [ref=f36e280]:
+              - generic [ref=f36e281]: "22"
+              - generic [ref=f36e282]: agents configured
+            - generic [ref=f36e283]:
+              - generic [ref=f36e284]: 1,902
+              - generic [ref=f36e285]: invoices with profit data
+            - generic [ref=f36e286]:
+              - generic [ref=f36e287]: "4"
+              - generic [ref=f36e288]: commission models
+            - generic [ref=f36e289]: Monthly history auto-generated
+        - generic [ref=f36e292]:
+          - generic [ref=f36e293]: PROFIT · 04
+          - generic [ref=f36e299]:
+            - generic [ref=f36e300]:
+              - generic [ref=f36e301]: "22"
+              - generic [ref=f36e302]: agents configured
+            - generic [ref=f36e303]:
+              - generic [ref=f36e304]: "4"
+              - generic [ref=f36e305]: commission models
+          - generic [ref=f36e307]:
+            - generic [ref=f36e308]: Booking
+            - generic [ref=f36e312]: Payout
+      - article [ref=f36e313]:
+        - generic [ref=f36e314]:
+          - generic [ref=f36e315]:
+            - generic [ref=f36e316]: "05"
+            - generic [ref=f36e317]: Live integration
+          - heading "Resayil" [level=3] [ref=f36e324]
+          - paragraph [ref=f36e325]: "The WhatsApp number your agents and clients already use becomes part of TravelERP's automation layer: a passport photo or a supplier's PDF turns into a task on its own, invoices and payment links go out the moment they're due, and every reply finds the right agent automatically."
+          - generic [ref=f36e326]:
+            - generic [ref=f36e327]:
+              - heading "Automation & AI" [level=4] [ref=f36e333]
+              - generic [ref=f36e334]: AI-powered
+              - list [ref=f36e337]:
+                - listitem [ref=f36e338]:
+                  - generic [ref=f36e342]: Booking documents reach the client automatically — ticket, hotel voucher, visa, invoice, or payment link — sent to WhatsApp the moment they're issued.
+                - listitem [ref=f36e343]:
+                  - generic [ref=f36e347]: "Inbound documents read themselves: a supplier's PDF or a client's passport photo sent on WhatsApp becomes a task in the system without anyone typing it in."
+                - listitem [ref=f36e348]:
+                  - generic [ref=f36e352]: Reminders send themselves, too — unpaid invoices, uninvoiced tasks, and upcoming travel all trigger a WhatsApp message on schedule.
+                - listitem [ref=f36e353]:
+                  - generic [ref=f36e360]: "Replies route themselves: a client's message finds the right agent and department automatically, with no manual handoff."
+                - listitem [ref=f36e361]:
+                  - generic [ref=f36e365]: Scheduled sends, auto-expiring messages, and idempotent delivery — a retried payment webhook can never double-message a client.
+            - generic [ref=f36e366]:
+              - heading "The shared inbox" [level=4] [ref=f36e372]
+              - list [ref=f36e373]:
+                - listitem [ref=f36e374]:
+                  - generic [ref=f36e380]: One inbox, every agent — labels, quick replies, automatic replies, and per-agent analytics in a shared multi-agent view.
+                - listitem [ref=f36e381]:
+                  - generic [ref=f36e384]: Works as a slide-out drawer while an agent is on a task, or a full-screen view inside TravelERP — whichever the moment calls for.
+                - listitem [ref=f36e385]:
+                  - generic [ref=f36e391]: One login. Staff never sign in twice just to answer a WhatsApp message.
+            - generic [ref=f36e392]:
+              - heading "Reach" [level=4] [ref=f36e398]
+              - list [ref=f36e399]:
+                - listitem [ref=f36e400]:
+                  - generic [ref=f36e406]: Text, images, documents, interactive buttons, list menus, polls, locations, and contact cards — not just plain text.
+                - listitem [ref=f36e407]:
+                  - generic [ref=f36e411]: WhatsApp Business templates keep the conversation open past the 24-hour reply window.
+                - listitem [ref=f36e412]:
+                  - generic [ref=f36e417]: Bulk campaigns with pacing and a start/stop control, number validation before sending, and delivery logs that answer "did they get it?"
+                - listitem [ref=f36e418]:
+                  - generic [ref=f36e421]: Groups and channels, for agencies running WhatsApp communities alongside one-to-one chats.
+          - generic [ref=f36e422]:
+            - generic [ref=f36e423]:
+              - generic [ref=f36e424]: "10"
+              - generic [ref=f36e425]: endpoints in production
+            - generic [ref=f36e426]: Wired into Task Uploader & Agent Profit
+        - generic [ref=f36e428]:
+          - img "Resayil" [ref=f36e430]
+          - generic "How a document becomes a task, and an invoice becomes a payment, automatically through Resayil" [ref=f36e431]:
+            - generic [ref=f36e432]:
+              - generic [ref=f36e433]: Photo or PDF
+              - generic [ref=f36e441]: AI reads it
+              - generic [ref=f36e449]: Task created
+            - generic [ref=f36e455]:
+              - generic [ref=f36e456]: Invoice due
+              - generic [ref=f36e463]: Sent on WhatsApp
+              - generic [ref=f36e470]: Paid
+    - generic [ref=f36e476]:
+      - generic [ref=f36e477]:
+        - heading "Four gateways, wired end-to-end — KNET works through every one of them." [level=2] [ref=f36e479]
+        - paragraph [ref=f36e480]: MyFatoorah, Hesabe, Tap, and UPayment each have their own API credentials, callback routes, and controller logic running in production — not stubs. KNET, Visa/Mastercard, Apple Pay, Google Pay, and Samsung Pay are accepted as payment methods delivered through these four gateways, the same way most Kuwait merchants offer them — so KNET is listed here as a payment method, not counted as a separate integration.
+      - generic "Payment gateways wired end-to-end in production" [ref=f36e481]:
+        - generic [ref=f36e482]:
+          - img "MyFatoorah"
+        - generic [ref=f36e483]:
+          - img "Tap Payments"
+        - generic [ref=f36e484]:
+          - img "Hesabe"
+        - generic [ref=f36e485]:
+          - img "UPayment"
+      - generic [ref=f36e486]:
+        - generic [ref=f36e487]: Accepted payment methods
+        - generic [ref=f36e488]:
+          - generic [ref=f36e489]:
+            - img "KNET"
+          - generic [ref=f36e490]: Visa / Mastercard
+          - generic [ref=f36e491]: Apple Pay
+          - generic [ref=f36e492]: Google Pay
+          - generic [ref=f36e493]: Samsung Pay
+          - generic [ref=f36e494]: Bank transfer
+      - paragraph [ref=f36e495]: Gateway and payment-method marks are property of their respective owners.
+    - generic [ref=f36e497]:
+      - generic [ref=f36e498]:
+        - heading "81 active suppliers feeding tasks into the platform automatically." [level=2] [ref=f36e500]
+        - paragraph [ref=f36e501]: Airlines, hotel-bed banks, visa processors, GDS feeds, and insurance providers — each one has a supplier profile, a watched intake folder or API connection, and its own surcharge rules configured in production. These are the names agents see most often.
+      - generic "Recognizable suppliers integrated in production" [ref=f36e502]:
+        - generic [ref=f36e503]:
+          - img "Kuwait Airways"
+        - generic [ref=f36e504]:
+          - img "Emirates"
+        - generic [ref=f36e505]:
+          - img "Jazeera Airways"
+        - generic [ref=f36e506]:
+          - img "Turkish Airlines"
+        - generic [ref=f36e507]:
+          - img "flydubai"
+        - generic [ref=f36e508]:
+          - img "Air Arabia"
+        - generic [ref=f36e509]:
+          - img "British Airways"
+        - generic [ref=f36e510]:
+          - img "Saudia"
+        - generic [ref=f36e511]:
+          - img "flynas"
+        - generic [ref=f36e512]:
+          - img "Royal Jordanian"
+        - generic [ref=f36e513]:
+          - img "Iberia"
+        - generic [ref=f36e514]:
+          - img "AirAsia"
+        - generic [ref=f36e515]:
+          - img "flyadeal"
+        - generic [ref=f36e516]:
+          - img "IndiGo"
+        - generic [ref=f36e517]:
+          - img "Wizz Air"
+        - generic [ref=f36e518]:
+          - img "WebBeds (DOTW)"
+        - generic [ref=f36e519]:
+          - img "TBO Holidays"
+        - generic [ref=f36e520]:
+          - img "Almosafer"
+      - paragraph [ref=f36e521]: + 63 more suppliers across visas, insurance, cruises, rail, and hotel-bed banks.
+      - group [ref=f36e522]:
+        - generic "See the full supplier list" [ref=f36e523] [cursor=pointer]
+      - paragraph [ref=f36e524]: All trademarks are property of their respective owners; listed suppliers reflect live production integrations.
+    - generic [ref=f36e526]:
+      - generic [ref=f36e527]:
+        - heading "From a document landing anywhere to an agent's profit calculated — in five steps." [level=2] [ref=f36e529]
+        - paragraph [ref=f36e530]: Every task moves through the same path, whether it started as a GDS file, a WhatsApp photo, or a supplier API response.
+      - generic [ref=f36e531]:
+        - generic [ref=f36e532]:
+          - paragraph [ref=f36e536]: STEP 01
+          - heading "Ingest" [level=4] [ref=f36e537]
+          - paragraph [ref=f36e538]: A booking document arrives — a GDS ticket file, supplier PDF, WhatsApp photo, inbox email, or a supplier API response.
+        - generic [ref=f36e539]:
+          - paragraph [ref=f36e544]: STEP 02
+          - heading "Task" [level=4] [ref=f36e545]
+          - paragraph [ref=f36e546]: It's parsed automatically into one of 12 structured task types — flight, hotel, visa, insurance, tour, and more.
+        - generic [ref=f36e547]:
+          - paragraph [ref=f36e552]: STEP 03
+          - heading "Invoice" [level=4] [ref=f36e553]
+          - paragraph [ref=f36e554]: The task links to the client's profile and an invoice is generated, ready for payment.
+        - generic [ref=f36e555]:
+          - paragraph [ref=f36e559]: STEP 04
+          - heading "Pay" [level=4] [ref=f36e560]
+          - paragraph [ref=f36e561]: The client pays by KNET, card, Apple Pay, bank transfer, or a payment link sent straight to WhatsApp.
+        - generic [ref=f36e562]:
+          - paragraph [ref=f36e567]: STEP 05
+          - heading "Profit" [level=4] [ref=f36e568]
+          - paragraph [ref=f36e569]: Commission and profit are calculated automatically under the agent's assigned pay structure.
+    - generic [ref=f36e572]:
+      - paragraph [ref=f36e573]: By the numbers
+      - heading "Not a demo. This is what's already running." [level=2] [ref=f36e574]
+      - paragraph [ref=f36e575]: Every figure below is pulled from live production usage across the three companies currently operating on the platform.
+      - generic [ref=f36e576]:
+        - generic [ref=f36e577]:
+          - generic [ref=f36e578]: 11,119
+          - generic [ref=f36e579]: Tasks processed
+        - generic [ref=f36e580]:
+          - generic [ref=f36e581]: 4,216
+          - generic [ref=f36e582]: Payments processed
+        - generic [ref=f36e583]:
+          - generic [ref=f36e584]: 1,902
+          - generic [ref=f36e585]: Invoices issued
+        - generic [ref=f36e586]:
+          - generic [ref=f36e587]: 1,936
+          - generic [ref=f36e588]: Client records
+        - generic [ref=f36e589]:
+          - generic [ref=f36e590]: "22"
+          - generic [ref=f36e591]: Active agents
+        - generic [ref=f36e592]:
+          - generic [ref=f36e593]: "95"
+          - generic [ref=f36e594]: Active supplier companies
+        - generic [ref=f36e595]:
+          - generic [ref=f36e596]: 5,472
+          - generic [ref=f36e597]: Credit transactions tracked
+        - generic [ref=f36e598]:
+          - generic [ref=f36e599]: "3"
+          - generic [ref=f36e600]: Companies live, all in KWD
+      - paragraph [ref=f36e601]: Figures reflect current production usage and grow daily as more tasks are processed.
+    - generic [ref=f36e604]:
+      - generic [ref=f36e605]:
+        - paragraph [ref=f36e606]: Get in touch
+        - heading "Early access opens in Phase 3." [level=2] [ref=f36e607]
+        - paragraph [ref=f36e608]: TravelERP is currently in pilot with its first agencies. Public registration isn't open yet — but if you run a travel agency and want to be on the list when it is, reach out and we'll follow up directly.
+      - generic [ref=f36e609]:
+        - status "Registration opens in Phase 3, not yet available" [ref=f36e610]:
+          - generic [ref=f36e612]: Register — opening in Phase 3
+        - link "Email us — hello@resayil.io" [ref=f36e613] [cursor=pointer]:
+          - /url: mailto:hello@resayil.io?subject=TravelERP%20early%20access
+        - paragraph [ref=f36e614]: No spam, no commitment — just a note when access opens.
+  - contentinfo [ref=f36e615]:
+    - generic [ref=f36e616]:
+      - generic [ref=f36e617]: © 2026 TravelERP. Built by the team behind Resayil.
+      - generic [ref=f36e618]:
+        - link "Modules" [ref=f36e619] [cursor=pointer]:
+          - /url: "#modules"
+        - link "How it works" [ref=f36e620] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "Contact" [ref=f36e621] [cursor=pointer]:
+          - /url: mailto:hello@resayil.io

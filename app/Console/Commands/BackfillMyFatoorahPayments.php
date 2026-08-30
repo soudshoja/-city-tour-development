@@ -53,7 +53,7 @@ class BackfillMyFatoorahPayments extends Command
                 continue;
             }
 
-            $result = $this->getMFPaymentStatus($payment->payment_reference);
+            $result = $this->getMFPaymentStatus($payment->payment_reference, $payment);
 
             if (empty($result['success'])) {
                 Log::warning('Skipping MyFatoorah backfill due to failed status fetch', [
@@ -148,10 +148,15 @@ class BackfillMyFatoorahPayments extends Command
         return self::SUCCESS;
     }
 
-    private function getMFPaymentStatus($invoiceId): array
+    private function getMFPaymentStatus($invoiceId, ?Payment $payment = null): array
     {
+        // Company is resolvable here via the payment's agent -> branch -> company
+        // chain (same pattern already used in MyFatoorah::createCharge / Tap::createCharge),
+        // so thread it through rather than leaving this call unscoped.
+        $companyId = $payment?->agent?->branch?->company?->id;
+
         $configService = new GatewayConfigService();
-        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig($companyId);
 
         if ($myfatoorahConfig['status'] === 'error') {
             return $myfatoorahConfig;

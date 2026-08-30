@@ -1,0 +1,1359 @@
+- generic [active] [ref=f48e1]:
+  - generic [ref=f48e2]:
+    - generic: Switch Company
+    - banner [ref=f48e3]:
+      - paragraph [ref=f48e5]: CityTourApp
+      - generic [ref=f48e6]:
+        - generic [ref=f48e7]:
+          - link [ref=f48e8] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+            - img "Logo" [ref=f48e9]
+          - navigation [ref=f48e11]:
+            - list [ref=f48e12]:
+              - generic [ref=f48e13] [cursor=pointer]:
+                - generic [ref=f48e14]: Tasks
+                - list:
+                  - generic:
+                    - link "Tasks list":
+                      - /url: https://development.citycommerce.group/tasks
+                  - generic:
+                    - link "Outstanding":
+                      - /url: https://development.citycommerce.group/payment/outstanding
+              - generic [ref=f48e21] [cursor=pointer]:
+                - generic [ref=f48e22]: Finances
+                - list:
+                  - generic:
+                    - link "Chart Of Account":
+                      - /url: https://development.citycommerce.group/coa
+                  - generic:
+                    - link "Payment Voucher":
+                      - /url: https://development.citycommerce.group/bank-payments
+                  - generic:
+                    - link "Receipt Voucher":
+                      - /url: https://development.citycommerce.group/receipt-voucher
+                  - generic:
+                    - link "Receivable":
+                      - /url: https://development.citycommerce.group/receivable-details/receivable-create
+                  - generic:
+                    - link "Payable":
+                      - /url: https://development.citycommerce.group/payable-details/payable-create
+                  - generic:
+                    - link "Accounting":
+                      - /url: https://development.citycommerce.group/accounting-summary
+                  - generic:
+                    - link "Journal Entries":
+                      - /url: https://development.citycommerce.group/journal-entries/all
+                  - generic:
+                    - link "Lock Management":
+                      - /url: https://development.citycommerce.group/lock-management
+              - generic [ref=f48e28] [cursor=pointer]:
+                - generic [ref=f48e29]: Invoices
+                - list:
+                  - generic:
+                    - link "Invoices List":
+                      - /url: https://development.citycommerce.group/invoices
+                  - generic:
+                    - link "Invoices Link":
+                      - /url: https://development.citycommerce.group/invoices/link
+                  - generic:
+                    - link "Payment Link":
+                      - /url: https://development.citycommerce.group/payment/link
+                  - generic:
+                    - link "Refund":
+                      - /url: https://development.citycommerce.group/refunds
+                  - generic:
+                    - link "Auto Billing":
+                      - /url: https://development.citycommerce.group/auto-billing
+                  - generic:
+                    - link "Reminder":
+                      - /url: https://development.citycommerce.group/reminder
+              - link "Resayil" [ref=f48e38] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/resayil
+              - generic [ref=f48e40] [cursor=pointer]:
+                - generic [ref=f48e41]: Users
+                - list:
+                  - generic:
+                    - link "Users List":
+                      - /url: https://development.citycommerce.group/users/adminsList
+                  - generic:
+                    - link "Companies List":
+                      - /url: https://development.citycommerce.group/companies
+                  - generic:
+                    - link "Branches List":
+                      - /url: https://development.citycommerce.group/branches
+                  - generic:
+                    - link "Agents List":
+                      - /url: https://development.citycommerce.group/agents
+                  - generic:
+                    - link "Clients List":
+                      - /url: https://development.citycommerce.group/clients
+              - generic [ref=f48e51] [cursor=pointer]:
+                - generic [ref=f48e52]: Reports
+                - list:
+                  - generic:
+                    - link "Paid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/paid-report
+                  - generic:
+                    - link "Unpaid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/unpaid-report
+                  - generic:
+                    - link "Profit & Loss":
+                      - /url: https://development.citycommerce.group/reports/profit-loss
+                  - generic:
+                    - link "Bank Settlement":
+                      - /url: https://development.citycommerce.group/reports/settlements
+                  - generic:
+                    - link "Transaction List":
+                      - /url: https://development.citycommerce.group/coa/transactions
+                  - generic:
+                    - link "Creditors Report":
+                      - /url: https://development.citycommerce.group/reports/creditors
+                  - generic:
+                    - link "Daily Sales":
+                      - /url: https://development.citycommerce.group/reports/daily-sales
+                  - generic:
+                    - link "Task Report":
+                      - /url: https://development.citycommerce.group/reports/tasks
+                  - generic:
+                    - link "Client Report":
+                      - /url: https://development.citycommerce.group/reports/client
+                  - generic:
+                    - link "Payment Gateways Report":
+                      - /url: https://development.citycommerce.group/reports/payment-gateways
+              - generic [ref=f48e61] [cursor=pointer]:
+                - generic [ref=f48e62]: Settings
+                - list:
+                  - generic:
+                    - link "Settings":
+                      - /url: https://development.citycommerce.group/settings
+                    - list:
+                      - generic:
+                        - link "System Setting":
+                          - /url: https://development.citycommerce.group/system-settings
+                  - generic:
+                    - link "Suppliers":
+                      - /url: https://development.citycommerce.group/suppliers
+                  - generic:
+                    - link "Manage Roles":
+                      - /url: https://development.citycommerce.group/role
+                  - generic:
+                    - link "Documentations":
+                      - /url: https://development.citycommerce.group/docs/user
+                    - list:
+                      - generic:
+                        - link "User Docs":
+                          - /url: https://development.citycommerce.group/docs/user
+                      - generic:
+                        - link "API Docs":
+                          - /url: https://development.citycommerce.group/docs/api
+                      - generic:
+                        - link "Developer Docs":
+                          - /url: https://development.citycommerce.group/docs/developer
+                  - generic:
+                    - link "Currency Exchange":
+                      - /url: https://development.citycommerce.group/exchange/index
+                    - list:
+                      - generic:
+                        - link "Exchange History":
+                          - /url: https://development.citycommerce.group/exchange/histories
+        - generic [ref=f48e70]:
+          - generic [ref=f48e72] [cursor=pointer]
+          - generic [ref=f48e77] [cursor=pointer]
+          - generic [ref=f48e82] [cursor=pointer]
+  - main [ref=f48e86]:
+    - generic [ref=f48e88]:
+      - generic [ref=f48e89]:
+        - generic [ref=f48e90]:
+          - link "Dashboard" [ref=f48e92] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f48e101] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f48e109] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f48e115] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Currency Exchange" [ref=f48e121] [cursor=pointer]
+          - button "Switch Company" [ref=f48e128] [cursor=pointer]
+          - button "Language" [ref=f48e133] [cursor=pointer]
+        - generic [ref=f48e140] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f48e141]
+      - generic [ref=f48e144]:
+        - generic [ref=f48e145]:
+          - heading "Journal Entries" [level=1] [ref=f48e146]
+          - navigation [ref=f48e147]:
+            - list [ref=f48e148]:
+              - listitem [ref=f48e149]:
+                - link "Accounting" [ref=f48e150] [cursor=pointer]:
+                  - /url: https://development.citycommerce.group/accounting-summary
+              - listitem [ref=f48e151]: / Journal Entries
+          - generic [ref=f48e153]:
+            - generic [ref=f48e154]:
+              - generic [ref=f48e155]: From
+              - textbox [ref=f48e156]: 2026-08-01
+            - generic [ref=f48e157]:
+              - generic [ref=f48e158]: To
+              - textbox [ref=f48e159]: 2026-08-31
+            - generic [ref=f48e160]:
+              - generic [ref=f48e161]: Account
+              - combobox [ref=f48e162]:
+                - option "All accounts" [selected]
+                - option "158761106 - CITY TRAVELERS"
+                - option "42212122"
+                - option "Accounts Payable"
+                - option "Accounts Receivable"
+                - option "Accrued Expenses"
+                - option "Accumulated Depreciation"
+                - option "Administrative Expenses"
+                - option "Advances"
+                - option "Agent Bonus"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Loss Receivable"
+                - option "Agent Profit Payable"
+                - option "Agent Salaries"
+                - option "Agents/Branches"
+                - option "Ahli United Bank Kuwait"
+                - option "Ahmad Elshafey"
+                - option "Ahmad Elshafey"
+                - option "Ahmed Abdalla"
+                - option "Ahmed Abdalla"
+                - option "Air Arabia"
+                - option "Air Arabia"
+                - option "Air Cario NDC"
+                - option "Air Cario NDC"
+                - option "Air Cario NDC"
+                - option "Air Cario NDC"
+                - option "Airalo"
+                - option "Airalo"
+                - option "AirAsia"
+                - option "AirAsia"
+                - option "AirAsia"
+                - option "AirAsia"
+                - option "AJET Airline"
+                - option "AJET Airline"
+                - option "Alam Al-Raya"
+                - option "Alam Al-Raya"
+                - option "Alam Al-Raya"
+                - option "Alam Al-Raya"
+                - option "Alam Al-Raya (KWD)"
+                - option "Almosafer"
+                - option "Almosafer"
+                - option "Amadeus"
+                - option "Amadeus"
+                - option "Asset Received But Not Billed"
+                - option "Assets"
+                - option "Bahrain E-visa"
+                - option "Bahrain E-visa"
+                - option "Bangkok Airways"
+                - option "Bangkok Airways"
+                - option "Bank Accounts"
+                - option "Bank Overdraft Account"
+                - option "Bank Transfer KFH CO"
+                - option "Bank Transfer KFH CO"
+                - option "BARAKKAT TRAVEL 4220050"
+                - option "BLS Spain Visa"
+                - option "BLS Spain Visa"
+                - option "Blue Sky"
+                - option "Blue Sky"
+                - option "Blue Sky (KWD)"
+                - option "Blue Sky (USD)"
+                - option "British Airways"
+                - option "British Airways"
+                - option "Buildings"
+                - option "Capital Equipments"
+                - option "Capital Stock"
+                - option "Car Booking Revenue"
+                - option "Car Cost"
+                - option "Cash"
+                - option "Cash"
+                - option "Cash"
+                - option "Cash In Hand"
+                - option "Cebu Pacific"
+                - option "Cebu Pacific"
+                - option "Cham Wings Airlines"
+                - option "Cham Wings Airlines"
+                - option "Cheques"
+                - option "Cheques"
+                - option "City Travelers"
+                - option "City Travelers (EasyPay)"
+                - option "CITY TRAVELERS FOR TRAVEL AND TOURISM 42230215"
+                - option "Client"
+                - option "Clients"
+                - option "Clients"
+                - option "Commission & Service Fee Income"
+                - option "Commission on Sales"
+                - option "Commissions (Agents)"
+                - option "Commissions Expense (Agents)"
+                - option "Como Travel & Tourism"
+                - option "Como Travels"
+                - option "Como Travels"
+                - option "Como Travels"
+                - option "Como Travels"
+                - option "Como Travels"
+                - option "COMO TRAVELS"
+                - option "Como Travels"
+                - option "Como Travels (KWD)"
+                - option "Company Loss on Sales"
+                - option "Cost of Goods Sold"
+                - option "Creditors"
+                - option "Cruise Center"
+                - option "Cruise Center"
+                - option "Cruise Cost"
+                - option "Cruise Maker"
+                - option "Cruise Maker"
+                - option "CWIP Account (Construction Work in Progress)"
+                - option "DARINA HOLIDAYS"
+                - option "DARINA HOLIDAYS"
+                - option "DARINA HOLIDAYS (AED)"
+                - option "Deema"
+                - option "Deema"
+                - option "Depreciation"
+                - option "Direct Expenses (Cost of Sales)"
+                - option "Direct Income"
+                - option "Dividends Paid"
+                - option "DOTW"
+                - option "DOTW"
+                - option "Dubai Visa - GCC RES"
+                - option "Dubai Visa - GCC RES"
+                - option "Duties and Taxes"
+                - option "Earnest Money"
+                - option "Electronic Equipments"
+                - option "Emirates NDC"
+                - option "Emirates NDC"
+                - option "Employee Advances"
+                - option "Entertainment Expenses"
+                - option "Equity"
+                - option "Esim Booking Revenue"
+                - option "Esim Cost"
+                - option "Event Cost"
+                - option "Exchange Gain/Loss"
+                - option "Expenses"
+                - option "Expenses (General)"
+                - option "Expenses Included in Asset Valuation"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Farhang Seir Pars Travel Company ( IRAN DMC)"
+                - option "Fee Loss Provision"
+                - option "Ferry Cost"
+                - option "First Takaful Insurance"
+                - option "First Takaful Insurance"
+                - option "Fixed Assets"
+                - option "Flight Booking Revenue"
+                - option "Flights Cost"
+                - option "Fly Dubai"
+                - option "Fly Dubai"
+                - option "Fly Nas"
+                - option "Fly Nas"
+                - option "Four Seasons Hotel Bahrain Bay"
+                - option "Four Seasons Hotel Bahrain Bay"
+                - option "Freight and Forwarding Charges"
+                - option "Furniture and Fixtures"
+                - option "Gain/Loss on Asset Disposal"
+                - option "Gateway Fee Recovery"
+                - option "GOV.UK"
+                - option "GST Payable"
+                - option "GTS Beds"
+                - option "GTS Beds"
+                - option "GTS Beds"
+                - option "GTS Beds"
+                - option "GTS Beds"
+                - option "GTS Beds"
+                - option "GTS Beds (KWD)"
+                - option "Haramain High-Speed Train Tickets"
+                - option "Haramain High-Speed Train Tickets"
+                - option "Hassan Nouby"
+                - option "Hassan Nouby"
+                - option "Hesabe"
+                - option "Hesabe Charges"
+                - option "Heysam Group"
+                - option "Heysam Group"
+                - option "Heysam Group (EUR)"
+                - option "Hotel Booking Revenue"
+                - option "HOTEL TOURS"
+                - option "HOTEL TOURS"
+                - option "Hotels Cost"
+                - option "Iberia Airline"
+                - option "Iberia Airline"
+                - option "IBRAHIM ALSHARIF"
+                - option "IBRAHIM ALSHARIF"
+                - option "Income"
+                - option "IndiGo"
+                - option "IndiGo"
+                - option "Indirect Expenses (Operating Expenses)"
+                - option "Indirect Income"
+                - option "Insurance Booking Revenue"
+                - option "Insurance Cost"
+                - option "Investments"
+                - option "Iraq E-visa"
+                - option "Iraq E-visa"
+                - option "Jazeera Airways"
+                - option "Jazeera Airways"
+                - option "Jazeera Airways"
+                - option "Jnan Tours"
+                - option "Jnan Tours"
+                - option "Jnan Tours (BHD)"
+                - option "KFH Coporate"
+                - option "Kuwait"
+                - option "Kuwait Airways"
+                - option "Kuwait Airways"
+                - option "KUWAIT AIRWAYS"
+                - option "KUWAIT AIRWAYS"
+                - option "KUWAIT AIRWAYS"
+                - option "Kuwait International Bank"
+                - option "KWIKT211N"
+                - option "KWIKT2455"
+                - option "KWIKT2520"
+                - option "KWIKT2619"
+                - option "KWIKT2727"
+                - option "KWIKT2843"
+                - option "Legal Expenses"
+                - option "Liabilities"
+                - option "Loans (Liabilities)"
+                - option "Loans and Advances (Assets)"
+                - option "London Visa"
+                - option "London Visa"
+                - option "Loss Recovery Income"
+                - option "Lounge Cost"
+                - option "Maged Fawzy"
+                - option "Maged Fawzy"
+                - option "Magic Holiday"
+                - option "Magic Holiday"
+                - option "Magic Holiday (KWD)"
+                - option "Mamlakat Alasfar"
+                - option "Mamlakat Alasfar"
+                - option "Mamlakat Alasfar (SAR)"
+                - option "Marketing Expenses"
+                - option "Mohamed Ahmed"
+                - option "Mohamed Ahmed"
+                - option "Mohammed Alhashimi"
+                - option "Mohammed Alhashimi"
+                - option "Muhammad Barakat"
+                - option "Muhammad Barakat"
+                - option "MURTAZA KAPADIYA"
+                - option "MURTAZA KAPADIYA"
+                - option "MyFatoorah"
+                - option "MyFatoorah Charges"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "Not Issued"
+                - option "OCLIT1KW"
+                - option "Office Equipments"
+                - option "Office Maintenance Expenses"
+                - option "Office Rent"
+                - option "Ojean Travel"
+                - option "Oman airways NDC"
+                - option "Oman airways NDC"
+                - option "Opening Balance Equity"
+                - option "Pailot Tours"
+                - option "Pailot Tours"
+                - option "Pailot Tours (KWD)"
+                - option "Pailot Tours (USD)"
+                - option "Payment Gateway"
+                - option "Payment Gateway"
+                - option "Payment Gateway Charges"
+                - option "Pegasus Airline"
+                - option "Pegasus Airline"
+                - option "PETER WASELY"
+                - option "PETER WASELY"
+                - option "Petty Cash"
+                - option "Plants and Machineries"
+                - option "Postal Expenses"
+                - option "Prepaid Flights"
+                - option "Prepaid Hotels"
+                - option "Print and Stationery"
+                - option "Rail Cost"
+                - option "Rate Hawk"
+                - option "Rate Hawk"
+                - option "Rate Hawk (USD)"
+                - option "Ray Hotel"
+                - option "Ray Hotel"
+                - option "Receipt Voucher Cash"
+                - option "Refund Clearing / Payable Allocation"
+                - option "Refund Payable"
+                - option "Retained Earnings"
+                - option "Rezlive"
+                - option "Rezlive"
+                - option "Round Off"
+                - option "Royal Jordanian"
+                - option "Royal Jordanian"
+                - option "Russia E-visa"
+                - option "Russia E-visa"
+                - option "Russia E-visa (AED)"
+                - option "Ryanair"
+                - option "Ryanair"
+                - option "Saeid Shoja"
+                - option "Saeid Shoja"
+                - option "Salam Air"
+                - option "Salam Air"
+                - option "Salary"
+                - option "Sales"
+                - option "Sales Expenses"
+                - option "Saudi eVisa"
+                - option "Saudi eVisa"
+                - option "Saudia Airlines"
+                - option "Saudia Airlines"
+                - option "Secured Loans"
+                - option "Securities and Deposits"
+                - option "Services (other)"
+                - option "Sky Rooms"
+                - option "Sky Rooms"
+                - option "Sky Rooms (KWD)"
+                - option "Smile Holidays"
+                - option "Smile Holidays"
+                - option "Smile Holidays (EUR)"
+                - option "Smile Holidays (KWD)"
+                - option "Softwares"
+                - option "Soud Shoja"
+                - option "Soud Shoja"
+                - option "Sri Lankan Airlines"
+                - option "Sri Lankan Airlines"
+                - option "Stock Adjustment"
+                - option "Stock Assets"
+                - option "Stock Expenses"
+                - option "Stock In Hand"
+                - option "Stock Liabilities"
+                - option "Stock Received But Not Billed"
+                - option "Supplier Advances/Prepayments"
+                - option "Suppliers (Car)"
+                - option "Suppliers (Cruise)"
+                - option "Suppliers (Esim)"
+                - option "Suppliers (Event)"
+                - option "Suppliers (Ferry)"
+                - option "Suppliers (Flights)"
+                - option "Suppliers (Hotels)"
+                - option "Suppliers (Insurance)"
+                - option "Suppliers (Lounge)"
+                - option "Suppliers (Rail)"
+                - option "Suppliers (Tour)"
+                - option "Suppliers (Visas)"
+                - option "Supreme Services"
+                - option "Supreme Services"
+                - option "Supreme Services (USD)"
+                - option "Suspense / Adjustments"
+                - option "Syria"
+                - option "Tabby"
+                - option "Tabby"
+                - option "Taly"
+                - option "Taly"
+                - option "Tap"
+                - option "TAP Charges"
+                - option "Tarco Aviation"
+                - option "Tarco Aviation"
+                - option "Tax Assets"
+                - option "TBO Holiday"
+                - option "TBO Holiday"
+                - option "TBO Holiday (KWD)"
+                - option "TBO Holiday (KWD)"
+                - option "TBO Holiday (USD)"
+                - option "TDS Payable"
+                - option "Telephone Expenses"
+                - option "Temporary Accounts"
+                - option "Temporary Opening"
+                - option "test"
+                - option "test"
+                - option "Thailand Digital Arrival Card (TDAC)"
+                - option "Thailand Digital Arrival Card (TDAC)"
+                - option "Tour Booking Revenue"
+                - option "Tour Cost"
+                - option "Travel Agencies"
+                - option "Travel Collection"
+                - option "Travel Collection"
+                - option "Travel Collection (EUR)"
+                - option "Travel Collection (KWD)"
+                - option "Travel Expenses"
+                - option "Trendy"
+                - option "Trendy"
+                - option "Trendy"
+                - option "Trendy"
+                - option "Trendy Travel"
+                - option "Trendy Travel"
+                - option "Trendy Travel"
+                - option "Trendy Travel"
+                - option "Turkish Airline NDC"
+                - option "Turkish Airline NDC"
+                - option "UK Visas and Immigration"
+                - option "UK Visas and Immigration Home Office"
+                - option "Unbilled Supplier Cost"
+                - option "Unsecured Loans"
+                - option "Utility Expenses"
+                - option "Uzbekistan Airways"
+                - option "Uzbekistan Airways"
+                - option "VFS Germany"
+                - option "VFS Global"
+                - option "VFS Global"
+                - option "VFS Italy"
+                - option "VFS Switzerland"
+                - option "Vietjet Air"
+                - option "Vietjet Air"
+                - option "Vietnam Airlines"
+                - option "Vietnam Airlines"
+                - option "Visa Booking Revenue"
+                - option "Visa Cost"
+                - option "VISA GULF BANK - SAEID"
+                - option "VISA IBRAHIM"
+                - option "VISA MAGED"
+                - option "Wego"
+                - option "Wego"
+                - option "Wethaq Insurance"
+                - option "Wethaq Insurance"
+                - option "Wethaq Insurance"
+                - option "Wizz Air"
+                - option "Wizz Air"
+                - option "World of Luxury"
+                - option "World of Luxury"
+                - option "World of Luxury (EUR)"
+                - option "World of Luxury (USD)"
+                - option "Write Off"
+            - generic [ref=f48e163]:
+              - generic [ref=f48e164]: Type
+              - combobox [ref=f48e165]:
+                - option "All types" [selected]
+                - option "Advance"
+                - option "Asset"
+                - option "Bank"
+                - option "Cash"
+                - option "Charges"
+                - option "Cogs_reclass"
+                - option "Expense"
+                - option "Income"
+                - option "P1a_backfill"
+                - option "Payable"
+                - option "Receivable"
+                - option "Refund"
+                - option "Suspense_adjustment"
+                - option "Suspense_drawdown"
+                - option "Unbilled_cost"
+            - generic [ref=f48e166]:
+              - button "Filter" [ref=f48e167] [cursor=pointer]
+              - link "Reset" [ref=f48e168] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/journal-entries/all
+          - generic [ref=f48e169]:
+            - table [ref=f48e171]:
+              - rowgroup [ref=f48e172]:
+                - row [ref=f48e173]:
+                  - columnheader "Date" [ref=f48e174]
+                  - columnheader "Txn ID" [ref=f48e175]
+                  - columnheader "Type" [ref=f48e176]
+                  - columnheader "Account" [ref=f48e177]
+                  - columnheader "Description" [ref=f48e178]
+                  - columnheader "Debit" [ref=f48e179]
+                  - columnheader "Credit" [ref=f48e180]
+              - rowgroup [ref=f48e181]:
+                - row [ref=f48e182]:
+                  - cell "2026-08-31" [ref=f48e183]
+                  - cell [ref=f48e184]:
+                    - link "35456" [ref=f48e185] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35456
+                  - cell "payable" [ref=f48e186]
+                  - cell [ref=f48e187]:
+                    - link "Blue Sky (USD)" [ref=f48e188] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/374/account
+                  - 'cell "Records Payable to (Liabilities) in USD: Blue Sky" [ref=f48e189]'
+                  - cell [ref=f48e190]
+                  - cell "279.000" [ref=f48e191]
+                - row [ref=f48e192]:
+                  - cell "2026-08-31" [ref=f48e193]
+                  - cell [ref=f48e194]:
+                    - link "35456" [ref=f48e195] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35456
+                  - cell "unbilled_cost" [ref=f48e196]
+                  - cell [ref=f48e197]:
+                    - link "Unbilled Supplier Cost" [ref=f48e198] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Blue Sky" [ref=f48e199]'
+                  - cell "279.000" [ref=f48e200]
+                  - cell [ref=f48e201]
+                - row [ref=f48e202]:
+                  - cell "2026-08-31" [ref=f48e203]
+                  - cell [ref=f48e204]:
+                    - link "35455" [ref=f48e205] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35455
+                  - cell "payable" [ref=f48e206]
+                  - cell [ref=f48e207]:
+                    - link "Blue Sky (USD)" [ref=f48e208] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/374/account
+                  - 'cell "Records Payable to (Liabilities) in USD: Blue Sky" [ref=f48e209]'
+                  - cell [ref=f48e210]
+                  - cell "279.000" [ref=f48e211]
+                - row [ref=f48e212]:
+                  - cell "2026-08-31" [ref=f48e213]
+                  - cell [ref=f48e214]:
+                    - link "35455" [ref=f48e215] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35455
+                  - cell "unbilled_cost" [ref=f48e216]
+                  - cell [ref=f48e217]:
+                    - link "Unbilled Supplier Cost" [ref=f48e218] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Blue Sky" [ref=f48e219]'
+                  - cell "279.000" [ref=f48e220]
+                  - cell [ref=f48e221]
+                - row [ref=f48e222]:
+                  - cell "2026-08-30" [ref=f48e223]
+                  - cell [ref=f48e224]:
+                    - link "35436" [ref=f48e225] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35436
+                  - cell "payable" [ref=f48e226]
+                  - cell [ref=f48e227]:
+                    - link "KFH Coporate" [ref=f48e228] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1404/account
+                  - 'cell "Update For Whom to Pay: 17100272" [ref=f48e229]'
+                  - cell [ref=f48e230]
+                  - cell "267.879" [ref=f48e231]
+                - row [ref=f48e232]:
+                  - cell "2026-08-30" [ref=f48e233]
+                  - cell [ref=f48e234]:
+                    - link "35435" [ref=f48e235] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35435
+                  - cell "payable" [ref=f48e236]
+                  - cell [ref=f48e237]:
+                    - link "Jnan Tours (BHD)" [ref=f48e238] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/379/account
+                  - 'cell "Records Payable to (Liabilities) in BHD: Jnan Tours" [ref=f48e239]'
+                  - cell [ref=f48e240]
+                  - cell "267.879" [ref=f48e241]
+                - row [ref=f48e242]:
+                  - cell "2026-08-30" [ref=f48e243]
+                  - cell [ref=f48e244]:
+                    - link "35435" [ref=f48e245] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35435
+                  - cell "unbilled_cost" [ref=f48e246]
+                  - cell [ref=f48e247]:
+                    - link "Unbilled Supplier Cost" [ref=f48e248] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Jnan Tours" [ref=f48e249]'
+                  - cell "267.879" [ref=f48e250]
+                  - cell [ref=f48e251]
+                - row [ref=f48e252]:
+                  - cell "2026-08-26" [ref=f48e253]
+                  - cell [ref=f48e254]:
+                    - link "35524" [ref=f48e255] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35524
+                  - cell "receivable" [ref=f48e256]
+                  - cell [ref=f48e257]:
+                    - link "Clients" [ref=f48e258] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/13/account
+                  - cell "Invoice INV-2026-02089 paid via Client Credit" [ref=f48e259]
+                  - cell [ref=f48e260]
+                  - cell "67.000" [ref=f48e261]
+                - row [ref=f48e262]:
+                  - cell "2026-08-26" [ref=f48e263]
+                  - cell [ref=f48e264]:
+                    - link "35524" [ref=f48e265] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35524
+                  - cell "payable" [ref=f48e266]
+                  - cell [ref=f48e267]:
+                    - link "Payment Gateway" [ref=f48e268] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1351/account
+                  - cell "Apply Client Credit from VOU-2026-04583" [ref=f48e269]
+                  - cell "67.000" [ref=f48e270]
+                  - cell [ref=f48e271]
+                - row [ref=f48e272]:
+                  - cell "2026-08-26" [ref=f48e273]
+                  - cell [ref=f48e274]:
+                    - link "35521" [ref=f48e275] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35521
+                  - cell "advance" [ref=f48e276]
+                  - cell [ref=f48e277]:
+                    - link "Payment Gateway" [ref=f48e278] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1351/account
+                  - 'cell "Advance Payment in voucher number: VOU-2026-04587" [ref=f48e279]'
+                  - cell [ref=f48e280]
+                  - cell "800.000" [ref=f48e281]
+                - row [ref=f48e282]:
+                  - cell "2026-08-26" [ref=f48e283]
+                  - cell [ref=f48e284]:
+                    - link "35521" [ref=f48e285] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35521
+                  - cell "charges" [ref=f48e286]
+                  - cell [ref=f48e287]:
+                    - link "MyFatoorah Charges" [ref=f48e288] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/76/account
+                  - 'cell "Company Pays Gateway Fee: MyFatoorah Charges" [ref=f48e289]'
+                  - cell "0.150" [ref=f48e290]
+                  - cell [ref=f48e291]
+                - row [ref=f48e292]:
+                  - cell "2026-08-26" [ref=f48e293]
+                  - cell [ref=f48e294]:
+                    - link "35521" [ref=f48e295] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35521
+                  - cell "bank" [ref=f48e296]
+                  - cell [ref=f48e297]:
+                    - link "MyFatoorah" [ref=f48e298] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/113/account
+                  - 'cell "Client Pays by RAFAEI F M KH F ALAZMI via (Assets): MyFatoorah" [ref=f48e299]'
+                  - cell "799.850" [ref=f48e300]
+                  - cell [ref=f48e301]
+                - row [ref=f48e302]:
+                  - cell "2026-08-26" [ref=f48e303]
+                  - cell [ref=f48e304]:
+                    - link "35514" [ref=f48e305] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35514
+                  - cell "advance" [ref=f48e306]
+                  - cell [ref=f48e307]:
+                    - link "Payment Gateway" [ref=f48e308] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1351/account
+                  - 'cell "Advance Payment in voucher number: VOU-2026-04586" [ref=f48e309]'
+                  - cell [ref=f48e310]
+                  - cell "340.000" [ref=f48e311]
+                - row [ref=f48e312]:
+                  - cell "2026-08-26" [ref=f48e313]
+                  - cell [ref=f48e314]:
+                    - link "35514" [ref=f48e315] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35514
+                  - cell "charges" [ref=f48e316]
+                  - cell [ref=f48e317]:
+                    - link "MyFatoorah Charges" [ref=f48e318] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/76/account
+                  - 'cell "Company Pays Gateway Fee: MyFatoorah Charges" [ref=f48e319]'
+                  - cell "0.150" [ref=f48e320]
+                  - cell [ref=f48e321]
+                - row [ref=f48e322]:
+                  - cell "2026-08-26" [ref=f48e323]
+                  - cell [ref=f48e324]:
+                    - link "35514" [ref=f48e325] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35514
+                  - cell "bank" [ref=f48e326]
+                  - cell [ref=f48e327]:
+                    - link "MyFatoorah" [ref=f48e328] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/113/account
+                  - 'cell "Client Pays by MOHAMMAD Y H ALI via (Assets): MyFatoorah" [ref=f48e329]'
+                  - cell "339.850" [ref=f48e330]
+                  - cell [ref=f48e331]
+                - row [ref=f48e332]:
+                  - cell "2026-08-26" [ref=f48e333]
+                  - cell [ref=f48e334]:
+                    - link "35526" [ref=f48e335] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35526
+                  - cell "payable" [ref=f48e336]
+                  - cell [ref=f48e337]:
+                    - link "KWIKT2843" [ref=f48e338] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/280/account
+                  - 'cell "Records Payable to (Liabilities): Amadeus" [ref=f48e339]'
+                  - cell [ref=f48e340]
+                  - cell "167.150" [ref=f48e341]
+                - row [ref=f48e342]:
+                  - cell "2026-08-26" [ref=f48e343]
+                  - cell [ref=f48e344]:
+                    - link "35526" [ref=f48e345] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35526
+                  - cell "unbilled_cost" [ref=f48e346]
+                  - cell [ref=f48e347]:
+                    - link "Unbilled Supplier Cost" [ref=f48e348] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Amadeus" [ref=f48e349]'
+                  - cell "167.150" [ref=f48e350]
+                  - cell [ref=f48e351]
+                - row [ref=f48e352]:
+                  - cell "2026-08-26" [ref=f48e353]
+                  - cell [ref=f48e354]:
+                    - link "35525" [ref=f48e355] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35525
+                  - cell "payable" [ref=f48e356]
+                  - cell [ref=f48e357]:
+                    - link "Smile Holidays (KWD)" [ref=f48e358] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/373/account
+                  - 'cell "Records Payable to (Liabilities) in KWD: Smile Holidays" [ref=f48e359]'
+                  - cell [ref=f48e360]
+                  - cell "47.550" [ref=f48e361]
+                - row [ref=f48e362]:
+                  - cell "2026-08-26" [ref=f48e363]
+                  - cell [ref=f48e364]:
+                    - link "35525" [ref=f48e365] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35525
+                  - cell "unbilled_cost" [ref=f48e366]
+                  - cell [ref=f48e367]:
+                    - link "Unbilled Supplier Cost" [ref=f48e368] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Smile Holidays" [ref=f48e369]'
+                  - cell "47.550" [ref=f48e370]
+                  - cell [ref=f48e371]
+                - row [ref=f48e372]:
+                  - cell "2026-08-26" [ref=f48e373]
+                  - cell [ref=f48e374]:
+                    - link "35523" [ref=f48e375] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "payable" [ref=f48e376]
+                  - cell [ref=f48e377]:
+                    - link "Commissions (Agents)" [ref=f48e378] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/43/account
+                  - 'cell "Agents Commissions for (Liabilities): Mohammed Alhashimi" [ref=f48e379]'
+                  - cell [ref=f48e380]
+                  - cell "11.820" [ref=f48e381]
+                - row [ref=f48e382]:
+                  - cell "2026-08-26" [ref=f48e383]
+                  - cell [ref=f48e384]:
+                    - link "35523" [ref=f48e385] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "expense" [ref=f48e386]
+                  - cell [ref=f48e387]:
+                    - link "Commissions Expense (Agents)" [ref=f48e388] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/73/account
+                  - 'cell "Agents Commissions for (Expenses): Mohammed Alhashimi" [ref=f48e389]'
+                  - cell "11.820" [ref=f48e390]
+                  - cell [ref=f48e391]
+                - row [ref=f48e392]:
+                  - cell "2026-08-26" [ref=f48e393]
+                  - cell [ref=f48e394]:
+                    - link "35523" [ref=f48e395] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "payable" [ref=f48e396]
+                  - cell [ref=f48e397]:
+                    - link "Mohammed Alhashimi" [ref=f48e398] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1434/account
+                  - 'cell "Profit payable to agent: Mohammed Alhashimi" [ref=f48e399]'
+                  - cell [ref=f48e400]
+                  - cell "19.700" [ref=f48e401]
+                - row [ref=f48e402]:
+                  - cell "2026-08-26" [ref=f48e403]
+                  - cell [ref=f48e404]:
+                    - link "35523" [ref=f48e405] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "expense" [ref=f48e406]
+                  - cell [ref=f48e407]:
+                    - link "Agent Salaries" [ref=f48e408] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/351/account
+                  - 'cell "Agent profit share: Mohammed Alhashimi" [ref=f48e409]'
+                  - cell "19.700" [ref=f48e410]
+                  - cell [ref=f48e411]
+                - row [ref=f48e412]:
+                  - cell "2026-08-26" [ref=f48e413]
+                  - cell [ref=f48e414]:
+                    - link "35523" [ref=f48e415] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "cogs_reclass" [ref=f48e416]
+                  - cell [ref=f48e417]:
+                    - link "Unbilled Supplier Cost" [ref=f48e418] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Clear unbilled supplier cost at invoicing: Jazeera Airways" [ref=f48e419]'
+                  - cell [ref=f48e420]
+                  - cell "47.300" [ref=f48e421]
+                - row [ref=f48e422]:
+                  - cell "2026-08-26" [ref=f48e423]
+                  - cell [ref=f48e424]:
+                    - link "35523" [ref=f48e425] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "cogs_reclass" [ref=f48e426]
+                  - cell [ref=f48e427]:
+                    - link "Jazeera Airways" [ref=f48e428] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/116/account
+                  - 'cell "COGS recognized at invoicing (reclassified from unbilled): Jazeera Airways" [ref=f48e429]'
+                  - cell "47.300" [ref=f48e430]
+                  - cell [ref=f48e431]
+                - row [ref=f48e432]:
+                  - cell "2026-08-26" [ref=f48e433]
+                  - cell [ref=f48e434]:
+                    - link "35523" [ref=f48e435] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "income" [ref=f48e436]
+                  - cell [ref=f48e437]:
+                    - link "Flight Booking Revenue" [ref=f48e438] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/64/account
+                  - 'cell "Invoice created for (Income): EYPY9N" [ref=f48e439]'
+                  - cell [ref=f48e440]
+                  - cell "67.000" [ref=f48e441]
+                - row [ref=f48e442]:
+                  - cell "2026-08-26" [ref=f48e443]
+                  - cell [ref=f48e444]:
+                    - link "35523" [ref=f48e445] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35523
+                  - cell "receivable" [ref=f48e446]
+                  - cell [ref=f48e447]:
+                    - link "Clients" [ref=f48e448] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/13/account
+                  - 'cell "Invoice created for (Assets): HALA MOHAMMED ALYAMI" [ref=f48e449]'
+                  - cell "67.000" [ref=f48e450]
+                  - cell [ref=f48e451]
+                - row [ref=f48e452]:
+                  - cell "2026-08-26" [ref=f48e453]
+                  - cell [ref=f48e454]:
+                    - link "35519" [ref=f48e455] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35519
+                  - cell "payable" [ref=f48e456]
+                  - cell [ref=f48e457]:
+                    - link "KWIKT2843" [ref=f48e458] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/280/account
+                  - 'cell "Records Payable to (Liabilities): Amadeus" [ref=f48e459]'
+                  - cell [ref=f48e460]
+                  - cell "323.100" [ref=f48e461]
+                - row [ref=f48e462]:
+                  - cell "2026-08-26" [ref=f48e463]
+                  - cell [ref=f48e464]:
+                    - link "35519" [ref=f48e465] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35519
+                  - cell "unbilled_cost" [ref=f48e466]
+                  - cell [ref=f48e467]:
+                    - link "Unbilled Supplier Cost" [ref=f48e468] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Amadeus" [ref=f48e469]'
+                  - cell "323.100" [ref=f48e470]
+                  - cell [ref=f48e471]
+                - row [ref=f48e472]:
+                  - cell "2026-08-26" [ref=f48e473]
+                  - cell [ref=f48e474]:
+                    - link "35518" [ref=f48e475] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35518
+                  - cell "payable" [ref=f48e476]
+                  - cell [ref=f48e477]:
+                    - link "KWIKT2843" [ref=f48e478] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/280/account
+                  - 'cell "Records Payable to (Liabilities): Amadeus" [ref=f48e479]'
+                  - cell [ref=f48e480]
+                  - cell "323.100" [ref=f48e481]
+                - row [ref=f48e482]:
+                  - cell "2026-08-26" [ref=f48e483]
+                  - cell [ref=f48e484]:
+                    - link "35518" [ref=f48e485] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35518
+                  - cell "unbilled_cost" [ref=f48e486]
+                  - cell [ref=f48e487]:
+                    - link "Unbilled Supplier Cost" [ref=f48e488] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Amadeus" [ref=f48e489]'
+                  - cell "323.100" [ref=f48e490]
+                  - cell [ref=f48e491]
+                - row [ref=f48e492]:
+                  - cell "2026-08-26" [ref=f48e493]
+                  - cell [ref=f48e494]:
+                    - link "35517" [ref=f48e495] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35517
+                  - cell "payable" [ref=f48e496]
+                  - cell [ref=f48e497]:
+                    - link "KWIKT2843" [ref=f48e498] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/280/account
+                  - 'cell "Records Payable to (Liabilities): Amadeus" [ref=f48e499]'
+                  - cell [ref=f48e500]
+                  - cell "323.100" [ref=f48e501]
+                - row [ref=f48e502]:
+                  - cell "2026-08-26" [ref=f48e503]
+                  - cell [ref=f48e504]:
+                    - link "35517" [ref=f48e505] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35517
+                  - cell "unbilled_cost" [ref=f48e506]
+                  - cell [ref=f48e507]:
+                    - link "Unbilled Supplier Cost" [ref=f48e508] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Amadeus" [ref=f48e509]'
+                  - cell "323.100" [ref=f48e510]
+                  - cell [ref=f48e511]
+                - row [ref=f48e512]:
+                  - cell "2026-08-26" [ref=f48e513]
+                  - cell [ref=f48e514]:
+                    - link "35516" [ref=f48e515] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35516
+                  - cell "payable" [ref=f48e516]
+                  - cell [ref=f48e517]:
+                    - link "KWIKT2843" [ref=f48e518] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/280/account
+                  - 'cell "Records Payable to (Liabilities): Amadeus" [ref=f48e519]'
+                  - cell [ref=f48e520]
+                  - cell "323.100" [ref=f48e521]
+                - row [ref=f48e522]:
+                  - cell "2026-08-26" [ref=f48e523]
+                  - cell [ref=f48e524]:
+                    - link "35516" [ref=f48e525] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35516
+                  - cell "unbilled_cost" [ref=f48e526]
+                  - cell [ref=f48e527]:
+                    - link "Unbilled Supplier Cost" [ref=f48e528] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Amadeus" [ref=f48e529]'
+                  - cell "323.100" [ref=f48e530]
+                  - cell [ref=f48e531]
+                - row [ref=f48e532]:
+                  - cell "2026-08-26" [ref=f48e533]
+                  - cell [ref=f48e534]:
+                    - link "35515" [ref=f48e535] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35515
+                  - cell "payable" [ref=f48e536]
+                  - cell [ref=f48e537]:
+                    - link "KWIKT2843" [ref=f48e538] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/280/account
+                  - 'cell "Records Payable to (Liabilities): Amadeus" [ref=f48e539]'
+                  - cell [ref=f48e540]
+                  - cell "323.100" [ref=f48e541]
+                - row [ref=f48e542]:
+                  - cell "2026-08-26" [ref=f48e543]
+                  - cell [ref=f48e544]:
+                    - link "35515" [ref=f48e545] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35515
+                  - cell "unbilled_cost" [ref=f48e546]
+                  - cell [ref=f48e547]:
+                    - link "Unbilled Supplier Cost" [ref=f48e548] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Unbilled supplier cost (asset) at issuance: Amadeus" [ref=f48e549]'
+                  - cell "323.100" [ref=f48e550]
+                  - cell [ref=f48e551]
+                - row [ref=f48e552]:
+                  - cell "2026-08-26" [ref=f48e553]
+                  - cell [ref=f48e554]:
+                    - link "35513" [ref=f48e555] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35513
+                  - cell "payable" [ref=f48e556]
+                  - cell [ref=f48e557]:
+                    - link "Saeid Shoja" [ref=f48e558] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1443/account
+                  - 'cell "Profit payable to agent: Saeid Shoja" [ref=f48e559]'
+                  - cell [ref=f48e560]
+                  - cell "50.960" [ref=f48e561]
+                - row [ref=f48e562]:
+                  - cell "2026-08-26" [ref=f48e563]
+                  - cell [ref=f48e564]:
+                    - link "35513" [ref=f48e565] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35513
+                  - cell "expense" [ref=f48e566]
+                  - cell [ref=f48e567]:
+                    - link "Agent Salaries" [ref=f48e568] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/351/account
+                  - 'cell "Agent profit share: Saeid Shoja" [ref=f48e569]'
+                  - cell "50.960" [ref=f48e570]
+                  - cell [ref=f48e571]
+                - row [ref=f48e572]:
+                  - cell "2026-08-26" [ref=f48e573]
+                  - cell [ref=f48e574]:
+                    - link "35513" [ref=f48e575] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35513
+                  - cell "cogs_reclass" [ref=f48e576]
+                  - cell [ref=f48e577]:
+                    - link "Unbilled Supplier Cost" [ref=f48e578] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1651/account
+                  - 'cell "Clear unbilled supplier cost at invoicing: TBO Holiday" [ref=f48e579]'
+                  - cell [ref=f48e580]
+                  - cell "194.040" [ref=f48e581]
+                - row [ref=f48e582]:
+                  - cell "2026-08-26" [ref=f48e583]
+                  - cell [ref=f48e584]:
+                    - link "35513" [ref=f48e585] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35513
+                  - cell "cogs_reclass" [ref=f48e586]
+                  - cell [ref=f48e587]:
+                    - link "TBO Holiday" [ref=f48e588] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/111/account
+                  - 'cell "COGS recognized at invoicing (reclassified from unbilled): TBO Holiday" [ref=f48e589]'
+                  - cell "194.040" [ref=f48e590]
+                  - cell [ref=f48e591]
+                - row [ref=f48e592]:
+                  - cell "2026-08-26" [ref=f48e593]
+                  - cell [ref=f48e594]:
+                    - link "35513" [ref=f48e595] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35513
+                  - cell "income" [ref=f48e596]
+                  - cell [ref=f48e597]:
+                    - link "Car Booking Revenue" [ref=f48e598] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1413/account
+                  - 'cell "Invoice created for (Income): CN976257190243" [ref=f48e599]'
+                  - cell [ref=f48e600]
+                  - cell "245.000" [ref=f48e601]
+                - row [ref=f48e602]:
+                  - cell "2026-08-26" [ref=f48e603]
+                  - cell [ref=f48e604]:
+                    - link "35513" [ref=f48e605] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35513
+                  - cell "receivable" [ref=f48e606]
+                  - cell [ref=f48e607]:
+                    - link "Clients" [ref=f48e608] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/13/account
+                  - 'cell "Invoice created for (Assets): FAJER S A H A QABAZARD" [ref=f48e609]'
+                  - cell "245.000" [ref=f48e610]
+                  - cell [ref=f48e611]
+                - row [ref=f48e612]:
+                  - cell "2026-08-26" [ref=f48e613]
+                  - cell [ref=f48e614]:
+                    - link "35511" [ref=f48e615] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35511
+                  - cell "payable" [ref=f48e616]
+                  - cell [ref=f48e617]:
+                    - link "KFH Coporate" [ref=f48e618] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1404/account
+                  - 'cell "Update For Whom to Pay: CN976257190243" [ref=f48e619]'
+                  - cell [ref=f48e620]
+                  - cell "194.040" [ref=f48e621]
+                - row [ref=f48e622]:
+                  - cell "2026-08-25" [ref=f48e623]
+                  - cell [ref=f48e624]:
+                    - link "35508" [ref=f48e625] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35508
+                  - cell "receivable" [ref=f48e626]
+                  - cell [ref=f48e627]:
+                    - link "Clients" [ref=f48e628] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/13/account
+                  - cell "Invoice INV-2026-02087 paid via Client Credit" [ref=f48e629]
+                  - cell [ref=f48e630]
+                  - cell "86.000" [ref=f48e631]
+                - row [ref=f48e632]:
+                  - cell "2026-08-25" [ref=f48e633]
+                  - cell [ref=f48e634]:
+                    - link "35508" [ref=f48e635] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35508
+                  - cell "payable" [ref=f48e636]
+                  - cell [ref=f48e637]:
+                    - link "Payment Gateway" [ref=f48e638] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1351/account
+                  - cell "Apply Client Credit from VOU-2026-04584" [ref=f48e639]
+                  - cell "86.000" [ref=f48e640]
+                  - cell [ref=f48e641]
+                - row [ref=f48e642]:
+                  - cell "2026-08-25" [ref=f48e643]
+                  - cell [ref=f48e644]:
+                    - link "35505" [ref=f48e645] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35505
+                  - cell "advance" [ref=f48e646]
+                  - cell [ref=f48e647]:
+                    - link "Payment Gateway" [ref=f48e648] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1351/account
+                  - 'cell "Advance Payment in voucher number: VOU-2026-04584" [ref=f48e649]'
+                  - cell [ref=f48e650]
+                  - cell "86.000" [ref=f48e651]
+                - row [ref=f48e652]:
+                  - cell "2026-08-25" [ref=f48e653]
+                  - cell [ref=f48e654]:
+                    - link "35505" [ref=f48e655] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35505
+                  - cell "charges" [ref=f48e656]
+                  - cell [ref=f48e657]:
+                    - link "MyFatoorah Charges" [ref=f48e658] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/76/account
+                  - 'cell "Company Pays Gateway Fee: MyFatoorah Charges" [ref=f48e659]'
+                  - cell "0.150" [ref=f48e660]
+                  - cell [ref=f48e661]
+                - row [ref=f48e662]:
+                  - cell "2026-08-25" [ref=f48e663]
+                  - cell [ref=f48e664]:
+                    - link "35505" [ref=f48e665] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35505
+                  - cell "bank" [ref=f48e666]
+                  - cell [ref=f48e667]:
+                    - link "MyFatoorah" [ref=f48e668] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/113/account
+                  - 'cell "Client Pays by MARZOUQ EMFA A ALAZEMI via (Assets): MyFatoorah" [ref=f48e669]'
+                  - cell "85.850" [ref=f48e670]
+                  - cell [ref=f48e671]
+                - row [ref=f48e672]:
+                  - cell "2026-08-25" [ref=f48e673]
+                  - cell [ref=f48e674]:
+                    - link "35503" [ref=f48e675] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/35503
+                  - cell "advance" [ref=f48e676]
+                  - cell [ref=f48e677]:
+                    - link "Payment Gateway" [ref=f48e678] [cursor=pointer]:
+                      - /url: https://development.citycommerce.group/journal-entries/1351/account
+                  - 'cell "Advance Payment in voucher number: VOU-2026-04583" [ref=f48e679]'
+                  - cell [ref=f48e680]
+                  - cell "67.000" [ref=f48e681]
+            - navigation "Pagination Navigation" [ref=f48e683]:
+              - generic [ref=f48e684]:
+                - paragraph [ref=f48e686]: Showing 1 to 50 of 4595 results
+                - generic [ref=f48e688]:
+                  - generic "&laquo; Previous" [ref=f48e689]
+                  - generic [ref=f48e693]: "1"
+                  - link "Go to page 2" [ref=f48e695] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=2
+                    - text: "2"
+                  - link "Go to page 3" [ref=f48e696] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=3
+                    - text: "3"
+                  - link "Go to page 4" [ref=f48e697] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=4
+                    - text: "4"
+                  - link "Go to page 5" [ref=f48e698] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=5
+                    - text: "5"
+                  - link "Go to page 6" [ref=f48e699] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=6
+                    - text: "6"
+                  - link "Go to page 7" [ref=f48e700] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=7
+                    - text: "7"
+                  - link "Go to page 8" [ref=f48e701] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=8
+                    - text: "8"
+                  - link "Go to page 9" [ref=f48e702] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=9
+                    - text: "9"
+                  - link "Go to page 10" [ref=f48e703] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=10
+                    - text: "10"
+                  - generic [ref=f48e704]: ...
+                  - link "Go to page 91" [ref=f48e706] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=91
+                    - text: "91"
+                  - link "Go to page 92" [ref=f48e707] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=92
+                    - text: "92"
+                  - link "Next &raquo;" [ref=f48e708] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/all?page=2
+        - generic [ref=f48e711]: © 2024 - 2025 City Tour. Version 1.0
+  - dialog "Resayil WhatsApp CRM" [ref=f48e714]:
+    - separator "Resize Resayil drawer" [ref=f48e715]
+    - generic [ref=f48e716]:
+      - generic [ref=f48e717]:
+        - img "Resayil" [ref=f48e719]
+        - generic [ref=f48e720]:
+          - paragraph [ref=f48e721]: Resayil
+          - paragraph [ref=f48e722]: WhatsApp conversations
+      - generic [ref=f48e723]:
+        - button "Unpin Resayil drawer" [pressed] [ref=f48e724] [cursor=pointer]
+        - link "Open Resayil full page" [ref=f48e727] [cursor=pointer]:
+          - /url: https://development.citycommerce.group/resayil
+        - button "Close Resayil drawer" [ref=f48e730] [cursor=pointer]
+    - generic [ref=f48e734]:
+      - generic [ref=f48e735]:
+        - generic [ref=f48e736]: WhatsApp CRM
+        - generic [ref=f48e740]:
+          - generic "Finished loading. We can't confirm you're signed in from here." [ref=f48e742]: Loaded
+          - button "Open Resayil in a new tab" [ref=f48e743] [cursor=pointer]
+      - iframe [ref=f48e748]:
+        - generic [ref=f49e3]:
+          - strong [ref=f49e4]: wa.resayil.io
+          - text: refused to connect.

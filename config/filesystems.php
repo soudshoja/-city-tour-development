@@ -78,7 +78,10 @@ return [
     */
 
     'links' => [
-        public_path('storage') => storage_path('app/'),
+        // Must link only storage/app/public. Linking storage/app/ (private `local`
+        // disk root) under the public docroot would expose private files (e.g.
+        // storage/app/cheques) to unauthenticated web access.
+        public_path('storage') => storage_path('app/public'),
     ],
 
 ];

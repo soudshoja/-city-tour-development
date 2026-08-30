@@ -18,8 +18,15 @@ class Tap
 {
     use HttpRequestTrait;
 
+    protected ?int $companyId;
+
+    public function __construct(?int $companyId = null)
+    {
+        $this->companyId = $companyId;
+    }
+
     public function createCharge(Request $request)
-    { 
+    {
         $request->validate([
             'finalAmount' => 'required|numeric|min:1',
             'client_name' => 'required|string|max:255',
@@ -91,7 +98,9 @@ class Tap
         }
 
         $configService = new GatewayConfigService();
-        $tapConfigResponse = $configService->getTapConfig();
+        // Prefer an explicit constructor-injected company id, otherwise use the
+        // company already resolved above from the payment's agent/branch chain.
+        $tapConfigResponse = $configService->getTapConfig($this->companyId ?? $companyId);
 
         $payment = Payment::find($request->input('payment_id'));
 
@@ -109,7 +118,6 @@ class Tap
 
         logger('Create Charge request', $data);
         logger('url: ' . $tapConfig['url'] . '/charges');
-        logger('secret: ' . $tapConfig['secret']);
 
         $response = $this->postRequest(
             $tapConfig['url'] . '/charges',
@@ -129,7 +137,7 @@ class Tap
     public function getCharge($chargeId)
     {
         $configService = new GatewayConfigService();
-        $tapConfigResponse = $configService->getTapConfig();
+        $tapConfigResponse = $configService->getTapConfig($this->companyId);
 
         if($tapConfigResponse['status'] === 'error') {
             return [

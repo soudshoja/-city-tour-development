@@ -25,6 +25,7 @@ use Exception;
 use Generator;
 use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -180,6 +181,38 @@ class SupplierController extends Controller
             ->where('is_active', true)
             ->first();
 
+        // W6.U "Supplier status map" / "Supplier charge rule editor" (owner addition,
+        // 2026-08-28). Loaded here (not lazily from the card partials) so the read-only-notice
+        // gate and the card markup can share the exact same $canManage flag the rest of this page
+        // already uses via SupplierPolicy::update.
+        $statusMapRows = \App\Models\SupplierStatusMap::where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->orderBy('channel')->orderByDesc('priority')
+            ->get();
+
+        $unmappedStatuses = \App\Models\TaskStatusEvent::where('company_id', $companyId)
+            ->where('event', 'status_unmapped')
+            ->whereJsonContains('meta->supplier_id', $supplier->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->unique(fn ($e) => $e->channel . '|' . $e->raw_status)
+            ->filter(function ($e) use ($companyId, $supplier) {
+                return ! \App\Models\SupplierStatusMap::where('company_id', $companyId)
+                    ->where('supplier_id', $supplier->id)
+                    ->where('channel', $e->channel)
+                    ->where('raw_status', $e->raw_status)
+                    ->where('active', true)
+                    ->exists();
+            });
+
+        $chargeRuleRows = \App\Models\SupplierChargeRule::where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->orderBy('charge_kind')
+            ->get();
+
+        $canManageSupplier = Gate::allows('update', Supplier::class);
+
         return view('suppliers.show', compact(
             'supplier',
             'JournalEntry',
@@ -187,18 +220,34 @@ class SupplierController extends Controller
             'filteredTasks',
             'payableAccount',
             'companyId',
-            'supplierCompany'
+            'supplierCompany',
+            'statusMapRows',
+            'unmappedStatuses',
+            'chargeRuleRows',
+            'canManageSupplier'
         ));
     }
 
     public function ledgerByDateRange(Request $request, $supplierId)
     {
+        Gate::authorize('view', Supplier::class);
+
         $fromDate = $request->input('fromDate');
         $toDate = $request->input('toDate');
+
+        // Task carries no BelongsToCompany scoping of its own, so without this
+        // the endpoint would let any authenticated user enumerate any other
+        // company's booking/task data (agent name, price, dates) for any
+        // supplier_id by simply varying it.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($companyId, 403);
 
         $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
             ->where('supplier_id', $supplierId)
             ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
             ->get();
 
         return response()->json([
@@ -607,11 +656,16 @@ class SupplierController extends Controller
         $supplier = Supplier::with('tasks')->findOrFail($supplierId);
         $taskIds = $supplier->tasks->pluck('id')->toArray();
 
+        // P2.5.B fix (BUG-C4; p2_5-brief.md §P2.5.B): this supplier ledger cutoff used to bucket
+        // by created_at (row-insert time) rather than posting_date (which accounting period the
+        // entry actually belongs to) -- see ReportController::profitLoss()'s identical fix for the
+        // full rationale, including why COALESCE(posting_date, transaction_date) rather than a
+        // bare posting_date (a not-yet-migrated legacy writer would otherwise vanish from this sum).
         $totalDebit = JournalEntry::whereIn('task_id', $taskIds)
-            ->where('created_at', '<=', $endDate)
+            ->where(DB::raw('COALESCE(posting_date, transaction_date)'), '<=', $endDate)
             ->sum('debit');
         $totalCredit = JournalEntry::whereIn('task_id', $taskIds)
-            ->where('created_at', '<=', $endDate)
+            ->where(DB::raw('COALESCE(posting_date, transaction_date)'), '<=', $endDate)
             ->sum('credit');
 
         return response()->json([
@@ -1077,5 +1131,383 @@ class SupplierController extends Controller
         });
 
         return Excel::download(new SupplierTasksExport($supplier, $filteredTasks), 'supplier-tasks.xlsx');
+    }
+
+    // =====================================================================================
+    // W6.U -- Supplier status map (owner addition, 2026-08-28). Gated by SupplierPolicy::update
+    // throughout, same read-only-notice pattern as the surcharges card this replaces alongside.
+    // =====================================================================================
+
+    private function statusMapValidationRules(): array
+    {
+        return [
+            'channel' => ['required', Rule::in(['air', 'magic', 'webhook', 'ai_pdf', 'manual'])],
+            'raw_status' => ['required', 'string', 'max:64'],
+            'canonical_status' => ['required', Rule::in(['on_hold', 'confirmed', 'issued', 'reissued', 'void', 'refund', 'emd', 'cancelled', 'needs_review'])],
+            'deadline_source' => ['nullable', 'string', 'max:255'],
+            'priority' => ['nullable', 'integer'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    /** `POST /suppliers/{supplier}/status-map` -- add a supplier-specific row. */
+    public function statusMapStore(Request $request, Supplier $supplier): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        $validated = $request->validate($this->statusMapValidationRules());
+
+        $row = \App\Models\SupplierStatusMap::create(array_merge($validated, [
+            'company_id' => $companyId,
+            'supplier_id' => $supplier->id,
+            'priority' => $validated['priority'] ?? 0,
+            'active' => true,
+        ]));
+
+        app(\App\Services\TaskStatusService::class)->recordEvent('supplier_status_map_created', $companyId, null, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'row_id' => $row->id,
+            'supplier_id' => $supplier->id,
+        ]);
+
+        return back()->with('success', 'Status mapping added.');
+    }
+
+    /** `PUT /suppliers/status-map/{statusMap}` -- edit an existing row (supplier or company-default). */
+    public function statusMapUpdate(Request $request, \App\Models\SupplierStatusMap $statusMap): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($statusMap->company_id === $companyId, 403);
+
+        $validated = $request->validate($this->statusMapValidationRules());
+        $statusMap->update($validated);
+
+        app(\App\Services\TaskStatusService::class)->recordEvent('supplier_status_map_updated', $companyId, null, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'row_id' => $statusMap->id,
+        ]);
+
+        return back()->with('success', 'Status mapping updated.');
+    }
+
+    /** `POST /suppliers/status-map/{statusMap}/deactivate` -- soft toggle, never delete. */
+    public function statusMapDeactivate(\App\Models\SupplierStatusMap $statusMap): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($statusMap->company_id === $companyId, 403);
+
+        $statusMap->update(['active' => ! $statusMap->active]);
+
+        app(\App\Services\TaskStatusService::class)->recordEvent(
+            $statusMap->active ? 'supplier_status_map_reactivated' : 'supplier_status_map_deactivated',
+            $companyId, null, null, null, null, null,
+            ['user_id' => Auth::id(), 'row_id' => $statusMap->id]
+        );
+
+        return back()->with('success', $statusMap->active ? 'Mapping reactivated.' : 'Mapping deactivated.');
+    }
+
+    /**
+     * `POST /suppliers/status-map/test` -- "test a raw status" preview. Never writes a task;
+     * reuses {@see \App\Services\TaskStatusService::mapStatus()} verbatim (the ONE place any raw
+     * status is resolved, per W6.S) so the preview can never drift from what a real import would
+     * produce.
+     */
+    public function statusMapTest(Request $request): JsonResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $validated = $request->validate([
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+            'channel' => ['required', Rule::in(['air', 'magic', 'webhook', 'ai_pdf', 'manual'])],
+            'raw_status' => ['required', 'string', 'max:64'],
+        ]);
+
+        $companyId = getCompanyId(Auth::user());
+        $supplier = ! empty($validated['supplier_id']) ? Supplier::find($validated['supplier_id']) : null;
+
+        $mapped = app(\App\Services\TaskStatusService::class)->mapStatus(
+            $supplier,
+            $validated['channel'],
+            $validated['raw_status'],
+            (int) $companyId
+        );
+
+        $resolvedByLabel = match ($mapped->resolutionLevel) {
+            \App\Services\TaskStatus\MappedStatus::LEVEL_SUPPLIER => 'This company + this supplier',
+            \App\Services\TaskStatus\MappedStatus::LEVEL_COMPANY_DEFAULT => 'This company\'s channel-wide default',
+            \App\Services\TaskStatus\MappedStatus::LEVEL_GLOBAL_SUPPLIER => 'Codebase default for this supplier',
+            \App\Services\TaskStatus\MappedStatus::LEVEL_GLOBAL_DEFAULT => 'Global default',
+            \App\Services\TaskStatus\MappedStatus::LEVEL_OVERRIDE => 'Context override (e.g. Magic AM+total<=0)',
+            default => 'No mapping found (needs_review)',
+        };
+
+        return response()->json([
+            'success' => true,
+            'canonical_status' => $mapped->canonicalStatus,
+            'resolved_by' => $resolvedByLabel,
+            'matched_row_id' => $mapped->row?->id,
+        ]);
+    }
+
+    /**
+     * `GET /suppliers/status-map/defaults` -- company-level defaults page (channel-wide rows:
+     * company_id set, supplier_id null), linked from suppliers/index.blade.php.
+     */
+    public function statusMapDefaults(Request $request): View
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+
+        $rows = \App\Models\SupplierStatusMap::where('company_id', $companyId)
+            ->whereNull('supplier_id')
+            ->orderBy('channel')->orderByDesc('priority')
+            ->get();
+
+        $unmapped = \App\Models\TaskStatusEvent::where('company_id', $companyId)
+            ->where('event', 'status_unmapped')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->unique(fn ($e) => $e->channel.'|'.$e->raw_status);
+
+        return view('suppliers.status-map-defaults', compact('rows', 'unmapped', 'companyId'));
+    }
+
+    /** `POST /suppliers/status-map/create-from-unmapped` -- one-click create from the unmapped list. */
+    public function statusMapCreateFromUnmapped(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $validated = $request->validate([
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+            'channel' => ['required', Rule::in(['air', 'magic', 'webhook', 'ai_pdf', 'manual'])],
+            'raw_status' => ['required', 'string', 'max:64'],
+            'canonical_status' => ['required', Rule::in(['on_hold', 'confirmed', 'issued', 'reissued', 'void', 'refund', 'emd', 'cancelled', 'needs_review'])],
+        ]);
+
+        $companyId = getCompanyId(Auth::user());
+
+        $row = \App\Models\SupplierStatusMap::create([
+            'company_id' => $companyId,
+            'supplier_id' => $validated['supplier_id'] ?? null,
+            'channel' => $validated['channel'],
+            'raw_status' => $validated['raw_status'],
+            'canonical_status' => $validated['canonical_status'],
+            'priority' => 0,
+            'active' => true,
+        ]);
+
+        app(\App\Services\TaskStatusService::class)->recordEvent('supplier_status_map_created_from_unmapped', $companyId, null, null, null, $validated['channel'], $validated['raw_status'], [
+            'user_id' => Auth::id(),
+            'row_id' => $row->id,
+        ]);
+
+        return back()->with('success', 'Mapping created. Re-process the affected task to apply it.');
+    }
+
+    // =====================================================================================
+    // W6.C.U -- Supplier charge rule editor (w6-brief.md "W6.U -- UI" "Supplier charge rule
+    // editor (W6.C)"). Same SupplierPolicy::update gate, same read-only-notice/deactivate pattern.
+    // =====================================================================================
+
+    private function chargeRuleValidationRules(): array
+    {
+        return [
+            'service_type' => ['nullable', 'string', 'max:20'],
+            'channel' => ['nullable', 'string', 'max:20'],
+            'charge_kind' => ['required', Rule::in(['iata_fee', 'rounding', 'service_fee', 'booking_fee', 'card_surcharge', 'resort_fee', 'other'])],
+            'basis' => ['required', Rule::in(['fixed', 'percent_of_fare', 'percent_of_total', 'per_passenger', 'per_segment'])],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'currency' => ['nullable', 'string', 'max:3'],
+            'recharge_policy' => ['required', Rule::in(['absorb', 'recharge_client', 'recharge_agent'])],
+            'commissionable' => ['nullable', 'boolean'],
+            'tax_code' => ['nullable', 'string', 'max:20'],
+            'label' => ['nullable', 'string', 'max:100'],
+        ];
+    }
+
+    /** `POST /suppliers/{supplier}/charge-rules` -- add a supplier-specific charge rule. */
+    public function chargeRuleStore(Request $request, Supplier $supplier): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        $validated = $request->validate($this->chargeRuleValidationRules());
+
+        $row = \App\Models\SupplierChargeRule::create(array_merge($validated, [
+            'company_id' => $companyId,
+            'supplier_id' => $supplier->id,
+            'commissionable' => $request->boolean('commissionable'),
+            'active' => true,
+        ]));
+
+        app(\App\Services\TaskStatusService::class)->recordEvent('supplier_charge_rule_created', $companyId, null, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'row_id' => $row->id,
+            'supplier_id' => $supplier->id,
+        ]);
+
+        return back()->with('success', 'Charge rule added.');
+    }
+
+    /**
+     * `POST /suppliers/charge-rules/create-default` -- company-wide default rule (supplier_id
+     * null), used by the defaults page which has no supplier in its URL to route-bind against.
+     */
+    public function chargeRuleStoreDefault(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        $validated = $request->validate($this->chargeRuleValidationRules());
+
+        $row = \App\Models\SupplierChargeRule::create(array_merge($validated, [
+            'company_id' => $companyId,
+            'supplier_id' => null,
+            'commissionable' => $request->boolean('commissionable'),
+            'active' => true,
+        ]));
+
+        app(\App\Services\TaskStatusService::class)->recordEvent('supplier_charge_rule_created', $companyId, null, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'row_id' => $row->id,
+            'supplier_id' => null,
+        ]);
+
+        return back()->with('success', 'Company-wide charge rule added.');
+    }
+
+    /** `PUT /suppliers/charge-rules/{chargeRule}` -- edit (supplier-specific or company default). */
+    public function chargeRuleUpdate(Request $request, \App\Models\SupplierChargeRule $chargeRule): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($chargeRule->company_id === $companyId, 403);
+
+        $validated = $request->validate($this->chargeRuleValidationRules());
+        $validated['commissionable'] = $request->boolean('commissionable');
+        $chargeRule->update($validated);
+
+        app(\App\Services\TaskStatusService::class)->recordEvent('supplier_charge_rule_updated', $companyId, null, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'row_id' => $chargeRule->id,
+        ]);
+
+        return back()->with('success', 'Charge rule updated.');
+    }
+
+    /** `POST /suppliers/charge-rules/{chargeRule}/deactivate` -- soft toggle, never delete. */
+    public function chargeRuleDeactivate(\App\Models\SupplierChargeRule $chargeRule): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($chargeRule->company_id === $companyId, 403);
+
+        $chargeRule->update(['active' => ! $chargeRule->active]);
+
+        app(\App\Services\TaskStatusService::class)->recordEvent(
+            $chargeRule->active ? 'supplier_charge_rule_reactivated' : 'supplier_charge_rule_deactivated',
+            $companyId, null, null, null, null, null,
+            ['user_id' => Auth::id(), 'row_id' => $chargeRule->id]
+        );
+
+        return back()->with('success', $chargeRule->active ? 'Rule reactivated.' : 'Rule deactivated.');
+    }
+
+    /**
+     * `POST /suppliers/charge-rules/test` -- "test a task" preview: pick a task, or enter
+     * supplier/service_type/channel manually. Shows which rule(s) resolve and the computed line
+     * amounts WITHOUT posting -- reuses {@see \App\Services\Accounting\SupplierChargeRuleResolver}
+     * and {@see \App\Services\Accounting\SupplierChargeLineBuilder::computeAmount()} verbatim.
+     */
+    public function chargeRuleTestPreview(Request $request): JsonResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = (int) getCompanyId(Auth::user());
+
+        if ($request->filled('task_id')) {
+            $task = Task::where('company_id', $companyId)->findOrFail($request->input('task_id'));
+            $supplierId = $task->supplier_id;
+            $serviceType = (string) $task->type;
+            $channel = $request->input('channel');
+            $fareAmount = (float) ($task->price ?? 0);
+            $totalAmount = (float) ($task->total ?? 0);
+            $reference = $task->reference ?: ('task-' . $task->id);
+        } else {
+            $validated = $request->validate([
+                'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+                'service_type' => ['required', 'string'],
+                'channel' => ['nullable', 'string'],
+                'fare_amount' => ['nullable', 'numeric', 'min:0'],
+                'total_amount' => ['nullable', 'numeric', 'min:0'],
+            ]);
+            $supplierId = $validated['supplier_id'] ?? null;
+            $serviceType = $validated['service_type'];
+            $channel = $validated['channel'] ?? null;
+            $fareAmount = (float) ($validated['fare_amount'] ?? 0);
+            $totalAmount = (float) ($validated['total_amount'] ?? 0);
+            $reference = 'preview-' . uniqid();
+        }
+
+        $defaults = config('accounting.posting_basis.default_by_service_type', []);
+        $postingBasis = \App\Models\Setting::getByKey($companyId, "accounting.posting_basis.{$serviceType}", $defaults[$serviceType] ?? 'agent');
+
+        $resolver = new \App\Services\Accounting\SupplierChargeRuleResolver();
+        $winners = $resolver->resolveApplicable($companyId, $supplierId, $serviceType, $channel, now());
+
+        $input = new \App\Services\Accounting\SupplierChargeLineInput(
+            serviceType: $serviceType,
+            postingBasis: $postingBasis,
+            companyId: $companyId,
+            reference: $reference,
+            fareAmount: $fareAmount,
+            totalAmount: $totalAmount,
+            supplierId: $supplierId,
+        );
+
+        $builder = new \App\Services\Accounting\SupplierChargeLineBuilder($resolver);
+
+        $rules = [];
+        foreach ($winners as $chargeKind => $rule) {
+            $rules[] = [
+                'rule_id' => $rule->id,
+                'charge_kind' => $chargeKind,
+                'basis' => $rule->basis,
+                'recharge_policy' => $rule->recharge_policy,
+                'commissionable' => $rule->commissionable,
+                'amount' => $builder->computeAmount($rule, $input),
+                'already_fired_for_reference' => $rule->once_per_reference ? $resolver->hasAlreadyFired($rule, $reference) : false,
+            ];
+        }
+
+        return response()->json(['success' => true, 'rules' => $rules]);
+    }
+
+    /**
+     * `GET /suppliers/charge-rules/defaults` -- company-level default rules page (supplier_id
+     * null rows), linked from suppliers/index.blade.php, mirroring statusMapDefaults() above.
+     */
+    public function chargeRuleDefaults(Request $request): View
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+
+        $rows = \App\Models\SupplierChargeRule::where('company_id', $companyId)
+            ->whereNull('supplier_id')
+            ->orderBy('charge_kind')
+            ->get();
+
+        return view('suppliers.charge-rules-defaults', compact('rows', 'companyId'));
     }
 }

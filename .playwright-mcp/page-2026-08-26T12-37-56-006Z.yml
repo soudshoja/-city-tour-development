@@ -1,0 +1,16 @@
+- generic [ref=f41e4]:
+  - generic [ref=f41e5]:
+    - heading "Let's you sign in it ..." [level=2] [ref=f41e6]
+    - paragraph [ref=f41e7]: It's great to have you back!!
+    - generic [ref=f41e8]:
+      - textbox "Your Email" [active] [ref=f41e10]: it@akeed.com
+      - generic [ref=f41e15]:
+        - textbox "Your Password" [ref=f41e16]: TravelERP-Demo-2026
+        - generic [ref=f41e24] [cursor=pointer]
+      - link "Forgot your password?" [ref=f41e29] [cursor=pointer]:
+        - /url: https://development.citycommerce.group/forgot-password
+      - generic [ref=f41e30]:
+        - checkbox "Keep me logged in" [ref=f41e31]
+        - generic [ref=f41e32]: Keep me logged in
+      - button "Login" [ref=f41e34] [cursor=pointer]
+  - img "Illustration" [ref=f41e36]

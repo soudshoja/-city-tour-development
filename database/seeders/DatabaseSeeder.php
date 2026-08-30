@@ -27,6 +27,11 @@ class DatabaseSeeder extends Seeder
             EntitySeeder::class,
             AgentPermissionSeeder::class,
             CurrencySeeder::class,
+            // W6.S "Per-supplier status map" (w6-brief.md, owner addition 2026-08-28): global
+            // (company_id=NULL) default rows only -- run AFTER SupplierSeeder so the Jazeera/Fly
+            // Dubai/VFS/Magic Holiday supplier-scoped defaults it seeds can resolve those
+            // suppliers by name. Idempotent (updateOrCreate) -- safe on every db:seed run.
+            SupplierStatusMapSeeder::class,
         ]);
     }
 }

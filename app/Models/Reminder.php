@@ -9,6 +9,12 @@ class Reminder extends Model
 {
     protected $fillable = [
         'target_type',
+        // W6.U "Reminders" (owner addition, 2026-08-28): additive columns from
+        // 2026_08_30_100001_w6u_add_task_fields_to_reminders_table.php. 'reminder_kind' stays null
+        // on every pre-existing row ("general", per that migration's own docblock) -- only
+        // reminder:generate-deadlines ever sets it to 'ticketing_deadline'.
+        'reminder_kind',
+        'task_id',
         'invoice_id',
         'payment_id',
         'agent_id',
@@ -55,5 +61,10 @@ class Reminder extends Model
     public function payment()
     {
         return $this->belongsTo(Payment::class);
+    }
+
+    public function task()
+    {
+        return $this->belongsTo(Task::class);
     }
 }

@@ -1,0 +1,136 @@
+- generic [active] [ref=f7e1]:
+  - banner [ref=f7e3]:
+    - paragraph [ref=f7e5]: CityTourApp
+    - generic [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - link [ref=f7e8] [cursor=pointer]:
+          - /url: https://development.citycommerce.group
+          - img "Logo" [ref=f7e9]
+        - navigation [ref=f7e11]:
+          - list [ref=f7e12]:
+            - generic [ref=f7e13] [cursor=pointer]:
+              - generic [ref=f7e14]: Tasks
+              - list:
+                - generic:
+                  - link "Tasks list":
+                    - /url: https://development.citycommerce.group/tasks
+                - generic:
+                  - link "Outstanding":
+                    - /url: https://development.citycommerce.group/payment/outstanding
+            - generic [ref=f7e21] [cursor=pointer]:
+              - generic [ref=f7e22]: Finances
+              - list
+            - generic [ref=f7e28] [cursor=pointer]:
+              - generic [ref=f7e29]: Invoices
+              - list:
+                - generic:
+                  - link "Invoices List":
+                    - /url: https://development.citycommerce.group/invoices
+                - generic:
+                  - link "Invoices Link":
+                    - /url: https://development.citycommerce.group/invoices/link
+                - generic:
+                  - link "Payment Link":
+                    - /url: https://development.citycommerce.group/payment/link
+                - generic:
+                  - link "Refund":
+                    - /url: https://development.citycommerce.group/refunds
+                - generic:
+                  - link "Auto Billing":
+                    - /url: https://development.citycommerce.group/auto-billing
+                - generic:
+                  - link "Reminder":
+                    - /url: https://development.citycommerce.group/reminder
+            - link "Resayil" [ref=f7e38] [cursor=pointer]:
+              - /url: https://development.citycommerce.group/resayil
+            - generic [ref=f7e42] [cursor=pointer]:
+              - generic [ref=f7e43]: Users
+              - list:
+                - generic:
+                  - link "Users List":
+                    - /url: https://development.citycommerce.group/users/adminsList
+                - generic:
+                  - link "Branches List":
+                    - /url: https://development.citycommerce.group/branches
+                - generic:
+                  - link "Agents List":
+                    - /url: https://development.citycommerce.group/agents
+                - generic:
+                  - link "Clients List":
+                    - /url: https://development.citycommerce.group/clients
+            - generic [ref=f7e53] [cursor=pointer]:
+              - generic [ref=f7e54]: Reports
+              - list:
+                - generic:
+                  - link "Task Report":
+                    - /url: https://development.citycommerce.group/reports/tasks
+                - generic:
+                  - link "Client Report":
+                    - /url: https://development.citycommerce.group/reports/client
+                - generic:
+                  - link "Payment Gateways Report":
+                    - /url: https://development.citycommerce.group/reports/payment-gateways
+            - generic [ref=f7e63] [cursor=pointer]:
+              - generic [ref=f7e64]: Settings
+              - list:
+                - generic:
+                  - link "Settings":
+                    - /url: https://development.citycommerce.group/settings
+                - generic:
+                  - link "Suppliers":
+                    - /url: https://development.citycommerce.group/suppliers
+                - generic:
+                  - link "Manage Roles":
+                    - /url: https://development.citycommerce.group/role
+                - generic:
+                  - link "Documentations":
+                    - /url: https://development.citycommerce.group/docs/user
+                  - list:
+                    - generic:
+                      - link "User Docs":
+                        - /url: https://development.citycommerce.group/docs/user
+                    - generic:
+                      - link "API Docs":
+                        - /url: https://development.citycommerce.group/docs/api
+                    - generic:
+                      - link "Developer Docs":
+                        - /url: https://development.citycommerce.group/docs/developer
+      - generic [ref=f7e72]:
+        - generic [ref=f7e74] [cursor=pointer]
+        - generic [ref=f7e79] [cursor=pointer]
+        - generic [ref=f7e84] [cursor=pointer]
+  - main [ref=f7e88]:
+    - generic [ref=f7e90]:
+      - generic [ref=f7e91]:
+        - generic [ref=f7e92]:
+          - link "Dashboard" [ref=f7e94] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f7e103] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f7e111] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f7e117] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Language" [ref=f7e123] [cursor=pointer]
+        - generic [ref=f7e130] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f7e131]
+      - generic [ref=f7e134]:
+        - navigation [ref=f7e135]:
+          - link "Dashboard" [ref=f7e136] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - generic [ref=f7e137]: ">"
+          - generic [ref=f7e138]: Settings
+        - navigation [ref=f7e142]:
+          - button "Payment" [ref=f7e143] [cursor=pointer]
+          - button "Terms & Regulations" [ref=f7e148] [cursor=pointer]
+          - button "Manage Charges Coming soon" [disabled] [ref=f7e151]:
+            - generic [ref=f7e154]: Manage Charges
+            - generic [ref=f7e155]: Coming soon
+          - button "Payment Gateways" [ref=f7e156] [cursor=pointer]
+          - button "Payment Methods" [ref=f7e159] [cursor=pointer]
+          - button "Agent Charges" [ref=f7e162] [cursor=pointer]
+          - button "Agent Loss" [ref=f7e165] [cursor=pointer]
+          - button "Notifications" [ref=f7e168] [cursor=pointer]
+        - generic [ref=f7e176]: © 2024 - 2025 City Tour. Version 1.0
+  - button "Open Resayil" [ref=f7e179] [cursor=pointer]

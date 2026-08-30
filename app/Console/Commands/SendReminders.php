@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Client;
 use App\Models\Agent;
+use App\Models\Payment;
 use App\Http\Controllers\ResayilController;
 use App\Models\Reminder;
 use Carbon\Carbon;
@@ -48,11 +49,21 @@ class SendReminders extends Command
                     })
                     ->orWhereHas('invoice', function ($q) {
                         $q->where('status', '!=', 'completed');
-                    });
+                    })
+                    // W6.U "Reminders" (owner addition, 2026-08-28): a target_type='task' row
+                    // carries neither invoice_id nor payment_id, so without this branch the
+                    // whereHas()/orWhereHas() pair above always excludes it -- the exact gap
+                    // w6-brief.md flags ("this is the exact spot ... or new task reminders will
+                    // silently fail to send"). No open/closed guard is applied here for task
+                    // reminders (unlike the invoice/payment branches above) because a ticketing
+                    // deadline reminder has no "already settled" state to check against --
+                    // reminder:generate-deadlines is itself the only writer of these rows and is
+                    // idempotent per (task_id, offset).
+                    ->orWhere('target_type', 'task');
                 })
                 ->where('is_active', true)
                 ->where('scheduled_at', '<=', Carbon::now())
-                ->with(['client', 'agent', 'invoice', 'payment'])
+                ->with(['client', 'agent', 'invoice', 'payment', 'task'])
                 ->get();
 
             if ($dueReminders->isEmpty()) {
@@ -281,6 +292,46 @@ class SendReminders extends Command
                 'agent_message' => "This is a reminder that your client has an outstanding payment to invoice {$invoice->invoice_number} of {$invoice->currency} {$invoice->amount} that was past due on {$formattedDueDate}.{$additionalInfo}\n\nInvoice link:\n{$invoiceLink}\n\nPlease follow up with your client regarding this payment.",
             ];
 
+        } elseif ($reminder->target_type === 'task' && $reminder->reminder_kind === 'ticketing_deadline' && $reminder->task) {
+            // W6.U "Reminders" (owner addition, 2026-08-28) -- the exact branch w6-brief.md flags
+            // as missing ("this is the exact spot a new task/ticketing_deadline branch must be
+            // added, or new task reminders will silently fail to send"). Reuses this method's own
+            // $additionalInfo convention above; builds agent + optional client text (deadline
+            // time, task/PNR reference, deposit held).
+            $task = $reminder->task;
+            $deadline = $task->deadline_at ? Carbon::parse($task->deadline_at)->format('jS F Y, h:i A') : 'its ticketing deadline';
+            $deposit = app(\App\Services\TaskStatusService::class)->depositHeld($task);
+            $depositText = $deposit > 0 ? number_format($deposit, 3) . ' held as deposit' : 'no deposit on file';
+
+            $agentMessage = "Reminder: booking reference {$task->reference} for passenger {$task->passenger_name} must be ticketed before {$deadline} ({$depositText}).{$additionalInfo}\n\nPlease action this booking before the deadline to avoid losing the reservation.";
+
+            $clientMessage = null;
+            if ($reminder->send_to_client) {
+                // "an optional client nudge ... the message includes a payment link built the
+                // same way the existing payment.link.show flow does" -- Task carries no direct
+                // Payment relation, so the link is included only when one can actually be
+                // resolved for this client; the reminder still sends without it otherwise rather
+                // than failing the whole message.
+                $clientMessage = "Please be reminded that your booking (ref. {$task->reference}) is due for ticketing before {$deadline}.{$additionalInfo}\n\nPlease contact us to complete your booking before the deadline.";
+
+                $payment = Payment::where('client_id', $task->client_id)
+                    ->where('status', '!=', 'completed')
+                    ->latest()
+                    ->first();
+
+                if ($payment && $client = $reminder->client) {
+                    $paymentLink = route('payment.link.show', [
+                        'companyId' => $client->agent->branch->company->id ?? 1,
+                        'voucherNumber' => $payment->voucher_number,
+                    ]);
+                    $clientMessage .= "\n\nPayment link:\n{$paymentLink}";
+                }
+            }
+
+            return [
+                'client_message' => $clientMessage ?? $agentMessage,
+                'agent_message' => $agentMessage,
+            ];
         } elseif ($reminder->target_type === 'payment' && $reminder->payment) {
             $payment = $reminder->payment;
             $client = $reminder->client;

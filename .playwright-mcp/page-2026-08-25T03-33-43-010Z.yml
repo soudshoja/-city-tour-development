@@ -1,0 +1,678 @@
+- generic [ref=f13e2]:
+  - banner [ref=f13e3]:
+    - generic [ref=f13e5]:
+      - generic [ref=f13e6]: Internal Server Error
+      - button [ref=f13e13] [cursor=pointer]
+  - main [ref=f13e16]:
+    - generic [ref=f13e17]:
+      - generic [ref=f13e19]:
+        - generic [ref=f13e20]:
+          - generic [ref=f13e21]: ArgumentCountError
+          - generic [ref=f13e22]: Too few arguments to function e(), 0 passed in /home/citycomm/development.citycommerce.group/storage/framework/views/14dbefe6e0e0bf06cf7d896aeef74201.php on line 107 and at least 1 expected
+        - generic [ref=f13e23]:
+          - generic [ref=f13e24]: GET development.citycommerce.group
+          - generic [ref=f13e26]: PHP 8.3.33 — Laravel 11.39.1
+      - generic [ref=f13e29]:
+        - generic [ref=f13e31]:
+          - button "Expand vendor frames" [ref=f13e33] [cursor=pointer]:
+            - generic [ref=f13e34]: Expand
+            - generic [ref=f13e35]: vendor frames
+          - generic [ref=f13e41]:
+            - generic [ref=f13e42]: 1 vendor frame collapsed
+            - button "resources/views/components/resayil-drawer.blade.php :100 require" [ref=f13e44] [cursor=pointer]:
+              - generic [ref=f13e46]:
+                - generic [ref=f13e48]:
+                  - generic [ref=f13e49]: resources/views/components/resayil-drawer.blade.php
+                  - generic [ref=f13e50]: :100
+                - generic [ref=f13e51]: require
+            - generic [ref=f13e52]: 10 vendor frames collapsed
+            - button "resources/views/components/layouts/app.blade.php :110 require" [ref=f13e54] [cursor=pointer]:
+              - generic [ref=f13e56]:
+                - generic [ref=f13e58]:
+                  - generic [ref=f13e59]: resources/views/components/layouts/app.blade.php
+                  - generic [ref=f13e60]: :110
+                - generic [ref=f13e61]: require
+            - generic [ref=f13e62]: 10 vendor frames collapsed
+            - button "resources/views/settings/index.blade.php :1 require" [ref=f13e64] [cursor=pointer]:
+              - generic [ref=f13e66]:
+                - generic [ref=f13e68]:
+                  - generic [ref=f13e69]: resources/views/settings/index.blade.php
+                  - generic [ref=f13e70]: :1
+                - generic [ref=f13e71]: require
+            - generic [ref=f13e72]: 15 vendor frames collapsed
+            - button "App\\Http\\Middleware\\SetLocale :28 handle" [ref=f13e74] [cursor=pointer]:
+              - generic [ref=f13e76]:
+                - generic [ref=f13e78]:
+                  - generic [ref=f13e79]: App\Http\Middleware\SetLocale
+                  - generic [ref=f13e80]: :28
+                - generic [ref=f13e81]: handle
+            - generic [ref=f13e82]: 45 vendor frames collapsed
+            - button "public/index.php :17" [ref=f13e84] [cursor=pointer]:
+              - generic [ref=f13e88]:
+                - generic [ref=f13e89]: public/index.php
+                - generic [ref=f13e90]: :17
+        - text: 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138
+        - generic [ref=f13e91]:
+          - generic [ref=f13e92]: resources/views/components/resayil-drawer.blade.php :100
+          - code [ref=f13e97]:
+            - table [ref=f13e98]:
+              - rowgroup [ref=f13e99]:
+                - row [ref=f13e100]:
+                  - cell "95" [ref=f13e101]
+                  - 'cell "}" [ref=f13e103]'
+                - row [ref=f13e104]:
+                  - cell "96" [ref=f13e105]
+                  - cell [ref=f13e107]
+                - row [ref=f13e108]:
+                  - cell "97" [ref=f13e109]
+                  - cell "// A wire:navigate transition swaps in the new page's <html>" [ref=f13e111]
+                - row [ref=f13e112]:
+                  - cell "98" [ref=f13e113]
+                  - cell "// attributes, which wipes the .resayil-reflow class we put" [ref=f13e115]
+                - row [ref=f13e116]:
+                  - cell "99" [ref=f13e117]
+                  - cell "// there. This store survives the navigation (it is global and" [ref=f13e119]
+                - row [ref=f13e120]:
+                  - cell "100" [ref=f13e121]
+                  - cell "// the drawer node is @persist-ed), so nothing here changes and" [ref=f13e123]
+                - row [ref=f13e124]:
+                  - cell "101" [ref=f13e125]
+                  - cell "// no watcher fires — the drawer would stay locked open while" [ref=f13e127]
+                - row [ref=f13e128]:
+                  - cell "102" [ref=f13e129]
+                  - cell "// the page silently stopped making room for it. Re-assert the" [ref=f13e131]
+                - row [ref=f13e132]:
+                  - cell "103" [ref=f13e133]
+                  - cell "// DOM state after every navigation so the two cannot drift." [ref=f13e135]
+                - row [ref=f13e136]:
+                  - cell "104" [ref=f13e137]
+                  - cell "document.addEventListener('livewire:navigated', () => this._applyDomState());" [ref=f13e139]
+                - row [ref=f13e140]:
+                  - cell "105" [ref=f13e141]
+                  - 'cell "}," [ref=f13e143]'
+                - row [ref=f13e144]:
+                  - cell "106" [ref=f13e145]
+                  - cell [ref=f13e147]
+                - row [ref=f13e148]:
+                  - cell "107" [ref=f13e149]
+                  - cell "// Reflow (page content shrinks to make room) only kicks in when" [ref=f13e151]
+                - row [ref=f13e152]:
+                  - cell "108" [ref=f13e153]
+                  - cell "// locked, open, and the viewport is wide enough to make a side" [ref=f13e155]
+                - row [ref=f13e156]:
+                  - cell "109" [ref=f13e157]
+                  - cell "// split usable. Below that breakpoint we deliberately fall back" [ref=f13e159]
+                - row [ref=f13e160]:
+                  - cell "110" [ref=f13e161]
+                  - cell "// to the existing overlay look — see resayil-drawer.blade.php" [ref=f13e163]
+                - row [ref=f13e164]:
+                  - cell "111" [ref=f13e165]
+                  - cell "// header comment / task notes for the 1024px rationale." [ref=f13e167]
+        - text: 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 915 916 917 918 919 920 921 922 923 924 925 926 927 928 929 930 931 932 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 23 24 25 26 27 28 29 30 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 46 47 48 49 50 51 52 53 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 44 45 46 47 48 49 50 51 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 32 33 34 35 36 37 38 39 40 41 42 43 44 45 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 1188 1189 1190 1191 1192 1193 1194 1195 1196 1197 1198 1199 1200 1201 1202 1203 1204 1205 12 13 14 15 16 17
+      - generic [ref=f13e168]:
+        - generic [ref=f13e169]: Request
+        - generic [ref=f13e170]: GET /settings
+        - generic [ref=f13e171]: Headers
+        - generic [ref=f13e172]:
+          - generic [ref=f13e173]:
+            - generic [ref=f13e174] [cursor=pointer]: accept
+            - code [ref=f13e177]: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+          - generic [ref=f13e178]:
+            - generic [ref=f13e179] [cursor=pointer]: accept-encoding
+            - code [ref=f13e182]: gzip, deflate, br, zstd
+          - generic [ref=f13e183]:
+            - generic [ref=f13e184] [cursor=pointer]: accept-language
+            - code [ref=f13e187]: en-GB,en-US;q=0.9,en;q=0.8
+          - generic [ref=f13e188]:
+            - generic [ref=f13e189] [cursor=pointer]: cookie
+            - code [ref=f13e192]: XSRF-TOKEN=eyJpdiI6ImZYU0xjV1BhYzFPS1NmODRjTnJmVkE9PSIsInZhbHVlIjoiMnRJYUxQYVhYWndsb3NBY3VkV3A1QTFPVGIxMlYyVXNMZkkzME5pc3Q2SXArMHFUQWtRWml0UnNiQ3dObGZKcG5QbnFTbTlFaDNzcVh1MHRHbHdyYUFXMnlqMVpVdlBpNEdaSEQzczBISVR1VEsrWGF4dlFEZmgxVnRvM0dRTHciLCJtYWMiOiJjZGJjYWE2Y2U3YmZkMjA4ZDA1ZGQ3YWFhNmM2YzVhOTk4ZTRjMTQ0YzQ4Yzg0M2YyNmUxOWYwM2U1ZmZjODU3IiwidGFnIjoiIn0%3D; city_tour_session=eyJpdiI6IlBVWCtPYkhKcVN0NWhYVEtDVjYwYUE9PSIsInZhbHVlIjoiY0FGTGV2aG40S1hHT3NMWUdsaHA4emNaN25Hb2IweHc4eEUrN0FUaVgzZ3VwOXpFS2hyYUZvUnFoNmVoWHkyYWQrR1ZBeXNYYnNrR3JUUEt6dlZPMVcrK1J6M0RQMFZDdWx0Q1hjUEVOVmJVb3BSM3gxTWx2UU9GQk9kQ3JkUHMiLCJtYWMiOiIyMGY1YjkyOWMyZWEyMTY4ZGFiYzU1Mjc3NDA2N2VlZDFkZTcyMWU3Mzc0ZDhkMjk0MmQyYmUwNzBlZjQ3NmI5IiwidGFnIjoiIn0%3D
+          - generic [ref=f13e193]:
+            - generic [ref=f13e194] [cursor=pointer]: host
+            - code [ref=f13e197]: development.citycommerce.group
+          - generic [ref=f13e198]:
+            - generic [ref=f13e199] [cursor=pointer]: user-agent
+            - code [ref=f13e202]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+          - generic [ref=f13e203]:
+            - generic [ref=f13e204] [cursor=pointer]: sec-ch-ua
+            - code [ref=f13e207]: "\"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\""
+          - generic [ref=f13e208]:
+            - generic [ref=f13e209] [cursor=pointer]: sec-ch-ua-mobile
+            - code [ref=f13e212]: "?0"
+          - generic [ref=f13e213]:
+            - generic [ref=f13e214] [cursor=pointer]: sec-ch-ua-platform
+            - code [ref=f13e217]: "\"Windows\""
+          - generic [ref=f13e218]:
+            - generic [ref=f13e219] [cursor=pointer]: upgrade-insecure-requests
+            - code [ref=f13e222]: "1"
+          - generic [ref=f13e223]:
+            - generic [ref=f13e224] [cursor=pointer]: sec-fetch-site
+            - code [ref=f13e227]: none
+          - generic [ref=f13e228]:
+            - generic [ref=f13e229] [cursor=pointer]: sec-fetch-mode
+            - code [ref=f13e232]: navigate
+          - generic [ref=f13e233]:
+            - generic [ref=f13e234] [cursor=pointer]: sec-fetch-user
+            - code [ref=f13e237]: "?1"
+          - generic [ref=f13e238]:
+            - generic [ref=f13e239] [cursor=pointer]: sec-fetch-dest
+            - code [ref=f13e242]: document
+          - generic [ref=f13e243]:
+            - generic [ref=f13e244] [cursor=pointer]: priority
+            - code [ref=f13e247]: u=0, i
+        - generic [ref=f13e248]: Body
+        - code [ref=f13e253]: No body data
+      - generic [ref=f13e254]:
+        - generic [ref=f13e255]: Application
+        - generic [ref=f13e256]: Routing
+        - generic [ref=f13e257]:
+          - generic [ref=f13e258]:
+            - generic [ref=f13e259] [cursor=pointer]: controller
+            - code [ref=f13e262]: App\Http\Controllers\SettingController@index
+          - generic [ref=f13e263]:
+            - generic [ref=f13e264] [cursor=pointer]: route name
+            - code [ref=f13e267]: settings.index
+          - generic [ref=f13e268]:
+            - generic [ref=f13e269] [cursor=pointer]: middleware
+            - code [ref=f13e272]: web, auth
+        - generic [ref=f13e273]: Database Queries only the first 100 queries are displayed
+        - generic [ref=f13e274]:
+          - generic [ref=f13e275]:
+            - generic [ref=f13e276]:
+              - text: mysql
+              - generic [ref=f13e277]: (2.13 ms)
+            - code [ref=f13e280]: "select * from `cache` where `key` in ('aicfg_overrides')"
+          - generic [ref=f13e281]:
+            - generic [ref=f13e282]:
+              - text: mysql
+              - generic [ref=f13e283]: (0.85 ms)
+            - code [ref=f13e286]: "select * from `sessions` where `id` = 'pS6yVUhHHXePWMEuuO6P3SUwnELuznydV2L9wjhb' limit 1"
+          - generic [ref=f13e287]:
+            - generic [ref=f13e288]:
+              - text: mysql
+              - generic [ref=f13e289]: (0.8 ms)
+            - code [ref=f13e292]: "select * from `users` where `id` = 30 limit 1"
+          - generic [ref=f13e293]:
+            - generic [ref=f13e294]:
+              - text: mysql
+              - generic [ref=f13e295]: (0.93 ms)
+            - code [ref=f13e298]: "select exists(select * from `companies` where `companies`.`user_id` = 30 and `companies`.`user_id` is not null) as `exists`"
+          - generic [ref=f13e299]:
+            - generic [ref=f13e300]:
+              - text: mysql
+              - generic [ref=f13e301]: (0.36 ms)
+            - code [ref=f13e304]: "select * from `companies` where `companies`.`user_id` = 30 and `companies`.`user_id` is not null limit 1"
+          - generic [ref=f13e305]:
+            - generic [ref=f13e306]:
+              - text: mysql
+              - generic [ref=f13e307]: (0.41 ms)
+            - code [ref=f13e310]: "select * from `settings` where `company_id` = 3"
+          - generic [ref=f13e311]:
+            - generic [ref=f13e312]:
+              - text: mysql
+              - generic [ref=f13e313]: (0.36 ms)
+            - code [ref=f13e316]: "select * from `user_settings` where `user_id` = 30 and `key` = 'invoice_whatsapp_notification' limit 1"
+          - generic [ref=f13e317]:
+            - generic [ref=f13e318]:
+              - text: mysql
+              - generic [ref=f13e319]: (0.72 ms)
+            - code [ref=f13e322]: "select `base_currency` from `currency_exchanges`"
+          - generic [ref=f13e323]:
+            - generic [ref=f13e324]:
+              - text: mysql
+              - generic [ref=f13e325]: (0.27 ms)
+            - code [ref=f13e328]: "select `exchange_currency` from `currency_exchanges`"
+          - generic [ref=f13e329]:
+            - generic [ref=f13e330]:
+              - text: mysql
+              - generic [ref=f13e331]: (0.48 ms)
+            - code [ref=f13e334]: "select `iso_code`, `name`, `symbol` from `currencies` where `iso_code` in ('AED', 'BHD', 'CNY', 'EGP', 'EUR', 'GBP', 'IDR', 'INR', 'IQD', 'JOD', 'KWD', 'LKR', 'MAD', 'NPR', 'PHP', 'QAR', 'SAR', 'SGD', 'TRY', 'USD', 'VND')"
+          - generic [ref=f13e335]:
+            - generic [ref=f13e336]:
+              - text: mysql
+              - generic [ref=f13e337]: (0.36 ms)
+            - code [ref=f13e340]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e341]:
+            - generic [ref=f13e342]:
+              - text: mysql
+              - generic [ref=f13e343]: (0.76 ms)
+            - code [ref=f13e346]: "select * from `cache` where `key` in ('spatie.permission.cache')"
+          - generic [ref=f13e347]:
+            - generic [ref=f13e348]:
+              - text: mysql
+              - generic [ref=f13e349]: (0.81 ms)
+            - code [ref=f13e352]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e353]:
+            - generic [ref=f13e354]:
+              - text: mysql
+              - generic [ref=f13e355]: (0.5 ms)
+            - code [ref=f13e358]: "select * from `settings` where `company_id` = 3 and `key` = 'module.payment_gateway' limit 1"
+          - generic [ref=f13e359]:
+            - generic [ref=f13e360]:
+              - text: mysql
+              - generic [ref=f13e361]: (1.03 ms)
+            - code [ref=f13e364]: "select `roles`.*, `model_has_roles`.`model_id` as `pivot_model_id`, `model_has_roles`.`role_id` as `pivot_role_id`, `model_has_roles`.`model_type` as `pivot_model_type` from `roles` inner join `model_has_roles` on `roles`.`id` = `model_has_roles`.`role_id` where `model_has_roles`.`model_id` in (30) and `model_has_roles`.`model_type` = 'App\\Models\\User'"
+          - generic [ref=f13e365]:
+            - generic [ref=f13e366]:
+              - text: mysql
+              - generic [ref=f13e367]: (0.76 ms)
+            - code [ref=f13e370]: "select `permissions`.*, `model_has_permissions`.`model_id` as `pivot_model_id`, `model_has_permissions`.`permission_id` as `pivot_permission_id`, `model_has_permissions`.`model_type` as `pivot_model_type` from `permissions` inner join `model_has_permissions` on `permissions`.`id` = `model_has_permissions`.`permission_id` where `model_has_permissions`.`model_id` = 30 and `model_has_permissions`.`model_type` = 'App\\Models\\User'"
+          - generic [ref=f13e371]:
+            - generic [ref=f13e372]:
+              - text: mysql
+              - generic [ref=f13e373]: (0.62 ms)
+            - code [ref=f13e376]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e377]:
+            - generic [ref=f13e378]:
+              - text: mysql
+              - generic [ref=f13e379]: (0.48 ms)
+            - code [ref=f13e382]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e383]:
+            - generic [ref=f13e384]:
+              - text: mysql
+              - generic [ref=f13e385]: (0.53 ms)
+            - code [ref=f13e388]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e389]:
+            - generic [ref=f13e390]:
+              - text: mysql
+              - generic [ref=f13e391]: (0.38 ms)
+            - code [ref=f13e394]: "select * from `settings` where `company_id` = 3 and `key` = 'module.agent_profit' limit 1"
+          - generic [ref=f13e395]:
+            - generic [ref=f13e396]:
+              - text: mysql
+              - generic [ref=f13e397]: (0.42 ms)
+            - code [ref=f13e400]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e401]:
+            - generic [ref=f13e402]:
+              - text: mysql
+              - generic [ref=f13e403]: (1.24 ms)
+            - code [ref=f13e406]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e407]:
+            - generic [ref=f13e408]:
+              - text: mysql
+              - generic [ref=f13e409]: (1.11 ms)
+            - code [ref=f13e412]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e413]:
+            - generic [ref=f13e414]:
+              - text: mysql
+              - generic [ref=f13e415]: (0.58 ms)
+            - code [ref=f13e418]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e419]:
+            - generic [ref=f13e420]:
+              - text: mysql
+              - generic [ref=f13e421]: (0.45 ms)
+            - code [ref=f13e424]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e425]:
+            - generic [ref=f13e426]:
+              - text: mysql
+              - generic [ref=f13e427]: (0.37 ms)
+            - code [ref=f13e430]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e431]:
+            - generic [ref=f13e432]:
+              - text: mysql
+              - generic [ref=f13e433]: (0.45 ms)
+            - code [ref=f13e436]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e437]:
+            - generic [ref=f13e438]:
+              - text: mysql
+              - generic [ref=f13e439]: (0.44 ms)
+            - code [ref=f13e442]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e443]:
+            - generic [ref=f13e444]:
+              - text: mysql
+              - generic [ref=f13e445]: (0.37 ms)
+            - code [ref=f13e448]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e449]:
+            - generic [ref=f13e450]:
+              - text: mysql
+              - generic [ref=f13e451]: (0.44 ms)
+            - code [ref=f13e454]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e455]:
+            - generic [ref=f13e456]:
+              - text: mysql
+              - generic [ref=f13e457]: (0.4 ms)
+            - code [ref=f13e460]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e461]:
+            - generic [ref=f13e462]:
+              - text: mysql
+              - generic [ref=f13e463]: (0.33 ms)
+            - code [ref=f13e466]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e467]:
+            - generic [ref=f13e468]:
+              - text: mysql
+              - generic [ref=f13e469]: (0.34 ms)
+            - code [ref=f13e472]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e473]:
+            - generic [ref=f13e474]:
+              - text: mysql
+              - generic [ref=f13e475]: (0.4 ms)
+            - code [ref=f13e478]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e479]:
+            - generic [ref=f13e480]:
+              - text: mysql
+              - generic [ref=f13e481]: (0.36 ms)
+            - code [ref=f13e484]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e485]:
+            - generic [ref=f13e486]:
+              - text: mysql
+              - generic [ref=f13e487]: (0.28 ms)
+            - code [ref=f13e490]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e491]:
+            - generic [ref=f13e492]:
+              - text: mysql
+              - generic [ref=f13e493]: (0.4 ms)
+            - code [ref=f13e496]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e497]:
+            - generic [ref=f13e498]:
+              - text: mysql
+              - generic [ref=f13e499]: (0.44 ms)
+            - code [ref=f13e502]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e503]:
+            - generic [ref=f13e504]:
+              - text: mysql
+              - generic [ref=f13e505]: (0.33 ms)
+            - code [ref=f13e508]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e509]:
+            - generic [ref=f13e510]:
+              - text: mysql
+              - generic [ref=f13e511]: (0.39 ms)
+            - code [ref=f13e514]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e515]:
+            - generic [ref=f13e516]:
+              - text: mysql
+              - generic [ref=f13e517]: (0.45 ms)
+            - code [ref=f13e520]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e521]:
+            - generic [ref=f13e522]:
+              - text: mysql
+              - generic [ref=f13e523]: (0.43 ms)
+            - code [ref=f13e526]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e527]:
+            - generic [ref=f13e528]:
+              - text: mysql
+              - generic [ref=f13e529]: (0.34 ms)
+            - code [ref=f13e532]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e533]:
+            - generic [ref=f13e534]:
+              - text: mysql
+              - generic [ref=f13e535]: (0.33 ms)
+            - code [ref=f13e538]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e539]:
+            - generic [ref=f13e540]:
+              - text: mysql
+              - generic [ref=f13e541]: (0.32 ms)
+            - code [ref=f13e544]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e545]:
+            - generic [ref=f13e546]:
+              - text: mysql
+              - generic [ref=f13e547]: (0.45 ms)
+            - code [ref=f13e550]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e551]:
+            - generic [ref=f13e552]:
+              - text: mysql
+              - generic [ref=f13e553]: (0.51 ms)
+            - code [ref=f13e556]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e557]:
+            - generic [ref=f13e558]:
+              - text: mysql
+              - generic [ref=f13e559]: (0.48 ms)
+            - code [ref=f13e562]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e563]:
+            - generic [ref=f13e564]:
+              - text: mysql
+              - generic [ref=f13e565]: (0.57 ms)
+            - code [ref=f13e568]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e569]:
+            - generic [ref=f13e570]:
+              - text: mysql
+              - generic [ref=f13e571]: (0.75 ms)
+            - code [ref=f13e574]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e575]:
+            - generic [ref=f13e576]:
+              - text: mysql
+              - generic [ref=f13e577]: (0.49 ms)
+            - code [ref=f13e580]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e581]:
+            - generic [ref=f13e582]:
+              - text: mysql
+              - generic [ref=f13e583]: (0.3 ms)
+            - code [ref=f13e586]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e587]:
+            - generic [ref=f13e588]:
+              - text: mysql
+              - generic [ref=f13e589]: (0.26 ms)
+            - code [ref=f13e592]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e593]:
+            - generic [ref=f13e594]:
+              - text: mysql
+              - generic [ref=f13e595]: (0.36 ms)
+            - code [ref=f13e598]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e599]:
+            - generic [ref=f13e600]:
+              - text: mysql
+              - generic [ref=f13e601]: (0.37 ms)
+            - code [ref=f13e604]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e605]:
+            - generic [ref=f13e606]:
+              - text: mysql
+              - generic [ref=f13e607]: (0.39 ms)
+            - code [ref=f13e610]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e611]:
+            - generic [ref=f13e612]:
+              - text: mysql
+              - generic [ref=f13e613]: (0.55 ms)
+            - code [ref=f13e616]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e617]:
+            - generic [ref=f13e618]:
+              - text: mysql
+              - generic [ref=f13e619]: (0.39 ms)
+            - code [ref=f13e622]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e623]:
+            - generic [ref=f13e624]:
+              - text: mysql
+              - generic [ref=f13e625]: (0.34 ms)
+            - code [ref=f13e628]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e629]:
+            - generic [ref=f13e630]:
+              - text: mysql
+              - generic [ref=f13e631]: (0.32 ms)
+            - code [ref=f13e634]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e635]:
+            - generic [ref=f13e636]:
+              - text: mysql
+              - generic [ref=f13e637]: (0.3 ms)
+            - code [ref=f13e640]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e641]:
+            - generic [ref=f13e642]:
+              - text: mysql
+              - generic [ref=f13e643]: (0.26 ms)
+            - code [ref=f13e646]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e647]:
+            - generic [ref=f13e648]:
+              - text: mysql
+              - generic [ref=f13e649]: (0.22 ms)
+            - code [ref=f13e652]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e653]:
+            - generic [ref=f13e654]:
+              - text: mysql
+              - generic [ref=f13e655]: (0.35 ms)
+            - code [ref=f13e658]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e659]:
+            - generic [ref=f13e660]:
+              - text: mysql
+              - generic [ref=f13e661]: (0.4 ms)
+            - code [ref=f13e664]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e665]:
+            - generic [ref=f13e666]:
+              - text: mysql
+              - generic [ref=f13e667]: (0.36 ms)
+            - code [ref=f13e670]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e671]:
+            - generic [ref=f13e672]:
+              - text: mysql
+              - generic [ref=f13e673]: (0.43 ms)
+            - code [ref=f13e676]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e677]:
+            - generic [ref=f13e678]:
+              - text: mysql
+              - generic [ref=f13e679]: (0.39 ms)
+            - code [ref=f13e682]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e683]:
+            - generic [ref=f13e684]:
+              - text: mysql
+              - generic [ref=f13e685]: (0.38 ms)
+            - code [ref=f13e688]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e689]:
+            - generic [ref=f13e690]:
+              - text: mysql
+              - generic [ref=f13e691]: (0.33 ms)
+            - code [ref=f13e694]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e695]:
+            - generic [ref=f13e696]:
+              - text: mysql
+              - generic [ref=f13e697]: (0.41 ms)
+            - code [ref=f13e700]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e701]:
+            - generic [ref=f13e702]:
+              - text: mysql
+              - generic [ref=f13e703]: (0.39 ms)
+            - code [ref=f13e706]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e707]:
+            - generic [ref=f13e708]:
+              - text: mysql
+              - generic [ref=f13e709]: (0.47 ms)
+            - code [ref=f13e712]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e713]:
+            - generic [ref=f13e714]:
+              - text: mysql
+              - generic [ref=f13e715]: (0.39 ms)
+            - code [ref=f13e718]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e719]:
+            - generic [ref=f13e720]:
+              - text: mysql
+              - generic [ref=f13e721]: (0.36 ms)
+            - code [ref=f13e724]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e725]:
+            - generic [ref=f13e726]:
+              - text: mysql
+              - generic [ref=f13e727]: (0.37 ms)
+            - code [ref=f13e730]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e731]:
+            - generic [ref=f13e732]:
+              - text: mysql
+              - generic [ref=f13e733]: (0.39 ms)
+            - code [ref=f13e736]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e737]:
+            - generic [ref=f13e738]:
+              - text: mysql
+              - generic [ref=f13e739]: (0.73 ms)
+            - code [ref=f13e742]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e743]:
+            - generic [ref=f13e744]:
+              - text: mysql
+              - generic [ref=f13e745]: (0.54 ms)
+            - code [ref=f13e748]: "select * from `agents` where `agents`.`user_id` = 30 and `agents`.`user_id` is not null limit 1"
+          - generic [ref=f13e749]:
+            - generic [ref=f13e750]:
+              - text: mysql
+              - generic [ref=f13e751]: (0.39 ms)
+            - code [ref=f13e754]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e755]:
+            - generic [ref=f13e756]:
+              - text: mysql
+              - generic [ref=f13e757]: (0.45 ms)
+            - code [ref=f13e760]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e761]:
+            - generic [ref=f13e762]:
+              - text: mysql
+              - generic [ref=f13e763]: (0.35 ms)
+            - code [ref=f13e766]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e767]:
+            - generic [ref=f13e768]:
+              - text: mysql
+              - generic [ref=f13e769]: (0.5 ms)
+            - code [ref=f13e772]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e773]:
+            - generic [ref=f13e774]:
+              - text: mysql
+              - generic [ref=f13e775]: (0.39 ms)
+            - code [ref=f13e778]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e779]:
+            - generic [ref=f13e780]:
+              - text: mysql
+              - generic [ref=f13e781]: (0.38 ms)
+            - code [ref=f13e784]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e785]:
+            - generic [ref=f13e786]:
+              - text: mysql
+              - generic [ref=f13e787]: (0.28 ms)
+            - code [ref=f13e790]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e791]:
+            - generic [ref=f13e792]:
+              - text: mysql
+              - generic [ref=f13e793]: (0.39 ms)
+            - code [ref=f13e796]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e797]:
+            - generic [ref=f13e798]:
+              - text: mysql
+              - generic [ref=f13e799]: (0.25 ms)
+            - code [ref=f13e802]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e803]:
+            - generic [ref=f13e804]:
+              - text: mysql
+              - generic [ref=f13e805]: (0.21 ms)
+            - code [ref=f13e808]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e809]:
+            - generic [ref=f13e810]:
+              - text: mysql
+              - generic [ref=f13e811]: (0.23 ms)
+            - code [ref=f13e814]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e815]:
+            - generic [ref=f13e816]:
+              - text: mysql
+              - generic [ref=f13e817]: (0.22 ms)
+            - code [ref=f13e820]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e821]:
+            - generic [ref=f13e822]:
+              - text: mysql
+              - generic [ref=f13e823]: (0.31 ms)
+            - code [ref=f13e826]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e827]:
+            - generic [ref=f13e828]:
+              - text: mysql
+              - generic [ref=f13e829]: (0.36 ms)
+            - code [ref=f13e832]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e833]:
+            - generic [ref=f13e834]:
+              - text: mysql
+              - generic [ref=f13e835]: (0.23 ms)
+            - code [ref=f13e838]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e839]:
+            - generic [ref=f13e840]:
+              - text: mysql
+              - generic [ref=f13e841]: (0.25 ms)
+            - code [ref=f13e844]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e845]:
+            - generic [ref=f13e846]:
+              - text: mysql
+              - generic [ref=f13e847]: (0.46 ms)
+            - code [ref=f13e850]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e851]:
+            - generic [ref=f13e852]:
+              - text: mysql
+              - generic [ref=f13e853]: (0.32 ms)
+            - code [ref=f13e856]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e857]:
+            - generic [ref=f13e858]:
+              - text: mysql
+              - generic [ref=f13e859]: (0.22 ms)
+            - code [ref=f13e862]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e863]:
+            - generic [ref=f13e864]:
+              - text: mysql
+              - generic [ref=f13e865]: (0.33 ms)
+            - code [ref=f13e868]: "select * from `companies` where `companies`.`id` = 3 limit 1"
+          - generic [ref=f13e869]:
+            - generic [ref=f13e870]:
+              - text: mysql
+              - generic [ref=f13e871]: (0.33 ms)
+            - code [ref=f13e874]: "select * from `companies` where `companies`.`id` = 3 limit 1"

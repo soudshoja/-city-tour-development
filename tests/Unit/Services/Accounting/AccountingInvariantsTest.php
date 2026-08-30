@@ -7,6 +7,8 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
 use App\Services\TrialBalanceService;
+use Database\Seeders\CoaSeeder;
+use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\ExpectationFailedException;
@@ -132,6 +134,62 @@ class AccountingInvariantsTest extends TestCase
         // assertCompanyLedgerBalanced() is void; not throwing IS the assertion. Register it
         // explicitly so PHPUnit does not report this test as risky for having no assertions.
         $this->assertCompanyLedgerBalanced($company->id);
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Regression coverage for W1.3's residual #1 fix (EnsureSystemLeaves::
+     * fixDuplicateGatewayFeeCode() collision check): the invariant this class exercises must be
+     * ABLE to see a duplicate account code, or a bare renumber/import that hands two accounts the
+     * same code slips past the whole suite silently — exactly what happened before this test
+     * existed.
+     */
+    public function test_assert_no_duplicate_account_codes_detects_a_new_duplicate(): void
+    {
+        $company = Company::factory()->create();
+        Account::factory()->create(['company_id' => $company->id, 'code' => '9999', 'name' => 'First Nine-Nine']);
+        Account::factory()->create(['company_id' => $company->id, 'code' => '9999', 'name' => 'Second Nine-Nine']);
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageMatches('/sharing code "9999"/');
+
+        $this->assertNoDuplicateAccountCodes($company->id);
+    }
+
+    /**
+     * Negative control, part 1: a company with no duplicate codes at all must not trip the
+     * invariant.
+     */
+    public function test_assert_no_duplicate_account_codes_passes_with_unique_codes(): void
+    {
+        $company = Company::factory()->create();
+        Account::factory()->create(['company_id' => $company->id, 'code' => '1111']);
+        Account::factory()->create(['company_id' => $company->id, 'code' => '2222']);
+
+        $this->assertNoDuplicateAccountCodes($company->id);
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Negative control, part 2 — the tolerance boundary itself: the real, current CoaSeeder ships
+     * exactly one known, explicitly deferred duplicate ('2130': 'Suppliers (Hotels)' / 'Suppliers
+     * (Ferry)'). A freshly seeded company must pass this invariant despite that pair — proving the
+     * tolerance is narrow (this ONE pair) rather than accidentally silencing duplicates in
+     * general, which the test above already proves it does not.
+     */
+    public function test_assert_no_duplicate_account_codes_tolerates_the_one_known_coaseeder_pair(): void
+    {
+        $company = Company::factory()->create();
+        CoaSeeder::run($company->id);
+        (new SystemAccountsSeeder())->run();
+
+        $this->assertSame(
+            2,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '2130')->count(),
+            'Precondition: CoaSeeder must still ship the known 2130 duplicate for this test to prove anything.'
+        );
+
+        $this->assertNoDuplicateAccountCodes($company->id);
         $this->addToAssertionCount(1);
     }
 

@@ -13,6 +13,7 @@ use App\Models\Agent;
 use App\Models\AgentCharge;
 use App\Models\AgentLoss;
 use App\Models\AgentNotificationSetting;
+use App\Services\Accounting\VoucherOptions;
 use Database\Seeders\SettingSeeder;
 use Exception;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class SettingController extends Controller
             'agent-charges' => ['viewAgentCharges', Setting::class],
             'agent-loss' => ['viewAgentLoss', Setting::class],
             'notifications' => ['viewNotifications', Setting::class],
+            'accounting' => ['viewAccountingSettings', Setting::class],
         ];
         if (isset($tabPermissions[$activeTab])) {
             [$ability, $model] = $tabPermissions[$activeTab];
@@ -61,7 +63,7 @@ class SettingController extends Controller
     public function saveTab(Request $request)
     {
         $request->validate([
-            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss,notifications',
+            'tab' => 'required|in:invoice,payment,terms,charges,payment-methods,agent-charges,agent-loss,notifications,accounting',
         ]);
 
         session(['settings_active_tab' => $request->tab]);
@@ -1036,6 +1038,363 @@ class SettingController extends Controller
                 'success' => false,
                 'message' => 'Failed to update settings: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * W4.U (w4-brief.md "W4.U -- UI" §a). Canonical 12-service-type list this tab iterates for
+     * the fee schedule, the commissionable-fee-types multi-select, and the per-service posting
+     * basis select — reuses `config('accounting.posting_basis.default_by_service_type')`'s own
+     * key set (that config block is this codebase's one existing source of truth for "the 12
+     * service types", per config/accounting.php's own docblock) rather than hand-typing a second
+     * list that could drift from it.
+     *
+     * @return string[]
+     */
+    private function accountingServiceTypes(): array
+    {
+        return array_keys(config('accounting.posting_basis.default_by_service_type', []));
+    }
+
+    /**
+     * W4.U §a. Read-only snapshot of every posting-engine company option this wave introduced, so
+     * the Accounting settings tab has something to render. Company-scoped `Setting` rows only —
+     * never `accounts.actual_balance`/`journal_entries.balance` (this controller never reads the
+     * ledger at all).
+     */
+    public function getAccountingSettings(Request $request)
+    {
+        Gate::authorize('viewAccountingSettings', Setting::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($companyId === null) {
+            return response()->json(['success' => false, 'message' => 'No company selected.'], 400);
+        }
+
+        $serviceTypes = $this->accountingServiceTypes();
+
+        $feeSchedule = [];
+        foreach ($serviceTypes as $type) {
+            $feeSchedule[$type] = [
+                'amount' => Setting::getByKey($companyId, "accounting.refund.fee_schedule.{$type}.amount", 0),
+                'percent' => Setting::getByKey($companyId, "accounting.refund.fee_schedule.{$type}.percent", 0),
+                'override' => Setting::getByKey($companyId, "accounting.refund.fee_schedule.{$type}.override", 'needs_approval'),
+            ];
+        }
+
+        $postingBasis = [];
+        $defaults = config('accounting.posting_basis.default_by_service_type', []);
+        foreach ($serviceTypes as $type) {
+            $postingBasis[$type] = Setting::getByKey($companyId, "accounting.posting_basis.{$type}", $defaults[$type] ?? 'agent');
+        }
+
+        // W4.U verify-fix (MEDIUM): 'adm' and 'gateway_fee' removed from the bearer matrix — both
+        // were persisted here but read by NO posting/business logic anywhere in the codebase
+        // ('adm' has no consumer or hook at all — no ADM document type exists yet to apply a
+        // bearer decision to; 'gateway_fee' duplicated the already-shipped, unrelated
+        // Charge::paid_by mechanism from W4.D). 'commission_clawback' is kept: it has a real,
+        // documented (if currently gated-off) consumer,
+        // RefundPostingService::postClawbackBearerRecoveryHook(). See
+        // resources/views/settings/partial/accounting.blade.php's matching comment.
+        $bearerKinds = ['commission_clawback'];
+        $bearerDefaults = ['commission_clawback' => 'company'];
+        $bearer = [];
+        foreach ($bearerKinds as $kind) {
+            $bearer[$kind] = [
+                'value' => Setting::getByKey($companyId, "bearer.{$kind}", $bearerDefaults[$kind]),
+                'split_percent' => Setting::getByKey($companyId, "bearer.{$kind}.split_percent", 50),
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'serviceTypes' => $serviceTypes,
+            'settings' => [
+                'invoice_overpay_cancel_policy' => Setting::getByKey($companyId, 'accounting.refund.invoice_overpay_cancel_policy', 'credit'),
+                'unclaimed_writeback_months' => (int) Setting::getByKey($companyId, 'accounting.refund.unclaimed_writeback_months', 12),
+                'commissionable_fee_types' => json_decode((string) Setting::getByKey($companyId, 'accounting.commissionable_fee_types', '[]'), true) ?: [],
+                // W6.S item (6) (w6-brief.md "Options registered" -- "bulk_void_mode,
+                // commissionable_fee_types registered"). No route consumes bulk_void_mode yet
+                // (W6.B's own bulk-void endpoint) -- registered now via
+                // TaskStatusService::bulkVoidMode() and this same settings form so the option is
+                // not dead config once that route lands.
+                'bulk_void_mode' => Setting::getByKey($companyId, 'accounting.bulk_void_mode', 'atomic'),
+                // W6.S "Hold/confirmed follow-up lifecycle" (owner addition 2026-08-28) options --
+                // consumed today by TaskStatusService::expire()/holdAutoExpire()/
+                // holdExpireGraceHours().
+                'hold_auto_expire' => filter_var(Setting::getByKey($companyId, 'accounting.hold_auto_expire', 'true'), FILTER_VALIDATE_BOOLEAN),
+                'hold_expire_grace_hours' => (int) Setting::getByKey($companyId, 'accounting.hold_expire_grace_hours', 0),
+                // W6.U "Reminders" (owner addition, 2026-08-28) -- consumed by
+                // TaskStatusService::holdReminderOffsetsHours()/holdClientNudge() and
+                // reminder:generate-deadlines.
+                'hold_reminder_offsets_hours' => (string) Setting::getByKey($companyId, 'accounting.hold_reminder_offsets_hours', '24,2'),
+                'hold_client_nudge' => filter_var(Setting::getByKey($companyId, 'accounting.hold_client_nudge', 'false'), FILTER_VALIDATE_BOOLEAN),
+                'refund_send_on_post' => filter_var(Setting::getByKey($companyId, 'accounting.refund.refund_send_on_post', 'true'), FILTER_VALIDATE_BOOLEAN),
+                'agent_unearn_notice' => filter_var(Setting::getByKey($companyId, 'accounting.refund.agent_unearn_notice', 'true'), FILTER_VALIDATE_BOOLEAN),
+                'fee_schedule' => $feeSchedule,
+                'posting_basis' => $postingBasis,
+                'bearer' => $bearer,
+                // W5.U (w5-brief.md §W5.U "Settings additions ... in the same accounting settings
+                // tab from W4.U"). Read through the SAME `App\Services\Accounting\VoucherOptions`
+                // keys `ReceiptVoucherController`/`BankPaymentController` actually resolve at post
+                // time (VoucherOptions::APPROVAL_THRESHOLD_KEY / ::PV_ALLOW_OVERDRAFT_KEY) — unlike
+                // the refund-lane pair above (a deliberately SEPARATE key namespace, see
+                // config('accounting.vouchers')'s own docblock), these two have no such split: this
+                // endpoint IS the one and only writer VoucherOptions ever reads back from, so using
+                // its own constants here is what keeps the settings form from drifting out of sync
+                // with what a real vouchers post actually honours.
+                'voucher_approval_threshold' => VoucherOptions::approvalThreshold($companyId),
+                'pv_allow_overdraft' => VoucherOptions::pvAllowOverdraft($companyId),
+                // P2.5.H (p2_5-brief.md §P2.5.H). Read through the SAME
+                // `App\Services\Accounting\StatementOptions` key StatementController actually
+                // resolves at request time, same convention the vouchers pair above already
+                // follows for its own resolver class.
+                'statement_mode' => \App\Services\Accounting\StatementOptions::mode($companyId),
+            ],
+        ]);
+    }
+
+    /**
+     * W4.U §a. Persists every field the Accounting tab's form submits, one `Setting` row per key
+     * (`updateOrCreate`, same convention every other tab in this controller already uses).
+     * Deliberately does NOT post anything to the ledger — this only ever writes company-scoped
+     * `Setting` rows; the NEXT refund posted through {@see \App\Services\Accounting\RefundPostingService}
+     * is what reads them back.
+     */
+    public function storeAccountingSettings(Request $request)
+    {
+        Gate::authorize('manageAccountingSettings', Setting::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if ($companyId === null) {
+            return response()->json(['success' => false, 'message' => 'No company selected.'], 400);
+        }
+
+        $serviceTypes = $this->accountingServiceTypes();
+
+        $validated = $request->validate([
+            'invoice_overpay_cancel_policy' => ['required', 'in:credit,refund_out,manual'],
+            'unclaimed_writeback_months' => ['required', 'integer', 'min:1', 'max:120'],
+            'commissionable_fee_types' => ['nullable', 'array'],
+            'commissionable_fee_types.*' => ['string', 'in:' . implode(',', $serviceTypes)],
+            'refund_send_on_post' => ['required', 'boolean'],
+            'agent_unearn_notice' => ['required', 'boolean'],
+            'fee_schedule' => ['nullable', 'array'],
+            'fee_schedule.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'fee_schedule.*.percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'fee_schedule.*.override' => ['nullable', 'in:free,needs_approval'],
+            'posting_basis' => ['nullable', 'array'],
+            'posting_basis.*' => ['in:agent,principal'],
+            'bearer' => ['nullable', 'array'],
+            'bearer.*.value' => ['in:company,agent,split'],
+            'bearer.*.split_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            // W5.U: nullable means "always require a manual approve() step" — VoucherOptions'
+            // own documented meaning for an absent/NULL threshold; a bare empty string from the
+            // number input clears the Setting row below rather than coercing to 0 (a 0 threshold
+            // would auto-approve every zero-amount voucher only, which is not what an accountant
+            // clearing this field intends).
+            'voucher_approval_threshold' => ['nullable', 'numeric', 'min:0'],
+            // 'nullable' (not 'required'): this endpoint is one shared form for the WHOLE
+            // Accounting settings tab, and pre-existing callers (W4.U's own test suite, predating
+            // this sub-wave) submit payloads that never heard of this field. Matches the tolerance
+            // every other section of this same endpoint already gives an absent/partial payload
+            // (fee_schedule/posting_basis/bearer are all 'nullable' too) -- a caller who hasn't
+            // touched the vouchers section yet must not be forced to also resubmit it.
+            'pv_allow_overdraft' => ['nullable', 'boolean'],
+            // P2.5.H — one of App\Services\Accounting\StatementOptions::MODES. 'nullable' for the
+            // same reason every other field added to this one shared form is.
+            'statement_mode' => ['nullable', 'in:' . implode(',', \App\Services\Accounting\StatementOptions::MODES)],
+            // W6.S item (6): registered so the option is not dead config once W6.B's bulk-void
+            // route lands. 'nullable' for the same reason every other field added to this one
+            // shared form is -- a pre-existing caller must not be forced to resubmit a field it
+            // never heard of.
+            'bulk_void_mode' => ['nullable', 'in:atomic,per_task_report'],
+            'hold_auto_expire' => ['nullable', 'boolean'],
+            'hold_expire_grace_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
+            // W6.U "Reminders" -- comma-separated positive hour offsets, e.g. "24,2".
+            'hold_reminder_offsets_hours' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
+            'hold_client_nudge' => ['nullable', 'boolean'],
+        ]);
+
+        // P2.5.F writer (b): "company option changes" named explicitly. One consolidated row per
+        // save covering every Setting key this form touches, rather than one row per key — a whole
+        //-form snapshot before/after is what an accountant reviewing "what changed on this save"
+        // actually wants, and matches how the form itself submits (one request, many fields).
+        $settingsBefore = Setting::where('company_id', $companyId)->pluck('value', 'key')->all();
+
+        try {
+            Setting::updateOrCreate(
+                ['key' => 'accounting.refund.invoice_overpay_cancel_policy', 'company_id' => $companyId],
+                ['value' => $validated['invoice_overpay_cancel_policy'], 'type' => 'string', 'description' => 'Refund disposition default for overpaid/credited amounts']
+            );
+            Setting::updateOrCreate(
+                ['key' => 'accounting.refund.unclaimed_writeback_months', 'company_id' => $companyId],
+                ['value' => $validated['unclaimed_writeback_months'], 'type' => 'integer', 'description' => 'Months before unclaimed client credit/agent payable writes back to 4210']
+            );
+            Setting::updateOrCreate(
+                ['key' => 'accounting.commissionable_fee_types', 'company_id' => $companyId],
+                ['value' => json_encode(array_values($validated['commissionable_fee_types'] ?? [])), 'type' => 'json', 'description' => 'Service types whose refund/cancellation fee is commissionable']
+            );
+            Setting::updateOrCreate(
+                ['key' => 'accounting.refund.refund_send_on_post', 'company_id' => $companyId],
+                ['value' => $validated['refund_send_on_post'], 'type' => 'boolean', 'description' => 'Send client CRN + statement notice when a refund posts']
+            );
+            Setting::updateOrCreate(
+                ['key' => 'accounting.refund.agent_unearn_notice', 'company_id' => $companyId],
+                ['value' => $validated['agent_unearn_notice'], 'type' => 'boolean', 'description' => 'Send agent commission-unearned notice when a refund posts']
+            );
+            // W5.U: written under VoucherOptions' OWN key constants (not a parallel
+            // 'accounting.refund.*' namespace) so the very next voucher post reads back exactly
+            // what this form just saved — see VoucherOptions::approvalThreshold()/pvAllowOverdraft()
+            // for the read side.
+            // Setting::getValueAttribute()'s 'string' branch unconditionally does `(string)
+            // $value` -- (string) null is '' (empty string), NEVER null, so a row that EXISTS
+            // with a raw-NULL `value` column can never round-trip back into
+            // VoucherOptions::approvalThreshold()'s own `$value === null` check (it would read
+            // back '', not null, and cast to 0.0 -- silently turning "always require manual
+            // approval" into "auto-approve everything at KWD 0.000 or below", the opposite of
+            // this field's documented meaning). `Setting::getByKey()`'s OTHER branch -- no row at
+            // all -- returns the given $default (null) untouched, with no accessor involved. A
+            // cleared field therefore DELETES the row rather than writing a NULL value, so a
+            // later read is a plain "no row" rather than a value the accessor would mangle.
+            $thresholdProvided = array_key_exists('voucher_approval_threshold', $validated) && $validated['voucher_approval_threshold'] !== null;
+            if ($thresholdProvided) {
+                Setting::updateOrCreate(
+                    ['key' => VoucherOptions::APPROVAL_THRESHOLD_KEY, 'company_id' => $companyId],
+                    [
+                        'value' => (string) $validated['voucher_approval_threshold'],
+                        'type' => 'string',
+                        'description' => 'Amount at/under which a posted RV/PV auto-approves; no row always requires manual approve()',
+                    ]
+                );
+            } else {
+                Setting::where('key', VoucherOptions::APPROVAL_THRESHOLD_KEY)->where('company_id', $companyId)->delete();
+            }
+            // Absent (a caller that never touched this field, e.g. a pre-existing partial-payload
+            // submitter) leaves the setting at its config default (false) rather than forcing
+            // every legacy caller of this shared endpoint to also learn this new field.
+            if (array_key_exists('pv_allow_overdraft', $validated)) {
+                Setting::updateOrCreate(
+                    ['key' => VoucherOptions::PV_ALLOW_OVERDRAFT_KEY, 'company_id' => $companyId],
+                    ['value' => (bool) $validated['pv_allow_overdraft'], 'type' => 'boolean', 'description' => 'Allow a Payment Voucher to take a bank leaf negative']
+                );
+            }
+            // P2.5.H: only write when the caller actually submitted it, same convention as
+            // pv_allow_overdraft above.
+            if (array_key_exists('statement_mode', $validated) && $validated['statement_mode'] !== null) {
+                Setting::updateOrCreate(
+                    ['key' => \App\Services\Accounting\StatementOptions::MODE_KEY, 'company_id' => $companyId],
+                    ['value' => $validated['statement_mode'], 'type' => 'string', 'description' => 'Client/supplier/agent statement default: open_items or full_activity']
+                );
+            }
+
+            // W6.S item (6): 'nullable' fields on this shared form -- only write when the caller
+            // actually submitted them, same convention as pv_allow_overdraft above.
+            if (array_key_exists('bulk_void_mode', $validated) && $validated['bulk_void_mode'] !== null) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.bulk_void_mode', 'company_id' => $companyId],
+                    ['value' => $validated['bulk_void_mode'], 'type' => 'string', 'description' => 'Bulk-void transaction mode: atomic (all-or-nothing) or per_task_report']
+                );
+            }
+            if (array_key_exists('hold_auto_expire', $validated) && $validated['hold_auto_expire'] !== null) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.hold_auto_expire', 'company_id' => $companyId],
+                    ['value' => (bool) $validated['hold_auto_expire'], 'type' => 'boolean', 'description' => 'Automatically expire on-hold/confirmed tasks past their deadline that were never issued']
+                );
+            }
+            if (array_key_exists('hold_expire_grace_hours', $validated) && $validated['hold_expire_grace_hours'] !== null) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.hold_expire_grace_hours', 'company_id' => $companyId],
+                    ['value' => (int) $validated['hold_expire_grace_hours'], 'type' => 'integer', 'description' => 'Grace period (hours) added to a task deadline before TaskStatusService::expire() may flip it']
+                );
+            }
+            // W6.U "Reminders" (owner addition, 2026-08-28) -- consumed by
+            // TaskStatusService::holdReminderOffsetsHours()/holdClientNudge() and
+            // reminder:generate-deadlines.
+            if (array_key_exists('hold_reminder_offsets_hours', $validated) && $validated['hold_reminder_offsets_hours'] !== null) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.hold_reminder_offsets_hours', 'company_id' => $companyId],
+                    ['value' => $validated['hold_reminder_offsets_hours'], 'type' => 'string', 'description' => 'Comma-separated hours-before-deadline for ticketing-deadline reminders']
+                );
+            }
+            if (array_key_exists('hold_client_nudge', $validated) && $validated['hold_client_nudge'] !== null) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.hold_client_nudge', 'company_id' => $companyId],
+                    ['value' => (bool) $validated['hold_client_nudge'], 'type' => 'boolean', 'description' => 'Also send the client a nudge message when a ticketing-deadline reminder fires']
+                );
+            }
+
+            foreach ($serviceTypes as $type) {
+                $row = $validated['fee_schedule'][$type] ?? null;
+                if ($row === null) {
+                    continue;
+                }
+                Setting::updateOrCreate(
+                    ['key' => "accounting.refund.fee_schedule.{$type}.amount", 'company_id' => $companyId],
+                    ['value' => $row['amount'] ?? 0, 'type' => 'string', 'description' => "Refund fee amount for {$type}"]
+                );
+                Setting::updateOrCreate(
+                    ['key' => "accounting.refund.fee_schedule.{$type}.percent", 'company_id' => $companyId],
+                    ['value' => $row['percent'] ?? 0, 'type' => 'string', 'description' => "Refund fee percent for {$type}"]
+                );
+                Setting::updateOrCreate(
+                    ['key' => "accounting.refund.fee_schedule.{$type}.override", 'company_id' => $companyId],
+                    ['value' => $row['override'] ?? 'needs_approval', 'type' => 'string', 'description' => "Refund fee override policy for {$type}"]
+                );
+            }
+
+            foreach ($serviceTypes as $type) {
+                if (! array_key_exists($type, $validated['posting_basis'] ?? [])) {
+                    continue;
+                }
+                Setting::updateOrCreate(
+                    ['key' => "accounting.posting_basis.{$type}", 'company_id' => $companyId],
+                    ['value' => $validated['posting_basis'][$type], 'type' => 'string', 'description' => "Posting basis override for {$type}"]
+                );
+            }
+
+            // W4.U verify-fix (MEDIUM): 'adm'/'gateway_fee' removed — see getAccountingSettings()'s
+            // matching comment above.
+            foreach (['commission_clawback'] as $kind) {
+                $row = $validated['bearer'][$kind] ?? null;
+                if ($row === null) {
+                    continue;
+                }
+                Setting::updateOrCreate(
+                    ['key' => "bearer.{$kind}", 'company_id' => $companyId],
+                    ['value' => $row['value'], 'type' => 'string', 'description' => "Default bearer for {$kind}"]
+                );
+                Setting::updateOrCreate(
+                    ['key' => "bearer.{$kind}.split_percent", 'company_id' => $companyId],
+                    ['value' => $row['split_percent'] ?? 50, 'type' => 'string', 'description' => "Split percent (agent share) for {$kind}"]
+                );
+            }
+
+            Log::info('Accounting settings saved', ['company_id' => $companyId, 'user_id' => $user->id]);
+
+            $settingsAfter = Setting::where('company_id', $companyId)->pluck('value', 'key')->all();
+            $changedKeys = array_keys(array_diff_assoc($settingsAfter, $settingsBefore)
+                + array_diff_key($settingsAfter, $settingsBefore));
+
+            \App\Services\Accounting\AccountingLog::write(
+                action: 'option_change',
+                companyId: $companyId,
+                subjectType: 'company_setting',
+                subjectId: $companyId,
+                before: array_intersect_key($settingsBefore, array_flip($changedKeys)),
+                after: array_intersect_key($settingsAfter, array_flip($changedKeys)),
+                actorId: $user->id,
+            );
+
+            return response()->json(['success' => true, 'message' => 'Accounting settings saved successfully.']);
+        } catch (\Exception $e) {
+            Log::error('Failed to save accounting settings', ['error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => 'Failed to save accounting settings: ' . $e->getMessage()], 500);
         }
     }
 

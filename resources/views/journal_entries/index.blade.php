@@ -67,6 +67,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if($journalEntries->hasPages())
+                    <div class="mt-4">
+                        {{ $journalEntries->links() }}
+                    </div>
+                @endif
             @endif
         </div>
     </div>

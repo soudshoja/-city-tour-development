@@ -298,91 +298,15 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center mb-4">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <i class="fa-solid fa-coins text-blue-500"></i>
-                    Auto Extra Surcharge
-                </h2>
-            </div>
-            @if ($supplierCompany && $supplierCompany->supplierSurcharges->count())
-                <div class="overflow-hidden border border-gray-200 rounded-lg divide-y divide-gray-100">
-                    @foreach($supplierCompany->supplierSurcharges as $surcharge)
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-blue-50 transition duration-150 ease-in-out">
-                            <div class="flex items-center gap-3 mb-2 sm:mb-0">
-                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full w-7 h-7">
-                                    {{ strtoupper(substr($surcharge->label, 0, 2)) }}
-                                </span>
-                                <div>
-                                    <p class="text-gray-800 font-semibold">{{ ucwords(str_replace('_', ' ', $surcharge->label)) }}</p>
-                                    <div class="flex flex-wrap gap-1 mt-1 text-xs">
-                                        <span class="px-2 py-0.5 rounded-full border border-gray-300 bg-gray-50 text-gray-700">
-                                            Mode: <strong class="text-blue-600">{{ ucfirst($surcharge->charge_mode) }}</strong>
-                                        </span>
-                                        @php
-                                            $activeStatuses = collect([
-                                                'issued' => $surcharge->is_issued,
-                                                'refund' => $surcharge->is_refund,
-                                                'reissued' => $surcharge->is_reissued,
-                                                'void' => $surcharge->is_void,
-                                                'confirmed' => $surcharge->is_confirmed,
-                                            ])->filter();
-                                        @endphp
-                                        <span class="px-2 py-0.5 rounded-full border border-gray-300 bg-gray-50 text-gray-700">
-                                            Status:
-                                            @if($activeStatuses->isNotEmpty())
-                                                <strong class="text-green-700">
-                                                    {{ $activeStatuses->keys()->map(fn($s)=>ucfirst($s))->implode(', ') }}
-                                                </strong>
-                                            @else
-                                                <strong class="text-gray-400">None</strong>
-                                            @endif
-                                        </span>
-                                    </div>
-                                    @if ($surcharge->charge_mode === 'reference' && $surcharge->references->count())
-                                        <div class="mt-2 ml-1 text-xs text-gray-600">
-                                            <div class="flex flex-wrap gap-2">
-                                                @foreach($surcharge->references as $ref)
-                                                    <span class="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded-full">
-                                                        <strong>{{ $ref->reference }}</strong>
-                                                        <span class="text-[10px] text-gray-500 ml-1">
-                                                            (
-                                                            {{ $ref->charge_behavior === 'single' 
-                                                                ? 'Single charge — applied once per reference' 
-                                                                : 'Charge applies to all tasks with this reference' 
-                                                            }}
-                                                            )
-                                                        </span>
-                                                    </span>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-blue-700 font-semibold text-sm tracking-wide">
-                                    {{ number_format($surcharge->amount, 3) }}
-                                </span>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                    <div class="text-sm text-amber-700 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-4">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>If you need to modify or remove an existing surcharge, please contact your system administrator.</span>
-                    </div>
-                @endif
-            @else
-                <div class="text-sm text-gray-500 italic">No surcharges added for this supplier</div>
-                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                    <div class="text-sm text-amber-700 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>To request a new surcharge, please contact your system administrator.</span>
-                    </div>
-                @endif
-            @endif
+        {{--
+            W6.U "Supplier status map" + "Supplier charge rule editor (W6.C)" (w6-brief.md
+            "W6.U -- UI"): the charge rule editor REPLACES the "Auto Extra Surcharge" card this
+            block used to be; it sits next to the status-map card, same SupplierPolicy::update
+            gate and Role::COMPANY read-only-notice pattern the surcharges card established.
+        --}}
+        <div class="grid md:grid-cols-2 gap-6">
+            @include('suppliers.partials.status-map-card', ['supplier' => $supplier, 'statusMapRows' => $statusMapRows, 'unmappedStatuses' => $unmappedStatuses, 'canManageSupplier' => $canManageSupplier])
+            @include('suppliers.partials.charge-rule-card', ['supplier' => $supplier, 'chargeRuleRows' => $chargeRuleRows, 'canManageSupplier' => $canManageSupplier])
         </div>
 
         <!-- <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">

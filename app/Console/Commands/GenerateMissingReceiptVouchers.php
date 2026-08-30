@@ -97,7 +97,7 @@ class GenerateMissingReceiptVouchers extends Command
             try {
                 DB::beginTransaction();
 
-                $receiptVoucherController = new ReceiptVoucherController();
+                $receiptVoucherController = app(ReceiptVoucherController::class);
                 $response = $receiptVoucherController->autoGenerate($invoice, $request);
 
                 $responseData = json_decode($response->getContent(), true);

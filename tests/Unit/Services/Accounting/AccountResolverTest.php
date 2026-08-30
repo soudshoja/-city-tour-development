@@ -148,4 +148,40 @@ class AccountResolverTest extends AccountingTestCase
 
         app(AccountResolver::class)->resolve('RECEIVABLE_CONTROL', $company->id);
     }
+
+    /**
+     * P2.5.G verify fix: {@see AccountResolver::bankCashLeafIds()} and
+     * {@see AccountResolver::controlAccountGroups()} are the single shared source of the account
+     * SET that both ReconciliationCenterService (the grid) and PeriodCloseChecklistService (the
+     * month-end close checklist) resolve from — this pins the two contracts those callers rely on.
+     */
+    public function test_bank_cash_leaf_ids_includes_the_seeded_bank_leaf(): void
+    {
+        $company = Company::factory()->create();
+        \Database\Seeders\CoaSeeder::run($company->id);
+        (new \Database\Seeders\SystemAccountsSeeder)->run();
+        $this->trackCompanyForInvariants($company->id);
+
+        $bank = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+
+        $leafIds = app(AccountResolver::class)->bankCashLeafIds($company->id);
+
+        $this->assertContains($bank->id, $leafIds);
+    }
+
+    public function test_control_account_groups_returns_an_empty_account_id_list_for_an_unmapped_anchor(): void
+    {
+        $company = Company::factory()->create();
+        \Database\Seeders\CoaSeeder::run($company->id);
+        (new \Database\Seeders\SystemAccountsSeeder)->run();
+        $this->trackCompanyForInvariants($company->id);
+
+        $groups = app(AccountResolver::class)->controlAccountGroups($company->id);
+        $byCode = collect($groups)->keyBy('purpose_code');
+
+        $this->assertNotEmpty($byCode->get('RECEIVABLE_CONTROL')['account_ids'], 'A seeded company must resolve RECEIVABLE_CONTROL to a real leaf.');
+        // AGENT_RECEIVABLE_GROUP is a registered anchor with no leaf minted by any shipped wave yet
+        // (see PeriodCloseChecklistService's own class docblock) -- must come back EMPTY, not throw.
+        $this->assertSame([], $byCode->get('AGENT_RECEIVABLE_GROUP')['account_ids'] ?? 'missing-group');
+    }
 }

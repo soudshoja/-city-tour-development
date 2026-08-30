@@ -14,7 +14,7 @@ class MFMethodSyncService
     {
         try {
             $configService = new GatewayConfigService();
-            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig($companyId);
 
             if($myfatoorahConfig['status'] === 'error') {
                 Log::warning('MyFatoorah config error during method sync.', [

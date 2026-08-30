@@ -22,6 +22,10 @@ use App\Models\JournalEntry;
 use App\Models\Role;
 use App\Models\SupplierCompany;
 use App\Models\BonusAgent;
+use App\Exceptions\Accounting\PostingException;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LineDraft;
+use App\Services\Accounting\PostingSeam;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -301,50 +305,203 @@ class AgentController extends Controller
     {
         $agent = Agent::find($id);
         $user = User::find($agent->user_id);
+        // W1.1/W1.2 fix (salary feeder, S2): populated only once we're inside the
+        // $salaryChanged branch below, and read back in the PostingException
+        // catch purely for the user-facing error message / log context — so
+        // it must be declared with a safe default up here rather than only
+        // inside that branch's scope.
+        $idempotencyKey = null;
+
         try {
             $oldSalary = $agent->salary;
-            $agent->update($request->all());
-            $user->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
+            $salaryChanged = $request->salary != $oldSalary && $request->salary > 0;
+
+            if ($salaryChanged) {
+                // W1.1 fix (salary feeder, S1): the OLD key
+                // ('agent:salary:{id}:{Y-m}') was scoped to the CALENDAR MONTH, not to the
+                // change itself. There is no retry path anywhere in this method (no queued
+                // job, no webhook redelivery) — every call is one synchronous HTTP request —
+                // so the key's only real job is "unique per real salary change", not
+                // "de-duplicate retries of the same change". A month-scoped key instead
+                // silently dropped every real second-and-later salary change within one
+                // calendar month: PostingSeam's own idempotency handling (S1 hardening) sees
+                // the OLD key already posted and returns without ever calling either path
+                // again — legacy would have posted both, so this was a genuine regression
+                // against legacy behaviour. Keying on the (old, new) amount pair PLUS a
+                // to-the-second timestamp makes every distinct change post its own document,
+                // while an exact duplicate double-submit of the SAME change within the same
+                // second (a genuine double-click / resubmit, not two different business
+                // events) still collides on purpose and is deduped exactly as before.
+                $idempotencyKey = sprintf(
+                    'agent:salary:%d:%s->%s:%s',
+                    $agent->id,
+                    number_format((float) $oldSalary, 3, '.', ''),
+                    number_format((float) $request->salary, 3, '.', ''),
+                    now()->format('Y-m-d H:i:s')
+                );
+            }
+
+            // W1.2 fix (salary feeder, R1+R2, S2 atomicity kept):
+            // W1.1 moved $agent->update() and $user->update() to AFTER this block, so the
+            // legacy closure and the engine draft below read the PRE-update name/branch_id,
+            // and a failing $user->update() (no validation; users.email is unique) could
+            // throw only after an engine document was already committed. This fix moves both
+            // updates back BEFORE the salary block, so a duplicate-email write fails first
+            // with nothing else touched, and the salary block always sees the UPDATED agent
+            // (name, branch_id, and therefore company_id) — a cross-company branch move
+            // posts into the NEW tenant and evaluates the NEW company's kill-switch, exactly
+            // as a fresh $agent->branch->company_id lookup after $agent->update() would.
+            // NOTE: the two statements below run $user->update() THEN $agent->update() —
+            // the reverse of HEAD's order (HEAD ran $agent->update() first, $user->update()
+            // second; see main:app/Http/Controllers/AgentController.php). This is proven
+            // behaviourally identical to HEAD's order, not a reproduction of it: neither User
+            // nor Agent registers any model observer or booted() event hook (verified —
+            // grep of app/Observers and both models' own class bodies), so each update() call
+            // has no side effect the other statement could read; both still run before the
+            // salary block either way. Do not reorder to "restore" HEAD — there is nothing to
+            // restore, the swap is a no-op.
+            // Both updates plus the salary post are now inside ONE DB::transaction so S2's
+            // atomicity guarantee is preserved: a rejected engine post (or the transaction
+            // being rolled back for any other reason) undoes the user AND agent updates too,
+            // leaving state exactly as it was before the request — not just the salary write.
+            DB::transaction(function () use ($agent, $user, $request, $salaryChanged, $idempotencyKey) {
+                $user->update([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => Hash::make($request->password),
+                ]);
+
+                $agent->update($request->all());
+
+                if (! $salaryChanged) {
+                    return;
+                }
+
+                $companyId = $agent->branch->company_id;
+
+                // Legacy path (R3 route-to-legacy seam): kept VERBATIM, including the `?? 0`
+                // below, for byte-for-byte OFF-path parity with HEAD — the strangler contract is
+                // parity, not correctness. This entry is a HEAD defect, not a preserved design:
+                // it is a single debit leg with no offsetting credit anywhere (doc 11 R2,
+                // "one-sided salary"), and `accounts` has no `balance` column (only
+                // actual_balance/opening_balance/budget_balance/balance_must_be — Account has no
+                // `balance` accessor either), so this has always silently written 0. The engine
+                // path below (PostingSeam) is the actual fix: a balanced Dr/Cr document instead
+                // of this one-sided legacy entry.
+                $legacy = function () use ($agent, $request) {
+                    $companyId = $agent->branch->company_id;
+                    $salaryExpenseAccount = Account::where('name', 'Agent Salaries')
+                        ->where('company_id', $agent->branch->company_id)
+                        ->first();
+
+                    if ($salaryExpenseAccount) {
+                        $transaction = Transaction::create([
+                            'company_id' => $companyId,
+                            'branch_id' => $agent->branch_id,
+                            'entity_id' => $agent->id,
+                            'entity_type' => 'agent',
+                            'transaction_type' => 'debit',
+                            'amount' => $request->salary,
+                            'description' => 'Monthly salary adjustment for agent: ' . $agent->name,
+                            'reference_type' => 'Payment',
+                            'transaction_date' => now(),
+                        ]);
+
+                        JournalEntry::create([
+                            'transaction_id' => $transaction->id,
+                            'branch_id' => $agent->branch_id,
+                            'company_id' => $agent->branch->company_id,
+                            'account_id' => $salaryExpenseAccount->id,
+                            'transaction_date' => now(),
+                            'description' => 'Recorded updated salary expense for agent: ' . $agent->name,
+                            'debit' => $request->salary,
+                            'credit' => 0,
+                            'balance' => $salaryExpenseAccount->balance ?? 0,
+                            'name' => $salaryExpenseAccount->name,
+                            'type' => 'expense',
+                        ]);
+                    }
+                };
+
+                app(PostingSeam::class)->post(
+                    new DocumentDraft(
+                        companyId: $companyId,
+                        branchId: $agent->branch_id,
+                        docType: 'JV',
+                        subType: 'AGENT_SALARY',
+                        docDate: now(),
+                        narration: 'Monthly salary adjustment for agent: ' . $agent->name,
+                        lines: [
+                            new LineDraft(
+                                purposeCode: 'SALARY_EXPENSE',
+                                accountId: null,
+                                side: 'debit',
+                                amount: (float) $request->salary,
+                                currency: config('accounting.engine.base_currency'),
+                                originalAmount: (float) $request->salary,
+                                exchangeRate: 1.0,
+                                transactionType: 'AGENT_SALARY_EXPENSE',
+                                description: 'Monthly salary adjustment for agent: ' . $agent->name,
+                                // W1.1 fix (line attribution, residual item 16/S5): legacy wrote
+                                // 'type' => 'expense' on its single JournalEntry row; the engine
+                                // path used to write the audit label 'AGENT_SALARY_EXPENSE'
+                                // instead. Carried verbatim so this line keeps the same legacy
+                                // report-vocabulary category once the engine is ON.
+                                ledgerType: 'expense',
+                            ),
+                            // This method never learns which cash/bank account actually pays the
+                            // agent (it only records the accrual, no cash leg) — so per the R3
+                            // salary task brief this credits an Accrued Expenses (2200 subtree)
+                            // leaf rather than guessing a specific cash/bank leaf.
+                            //
+                            // P3 (policy, W1.1 salary feeder round) — NEEDS USER NAME, RESOLVED
+                            // W1.3 (USER DECISION 2026-08-27): CoaSeeder's pre-existing children
+                            // of 2200 "Accrued Expenses" (2210 "Commissions (Agents)", 2220
+                            // "Expenses (General)", 2230 "Agent Profit Payable") were none of
+                            // them a fitting salary/wages payable leaf, so PAYABLE_CONTROL
+                            // (2110 "Creditors", under Accounts Payable — a DIFFERENT subtree
+                            // entirely) was kept as a stopgap. The user has now named the leaf:
+                            // CoaSeeder adds 2240 "Salaries & Wages Payable" under 2200, and this
+                            // credits the new SALARY_PAYABLE purpose code, which
+                            // SystemAccountsSeeder maps to it by chain.
+                            new LineDraft(
+                                purposeCode: 'SALARY_PAYABLE',
+                                accountId: null,
+                                side: 'credit',
+                                amount: (float) $request->salary,
+                                currency: config('accounting.engine.base_currency'),
+                                originalAmount: (float) $request->salary,
+                                exchangeRate: 1.0,
+                                transactionType: 'AGENT_SALARY_PAYABLE',
+                                description: 'Salary payable to agent: ' . $agent->name,
+                            ),
+                        ],
+                        idempotencyKey: $idempotencyKey,
+                    ),
+                    $legacy,
+                    'agent.salary'
+                );
+            });
+
+            return redirect()->back()->with('success', 'Agent updated successfully');
+        } catch (PostingException $e) {
+            // W1.1 fix (salary feeder, S2 — the user-facing half). PostingSeam has already
+            // Log::critical'd this (accounting.engine_failure); this catch exists so the
+            // person who just changed a salary sees THAT the accounting engine rejected the
+            // entry and WHICH entry (idempotency key), not the same generic
+            // "Failed to update agent" string every unrelated failure in this method
+            // produces — that string is exactly what silently hid this failure mode before.
+            logger('Agent salary posting rejected by the accounting engine: ' . $e->getMessage(), [
+                'agent_id' => $id,
+                'exception_class' => get_class($e),
+                'idempotency_key' => $idempotencyKey,
             ]);
 
-            if ($request->salary != $oldSalary && $request->salary > 0) {
-                $companyId = $agent->branch->company_id;
-                $salaryExpenseAccount = Account::where('name', 'Agent Salaries')
-                    ->where('company_id', $agent->branch->company_id)
-                    ->first();
-
-                if ($salaryExpenseAccount) {
-                    $transaction = Transaction::create([
-                        'company_id' => $companyId,
-                        'branch_id' => $agent->branch_id,
-                        'entity_id' => $agent->id,
-                        'entity_type' => 'agent',
-                        'transaction_type' => 'debit',
-                        'amount' => $request->salary,
-                        'description' => 'Monthly salary adjustment for agent: ' . $agent->name,
-                        'reference_type' => 'Payment',
-                        'transaction_date' => now(),
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $agent->branch_id,
-                        'company_id' => $agent->branch->company_id,
-                        'account_id' => $salaryExpenseAccount->id,
-                        'transaction_date' => now(),
-                        'description' => 'Recorded updated salary expense for agent: ' . $agent->name,
-                        'debit' => $request->salary,
-                        'credit' => 0,
-                        'balance' => $salaryExpenseAccount->balance ?? 0,
-                        'name' => $salaryExpenseAccount->name,
-                        'type' => 'expense',
-                    ]);
-                }
-            }
-            return redirect()->back()->with('success', 'Agent updated successfully');
+            return redirect()->back()->with('error', sprintf(
+                'Salary update failed: the accounting engine rejected this entry (%s). Reference: %s. No changes were saved.',
+                class_basename($e),
+                $idempotencyKey ?? 'n/a'
+            ));
         } catch (Exception $error) {
             logger('Failed to update agent: ' . $error->getMessage());
 

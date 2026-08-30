@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\User;
+use Database\Seeders\CoaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,6 +44,14 @@ class InvoiceCreationTest extends TestCase
         $this->company = Company::factory()->create([
             'user_id' => $this->companyUser->id,
         ]);
+
+        // W3e (item 4): a real company always gets its chart of accounts seeded at onboarding
+        // (see AdminUsersController's own CoaSeeder::run() call) -- this fixture used to skip
+        // that, which let postSaleJournalEntries()'s legacy closure silently insert an orphaned
+        // "Direct Income"-less booking-revenue leaf (see LegacyAccountUnresolved's own docblock).
+        // Seeding here makes this fixture match a realistic company and keeps this suite exercising
+        // the same account-resolution path production companies actually have.
+        CoaSeeder::run($this->company->id);
 
         $roleCompany = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $this->companyUser->assignRole($roleCompany);
@@ -277,6 +286,7 @@ class InvoiceCreationTest extends TestCase
         // Create Company B with its own setup
         $companyUserB = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyB = Company::factory()->create(['user_id' => $companyUserB->id]);
+        CoaSeeder::run($companyB->id);
         $roleB = Role::create(['name' => 'company_b', 'guard_name' => 'web', 'company_id' => $companyB->id]);
         $companyUserB->assignRole($roleB);
         $roleB->givePermissionTo('view invoice');

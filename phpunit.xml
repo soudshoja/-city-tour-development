@@ -1,4 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    PARALLEL AGENTS / ISOLATED TEST DATABASES
+
+    Databases must exist before running tests -create them with:
+        php scripts/dev/create-test-db.php city_tour_test_<name>
+    (refuses any name not starting with "city_tour_test").
+
+    Usage (Git Bash / POSIX):
+        DB_TEST_DATABASE=city_tour_test_agent7 DB_DATABASE_MAP=city_tour_test_agent7_map \
+            php artisan test tests/Feature/Accounting tests/Unit/Services/Accounting
+
+    Usage (PowerShell):
+        $env:DB_TEST_DATABASE='city_tour_test_agent7'; $env:DB_DATABASE_MAP='city_tour_test_agent7_map'; `
+            php artisan test tests/Feature/Accounting tests/Unit/Services/Accounting
+
+    WHAT force= DOES AND DOES NOT DO ON THE TWO <env> ENTRIES BELOW (verified
+    against vendor/phpunit/phpunit/src/TextUI/Configuration/PhpHandler.php and
+    Laravel's Illuminate\Config\Repository / vlucas/phpdotenv Env handling):
+    PHPUnit's PhpHandler writes env values via putenv()/$_ENV only -it never
+    touches $_SERVER. Laravel's env() helper (via Repository::get) reads
+    $_SERVER first, before $_ENV/getenv(). A value you export in the shell
+    (`DB_TEST_DATABASE=... php artisan test`, or PowerShell `$env:...=...;`)
+    lands in $_SERVER and therefore ALWAYS wins over whatever is declared
+    here, REGARDLESS of force="true" or force="false" on these two lines.
+    force is not what makes per-agent isolation work, and it is not what
+    would let a stale default "guarantee" a value either -both framings seen
+    in earlier revisions of this comment were wrong. Whichever force value is
+    currently set below is not load-bearing; do not change behavior by
+    flipping it.
+
+    The ONLY thing standing between a misconfigured/missing shell export and
+    RefreshDatabase running migrate:fresh against laravel_testing or
+    map_data_citytour is the hard safety rail in tests/TestCase.php
+    (guardTestDatabaseIsolation(), shared with tests/DuskTestCase.php via
+    Tests\Concerns\GuardsTestDatabaseIsolation) -it throws a RuntimeException
+    from setUp(), before any migration executes, unless the RESOLVED
+    connection config for mysql_testing, mysql_map, AND accounting_audit all
+    start with "city_tour_test". This throw happens PER TEST (setUp() runs
+    once per test method), not once for the whole run -a misconfigured run
+    reports one "FATAL TEST-SAFETY ABORT" failure per test that would have
+    touched the database, not a single abort -see that trait for details.
+
+    PRE-GRANTED DATABASE NAMES: laravel_user has no global CREATE DATABASE
+    privilege, so scripts/dev/create-test-db.php can only succeed for a name
+    already granted to it individually. An admin can remove this recurring
+    friction with one one-time pattern grant (note the escaped underscores -
+    MySQL treats a bare "_" as a single-character wildcard in GRANT ... ON
+    names, so it must be escaped to mean a literal underscore):
+        GRANT ALL PRIVILEGES ON `city\_tour\_test%`.* TO 'laravel_user'@'localhost';
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
@@ -28,16 +78,18 @@
             SAFETY (see .planning/P1-VERIFICATION-FINDINGS.json): the mysql_testing
             connection in config/database.php reads its database name from
             DB_TEST_DATABASE, NOT DB_DATABASE. .env sets DB_TEST_DATABASE to
-            laravel_testing (the PRIMARY local application database). Without
-            this override, RefreshDatabase would wipe laravel_testing on every
-            test run. DB_DATABASE_MAP is also overridden so the mysql_map
-            connection (used by 2025_06_05_122511_create_tables_for_magic_holiday
-            and 2025_06_10_161525_update_map_city_tables) never touches the real
-            map_data_citytour database during tests. force="true" guarantees these
-            win even if the shell/CI environment already exports the .env values.
+            laravel_testing (the PRIMARY local application database). These two
+            defaults exist so a bare `php artisan test`, with nothing exported
+            in the shell, still lands on a disposable database instead of
+            laravel_testing / map_data_citytour. See the top-of-file comment:
+            force= here does NOT decide who wins against a shell export
+            either way -a shell-exported DB_TEST_DATABASE/DB_DATABASE_MAP
+            always wins over these regardless of force, because it lands in
+            $_SERVER and PHPUnit's PhpHandler never writes $_SERVER. The real
+            backstop is tests/TestCase.php's guardTestDatabaseIsolation().
         -->
-        <env name="DB_TEST_DATABASE" value="city_tour_test" force="true"/>
-        <env name="DB_DATABASE_MAP" value="city_tour_test_map" force="true"/>
+        <env name="DB_TEST_DATABASE" value="city_tour_test" force="false"/>
+        <env name="DB_DATABASE_MAP" value="city_tour_test_map" force="false"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

@@ -60,19 +60,57 @@
                 @if ($isPaidInvoice)
                     <div class="mt-6 p-6 border rounded-lg bg-gray-50">
                         <h3 class="text-xl font-bold mb-4">Refund Method</h3>
-                        <select name="method" class="w-full px-4 py-2 border border-gray-300 rounded-lg" required>
+                        <select name="method" class="w-full px-4 py-2 border border-gray-300 rounded-lg" {{ $isReadOnly ? 'disabled' : '' }} required>
                             <option value="">Select</option>
                             <option value="Cash" {{ $refund->method == 'Cash' ? 'selected' : '' }}>Cash</option>
                             <option value="Bank" {{ $refund->method == 'Bank' ? 'selected' : '' }}>Bank</option>
                             <option value="Online" {{ $refund->method == 'Online' ? 'selected' : '' }}>Online</option>
                             <option value="Credit" {{ $refund->method == 'Credit' ? 'selected' : '' }}>{{ $firstTask->client->full_name }}'s Credit</option>
                         </select>
+                        <p class="text-xs text-gray-500 mt-1">The method above decides how the client net is disposed (Cash/Bank → payout, Online → gateway refund, Credit → client credit) — never silently overwritten.</p>
+
+                        <label class="block text-gray-700 font-semibold mb-2 mt-4">Disposition override (optional)</label>
+                        <select name="disposition" id="disposition" class="w-full px-4 py-2 border border-gray-300 rounded-lg" {{ $isReadOnly ? 'disabled' : '' }}>
+                            <option value="">Use company default / method above</option>
+                            <option value="credit" {{ $refund->disposition === 'credit' ? 'selected' : '' }}>Credit to client account</option>
+                            <option value="refund_out" {{ $refund->disposition === 'refund_out' ? 'selected' : '' }}>Refund out (cash/bank)</option>
+                            <option value="apply" {{ $refund->disposition === 'apply' ? 'selected' : '' }}>Apply to another open invoice</option>
+                        </select>
+
+                        {{-- W4.U verify-fix (HIGH): same "apply to invoice" picker as create-multi
+                             — see that view's own comment for why this field is required. --}}
+                        <div data-apply-field class="{{ $refund->disposition === 'apply' ? '' : 'hidden' }}">
+                            <label for="applied_invoice_id" class="block text-gray-700 font-semibold mb-2 mt-4">Apply to invoice</label>
+                            <select name="applied_invoice_id" id="applied_invoice_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg" {{ $isReadOnly ? 'disabled' : '' }}>
+                                <option value="">Select an open invoice…</option>
+                                @foreach(($openInvoices ?? collect()) as $inv)
+                                    <option value="{{ $inv->id }}" {{ (int) $refund->applied_invoice_id === $inv->id ? 'selected' : '' }}>#{{ $inv->invoice_number }} — {{ ucfirst($inv->status) }} — {{ number_format($inv->amount ?? 0, 3) }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">
+                                @if(($openInvoices ?? collect())->isEmpty())
+                                    This client has no other open invoice to apply the refund credit against.
+                                @else
+                                    Required when disposition is "Apply to another open invoice".
+                                @endif
+                            </p>
+                        </div>
                     </div>
                 @else
                     <div class="mt-6">
                         @include('refunds.partial.payment-gateway-selection')
                     </div>
                 @endif
+
+                {{-- W4.U verify-fix (LOW): see create-multi.blade.php's own comment. --}}
+                <div class="mt-6">
+                    <label class="block text-gray-700 font-semibold mb-2">Airline commission clawback amount (optional)</label>
+                    <input type="number" step="0.001" min="0" name="airline_clawback_amount"
+                        value="{{ old('airline_clawback_amount', $refund->airline_clawback_amount) }}"
+                        {{ $isReadOnly ? 'readonly disabled' : '' }}
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <p class="text-xs text-gray-500 mt-1">Leave blank when the airline is not clawing back commission on this refund.</p>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
                     <div>
@@ -138,4 +176,19 @@
             @endforeach
         </form>
     </div>
+    <script>
+        // W4.U verify-fix (HIGH): same disposition -> apply-picker toggle as create-multi.blade.php.
+        document.addEventListener('DOMContentLoaded', function () {
+            var dispositionSelect = document.getElementById('disposition');
+            var applyFields = document.querySelectorAll('[data-apply-field]');
+            function toggleApplyFields() {
+                var show = dispositionSelect && dispositionSelect.value === 'apply';
+                applyFields.forEach(function (el) { el.classList.toggle('hidden', !show); });
+            }
+            if (dispositionSelect) {
+                dispositionSelect.addEventListener('change', toggleApplyFields);
+                toggleApplyFields();
+            }
+        });
+    </script>
 </x-app-layout>

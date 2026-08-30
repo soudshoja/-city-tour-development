@@ -1,0 +1,4 @@
+[   48171ms] Error: Invalid reCAPTCHA client id: 
+    at Array.<anonymous> (https://www.gstatic.com/recaptcha/releases/xg_pWYS8-HRESiV6Rdg4aY_R/recaptcha__en.js:223:247)
+    at https://www.gstatic.com/recaptcha/releases/xg_pWYS8-HRESiV6Rdg4aY_R/recaptcha__en.js:710:338
+    at https://development.citycommerce.group/login:83:18

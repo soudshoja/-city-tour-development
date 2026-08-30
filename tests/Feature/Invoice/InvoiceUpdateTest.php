@@ -66,6 +66,16 @@ class InvoiceUpdateTest extends TestCase
         $roleCompany->givePermissionTo('update invoice');
         $roleCompany->givePermissionTo('update invoice payment method');
 
+        // W3b: InvoicePolicy::editAfterIssue()/editDates() (added in W3a, pre-dating this fix)
+        // gate updateTaskPrice()/updateDate() behind an admin/accountant role -- this fixture's
+        // companyUser previously had neither, so both endpoints started returning 403 the moment
+        // those gates were wired, breaking test_can_update_task_price and
+        // test_can_update_invoice_date below with no change on this file's own part. Granting the
+        // Spatie 'admin' role here (a company owner is, functionally, the account's admin) closes
+        // that pre-existing gap rather than leaving it to look like a W3b regression.
+        $roleAdmin = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        $this->companyUser->assignRole($roleAdmin);
+
         // ─── Branch, agent, client, supplier ──────────────────────────
         $this->branch = Branch::factory()->create([
             'user_id' => $this->companyUser->id,
@@ -614,12 +624,19 @@ class InvoiceUpdateTest extends TestCase
 
         $partial = InvoicePartial::where('invoice_id', $this->invoice->id)->first();
 
-        // Cash is NOT system_default → receipt voucher should be created
+        // Cash is NOT system_default → receipt voucher should be created, and — unlike the
+        // standalone RV screen's store()/approve() draft workflow — posted immediately: this
+        // payment was already recorded as complete via the invoice UI, so there is no separate
+        // manual-approval step for this feeder (see ReceiptVoucherController::createReceiptVoucher()'s
+        // own docblock). `status` must be APPROVED, not PENDING, once `transaction_id` is set:
+        // ReceiptVoucherController::update()/destroy() both branch on isPending() to decide
+        // whether anything was ever posted, and a `pending` row carrying a live `transaction_id`
+        // would let destroy() hard-delete the row without ever reversing the ledger.
         $this->assertDatabaseHas('invoice_receipts', [
             'invoice_id' => $this->invoice->id,
             'invoice_partial_id' => $partial->id,
             'type' => 'invoice',
-            'status' => 'pending',
+            'status' => 'approved',
         ]);
 
         // Receipt voucher creates a Transaction
@@ -855,15 +872,51 @@ class InvoiceUpdateTest extends TestCase
 
         $partial = InvoicePartial::where('invoice_id', $this->invoice->id)->first();
 
-        // Cash partial creates receipt voucher
+        // Cash partial creates receipt voucher, posted immediately (see
+        // ReceiptVoucherController::createReceiptVoucher()'s own docblock for why status is
+        // APPROVED, not PENDING, once a real transaction is attached).
         $this->assertDatabaseHas('invoice_receipts', [
             'invoice_partial_id' => $partial->id,
             'type' => 'invoice',
-            'status' => 'pending',
+            'status' => 'approved',
         ]);
 
         $partial->refresh();
         $this->assertNull($partial->receipt_voucher_id);
+    }
+
+    public function test_save_partial_non_default_gateway_resolves_receipt_voucher_controller_via_container(): void
+    {
+        // Regression (W5 lead re-gate NO-GO): ReceiptVoucherController gained a
+        // required 4-arg constructor (PostingSeam, PostingService, AccountResolver,
+        // ReconciliationService) in W5.R/W5.X, but InvoiceController::savePartial()'s
+        // gateway-requires-receipt-voucher branch (Charge.is_system_default === false)
+        // instantiated it with a bare `new ReceiptVoucherController`, bypassing the
+        // container and throwing ArgumentCountError for any real gateway payment.
+        // Assert both that the container itself can build it, and that the full
+        // HTTP round trip through the buggy branch no longer 500s.
+        $this->setupChartOfAccounts();
+
+        $this->assertInstanceOf(
+            \App\Http\Controllers\ReceiptVoucherController::class,
+            app(\App\Http\Controllers\ReceiptVoucherController::class)
+        );
+
+        $response = $this->actingAs($this->companyUser)
+            ->postJson(route('invoice.partial'), [
+                'invoiceId' => $this->invoice->id,
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'companyId' => $this->company->id,
+                'clientId' => $this->client->id,
+                'amount' => 150.00,
+                'type' => 'full',
+                'gateway' => 'Cash', // is_system_default = false -> requiresReceiptVoucher branch
+                'method' => null,
+                'date' => null,
+                'partial_invoice_charge' => 0,
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
     }
 
     // ─── SAVE PARTIAL — SPLIT PAYMENT (different clients/gateways) ─────────────────────────────────────────

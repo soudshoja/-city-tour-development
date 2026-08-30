@@ -1,0 +1,418 @@
+- generic [active] [ref=e1]:
+  - link "الانتقال إلى المحتوى" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "TravelERP home" [ref=e5] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=e9]:
+          - text: TravelERP
+          - generic [ref=e10]: منصة تشغيل لوكالات السفر
+      - navigation "Primary" [ref=e11]:
+        - link "الوحدات" [ref=e12] [cursor=pointer]:
+          - /url: "#modules"
+        - link "كيف يعمل النظام" [ref=e13] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "الأرقام" [ref=e14] [cursor=pointer]:
+          - /url: "#numbers"
+        - link "تواصل معنا" [ref=e15] [cursor=pointer]:
+          - /url: "#contact"
+      - generic [ref=e16]:
+        - button "Switch to English" [ref=e17] [cursor=pointer]:
+          - generic [ref=e21]: English
+        - link "تواصل" [ref=e22] [cursor=pointer]:
+          - /url: "#contact"
+  - main [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e26]:
+        - paragraph [ref=e27]: منصة تشغيل لوكالات السفر
+        - heading "كل حجز يتحول إلى مهمة. وكل مهمة تتحول إلى إيراد يمكنك تتبعه." [level=1] [ref=e28]
+        - paragraph [ref=e29]: يحوّل TravelERP مستندات الحجز - ملفات تذاكر أنظمة الحجز العالمية (GDS)، وملفات PDF من الموردين، وصور واتساب، ورسائل البريد الإلكتروني الواردة، وواجهات برمجة الموردين - إلى مهام منظمة تلقائيًا، ثم يتابع كل مهمة عبر إصدار الفواتير وتحصيل المدفوعات واحتساب أرباح الوكيل دون إعادة إدخال أي بيانات.
+        - generic [ref=e30]:
+          - status "التسجيل يفتح في المرحلة الثالثة، وغير متاح بعد" [ref=e31]:
+            - generic [ref=e33]: اطلب الوصول المبكر - الفتح قريبًا
+          - link "استعرض الوحدات الخمس" [ref=e34] [cursor=pointer]:
+            - /url: "#modules"
+        - paragraph [ref=e35]:
+          - strong [ref=e36]: مصممة لوكالات السفر
+          - text: التي تحجز الطيران والفنادق والتأشيرات والتأمين والجولات السياحية والرحلات البحرية والسيارات والقطارات وشرائح eSIM والفعاليات وصالات المطارات والعبّارات، عبر فروع ووكلاء متعددين.
+      - generic "أرقام الاستخدام الفعلي في الإنتاج" [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e40]: 11,119
+          - generic [ref=e41]: المهام المُعالجة
+        - generic [ref=e42]:
+          - generic [ref=e43]: 4,216
+          - generic [ref=e44]: المدفوعات المُعالجة
+        - generic [ref=e45]:
+          - generic [ref=e46]: 1,936
+          - generic [ref=e47]: سجلات العملاء
+        - generic [ref=e48]:
+          - generic [ref=e49]: "22"
+          - generic [ref=e50]: الوكلاء النشطون
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - paragraph [ref=e54]: المنصة
+        - heading "خمس وحدات، نظام واحد، يعمل على بيانات إنتاج حقيقية." [level=2] [ref=e55]
+      - article [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e59]: "01"
+            - generic [ref=e60]: قيد التشغيل الفعلي
+          - heading "رافع المهام" [level=3] [ref=e68]
+          - paragraph [ref=e69]: أدرج مستند الحجز أينما وصل - ملف تذكرة GDS، أو PDF من المورد، أو صورة واتساب، أو بريد إلكتروني وارد، أو واجهة حجز خاصة بالمورد - ليتحول تلقائيًا إلى مهمة منظمة دون إعادة كتابة أي شيء.
+          - list [ref=e70]:
+            - listitem [ref=e71]:
+              - generic [ref=e74]: "ست قنوات استقبال فعّالة: مجلدات مراقبة مخصصة لكل مورد تُفحص بجدول زمني، ورفع يدوي، وتحليل البريد الإلكتروني الوارد، ووسائط واتساب عبر webhook الخاص بـ Resayil، ونقطة استقبال عامة عبر API / n8n، وتكاملات مباشرة مع واجهات الموردين (TBO Holidays وMagic Holiday ومورد فنادق DOTW)."
+            - listitem [ref=e75]:
+              - generic [ref=e78]: "ست طرق لتحليل البيانات تغذّي شكلًا موحدًا للمهمة: محلل مخصص بتعبيرات نمطية لملفات Amadeus GDS، واستخراج بالذكاء الاصطناعي لملفات PDF والمستندات الحرة، واستخراج بالرؤية الحاسوبية GPT-4o من صور جوازات السفر يُنشئ سجل العميل تلقائيًا، ومحلل بتعبيرات نمطية لإيصالات نصية، ومستخرج بالذكاء الاصطناعي لنص البريد الإلكتروني، واستيراد جماعي من Excel / CSV."
+            - listitem [ref=e79]:
+              - generic [ref=e82]: 12 نوعًا من المهام - طيران، فنادق، تأشيرات، تأمين، جولات سياحية، رحلات بحرية، سيارات، قطارات، شرائح eSIM، فعاليات، صالات مطارات، وعبّارات - لكل منها مخطط تفاصيل خاص به.
+            - listitem [ref=e83]:
+              - generic [ref=e86]: "ضمانات مدمجة: كشف الملفات المكررة، وقواعد رسوم إضافية وفوترة تلقائية لكل مورد، وتحديد تلقائي للوكيل والفرع، وربط بالمهمة الأصلية لتتبع إعادة الإصدار أو الاسترداد أو الإلغاء، وقفل معالجة يمنع استيراد الملف مرتين عند تداخل عمليات التشغيل."
+            - listitem [ref=e87]:
+              - generic [ref=e90]: تنقسم الملفات متعددة المسافرين تلقائيًا إلى مهمة واحدة لكل مسافر، وتُسجَّل الرحلات المتصلة كمراحل مرتبطة ضمن المهمة نفسها.
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]: 11,119
+              - generic [ref=e94]: مهمة تمت معالجتها
+            - generic [ref=e95]:
+              - generic [ref=e96]: "95"
+              - generic [ref=e97]: شركة مورد نشطة
+            - generic [ref=e98]:
+              - generic [ref=e99]: "83"
+              - generic [ref=e100]: مجلد استقبال مراقب
+            - generic [ref=e101]:
+              - generic [ref=e102]: 9 / 12
+              - generic [ref=e103]: نوع مهام مُفعّل
+        - generic [ref=e105]:
+          - generic [ref=e106]: TASK · 01
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - generic [ref=e114]: 11,119
+              - generic [ref=e115]: مهمة تمت معالجتها
+            - generic [ref=e116]:
+              - generic [ref=e117]: "95"
+              - generic [ref=e118]: شركة مورد نشطة
+          - generic [ref=e120]:
+            - generic [ref=e121]: مستند وارد
+            - generic [ref=e125]: مهمة جاهزة
+      - article [ref=e126]:
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]: "02"
+            - generic [ref=e130]: قيد التشغيل الفعلي
+          - heading "بوابة الدفع" [level=3] [ref=e136]
+          - paragraph [ref=e137]: اقبل الدفع بالطريقة التي يفضلها العميل - كي نت، بطاقة، آبل باي، حوالة بنكية، أو رابط دفع يُرسل مباشرة عبر واتساب - وتتم مطابقة المبلغ مع الفاتورة الصحيحة تلقائيًا.
+          - list [ref=e138]:
+            - listitem [ref=e139]:
+              - generic [ref=e142]: أربع بوابات دفع مُفعّلة بالكامل مع معالجة فعلية لعمليات الاستدعاء وwebhook - MyFatoorah وHesabe وTap وUPayment - لكل منها مساراتها الخاصة وأمر مزامنة لسحب طرق الدفع المتاحة تلقائيًا. يُقبل كي نت (KNET) كطريقة دفع عبر البوابات الأربع جميعها؛ وهو ليس تكاملًا منفصلًا.
+            - listitem [ref=e143]:
+              - generic [ref=e146]: "روابط دفع قابلة للمشاركة: يُنشئ الوكيل رابطًا لكل فاتورة، أو لسداد رصيد جزئي متبقٍ، ويرسله عبر البريد الإلكتروني أو مباشرة عبر واتساب - ويدفع العميل دون الحاجة لتسجيل الدخول."
+            - listitem [ref=e147]:
+              - generic [ref=e150]: مدفوعات مجزأة أو عبر أكثر من بوابة على الفاتورة نفسها، بالإضافة إلى "مجموعات" طرق دفع تتيح للشركة تقديم مجموعة مختارة من البوابات لكل فاتورة أو عميل.
+            - listitem [ref=e151]:
+              - generic [ref=e154]: تتبع كل عملية دفع رسوم البوابة الخاصة بها، وتُسوّى في الحساب البنكي الصحيح للشركة.
+            - listitem [ref=e155]:
+              - generic [ref=e158]: "مطابقة تلقائية في الخلفية: مهمة مجدولة تستعلم عن حالة البوابة بشكل دوري، مع أمر تعبئة رجعي لإصلاح أي فجوات سابقة."
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - generic [ref=e161]: 4,216
+              - generic [ref=e162]: دفعة تمت معالجتها
+            - generic [ref=e163]:
+              - generic [ref=e164]: 3,908
+              - generic [ref=e165]: عبر MyFatoorah
+            - generic [ref=e166]:
+              - generic [ref=e167]: "136"
+              - generic [ref=e168]: دفعة مجزأة / متعددة البوابات
+            - generic [ref=e169]:
+              - generic [ref=e170]: 1,902
+              - generic [ref=e171]: فاتورة مسجّلة
+        - generic [ref=e173]:
+          - generic [ref=e174]: PAY · 02
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: 4,216
+              - generic [ref=e182]: دفعة تمت معالجتها
+            - generic [ref=e183]:
+              - generic [ref=e184]: 1,902
+              - generic [ref=e185]: فاتورة مسجّلة
+          - generic [ref=e187]:
+            - generic [ref=e188]: فاتورة
+            - generic [ref=e192]: مطابقة تمت
+      - article [ref=e193]:
+        - generic [ref=e194]:
+          - generic [ref=e195]:
+            - generic [ref=e196]: "03"
+            - generic [ref=e197]: قيد التشغيل الفعلي
+          - heading "إدارة علاقات العملاء" [level=3] [ref=e204]
+          - paragraph [ref=e205]: ملف واحد لكل عميل - يضم كل مهمة وفاتورة ورصيد ودفعة مرّت به على الإطلاق، ومن يُسمح له بالتواصل معه، وطريقة بضغطة واحدة لإرسال تذكير دفع عبر واتساب.
+          - list [ref=e206]:
+            - listitem [ref=e207]:
+              - generic [ref=e210]: شاشة ملف عميل كاملة تعرض إجمالي المدفوع مقابل غير المدفوع، والرصيد الدائن الجاري، وسجل الأرصدة، وعدد المهام وعدد الفواتير في واجهة واحدة.
+            - listitem [ref=e211]:
+              - generic [ref=e214]: "مجموعات عملاء للشركات والعائلات: يمكن إدارة حساب الشركة ومسافريها الأفراد معًا من خلال ربط الحساب الرئيسي بالحسابات الفرعية."
+            - listitem [ref=e215]:
+              - generic [ref=e218]: "حماية من ملكية وتكرار العملاء: عندما يحاول وكيلان إنشاء نفس العميل، يُوجَّه الطلب تلقائيًا عبر مسار طلب تخصيص للموافقة عليه بدلًا من تكرار السجل دون علم أحد."
+            - listitem [ref=e219]:
+              - generic [ref=e222]: محفظة رصيد للعميل - شحن الرصيد، وتتبع الرصيد، وتطبيق الرصيد مباشرة على الفواتير.
+            - listitem [ref=e223]:
+              - generic [ref=e226]: تذكيرات دفع تلقائية وفق جدول زمني، بالإضافة إلى شاشة تعرض كل فاتورة غير مسددة مرتبة حسب تاريخ الاستحقاق، مع تتبع التذكيرات المُرسلة لكل فاتورة.
+            - listitem [ref=e227]:
+              - generic [ref=e230]: إدخال بيانات العميل مباشرة من صورة جواز السفر - يستخرج GPT-4o بالرؤية الحاسوبية الاسم ورقم الجواز والرقم المدني وتاريخ الميلاد والجنسية وتاريخ الانتهاء إلى سجل عميل جديد أو موجود.
+        - generic [ref=e232]:
+          - generic [ref=e233]:
+            - generic [ref=e234]: 1,936
+            - generic [ref=e235]: سجل عميل
+          - generic [ref=e236]:
+            - generic [ref=e237]: 5,472
+            - generic [ref=e238]: معاملة رصيد
+          - generic [ref=e239]:
+            - generic [ref=e240]: 1,902
+            - generic [ref=e241]: فاتورة مرتبطة
+          - generic [ref=e242]:
+            - generic [ref=e243]: "22"
+            - generic [ref=e244]: وكيلًا / 3 فروع
+      - article [ref=e245]:
+        - generic [ref=e246]:
+          - generic [ref=e247]:
+            - generic [ref=e248]: "04"
+            - generic [ref=e249]: قيد التشغيل الفعلي
+          - heading "احتساب أرباح الوكلاء" [level=3] [ref=e256]
+          - paragraph [ref=e257]: يوضح كل حجز بدقة كم ربحت الوكالة وكم يكسب الوكيل منه - وفق أربعة هياكل أجور مختلفة يختارها المالك لكل وكيل - تُحتسب تلقائيًا كل شهر، مع آلية مدمجة لاسترداد المبالغ عندما تسجّل حجوزات الوكيل خسارة.
+          - list [ref=e258]:
+            - listitem [ref=e259]:
+              - generic [ref=e262]: "أربعة نماذج عمولة قابلة للاختيار لكل وكيل، تُحتسب مباشرة من بيانات الفواتير الفعلية: راتب فقط، عمولة فقط، راتب مع عمولة، ونموذج مشاركة أرباح مشروط بهدف لا يُصرف إلا بعد تجاوز ربح الوكيل الشهري للهدف المحدد."
+            - listitem [ref=e263]:
+              - generic [ref=e266]: دورة عمولة شهرية تلقائية تسجّل لقطة دائمة للراتب والهدف والمعدل وإجمالي العمولة وإجمالي الربح لكل وكيل ضمن سجل تاريخي ثابت.
+            - listitem [ref=e267]:
+              - generic [ref=e270]: يُخزَّن الربح لكل فاتورة على مستوى بند التفاصيل، بحيث يمكن تدقيق هامش ربح كل مهمة رجوعًا إلى الحجز الأصلي، وليس فقط كإجمالي شهري.
+            - listitem [ref=e271]:
+              - generic [ref=e274]: تقرير أرباح حسب الوكيل ولوحة إجماليات تعرض مساهمة كل وكيل الجارية والمجموع على مستوى الشركة.
+            - listitem [ref=e275]:
+              - generic [ref=e278]: نظام تسوية للوكلاء لاسترداد العجز عند تسجيل الحجوزات لخسارة - تُسوَّى تلقائيًا من رصيد أرباح الوكيل المتراكم، أو عبر رابط دفع يسدده الوكيل مباشرة - مع رقم تسوية متسلسل وتتبع للمسدد والمتبقي.
+          - generic [ref=e279]:
+            - generic [ref=e280]:
+              - generic [ref=e281]: "22"
+              - generic [ref=e282]: وكيل مُهيّأ
+            - generic [ref=e283]:
+              - generic [ref=e284]: 1,902
+              - generic [ref=e285]: فاتورة تحتوي بيانات ربح
+            - generic [ref=e286]:
+              - generic [ref=e287]: "4"
+              - generic [ref=e288]: نموذج عمولة
+            - generic [ref=e289]: سجل شهري يُنشأ تلقائيًا
+        - generic [ref=e292]:
+          - generic [ref=e293]: PROFIT · 04
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - generic [ref=e301]: "22"
+              - generic [ref=e302]: وكيل مُهيّأ
+            - generic [ref=e303]:
+              - generic [ref=e304]: "4"
+              - generic [ref=e305]: نموذج عمولة
+          - generic [ref=e307]:
+            - generic [ref=e308]: حجز
+            - generic [ref=e312]: صرف
+      - article [ref=e313]:
+        - generic [ref=e314]:
+          - generic [ref=e315]:
+            - generic [ref=e316]: "05"
+            - generic [ref=e317]: تكامل مُفعّل
+          - heading "Resayil" [level=3] [ref=e324]
+          - paragraph [ref=e325]: "يصبح رقم واتساب الذي يستخدمه وكلاؤك وعملاؤك بالفعل جزءًا من طبقة الأتمتة في TravelERP: تتحول صورة جواز سفر أو ملف PDF من المورد إلى مهمة من تلقاء نفسها، وتُرسل الفواتير وروابط الدفع في لحظة استحقاقها، ويصل كل رد إلى الوكيل الصحيح تلقائيًا."
+          - generic [ref=e326]:
+            - generic [ref=e327]:
+              - heading "الأتمتة والذكاء الاصطناعي" [level=4] [ref=e333]
+              - generic [ref=e334]: مدعوم بالذكاء الاصطناعي
+              - list [ref=e337]:
+                - listitem [ref=e338]:
+                  - generic [ref=e342]: تصل مستندات الحجز إلى العميل تلقائيًا - التذكرة، قسيمة الفندق، التأشيرة، الفاتورة، أو رابط الدفع - تُرسل عبر واتساب فور إصدارها.
+                - listitem [ref=e343]:
+                  - generic [ref=e347]: "تقرأ المستندات الواردة نفسها بنفسها: يصبح ملف PDF من مورد أو صورة جواز سفر من عميل تُرسل عبر واتساب مهمة في النظام دون أن يكتبها أحد."
+                - listitem [ref=e348]:
+                  - generic [ref=e352]: تُرسل التذكيرات نفسها بنفسها أيضًا - الفواتير غير المدفوعة، والمهام غير المفوترة، والسفر القادم، كلها تُطلق رسالة واتساب في موعدها.
+                - listitem [ref=e353]:
+                  - generic [ref=e360]: "تُوجَّه الردود نفسها بنفسها: تصل رسالة العميل إلى الوكيل والقسم الصحيحين تلقائيًا، دون تحويل يدوي."
+                - listitem [ref=e361]:
+                  - generic [ref=e365]: إرسال مجدول، ورسائل تنتهي صلاحيتها تلقائيًا، وتسليم لا يتكرر - فلا يمكن لاستدعاء دفع مُعاد إرساله أن يُرسل رسالة مزدوجة للعميل أبدًا.
+            - generic [ref=e366]:
+              - heading "صندوق الوارد المشترك" [level=4] [ref=e372]
+              - list [ref=e373]:
+                - listitem [ref=e374]:
+                  - generic [ref=e380]: صندوق وارد واحد لكل الوكلاء - تصنيفات، وردود سريعة، وردود تلقائية، وتحليلات لكل وكيل، في عرض جماعي واحد.
+                - listitem [ref=e381]:
+                  - generic [ref=e384]: يعمل كلوحة منزلقة بينما يعمل الوكيل على مهمة، أو كعرض بملء الشاشة داخل TravelERP - أيهما يناسب اللحظة.
+                - listitem [ref=e385]:
+                  - generic [ref=e391]: تسجيل دخول واحد. لا يحتاج الموظف لتسجيل الدخول مرتين فقط للرد على رسالة واتساب.
+            - generic [ref=e392]:
+              - heading "الوصول" [level=4] [ref=e398]
+              - list [ref=e399]:
+                - listitem [ref=e400]:
+                  - generic [ref=e406]: نص، وصور، ومستندات، وأزرار تفاعلية، وقوائم اختيار، واستطلاعات رأي، ومواقع جغرافية، وبطاقات تعريف - وليس نصًا فقط.
+                - listitem [ref=e407]:
+                  - generic [ref=e411]: تُبقي قوالب واتساب للأعمال المحادثة مفتوحة بعد انتهاء نافذة الرد ذات الـ 24 ساعة.
+                - listitem [ref=e412]:
+                  - generic [ref=e417]: حملات جماعية بوتيرة مضبوطة وتحكم بالبدء والإيقاف، والتحقق من صحة الأرقام قبل الإرسال، وسجلات تسليم تجيب عن سؤال "هل وصلت الرسالة؟".
+                - listitem [ref=e418]:
+                  - generic [ref=e421]: مجموعات وقنوات، للوكالات التي تدير مجتمعات واتساب إلى جانب المحادثات الفردية.
+          - generic [ref=e422]:
+            - generic [ref=e423]:
+              - generic [ref=e424]: "10"
+              - generic [ref=e425]: نقطة نهاية في الإنتاج
+            - generic [ref=e426]: مرتبط برافع المهام واحتساب أرباح الوكلاء
+        - generic [ref=e428]:
+          - img "Resayil" [ref=e430]
+          - generic "كيف يتحول مستند إلى مهمة، وفاتورة إلى دفعة، تلقائيًا عبر Resayil" [ref=e431]:
+            - generic [ref=e432]:
+              - generic [ref=e433]: صورة أو PDF
+              - generic [ref=e441]: الذكاء الاصطناعي يقرأها
+              - generic [ref=e449]: مهمة جاهزة
+            - generic [ref=e455]:
+              - generic [ref=e456]: فاتورة مستحقة
+              - generic [ref=e463]: تُرسل عبر واتساب
+              - generic [ref=e470]: مدفوعة
+    - generic [ref=e476]:
+      - generic [ref=e477]:
+        - heading "أربع بوابات دفع، مُفعّلة بالكامل - وكي نت يعمل عبرها جميعًا." [level=2] [ref=e479]
+        - paragraph [ref=e480]: لكل من MyFatoorah وHesabe وTap وUPayment بيانات اعتماد API ومسارات استدعاء ومنطق تحكم خاص بها يعمل فعليًا في الإنتاج - وليس مجرد نماذج أولية. يُقبل كي نت وفيزا/ماستركارد وآبل باي وجوجل باي وسامسونج باي كطرق دفع تُقدَّم عبر هذه البوابات الأربع، بنفس الطريقة التي يقدمها بها معظم التجار في الكويت - لذا يُدرج كي نت هنا كطريقة دفع، وليس تكاملًا منفصلًا يُحتسب على حدة.
+      - generic "بوابات الدفع المُفعّلة بالكامل في الإنتاج" [ref=e481]:
+        - generic [ref=e482]:
+          - img "MyFatoorah"
+        - generic [ref=e483]:
+          - img "Tap Payments"
+        - generic [ref=e484]:
+          - img "Hesabe"
+        - generic [ref=e485]:
+          - img "UPayment"
+      - generic [ref=e486]:
+        - generic [ref=e487]: طرق الدفع المقبولة
+        - generic [ref=e488]:
+          - generic [ref=e489]:
+            - img "KNET"
+          - generic [ref=e490]: Visa / Mastercard
+          - generic [ref=e491]: Apple Pay
+          - generic [ref=e492]: Google Pay
+          - generic [ref=e493]: Samsung Pay
+          - generic [ref=e494]: التحويل البنكي
+      - paragraph [ref=e495]: علامات البوابات وطرق الدفع ملك لأصحابها.
+    - generic [ref=e497]:
+      - generic [ref=e498]:
+        - heading "81 موردًا نشطًا يغذّون المنصة بالمهام تلقائيًا." [level=2] [ref=e500]
+        - paragraph [ref=e501]: شركات طيران، ومزودو غرف فندقية، وجهات معالجة تأشيرات، وموارد بيانات GDS، وشركات تأمين - لكل منها ملف مورد، ومجلد استقبال مراقب أو اتصال API، وقواعد رسوم إضافية خاصة بها مُهيّأة في الإنتاج. هذه هي الأسماء التي يراها الوكلاء غالبًا.
+      - generic "موردون معروفون مُدمجون في الإنتاج" [ref=e502]:
+        - generic [ref=e503]:
+          - img "Kuwait Airways"
+        - generic [ref=e504]:
+          - img "Emirates"
+        - generic [ref=e505]:
+          - img "Jazeera Airways"
+        - generic [ref=e506]:
+          - img "Turkish Airlines"
+        - generic [ref=e507]:
+          - img "flydubai"
+        - generic [ref=e508]:
+          - img "Air Arabia"
+        - generic [ref=e509]:
+          - img "British Airways"
+        - generic [ref=e510]:
+          - img "Saudia"
+        - generic [ref=e511]:
+          - img "flynas"
+        - generic [ref=e512]:
+          - img "Royal Jordanian"
+        - generic [ref=e513]:
+          - img "Iberia"
+        - generic [ref=e514]:
+          - img "AirAsia"
+        - generic [ref=e515]:
+          - img "flyadeal"
+        - generic [ref=e516]:
+          - img "IndiGo"
+        - generic [ref=e517]:
+          - img "Wizz Air"
+        - generic [ref=e518]:
+          - img "WebBeds (DOTW)"
+        - generic [ref=e519]:
+          - img "TBO Holidays"
+        - generic [ref=e520]:
+          - img "Almosafer"
+      - paragraph [ref=e521]: + 63 موردًا إضافيًا في مجالات التأشيرات والتأمين والرحلات البحرية والقطارات وغرف الفنادق.
+      - group [ref=e522]:
+        - generic "عرض القائمة الكاملة للموردين" [ref=e523] [cursor=pointer]
+      - paragraph [ref=e524]: جميع العلامات التجارية ملك لأصحابها؛ الموردون المذكورون يعكسون تكاملات فعلية قائمة في الإنتاج.
+    - generic [ref=e526]:
+      - generic [ref=e527]:
+        - heading "من وصول المستند في أي مكان إلى احتساب ربح الوكيل - في خمس خطوات." [level=2] [ref=e529]
+        - paragraph [ref=e530]: تمر كل مهمة بالمسار نفسه، سواء بدأت كملف GDS، أو صورة واتساب، أو استجابة من واجهة مورد.
+      - generic [ref=e531]:
+        - generic [ref=e532]:
+          - paragraph [ref=e536]: الخطوة 01
+          - heading "الاستقبال" [level=4] [ref=e537]
+          - paragraph [ref=e538]: يصل مستند الحجز - ملف تذكرة GDS، أو PDF من المورد، أو صورة واتساب، أو بريد إلكتروني وارد، أو استجابة من واجهة مورد.
+        - generic [ref=e539]:
+          - paragraph [ref=e544]: الخطوة 02
+          - heading "المهمة" [level=4] [ref=e545]
+          - paragraph [ref=e546]: يُحلَّل تلقائيًا إلى أحد أنواع المهام المنظمة الاثني عشر - طيران، فندق، تأشيرة، تأمين، جولة سياحية، وغيرها.
+        - generic [ref=e547]:
+          - paragraph [ref=e552]: الخطوة 03
+          - heading "الفاتورة" [level=4] [ref=e553]
+          - paragraph [ref=e554]: تُربط المهمة بملف العميل، وتُصدر فاتورة جاهزة للدفع.
+        - generic [ref=e555]:
+          - paragraph [ref=e559]: الخطوة 04
+          - heading "الدفع" [level=4] [ref=e560]
+          - paragraph [ref=e561]: يدفع العميل عبر كي نت، أو بطاقة، أو آبل باي، أو حوالة بنكية، أو رابط دفع يُرسل مباشرة عبر واتساب.
+        - generic [ref=e562]:
+          - paragraph [ref=e567]: الخطوة 05
+          - heading "الربح" [level=4] [ref=e568]
+          - paragraph [ref=e569]: تُحتسب العمولة والربح تلقائيًا وفق هيكل الأجور المخصص للوكيل.
+    - generic [ref=e572]:
+      - paragraph [ref=e573]: بالأرقام
+      - heading "ليست نسخة تجريبية. هذا ما يعمل بالفعل." [level=2] [ref=e574]
+      - paragraph [ref=e575]: كل رقم أدناه مستمد من استخدام فعلي في الإنتاج عبر الشركات الثلاث التي تعمل حاليًا على المنصة.
+      - generic [ref=e576]:
+        - generic [ref=e577]:
+          - generic [ref=e578]: 11,119
+          - generic [ref=e579]: المهام المُعالجة
+        - generic [ref=e580]:
+          - generic [ref=e581]: 4,216
+          - generic [ref=e582]: المدفوعات المُعالجة
+        - generic [ref=e583]:
+          - generic [ref=e584]: 1,902
+          - generic [ref=e585]: الفواتير الصادرة
+        - generic [ref=e586]:
+          - generic [ref=e587]: 1,936
+          - generic [ref=e588]: سجلات العملاء
+        - generic [ref=e589]:
+          - generic [ref=e590]: "22"
+          - generic [ref=e591]: الوكلاء النشطون
+        - generic [ref=e592]:
+          - generic [ref=e593]: "95"
+          - generic [ref=e594]: شركات الموردين النشطة
+        - generic [ref=e595]:
+          - generic [ref=e596]: 5,472
+          - generic [ref=e597]: معاملات الرصيد المتتبَّعة
+        - generic [ref=e598]:
+          - generic [ref=e599]: "3"
+          - generic [ref=e600]: شركات تعمل فعليًا، جميعها بالدينار الكويتي
+      - paragraph [ref=e601]: تعكس الأرقام الاستخدام الحالي في الإنتاج وتنمو يوميًا مع معالجة المزيد من المهام.
+    - generic [ref=e604]:
+      - generic [ref=e605]:
+        - paragraph [ref=e606]: تواصل معنا
+        - heading "الوصول المبكر يُفتح في المرحلة الثالثة." [level=2] [ref=e607]
+        - paragraph [ref=e608]: TravelERP حاليًا في مرحلة تجريبية مع أولى الوكالات المستخدمة له. التسجيل العام غير متاح بعد - لكن إن كنت تدير وكالة سفر وتود أن تكون على القائمة عند فتحه، تواصل معنا وسنتابع معك مباشرة.
+      - generic [ref=e609]:
+        - status "التسجيل يفتح في المرحلة الثالثة، وغير متاح بعد" [ref=e610]:
+          - generic [ref=e612]: التسجيل - يفتح في المرحلة الثالثة
+        - link "راسلنا عبر البريد - hello@resayil.io" [ref=e613] [cursor=pointer]:
+          - /url: mailto:hello@resayil.io?subject=TravelERP%20early%20access
+        - paragraph [ref=e614]: بلا رسائل مزعجة وبلا التزام - فقط إشعار عند فتح الوصول.
+  - contentinfo [ref=e615]:
+    - generic [ref=e616]:
+      - generic [ref=e617]: © 2026 TravelERP. من تطوير فريق Resayil.
+      - generic [ref=e618]:
+        - link "الوحدات" [ref=e619] [cursor=pointer]:
+          - /url: "#modules"
+        - link "كيف يعمل النظام" [ref=e620] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "تواصل" [ref=e621] [cursor=pointer]:
+          - /url: mailto:hello@resayil.io

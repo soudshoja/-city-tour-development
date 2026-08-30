@@ -122,14 +122,60 @@
         </div>
     </div>
 
-    <div class="rounded-lg w-full">
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.assets')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.liabilities')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.income')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.expenses')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.equity')</div>
+    @if (!$assets && !$liabilities && !$incomes && !$expenses && !$equities)
+        <div class="bg-white p-4 rounded shadow mb-5">
+            <p class="text-center text-gray-600">No chart of accounts yet.</p>
+        </div>
+    @else
+        <div class="rounded-lg w-full">
+            <div class="mb-5 search-item rounded-lg">
+                @if ($assets)
+                    @include('coa.partials.assets')
+                @else
+                    <div class="bg-white p-4 rounded shadow">
+                        <p class="text-center text-gray-600">No Assets accounts yet.</p>
+                    </div>
+                @endif
+            </div>
+            <div class="mb-5 search-item rounded-lg">
+                @if ($liabilities)
+                    @include('coa.partials.liabilities')
+                @else
+                    <div class="bg-white p-4 rounded shadow">
+                        <p class="text-center text-gray-600">No Liabilities accounts yet.</p>
+                    </div>
+                @endif
+            </div>
+            <div class="mb-5 search-item rounded-lg">
+                @if ($incomes)
+                    @include('coa.partials.income')
+                @else
+                    <div class="bg-white p-4 rounded shadow">
+                        <p class="text-center text-gray-600">No Income accounts yet.</p>
+                    </div>
+                @endif
+            </div>
+            <div class="mb-5 search-item rounded-lg">
+                @if ($expenses)
+                    @include('coa.partials.expenses')
+                @else
+                    <div class="bg-white p-4 rounded shadow">
+                        <p class="text-center text-gray-600">No Expenses accounts yet.</p>
+                    </div>
+                @endif
+            </div>
+            <div class="mb-5 search-item rounded-lg">
+                @if ($equities)
+                    @include('coa.partials.equity')
+                @else
+                    <div class="bg-white p-4 rounded shadow">
+                        <p class="text-center text-gray-600">No Equity accounts yet.</p>
+                    </div>
+                @endif
+            </div>
 
-    </div>
+        </div>
+    @endif
 
     <script>
         // Safely parse JSON attributes with fallback and error logging

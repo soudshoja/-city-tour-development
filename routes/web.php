@@ -1,60 +1,57 @@
 <?php
 
-use App\Http\Controllers\Auth\TwoFAController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SearchController; // Add this line if you create a SearchController
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AgentController;
-use App\Http\Controllers\ClientController;
-use App\Http\Controllers\CompanyController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\BulkInvoiceController;
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AccountingController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\VersionController;
-use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
+use App\Http\Controllers\AgentController; // Add this line if you create a SearchController
+use App\Http\Controllers\Auth\TwoFAController;
 use App\Http\Controllers\AutoBillingController;
-use App\Http\Controllers\ChargeController;
-use App\Http\Controllers\HotelController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\CoaController;
-use App\Http\Controllers\ExportController;
-use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\ToDoListController;
+use App\Http\Controllers\BankPaymentController;
 use App\Http\Controllers\BranchController;
-use App\Http\Controllers\OpenAiController;
-use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\BulkInvoiceController;
+use App\Http\Controllers\ChargeController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CoaController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CreditController;
 use App\Http\Controllers\CurrencyExchangeController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\HotelController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\LockManagementController;
+use App\Http\Controllers\MyFatoorahController;
+use App\Http\Controllers\OpenAiController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReceiptVoucherController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ResayilController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierCompanyController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierCredentialController;
+use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\SystemExchangeRateController;
+use App\Http\Controllers\SystemSettingController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TBOController;
+use App\Http\Controllers\TermController;
+use App\Http\Controllers\ToDoListController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserSettingController;
+use App\Http\Controllers\VersionController;
+use App\Http\Controllers\WhatsappController;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
-use App\Models\Charge;
-use Google\ApiCore\Testing\ProtobufMessageComparator;
-use App\Http\Controllers\BankPaymentController;
-use App\Http\Controllers\ReceiptVoucherController;
-use App\Http\Controllers\CreditController;
-use App\Http\Controllers\JournalEntryController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\MyFatoorahController;
-use App\Http\Controllers\RefundController;
-use App\Http\Controllers\PaymentMethodController;
-use App\Http\Controllers\ResayilController;
-use App\Http\Controllers\SettingController;
-use App\Http\Controllers\SupplierProcedureController;
-use App\Http\Controllers\ReminderController;
-use App\Http\Controllers\TermController;
-use App\Http\Controllers\SystemSettingController;
-use App\Http\Controllers\UserSettingController;
-use App\Http\Controllers\LockManagementController;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 Route::middleware(['auth'])->group(function () {
@@ -74,7 +71,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update', [ProfileController::class, 'updatePassword'])->name('update');
     });
 
-
     // ROUTE THAT DOESN'T HAVE CONTROLLER
     Route::get('pin', function () {
         return view('auth.pin');
@@ -84,7 +80,6 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('dashboard');
     })->name('verify2fa');
 
-
     // 2FA
     Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
     Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
@@ -92,15 +87,24 @@ Route::middleware(['auth'])->group(function () {
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
+    // Financial period locking is accounting-only: fold it into the
+    // module.accounting gate even though its own policy (UserPolicy::manageLocks)
+    // isn't company/module-scoped, so its UI stays consistently hidden.
     Route::group([
         'prefix' => 'lock-management',
         'as' => 'lock-management.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [LockManagementController::class, 'index'])->name('index');
         Route::post('/lock-by-period', [LockManagementController::class, 'lockByPeriod'])->name('lock-by-period');
         Route::post('/lock-by-month', [LockManagementController::class, 'lockByMonth'])->name('lock-by-month');
         Route::post('/unlock-by-month', [LockManagementController::class, 'unlockByMonth'])->name('unlock-by-month');
     });
+
+    // P2.5.E (p2_5-brief.md §P2.5.E) — single-record, dependency-aware unlock for ONE invoice
+    // lives on the pre-existing `invoice.lock`/`invoice.unlock` routes (InvoiceController), not
+    // here — see that route group below and InvoiceController::unlockInvoice()'s own docblock for
+    // why the P2.5.E upgrade was applied in place rather than as a second, competing endpoint.
 
     // Admin users
     Route::group([
@@ -217,6 +221,25 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/columns/save', [TaskController::class, 'saveColumnPrefs'])->name('columns.save');
         Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
         Route::post('/tasks/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulk-update');
+        // W6.B (w6-brief.md "## Kinds" 5, `POST /tasks/bulk-void`; TaskPolicy::bulkVoid()).
+        Route::post('/bulk-void', [TaskController::class, 'bulkVoid'])->name('bulk-void');
+
+        // W6.U -- Task actions (void / void-with-fee / reissue), per w6-brief.md "W6.U -- UI".
+        // Placed ahead of the '/{task}/details' style routes below so a literal 'follow-up'
+        // segment never gets swallowed by a '{task}' wildcard route registered earlier.
+        Route::get('/follow-up', [TaskController::class, 'followUp'])->name('follow-up');
+        Route::get('/follow-up/count', [TaskController::class, 'followUpCount'])->name('follow-up.count');
+        Route::post('/{task}/follow-up/issue', [TaskController::class, 'followUpIssue'])->name('follow-up.issue');
+        Route::post('/{task}/follow-up/extend', [TaskController::class, 'followUpExtend'])->name('follow-up.extend');
+        Route::post('/{task}/follow-up/cancel', [TaskController::class, 'followUpCancel'])->name('follow-up.cancel');
+        Route::post('/{task}/follow-up/note', [TaskController::class, 'followUpNote'])->name('follow-up.note');
+
+        Route::get('/{task}/void-fee-preview', [TaskController::class, 'voidFeePreview'])->name('void-fee-preview');
+        Route::post('/{task}/void', [TaskController::class, 'voidSingle'])->name('void');
+        Route::get('/{task}/reissue-preview', [TaskController::class, 'reissuePreview'])->name('reissue-preview');
+        Route::post('/{task}/reissue', [TaskController::class, 'reissueSingle'])->name('reissue');
+        Route::post('/pending-actions/{pendingAction}/approve', [TaskController::class, 'approveFeeOverride'])->name('pending-actions.approve');
+        Route::post('/pending-actions/{pendingAction}/reject', [TaskController::class, 'rejectFeeOverride'])->name('pending-actions.reject');
         Route::post('/store-manual', [TaskController::class, 'storeManualHotel'])->name('store.manual');
         Route::put('/update-financial/{task}', [TaskController::class, 'updateAdminFinancial'])->name('update.financial');
         Route::post('/{task}/switch-invoice', [TaskController::class, 'switchInvoiceTask'])->name('switchInvoice');
@@ -235,17 +258,35 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
         Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');
         Route::post('/{supplierCompany}/update-surcharges', [SupplierController::class, 'updateSurcharges'])->name('update.surcharges');
+
+        // W6.U -- Supplier status map + charge rule editor (owner additions, 2026-08-28).
+        // Literal segments registered ahead of the '/{suppliersId}' wildcard below.
+        Route::get('/status-map/defaults', [SupplierController::class, 'statusMapDefaults'])->name('status-map.defaults');
+        Route::post('/status-map/test', [SupplierController::class, 'statusMapTest'])->name('status-map.test');
+        Route::post('/status-map/create-from-unmapped', [SupplierController::class, 'statusMapCreateFromUnmapped'])->name('status-map.create-from-unmapped');
+        Route::put('/status-map/{statusMap}', [SupplierController::class, 'statusMapUpdate'])->name('status-map.update');
+        Route::post('/status-map/{statusMap}/deactivate', [SupplierController::class, 'statusMapDeactivate'])->name('status-map.deactivate');
+        Route::post('/{supplier}/status-map', [SupplierController::class, 'statusMapStore'])->name('status-map.store');
+
+        Route::get('/charge-rules/defaults', [SupplierController::class, 'chargeRuleDefaults'])->name('charge-rules.defaults');
+        Route::post('/charge-rules/test', [SupplierController::class, 'chargeRuleTestPreview'])->name('charge-rules.test');
+        Route::post('/charge-rules/create-default', [SupplierController::class, 'chargeRuleStoreDefault'])->name('charge-rules.create-default');
+        Route::put('/charge-rules/{chargeRule}', [SupplierController::class, 'chargeRuleUpdate'])->name('charge-rules.update');
+        Route::post('/charge-rules/{chargeRule}/deactivate', [SupplierController::class, 'chargeRuleDeactivate'])->name('charge-rules.deactivate');
+        Route::post('/{supplier}/charge-rules', [SupplierController::class, 'chargeRuleStore'])->name('charge-rules.store');
+
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
-        Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
+        // Ledger/journal endpoints inside the otherwise task_uploader-mapped
+        // 'suppliers' prefix — gate only these two, not the whole group.
+        Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger')->middleware('module:accounting');
         Route::get('/magic/get', [SupplierController::class, 'getMagicHoliday'])->name('magic.get');
         Route::get('/magic/credential', [SupplierController::class, 'getClientCredential'])->name('magic-credential');
         Route::get('/magic/request', [SupplierController::class, 'makeApiRequest'])->name('magic-request');
         Route::get('/magic/callback', [SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
         Route::get('/magic/provider', [SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
         Route::get('/magic/webhook-initiate/{id}', [SupplierController::class, 'magicReserveWebhook'])->name('magic-webhook');
-        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date');
+        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date')->middleware('module:accounting');
         Route::get('/', [SupplierController::class, 'index'])->name('index');
-
 
         Route::group([
             'prefix' => 'tbo',
@@ -291,6 +332,7 @@ Route::middleware(['auth'])->group(function () {
     Route::group([
         'prefix' => 'coa',
         'as' => 'coa.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [CoaController::class, 'index'])->name('index');
         Route::post('/create', [CoaController::class, 'createAccounts'])->name('create');
@@ -306,24 +348,86 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/opening-balances', [CoaController::class, 'saveOpeningBalances'])->name('opening-balances.save');
     });
 
-    //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
-    Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
-    Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
-    Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
-    Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
+    // AccountingController — company ledger summary/transaction browser + the
+    // payable/receivable entry forms and their AJAX account-picker endpoints.
+    // All of it is accounting-only, so gate the whole block as one group.
+    Route::middleware(['module:accounting'])->group(function () {
+        //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
+        Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
+        Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
+        Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
+        Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
-    Route::get('/payable-details/payable-create', [AccountingController::class, 'createPayableDetail'])->name('payable-details.payable-create');
-    Route::post('/payable-details/payable-store', [AccountingController::class, 'storePayableDetail'])->name('payable-details.payable-store');
-    Route::get('/receivable-details/receivable-create', [AccountingController::class, 'createReceivableDetail'])->name('receivable-details.receivable-create');
-    Route::post('/receivable-details/receivable-store', [AccountingController::class, 'storeReceivableDetail'])->name('receivable-details.receivable-store');
-    Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
-    Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
-    Route::get('/get-branches-by-company', [AccountingController::class, 'getBranchByCompany'])->name('get.branches.by.company');
-    Route::get('/get-agents-by-branch-company', [AccountingController::class, 'getAgentByBranchCompany'])->name('get.agents.by.branch.company');
-    Route::get('/get-suppliers-by-company', [AccountingController::class, 'getSupplierByCompany'])->name('get.suppliers.by.company');
-    Route::get('/get-agents-clients-by-company', [AccountingController::class, 'getAgentClientByCompany'])->name('get.agents.clients.by.company');
-    Route::get('/get-bank-accounts-by-company', [AccountingController::class, 'getBankAccountByCompany'])->name('get.bank.accounts.by.company');
-    Route::get('/get-invoices-by-JournalEntry', [AccountingController::class, 'getInvoicesByJournalEntry'])->name('get.invoices.by.JournalEntry');
+        Route::get('/payable-details/payable-create', [AccountingController::class, 'createPayableDetail'])->name('payable-details.payable-create');
+        Route::post('/payable-details/payable-store', [AccountingController::class, 'storePayableDetail'])->name('payable-details.payable-store');
+        Route::get('/receivable-details/receivable-create', [AccountingController::class, 'createReceivableDetail'])->name('receivable-details.receivable-create');
+        Route::post('/receivable-details/receivable-store', [AccountingController::class, 'storeReceivableDetail'])->name('receivable-details.receivable-store');
+        Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
+        Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
+        Route::get('/get-branches-by-company', [AccountingController::class, 'getBranchByCompany'])->name('get.branches.by.company');
+        Route::get('/get-agents-by-branch-company', [AccountingController::class, 'getAgentByBranchCompany'])->name('get.agents.by.branch.company');
+        Route::get('/get-suppliers-by-company', [AccountingController::class, 'getSupplierByCompany'])->name('get.suppliers.by.company');
+        Route::get('/get-agents-clients-by-company', [AccountingController::class, 'getAgentClientByCompany'])->name('get.agents.clients.by.company');
+        Route::get('/get-bank-accounts-by-company', [AccountingController::class, 'getBankAccountByCompany'])->name('get.bank.accounts.by.company');
+        Route::get('/get-invoices-by-JournalEntry', [AccountingController::class, 'getInvoicesByJournalEntry'])->name('get.invoices.by.JournalEntry');
+    });
+
+    // P2.5.C (p2_5-brief.md §P2.5.C) — period-control screen. Gated the same
+    // 'module:accounting' way as every other accounting screen in this file; per-action
+    // authorization is Gate::authorize('view'|'close'|'reopen', AccountingPeriod::class) inside
+    // PeriodController itself (App\Policies\AccountingPeriodPolicy).
+    Route::prefix('accounting/periods')->name('accounting.periods.')->middleware(['module:accounting'])->group(function () {
+        Route::get('/', [\App\Http\Controllers\Accounting\PeriodController::class, 'index'])->name('index');
+        Route::post('/checklist', [\App\Http\Controllers\Accounting\PeriodController::class, 'checklist'])->name('checklist');
+        Route::post('/close', [\App\Http\Controllers\Accounting\PeriodController::class, 'close'])->name('close');
+        Route::post('/reopen', [\App\Http\Controllers\Accounting\PeriodController::class, 'reopen'])->name('reopen');
+        Route::post('/close-year', [\App\Http\Controllers\Accounting\PeriodController::class, 'closeYear'])->name('close-year');
+    });
+
+    // P2.5.F (p2_5-brief.md §P2.5.F) — Accounting Log Center. Route name is a literal contract:
+    // App\Services\Accounting\AuditLogLinker::forSubject() (shipped in P2.5.E, ahead of this
+    // screen) resolves deep links against the exact name 'accounting.audit-log.index'.
+    // Authorization is Gate::authorize('view', AccountingAuditLog::class) inside the Livewire
+    // component's own mount() (App\Policies\AccountingAuditLogPolicy) — the route middleware only
+    // gates module visibility, same split PeriodController's group above uses.
+    Route::get('accounting/audit-log', fn () => view('accounting.audit-log.index'))
+        ->middleware(['module:accounting'])
+        ->name('accounting.audit-log.index');
+
+    // P2.5.G (p2_5-brief.md §P2.5.G) — Reconciliation Center v0. Per-action authorization is
+    // Gate::authorize('view'|'manage', ReconciliationProposal::class) inside the controller itself
+    // (App\Policies\ReconciliationProposalPolicy) — the route middleware only gates module
+    // visibility, same split PeriodController/AuditLogIndex's own routes already use.
+    Route::prefix('accounting/reconciliation')->name('accounting.reconciliation.')->middleware(['module:accounting'])->group(function () {
+        Route::get('/', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'index'])->name('index');
+        Route::get('/grid', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'grid'])->name('grid');
+        Route::get('/rows/{rowKey}', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'rowDetail'])->name('row-detail')->where('rowKey', '.*');
+        Route::post('/proposals/{proposal}/approve', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'approveProposal'])->name('proposals.approve');
+        Route::post('/proposals/{proposal}/reject', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'rejectProposal'])->name('proposals.reject');
+        Route::post('/match', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'manualMatch'])->name('match');
+        Route::post('/unmatch', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'manualUnmatch'])->name('unmatch');
+        Route::post('/fix-drafts', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'createFixDraft'])->name('fix-drafts.create');
+        Route::post('/fix-drafts/{fixDraft}/post', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'postFixDraft'])->name('fix-drafts.post');
+        Route::post('/fix-drafts/{fixDraft}/discard', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'discardFixDraft'])->name('fix-drafts.discard');
+        Route::post('/run', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'runNow'])->name('run');
+        Route::get('/run-status', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'runStatus'])->name('run-status');
+    });
+
+    // P2.5.H (p2_5-brief.md §P2.5.H) — client/supplier/agent statement (open_items|full_activity)
+    // + client-facing statement PDF. Per-action authorization is Gate::authorize('view', $party)
+    // inside the controller itself (ClientPolicy/SupplierPolicy/AgentPolicy) — the route
+    // middleware only gates module visibility, same split every other accounting screen's routes
+    // in this file already use.
+    Route::prefix('accounting/statements')->name('accounting.statements.')->middleware(['module:accounting'])->group(function () {
+        Route::get('/{partyType}/{partyId}', [\App\Http\Controllers\Accounting\StatementController::class, 'show'])
+            ->where('partyType', 'client|supplier|agent')
+            ->where('partyId', '[0-9]+')
+            ->name('show');
+        Route::get('/{partyType}/{partyId}/pdf', [\App\Http\Controllers\Accounting\StatementController::class, 'pdf'])
+            ->where('partyType', 'client|supplier|agent')
+            ->where('partyId', '[0-9]+')
+            ->name('pdf');
+    });
 
     //BRANCHES
     Route::group([
@@ -345,7 +449,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);
     Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
-
 
     // open api
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
@@ -369,23 +472,26 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/myfatoorah/pay-now', [MyFatoorahController::class, 'index'])->name('myfatoorah.paynow');
     Route::get('checkout', [MyFatoorahController::class, 'checkout'])->name('myfatoorah.checkout');
 
-
-
     Route::get('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'exchangeRates'])->name('suppliers.exchange-rates');
     Route::post('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'updateExchangeRates'])->name('suppliers.exchange-rates.update');
     //TRANSACTION
     Route::group([
         'prefix' => 'transactions',
         'as' => 'transactions.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [TransactionController::class, 'index'])->name('index');
     });
 
-
     //JOURNAL ENTRY
+    // NOTE: prod additionally has a 'journal-entries/all' route (JournalEntryController@all)
+    // not present in this local file (see prod-vs-local drift notes). Because this whole
+    // group carries the module gate, that prod-only route inherits it automatically once
+    // it's added here — no separate patch needed for it.
     Route::group([
         'prefix' => 'journal-entries',
         'as' => 'journal-entries.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/{transactionId}', [JournalEntryController::class, 'index'])->name('index');
         Route::get('/{accountId}/account', [JournalEntryController::class, 'show'])->name('show');
@@ -396,46 +502,65 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'reports',
         'as' => 'reports.',
     ], function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index');
+        // NOTE: this prefix mixes pure accounting reports with the
+        // Agent Profit Calculation module's reports (agent/profit-agent) and
+        // the Task Uploader/Customer CRM/Payment Gateway modules' reports
+        // (tasks/client/payment-gateways) — those must stay reachable for
+        // package clients, so module:accounting is chained per-route below
+        // instead of applied to the whole group.
+        Route::get('/', [ReportController::class, 'index'])->name('index')->middleware('module:accounting');
         Route::get('/agent', [ReportController::class, 'agentReport'])->name('agent');
         Route::match(['get', 'post'], '/client', [ReportController::class, 'clientReport'])->name('client');
         Route::match(['get', 'post'], '/client/pdf', [ReportController::class, 'clientReportPdf'])->name('client.pdf');
         Route::get('/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');
         Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
-        Route::get('/summary', [ReportController::class, 'summary'])->name('summary');
-        Route::get('/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
-        Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report');
-        Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report');
-        Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier');
+        Route::get('/summary', [ReportController::class, 'summary'])->name('summary')->middleware('module:accounting');
+        Route::get('/accsummary', [ReportController::class, 'accsummary'])->name('accsummary')->middleware('module:accounting');
+        Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report')->middleware('module:accounting');
+        Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report')->middleware('module:accounting');
+        Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier')->middleware('module:accounting');
         Route::get('/profit-agent', [ReportController::class, 'profitAgent'])->name('profit-agent');
-        Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');
-        Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank');
-        Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable');
-        Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
-        Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile');
-        Route::get('/settlements', [ReportController::class, 'settlementsReport'])->name('settlements');
+        Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable')->middleware('module:accounting');
+        Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank')->middleware('module:accounting');
+        Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable')->middleware('module:accounting');
+        Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list')->middleware('module:accounting');
+        Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile')->middleware('module:accounting');
+        // settlementsReport() is the *bank* settlements report (payment-gateway
+        // funds settling to the bank — see its 'Settles to Bank' query), not
+        // the agent-loss settlement feature; it's accounting content despite
+        // the ability name 'viewSettlement'.
+        Route::get('/settlements', [ReportController::class, 'settlementsReport'])->name('settlements')->middleware('module:accounting');
         Route::get('/settlements/entries/by-date', [ReportController::class, 'journalEntriesByDate'])
-            ->name('settlements.entries.by_date');
-        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
-        Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
-        Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
-        Route::match(['get', 'post'], '/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
-        Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
-        Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
+            ->name('settlements.entries.by_date')->middleware('module:accounting');
+        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss')->middleware('module:accounting');
+        // P2.5.D (p2_5-brief.md §P2.5.D): deferred revenue schedule, grouped by release month.
+        Route::get('/deferred-revenue-schedule', [ReportController::class, 'deferredRevenueSchedule'])->name('deferred-revenue-schedule')->middleware('module:accounting');
+        Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors')->middleware('module:accounting');
+        Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf')->middleware('module:accounting');
+        Route::match(['get', 'post'], '/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales')->middleware('module:accounting');
+        // dailySalesPdf()/dailySalesPdfDownload() are currently dead code
+        // (target methods commented out in ReportController — pre-existing,
+        // not touched here); gating them anyway means a package client hits
+        // our 404 instead of ever reaching that broken controller method.
+        Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf')->middleware('module:accounting');
+        Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download')->middleware('module:accounting');
         Route::match(['get', 'post'], '/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
         Route::match(['get', 'post'], '/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
+        // payment-gateways report is gated by its own ReportPolicy::viewPaymentGatewaysReport
+        // check already (payment_gateway package module) — left out of module:accounting.
         Route::match(['get', 'post'], '/payment-gateways', [ReportController::class, 'paymentGateways'])->name('payment-gateways');
         Route::get('/payment-gateways/pdf', [ReportController::class, 'paymentGatewaysReportPdf'])->name('payment-gateways.pdf');
 
         // Trial Balance
-        Route::get('/trial-balance', [ReportController::class, 'trialBalance'])->name('trial-balance');
-        Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf'])->name('trial-balance.pdf');
-        Route::get('/trial-balance/export', [ReportController::class, 'trialBalanceExport'])->name('trial-balance.export');
-        Route::get('/trial-balance/validation', [ReportController::class, 'trialBalanceValidation'])->name('trial-balance.validation');
+        Route::get('/trial-balance', [ReportController::class, 'trialBalance'])->name('trial-balance')->middleware('module:accounting');
+        Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf'])->name('trial-balance.pdf')->middleware('module:accounting');
+        Route::get('/trial-balance/export', [ReportController::class, 'trialBalanceExport'])->name('trial-balance.export')->middleware('module:accounting');
+        Route::get('/trial-balance/validation', [ReportController::class, 'trialBalanceValidation'])->name('trial-balance.validation')->middleware('module:accounting');
 
         Route::group([
             'prefix' => 'ajax',
             'as' => 'ajax.',
+            'middleware' => ['module:accounting'],
         ], function () {
             Route::get('/dashboard-stats', [ReportController::class, 'getDashboardStats'])->name('dashboard-stats');
         });
@@ -452,12 +577,33 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/clientAdd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
     });
 
-
     Route::group([
         'prefix' => 'invoice',
         'as' => 'invoice.',
     ], function () {
-        Route::get('/{companyId}/{invoiceNumber}/arabic', [InvoiceController::class, 'showArabic'])->name('show-arabic')->withoutMiddleware(['auth']);
+        // IDOR/leak fix: invoice.show / .pdf / .split / .proforma /
+        // .proforma-pdf (and these Arabic twins) used to be
+        // withoutMiddleware(['auth']) on a guessable {companyId}/{invoiceNumber}
+        // (or {invoiceNumber}/{clientId}/{partialId}) pair, with no policy
+        // check in the controller -- anyone who could guess/enumerate the
+        // pair could read any tenant's invoice, including internal
+        // supplier_price/markup_price/profit/commission figures baked into
+        // the view data. They now require a logged-in, same-company (or
+        // admin) user -- see InvoiceController's authorizeStaffInvoiceAccess()
+        // helper, called from each of these methods. The client-facing
+        // "share this invoice via WhatsApp/email/payment redirect" use case
+        // the old unauthenticated routes existed for is preserved separately
+        // below as signed-URL-only '.public' variants -- see
+        // Invoice::publicUrl() for how those links are generated and
+        // config('app.invoice_link_ttl_minutes') for their expiry. The
+        // public variants also strip the internal pricing fields above from
+        // what they hand to the view -- see
+        // InvoiceController::scrubInvoiceDetailsForPublicView().
+        Route::get('/{companyId}/{invoiceNumber}/arabic', [InvoiceController::class, 'showArabic'])->name('show-arabic');
+        Route::get('/{companyId}/{invoiceNumber}/arabic/public', [InvoiceController::class, 'showArabic'])
+            ->name('show-arabic.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
         Route::post('/store', [InvoiceController::class, 'store'])->name('store');
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
@@ -470,8 +616,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/remove-task', [InvoiceController::class, 'removeTask'])->name('remove-task');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
-        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
-        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/public', [InvoiceController::class, 'split'])
+            ->name('split.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic');
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic/public', [InvoiceController::class, 'splitarabic'])
+            ->name('split-arabic.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
         Route::post('/{companyId}/{invoiceNumber}/send-email', [InvoiceController::class, 'sendInvoiceEmail'])->name('send-email');
 
@@ -495,16 +649,48 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/create-payment-link-shortage', [InvoiceController::class, 'createPaymentLinkForShortage'])->name('create.payment.link.shortage');
         });
 
-        Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
-        Route::get('/{companyId}/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
-        Route::get('/{companyId}/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
-        Route::get('/{companyId}/{invoiceNumber}/proforma-pdf', [InvoiceController::class, 'proformaGeneratePdf'])->name('proforma.pdf')->withoutMiddleware(['auth']);
+        // P2.5.E (p2_5-brief.md §P2.5.E): registered HERE, BEFORE the bare 2-segment `show` route
+        // immediately below, on purpose. `show` (`/{companyId}/{invoiceNumber}`, no digit
+        // constraint) matches ANY 2-segment GET path under `/invoice/` and is otherwise matched
+        // FIRST by Laravel's router regardless of definition order elsewhere in this group -- the
+        // exact pre-existing bug `tests/Feature/Security/InvoiceLockTenantIsolationTest.php`
+        // already documents against `loss-bearer` (that route's own fix was deferred as "outside
+        // this hotfix's assigned files"; its test works around the shadow by calling the
+        // controller method directly instead of through HTTP). This NEW route is squarely this
+        // sub-wave's own deliverable, so the fix here is to register it before the shadow instead
+        // of also working around it -- verified via `php artisan route:list` + an HTTP test
+        // actually hitting `invoice.unlock-blockers` successfully (InvoiceUnlockHttpTest).
+        Route::get('/{invoice}/unlock-blockers', [InvoiceController::class, 'unlockBlockers'])->name('unlock-blockers');
+
+        Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show');
+        Route::get('/{companyId}/{invoiceNumber}/public', [InvoiceController::class, 'show'])
+            ->name('show.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
+        Route::get('/{companyId}/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf');
+        Route::get('/{companyId}/{invoiceNumber}/pdf/public', [InvoiceController::class, 'generatePdf'])
+            ->name('pdf.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
+        Route::get('/{companyId}/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma');
+        Route::get('/{companyId}/{invoiceNumber}/proforma/public', [InvoiceController::class, 'proforma'])
+            ->name('proforma.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
+        Route::get('/{companyId}/{invoiceNumber}/proforma-pdf', [InvoiceController::class, 'proformaGeneratePdf'])->name('proforma.pdf');
+        Route::get('/{companyId}/{invoiceNumber}/proforma-pdf/public', [InvoiceController::class, 'proformaGeneratePdf'])
+            ->name('proforma.pdf.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
+        Route::post('/{companyId}/{invoiceNumber}/proforma-sent', [InvoiceController::class, 'markProformaSent'])->name('proforma.markSent');
         Route::put('/{companyId}/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details');
         Route::post('/{invoice}/lock', [InvoiceController::class, 'lockInvoice'])->name('lock');
         Route::post('/{invoice}/unlock', [InvoiceController::class, 'unlockInvoice'])->name('unlock');
+        // invoice.unlock-blockers (GET) is registered ABOVE, before the `show` shadow route — see
+        // that registration's own comment for why.
         Route::get('/{invoice}/loss-bearer', [InvoiceController::class, 'getLossBearer'])->name('loss-bearer.get');
         Route::put('/{invoice}/loss-bearer', [InvoiceController::class, 'updateLossBearer'])->name('loss-bearer.update');
     });
@@ -533,16 +719,37 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [RefundController::class, 'index'])->name('index');
         Route::get('/create', [RefundController::class, 'create'])->name('create');
         Route::post('/', [RefundController::class, 'store'])->name('store');
-        Route::post('/unpaid-invoice', [RefundController::class, 'storeForUnpaidInvoice'])->name('store-unpaid');
+        // W4.R bundled fix (w4-brief.md §5 "remove dead store-unpaid route or implement
+        // storeForUnpaidInvoice properly (pick one, justify)"; ct-refund-map.md §7 confirms
+        // `RefundController::storeForUnpaidInvoice` does not exist). REMOVED, not implemented: the
+        // unpaid-invoice refund flow is already fully reachable through the ordinary POST / above
+        // — store()'s own `$paymentStatus === 'unpaid'` branch already calls
+        // handleUnpaidInvoice() internally (see that method) with no separate request contract
+        // ever having existed for this endpoint. Fabricating a second entry point for behaviour
+        // the primary one already covers would duplicate, not restore, functionality.
         Route::get('/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
         Route::put('/{refund}', [RefundController::class, 'update'])->name('update');
+        Route::post('/{refund}/approve', [RefundController::class, 'approve'])->name('approve');
+        Route::post('/{refund}/reject', [RefundController::class, 'reject'])->name('reject');
         Route::post('/{refund}/complete-process', [RefundController::class, 'completeProcess'])->name('complete_process');
         Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
         Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
-        Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+        // W4.R bundled fix (w4-brief.md §5 "refunds.show route -> auth OR signed URL (mirror
+        // Invoice::publicUrl() pattern + TTL env)"; ct-refund-map.md §7 — this single route
+        // stripped `auth` with NO signature check at all, so any caller who could guess/enumerate
+        // {companyId}/{refundNumber} could view any company's refund). Split into two routes,
+        // mirroring InvoiceController's own show/show-arabic vs. show.public/show-arabic.public
+        // split exactly: 'show' now requires the ordinary authenticated session (this app's
+        // internal refund-detail view); 'show.public' is the SIGNED-only variant for a shared
+        // link (Refund::publicUrl()), never requiring auth. Together they satisfy "auth OR
+        // signed" without a route that accepts either check on its own.
+        Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show');
+        Route::get('/{companyId}/{refundNumber}/public', [RefundController::class, 'show'])
+            ->name('show.public')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
         Route::get('/eligible-tasks', [RefundController::class, 'getEligibleTasks'])->name('eligible-tasks');
     });
-
 
     Route::group([
         'prefix' => 'payment',
@@ -624,8 +831,29 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('group.update');
         Route::get('/{id}/details', [ClientController::class, 'getDetails'])->name('details');
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
-        Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
-        Route::get('/{id}/credits', [ClientController::class, 'showCredit'])->name('credits')->withoutMiddleware(['auth']);
+        Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance'])->name('credit-balance');
+        // IDOR fix: this used to be reachable by anyone who guessed a client
+        // id (withoutMiddleware(['auth']) + no policy check in the
+        // controller). It now requires a logged-in, same-company (or admin)
+        // user via ClientPolicy::view() -- see showCredit() in
+        // ClientController. The client-facing "share this ledger via
+        // WhatsApp" use case that the old unauthenticated route existed for
+        // is preserved separately below as a signed-URL-only variant.
+        Route::get('/{id}/credits', [ClientController::class, 'showCredit'])->name('credits');
+
+        // Public, client-facing variant of the credit ledger (e.g. a link
+        // sent to the client over WhatsApp/Resayil). Reachable ONLY with a
+        // valid Laravel temporary signed URL -- see
+        // Client::creditStatementUrl() for how the link is generated and
+        // config('app.client_credit_link_ttl_minutes') for its expiry.
+        // 'signed' (Illuminate\Routing\Middleware\ValidateSignature) rejects
+        // any request whose signature is missing, tampered, or expired with
+        // an InvalidSignatureException, which Laravel's default exception
+        // handler renders as a 403 -- no bespoke handling needed here.
+        Route::get('/{id}/credits/shared', [ClientController::class, 'showCreditShared'])
+            ->name('credits.shared')
+            ->withoutMiddleware(['auth'])
+            ->middleware('signed');
 
         // Assignment request routes
         Route::post('/request-assignment', [ClientController::class, 'requestAssignment'])->name('request-assignment');
@@ -646,6 +874,7 @@ Route::middleware(['auth'])->group(function () {
     Route::group([
         'prefix' => 'exchange',
         'as' => 'exchange.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('index', [CurrencyExchangeController::class, 'index'])->name('index');
         Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
@@ -707,9 +936,17 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // CREDITS
+    // CreditPolicy is classified as an accounting-module policy (see the
+    // Company/Policy discovery), and creditTopup() posts real Transaction +
+    // JournalEntry rows against COA accounts with zero authorization today —
+    // gate the whole controller as accounting. NOTE: this also hides the
+    // client credit-balance read (index/filter) from package clients, which
+    // is arguably Customer CRM information rather than accounting; flagged
+    // as an open product decision in the report rather than split here.
     Route::group([
         'prefix' => 'credits',
         'as' => 'credits.',
+        'middleware' => ['module:accounting'],
     ], function () {
         Route::get('/', [CreditController::class, 'index'])->name('index');
         Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
@@ -747,6 +984,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-notifications', [SettingController::class, 'storeAgentNotification'])->name('agent-notifications.store');
         Route::post('/agent-notifications/bulk-update', [SettingController::class, 'bulkUpdateAgentNotifications'])->name('agent-notifications.bulk-update');
         Route::delete('/agent-notifications/{id}', [SettingController::class, 'deleteAgentNotification'])->name('agent-notifications.delete');
+
+        // W4.U §a — Accounting settings tab (invoice_overpay_cancel_policy, refund fee schedule,
+        // unclaimed_writeback_months, commissionable_fee_types, posting_basis, bearer matrix,
+        // refund notification toggles). Gated by SettingPolicy::viewAccountingSettings()/
+        // manageAccountingSettings() inside the controller actions themselves.
+        Route::get('/accounting-settings', [SettingController::class, 'getAccountingSettings'])->name('accounting-settings');
+        Route::post('/accounting-settings', [SettingController::class, 'storeAccountingSettings'])->name('accounting-settings.store');
     });
 
     Route::group([
@@ -760,7 +1004,7 @@ Route::middleware(['auth'])->group(function () {
     //Payment Method
     Route::group([
         'prefix' => 'payment-method',
-        'as'     => 'payment-method.',
+        'as' => 'payment-method.',
     ], function () {
         Route::get('/', [PaymentMethodController::class, 'index'])->name('index');
         Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
@@ -794,11 +1038,12 @@ Route::middleware(['auth'])->group(function () {
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {
-    $fullPath = 'city_travelers/' . $path;
-    if (!Storage::exists($fullPath)) {
+    $fullPath = 'city_travelers/'.$path;
+    if (! Storage::exists($fullPath)) {
         abort(404, 'File not found');
     }
-    return response()->file(storage_path('app/' . $fullPath));
+
+    return response()->file(storage_path('app/'.$fullPath));
 })->where('path', '.*');
 
 Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
@@ -813,10 +1058,9 @@ Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.
 
 Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
 
-
 // search for invoice creation
 
-// branch 
+// branch
 Route::get('/search-branch', [InvoiceController::class, 'searchBranch'])->name('search.branch');
 Route::post('/select-branch', [InvoiceController::class, 'selectBranch'])->name('select.branch');
 
@@ -828,14 +1072,26 @@ Route::post('/select-agent', [InvoiceController::class, 'selectAgent'])->name('s
 Route::get('/search-client', [InvoiceController::class, 'searchClient'])->name('search.client');
 Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name('select.client');
 
-
-// items 
+// items
 Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
 Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
 
+// NOTE: this group sits outside the top-level Route::middleware(['auth'])
+// wrap above, and ReceiptVoucherController has no constructor middleware
+// either — before this change every one of these routes (not just `.show`)
+// had ZERO auth protection, not merely a missing module gate. 'auth' is
+// added here alongside 'module:accounting' to close that. `.show` keeps its
+// existing ->withoutMiddleware(['auth']) exemption (it's the client-facing
+// shareable voucher link, same pattern as invoice.show/payment.link.show) —
+// widening that exemption to also skip the module check would 404 it for
+// EVERY company whenever an anonymous visitor opens the link (no user means
+// no company to check), which would break today's legacy behavior. Closing
+// that specific gap for package-client companies is left to whoever wraps
+// the stray links into this route from the Invoice views (see report).
 Route::group([
     'prefix' => 'receipt-voucher',
     'as' => 'receipt-voucher.',
+    'middleware' => ['auth', 'module:accounting'],
 ], function () {
     Route::get('/', [ReceiptVoucherController::class, 'index'])->name('index');
     Route::get('/create', [ReceiptVoucherController::class, 'create'])->name('create');
@@ -843,27 +1099,50 @@ Route::group([
     Route::get('/edit/{id}', [ReceiptVoucherController::class, 'edit'])->name('edit');
     Route::put('/update/{id}', [ReceiptVoucherController::class, 'update'])->name('update');
     Route::post('/approve/{id}', [ReceiptVoucherController::class, 'approve'])->name('approve');
+    // W5.R: delete()/clear()/bounce() are NEW -- HEAD had no delete action for RV at all, and no
+    // cheque-instrument workflow. See ReceiptVoucherController's own class docblock ("$id is
+    // invoice_receipts.id everywhere") for why these are keyed the same way as edit/update/approve.
+    Route::delete('/{id}', [ReceiptVoucherController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/clear', [ReceiptVoucherController::class, 'clear'])->name('clear');
+    Route::post('/{id}/bounce', [ReceiptVoucherController::class, 'bounce'])->name('bounce');
     Route::get('/fetch-journals-by-date', [ReceiptVoucherController::class, 'fetchPaymentsByDate'])->name('fetchPaymentsByDate');
     Route::get('/fetch-journals-view', [ReceiptVoucherController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
     Route::post('/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('decline-reconcile');
     Route::post('/import', [ReceiptVoucherController::class, 'import'])->name('import');
-    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+    // Cheque-image download (security fix): authenticated + tenant-checked, replacing the old
+    // public-disk Storage::url() link. Registered BEFORE the `show` catch-all two-segment route
+    // below so `/receipt-voucher/{id}/cheque-image` cannot be swallowed by `/{companyId}/{voucherNumber}`.
+    Route::get('/{id}/cheque-image', [ReceiptVoucherController::class, 'chequeImage'])->name('cheque-image');
+    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show')->withoutMiddleware(['auth', 'module:accounting']);
 });
 
+// Same pre-existing gap as receipt-voucher above: BankPaymentController has
+// no 'show' route at all, so no exemption is needed — every action here
+// gets both 'auth' and 'module:accounting'.
 Route::group([
     'prefix' => 'bank-payments',
     'as' => 'bank-payments.',
+    'middleware' => ['auth', 'module:accounting'],
 ], function () {
     Route::get('/create', [BankPaymentController::class, 'create'])->name('create');
     Route::post('/store', [BankPaymentController::class, 'store'])->name('store');
     Route::get('/edit/{id}', [BankPaymentController::class, 'edit'])->name('edit');
     Route::put('/edit/{id}', [BankPaymentController::class, 'update'])->name('update');
     Route::get('/', [BankPaymentController::class, 'index'])->name('index');
+    // W5.P: approve()/destroy()/clear() are NEW -- HEAD had no approval gate or delete action for
+    // PV at all, and no cheque-instrument clearance workflow. See BankPaymentController's own class
+    // docblock ("$id is bank_payments.id everywhere") for why these are keyed the same way as
+    // edit/update, mirroring ReceiptVoucherController's identical W5.R precedent.
+    Route::post('/approve/{id}', [BankPaymentController::class, 'approve'])->name('approve');
+    Route::delete('/{id}', [BankPaymentController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/clear', [BankPaymentController::class, 'clear'])->name('clear');
+    // Cheque-image download (security fix): authenticated + tenant-checked, replacing the old
+    // public-disk Storage::url() link -- mirrors receipt-voucher.cheque-image above.
+    Route::get('/{id}/cheque-image', [BankPaymentController::class, 'chequeImage'])->name('cheque-image');
     Route::get('/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('fetchPaymentsByDate');
     Route::get('/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
     Route::post('/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('decline-reconcile');
 });
-
 
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');
@@ -882,7 +1161,6 @@ route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.s
 route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
 route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
 
-
 // Route to show the test form
 Route::get('/payment/test', function () {
     return view('payment_test');
@@ -899,18 +1177,16 @@ Route::group(['prefix' => 'docs', 'as' => 'docs.'], function () {
     Route::get('/developer', fn () => view('docs.developer-documentation'))->name('developer-documentation');
     Route::get('/postman/download', function () {
         $filePath = resource_path('postman/Task_Webhook_API.postman_collection.json');
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             abort(404, 'Postman collection file not found');
         }
+
         return response()->download($filePath, 'Task_Webhook_API.postman_collection.json');
     })->name('postman.download');
 });
 
-
-
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
 Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
-
 
 Route::group([
     'prefix' => 'resayil',
@@ -1004,5 +1280,5 @@ Route::middleware(['auth', 'dotw_audit_access'])
         Route::redirect('api-tokens', '/admin/dotw', 301)->name('api-tokens');
     });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 require __DIR__.'/resailai-admin.php';

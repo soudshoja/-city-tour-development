@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Exceptions\Accounting\PostingException;
 use App\Models\AutoBilling;
 use App\Models\Task;
 use App\Models\Invoice;
@@ -271,6 +272,22 @@ class RunAutoBilling extends Command
                         'paid' => false,
                     ]);
 
+                    // W3b: standardize this codebase's addJournalEntry() failure contract on
+                    // PROPAGATE (matching PaymentApplicationService::applyPaymentsToInvoice(),
+                    // and the locked "engine ON -> errors propagate" rule). This inner try/catch
+                    // used to swallow EVERY exception per task and continue the loop -- so a real
+                    // PostingException (unbalanced draft, frozen account, superseded idempotency
+                    // key…) on the engine-ON path was silently logged, the invoice/detail/partial
+                    // rows created around this loop were still committed by the surrounding
+                    // DB::commit() below, and the resulting invoice was left with a missing
+                    // ledger entry for that task -- exactly the silent double-post/under-post
+                    // risk the engine's own seam is designed to prevent. A PostingException now
+                    // rethrows so it reaches the outer per-rule `catch (Exception $e)` a few
+                    // lines down, which ALREADY does the correct thing (DB::rollBack(), a failure
+                    // notification, and a log line) -- the exact same contract
+                    // PaymentApplicationService uses. Only a non-engine \Exception is still
+                    // logged and tolerated here, matching HEAD's original per-task resilience for
+                    // unrelated failures.
                     try {
                         $invoiceController->addJournalEntry(
                             $task,
@@ -279,6 +296,8 @@ class RunAutoBilling extends Command
                             $transaction->id,
                             $clientName
                         );
+                    } catch (PostingException $e) {
+                        throw $e;
                     } catch (Exception $e) {
                         Log::error("[AutoBilling] Journal entry failed for Task {$task->id}: " . $e->getMessage());
                     }

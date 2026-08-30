@@ -1,0 +1,314 @@
+- generic [active] [ref=f26e1]:
+  - banner [ref=f26e3]:
+    - paragraph [ref=f26e5]: CityTourApp
+    - generic [ref=f26e6]:
+      - generic [ref=f26e7]:
+        - link [ref=f26e8] [cursor=pointer]:
+          - /url: https://development.citycommerce.group
+          - img "Logo" [ref=f26e9]
+        - navigation [ref=f26e11]:
+          - list [ref=f26e12]:
+            - generic [ref=f26e13] [cursor=pointer]:
+              - generic [ref=f26e14]: Tasks
+              - list:
+                - generic:
+                  - link "Tasks list":
+                    - /url: https://development.citycommerce.group/tasks
+                - generic:
+                  - link "Outstanding":
+                    - /url: https://development.citycommerce.group/payment/outstanding
+            - generic [ref=f26e21] [cursor=pointer]:
+              - generic [ref=f26e22]: Finances
+              - list:
+                - generic:
+                  - link "Chart Of Account":
+                    - /url: https://development.citycommerce.group/coa
+                - generic:
+                  - link "Payment Voucher":
+                    - /url: https://development.citycommerce.group/bank-payments
+                - generic:
+                  - link "Receipt Voucher":
+                    - /url: https://development.citycommerce.group/receipt-voucher
+                - generic:
+                  - link "Receivable":
+                    - /url: https://development.citycommerce.group/receivable-details/receivable-create
+                - generic:
+                  - link "Payable":
+                    - /url: https://development.citycommerce.group/payable-details/payable-create
+                - generic:
+                  - link "Lock Management":
+                    - /url: https://development.citycommerce.group/lock-management
+            - generic [ref=f26e28] [cursor=pointer]:
+              - generic [ref=f26e29]: Invoices
+              - list:
+                - generic:
+                  - link "Invoices List":
+                    - /url: https://development.citycommerce.group/invoices
+                - generic:
+                  - link "Invoices Link":
+                    - /url: https://development.citycommerce.group/invoices/link
+                - generic:
+                  - link "Payment Link":
+                    - /url: https://development.citycommerce.group/payment/link
+                - generic:
+                  - link "Refund":
+                    - /url: https://development.citycommerce.group/refunds
+                - generic:
+                  - link "Auto Billing":
+                    - /url: https://development.citycommerce.group/auto-billing
+                - generic:
+                  - link "Reminder":
+                    - /url: https://development.citycommerce.group/reminder
+            - link "Resayil" [ref=f26e38] [cursor=pointer]:
+              - /url: https://development.citycommerce.group/resayil
+            - generic [ref=f26e40] [cursor=pointer]:
+              - generic [ref=f26e41]: Users
+              - list:
+                - generic:
+                  - link "Users List":
+                    - /url: https://development.citycommerce.group/users/adminsList
+                - generic:
+                  - link "Branches List":
+                    - /url: https://development.citycommerce.group/branches
+                - generic:
+                  - link "Agents List":
+                    - /url: https://development.citycommerce.group/agents
+                - generic:
+                  - link "Clients List":
+                    - /url: https://development.citycommerce.group/clients
+            - generic [ref=f26e51] [cursor=pointer]:
+              - generic [ref=f26e52]: Reports
+              - list:
+                - generic:
+                  - link "Paid Acc Pay/Receive":
+                    - /url: https://development.citycommerce.group/reports/paid-report
+                - generic:
+                  - link "Unpaid Acc Pay/Receive":
+                    - /url: https://development.citycommerce.group/reports/unpaid-report
+                - generic:
+                  - link "Profit & Loss":
+                    - /url: https://development.citycommerce.group/reports/profit-loss
+                - generic:
+                  - link "Bank Settlement":
+                    - /url: https://development.citycommerce.group/reports/settlements
+                - generic:
+                  - link "Transaction List":
+                    - /url: https://development.citycommerce.group/coa/transactions
+                - generic:
+                  - link "Creditors Report":
+                    - /url: https://development.citycommerce.group/reports/creditors
+                - generic:
+                  - link "Daily Sales":
+                    - /url: https://development.citycommerce.group/reports/daily-sales
+                - generic:
+                  - link "Task Report":
+                    - /url: https://development.citycommerce.group/reports/tasks
+                - generic:
+                  - link "Client Report":
+                    - /url: https://development.citycommerce.group/reports/client
+                - generic:
+                  - link "Payment Gateways Report":
+                    - /url: https://development.citycommerce.group/reports/payment-gateways
+            - generic [ref=f26e61] [cursor=pointer]:
+              - generic [ref=f26e62]: Settings
+              - list:
+                - generic:
+                  - link "Settings":
+                    - /url: https://development.citycommerce.group/settings
+                - generic:
+                  - link "Suppliers":
+                    - /url: https://development.citycommerce.group/suppliers
+                - generic:
+                  - link "Manage Roles":
+                    - /url: https://development.citycommerce.group/role
+                - generic:
+                  - link "Documentations":
+                    - /url: https://development.citycommerce.group/docs/user
+                  - list:
+                    - generic:
+                      - link "User Docs":
+                        - /url: https://development.citycommerce.group/docs/user
+                    - generic:
+                      - link "API Docs":
+                        - /url: https://development.citycommerce.group/docs/api
+                    - generic:
+                      - link "Developer Docs":
+                        - /url: https://development.citycommerce.group/docs/developer
+                - generic:
+                  - link "Currency Exchange":
+                    - /url: https://development.citycommerce.group/exchange/index
+                  - list:
+                    - generic:
+                      - link "Exchange History":
+                        - /url: https://development.citycommerce.group/exchange/histories
+      - generic [ref=f26e70]:
+        - generic [ref=f26e72] [cursor=pointer]
+        - generic [ref=f26e77] [cursor=pointer]
+        - generic [ref=f26e82] [cursor=pointer]
+  - main [ref=f26e86]:
+    - generic [ref=f26e88]:
+      - generic [ref=f26e89]:
+        - generic [ref=f26e90]:
+          - link "Dashboard" [ref=f26e92] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f26e101] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f26e109] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f26e115] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Currency Exchange" [ref=f26e121] [cursor=pointer]
+          - button "Language" [ref=f26e128] [cursor=pointer]
+        - generic [ref=f26e135] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f26e136]
+      - generic [ref=f26e139]:
+        - generic [ref=f26e140]:
+          - navigation [ref=f26e141]:
+            - link "Dashboard" [ref=f26e142] [cursor=pointer]:
+              - /url: https://development.citycommerce.group
+            - generic [ref=f26e143]: ">"
+            - link "Settings" [ref=f26e144] [cursor=pointer]:
+              - /url: https://development.citycommerce.group/settings
+            - generic [ref=f26e145]: ">"
+            - generic [ref=f26e146]: WhatsApp
+          - generic [ref=f26e147]:
+            - generic [ref=f26e149]:
+              - heading "WhatsApp" [level=1] [ref=f26e150]
+              - paragraph [ref=f26e151]: Your WhatsApp business workspace, number and subscription.
+            - generic [ref=f26e152]:
+              - generic [ref=f26e153]: updated just now
+              - button "Refresh" [ref=f26e154] [cursor=pointer]
+          - generic [ref=f26e156]:
+            - button "Overview" [ref=f26e157] [cursor=pointer]
+            - button "Billing" [ref=f26e158] [cursor=pointer]
+            - button "Team" [ref=f26e159] [cursor=pointer]
+            - button "Inbox" [ref=f26e160] [cursor=pointer]
+          - generic [ref=f26e161]:
+            - generic [ref=f26e162]:
+              - generic [ref=f26e163]:
+                - heading "Workspace" [level=3] [ref=f26e164]
+                - generic [ref=f26e165]: SAEID SHOJA
+                - generic [ref=f26e166]:
+                  - generic [ref=f26e167]:
+                    - term [ref=f26e168]: Email
+                    - definition [ref=f26e169]: shoja@citytravelers.co
+                  - generic [ref=f26e170]:
+                    - term [ref=f26e171]: Account
+                    - definition [ref=f26e172]: Business
+                  - generic [ref=f26e173]:
+                    - term [ref=f26e174]: Created
+                    - definition [ref=f26e175]: 1 Jun 2025
+                  - generic [ref=f26e176]:
+                    - term [ref=f26e177]: Status
+                    - definition [ref=f26e178]:
+                      - generic [ref=f26e179]: Active
+              - generic [ref=f26e180]:
+                - heading "WhatsApp number" [level=3] [ref=f26e181]
+                - generic [ref=f26e182]: "+96522210017"
+                - generic [ref=f26e183]: City Travelers
+                - generic [ref=f26e184]: Connected
+                - generic [ref=f26e186]:
+                  - generic [ref=f26e187]:
+                    - term [ref=f26e188]: Linked devices
+                    - definition [ref=f26e189]: "5"
+                  - generic [ref=f26e190]:
+                    - term [ref=f26e191]: Last sync
+                    - definition [ref=f26e192]: 26 Aug 2026, 20:33
+              - generic [ref=f26e193]:
+                - heading "Plan" [level=3] [ref=f26e194]
+                - generic [ref=f26e195]: WhatsApp Business — Enterprise
+                - generic [ref=f26e196]: Active
+                - generic [ref=f26e198]:
+                  - generic [ref=f26e199]:
+                    - term [ref=f26e200]: Included agents
+                    - definition [ref=f26e201]: "8"
+                  - generic [ref=f26e202]:
+                    - term [ref=f26e203]: Billing period
+                    - definition [ref=f26e204]: Month
+                  - generic [ref=f26e205]:
+                    - term [ref=f26e206]: Renews
+                    - definition [ref=f26e207]: 5 Sep 2026
+              - generic [ref=f26e208]:
+                - heading "Connection health" [level=3] [ref=f26e209]
+                - generic [ref=f26e210]:
+                  - generic [ref=f26e211]: "97"
+                  - generic [ref=f26e212]: / 100
+                  - generic [ref=f26e213]: Normal
+                - generic [ref=f26e216]: Checked 26 Aug 2026, 20:33
+                - generic [ref=f26e217]:
+                  - generic [ref=f26e218]:
+                    - term [ref=f26e219]: Largest group
+                    - definition [ref=f26e220]: "627"
+                  - generic [ref=f26e221]:
+                    - term [ref=f26e222]: Total group participants
+                    - definition [ref=f26e223]: "1090"
+                  - generic [ref=f26e224]:
+                    - term [ref=f26e225]: Open chats
+                    - definition [ref=f26e226]: "611"
+                  - generic [ref=f26e227]:
+                    - term [ref=f26e228]: Contacts
+                    - definition [ref=f26e229]: "1739"
+            - heading "This billing period" [level=2] [ref=f26e230]
+            - generic [ref=f26e232]:
+              - generic [ref=f26e233]:
+                - generic [ref=f26e234]: 1,402
+                - text: Text messages
+              - generic [ref=f26e235]:
+                - generic [ref=f26e236]: "633"
+                - text: Media messages
+              - generic [ref=f26e237]:
+                - generic [ref=f26e238]: "0"
+                - text: Failed
+              - generic [ref=f26e239]:
+                - generic [ref=f26e240]: "34"
+                - text: Number checks
+              - generic [ref=f26e241]:
+                - generic [ref=f26e242]: "0"
+                - text: Campaigns
+            - generic [ref=f26e243]:
+              - generic [ref=f26e244]:
+                - heading "Team seats" [level=3] [ref=f26e245]
+                - generic [ref=f26e246]: 9 of 8 included seats
+                - paragraph [ref=f26e249]: 9 people have WhatsApp access; your plan includes 8 seats. The difference is most likely the workspace owner, who typically doesn't count against the seat total.
+                - button "See who has access →" [ref=f26e250] [cursor=pointer]
+              - generic [ref=f26e251]:
+                - heading "Setup" [level=3] [ref=f26e252]
+                - list [ref=f26e253]:
+                  - listitem [ref=f26e254]:
+                    - generic [ref=f26e255]: ✓
+                    - generic [ref=f26e256]: WhatsApp workspace created
+                  - listitem [ref=f26e257]:
+                    - generic [ref=f26e259]:
+                      - text: Workspace access linked
+                      - generic [ref=f26e260]: Links automatically once your workspace finishes setting up.
+                  - listitem [ref=f26e261]:
+                    - generic [ref=f26e262]: ✓
+                    - generic [ref=f26e263]: WhatsApp number connected
+                  - listitem [ref=f26e264]:
+                    - generic [ref=f26e265]: ✓
+                    - generic [ref=f26e266]: Number online and sending
+        - generic [ref=f26e267]: © 2024 - 2025 City Tour. Version 1.001
+  - dialog "Resayil WhatsApp CRM" [ref=f26e270]:
+    - separator "Resize Resayil drawer" [ref=f26e271]
+    - generic [ref=f26e272]:
+      - generic [ref=f26e273]:
+        - img "Resayil" [ref=f26e275]
+        - generic [ref=f26e276]:
+          - paragraph [ref=f26e277]: Resayil
+          - paragraph [ref=f26e278]: WhatsApp conversations
+      - generic [ref=f26e279]:
+        - button "Unpin Resayil drawer" [pressed] [ref=f26e280] [cursor=pointer]
+        - link "Open Resayil full page" [ref=f26e283] [cursor=pointer]:
+          - /url: https://development.citycommerce.group/resayil
+        - button "Close Resayil drawer" [ref=f26e286] [cursor=pointer]
+    - generic [ref=f26e290]:
+      - generic [ref=f26e291]:
+        - generic [ref=f26e292]: WhatsApp CRM
+        - generic [ref=f26e296]:
+          - generic "Finished loading. We can't confirm you're signed in from here." [ref=f26e298]: Loaded
+          - button "Open Resayil in a new tab" [ref=f26e299] [cursor=pointer]
+      - iframe [ref=f26e304]:
+        - generic [ref=f27e3]:
+          - strong [ref=f27e4]: wa.resayil.io
+          - text: refused to connect.

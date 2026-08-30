@@ -15,6 +15,21 @@ Schedule::command('perform:payment-release-to-company-bankacc-process')
     ->runInBackground();
 Schedule::command('app:process-files')->everyMinute()->runInBackground();
 
+// P2.5.G (p2_5-brief.md §P2.5.G; reconciliation-design.md §9): nightly internal auto-
+// reconciliation — "registered in routes/console.php, running daily; per-company timing via
+// option reconciliation.auto_schedule (default: daily at 02:00 company timezone)". Company-
+// timezone-per-run is a v1 refinement (external adapters, P5.10) — v0 runs once, daily, at a
+// single fixed time for every company, since the internal-only detectors this build ships have
+// no timezone-sensitive external feed to stagger.
+Schedule::command('accounting:reconcile', ['--auto' => true])
+    ->dailyAt('02:00')
+    ->withoutOverlapping(120)
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/accounting-reconcile-auto.log'))
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('accounting:reconcile --auto nightly run failed');
+    });
+
 // Akeed-DOTW static data sync (countries + cities) — every Sunday at 03:00 KWT
 Schedule::command('dotwai:sync-static')
     ->weekly()

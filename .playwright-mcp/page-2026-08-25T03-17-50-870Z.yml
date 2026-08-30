@@ -1,0 +1,132 @@
+- generic [ref=f3e2]:
+  - banner [ref=f3e3]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: Method Not Allowed
+      - button [ref=f3e13] [cursor=pointer]
+  - main [ref=f3e16]:
+    - generic [ref=f3e17]:
+      - generic [ref=f3e19]:
+        - generic [ref=f3e20]:
+          - generic [ref=f3e21]: Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException
+          - generic [ref=f3e22]: "The GET method is not supported for route logout. Supported methods: POST."
+        - generic [ref=f3e23]:
+          - generic [ref=f3e24]: GET development.citycommerce.group
+          - generic [ref=f3e26]: PHP 8.3.33 — Laravel 11.39.1
+      - generic [ref=f3e29]:
+        - generic [ref=f3e31]:
+          - button "Expand vendor frames" [ref=f3e33] [cursor=pointer]:
+            - generic [ref=f3e34]: Expand
+            - generic [ref=f3e35]: vendor frames
+          - generic [ref=f3e41]:
+            - generic [ref=f3e42]: 31 vendor frames collapsed
+            - button "public/index.php :17" [ref=f3e44] [cursor=pointer]:
+              - generic [ref=f3e48]:
+                - generic [ref=f3e49]: public/index.php
+                - generic [ref=f3e50]: :17
+        - text: 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 1188 1189 1190 1191 1192 1193 1194 1195 1196 1197 1198 1199 1200 1201 1202 1203 1204 1205
+        - generic [ref=f3e51]:
+          - generic [ref=f3e52]: public/index.php :17
+          - code [ref=f3e57]:
+            - table [ref=f3e58]:
+              - rowgroup [ref=f3e59]:
+                - row [ref=f3e60]:
+                  - cell "12" [ref=f3e61]
+                  - cell "// Register the Composer autoloader..." [ref=f3e63]
+                - row [ref=f3e64]:
+                  - cell "13" [ref=f3e65]
+                  - cell "require __DIR__.'/../vendor/autoload.php';" [ref=f3e67]
+                - row [ref=f3e68]:
+                  - cell "14" [ref=f3e69]
+                  - cell [ref=f3e71]
+                - row [ref=f3e72]:
+                  - cell "15" [ref=f3e73]
+                  - cell "// Bootstrap Laravel and handle the request..." [ref=f3e75]
+                - row [ref=f3e76]:
+                  - cell "16" [ref=f3e77]
+                  - cell "(require_once __DIR__.'/../bootstrap/app.php')" [ref=f3e79]
+                - row [ref=f3e80]:
+                  - cell "17" [ref=f3e81]
+                  - cell "->handleRequest(Request::capture());" [ref=f3e83]
+      - generic [ref=f3e84]:
+        - generic [ref=f3e85]: Request
+        - generic [ref=f3e86]: GET /logout
+        - generic [ref=f3e87]: Headers
+        - generic [ref=f3e88]:
+          - generic [ref=f3e89]:
+            - generic [ref=f3e90] [cursor=pointer]: accept
+            - code [ref=f3e93]: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+          - generic [ref=f3e94]:
+            - generic [ref=f3e95] [cursor=pointer]: accept-encoding
+            - code [ref=f3e98]: gzip, deflate, br, zstd
+          - generic [ref=f3e99]:
+            - generic [ref=f3e100] [cursor=pointer]: accept-language
+            - code [ref=f3e103]: en-GB,en-US;q=0.9,en;q=0.8
+          - generic [ref=f3e104]:
+            - generic [ref=f3e105] [cursor=pointer]: cookie
+            - code [ref=f3e108]: XSRF-TOKEN=eyJpdiI6IkpFb2VpajF1dGFueFBJdzNaZDRHcWc9PSIsInZhbHVlIjoiTWRYdW1YK2h3citkMU5CVCtka2RMci8xTUgxamp6V2ZzeXhpRFoyVC9MQWZwYWFlRU1SWlB2UkEzeHFDdGJjWjBjbVQ1VmFKSHAvaUxHWUVsKzRsdFFCU2MvLzZnM2pZRG9sK1NVeFNkS2pKQi9iblA0RE1vZDVFTGs2QVhlZmMiLCJtYWMiOiIzZDM1Nzg5NWE3ZmE4OGVkNzE3ZmE4OTI5YTAzYWE3Zjc1MTliMWM3YTEyYTExMGFjMWU2YTg5YTlkMjFjY2NkIiwidGFnIjoiIn0%3D; city_tour_session=eyJpdiI6IlBhNmo3ZlVDNFRpNEY1eW9pc0J4N1E9PSIsInZhbHVlIjoiQmhhM09wWko5VDJ6K0N3SzFCWTFWREJsWDlVbFdCSEI4cnlQSEFFZUZTdGVjdVVMMVloK254L2NrNTBOM1pXUmxpb0tJOTEwRzBYaUdhdnlYWkxLa3VFU3JhNFk5TjZ4Qjh0N1RLcFhzSlpDUW1FaW4wM1Bqd3hEeUdUdzNYaUYiLCJtYWMiOiJmNWUxMzBjOTRhMmE2NjY3ZDY3MmJiMGU3YTJiMTJjNmQ3YzA0ZjBiMmI1ZmQzOGJjZWQwNzEyNDYzNTQyM2VkIiwidGFnIjoiIn0%3D
+          - generic [ref=f3e109]:
+            - generic [ref=f3e110] [cursor=pointer]: host
+            - code [ref=f3e113]: development.citycommerce.group
+          - generic [ref=f3e114]:
+            - generic [ref=f3e115] [cursor=pointer]: user-agent
+            - code [ref=f3e118]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+          - generic [ref=f3e119]:
+            - generic [ref=f3e120] [cursor=pointer]: sec-ch-ua
+            - code [ref=f3e123]: "\"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\""
+          - generic [ref=f3e124]:
+            - generic [ref=f3e125] [cursor=pointer]: sec-ch-ua-mobile
+            - code [ref=f3e128]: "?0"
+          - generic [ref=f3e129]:
+            - generic [ref=f3e130] [cursor=pointer]: sec-ch-ua-platform
+            - code [ref=f3e133]: "\"Windows\""
+          - generic [ref=f3e134]:
+            - generic [ref=f3e135] [cursor=pointer]: upgrade-insecure-requests
+            - code [ref=f3e138]: "1"
+          - generic [ref=f3e139]:
+            - generic [ref=f3e140] [cursor=pointer]: sec-fetch-site
+            - code [ref=f3e143]: none
+          - generic [ref=f3e144]:
+            - generic [ref=f3e145] [cursor=pointer]: sec-fetch-mode
+            - code [ref=f3e148]: navigate
+          - generic [ref=f3e149]:
+            - generic [ref=f3e150] [cursor=pointer]: sec-fetch-user
+            - code [ref=f3e153]: "?1"
+          - generic [ref=f3e154]:
+            - generic [ref=f3e155] [cursor=pointer]: sec-fetch-dest
+            - code [ref=f3e158]: document
+          - generic [ref=f3e159]:
+            - generic [ref=f3e160] [cursor=pointer]: priority
+            - code [ref=f3e163]: u=0, i
+        - generic [ref=f3e164]: Body
+        - code [ref=f3e169]: No body data
+      - generic [ref=f3e170]:
+        - generic [ref=f3e171]: Application
+        - generic [ref=f3e172]: Routing
+        - code [ref=f3e176]: No routing data
+        - generic [ref=f3e177]: Database Queries
+        - generic [ref=f3e178]:
+          - generic [ref=f3e179]:
+            - generic [ref=f3e180]:
+              - text: mysql
+              - generic [ref=f3e181]: (2.71 ms)
+            - code [ref=f3e184]: "select * from `cache` where `key` in ('aicfg_overrides')"
+          - generic [ref=f3e185]:
+            - generic [ref=f3e186]:
+              - text: mysql
+              - generic [ref=f3e187]: (1.39 ms)
+            - code [ref=f3e190]: "delete from `cache` where `key` in ('aicfg_overrides', 'illuminate:cache:flexible:created:aicfg_overrides') and `expiration` <= 1787627869"
+          - generic [ref=f3e191]:
+            - generic [ref=f3e192]:
+              - text: mysql
+              - generic [ref=f3e193]: (0.66 ms)
+            - code [ref=f3e196]: "select exists (select 1 from information_schema.tables where table_schema = 'citycomm_city-tour-test' and table_name = 'settings' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`"
+          - generic [ref=f3e197]:
+            - generic [ref=f3e198]:
+              - text: mysql
+              - generic [ref=f3e199]: (0.83 ms)
+            - code [ref=f3e202]: "select `value`, `key` from `settings` where `company_id` = 1 and `key` like 'aicfg.%'"
+          - generic [ref=f3e203]:
+            - generic [ref=f3e204]:
+              - text: mysql
+              - generic [ref=f3e205]: (1.7 ms)
+            - code [ref=f3e208]: "insert into `cache` (`expiration`, `key`, `value`) values (1787627929, 'aicfg_overrides', 'a:12:{s:19:\"aicfg.resayil_model\";s:12:\"qwen3.5:397b\";s:28:\"aicfg.resayil_model_fallback\";s:7:\"glm-5.1\";s:24:\"aicfg.resayil_model_text\";s:9:\"kimi-k2.6\";s:28:\"aicfg.resayil_model_passport\";s:20:\"mistral-large-3:675b\";s:21:\"aicfg.resayil_timeout\";s:3:\"120\";s:27:\"aicfg.resayil_max_pdf_pages\";s:1:\"6\";s:18:\"aicfg.openai_model\";s:7:\"gpt-4.1\";s:22:\"aicfg.fallback_enabled\";s:1:\"1\";s:13:\"aicfg.retries\";s:1:\"1\";s:24:\"aicfg.alert_agent_emails\";s:32:\"dev-test-noreply@example.invalid\";s:28:\"aicfg.alert_throttle_minutes\";s:2:\"30\";s:11:\"aicfg.chain\";s:131:\"[{\"provider\":\"resayil\",\"model\":\"qwen3.5:397b\"},{\"provider\":\"resayil\",\"model\":\"glm-5.1\"},{\"provider\":\"resayil\",\"model\":\"kimi-k2.6\"}]\";}') on duplicate key update `expiration` = values(`expiration`), `key` = values(`key`), `value` = values(`value`)"

@@ -1,18 +1,26 @@
 <x-app-layout>
     @php
-        function sortUrl($type, $field, $currentSort, $currentDirection) {
-            $newDirection = ($currentSort === $field && $currentDirection === 'asc') ? 'desc' : 'asc';
-            $params = request()->query();
-            
-            if ($type === 'pl') {
-                $params['ps'] = $field;
-                $params['pd'] = $newDirection;
-            } else {
-                $params['is'] = $field;
-                $params['id'] = $newDirection;
+        // Guarded with function_exists(): this compiled view's PHP is
+        // `include`d fresh on every render, but a plain top-level
+        // `function` declaration only survives ONE such include per PHP
+        // process — a second render of this same page in the same process
+        // (e.g. two requests in one long-running test/Octane/worker
+        // process) previously fataled with "Cannot redeclare sortUrl()".
+        if (!function_exists('sortUrl')) {
+            function sortUrl($type, $field, $currentSort, $currentDirection) {
+                $newDirection = ($currentSort === $field && $currentDirection === 'asc') ? 'desc' : 'asc';
+                $params = request()->query();
+
+                if ($type === 'pl') {
+                    $params['ps'] = $field;
+                    $params['pd'] = $newDirection;
+                } else {
+                    $params['is'] = $field;
+                    $params['id'] = $newDirection;
+                }
+
+                return request()->url() . '?' . http_build_query($params);
             }
-            
-            return request()->url() . '?' . http_build_query($params);
         }
     @endphp
 

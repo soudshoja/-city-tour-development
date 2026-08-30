@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\AccountantView;
+use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\VerifyWebhookSignature;
 use App\Modules\ResailAI\Middleware\VerifyResailAIToken;
 use App\Modules\DotwAI\Http\Middleware\ResolveDotwAIContext;
 use Illuminate\Foundation\Application;
@@ -30,6 +32,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'dotw_audit_access' => \App\Http\Middleware\DotwAuditAccess::class,
             'verify.resailai.token' => VerifyResailAIToken::class,
             'dotwai.resolve' => ResolveDotwAIContext::class,
+            'module' => EnsureModuleEnabled::class,
+            // W6.S item (4) (w6-brief.md "Consolidation + fixes" -- "/api/task/webhook: require
+            // signature auth -- reuse the existing HMAC middleware ... do not write a third").
+            // App\Http\Middleware\VerifyWebhookSignature existed, fully implemented, but was
+            // registered in NEITHER this alias map NOR any route before this sub-wave (confirmed:
+            // Accounting Gap/18-error-redesign-log.md's own audit found it completely
+            // unreachable). This is the first route to actually consume it -- see
+            // App\Http\Webhooks\TaskWebhook::webhook() for how "verified IF a signature was
+            // presented" is turned into "signature mandatory" for this one endpoint without
+            // modifying the shared middleware itself.
+            'verify.webhook.signature' => VerifyWebhookSignature::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,

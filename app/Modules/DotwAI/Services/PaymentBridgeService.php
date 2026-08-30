@@ -63,9 +63,9 @@ class PaymentBridgeService
                 'notes'           => "DOTW Hotel: {$booking->hotel_name} ({$booking->check_in?->format('Y-m-d')} - {$booking->check_out?->format('Y-m-d')})",
             ]);
 
-            // Step 2: Resolve MyFatoorah credentials
+            // Step 2: Resolve MyFatoorah credentials (scoped to this booking's company)
             $configService    = new GatewayConfigService();
-            $myfatoorahResult = $configService->getMyFatoorahConfig();
+            $myfatoorahResult = $configService->getMyFatoorahConfig($booking->company_id);
 
             if ($myfatoorahResult['status'] === 'error') {
                 Log::error('[DotwAI][PaymentBridge] MyFatoorah config error', [
@@ -156,7 +156,8 @@ class PaymentBridgeService
             Log::info('[DotwAI][PaymentBridge] ExecutePayment response', [
                 'booking_id' => $booking->id,
                 'status'     => $response->status(),
-                'response'   => $response->json(),
+                'invoice_id' => $response->json('Data.InvoiceId'),
+                'has_payment_url' => ! empty($response->json('Data.PaymentURL')),
             ]);
 
             if (! $response->successful()) {
@@ -165,7 +166,8 @@ class PaymentBridgeService
 
                 Log::error('[DotwAI][PaymentBridge] ExecutePayment failed', [
                     'booking_id' => $booking->id,
-                    'response'   => $errorBody,
+                    'status'     => $response->status(),
+                    'message'    => $message,
                 ]);
 
                 return ['error' => true, 'message' => $message];

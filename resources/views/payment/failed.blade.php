@@ -138,8 +138,12 @@
         </div>
         <h1 class="failed-title">Payment Failed!</h1>
         <p class="failed-message">
-            Unfortunately, your payment could not be processed.<br>
-            Please check your payment details and try again.
+            @if (session('error'))
+                {{ session('error') }}
+            @else
+                Unfortunately, your payment could not be processed.<br>
+                Please check your payment details and try again.
+            @endif
         </p>
         <a href="{{ url('/') }}" class="retry-button">
             Return to Homepage

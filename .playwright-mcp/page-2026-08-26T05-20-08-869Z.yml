@@ -1,0 +1,242 @@
+- generic [active] [ref=f141e1]:
+  - generic [ref=f141e2]:
+    - generic: Switch Company
+    - banner [ref=f141e3]:
+      - paragraph [ref=f141e5]: CityTourApp
+      - generic [ref=f141e6]:
+        - generic [ref=f141e7]:
+          - link [ref=f141e8] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+            - img "Logo" [ref=f141e9]
+          - navigation [ref=f141e11]:
+            - list [ref=f141e12]:
+              - generic [ref=f141e13] [cursor=pointer]:
+                - generic [ref=f141e14]: Tasks
+                - list:
+                  - generic:
+                    - link "Tasks list":
+                      - /url: https://development.citycommerce.group/tasks
+                  - generic:
+                    - link "Outstanding":
+                      - /url: https://development.citycommerce.group/payment/outstanding
+              - generic [ref=f141e21] [cursor=pointer]:
+                - generic [ref=f141e22]: Finances
+                - list:
+                  - generic:
+                    - link "Chart Of Account":
+                      - /url: https://development.citycommerce.group/coa
+                  - generic:
+                    - link "Payment Voucher":
+                      - /url: https://development.citycommerce.group/bank-payments
+                  - generic:
+                    - link "Receipt Voucher":
+                      - /url: https://development.citycommerce.group/receipt-voucher
+                  - generic:
+                    - link "Receivable":
+                      - /url: https://development.citycommerce.group/receivable-details/receivable-create
+                  - generic:
+                    - link "Payable":
+                      - /url: https://development.citycommerce.group/payable-details/payable-create
+                  - generic:
+                    - link "Accounting":
+                      - /url: https://development.citycommerce.group/accounting-summary
+                  - generic:
+                    - link "Journal Entries":
+                      - /url: https://development.citycommerce.group/journal-entries/all
+                  - generic:
+                    - link "Lock Management":
+                      - /url: https://development.citycommerce.group/lock-management
+              - generic [ref=f141e28] [cursor=pointer]:
+                - generic [ref=f141e29]: Invoices
+                - list:
+                  - generic:
+                    - link "Invoices List":
+                      - /url: https://development.citycommerce.group/invoices
+                  - generic:
+                    - link "Invoices Link":
+                      - /url: https://development.citycommerce.group/invoices/link
+                  - generic:
+                    - link "Payment Link":
+                      - /url: https://development.citycommerce.group/payment/link
+                  - generic:
+                    - link "Refund":
+                      - /url: https://development.citycommerce.group/refunds
+                  - generic:
+                    - link "Auto Billing":
+                      - /url: https://development.citycommerce.group/auto-billing
+                  - generic:
+                    - link "Reminder":
+                      - /url: https://development.citycommerce.group/reminder
+              - link "Resayil" [ref=f141e38] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/resayil
+              - generic [ref=f141e40] [cursor=pointer]:
+                - generic [ref=f141e41]: Users
+                - list:
+                  - generic:
+                    - link "Users List":
+                      - /url: https://development.citycommerce.group/users/adminsList
+                  - generic:
+                    - link "Companies List":
+                      - /url: https://development.citycommerce.group/companies
+                  - generic:
+                    - link "Branches List":
+                      - /url: https://development.citycommerce.group/branches
+                  - generic:
+                    - link "Agents List":
+                      - /url: https://development.citycommerce.group/agents
+                  - generic:
+                    - link "Clients List":
+                      - /url: https://development.citycommerce.group/clients
+              - generic [ref=f141e51] [cursor=pointer]:
+                - generic [ref=f141e52]: Reports
+                - list:
+                  - generic:
+                    - link "Paid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/paid-report
+                  - generic:
+                    - link "Unpaid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/unpaid-report
+                  - generic:
+                    - link "Profit & Loss":
+                      - /url: https://development.citycommerce.group/reports/profit-loss
+                  - generic:
+                    - link "Bank Settlement":
+                      - /url: https://development.citycommerce.group/reports/settlements
+                  - generic:
+                    - link "Transaction List":
+                      - /url: https://development.citycommerce.group/coa/transactions
+                  - generic:
+                    - link "Creditors Report":
+                      - /url: https://development.citycommerce.group/reports/creditors
+                  - generic:
+                    - link "Daily Sales":
+                      - /url: https://development.citycommerce.group/reports/daily-sales
+                  - generic:
+                    - link "Task Report":
+                      - /url: https://development.citycommerce.group/reports/tasks
+                  - generic:
+                    - link "Client Report":
+                      - /url: https://development.citycommerce.group/reports/client
+                  - generic:
+                    - link "Payment Gateways Report":
+                      - /url: https://development.citycommerce.group/reports/payment-gateways
+              - generic [ref=f141e61] [cursor=pointer]:
+                - generic [ref=f141e62]: Settings
+                - list:
+                  - generic:
+                    - link "Settings":
+                      - /url: https://development.citycommerce.group/settings
+                    - list:
+                      - generic:
+                        - link "System Setting":
+                          - /url: https://development.citycommerce.group/system-settings
+                  - generic:
+                    - link "Suppliers":
+                      - /url: https://development.citycommerce.group/suppliers
+                  - generic:
+                    - link "Manage Roles":
+                      - /url: https://development.citycommerce.group/role
+                  - generic:
+                    - link "Documentations":
+                      - /url: https://development.citycommerce.group/docs/user
+                    - list:
+                      - generic:
+                        - link "User Docs":
+                          - /url: https://development.citycommerce.group/docs/user
+                      - generic:
+                        - link "API Docs":
+                          - /url: https://development.citycommerce.group/docs/api
+                      - generic:
+                        - link "Developer Docs":
+                          - /url: https://development.citycommerce.group/docs/developer
+                  - generic:
+                    - link "Currency Exchange":
+                      - /url: https://development.citycommerce.group/exchange/index
+                    - list:
+                      - generic:
+                        - link "Exchange History":
+                          - /url: https://development.citycommerce.group/exchange/histories
+        - generic [ref=f141e70]:
+          - generic [ref=f141e72] [cursor=pointer]
+          - generic [ref=f141e77] [cursor=pointer]
+          - generic [ref=f141e82] [cursor=pointer]
+  - main [ref=f141e86]:
+    - generic [ref=f141e88]:
+      - generic [ref=f141e89]:
+        - generic [ref=f141e90]:
+          - link "Dashboard" [ref=f141e92] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f141e101] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f141e109] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f141e115] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Currency Exchange" [ref=f141e121] [cursor=pointer]
+          - button "Switch Company" [ref=f141e128] [cursor=pointer]
+          - button "Language" [ref=f141e133] [cursor=pointer]
+        - generic [ref=f141e140] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f141e141]
+      - generic [ref=f141e144]:
+        - generic [ref=f141e145]:
+          - generic [ref=f141e147]:
+            - heading "AI Models Status" [level=2] [ref=f141e148]
+            - button "Checking…" [disabled] [ref=f141e150]
+          - generic [ref=f141e151]:
+            - generic [ref=f141e152]:
+              - heading "AIR File Uploader Status" [level=3] [ref=f141e153]
+              - generic [ref=f141e156]:
+                - link "review logs" [ref=f141e157] [cursor=pointer]:
+                  - /url: https://development.citycommerce.group/air/uploader/logs
+                - button "refresh" [ref=f141e158] [cursor=pointer]
+            - generic [ref=f141e159]:
+              - generic [ref=f141e160]:
+                - generic [ref=f141e161]: Today · 26 Aug 2026
+                - generic [ref=f141e162]: 1,506 files in flow
+              - generic [ref=f141e163]:
+                - generic [ref=f141e164]:
+                  - generic [ref=f141e165]: "1"
+                  - generic [ref=f141e166]: ✓ Loaded
+                - generic [ref=f141e167]:
+                  - generic [ref=f141e168]: 1,160
+                  - generic [ref=f141e169]: ⏸ Held
+                - generic [ref=f141e170]:
+                  - generic [ref=f141e171]: "345"
+                  - generic [ref=f141e172]: ⚠ Errors
+              - generic [ref=f141e176]: Loaded = today · Held = withheld by agent gate (unregistered / orphan modification) — recoverable, not failures · Errors = genuine processing failures
+            - generic [ref=f141e178]:
+              - generic [ref=f141e179]:
+                - generic [ref=f141e180]:
+                  - generic [ref=f141e181]:
+                    - generic [ref=f141e183]: OFFLINE
+                    - generic [ref=f141e184]: — DESKTOP-7P9ET8H
+                  - generic [ref=f141e185]: v2.0-multitarget
+                - generic [ref=f141e186]:
+                  - generic [ref=f141e187]: "Last seen: 5h 19m ago (2026-08-26 08:00:16)"
+                  - generic [ref=f141e188]: "Files today: 0 · Total: 1 · idle"
+                  - generic [ref=f141e189]: ✓ No errors
+              - generic [ref=f141e190]:
+                - generic [ref=f141e191]:
+                  - generic [ref=f141e192]:
+                    - generic [ref=f141e194]: OFFLINE
+                    - generic [ref=f141e195]: — FAST_COMO
+                  - generic [ref=f141e196]: v2.0-multitarget
+                - generic [ref=f141e197]:
+                  - generic [ref=f141e198]: "Last seen: 5h 20m ago (2026-08-26 07:59:34)"
+                  - generic [ref=f141e199]: "Files today: 1 · Total: 167 · idle"
+                  - 'generic "[dev1] 234132_00.AIR: http=200" [ref=f141e200]': "⏸ Last hold: [dev1] 234132_00.AIR: http=200 (normal — gate rejection)"
+          - generic [ref=f141e201]:
+            - generic [ref=f141e203]:
+              - heading "1" [level=1] [ref=f141e204]
+              - paragraph [ref=f141e205]: Total Branches
+            - generic [ref=f141e208]:
+              - heading "13" [level=1] [ref=f141e209]
+              - paragraph [ref=f141e210]: Total Agents
+            - generic [ref=f141e213]:
+              - heading "1931" [level=1] [ref=f141e214]
+              - paragraph [ref=f141e215]: Total Clients
+          - generic [ref=f141e217]: ⚠️ Access token missing from response.
+        - generic [ref=f141e219]: © 2024 - 2025 City Tour. Version 1.0
+  - button "Open Resayil" [ref=f141e222] [cursor=pointer]:
+    - img "Resayil" [ref=f141e223]

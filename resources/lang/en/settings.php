@@ -131,6 +131,7 @@ return [
     //Sidebar Navigation
         'agent_loss' => 'Agent Loss',
         'notifications' => 'Notifications',
+        'accounting' => 'Accounting',
 
     //Terms Modal
         'set_as_default' => 'Set as default template',

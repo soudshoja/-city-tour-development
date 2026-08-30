@@ -18,6 +18,7 @@ use App\Models\JournalEntry;
 use App\Models\Transaction;
 use App\Models\Charge;
 use App\Services\ChargeService;
+use App\Services\TrialBalanceService;
 use Carbon\Carbon;
 use Exception;
 
@@ -211,34 +212,58 @@ class CreateClientCredit extends Command
                 'transaction_date' => now(),
             ]);
 
-            $receivableAccount = Account::where('name', 'Clients')->first();
-            $receivableAccountId = $receivableAccount->id;
+            $companyId = $agent->branch->company->id;
+
+            $trialBalanceService = app(TrialBalanceService::class);
 
             if ($bankPaymentFee) {
+                // Asset account (debit-normal): ledger-derived balance replaces the
+                // hand-maintained actual_balance column as the 'balance' source — see
+                // TrialBalanceService::getCurrentAccountBalance()'s docblock. This site
+                // previously created this JournalEntry with NO 'balance' value at all.
+                //
+                // 'balance' MUST be derived from this row's own 'debit' value (gross
+                // $creditPayment->amount), the same rule JournalEntryController's
+                // running-balance loop and ClientController::addCredit both apply —
+                // the running balance is opening + THIS entry's debit/credit, never an
+                // independently-computed net figure. A previous version of this line
+                // used $netAssetAmount (debit minus $accountingFee) here while 'debit'
+                // stayed gross, which understated 'balance' by exactly $accountingFee
+                // on every credit.
+                $bankPaymentFeeLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $bankPaymentFee->id);
+                $netAssetAmount = $creditPayment->amount - $accountingFee;
+
                 // Create record to payment_gateway assets coa account (OK)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
-                    'company_id' => $agent->branch->company->id,
+                    'company_id' => $companyId,
                     'branch_id' => $agent->branch->id,
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $creditPayment->amount,
                     'credit' => 0,
+                    'balance' => $bankPaymentFeeLedgerBalance + $creditPayment->amount,
                     'name' =>  $bankPaymentFee->name,
                     'type' => 'bank',
                     'voucher_number' => $creditPayment->voucher_number,
                     'type_reference_id' => $bankPaymentFee->id
                 ]);
 
-                $bankPaymentFee->actual_balance += ($creditPayment->amount - $accountingFee);
+                // Legacy actual_balance write kept in place — strangler posture, see
+                // TrialBalanceService::getCurrentAccountBalance()'s docblock.
+                $bankPaymentFee->actual_balance += $netAssetAmount;
                 $bankPaymentFee->save();
             }
 
             if ($bankCOAFee) {
+                // Expense account (debit-normal): same ledger-derived replacement as
+                // the asset entry above.
+                $bankCOAFeeLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $bankCOAFee->id);
+
                 JournalEntry::create([
                     'transaction_id'    => $transaction->id,
-                    'company_id'        => $agent->branch->company->id,
+                    'company_id'        => $companyId,
                     'branch_id'         => $agent->branch->id,
                     'account_id'        => $bankCOAFee->id,
                     'voucher_number'    => $creditPayment->voucher_number,
@@ -246,18 +271,24 @@ class CreateClientCredit extends Command
                     'description'       => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
                     'debit'             => $accountingFee,
                     'credit'            => 0,
-                    'balance'           => $bankCOAFee->actual_balance + $accountingFee,
+                    'balance'           => $bankCOAFeeLedgerBalance + $accountingFee,
                     'name'              => $bankCOAFee->name,
                     'type'              => 'charges',
                     'type_reference_id' => $bankCOAFee->id
                 ]);
 
+                // Legacy actual_balance write kept in place — strangler posture, see
+                // TrialBalanceService::getCurrentAccountBalance()'s docblock.
                 $bankCOAFee->actual_balance += $accountingFee;
                 $bankCOAFee->save();
             }
         } catch (Exception $e) {
             DB::rollBack();
-            logger('Error adding JournalEntry: ' . $e->getMessage());
+            Log::error('Failed to add JournalEntry for client credit', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'payment_id' => $creditPayment->id,
+            ]);
             return [
                 'status' => 'error',
                 'message' => 'Failed to add JournalEntry',

@@ -31,7 +31,7 @@
 
 <div id="liabilitiesDetails" class="rounded-lg shadow-sm bg-white dark:bg-gray-800 mt-1" style="display: none;">
     <ul class="w-full">
-        @foreach ($liabilities->childAccounts as $liability)
+        @foreach (optional($liabilities)->childAccounts ?? [] as $liability)
             @include('coa.partials.child-account', ['account' => $liability, 'color' => 'yellow'])
         @endforeach
     </ul>

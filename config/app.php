@@ -83,7 +83,6 @@ return [
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
-    
 
     /*
     |--------------------------------------------------------------------------
@@ -123,5 +122,31 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Client Credit Statement Link TTL
+    |--------------------------------------------------------------------------
+    |
+    | How many minutes a client-facing credit-ledger link (generated via
+    | Client::creditStatementUrl(), a Laravel temporary signed URL) remains
+    | valid before it expires and must be regenerated. Defaults to 7 days.
+    |
+    */
+
+    'client_credit_link_ttl_minutes' => env('CLIENT_CREDIT_LINK_TTL_MINUTES', 60 * 24 * 7),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Invoice Link TTL
+    |--------------------------------------------------------------------------
+    |
+    | How many minutes a client-facing invoice link (generated via
+    | Invoice::publicUrl(), a Laravel temporary signed URL) remains valid
+    | before it expires and must be regenerated. Defaults to 7 days.
+    |
+    */
+
+    'invoice_link_ttl_minutes' => env('INVOICE_LINK_TTL_MINUTES', 60 * 24 * 7),
 
 ];

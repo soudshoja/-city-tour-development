@@ -1,0 +1,1301 @@
+- generic [active] [ref=f46e1]:
+  - generic [ref=f46e2]:
+    - generic: Switch Company
+    - banner [ref=f46e3]:
+      - paragraph [ref=f46e5]: CityTourApp
+      - generic [ref=f46e6]:
+        - generic [ref=f46e7]:
+          - link [ref=f46e8] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+            - img "Logo" [ref=f46e9]
+          - navigation [ref=f46e11]:
+            - list [ref=f46e12]:
+              - generic [ref=f46e13] [cursor=pointer]:
+                - generic [ref=f46e14]: Tasks
+                - list:
+                  - generic:
+                    - link "Tasks list":
+                      - /url: https://development.citycommerce.group/tasks
+                  - generic:
+                    - link "Outstanding":
+                      - /url: https://development.citycommerce.group/payment/outstanding
+              - generic [ref=f46e21] [cursor=pointer]:
+                - generic [ref=f46e22]: Finances
+                - list:
+                  - generic:
+                    - link "Chart Of Account":
+                      - /url: https://development.citycommerce.group/coa
+                  - generic:
+                    - link "Payment Voucher":
+                      - /url: https://development.citycommerce.group/bank-payments
+                  - generic:
+                    - link "Receipt Voucher":
+                      - /url: https://development.citycommerce.group/receipt-voucher
+                  - generic:
+                    - link "Receivable":
+                      - /url: https://development.citycommerce.group/receivable-details/receivable-create
+                  - generic:
+                    - link "Payable":
+                      - /url: https://development.citycommerce.group/payable-details/payable-create
+                  - generic:
+                    - link "Accounting":
+                      - /url: https://development.citycommerce.group/accounting-summary
+                  - generic:
+                    - link "Journal Entries":
+                      - /url: https://development.citycommerce.group/journal-entries/all
+                  - generic:
+                    - link "Lock Management":
+                      - /url: https://development.citycommerce.group/lock-management
+              - generic [ref=f46e28] [cursor=pointer]:
+                - generic [ref=f46e29]: Invoices
+                - list:
+                  - generic:
+                    - link "Invoices List":
+                      - /url: https://development.citycommerce.group/invoices
+                  - generic:
+                    - link "Invoices Link":
+                      - /url: https://development.citycommerce.group/invoices/link
+                  - generic:
+                    - link "Payment Link":
+                      - /url: https://development.citycommerce.group/payment/link
+                  - generic:
+                    - link "Refund":
+                      - /url: https://development.citycommerce.group/refunds
+                  - generic:
+                    - link "Auto Billing":
+                      - /url: https://development.citycommerce.group/auto-billing
+                  - generic:
+                    - link "Reminder":
+                      - /url: https://development.citycommerce.group/reminder
+              - link "Resayil" [ref=f46e38] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/resayil
+              - generic [ref=f46e40] [cursor=pointer]:
+                - generic [ref=f46e41]: Users
+                - list:
+                  - generic:
+                    - link "Users List":
+                      - /url: https://development.citycommerce.group/users/adminsList
+                  - generic:
+                    - link "Companies List":
+                      - /url: https://development.citycommerce.group/companies
+                  - generic:
+                    - link "Branches List":
+                      - /url: https://development.citycommerce.group/branches
+                  - generic:
+                    - link "Agents List":
+                      - /url: https://development.citycommerce.group/agents
+                  - generic:
+                    - link "Clients List":
+                      - /url: https://development.citycommerce.group/clients
+              - generic [ref=f46e51] [cursor=pointer]:
+                - generic [ref=f46e52]: Reports
+                - list:
+                  - generic:
+                    - link "Paid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/paid-report
+                  - generic:
+                    - link "Unpaid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/unpaid-report
+                  - generic:
+                    - link "Profit & Loss":
+                      - /url: https://development.citycommerce.group/reports/profit-loss
+                  - generic:
+                    - link "Bank Settlement":
+                      - /url: https://development.citycommerce.group/reports/settlements
+                  - generic:
+                    - link "Transaction List":
+                      - /url: https://development.citycommerce.group/coa/transactions
+                  - generic:
+                    - link "Creditors Report":
+                      - /url: https://development.citycommerce.group/reports/creditors
+                  - generic:
+                    - link "Daily Sales":
+                      - /url: https://development.citycommerce.group/reports/daily-sales
+                  - generic:
+                    - link "Task Report":
+                      - /url: https://development.citycommerce.group/reports/tasks
+                  - generic:
+                    - link "Client Report":
+                      - /url: https://development.citycommerce.group/reports/client
+                  - generic:
+                    - link "Payment Gateways Report":
+                      - /url: https://development.citycommerce.group/reports/payment-gateways
+              - generic [ref=f46e61] [cursor=pointer]:
+                - generic [ref=f46e62]: Settings
+                - list:
+                  - generic:
+                    - link "Settings":
+                      - /url: https://development.citycommerce.group/settings
+                    - list:
+                      - generic:
+                        - link "System Setting":
+                          - /url: https://development.citycommerce.group/system-settings
+                  - generic:
+                    - link "Suppliers":
+                      - /url: https://development.citycommerce.group/suppliers
+                  - generic:
+                    - link "Manage Roles":
+                      - /url: https://development.citycommerce.group/role
+                  - generic:
+                    - link "Documentations":
+                      - /url: https://development.citycommerce.group/docs/user
+                    - list:
+                      - generic:
+                        - link "User Docs":
+                          - /url: https://development.citycommerce.group/docs/user
+                      - generic:
+                        - link "API Docs":
+                          - /url: https://development.citycommerce.group/docs/api
+                      - generic:
+                        - link "Developer Docs":
+                          - /url: https://development.citycommerce.group/docs/developer
+                  - generic:
+                    - link "Currency Exchange":
+                      - /url: https://development.citycommerce.group/exchange/index
+                    - list:
+                      - generic:
+                        - link "Exchange History":
+                          - /url: https://development.citycommerce.group/exchange/histories
+        - generic [ref=f46e70]:
+          - generic [ref=f46e72] [cursor=pointer]
+          - generic [ref=f46e77] [cursor=pointer]
+          - generic [ref=f46e82] [cursor=pointer]
+  - main [ref=f46e86]:
+    - generic [ref=f46e88]:
+      - generic [ref=f46e89]:
+        - generic [ref=f46e90]:
+          - link "Dashboard" [ref=f46e92] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f46e101] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f46e109] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f46e115] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Currency Exchange" [ref=f46e121] [cursor=pointer]
+          - button "Switch Company" [ref=f46e128] [cursor=pointer]
+          - button "Language" [ref=f46e133] [cursor=pointer]
+        - generic [ref=f46e140] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f46e141]
+      - generic [ref=f46e144]:
+        - generic [ref=f46e145]:
+          - generic [ref=f46e146]:
+            - generic [ref=f46e147]:
+              - heading "Trial Balance Report" [level=1] [ref=f46e148]
+              - paragraph [ref=f46e149]: "City Travelers | Period: Aug 01, 2026 – Aug 26, 2026"
+            - generic [ref=f46e150]:
+              - link "PDF" [ref=f46e151] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/reports/trial-balance/pdf
+              - link "CSV" [ref=f46e154] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/reports/trial-balance/export
+              - button "Print" [ref=f46e157] [cursor=pointer]
+          - generic [ref=f46e166]:
+            - heading "✗ OUT OF BALANCE" [level=3] [ref=f46e167]
+            - paragraph [ref=f46e168]: "Difference: 7,913.404 KWD"
+            - paragraph [ref=f46e169]: "Total Debits: 430,378.506 | Total Credits: 438,291.910"
+          - generic [ref=f46e172]:
+            - generic [ref=f46e173]:
+              - generic [ref=f46e174]: From Date
+              - textbox [ref=f46e175]: 2026-08-01
+            - generic [ref=f46e176]:
+              - generic [ref=f46e177]: To Date
+              - textbox [ref=f46e178]: 2026-08-26
+            - generic [ref=f46e179]:
+              - generic [ref=f46e180]: Branch
+              - combobox [ref=f46e181]:
+                - option "All Branches" [selected]
+                - option "City Travelers HQ"
+            - generic [ref=f46e182]:
+              - checkbox "Show Zero Balances" [ref=f46e183]
+              - generic [ref=f46e184]: Show Zero Balances
+            - generic [ref=f46e185]:
+              - button "Generate" [ref=f46e186] [cursor=pointer]
+              - link "Reset" [ref=f46e189] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/reports/trial-balance
+          - table [ref=f46e194]:
+            - rowgroup [ref=f46e195]:
+              - row [ref=f46e196]:
+                - columnheader "Code" [ref=f46e197]
+                - columnheader "Account Name" [ref=f46e198]
+                - columnheader "Opening Balance" [ref=f46e199]
+                - columnheader "Debit" [ref=f46e200]
+                - columnheader "Credit" [ref=f46e201]
+                - columnheader "Closing Balance" [ref=f46e202]
+                - columnheader "Action" [ref=f46e203]
+            - rowgroup [ref=f46e204]:
+              - row [ref=f46e205]:
+                - cell "ASSETS" [ref=f46e206]
+                - cell "336,995.709" [ref=f46e207]
+                - cell "181,466.256" [ref=f46e208]
+                - cell [ref=f46e209]
+              - row [ref=f46e210]:
+                - cell "1201" [ref=f46e211]
+                - cell "Kuwait International Bank" [ref=f46e213]
+                - cell "944,852.327 Dr" [ref=f46e214]
+                - cell "89,779.178" [ref=f46e215]
+                - cell "—" [ref=f46e216]
+                - cell "1,034,631.505 Dr" [ref=f46e217]
+                - cell [ref=f46e218]:
+                  - link "View Ledger" [ref=f46e219] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/9/account
+              - row [ref=f46e222]:
+                - cell "1310" [ref=f46e223]
+                - cell "MyFatoorah" [ref=f46e225]
+                - cell "1,143.792 Dr" [ref=f46e226]
+                - cell "85,439.850" [ref=f46e227]
+                - cell "87,616.100" [ref=f46e228]
+                - cell "1,032.458 Cr" [ref=f46e229]
+                - cell [ref=f46e230]:
+                  - link "View Ledger" [ref=f46e231] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/113/account
+              - row [ref=f46e234]:
+                - cell "1310" [ref=f46e235]
+                - cell "Hesabe" [ref=f46e237]
+                - cell "922.446 Dr" [ref=f46e238]
+                - cell "2,214.000" [ref=f46e239]
+                - cell "2,163.078" [ref=f46e240]
+                - cell "973.368 Dr" [ref=f46e241]
+                - cell [ref=f46e242]:
+                  - link "View Ledger" [ref=f46e243] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/114/account
+              - row [ref=f46e246]:
+                - cell "1310" [ref=f46e247]
+                - cell "Tap" [ref=f46e249]
+                - cell "41,224.730 Dr" [ref=f46e250]
+                - cell "3,322.000" [ref=f46e251]
+                - cell "—" [ref=f46e252]
+                - cell "44,546.730 Dr" [ref=f46e253]
+                - cell [ref=f46e254]:
+                  - link "View Ledger" [ref=f46e255] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/112/account
+              - row [ref=f46e258]:
+                - cell "1351" [ref=f46e259]
+                - cell "Clients" [ref=f46e261]
+                - cell "120,801.070 Dr" [ref=f46e262]
+                - cell "33,794.000" [ref=f46e263]
+                - cell "33,292.000" [ref=f46e264]
+                - cell "121,303.070 Dr" [ref=f46e265]
+                - cell [ref=f46e266]:
+                  - link "View Ledger" [ref=f46e267] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/13/account
+              - row [ref=f46e270]:
+                - cell "1430" [ref=f46e271]
+                - cell "Unbilled Supplier Cost" [ref=f46e273]
+                - cell "575,115.867 Dr" [ref=f46e274]
+                - cell "122,446.681" [ref=f46e275]
+                - cell "58,395.078" [ref=f46e276]
+                - cell "639,167.470 Dr" [ref=f46e277]
+                - cell [ref=f46e278]:
+                  - link "View Ledger" [ref=f46e279] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1651/account
+              - row [ref=f46e282]:
+                - cell "LIABILITIES" [ref=f46e283]
+                - cell "58,786.270" [ref=f46e284]
+                - cell "222,972.882" [ref=f46e285]
+                - cell [ref=f46e286]
+              - row [ref=f46e287]:
+                - cell "2111" [ref=f46e288]
+                - cell "VISA GULF BANK - SAEID" [ref=f46e290]
+                - cell "230.050 Cr" [ref=f46e291]
+                - cell "—" [ref=f46e292]
+                - cell "435.000" [ref=f46e293]
+                - cell "665.050 Cr" [ref=f46e294]
+                - cell [ref=f46e295]:
+                  - link "View Ledger" [ref=f46e296] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/317/account
+              - row [ref=f46e299]:
+                - cell "21115" [ref=f46e300]
+                - cell "KFH Coporate" [ref=f46e302]
+                - cell "895.700 Cr" [ref=f46e303]
+                - cell "—" [ref=f46e304]
+                - cell "4,490.130" [ref=f46e305]
+                - cell "5,385.830 Cr" [ref=f46e306]
+                - cell [ref=f46e307]:
+                  - link "View Ledger" [ref=f46e308] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1404/account
+              - row [ref=f46e311]:
+                - cell "2115" [ref=f46e312]
+                - cell "City Travelers (EasyPay)" [ref=f46e314]
+                - cell "849.900 Cr" [ref=f46e315]
+                - cell "—" [ref=f46e316]
+                - cell "343.490" [ref=f46e317]
+                - cell "1,193.390 Cr" [ref=f46e318]
+                - cell [ref=f46e319]:
+                  - link "View Ledger" [ref=f46e320] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1358/account
+              - row [ref=f46e323]:
+                - cell "21221" [ref=f46e324]
+                - cell "Wethaq Insurance" [ref=f46e326]
+                - cell "429.419 Cr" [ref=f46e327]
+                - cell "—" [ref=f46e328]
+                - cell "16.800" [ref=f46e329]
+                - cell "446.219 Cr" [ref=f46e330]
+                - cell [ref=f46e331]:
+                  - link "View Ledger" [ref=f46e332] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/355/account
+              - row [ref=f46e335]:
+                - cell "2151" [ref=f46e336]
+                - cell "Supreme Services (USD)" [ref=f46e338]
+                - cell "3,910.700 Cr" [ref=f46e339]
+                - cell "—" [ref=f46e340]
+                - cell "216.000" [ref=f46e341]
+                - cell "4,126.700 Cr" [ref=f46e342]
+                - cell [ref=f46e343]:
+                  - link "View Ledger" [ref=f46e344] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/366/account
+              - row [ref=f46e347]:
+                - cell "2151" [ref=f46e348]
+                - cell "Not Issued" [ref=f46e350]
+                - cell "95.560 Cr" [ref=f46e351]
+                - cell "—" [ref=f46e352]
+                - cell "55.520" [ref=f46e353]
+                - cell "151.080 Cr" [ref=f46e354]
+                - cell [ref=f46e355]:
+                  - link "View Ledger" [ref=f46e356] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1657/account
+              - row [ref=f46e359]:
+                - cell "2151" [ref=f46e360]
+                - cell "Not Issued" [ref=f46e362]
+                - cell "199.500 Cr" [ref=f46e363]
+                - cell "—" [ref=f46e364]
+                - cell "34.000" [ref=f46e365]
+                - cell "233.500 Cr" [ref=f46e366]
+                - cell [ref=f46e367]:
+                  - link "View Ledger" [ref=f46e368] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1402/account
+              - row [ref=f46e371]:
+                - cell "2151" [ref=f46e372]
+                - cell "Magic Holiday (KWD)" [ref=f46e374]
+                - cell "79,855.290 Cr" [ref=f46e375]
+                - cell "—" [ref=f46e376]
+                - cell "24.160" [ref=f46e377]
+                - cell "79,879.450 Cr" [ref=f46e378]
+                - cell [ref=f46e379]:
+                  - link "View Ledger" [ref=f46e380] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/320/account
+              - row [ref=f46e383]:
+                - cell "2151" [ref=f46e384]
+                - cell "Not Issued" [ref=f46e386]
+                - cell "6,125.870 Cr" [ref=f46e387]
+                - cell "—" [ref=f46e388]
+                - cell "777.860" [ref=f46e389]
+                - cell "6,903.730 Cr" [ref=f46e390]
+                - cell [ref=f46e391]:
+                  - link "View Ledger" [ref=f46e392] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/297/account
+              - row [ref=f46e395]:
+                - cell "2151" [ref=f46e396]
+                - cell "Smile Holidays (KWD)" [ref=f46e398]
+                - cell "43,335.912 Cr" [ref=f46e399]
+                - cell "—" [ref=f46e400]
+                - cell "8,312.690" [ref=f46e401]
+                - cell "51,648.602 Cr" [ref=f46e402]
+                - cell [ref=f46e403]:
+                  - link "View Ledger" [ref=f46e404] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/373/account
+              - row [ref=f46e407]:
+                - cell "2151" [ref=f46e408]
+                - cell "Not Issued" [ref=f46e410]
+                - cell "5,538.921 Cr" [ref=f46e411]
+                - cell "—" [ref=f46e412]
+                - cell "864.600" [ref=f46e413]
+                - cell "6,403.521 Cr" [ref=f46e414]
+                - cell [ref=f46e415]:
+                  - link "View Ledger" [ref=f46e416] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/392/account
+              - row [ref=f46e419]:
+                - cell "2151" [ref=f46e420]
+                - cell "Not Issued" [ref=f46e422]
+                - cell "152,654.901 Cr" [ref=f46e423]
+                - cell "—" [ref=f46e424]
+                - cell "19,337.242" [ref=f46e425]
+                - cell "171,992.143 Cr" [ref=f46e426]
+                - cell [ref=f46e427]:
+                  - link "View Ledger" [ref=f46e428] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/293/account
+              - row [ref=f46e431]:
+                - cell "2151" [ref=f46e432]
+                - cell "Not Issued" [ref=f46e434]
+                - cell "—" [ref=f46e435]
+                - cell "—" [ref=f46e436]
+                - cell "124.594" [ref=f46e437]
+                - cell "124.594 Cr" [ref=f46e438]
+                - cell [ref=f46e439]:
+                  - link "View Ledger" [ref=f46e440] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1660/account
+              - row [ref=f46e443]:
+                - cell "2151" [ref=f46e444]
+                - cell "Blue Sky (USD)" [ref=f46e446]
+                - cell "2,707.583 Cr" [ref=f46e447]
+                - cell "—" [ref=f46e448]
+                - cell "214.000" [ref=f46e449]
+                - cell "2,921.583 Cr" [ref=f46e450]
+                - cell [ref=f46e451]:
+                  - link "View Ledger" [ref=f46e452] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/374/account
+              - row [ref=f46e455]:
+                - cell "2151" [ref=f46e456]
+                - cell "KWIKT2843" [ref=f46e458]
+                - cell "561,430.130 Cr" [ref=f46e459]
+                - cell "29,292.270" [ref=f46e460]
+                - cell "82,598.910" [ref=f46e461]
+                - cell "614,736.770 Cr" [ref=f46e462]
+                - cell [ref=f46e463]:
+                  - link "View Ledger" [ref=f46e464] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/280/account
+              - row [ref=f46e467]:
+                - cell "2151" [ref=f46e468]
+                - cell "GTS Beds (KWD)" [ref=f46e470]
+                - cell "451.330 Cr" [ref=f46e471]
+                - cell "—" [ref=f46e472]
+                - cell "276.370" [ref=f46e473]
+                - cell "727.700 Cr" [ref=f46e474]
+                - cell [ref=f46e475]:
+                  - link "View Ledger" [ref=f46e476] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/422/account
+              - row [ref=f46e479]:
+                - cell "2151" [ref=f46e480]
+                - cell "Not Issued" [ref=f46e482]
+                - cell "1,019.894 Cr" [ref=f46e483]
+                - cell "—" [ref=f46e484]
+                - cell "451.318" [ref=f46e485]
+                - cell "1,471.212 Cr" [ref=f46e486]
+                - cell [ref=f46e487]:
+                  - link "View Ledger" [ref=f46e488] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1373/account
+              - row [ref=f46e491]:
+                - cell "2151" [ref=f46e492]
+                - cell "Sky Rooms (KWD)" [ref=f46e494]
+                - cell "21,349.470 Cr" [ref=f46e495]
+                - cell "—" [ref=f46e496]
+                - cell "5,107.050" [ref=f46e497]
+                - cell "26,456.520 Cr" [ref=f46e498]
+                - cell [ref=f46e499]:
+                  - link "View Ledger" [ref=f46e500] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1172/account
+              - row [ref=f46e503]:
+                - cell "2152" [ref=f46e504]
+                - cell "Not Issued" [ref=f46e506]
+                - cell "800.737 Cr" [ref=f46e507]
+                - cell "—" [ref=f46e508]
+                - cell "718.750" [ref=f46e509]
+                - cell "1,519.487 Cr" [ref=f46e510]
+                - cell [ref=f46e511]:
+                  - link "View Ledger" [ref=f46e512] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1268/account
+              - row [ref=f46e515]:
+                - cell "2152" [ref=f46e516]
+                - cell "Not Issued" [ref=f46e518]
+                - cell "9,837.000 Cr" [ref=f46e519]
+                - cell "—" [ref=f46e520]
+                - cell "2,514.200" [ref=f46e521]
+                - cell "12,351.200 Cr" [ref=f46e522]
+                - cell [ref=f46e523]:
+                  - link "View Ledger" [ref=f46e524] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1173/account
+              - row [ref=f46e527]:
+                - cell "2154" [ref=f46e528]
+                - cell "Not Issued" [ref=f46e530]
+                - cell "120.595 Cr" [ref=f46e531]
+                - cell "—" [ref=f46e532]
+                - cell "257.941" [ref=f46e533]
+                - cell "378.536 Cr" [ref=f46e534]
+                - cell [ref=f46e535]:
+                  - link "View Ledger" [ref=f46e536] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1186/account
+              - row [ref=f46e539]:
+                - cell "2154" [ref=f46e540]
+                - cell "Not Issued" [ref=f46e542]
+                - cell "712.575 Cr" [ref=f46e543]
+                - cell "—" [ref=f46e544]
+                - cell "152.000" [ref=f46e545]
+                - cell "864.575 Cr" [ref=f46e546]
+                - cell [ref=f46e547]:
+                  - link "View Ledger" [ref=f46e548] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/425/account
+              - row [ref=f46e551]:
+                - cell "2210" [ref=f46e552]
+                - cell "Commissions (Agents)" [ref=f46e554]
+                - cell "13,700.920 Cr" [ref=f46e555]
+                - cell "—" [ref=f46e556]
+                - cell "1,247.492" [ref=f46e557]
+                - cell "14,948.412 Cr" [ref=f46e558]
+                - cell [ref=f46e559]:
+                  - link "View Ledger" [ref=f46e560] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/43/account
+              - row [ref=f46e563]:
+                - cell "2231" [ref=f46e564]
+                - cell "Soud Shoja" [ref=f46e566]
+                - cell "559.472 Cr" [ref=f46e567]
+                - cell "—" [ref=f46e568]
+                - cell "10.650" [ref=f46e569]
+                - cell "570.122 Cr" [ref=f46e570]
+                - cell [ref=f46e571]:
+                  - link "View Ledger" [ref=f46e572] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1432/account
+              - row [ref=f46e575]:
+                - cell "2232" [ref=f46e576]
+                - cell "Mohammed Alhashimi" [ref=f46e578]
+                - cell "12,166.857 Cr" [ref=f46e579]
+                - cell "—" [ref=f46e580]
+                - cell "1,986.595" [ref=f46e581]
+                - cell "14,153.452 Cr" [ref=f46e582]
+                - cell [ref=f46e583]:
+                  - link "View Ledger" [ref=f46e584] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1434/account
+              - row [ref=f46e587]:
+                - cell "2236" [ref=f46e588]
+                - cell "Saeid Shoja" [ref=f46e590]
+                - cell "10,561.817 Cr" [ref=f46e591]
+                - cell "7.000" [ref=f46e592]
+                - cell "827.311" [ref=f46e593]
+                - cell "11,382.128 Cr" [ref=f46e594]
+                - cell [ref=f46e595]:
+                  - link "View Ledger" [ref=f46e596] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1443/account
+              - row [ref=f46e599]:
+                - cell "2242" [ref=f46e600]
+                - cell "PETER WASELY" [ref=f46e602]
+                - cell "5,870.917 Cr" [ref=f46e603]
+                - cell "—" [ref=f46e604]
+                - cell "554.659" [ref=f46e605]
+                - cell "6,425.576 Cr" [ref=f46e606]
+                - cell [ref=f46e607]:
+                  - link "View Ledger" [ref=f46e608] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1455/account
+              - row [ref=f46e611]:
+                - cell "2243" [ref=f46e612]
+                - cell "MURTAZA KAPADIYA" [ref=f46e614]
+                - cell "12.550 Cr" [ref=f46e615]
+                - cell "—" [ref=f46e616]
+                - cell "4.050" [ref=f46e617]
+                - cell "16.600 Cr" [ref=f46e618]
+                - cell [ref=f46e619]:
+                  - link "View Ledger" [ref=f46e620] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1640/account
+              - row [ref=f46e623]:
+                - cell "2610" [ref=f46e624]
+                - cell "Clients" [ref=f46e626]
+                - cell "4,396.920 Dr" [ref=f46e627]
+                - cell "30.000" [ref=f46e628]
+                - cell "—" [ref=f46e629]
+                - cell "4,426.920 Dr" [ref=f46e630]
+                - cell [ref=f46e631]:
+                  - link "View Ledger" [ref=f46e632] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/56/account
+              - row [ref=f46e635]:
+                - cell "2632" [ref=f46e636]
+                - cell "Payment Gateway" [ref=f46e638]
+                - cell "636,843.980 Cr" [ref=f46e639]
+                - cell "29,457.000" [ref=f46e640]
+                - cell "91,019.500" [ref=f46e641]
+                - cell "698,406.480 Cr" [ref=f46e642]
+                - cell [ref=f46e643]:
+                  - link "View Ledger" [ref=f46e644] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1351/account
+              - row [ref=f46e647]:
+                - cell "INCOME" [ref=f46e648]
+                - cell "15.000" [ref=f46e649]
+                - cell "33,099.972" [ref=f46e650]
+                - cell [ref=f46e651]
+              - row [ref=f46e652]:
+                - cell "4110" [ref=f46e653]
+                - cell "Flight Booking Revenue" [ref=f46e655]
+                - cell "394,962.060 Cr" [ref=f46e656]
+                - cell "15.000" [ref=f46e657]
+                - cell "25,895.000" [ref=f46e658]
+                - cell "420,842.060 Cr" [ref=f46e659]
+                - cell [ref=f46e660]:
+                  - link "View Ledger" [ref=f46e661] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/64/account
+              - row [ref=f46e664]:
+                - cell "4120" [ref=f46e665]
+                - cell "Hotel Booking Revenue" [ref=f46e667]
+                - cell "103,751.010 Cr" [ref=f46e668]
+                - cell "—" [ref=f46e669]
+                - cell "6,561.000" [ref=f46e670]
+                - cell "110,312.010 Cr" [ref=f46e671]
+                - cell [ref=f46e672]:
+                  - link "View Ledger" [ref=f46e673] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/65/account
+              - row [ref=f46e676]:
+                - cell "4131" [ref=f46e677]
+                - cell "Gateway Fee Recovery" [ref=f46e679]
+                - cell "1,343.977 Cr" [ref=f46e680]
+                - cell "—" [ref=f46e681]
+                - cell "133.972" [ref=f46e682]
+                - cell "1,477.949 Cr" [ref=f46e683]
+                - cell [ref=f46e684]:
+                  - link "View Ledger" [ref=f46e685] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1410/account
+              - row [ref=f46e688]:
+                - cell "4155" [ref=f46e689]
+                - cell "Visa Booking Revenue" [ref=f46e691]
+                - cell "2,333.000 Cr" [ref=f46e692]
+                - cell "—" [ref=f46e693]
+                - cell "170.000" [ref=f46e694]
+                - cell "2,503.000 Cr" [ref=f46e695]
+                - cell [ref=f46e696]:
+                  - link "View Ledger" [ref=f46e697] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1367/account
+              - row [ref=f46e700]:
+                - cell "4160" [ref=f46e701]
+                - cell "Insurance Booking Revenue" [ref=f46e703]
+                - cell "440.000 Cr" [ref=f46e704]
+                - cell "—" [ref=f46e705]
+                - cell "35.000" [ref=f46e706]
+                - cell "475.000 Cr" [ref=f46e707]
+                - cell [ref=f46e708]:
+                  - link "View Ledger" [ref=f46e709] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1368/account
+              - row [ref=f46e712]:
+                - cell "4165" [ref=f46e713]
+                - cell "Car Booking Revenue" [ref=f46e715]
+                - cell "425.000 Cr" [ref=f46e716]
+                - cell "—" [ref=f46e717]
+                - cell "275.000" [ref=f46e718]
+                - cell "700.000 Cr" [ref=f46e719]
+                - cell [ref=f46e720]:
+                  - link "View Ledger" [ref=f46e721] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1413/account
+              - row [ref=f46e724]:
+                - cell "4180" [ref=f46e725]
+                - cell "Tour Booking Revenue" [ref=f46e727]
+                - cell "—" [ref=f46e728]
+                - cell "—" [ref=f46e729]
+                - cell "30.000" [ref=f46e730]
+                - cell "30.000 Cr" [ref=f46e731]
+                - cell [ref=f46e732]:
+                  - link "View Ledger" [ref=f46e733] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1661/account
+              - row [ref=f46e736]:
+                - cell "EXPENSES" [ref=f46e737]
+                - cell "34,581.527" [ref=f46e738]
+                - cell "752.800" [ref=f46e739]
+                - cell [ref=f46e740]
+              - row [ref=f46e741]:
+                - cell "5110" [ref=f46e742]
+                - cell "Fly Dubai" [ref=f46e744]
+                - cell "3,598.620 Dr" [ref=f46e745]
+                - cell "681.500" [ref=f46e746]
+                - cell "—" [ref=f46e747]
+                - cell "4,280.120 Dr" [ref=f46e748]
+                - cell [ref=f46e749]:
+                  - link "View Ledger" [ref=f46e750] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/288/account
+              - row [ref=f46e753]:
+                - cell "5110" [ref=f46e754]
+                - cell "Amadeus" [ref=f46e756]
+                - cell "239,994.650 Dr" [ref=f46e757]
+                - cell "15,528.650" [ref=f46e758]
+                - cell "745.650" [ref=f46e759]
+                - cell "254,777.650 Dr" [ref=f46e760]
+                - cell [ref=f46e761]:
+                  - link "View Ledger" [ref=f46e762] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/107/account
+              - row [ref=f46e765]:
+                - cell "5110" [ref=f46e766]
+                - cell "Air Arabia" [ref=f46e768]
+                - cell "478.440 Dr" [ref=f46e769]
+                - cell "290.560" [ref=f46e770]
+                - cell "—" [ref=f46e771]
+                - cell "769.000 Dr" [ref=f46e772]
+                - cell [ref=f46e773]:
+                  - link "View Ledger" [ref=f46e774] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/284/account
+              - row [ref=f46e777]:
+                - cell "5111" [ref=f46e778]
+                - cell "Fly Nas" [ref=f46e780]
+                - cell "1,035.850 Dr" [ref=f46e781]
+                - cell "133.040" [ref=f46e782]
+                - cell "—" [ref=f46e783]
+                - cell "1,168.890 Dr" [ref=f46e784]
+                - cell [ref=f46e785]:
+                  - link "View Ledger" [ref=f46e786] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/330/account
+              - row [ref=f46e789]:
+                - cell "5111" [ref=f46e790]
+                - cell "Salam Air" [ref=f46e792]
+                - cell "95.560 Dr" [ref=f46e793]
+                - cell "55.520" [ref=f46e794]
+                - cell "—" [ref=f46e795]
+                - cell "151.080 Dr" [ref=f46e796]
+                - cell [ref=f46e797]:
+                  - link "View Ledger" [ref=f46e798] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1360/account
+              - row [ref=f46e801]:
+                - cell "5111" [ref=f46e802]
+                - cell "IndiGo" [ref=f46e804]
+                - cell "3,258.400 Dr" [ref=f46e805]
+                - cell "215.350" [ref=f46e806]
+                - cell "—" [ref=f46e807]
+                - cell "3,473.750 Dr" [ref=f46e808]
+                - cell [ref=f46e809]:
+                  - link "View Ledger" [ref=f46e810] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/326/account
+              - row [ref=f46e813]:
+                - cell "5112" [ref=f46e814]
+                - cell "Wethaq Insurance" [ref=f46e816]
+                - cell "271.533 Dr" [ref=f46e817]
+                - cell "16.800" [ref=f46e818]
+                - cell "—" [ref=f46e819]
+                - cell "288.333 Dr" [ref=f46e820]
+                - cell [ref=f46e821]:
+                  - link "View Ledger" [ref=f46e822] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/357/account
+              - row [ref=f46e825]:
+                - cell "5112" [ref=f46e826]
+                - cell "Saudi eVisa" [ref=f46e828]
+                - cell "130.500 Cr" [ref=f46e829]
+                - cell "68.000" [ref=f46e830]
+                - cell "—" [ref=f46e831]
+                - cell "62.500 Cr" [ref=f46e832]
+                - cell [ref=f46e833]:
+                  - link "View Ledger" [ref=f46e834] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1399/account
+              - row [ref=f46e837]:
+                - cell "5112" [ref=f46e838]
+                - cell "AJET Airline" [ref=f46e840]
+                - cell "—" [ref=f46e841]
+                - cell "124.594" [ref=f46e842]
+                - cell "—" [ref=f46e843]
+                - cell "124.594 Dr" [ref=f46e844]
+                - cell [ref=f46e845]:
+                  - link "View Ledger" [ref=f46e846] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1659/account
+              - row [ref=f46e849]:
+                - cell "5112" [ref=f46e850]
+                - cell "VFS Global" [ref=f46e852]
+                - cell "517.130 Dr" [ref=f46e853]
+                - cell "40.800" [ref=f46e854]
+                - cell "—" [ref=f46e855]
+                - cell "557.930 Dr" [ref=f46e856]
+                - cell [ref=f46e857]:
+                  - link "View Ledger" [ref=f46e858] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/353/account
+              - row [ref=f46e861]:
+                - cell "5112" [ref=f46e862]
+                - cell "London Visa" [ref=f46e864]
+                - cell "26.106 Dr" [ref=f46e865]
+                - cell "9.513" [ref=f46e866]
+                - cell "—" [ref=f46e867]
+                - cell "35.619 Dr" [ref=f46e868]
+                - cell [ref=f46e869]:
+                  - link "View Ledger" [ref=f46e870] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/387/account
+              - row [ref=f46e873]:
+                - cell "5120" [ref=f46e874]
+                - cell "Jnan Tours" [ref=f46e876]
+                - cell "1,804.535 Dr" [ref=f46e877]
+                - cell "267.879" [ref=f46e878]
+                - cell "—" [ref=f46e879]
+                - cell "2,072.414 Dr" [ref=f46e880]
+                - cell [ref=f46e881]:
+                  - link "View Ledger" [ref=f46e882] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/296/account
+              - row [ref=f46e885]:
+                - cell "5120" [ref=f46e886]
+                - cell "Blue Sky" [ref=f46e888]
+                - cell "2,779.303 Dr" [ref=f46e889]
+                - cell "214.000" [ref=f46e890]
+                - cell "—" [ref=f46e891]
+                - cell "2,993.303 Dr" [ref=f46e892]
+                - cell [ref=f46e893]:
+                  - link "View Ledger" [ref=f46e894] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/310/account
+              - row [ref=f46e897]:
+                - cell "5120" [ref=f46e898]
+                - cell "Rate Hawk" [ref=f46e900]
+                - cell "527.546 Dr" [ref=f46e901]
+                - cell "26.520" [ref=f46e902]
+                - cell "—" [ref=f46e903]
+                - cell "554.066 Dr" [ref=f46e904]
+                - cell [ref=f46e905]:
+                  - link "View Ledger" [ref=f46e906] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/125/account
+              - row [ref=f46e909]:
+                - cell "5120" [ref=f46e910]
+                - cell "Mamlakat Alasfar" [ref=f46e912]
+                - cell "799.000 Dr" [ref=f46e913]
+                - cell "602.641" [ref=f46e914]
+                - cell "—" [ref=f46e915]
+                - cell "1,401.641 Dr" [ref=f46e916]
+                - cell [ref=f46e917]:
+                  - link "View Ledger" [ref=f46e918] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/316/account
+              - row [ref=f46e921]:
+                - cell "5120" [ref=f46e922]
+                - cell "Smile Holidays" [ref=f46e924]
+                - cell "22,437.492 Dr" [ref=f46e925]
+                - cell "2,849.410" [ref=f46e926]
+                - cell "—" [ref=f46e927]
+                - cell "25,286.902 Dr" [ref=f46e928]
+                - cell [ref=f46e929]:
+                  - link "View Ledger" [ref=f46e930] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/290/account
+              - row [ref=f46e933]:
+                - cell "5120" [ref=f46e934]
+                - cell "Magic Holiday" [ref=f46e936]
+                - cell "30,093.430 Dr" [ref=f46e937]
+                - cell "24.160" [ref=f46e938]
+                - cell "—" [ref=f46e939]
+                - cell "30,117.590 Dr" [ref=f46e940]
+                - cell [ref=f46e941]:
+                  - link "View Ledger" [ref=f46e942] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/109/account
+              - row [ref=f46e945]:
+                - cell "5120" [ref=f46e946]
+                - cell "DARINA HOLIDAYS" [ref=f46e948]
+                - cell "1,130.454 Dr" [ref=f46e949]
+                - cell "567.871" [ref=f46e950]
+                - cell "—" [ref=f46e951]
+                - cell "1,698.325 Dr" [ref=f46e952]
+                - cell [ref=f46e953]:
+                  - link "View Ledger" [ref=f46e954] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/304/account
+              - row [ref=f46e957]:
+                - cell "5120" [ref=f46e958]
+                - cell "Jazeera Airways" [ref=f46e960]
+                - cell "54,804.813 Dr" [ref=f46e961]
+                - cell "6,817.470" [ref=f46e962]
+                - cell "—" [ref=f46e963]
+                - cell "61,622.283 Dr" [ref=f46e964]
+                - cell [ref=f46e965]:
+                  - link "View Ledger" [ref=f46e966] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/116/account
+              - row [ref=f46e969]:
+                - cell "5120" [ref=f46e970]
+                - cell "TBO Holiday" [ref=f46e972]
+                - cell "6,314.170 Dr" [ref=f46e973]
+                - cell "194.040" [ref=f46e974]
+                - cell "—" [ref=f46e975]
+                - cell "6,508.210 Dr" [ref=f46e976]
+                - cell [ref=f46e977]:
+                  - link "View Ledger" [ref=f46e978] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/111/account
+              - row [ref=f46e981]:
+                - cell "5120" [ref=f46e982]
+                - cell "Supreme Services" [ref=f46e984]
+                - cell "—" [ref=f46e985]
+                - cell "216.000" [ref=f46e986]
+                - cell "—" [ref=f46e987]
+                - cell "216.000 Dr" [ref=f46e988]
+                - cell [ref=f46e989]:
+                  - link "View Ledger" [ref=f46e990] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/306/account
+              - row [ref=f46e993]:
+                - cell "5120" [ref=f46e994]
+                - cell "Sky Rooms" [ref=f46e996]
+                - cell "4,330.320 Dr" [ref=f46e997]
+                - cell "158.140" [ref=f46e998]
+                - cell "—" [ref=f46e999]
+                - cell "4,488.460 Dr" [ref=f46e1000]
+                - cell [ref=f46e1001]:
+                  - link "View Ledger" [ref=f46e1002] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/286/account
+              - row [ref=f46e1005]:
+                - cell "5121" [ref=f46e1006]
+                - cell "GTS Beds" [ref=f46e1008]
+                - cell "376.380 Dr" [ref=f46e1009]
+                - cell "600.940" [ref=f46e1010]
+                - cell "—" [ref=f46e1011]
+                - cell "977.320 Dr" [ref=f46e1012]
+                - cell [ref=f46e1013]:
+                  - link "View Ledger" [ref=f46e1014] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/417/account
+              - row [ref=f46e1017]:
+                - cell "5130" [ref=f46e1018]
+                - cell "Commissions Expense (Agents)" [ref=f46e1020]
+                - cell "13,804.050 Dr" [ref=f46e1021]
+                - cell "1,247.492" [ref=f46e1022]
+                - cell "—" [ref=f46e1023]
+                - cell "15,051.542 Dr" [ref=f46e1024]
+                - cell [ref=f46e1025]:
+                  - link "View Ledger" [ref=f46e1026] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/73/account
+              - row [ref=f46e1029]:
+                - cell "5141" [ref=f46e1030]
+                - cell "TAP Charges" [ref=f46e1032]
+                - cell "902.426 Dr" [ref=f46e1033]
+                - cell "83.050" [ref=f46e1034]
+                - cell "—" [ref=f46e1035]
+                - cell "985.476 Dr" [ref=f46e1036]
+                - cell [ref=f46e1037]:
+                  - link "View Ledger" [ref=f46e1038] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/75/account
+              - row [ref=f46e1041]:
+                - cell "5142" [ref=f46e1042]
+                - cell "MyFatoorah Charges" [ref=f46e1044]
+                - cell "2,622.950 Dr" [ref=f46e1045]
+                - cell "45.150" [ref=f46e1046]
+                - cell "0.150" [ref=f46e1047]
+                - cell "2,667.950 Dr" [ref=f46e1048]
+                - cell [ref=f46e1049]:
+                  - link "View Ledger" [ref=f46e1050] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/76/account
+              - row [ref=f46e1053]:
+                - cell "5143" [ref=f46e1054]
+                - cell "Hesabe Charges" [ref=f46e1056]
+                - cell "293.623 Dr" [ref=f46e1057]
+                - cell "50.922" [ref=f46e1058]
+                - cell "—" [ref=f46e1059]
+                - cell "344.545 Dr" [ref=f46e1060]
+                - cell [ref=f46e1061]:
+                  - link "View Ledger" [ref=f46e1062] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/77/account
+              - row [ref=f46e1065]:
+                - cell "5160" [ref=f46e1066]
+                - cell "Agent Salaries" [ref=f46e1068]
+                - cell "42,387.743 Dr" [ref=f46e1069]
+                - cell "3,372.615" [ref=f46e1070]
+                - cell "7.000" [ref=f46e1071]
+                - cell "45,753.358 Dr" [ref=f46e1072]
+                - cell [ref=f46e1073]:
+                  - link "View Ledger" [ref=f46e1074] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/351/account
+              - row [ref=f46e1077]:
+                - cell "5221" [ref=f46e1078]
+                - cell "Company Loss on Sales" [ref=f46e1080]
+                - cell "780.020 Dr" [ref=f46e1081]
+                - cell "78.900" [ref=f46e1082]
+                - cell "—" [ref=f46e1083]
+                - cell "858.920 Dr" [ref=f46e1084]
+                - cell [ref=f46e1085]:
+                  - link "View Ledger" [ref=f46e1086] [cursor=pointer]:
+                    - /url: https://development.citycommerce.group/journal-entries/1429/account
+              - row [ref=f46e1089]:
+                - cell "GRAND TOTAL" [ref=f46e1090]
+                - cell "430,378.506" [ref=f46e1091]
+                - cell "438,291.910" [ref=f46e1092]
+                - cell [ref=f46e1093]
+              - row [ref=f46e1094]:
+                - cell "Difference:" [ref=f46e1095]
+                - cell "7,913.404" [ref=f46e1096]
+                - cell [ref=f46e1098]
+          - generic [ref=f46e1099]:
+            - heading "Unbalanced Transactions Detected (40)" [level=3] [ref=f46e1101]
+            - table [ref=f46e1105]:
+              - rowgroup [ref=f46e1106]:
+                - row [ref=f46e1107]:
+                  - columnheader "Date" [ref=f46e1108]
+                  - columnheader "Name" [ref=f46e1109]
+                  - columnheader "Reference" [ref=f46e1110]
+                  - columnheader "Debit" [ref=f46e1111]
+                  - columnheader "Credit" [ref=f46e1112]
+                  - columnheader "Imbalance" [ref=f46e1113]
+              - rowgroup [ref=f46e1114]:
+                - row [ref=f46e1115]:
+                  - cell "Aug 26, 2026" [ref=f46e1116]
+                  - cell "KFH Coporate" [ref=f46e1117]
+                  - cell "N/A" [ref=f46e1118]
+                  - cell "0.000" [ref=f46e1119]
+                  - cell "194.040" [ref=f46e1120]
+                  - cell "+194.040 Cr" [ref=f46e1121]
+                - row [ref=f46e1123]:
+                  - cell "Aug 25, 2026" [ref=f46e1124]
+                  - cell "NOOR KHALIL IBRAHIM KHALIL GHARBIA" [ref=f46e1125]
+                  - cell "RF-2026-00033" [ref=f46e1126]
+                  - cell "30.066" [ref=f46e1127]
+                  - cell "0.066" [ref=f46e1128]
+                  - cell "+30.000 Dr" [ref=f46e1129]
+                - row [ref=f46e1131]:
+                  - cell "Aug 25, 2026" [ref=f46e1132]
+                  - cell "KFH Coporate" [ref=f46e1133]
+                  - cell "N/A" [ref=f46e1134]
+                  - cell "0.000" [ref=f46e1135]
+                  - cell "47.300" [ref=f46e1136]
+                  - cell "+47.300 Cr" [ref=f46e1137]
+                - row [ref=f46e1139]:
+                  - cell "Aug 25, 2026" [ref=f46e1140]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1141]
+                  - cell "N/A" [ref=f46e1142]
+                  - cell "0.000" [ref=f46e1143]
+                  - cell "66.520" [ref=f46e1144]
+                  - cell "+66.520 Cr" [ref=f46e1145]
+                - row [ref=f46e1147]:
+                  - cell "Aug 25, 2026" [ref=f46e1148]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1149]
+                  - cell "N/A" [ref=f46e1150]
+                  - cell "0.000" [ref=f46e1151]
+                  - cell "66.520" [ref=f46e1152]
+                  - cell "+66.520 Cr" [ref=f46e1153]
+                - row [ref=f46e1155]:
+                  - cell "Aug 22, 2026" [ref=f46e1156]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1157]
+                  - cell "N/A" [ref=f46e1158]
+                  - cell "0.000" [ref=f46e1159]
+                  - cell "8.900" [ref=f46e1160]
+                  - cell "+8.900 Cr" [ref=f46e1161]
+                - row [ref=f46e1163]:
+                  - cell "Aug 22, 2026" [ref=f46e1164]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1165]
+                  - cell "N/A" [ref=f46e1166]
+                  - cell "0.000" [ref=f46e1167]
+                  - cell "8.900" [ref=f46e1168]
+                  - cell "+8.900 Cr" [ref=f46e1169]
+                - row [ref=f46e1171]:
+                  - cell "Aug 22, 2026" [ref=f46e1172]
+                  - cell "KFH Coporate" [ref=f46e1173]
+                  - cell "N/A" [ref=f46e1174]
+                  - cell "0.000" [ref=f46e1175]
+                  - cell "324.570" [ref=f46e1176]
+                  - cell "+324.570 Cr" [ref=f46e1177]
+                - row [ref=f46e1179]:
+                  - cell "Aug 20, 2026" [ref=f46e1180]
+                  - cell "City Travelers (EasyPay)" [ref=f46e1181]
+                  - cell "N/A" [ref=f46e1182]
+                  - cell "0.000" [ref=f46e1183]
+                  - cell "41.700" [ref=f46e1184]
+                  - cell "+41.700 Cr" [ref=f46e1185]
+                - row [ref=f46e1187]:
+                  - cell "Aug 19, 2026" [ref=f46e1188]
+                  - cell [ref=f46e1189]
+                  - cell "N/A" [ref=f46e1190]
+                  - cell "0.150" [ref=f46e1191]
+                  - cell "68.000" [ref=f46e1192]
+                  - cell "+67.850 Cr" [ref=f46e1193]
+                - row [ref=f46e1195]:
+                  - cell "Aug 19, 2026" [ref=f46e1196]
+                  - cell [ref=f46e1197]
+                  - cell "N/A" [ref=f46e1198]
+                  - cell "0.150" [ref=f46e1199]
+                  - cell "121.000" [ref=f46e1200]
+                  - cell "+120.850 Cr" [ref=f46e1201]
+                - row [ref=f46e1203]:
+                  - cell "Aug 19, 2026" [ref=f46e1204]
+                  - cell [ref=f46e1205]
+                  - cell "N/A" [ref=f46e1206]
+                  - cell "0.150" [ref=f46e1207]
+                  - cell "630.000" [ref=f46e1208]
+                  - cell "+629.850 Cr" [ref=f46e1209]
+                - row [ref=f46e1211]:
+                  - cell "Aug 19, 2026" [ref=f46e1212]
+                  - cell "City Travelers (EasyPay)" [ref=f46e1213]
+                  - cell "N/A" [ref=f46e1214]
+                  - cell "0.000" [ref=f46e1215]
+                  - cell "117.690" [ref=f46e1216]
+                  - cell "+117.690 Cr" [ref=f46e1217]
+                - row [ref=f46e1219]:
+                  - cell "Aug 19, 2026" [ref=f46e1220]
+                  - cell "City Travelers (EasyPay)" [ref=f46e1221]
+                  - cell "N/A" [ref=f46e1222]
+                  - cell "0.000" [ref=f46e1223]
+                  - cell "24.100" [ref=f46e1224]
+                  - cell "+24.100 Cr" [ref=f46e1225]
+                - row [ref=f46e1227]:
+                  - cell "Aug 19, 2026" [ref=f46e1228]
+                  - cell "City Travelers (EasyPay)" [ref=f46e1229]
+                  - cell "N/A" [ref=f46e1230]
+                  - cell "0.000" [ref=f46e1231]
+                  - cell "63.000" [ref=f46e1232]
+                  - cell "+63.000 Cr" [ref=f46e1233]
+                - row [ref=f46e1235]:
+                  - cell "Aug 18, 2026" [ref=f46e1236]
+                  - cell "KFH Coporate" [ref=f46e1237]
+                  - cell "N/A" [ref=f46e1238]
+                  - cell "0.000" [ref=f46e1239]
+                  - cell "264.290" [ref=f46e1240]
+                  - cell "+264.290 Cr" [ref=f46e1241]
+                - row [ref=f46e1243]:
+                  - cell "Aug 15, 2026" [ref=f46e1244]
+                  - cell [ref=f46e1245]
+                  - cell "N/A" [ref=f46e1246]
+                  - cell "0.150" [ref=f46e1247]
+                  - cell "828.000" [ref=f46e1248]
+                  - cell "+827.850 Cr" [ref=f46e1249]
+                - row [ref=f46e1251]:
+                  - cell "Aug 15, 2026" [ref=f46e1252]
+                  - cell [ref=f46e1253]
+                  - cell "VOU-2026-04440" [ref=f46e1254]
+                  - cell "858.000" [ref=f46e1255]
+                  - cell "30.150" [ref=f46e1256]
+                  - cell "+827.850 Dr" [ref=f46e1257]
+                - row [ref=f46e1259]:
+                  - cell "Aug 14, 2026" [ref=f46e1260]
+                  - cell [ref=f46e1261]
+                  - cell "N/A" [ref=f46e1262]
+                  - cell "0.150" [ref=f46e1263]
+                  - cell "604.000" [ref=f46e1264]
+                  - cell "+603.850 Cr" [ref=f46e1265]
+                - row [ref=f46e1267]:
+                  - cell "Aug 14, 2026" [ref=f46e1268]
+                  - cell "KFH Coporate" [ref=f46e1269]
+                  - cell "N/A" [ref=f46e1270]
+                  - cell "0.000" [ref=f46e1271]
+                  - cell "2,040.500" [ref=f46e1272]
+                  - cell "+2,040.500 Cr" [ref=f46e1273]
+                - row [ref=f46e1275]:
+                  - cell "Aug 14, 2026" [ref=f46e1276]
+                  - cell "KFH Coporate" [ref=f46e1277]
+                  - cell "N/A" [ref=f46e1278]
+                  - cell "0.000" [ref=f46e1279]
+                  - cell "1,204.700" [ref=f46e1280]
+                  - cell "+1,204.700 Cr" [ref=f46e1281]
+                - row [ref=f46e1283]:
+                  - cell "Aug 13, 2026" [ref=f46e1284]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1285]
+                  - cell "N/A" [ref=f46e1286]
+                  - cell "0.000" [ref=f46e1287]
+                  - cell "7.950" [ref=f46e1288]
+                  - cell "+7.950 Cr" [ref=f46e1289]
+                - row [ref=f46e1291]:
+                  - cell "Aug 11, 2026" [ref=f46e1292]
+                  - cell "KFH Coporate" [ref=f46e1293]
+                  - cell "N/A" [ref=f46e1294]
+                  - cell "0.000" [ref=f46e1295]
+                  - cell "77.990" [ref=f46e1296]
+                  - cell "+77.990 Cr" [ref=f46e1297]
+                - row [ref=f46e1299]:
+                  - cell "Aug 11, 2026" [ref=f46e1300]
+                  - cell "KFH Coporate" [ref=f46e1301]
+                  - cell "N/A" [ref=f46e1302]
+                  - cell "0.000" [ref=f46e1303]
+                  - cell "76.650" [ref=f46e1304]
+                  - cell "+76.650 Cr" [ref=f46e1305]
+                - row [ref=f46e1307]:
+                  - cell "Aug 10, 2026" [ref=f46e1308]
+                  - cell [ref=f46e1309]
+                  - cell "N/A" [ref=f46e1310]
+                  - cell "0.150" [ref=f46e1311]
+                  - cell "135.000" [ref=f46e1312]
+                  - cell "+134.850 Cr" [ref=f46e1313]
+                - row [ref=f46e1315]:
+                  - cell "Aug 10, 2026" [ref=f46e1316]
+                  - cell [ref=f46e1317]
+                  - cell "N/A" [ref=f46e1318]
+                  - cell "0.000" [ref=f46e1319]
+                  - cell "68.000" [ref=f46e1320]
+                  - cell "+68.000 Cr" [ref=f46e1321]
+                - row [ref=f46e1323]:
+                  - cell "Aug 09, 2026" [ref=f46e1324]
+                  - cell [ref=f46e1325]
+                  - cell "N/A" [ref=f46e1326]
+                  - cell "0.150" [ref=f46e1327]
+                  - cell "470.000" [ref=f46e1328]
+                  - cell "+469.850 Cr" [ref=f46e1329]
+                - row [ref=f46e1331]:
+                  - cell "Aug 09, 2026" [ref=f46e1332]
+                  - cell [ref=f46e1333]
+                  - cell "N/A" [ref=f46e1334]
+                  - cell "0.150" [ref=f46e1335]
+                  - cell "110.000" [ref=f46e1336]
+                  - cell "+109.850 Cr" [ref=f46e1337]
+                - row [ref=f46e1339]:
+                  - cell "Aug 09, 2026" [ref=f46e1340]
+                  - cell "KFH Coporate" [ref=f46e1341]
+                  - cell "N/A" [ref=f46e1342]
+                  - cell "0.000" [ref=f46e1343]
+                  - cell "30.160" [ref=f46e1344]
+                  - cell "+30.160 Cr" [ref=f46e1345]
+                - row [ref=f46e1347]:
+                  - cell "Aug 08, 2026" [ref=f46e1348]
+                  - cell [ref=f46e1349]
+                  - cell "N/A" [ref=f46e1350]
+                  - cell "0.150" [ref=f46e1351]
+                  - cell "725.000" [ref=f46e1352]
+                  - cell "+724.850 Cr" [ref=f46e1353]
+                - row [ref=f46e1355]:
+                  - cell "Aug 08, 2026" [ref=f46e1356]
+                  - cell "KFH Coporate" [ref=f46e1357]
+                  - cell "N/A" [ref=f46e1358]
+                  - cell "0.000" [ref=f46e1359]
+                  - cell "91.990" [ref=f46e1360]
+                  - cell "+91.990 Cr" [ref=f46e1361]
+                - row [ref=f46e1363]:
+                  - cell "Aug 06, 2026" [ref=f46e1364]
+                  - cell "KFH Coporate" [ref=f46e1365]
+                  - cell "N/A" [ref=f46e1366]
+                  - cell "0.000" [ref=f46e1367]
+                  - cell "81.520" [ref=f46e1368]
+                  - cell "+81.520 Cr" [ref=f46e1369]
+                - row [ref=f46e1371]:
+                  - cell "Aug 05, 2026" [ref=f46e1372]
+                  - cell [ref=f46e1373]
+                  - cell "N/A" [ref=f46e1374]
+                  - cell "0.150" [ref=f46e1375]
+                  - cell "129.000" [ref=f46e1376]
+                  - cell "+128.850 Cr" [ref=f46e1377]
+                - row [ref=f46e1379]:
+                  - cell "Aug 05, 2026" [ref=f46e1380]
+                  - cell [ref=f46e1381]
+                  - cell "N/A" [ref=f46e1382]
+                  - cell "940.000" [ref=f46e1383]
+                  - cell "950.650" [ref=f46e1384]
+                  - cell "+10.650 Cr" [ref=f46e1385]
+                - row [ref=f46e1387]:
+                  - cell "Aug 05, 2026" [ref=f46e1388]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1389]
+                  - cell "N/A" [ref=f46e1390]
+                  - cell "0.000" [ref=f46e1391]
+                  - cell "63.760" [ref=f46e1392]
+                  - cell "+63.760 Cr" [ref=f46e1393]
+                - row [ref=f46e1395]:
+                  - cell "Aug 04, 2026" [ref=f46e1396]
+                  - cell "VISA GULF BANK - SAEID" [ref=f46e1397]
+                  - cell "N/A" [ref=f46e1398]
+                  - cell "0.000" [ref=f46e1399]
+                  - cell "212.450" [ref=f46e1400]
+                  - cell "+212.450 Cr" [ref=f46e1401]
+                - row [ref=f46e1403]:
+                  - cell "Aug 03, 2026" [ref=f46e1404]
+                  - cell "KFH Coporate" [ref=f46e1405]
+                  - cell "N/A" [ref=f46e1406]
+                  - cell "0.000" [ref=f46e1407]
+                  - cell "56.420" [ref=f46e1408]
+                  - cell "+56.420 Cr" [ref=f46e1409]
+                - row [ref=f46e1411]:
+                  - cell "Aug 02, 2026" [ref=f46e1412]
+                  - cell "City Travelers (EasyPay)" [ref=f46e1413]
+                  - cell "N/A" [ref=f46e1414]
+                  - cell "0.000" [ref=f46e1415]
+                  - cell "48.500" [ref=f46e1416]
+                  - cell "+48.500 Cr" [ref=f46e1417]
+                - row [ref=f46e1419]:
+                  - cell "Aug 02, 2026" [ref=f46e1420]
+                  - cell "City Travelers (EasyPay)" [ref=f46e1421]
+                  - cell "N/A" [ref=f46e1422]
+                  - cell "0.000" [ref=f46e1423]
+                  - cell "48.500" [ref=f46e1424]
+                  - cell "+48.500 Cr" [ref=f46e1425]
+                - row [ref=f46e1427]:
+                  - cell "Aug 02, 2026" [ref=f46e1428]
+                  - cell [ref=f46e1429]
+                  - cell "N/A" [ref=f46e1430]
+                  - cell "0.000" [ref=f46e1431]
+                  - cell "48.320" [ref=f46e1432]
+                  - cell "+48.320 Cr" [ref=f46e1433]
+              - rowgroup [ref=f46e1435]:
+                - row [ref=f46e1436]:
+                  - cell "Total Excess Debit:" [ref=f46e1437]
+                  - cell "857.850" [ref=f46e1438]
+                - row [ref=f46e1439]:
+                  - cell "Total Excess Credit:" [ref=f46e1440]
+                  - cell "9,214.090" [ref=f46e1441]
+                - row [ref=f46e1442]:
+                  - cell "Net Imbalance (Debit − Credit):" [ref=f46e1443]
+                  - cell "8,356.240 Cr" [ref=f46e1444]
+        - generic [ref=f46e1446]: © 2024 - 2025 City Tour. Version 1.0
+  - dialog "Resayil WhatsApp CRM" [ref=f46e1449]:
+    - separator "Resize Resayil drawer" [ref=f46e1450]
+    - generic [ref=f46e1451]:
+      - generic [ref=f46e1452]:
+        - img "Resayil" [ref=f46e1454]
+        - generic [ref=f46e1455]:
+          - paragraph [ref=f46e1456]: Resayil
+          - paragraph [ref=f46e1457]: WhatsApp conversations
+      - generic [ref=f46e1458]:
+        - button "Unpin Resayil drawer" [pressed] [ref=f46e1459] [cursor=pointer]
+        - link "Open Resayil full page" [ref=f46e1462] [cursor=pointer]:
+          - /url: https://development.citycommerce.group/resayil
+        - button "Close Resayil drawer" [ref=f46e1465] [cursor=pointer]
+    - generic [ref=f46e1469]:
+      - generic [ref=f46e1470]:
+        - generic [ref=f46e1471]: WhatsApp CRM
+        - generic [ref=f46e1475]:
+          - generic [ref=f46e1476]: Loading…
+          - button "Open Resayil in a new tab" [ref=f46e1478] [cursor=pointer]
+      - iframe [ref=f46e1483]:
+        - generic [ref=f47e3]:
+          - strong [ref=f47e4]: wa.resayil.io
+          - text: refused to connect.

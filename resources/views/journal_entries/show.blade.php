@@ -91,10 +91,14 @@
 
                         <tr class="border-t hover:bg-gray-50">
                             <td class="py-2 px-4 text-center">
+                                @if($entry->transaction_id)
                                 <a href="{{ route('journal-entries.index', $entry->transaction_id) }}"
                                     class="text-blue-600 hover:underline">
                                     {{ $entry->transaction_id }}
                                 </a>
+                                @else
+                                <span class="text-gray-400">-</span>
+                                @endif
                             </td>
                             <td class="py-2 px-4 text-center">
                                 {{ \Carbon\Carbon::parse($entry->transaction_date)->format('Y-m-d') }}

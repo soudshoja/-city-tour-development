@@ -1,0 +1,339 @@
+- generic [active] [ref=f2e271]:
+  - generic [ref=f2e272]:
+    - generic: Switch Company
+    - banner [ref=f2e273]:
+      - paragraph [ref=f2e275]: CityTourApp
+      - generic [ref=f2e276]:
+        - generic [ref=f2e277]:
+          - link [ref=f2e278] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+            - img "Logo" [ref=f2e279]
+          - navigation [ref=f2e281]:
+            - list [ref=f2e282]:
+              - generic [ref=f2e283] [cursor=pointer]:
+                - generic [ref=f2e284]: Tasks
+                - list:
+                  - generic:
+                    - link "Tasks list":
+                      - /url: https://development.citycommerce.group/tasks
+                  - generic:
+                    - link "Outstanding":
+                      - /url: https://development.citycommerce.group/payment/outstanding
+              - generic [ref=f2e291] [cursor=pointer]:
+                - generic [ref=f2e292]: Finances
+                - list:
+                  - generic:
+                    - link "Chart Of Account":
+                      - /url: https://development.citycommerce.group/coa
+                  - generic:
+                    - link "Payment Voucher":
+                      - /url: https://development.citycommerce.group/bank-payments
+                  - generic:
+                    - link "Receipt Voucher":
+                      - /url: https://development.citycommerce.group/receipt-voucher
+                  - generic:
+                    - link "Receivable":
+                      - /url: https://development.citycommerce.group/receivable-details/receivable-create
+                  - generic:
+                    - link "Payable":
+                      - /url: https://development.citycommerce.group/payable-details/payable-create
+                  - generic:
+                    - link "Accounting":
+                      - /url: https://development.citycommerce.group/accounting-summary
+                  - generic:
+                    - link "Journal Entries":
+                      - /url: https://development.citycommerce.group/journal-entries/all
+                  - generic:
+                    - link "Lock Management":
+                      - /url: https://development.citycommerce.group/lock-management
+              - generic [ref=f2e298] [cursor=pointer]:
+                - generic [ref=f2e299]: Invoices
+                - list:
+                  - generic:
+                    - link "Invoices List":
+                      - /url: https://development.citycommerce.group/invoices
+                  - generic:
+                    - link "Invoices Link":
+                      - /url: https://development.citycommerce.group/invoices/link
+                  - generic:
+                    - link "Payment Link":
+                      - /url: https://development.citycommerce.group/payment/link
+                  - generic:
+                    - link "Refund":
+                      - /url: https://development.citycommerce.group/refunds
+                  - generic:
+                    - link "Auto Billing":
+                      - /url: https://development.citycommerce.group/auto-billing
+                  - generic:
+                    - link "Reminder":
+                      - /url: https://development.citycommerce.group/reminder
+              - link "Resayil" [ref=f2e308] [cursor=pointer]:
+                - /url: https://development.citycommerce.group/resayil
+              - generic [ref=f2e312] [cursor=pointer]:
+                - generic [ref=f2e313]: Users
+                - list:
+                  - generic:
+                    - link "Users List":
+                      - /url: https://development.citycommerce.group/users/adminsList
+                  - generic:
+                    - link "Companies List":
+                      - /url: https://development.citycommerce.group/companies
+                  - generic:
+                    - link "Branches List":
+                      - /url: https://development.citycommerce.group/branches
+                  - generic:
+                    - link "Agents List":
+                      - /url: https://development.citycommerce.group/agents
+                  - generic:
+                    - link "Clients List":
+                      - /url: https://development.citycommerce.group/clients
+              - generic [ref=f2e323] [cursor=pointer]:
+                - generic [ref=f2e324]: Reports
+                - list:
+                  - generic:
+                    - link "Paid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/paid-report
+                  - generic:
+                    - link "Unpaid Acc Pay/Receive":
+                      - /url: https://development.citycommerce.group/reports/unpaid-report
+                  - generic:
+                    - link "Profit & Loss":
+                      - /url: https://development.citycommerce.group/reports/profit-loss
+                  - generic:
+                    - link "Bank Settlement":
+                      - /url: https://development.citycommerce.group/reports/settlements
+                  - generic:
+                    - link "Transaction List":
+                      - /url: https://development.citycommerce.group/coa/transactions
+                  - generic:
+                    - link "Creditors Report":
+                      - /url: https://development.citycommerce.group/reports/creditors
+                  - generic:
+                    - link "Daily Sales":
+                      - /url: https://development.citycommerce.group/reports/daily-sales
+                  - generic:
+                    - link "Task Report":
+                      - /url: https://development.citycommerce.group/reports/tasks
+                  - generic:
+                    - link "Client Report":
+                      - /url: https://development.citycommerce.group/reports/client
+                  - generic:
+                    - link "Payment Gateways Report":
+                      - /url: https://development.citycommerce.group/reports/payment-gateways
+              - generic [ref=f2e333] [cursor=pointer]:
+                - generic [ref=f2e334]: Settings
+                - list:
+                  - generic:
+                    - link "Settings":
+                      - /url: https://development.citycommerce.group/settings
+                    - list:
+                      - generic:
+                        - link "System Setting":
+                          - /url: https://development.citycommerce.group/system-settings
+                  - generic:
+                    - link "Suppliers":
+                      - /url: https://development.citycommerce.group/suppliers
+                  - generic:
+                    - link "Manage Roles":
+                      - /url: https://development.citycommerce.group/role
+                  - generic:
+                    - link "Documentations":
+                      - /url: https://development.citycommerce.group/docs/user
+                    - list:
+                      - generic:
+                        - link "User Docs":
+                          - /url: https://development.citycommerce.group/docs/user
+                      - generic:
+                        - link "API Docs":
+                          - /url: https://development.citycommerce.group/docs/api
+                      - generic:
+                        - link "Developer Docs":
+                          - /url: https://development.citycommerce.group/docs/developer
+                  - generic:
+                    - link "Currency Exchange":
+                      - /url: https://development.citycommerce.group/exchange/index
+                    - list:
+                      - generic:
+                        - link "Exchange History":
+                          - /url: https://development.citycommerce.group/exchange/histories
+        - generic [ref=f2e342]:
+          - generic [ref=f2e344] [cursor=pointer]
+          - generic [ref=f2e349] [cursor=pointer]
+          - generic [ref=f2e354] [cursor=pointer]
+  - main [ref=f2e358]:
+    - generic [ref=f2e360]:
+      - generic [ref=f2e361]:
+        - generic [ref=f2e362]:
+          - link "Dashboard" [ref=f2e364] [cursor=pointer]:
+            - /url: https://development.citycommerce.group
+          - link "Add new user" [ref=f2e373] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/users/create
+          - link "Create Invoice" [ref=f2e381] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/invoices/create
+          - link "Bulk Invoice Upload" [ref=f2e387] [cursor=pointer]:
+            - /url: https://development.citycommerce.group/bulk-invoices/upload
+          - button "Currency Exchange" [ref=f2e393] [cursor=pointer]
+          - button "Switch Company" [ref=f2e400] [cursor=pointer]
+          - button "Language" [ref=f2e405] [cursor=pointer]
+        - generic [ref=f2e412] [cursor=pointer]:
+          - text: Switch theme
+          - button [ref=f2e413]
+      - generic [ref=f2e416]:
+        - generic [ref=f2e417]:
+          - generic [ref=f2e418]:
+            - heading "Users" [level=2] [ref=f2e419]
+            - generic [ref=f2e420] [cursor=pointer]:
+              - text: Total users
+              - generic [ref=f2e421]: "16"
+          - generic [ref=f2e422]:
+            - generic [ref=f2e423] [cursor=pointer]: Reload
+            - link "Create new user" [ref=f2e427] [cursor=pointer]:
+              - /url: https://development.citycommerce.group/users/create
+        - generic [ref=f2e431]:
+          - generic [ref=f2e433]:
+            - textbox "Quick search for user" [ref=f2e434]
+            - generic: Quick search for user
+            - button [ref=f2e435] [cursor=pointer]
+          - generic [ref=f2e439]:
+            - table [ref=f2e441]:
+              - rowgroup [ref=f2e442]:
+                - row [ref=f2e443]:
+                  - columnheader "Name" [ref=f2e444]
+                  - columnheader "Email" [ref=f2e445]
+                  - columnheader "Role" [ref=f2e446]
+                  - columnheader "Actions" [ref=f2e447]
+              - rowgroup [ref=f2e448]:
+                - row [ref=f2e449] [cursor=pointer]:
+                  - cell "MURTAZA KAPADIYA" [ref=f2e450]
+                  - cell "Murtaza@ccitytravelers.co" [ref=f2e451]
+                  - cell "Agent" [ref=f2e452]
+                  - cell [ref=f2e455]:
+                    - link "Edit user" [ref=f2e457]:
+                      - /url: https://development.citycommerce.group/users/edit/33
+                - row [ref=f2e460] [cursor=pointer]:
+                  - cell "Mohammad Khalil" [ref=f2e461]
+                  - cell "Account@citytravelers.co" [ref=f2e462]
+                  - cell "Accountant" [ref=f2e463]
+                  - cell [ref=f2e466]:
+                    - link "Edit user" [ref=f2e468]:
+                      - /url: https://development.citycommerce.group/users/edit/31
+                - row [ref=f2e471] [cursor=pointer]:
+                  - cell "Accountant" [ref=f2e472]
+                  - cell "accountant@citytravelers.co" [ref=f2e473]
+                  - cell "Accountant" [ref=f2e474]
+                  - cell [ref=f2e477]:
+                    - link "Edit user" [ref=f2e479]:
+                      - /url: https://development.citycommerce.group/users/edit/29
+                - row [ref=f2e482] [cursor=pointer]:
+                  - cell "PETER WASELY" [ref=f2e483]
+                  - cell "Peter@citytravelers.co" [ref=f2e484]
+                  - cell "Agent" [ref=f2e485]
+                  - cell [ref=f2e488]:
+                    - link "Edit user" [ref=f2e490]:
+                      - /url: https://development.citycommerce.group/users/edit/17
+                - row [ref=f2e493] [cursor=pointer]:
+                  - cell "Ahmed Abdalla" [ref=f2e494]
+                  - cell "sales2@citytravelers.co" [ref=f2e495]
+                  - cell "Agent" [ref=f2e496]
+                  - cell [ref=f2e499]:
+                    - link "Edit user" [ref=f2e501]:
+                      - /url: https://development.citycommerce.group/users/edit/14
+                - row [ref=f2e504] [cursor=pointer]:
+                  - cell "Mohamed Ahmed" [ref=f2e505]
+                  - cell "sales1@citytravelers.co" [ref=f2e506]
+                  - cell "Agent" [ref=f2e507]
+                  - cell [ref=f2e510]:
+                    - link "Edit user" [ref=f2e512]:
+                      - /url: https://development.citycommerce.group/users/edit/13
+                - row [ref=f2e515] [cursor=pointer]:
+                  - cell "Ahmad Elshafey" [ref=f2e516]
+                  - cell "elshafey@highclass.travel" [ref=f2e517]
+                  - cell "Agent" [ref=f2e518]
+                  - cell [ref=f2e521]:
+                    - link "Edit user" [ref=f2e523]:
+                      - /url: https://development.citycommerce.group/users/edit/12
+                - row [ref=f2e526] [cursor=pointer]:
+                  - cell "test" [ref=f2e527]
+                  - cell "amirabrashid@yahoo.com" [ref=f2e528]
+                  - cell "Agent" [ref=f2e529]
+                  - cell [ref=f2e532]:
+                    - link "Edit user" [ref=f2e534]:
+                      - /url: https://development.citycommerce.group/users/edit/11
+                - row [ref=f2e537] [cursor=pointer]:
+                  - cell "Muhammad Barakat" [ref=f2e538]
+                  - cell "MBARAKAT@citytravelers.co" [ref=f2e539]
+                  - cell "Agent" [ref=f2e540]
+                  - cell [ref=f2e543]:
+                    - link "Edit user" [ref=f2e545]:
+                      - /url: https://development.citycommerce.group/users/edit/10
+                - row [ref=f2e548] [cursor=pointer]:
+                  - cell "Saeid Shoja" [ref=f2e549]
+                  - cell "saeid@citytravelers.co" [ref=f2e550]
+                  - cell "Admin Company" [ref=f2e551]:
+                    - generic [ref=f2e552]:
+                      - generic [ref=f2e553]: Admin
+                      - generic [ref=f2e554]: Company
+                  - cell [ref=f2e555]:
+                    - link "Edit user" [ref=f2e557]:
+                      - /url: https://development.citycommerce.group/users/edit/8
+                - row [ref=f2e560] [cursor=pointer]:
+                  - cell "IBRAHIM ALSHARIF" [ref=f2e561]
+                  - cell "IBRAHIM@CITYTRAVELERS.CO" [ref=f2e562]
+                  - cell "Agent" [ref=f2e563]
+                  - cell [ref=f2e566]:
+                    - link "Edit user" [ref=f2e568]:
+                      - /url: https://development.citycommerce.group/users/edit/7
+                - row [ref=f2e571] [cursor=pointer]:
+                  - cell "Hassan Nouby" [ref=f2e572]
+                  - cell "Nouby@citytravelers.co" [ref=f2e573]
+                  - cell "Agent" [ref=f2e574]
+                  - cell [ref=f2e577]:
+                    - link "Edit user" [ref=f2e579]:
+                      - /url: https://development.citycommerce.group/users/edit/6
+                - row [ref=f2e582] [cursor=pointer]:
+                  - cell "Maged Fawzy" [ref=f2e583]
+                  - cell "MAGED@CITYTRAVELERS.CO" [ref=f2e584]
+                  - cell "Agent" [ref=f2e585]
+                  - cell [ref=f2e588]:
+                    - link "Edit user" [ref=f2e590]:
+                      - /url: https://development.citycommerce.group/users/edit/5
+                - row [ref=f2e593] [cursor=pointer]:
+                  - cell "Mohammed Alhashimi" [ref=f2e594]
+                  - cell "msh@citytravelers.co" [ref=f2e595]
+                  - cell "Agent" [ref=f2e596]
+                  - cell [ref=f2e599]:
+                    - link "Edit user" [ref=f2e601]:
+                      - /url: https://development.citycommerce.group/users/edit/4
+                - row [ref=f2e604] [cursor=pointer]:
+                  - cell "Soud Shoja" [ref=f2e605]
+                  - cell "soud@citytravelers.co" [ref=f2e606]
+                  - cell "Agent" [ref=f2e607]
+                  - cell [ref=f2e610]:
+                    - link "Edit user" [ref=f2e612]:
+                      - /url: https://development.citycommerce.group/users/edit/3
+                - row [ref=f2e615] [cursor=pointer]:
+                  - cell "City Travelers" [ref=f2e616]
+                  - cell "admin@citytravelers.co" [ref=f2e617]
+                  - cell "Company Branch" [ref=f2e618]:
+                    - generic [ref=f2e619]:
+                      - generic [ref=f2e620]: Company
+                      - generic [ref=f2e621]: Branch
+                  - cell [ref=f2e622]:
+                    - link "Edit user" [ref=f2e624]:
+                      - /url: https://development.citycommerce.group/users/edit/2
+            - generic [ref=f2e627]: Showing 1 to 16 of 16 results
+        - generic [ref=f2e630]: © 2024 - 2025 City Tour. Version 1.001
+  - dialog "Resayil WhatsApp CRM" [ref=f2e211]:
+    - separator "Resize Resayil drawer" [ref=f2e212]
+    - generic [ref=f2e213]:
+      - generic [ref=f2e218]:
+        - paragraph [ref=f2e219]: Resayil
+        - paragraph [ref=f2e220]: WhatsApp conversations
+      - generic [ref=f2e221]:
+        - button "Unpin Resayil drawer" [pressed] [ref=f2e257] [cursor=pointer]
+        - link "Open Resayil full page" [ref=f2e225] [cursor=pointer]:
+          - /url: https://development.citycommerce.group/resayil
+        - button "Close Resayil drawer" [ref=f2e228] [cursor=pointer]
+    - generic [ref=f2e233]:
+      - heading "Resayil isn't connected yet" [level=3] [ref=f2e237]
+      - paragraph [ref=f2e238]: An administrator needs to set the Resayil embed URL for this environment before WhatsApp conversations can show up here.

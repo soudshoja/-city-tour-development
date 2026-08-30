@@ -20,6 +20,36 @@
                     $isPaidInvoice = in_array(strtolower($invoiceStatus), ['paid', 'partial refund']);
                 @endphp
 
+                @if (($invoiceGroups ?? collect())->count() > 1)
+                    {{-- W4.U §b — multi-invoice batch preview: one refund document per carrying
+                         invoice will be created, sharing one refund_batch_id (w4-brief.md §4). --}}
+                    <div class="mb-6 rounded-lg p-4 bg-indigo-50 border border-indigo-200">
+                        <p class="text-sm font-semibold text-indigo-800 mb-2">
+                            This selection spans {{ $invoiceGroups->count() }} invoices — {{ $invoiceGroups->count() }} separate refund documents will be created, linked as one batch.
+                        </p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-indigo-700">
+                                        <th class="py-1 pr-4 font-medium">Invoice</th>
+                                        <th class="py-1 pr-4 font-medium">Tasks</th>
+                                        <th class="py-1 text-right font-medium">Client net (est.)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-gray-700">
+                                    @foreach ($invoiceGroups as $group)
+                                        <tr class="border-t border-indigo-100">
+                                            <td class="py-1 pr-4">{{ $group['invoice']?->invoice_number ?? '—' }}</td>
+                                            <td class="py-1 pr-4">{{ $group['tasks']->pluck('reference')->join(', ') }}</td>
+                                            <td class="py-1 text-right">{{ number_format($group['tasks']->sum('total'), 3) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
                 @if ($firstInvoice)
                     <div class="mb-6 rounded-lg p-4 {{ $isPaidInvoice ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
                         <div class="flex items-center gap-4 flex-wrap text-sm font-semibold">
@@ -97,7 +127,12 @@
                     <div class="mt-6 p-6 border rounded-lg bg-gray-50">
                         <h3 class="text-xl font-bold mb-4">Refund Method</h3>
                         <label for="method" class="block text-gray-700 font-semibold mb-2">Refund Method</label>
-                        <select name="method" id="method"
+                        <select name="method" id="method" x-data="{}" @change="document.getElementById('disposition-hint').textContent = {
+                                'Cash': 'Cash → payout voucher (PV, refund-out).',
+                                'Bank': 'Bank → payout voucher (PV, refund-out).',
+                                'Online': 'Online → gateway refund, settles when the gateway confirms.',
+                                'Credit': 'Credit → added to the client\'s store credit (2632).'
+                            }[$event.target.value] || ''"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" required>
                             <option value="">Select</option>
                             <option value="Cash">Cash</option>
@@ -105,12 +140,57 @@
                             <option value="Online">Online</option>
                             <option value="Credit">{{$firstTask->client->full_name }}'s Credit</option>
                         </select>
+                        <p id="disposition-hint" class="text-xs text-gray-500 mt-1">
+                            The method chosen above decides how the client net is disposed — it is never silently overwritten.
+                        </p>
+
+                        <label for="disposition" class="block text-gray-700 font-semibold mb-2 mt-4">Disposition override (optional)</label>
+                        <select name="disposition" id="disposition"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="">Use company default / method above</option>
+                            <option value="credit">Credit to client account</option>
+                            <option value="refund_out">Refund out (cash/bank)</option>
+                            <option value="apply">Apply to another open invoice</option>
+                        </select>
+
+                        {{-- W4.U verify-fix (HIGH): disposition='apply' has no way to pick WHICH
+                             open invoice to apply against without this field —
+                             RefundPostingService::postDisposition() throws without it. Hidden
+                             unless "Apply to another open invoice" is selected (toggled below). --}}
+                        <div data-apply-field class="hidden">
+                            <label for="applied_invoice_id" class="block text-gray-700 font-semibold mb-2 mt-4">Apply to invoice</label>
+                            <select name="applied_invoice_id" id="applied_invoice_id"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                                <option value="">Select an open invoice…</option>
+                                @foreach(($openInvoices ?? collect()) as $inv)
+                                    <option value="{{ $inv->id }}">#{{ $inv->invoice_number }} — {{ ucfirst($inv->status) }} — {{ number_format($inv->amount ?? 0, 3) }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">
+                                @if(($openInvoices ?? collect())->isEmpty())
+                                    This client has no other open invoice to apply the refund credit against.
+                                @else
+                                    Required when disposition is "Apply to another open invoice".
+                                @endif
+                            </p>
+                        </div>
                     </div>
                 @else
                     <div class="mt-6">
                         @include('refunds.partial.payment-gateway-selection')
                     </div>
                 @endif
+
+                {{-- W4.U verify-fix (LOW): w4-brief.md §4e "(i) always: Dr 5125 / Cr airline
+                     payable — when an airline commission clawback amount is entered" — the field
+                     the screen was missing entirely (RefundPostingService::postClawback() already
+                     supports it). --}}
+                <div class="mt-6">
+                    <label for="airline_clawback_amount" class="block text-gray-700 font-semibold mb-2">Airline commission clawback amount (optional)</label>
+                    <input type="number" step="0.001" min="0" name="airline_clawback_amount" id="airline_clawback_amount"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                    <p class="text-xs text-gray-500 mt-1">Leave blank when the airline is not clawing back commission on this refund.</p>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
                     <div>
@@ -295,6 +375,20 @@
         document.addEventListener('DOMContentLoaded', function () {
             if (typeof updateOverallSummary === 'function') {
                 updateOverallSummary();
+            }
+
+            // W4.U verify-fix (HIGH): show the "apply to invoice" picker only when disposition
+            // is actually set to 'apply' — the field is meaningless (and its exists:invoices,id
+            // rule would refuse an empty submit only when set) for the other two dispositions.
+            var dispositionSelect = document.getElementById('disposition');
+            var applyFields = document.querySelectorAll('[data-apply-field]');
+            function toggleApplyFields() {
+                var show = dispositionSelect && dispositionSelect.value === 'apply';
+                applyFields.forEach(function (el) { el.classList.toggle('hidden', !show); });
+            }
+            if (dispositionSelect) {
+                dispositionSelect.addEventListener('change', toggleApplyFields);
+                toggleApplyFields();
             }
         });
 

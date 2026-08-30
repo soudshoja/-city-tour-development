@@ -150,7 +150,21 @@ Route::group([
 
 Route::post('/find-agent', [TaskController::class, 'findAgent']);
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
-Route::post('/task/webhook', [TaskWebhook::class, 'webhook'])->name('task.webhook');
+// W6.S item (4) (w6-brief.md "Consolidation + fixes" -- ct-void-map.md §7 bug 1,
+// "Unauthenticated POST /api/task/webhook posts JEs"). Callers must sign the request (see
+// App\Services\WebhookSigningService) and identify their webhook client via the
+// `{webhook_client_id}` ROUTE segment (VerifyWebhookSignature checks
+// `$request->route('webhook_client_id') ?? $request->query('client_id')` -- the route param is
+// used here, deliberately NOT the `?client_id=` query-string alternative, because this
+// controller's OWN payload already has a `client_id` FIELD with a completely different meaning
+// (`App\Models\Client`'s id) -- reusing the query-string convention would silently collide the
+// two and fail this endpoint's own `client_id` validation rule for every request that also
+// carries a real webhook client id). TaskWebhook::webhook() itself then REQUIRES that the
+// middleware actually verified a signature (401 otherwise), turning the middleware's own "skip if
+// no signature header" default into a hard requirement for this one endpoint.
+Route::post('/task/webhook/{webhook_client_id}', [TaskWebhook::class, 'webhook'])
+    ->middleware('verify.webhook.signature')
+    ->name('task.webhook');
 
 // Payment API routes for lazy-loaded content
 Route::middleware('auth:sanctum')->group(function () {

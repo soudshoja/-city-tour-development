@@ -8,9 +8,12 @@ use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Illuminate\Support\Collection;
 use Laravel\Dusk\TestCase as BaseTestCase;
 use PHPUnit\Framework\Attributes\BeforeClass;
+use Tests\Concerns\GuardsTestDatabaseIsolation;
 
 abstract class DuskTestCase extends BaseTestCase
 {
+    use GuardsTestDatabaseIsolation;
+
     /**
      * Prepare for Dusk test execution.
      */
@@ -20,6 +23,24 @@ abstract class DuskTestCase extends BaseTestCase
         if (! static::runningInSail()) {
             static::startChromeDriver(['--port=9515']);
         }
+    }
+
+    /**
+     * Same hard safety rail as tests/TestCase.php: a Dusk test that mixes in
+     * DatabaseMigrations/RefreshDatabase runs migrate:fresh from inside
+     * parent::setUp() exactly like the Feature/Unit base class does, and
+     * Laravel\Dusk\TestCase does not extend Tests\TestCase, so without this
+     * override a Dusk test would bypass the guard entirely and could
+     * migrate:fresh straight into laravel_testing / map_data_citytour.
+     */
+    protected function setUp(): void
+    {
+        // See tests/TestCase.php's setUp() for why this ordering (guard, then parent::setUp())
+        // matters -- same rationale applies here. guardTestDatabaseIsolation() derives
+        // DB_AUDIT_DATABASE internally -- no separate call needed here.
+        $this->guardTestDatabaseIsolation();
+
+        parent::setUp();
     }
 
     /**

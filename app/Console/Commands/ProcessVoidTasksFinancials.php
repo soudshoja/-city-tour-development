@@ -5,25 +5,45 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Task;
 use App\Models\JournalEntry;
-use App\Http\Controllers\TaskController;
+use App\Models\Transaction;
+use App\Services\Accounting\PostingSeam;
+use App\Services\TaskStatusService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * W6.S item (1) (w6-brief.md "Consolidation + fixes" -- "... ProcessVoidTasksFinancials ...
+ * TaskStatusService"). Financial dispatch routes through TaskStatusService::dispatchFinancial() --
+ * that method itself now routes a `void`-status task through the engine
+ * ({@see TaskStatusService::void()}) when ON (W6.V), falling through to the unchanged
+ * processTaskFinancial() switch only when OFF.
+ *
+ * W6.V FIX (ct-void-map.md §7 bug 7, flagged by W6.S for this sub-wave, now fixable since the void
+ * kind actually posts through the engine and has a real idempotency key to check):
+ *   - Idempotency, engine ON: checked STRUCTURALLY -- a `transactions.idempotency_key` lookup for
+ *     the original ticket's own reversal-of-sale, never the broken description-LIKE probe
+ *     ("Void reversal for: ..." vs. the field actually written, "Void reversal: ...").
+ *   - Idempotency, engine OFF: the legacy description-LIKE probe is preserved BYTE-FOR-BYTE
+ *     (OFF-path parity is the hard rule here, not a second bug fix) -- still broken on OFF, exactly
+ *     as at HEAD, not this sub-wave's problem to fix twice.
+ *   - `--company-id` filter: applied INSIDE the query now (`->where('company_id', ...)`), not
+ *     in-memory after `->get()`.
+ */
 class ProcessVoidTasksFinancials extends Command
 {
-    protected $signature = 'void-tasks:process-financials 
+    protected $signature = 'void-tasks:process-financials
                            {--dry-run : Show what would be processed without making changes}
                            {--limit=100 : Limit number of tasks to process}
                            {--company-id= : Process only tasks for specific company}';
 
     protected $description = 'Process financial transactions for void tasks that haven\'t been processed yet';
 
-    private $taskController;
+    private $taskStatusService;
 
-    public function __construct()
+    public function __construct(TaskStatusService $taskStatusService)
     {
         parent::__construct();
-        $this->taskController = new TaskController();
+        $this->taskStatusService = $taskStatusService;
     }
 
     public function handle()
@@ -40,28 +60,62 @@ class ProcessVoidTasksFinancials extends Command
         }
         $this->line("");
 
-        // Find void tasks that haven't been processed financially
-        // A void task is considered processed if there's a Transaction with description 
-        // "Void reversal for: {original_task_reference}"
-        $voidTasks = Task::where('status', 'void')
+        // Find void tasks that haven't been processed financially.
+        // W6.V fix: --company-id filtered IN the query (was in-memory, ct-void-map.md §7 note).
+        $query = Task::where('status', 'void')
             ->whereNotNull('original_task_id')
-            ->with('originalTask')
-            ->get()
-            ->filter(function($voidTask) {
+            ->with('originalTask');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $voidTasks = $query->get()
+            ->filter(function ($voidTask) {
                 if (!$voidTask->originalTask) {
                     return false; // Skip if no original task
                 }
-                
-                // Check if there's already a void reversal transaction for this original task
-                $hasVoidReversal = \App\Models\Transaction::where('description', 'like', 'Void reversal for: ' . $voidTask->originalTask->reference)
+
+                $originalCompanyId = (int) $voidTask->originalTask->company_id;
+
+                // W6.V fix (ct-void-map.md §7 bug 7): engine ON checks the REAL, structural
+                // idempotency signal -- has the original ticket's own sale document already been
+                // reversed? -- instead of the broken description-LIKE probe below (which searches
+                // for "Void reversal for: ..." when the field actually written is "Void reversal:
+                // ..." with no "for", so it never matched anything and every run reprocessed every
+                // void task). Engine OFF preserves the legacy probe byte-for-byte (parity, not a
+                // second fix).
+                if (app(PostingSeam::class)->isEnabledFor($originalCompanyId)) {
+                    $originalInvoiceDetail = \App\Models\InvoiceDetail::where('task_id', $voidTask->originalTask->id)->first();
+                    if ($originalInvoiceDetail === null) {
+                        return true; // nothing to check against -- let void() itself decide/refuse.
+                    }
+
+                    $saleKey = 'invoice-detail:' . $originalInvoiceDetail->id . ':sale';
+                    $saleTransaction = Transaction::withoutGlobalScopes()
+                        ->whereNull('deleted_at')
+                        ->where('company_id', $originalCompanyId)
+                        ->where('idempotency_key', $saleKey)
+                        ->first();
+
+                    if ($saleTransaction === null) {
+                        return true; // no engine-posted sale to have reversed -- let void() decide.
+                    }
+
+                    $alreadyReversed = Transaction::withoutGlobalScopes()
+                        ->whereNull('deleted_at')
+                        ->where('reversal_of_transaction_id', $saleTransaction->id)
+                        ->exists();
+
+                    return !$alreadyReversed;
+                }
+
+                // Legacy OFF-path probe, preserved byte-for-byte.
+                $hasVoidReversal = Transaction::where('description', 'like', 'Void reversal for: ' . $voidTask->originalTask->reference)
                     ->exists();
-                    
+
                 return !$hasVoidReversal;
             });
-
-        if ($companyId) {
-            $voidTasks = $voidTasks->where('company_id', $companyId);
-        }
 
         $voidTasks = $voidTasks->take($limit);
 
@@ -109,15 +163,9 @@ class ProcessVoidTasksFinancials extends Command
                 DB::beginTransaction();
 
                 try {
-                    // Use reflection to access the private method
-                    $reflection = new \ReflectionClass($this->taskController);
-                    $method = $reflection->getMethod('processVoidTask');
-                    $method->setAccessible(true);
-
-                    // Get branch ID using the same logic as TaskController
-                    $branchId = $this->getTaskBranchId($task);
-                    
-                    $method->invoke($this->taskController, $task, $branchId);
+                    // W6.S item (1): single financial-dispatch call site -- no more reflection
+                    // into TaskController's private processVoidTask().
+                    $this->taskStatusService->dispatchFinancial($task);
 
                     DB::commit();
                     $processedCount++;
@@ -157,25 +205,5 @@ class ProcessVoidTasksFinancials extends Command
         }
 
         return 0;
-    }
-
-    /**
-     * Get branch ID for task financial processing
-     * Returns agent's branch_id if agent exists, otherwise returns company's main branch_id
-     */
-    private function getTaskBranchId(Task $task)
-    {
-        if ($task->agent && $task->agent->branch_id) {
-            return $task->agent->branch_id;
-        }
-        
-        // Get company's main branch if no agent
-        $company = \App\Models\Company::find($task->company_id);
-        if (!$company) {
-            throw new \Exception('Company not found for task: ' . $task->reference);
-        }
-        
-        $mainBranch = $company->getMainBranch();
-        return $mainBranch->id;
     }
 }

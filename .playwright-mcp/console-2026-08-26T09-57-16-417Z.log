@@ -1,0 +1,7 @@
+[   27087ms] Error: Invalid reCAPTCHA client id: 
+    at Array.<anonymous> (https://www.gstatic.com/recaptcha/releases/xg_pWYS8-HRESiV6Rdg4aY_R/recaptcha__en.js:223:247)
+    at https://www.gstatic.com/recaptcha/releases/xg_pWYS8-HRESiV6Rdg4aY_R/recaptcha__en.js:710:338
+    at https://development.citycommerce.group/login:83:18
+[   40594ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/coa:0
+[   41006ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/reports/trial-balance:0
+[   41384ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/journal-entries/all:0

@@ -10,6 +10,11 @@ use App\Models\PaymentApplication;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\JournalEntry;
+use App\Exceptions\Accounting\PostingException;
+use App\Services\Accounting\CreditApplicationDraftBuilder;
+use App\Services\Accounting\CreditApplicationInput;
+use App\Services\Accounting\PostedDocument;
+use App\Services\Accounting\PostingSeam;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -50,6 +55,16 @@ class PaymentApplicationService
 
         $invoice = Invoice::findOrFail($invoiceId);
         $invoiceAmount = $invoice->amount;
+
+        // Tenant isolation: the acting user may only apply credit to an invoice
+        // that belongs to their own company. Without this, one company's user
+        // could move another company's credit balance onto their own invoice.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless(
+            $companyId && $invoice->agent?->branch?->company_id === $companyId,
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
 
         // Calculate total credit selected
         $totalCreditSelected = array_sum(array_column($paymentAllocations, 'amount'));
@@ -171,6 +186,13 @@ class PaymentApplicationService
 
                 $sourceCredit = Credit::findOrFail($creditId);
 
+                // Tenant isolation: the credit being drawn down must belong to the
+                // same company as the invoice/acting user, otherwise this would
+                // transfer another company's funds onto this invoice.
+                if ($sourceCredit->company_id !== $companyId) {
+                    throw new Exception("Unauthorized: credit source {$sourceCredit->id} does not belong to your company.");
+                }
+
                 if ($sourceCredit->type === Credit::TOPUP) {
                     $availableBalance = Credit::getAvailableBalanceByPayment($sourceCredit->payment_id);
                     $voucherNumber = $sourceCredit->payment?->voucher_number ?? 'TOPUP';
@@ -255,7 +277,11 @@ class PaymentApplicationService
                 ]);
 
                 // Create PaymentApplication record (audit trail)
-                PaymentApplication::create([
+                // Return value captured (was previously discarded): the shared
+                // credit-apply engine draft builder's idempotency key (design call E2) keys
+                // on the SET of payment_applications.id values, never on credit_id alone —
+                // see the ->id use in $appliedPayments below.
+                $paymentApplication = PaymentApplication::create([
                     'payment_id' => $sourceCredit->payment_id,
                     'credit_id' => $sourceCredit->id,
                     'invoice_id' => $invoiceId,
@@ -268,6 +294,7 @@ class PaymentApplicationService
 
                 // Collect for COA creation (will be done AFTER the loop)
                 $appliedPayments[] = [
+                    'payment_application_id' => $paymentApplication->id,
                     'credit_id' => $sourceCredit->id,
                     'payment_id' => $sourceCredit->payment_id,
                     'refund_id' => $sourceCredit->refund_id,
@@ -356,8 +383,20 @@ class PaymentApplicationService
         } catch (Exception $e) {
             DB::rollBack();
 
+            // R3 route-to-legacy seam (KEY: pas-credit): createCreditPaymentCOA()'s ON path
+            // rethrows any PostingException it catches from PostingSeam (which has already
+            // Log::critical'd it with feeder/company/idempotency-key/exception-class/message
+            // on the 'accounting' channel) rather than swallowing it — this rollback is what
+            // makes that "whole application" rollback real: every PaymentApplication/Credit/
+            // InvoicePartial row created earlier in this method's loop is undone along with
+            // it, exactly like any other exception this catch already handled. exception_class
+            // is logged explicitly here too so an operator watching only this service's own
+            // log line can distinguish an engine correctness failure from an ordinary
+            // application error (insufficient credit balance, unauthorized credit source,
+            // …) that never touched the engine at all.
             Log::error('[PAYMENT APPLICATION] applyPaymentsToInvoice - Error', [
                 'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -515,6 +554,15 @@ class PaymentApplicationService
             'user_id' => Auth::id(),
         ]);
 
+        // Tenant isolation: the acting user may only link payments/credit into an
+        // invoice that belongs to their own company.
+        $companyId = getCompanyId(Auth::user());
+        abort_unless(
+            $companyId && $invoice->agent?->branch?->company_id === $companyId,
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
+
         $appliedPayments = [];
         $remainingToApply = $invoicePartial->amount;
 
@@ -529,6 +577,10 @@ class PaymentApplicationService
             if (isset($allocation['credit_id'])) {
                 $sourceCredit = Credit::findOrFail($allocation['credit_id']);
 
+                // Tenant isolation: the credit being drawn down must belong to the
+                // same company as the invoice/acting user.
+                abort_unless($sourceCredit->company_id === $companyId, 403, 'Unauthorized: credit source does not belong to your company.');
+
                 if ($sourceCredit->type === Credit::TOPUP) {
                     $paymentId = $sourceCredit->payment_id;
                     $voucherNumber = $sourceCredit->payment?->voucher_number ?? 'TOPUP';
@@ -542,6 +594,10 @@ class PaymentApplicationService
             } else {
                 $paymentId = $allocation['payment_id'];
                 $payment = Payment::findOrFail($paymentId);
+
+                // Tenant isolation: the payment being drawn down must belong to the
+                // same company as the invoice/acting user.
+                abort_unless($payment->company_id === $companyId, 403, 'Unauthorized: payment source does not belong to your company.');
                 $voucherNumber = $payment->voucher_number;
                 $availableBalance = Credit::getAvailableBalanceByPayment($paymentId);
             }
@@ -609,8 +665,22 @@ class PaymentApplicationService
                 'amount' => $applyFromThis,
             ]);
 
+            // W2c fix (orchestrator ruling B-2): thread the real payment_applications.id
+            // through so a caller keying an idempotency segment on it (see
+            // CreditApplicationInput::SOURCE_PAYMENT_APPLICATION /
+            // PaymentIdempotencyKey::forCreditApplication()) never has to fall back to a
+            // different table's id. This return value was previously discarded here —
+            // InvoiceController::savePartial()'s STEP 2 call reaches this method's returned
+            // 'applied_payments' shape without ever seeing a real PaymentApplication id.
+            // NOTE: deliberately NOT adding 'invoice_partial_id' here — HEAD's producer never
+            // set it either, and InvoiceController's LEGACY closure reads
+            // `$payment['invoice_partial_id'] ?? null` from this SAME array on the OFF path;
+            // adding it would silently change a legacy-path JournalEntry column this fix must
+            // not touch. 'payment_application_id' is safe to add: neither legacy closure reads
+            // that key at all.
             $appliedPayments[] = [
                 'payment_id' => $paymentId,
+                'payment_application_id' => $paymentApplication->id,
                 'voucher_number' => $voucherNumber,
                 'amount_applied' => $applyFromThis,
                 'remaining_balance' => $availableBalance - $applyFromThis,
@@ -628,11 +698,11 @@ class PaymentApplicationService
 
     /**
      * Create COA Journal Entries when paying invoice with client credit
-     * 
+     *
      * Creates ONE transaction with:
      * - Multiple DEBIT entries (one per voucher/credit source used)
      * - Single CREDIT entry (total amount paid)
-     * 
+     *
      * @param \App\Models\Invoice $invoice
      * @param array $appliedPayments Array of applied payments with voucher info:
      *   [
@@ -641,20 +711,77 @@ class PaymentApplicationService
      *   ]
      * @param float $totalAmount Total amount applied from all credits
      * @return \App\Models\Transaction|null
+     *
+     * SEAM-ENTRY CONTRACT (W2c, orchestrator ruling B-1 — identical text in InvoiceController and
+     * PaymentApplicationService; this method's own {@see PostingSeam} entry point). $legacy below
+     * is this method's PRE-CUTOVER body, moved VERBATIM into a closure — byte-identical OFF-path
+     * behaviour with HEAD, including its exact 'Liabilities' name match, `->value('id')`, `?->`
+     * chains, 'N/A' voucher default, and its constant `actual_balance ?? 0` line balance. Nothing
+     * inside the closure was touched.
+     *
+     * This method ALWAYS calls {@see PostingSeam::post()} — NEVER a pre-check of
+     * {@see PostingSeam::isEnabledFor()} that bypasses the seam entirely — so the seam's own S1
+     * "was this exact idempotency key already posted by the engine before a kill-switch flip?"
+     * dedup check (see that class's docblock, W1.1 FIX ROUND / S1) always gets a chance to run,
+     * on EVERY call, exactly like every other cut-over feeder in this codebase (see e.g.
+     * `AgentController::update()`'s salary block). W2b's first cut of THIS method pre-checked
+     * `isEnabledFor()` and returned `$legacy()` directly on OFF — which bypassed
+     * {@see PostingSeam::post()} entirely and, with it, S1: an earlier call posted through the
+     * engine, then a kill-switch flip took this company back to the OFF path, and this method
+     * would have run `$legacy()` a second time for the SAME event (W2b lead report §5, B-1 / "the
+     * S1 bypass"). Fixed by removing that pre-check.
+     *
+     * The draft is built INSIDE a try block, not unconditionally ahead of it:
+     * {@see CreditApplicationDraftBuilder::build()} can throw a builder-validation exception (a
+     * {@see PostingException} subclass — {@see CreditApplicationTotalMismatchException} for a
+     * caller/posted-debit total disagreement, {@see \App\Exceptions\Accounting\UnresolvedBranchException}
+     * for an unresolvable branch, or any future one) for reasons that have NOTHING to do with
+     * whether the engine is even on for this company. The rule, now identical in both feeders:
+     *   - Builder throws a {@see PostingException} AND the engine is OFF for this company
+     *     ({@see PostingSeam::isEnabledFor()} — the seam's own public "which path would this
+     *     take?" probe) -> `Log::warning('accounting.builder_validation_offpath', [...])` and
+     *     `return $legacy()`. OFF stays byte-identical to HEAD, including HEAD's own tolerance
+     *     for data the builder considers invalid — that tolerance is a HEAD behaviour this
+     *     cutover must not remove on the OFF path.
+     *   - Builder throws a {@see PostingException} AND the engine is ON for this company -> let
+     *     it PROPAGATE uncaught. A real engine-ON caller/posted-debit mismatch (or an
+     *     unresolvable branch) is a genuine data error that must be loud, never silently
+     *     downgraded to legacy (which would double-post against whatever the engine already has,
+     *     or silently post under a phantom branch).
+     *   - Once the draft is built, {@see PostingSeam::post()} is ALWAYS the next call — never
+     *     skipped, never pre-empted.
+     *
+     * ── CreditApplicationInput::$idSource/$id resolution (this file only) ─────────────────────
+     * Every element of $appliedPayments reaching this method already carries a real
+     * `payment_application_id` (see {@see self::applyPaymentsToInvoice()}'s own capture of
+     * `PaymentApplication::create()`'s return value) — so `$idSource` is always
+     * {@see CreditApplicationInput::SOURCE_PAYMENT_APPLICATION} here. This is deliberately
+     * unconditional (unlike `InvoiceController::createCreditPaymentCOA()`, which must fall back
+     * to {@see CreditApplicationInput::SOURCE_PARTIAL} for its legacy fallback branch) because
+     * this method has exactly one producer, and that producer never creates a `Credit` without
+     * also creating the matching `PaymentApplication` row. See W2c orchestrator ruling B-2.
      */
     protected function createCreditPaymentCOA($invoice, array $appliedPayments, float $totalAmount)
     {
+        $companyId = $invoice->agent?->branch?->company_id;
+        $branchId = $invoice->agent?->branch_id;
+
+        if (!$companyId) {
+            Log::warning('[CREDIT PAYMENT COA] Company ID not found', [
+                'invoice_id' => $invoice->id,
+            ]);
+            return null;
+        }
+
+        // R3 route-to-legacy seam (KEY: pas-credit). Legacy closure = this method's own body,
+        // VERBATIM (exact 'Liabilities' name match, ->value('id'), ?-> chains, 'N/A' default
+        // voucher label, constant `actual_balance ?? 0` line balance) — see the W2b
+        // draft-builder report §1 for the full divergence catalogue against
+        // InvoiceController::createCreditPaymentCOA()'s own (different) copy, which this
+        // closure intentionally does NOT reproduce. Byte-for-byte unchanged from HEAD other
+        // than being wrapped in this closure and its own pre-existing try/catch staying put.
+        $legacy = function () use ($invoice, $appliedPayments, $totalAmount, $companyId, $branchId) {
         try {
-            $companyId = $invoice->agent?->branch?->company_id;
-            $branchId = $invoice->agent?->branch_id;
-
-            if (!$companyId) {
-                Log::warning('[CREDIT PAYMENT COA] Company ID not found', [
-                    'invoice_id' => $invoice->id,
-                ]);
-                return null;
-            }
-
             $voucherList = implode(', ', array_column($appliedPayments, 'voucher_number'));
 
             $transaction = Transaction::create([
@@ -775,6 +902,95 @@ class PaymentApplicationService
             return $transaction;
         } catch (\Exception $e) {
             Log::error('[CREDIT PAYMENT COA] Failed to create COA entries', [
+                'invoice_id' => $invoice->id,
+                'total_amount' => $totalAmount,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+        };
+
+        /** @var PostingSeam $seam */
+        $seam = app(PostingSeam::class);
+
+        // Every element here already carries a real payment_applications.id (see this method's
+        // own docblock, "CreditApplicationInput::$idSource/$id resolution") — W2c fix, B-2.
+        $applications = array_map(
+            static function (array $payment): CreditApplicationInput {
+                $paymentId = $payment['payment_id'] ?? null;
+                $refundId = $payment['refund_id'] ?? null;
+
+                return new CreditApplicationInput(
+                    idSource: CreditApplicationInput::SOURCE_PAYMENT_APPLICATION,
+                    id: (int) $payment['payment_application_id'],
+                    amountApplied: (float) ($payment['amount_applied'] ?? 0),
+                    sourceType: $paymentId ? 'payment' : ($refundId ? 'refund' : null),
+                    sourceId: $paymentId ?? $refundId,
+                    invoicePartialId: $payment['invoice_partial_id'] ?? null,
+                    voucherLabel: $payment['voucher_number'] ?? null,
+                );
+            },
+            $appliedPayments
+        );
+
+        // SEAM-ENTRY CONTRACT (W2c, B-1) — see this method's own docblock. The draft is built
+        // INSIDE this try, not gated behind an isEnabledFor() pre-check: a builder-validation
+        // PostingException while the engine is OFF for this company downgrades to $legacy()
+        // (OFF stays byte-identical to HEAD); the SAME exception while the engine is ON
+        // propagates. Either way, $seam->post() below is reached on every OFF/ON decision that
+        // does not throw here, so S1 always gets a chance to run.
+        try {
+            $draft = app(CreditApplicationDraftBuilder::class)->build(
+                invoice: $invoice,
+                applications: $applications,
+                callerTotalAmount: $totalAmount,
+                companyId: $companyId,
+                userId: Auth::id(),
+                // PaymentApplicationService parity — see CreditApplicationDraftBuilder's own
+                // docblock ("'N/A' for PaymentApplicationService parity").
+                defaultVoucherLabel: 'N/A',
+            );
+        } catch (PostingException $e) {
+            if (! $seam->isEnabledFor($companyId)) {
+                Log::warning('accounting.builder_validation_offpath', [
+                    'feeder' => 'payment-application.credit-apply',
+                    'invoice_id' => $invoice->id,
+                    'company_id' => $companyId,
+                    'exception_class' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+
+                return $legacy();
+            }
+
+            // Engine is ON for this company — a genuine data error, must stay loud. See docblock.
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('[CREDIT PAYMENT COA] Failed to build credit-application draft', [
+                'invoice_id' => $invoice->id,
+                'total_amount' => $totalAmount,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        try {
+            $posted = $seam->post($draft, $legacy, 'payment-application.credit-apply');
+
+            return $posted instanceof PostedDocument ? $posted->transaction : $posted;
+        } catch (PostingException $e) {
+            // R3 decision: an engine correctness failure must stay LOUD — PostingSeam has
+            // already Log::critical'd it with feeder/company/idempotency-key/exception-class/
+            // message on the 'accounting' channel. Never swallow it into the generic catch
+            // below (which would mask a real posting defect as an ordinary "failed to build
+            // COA" warning) — rethrow so applyPaymentsToInvoice()'s own DB::rollBack() sees it
+            // and rolls back the whole application, exactly as an unhandled legacy Exception
+            // already does today.
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('[CREDIT PAYMENT COA] Failed to post credit-application draft', [
                 'invoice_id' => $invoice->id,
                 'total_amount' => $totalAmount,
                 'error' => $e->getMessage(),

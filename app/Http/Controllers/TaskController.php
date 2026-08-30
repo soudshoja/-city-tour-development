@@ -41,6 +41,15 @@ use App\Models\TBO;
 use App\Models\Wallet;
 use App\Models\SupplierSurchargeReference;
 use App\Models\User;
+use App\Models\TaskPendingAction;
+use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\PostingService;
+use App\Services\Accounting\RevenueRecognitionService;
+use App\Services\Accounting\SaleDraftBuilder;
+use App\Services\Accounting\SaleDraftInput;
+use App\Services\Accounting\SupplierCostCorrectionDraftBuilder;
+use App\Services\Accounting\SupplierCostCorrectionInput;
+use App\Services\TaskStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -813,8 +822,77 @@ class TaskController extends Controller
             ]);
         }
 
-        if (strtolower($request->input('status')) === 'emd') {
-            $request->merge(['status' => 'issued']);
+        // W6.S "Per-supplier status map" (w6-brief.md, owner addition 2026-08-28): the
+        // hard-coded `emd` -> `issued` rewrite that used to sit here is DELETED -- `emd` now
+        // stays `emd` (see TaskStatusService::mapStatus()'s seeded default rows, which keep the
+        // AIR channel's `EMD` raw status mapped straight to canonical `emd`, "no rewrite" per the
+        // brief's own table). W6.I (a later sub-wave) is the one that gives an `emd` task its
+        // own ancillary-line posting on the parent's invoice; this sub-wave only stops the
+        // rewrite that used to hide the status entirely.
+
+        // W6.I "Importer contract" item 3 (w6-brief.md; importer-status-contract.md Table 4):
+        // import-level idempotency by ticket_no+airline_code+issue_date (fallback
+        // reference+passenger_name+issue_date) -- a DISTINCT, earlier check from the
+        // reference/status/passenger duplicate-detection query a few lines below (that one
+        // detects a REISSUE; this one detects the exact same physical ticket being re-imported,
+        // e.g. a cron re-processing the same AIR file). A hit here is a genuine no-op: nothing is
+        // created, nothing is posted, one log row records the skipped duplicate.
+        $importKey = Task::computeImportKey(
+            $request->input('ticket_number'),
+            $request->input('airline_reference'),
+            $request->input('issued_date'),
+            $request->input('reference'),
+            $request->input('client_name')
+        );
+
+        if ($importKey !== null) {
+            $duplicateByImportKey = Task::where('company_id', $request->company_id)
+                ->where('import_key', $importKey)
+                ->first();
+
+            // Guard against colliding with the Jazeera/FlyDubai same-reference REISSUE heuristic
+            // a few lines below: that heuristic detects a fare/total change on the SAME reference
+            // and deliberately creates a SECOND task (status='reissued'). If the incoming total
+            // differs from the matched row's own total, this is NOT a pure re-import of the exact
+            // same ticket -- fall through and let the existing reissue-aware logic decide, rather
+            // than this earlier check silently absorbing a legitimate reissue as a no-op.
+            //
+            // FIX ROUND (W6.I re-verify, CRITICAL): the previous cut compared ONLY `total`, never
+            // `status`. A real-world VOID/REFUND/REISSUE notification for an already-issued
+            // ticket routinely carries the SAME ticket_number/airline_reference/issued_date/total
+            // as the original issue (voiding a ticket does not change its fare) -- so an existing
+            // `issued` task followed by a genuine `void` (or `refund`/`reissued`) notification for
+            // the SAME ticket matched this guard's old total-only check and was silently swallowed
+            // as "idempotent re-import, no-op": zero new task, the existing task's status frozen
+            // at `issued` forever, no dispatchFinancial()/processVoidTask() call, no reversal --
+            // exactly the "a real ledger event never posts" failure class this wave exists to
+            // close. `status` is now REQUIRED to also match (in addition to `total`) before this
+            // is treated as a pure duplicate re-import; any status change on the same import_key
+            // falls through to the existing reference/status/passenger matching below, which
+            // already knows how to route a status transition (including into
+            // TaskStatusService::dispatchFinancial() for void/refund/reissued) instead of being
+            // absorbed here.
+            $incomingTotal = $request->input('total');
+            $incomingStatus = $request->input('status');
+            $isPureReimport = $duplicateByImportKey !== null
+                && ($incomingTotal === null || abs((float) $incomingTotal - (float) $duplicateByImportKey->total) < 0.005)
+                && ($incomingStatus === null || (string) $incomingStatus === (string) $duplicateByImportKey->status);
+
+            if ($isPureReimport) {
+                Log::info('task_import.duplicate_skipped', [
+                    'company_id' => $request->company_id,
+                    'import_key' => $importKey,
+                    'existing_task_id' => $duplicateByImportKey->id,
+                    'existing_status' => $duplicateByImportKey->status,
+                    'incoming_status' => $incomingStatus,
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'This ticket was already imported (idempotent re-import, no-op).',
+                    'data' => $duplicateByImportKey,
+                ], 200);
+            }
         }
 
         $queryChkExistTask = Task::query();
@@ -962,15 +1040,29 @@ class TaskController extends Controller
             $request->merge(['status' => 'issued']);
         }
 
-        if (strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai' || strtolower($supplierName) == 'vfs') {
-            if ($request->status == 'confirmed') {
-                $status = 'issued';
-            } elseif ($request->status == 'on hold') {
-                $status = 'confirmed';
-            } else {
-                $status = $request->status;
+        // W6.S "Per-supplier status map" (w6-brief.md, owner addition 2026-08-28): the
+        // hard-coded Jazeera/FlyDubai/VFS branch is DELETED -- replaced by
+        // TaskStatusService::mapStatus() against `supplier_status_maps` (seeded defaults
+        // reproduce this exact transition for these three suppliers; a company can now add its
+        // own row for any OTHER supplier without a code change). Scoped to raw statuses
+        // 'confirmed'/'on hold' only -- exactly the two values the legacy branch ever rewrote
+        // (its own `else { $status = $request->status; }` left every other status untouched for
+        // every supplier); calling mapStatus() unconditionally for every raw status here would
+        // route statuses the legacy code never touched (issued/void/refund/reissued/emd, for
+        // EVERY supplier, not just these three) through the new mapper, which is a materially
+        // different call surface than the one branch this sub-wave is replacing.
+        if (in_array($request->status, ['confirmed', 'on hold'], true)) {
+            $supplierForMap = $request->supplier_id ? Supplier::find($request->supplier_id) : null;
+            $mapped = app(TaskStatusService::class)->mapStatus(
+                $supplierForMap,
+                'air',
+                (string) $request->status,
+                (int) $request->company_id
+            );
+
+            if (!$mapped->isUnmapped()) {
+                $request->merge(['status' => app(TaskStatusService::class)->toTaskStatusValue($mapped->canonicalStatus)]);
             }
-            $request->merge(['status' => $status]);
         }
 
         // Automatically set expiry date for "confirmed" tasks if not provided
@@ -993,36 +1085,26 @@ class TaskController extends Controller
             'enabled' => $request->enabled ?? false
         ]);
 
-        // Handle original task for non-issued statuses (reissued, refund, void, emd -> issued/reissued)
-        if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
-            $originalTask = Task::where('reference', $request->original_reference)
-                ->orWhere('reference', $request->reference)
-                ->where('passenger_name', $request->passenger_name)
-                ->where('company_id', $request->company_id)
-                ->whereIn('status', ['issued', 'reissued'])
-                ->first();
-            if ($originalTask) {
-                $request->merge(['original_task_id' => $originalTask->id]);
-            }
-        }
+        // W6.S "Consolidation + fixes" item 1: original_task_id linking is now owned by
+        // TaskStatusService::linkOriginalTask() -- single implementation shared with
+        // TaskWebhook (which deletes its own duplicate copy). Reproduces both of the blocks this
+        // replaces byte-for-byte, including the pre-existing where()/orWhere() clause-grouping
+        // quirk documented on that method itself.
+        $originalTask = app(TaskStatusService::class)->linkOriginalTask(
+            (string) $request->status,
+            $request->reference,
+            $request->original_reference,
+            $request->passenger_name,
+            (int) $request->company_id
+        );
 
-        // Handle linking issued tasks to their confirmed task (issued -> confirmed)
-        if ($request->status === 'issued') {
-            $passengerName = $request->client_name ?? $request->passenger_name;
-            $confirmedTask = Task::where('reference', $request->reference)
-                ->where('company_id', $request->company_id)
-                ->where('status', 'confirmed')
-                ->where('passenger_name', $passengerName)
-                ->first();
-
-            if ($confirmedTask) {
-                $request->merge(['original_task_id' => $confirmedTask->id]);
-                Log::info('[TASK] Linked issued task to confirmed task', [
-                    'issued_reference' => $request->reference,
-                    'passenger_name' => $passengerName,
-                    'confirmed_task_id' => $confirmedTask->id,
-                ]);
-            }
+        if ($originalTask) {
+            $request->merge(['original_task_id' => $originalTask->id]);
+            Log::info('[TASK] Linked original task via TaskStatusService', [
+                'reference' => $request->reference,
+                'status' => $request->status,
+                'original_task_id' => $originalTask->id,
+            ]);
         }
 
         if ($request->file_name) {
@@ -1300,7 +1382,10 @@ class TaskController extends Controller
 
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
                 Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
-                $this->processTaskFinancial($task);
+                // W6.S fix-round: route through TaskStatusService::dispatchFinancial() -- the single
+                // owner of financial dispatch -- instead of calling processTaskFinancial() directly.
+                // Behaviour-preserving: dispatchFinancial() still calls this same processTaskFinancial().
+                app(TaskStatusService::class)->dispatchFinancial($task);
             } else {
                 Log::warning('Financial processing skipped for task: ' . $task->reference . ' - reason: ' . ($offline ? 'incomplete' : 'not offline supplier') . ' - status: ' . $task->status);
             }
@@ -1634,7 +1719,8 @@ class TaskController extends Controller
 
             if ($shouldProcessFinancials) {
                 Log::info("Processing financial transactions for complete task: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
-                $this->processTaskFinancial($task);
+                // W6.S fix-round: route through TaskStatusService (see store()'s own dispatch site).
+                app(TaskStatusService::class)->dispatchFinancial($task);
             } else {
                 Log::warning('Financial processing skipped (task not complete): ' . $task->reference);
             }
@@ -1647,19 +1733,6 @@ class TaskController extends Controller
             Log::error('Manual Task creation failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return redirect()->back()->withErrors(['error' => 'Task creation failed: ' . $e->getMessage()])->withInput();
         }
-    }
-
-    private function triggerCheckTaskEvent(Task $task, string $reason = 'manual_trigger')
-    {
-        // Trigger the check status event for the task
-        event(new \App\Events\CheckConfirmedOrIssuedTask($task, $reason));
-
-        Log::info("Triggered CheckConfirmedOrIssuedTask event", [
-            'task_id' => $task->id,
-            'reference' => $task->reference,
-            'status' => $task->status,
-            'reason' => $reason
-        ]);
     }
 
     private function getOrCreateCurrencySpecificAccount(Task $task, $supplierPayableAccount, $currency, $branchId)
@@ -2413,8 +2486,23 @@ class TaskController extends Controller
         ]);
     }
 
+    /**
+     * W6.V (w6-brief.md "Consolidation + fixes": "revertFinancialsForTask/Void ...: delete-by-
+     * description -> reverse() + repost via engine keys"). Engine ON: every document this method
+     * used to hard-delete is instead {@see PostingService::reverse()}'d, targeted STRUCTURALLY by
+     * its own idempotency key -- never `description LIKE`, never a row `delete()` (the engine's
+     * immutable-ledger contract: a correction is a new dated document, not an edit/removal of a
+     * posted one). Engine OFF: the legacy delete-by-description body runs UNCHANGED (byte-for-byte
+     * parity vs HEAD) -- see {@see self::reverseEnginePostedDocsForTask()} for the ON-path body.
+     */
     private function revertFinancialsForTask(Task $task): void
     {
+        if (app(PostingSeam::class)->isEnabledFor((int) $task->company_id)) {
+            $this->reverseEnginePostedDocsForTask($task);
+
+            return;
+        }
+
         Log::info('Reverting financials for task: ' . $task->reference);
 
         $journalEntries = JournalEntry::where('task_id', $task->id)
@@ -2436,6 +2524,65 @@ class TaskController extends Controller
         }
     }
 
+    /**
+     * ON-path body for {@see self::revertFinancialsForTask()}/{@see self::revertFinancialsForVoid()}
+     * (they converge on the same engine-side action -- "reverse whatever this task has posted
+     * through the seam"). Reverses, by STRUCTURAL idempotency key (never description), every
+     * document class a task can carry: its own sale (`invoice-detail:{id}:sale`, W3d/W6.I), its own
+     * agent-commission JV (`invoice-detail:{id}:agent-commission`), and its own EMD ancillary line
+     * (`task:{id}:emd-ancillary`, W6.I). Each is a no-op when nothing was ever posted under that
+     * key -- `reverse()` itself is idempotent besides (a second call on an already-reversed
+     * transaction returns the existing reversal), so calling this more than once for the same task
+     * is always safe.
+     */
+    private function reverseEnginePostedDocsForTask(Task $task): void
+    {
+        $companyId = (int) $task->company_id;
+        $userId = Auth::id();
+        $posting = app(PostingService::class);
+        $now = Carbon::now();
+
+        $invoiceDetail = InvoiceDetail::where('task_id', $task->id)->first();
+        $keys = [];
+
+        if ($invoiceDetail !== null) {
+            $keys[] = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+            $keys[] = 'invoice-detail:' . $invoiceDetail->id . ':agent-commission';
+        }
+
+        $keys[] = 'task:' . $task->id . ':emd-ancillary';
+
+        foreach ($keys as $key) {
+            $transaction = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where('company_id', $companyId)
+                ->where('idempotency_key', $key)
+                ->where('posting_status', 'posted')
+                ->first();
+
+            if ($transaction !== null) {
+                $posting->reverse($transaction, $now, $userId);
+            }
+        }
+    }
+
+    /**
+     * W6.V ON path: "un-voiding" a task (its status changes AWAY from `void`) reverses the VOID's
+     * OWN document set -- restoring the original sale/commission balance the void() call
+     * (W6.V/TaskStatusService::void()) reversed. `reverse()` is itself idempotent by returning the
+     * SAME existing reversal on a second call against an already-reversed transaction (see
+     * PostingService::reverse()'s own docblock) -- so the core sale/commission documents, which
+     * void() already left `posting_status='reversed'`, cannot be un-done by calling reverse() on
+     * THEM again (that would just no-op-return the SAME void-created reversal). What actually
+     * restores the original balance is reversing the void's own REVERSAL DOCUMENT ITSELF (a live,
+     * `posting_status='posted'` transaction with `reversal_of_transaction_id` pointing at the
+     * original) -- a REV-of-REV, exactly what "un-void" means. The void's own SATELLITE documents
+     * (fee/fee-commission/disposition -- targeted by idempotency-key PREFIX
+     * `void:{original_task_id}:{fee|fee-commission|disposition}`, see TaskStatusService::void()'s
+     * own docblock for the exact key namespace) are, by contrast, still live `posted` transactions
+     * in their own right (nothing ever reversed THEM), so those ARE reversed directly. Engine OFF:
+     * legacy delete-by-description body unchanged.
+     */
     private function revertFinancialsForVoid(Task $voidTask): void
     {
         if (!$voidTask->original_task_id) {
@@ -2446,7 +2593,78 @@ class TaskController extends Controller
             return;
         }
 
-        $originalTask  = Task::find($voidTask->original_task_id);
+        $originalTask = Task::find($voidTask->original_task_id);
+
+        if ($originalTask === null) {
+            Log::warning('revertFinancialsForVoid: original task not found', [
+                'void_task_id' => $voidTask->id,
+                'original_task_id' => $voidTask->original_task_id,
+            ]);
+            return;
+        }
+
+        if (app(PostingSeam::class)->isEnabledFor((int) $originalTask->company_id)) {
+            $companyId = (int) $originalTask->company_id;
+            $userId = Auth::id();
+            $posting = app(PostingService::class);
+            $now = Carbon::now();
+
+            $invoiceDetail = InvoiceDetail::where('task_id', $originalTask->id)->first();
+            $coreKeys = [];
+
+            if ($invoiceDetail !== null) {
+                $coreKeys[] = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+                $coreKeys[] = 'invoice-detail:' . $invoiceDetail->id . ':agent-commission';
+            }
+
+            $coreKeys[] = 'task:' . $originalTask->id . ':emd-ancillary';
+
+            foreach ($coreKeys as $key) {
+                $originalDoc = Transaction::withoutGlobalScopes()
+                    ->whereNull('deleted_at')
+                    ->where('company_id', $companyId)
+                    ->where('idempotency_key', $key)
+                    ->first();
+
+                if ($originalDoc === null) {
+                    continue;
+                }
+
+                // The void()-created reversal of THIS document -- a live posted transaction,
+                // reversing IT restores the original balance.
+                $voidReversal = Transaction::withoutGlobalScopes()
+                    ->whereNull('deleted_at')
+                    ->where('reversal_of_transaction_id', $originalDoc->id)
+                    ->where('posting_status', 'posted')
+                    ->first();
+
+                if ($voidReversal !== null) {
+                    $posting->reverse($voidReversal, $now, $userId);
+                }
+            }
+
+            $voidDocs = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where('company_id', $companyId)
+                ->where('posting_status', 'posted')
+                ->where(function ($q) use ($originalTask) {
+                    $q->where('idempotency_key', 'void:' . $originalTask->id . ':fee')
+                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':fee-commission')
+                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':disposition');
+                })
+                ->get();
+
+            foreach ($voidDocs as $voidDoc) {
+                $posting->reverse($voidDoc, $now, $userId);
+            }
+
+            Log::info('Reverted void document set for original task via engine reverse()', [
+                'original_task_id' => $originalTask->id,
+                'void_task_id' => $voidTask->id,
+            ]);
+
+            return;
+        }
 
         Log::info('Reverting ONLY void financials applied to original task', [
             'original_task_id' => $originalTask->id,
@@ -2479,6 +2697,9 @@ class TaskController extends Controller
 
     public function toggleStatus(Request $request, Task $task)
     {
+        // W6.S item (3): every mutating TaskController action now authorizes via TaskPolicy.
+        Gate::authorize('update', $task);
+
         $task->enabled = $request->is_enabled;
 
         if ($task->enabled) {
@@ -2529,7 +2750,10 @@ class TaskController extends Controller
 
             if (!$journalEntries) {
                 try {
-                    $this->processTaskFinancial($task);
+                    // W6.S item (1): financial dispatch now routes through TaskStatusService's
+                    // single call site. Behaviour-preserving -- still calls the unchanged
+                    // processTaskFinancial() switch underneath.
+                    app(TaskStatusService::class)->dispatchFinancial($task);
                 } catch (Exception $e) {
                     Log::error('Failed to process task financial: ' . $e->getMessage());
                     return response()->json([
@@ -2551,13 +2775,23 @@ class TaskController extends Controller
 
         if (!$client) {
             throw new \Exception("Client not found for payment ID: {$payment->id}");
-            Log::warning("Client not found for payment [{$payment->id}] during void refund.");
         }
 
-        $oldCredit = Credit::getTotalCreditsByClient($client->id);
+        // W6.S item (5) (ct-void-map.md §7 bugs 3/4): this method used to (a) wrap only the
+        // Credit::create() call in its own begin/commit, SWALLOWING that call's exception (catch +
+        // log, no rethrow) and then unconditionally committing anyway, and (b) issue a SECOND bare
+        // DB::commit() at the very end with no matching beginTransaction() of its own -- which
+        // closes out whatever transaction the CALLER (processVoidTask() <- processTaskFinancial(),
+        // itself sometimes invoked from inside store()'s own open transaction) happened to have
+        // open, prematurely committing work the caller had not finished yet. Replaced with ONE
+        // DB::transaction() around the entire method body: a single atomic unit, no swallowed
+        // exception (a Credit::create() failure now aborts and rolls back the whole void, exactly
+        // like every other write in this method already does), and no premature commit -- on
+        // MySQL this nests as a SAVEPOINT when a caller already has its own transaction open (same
+        // pattern PostingSeam::post() documents for its own callers).
+        return DB::transaction(function () use ($voidTask, $issuedTask, $payment, $client) {
+            $oldCredit = Credit::getTotalCreditsByClient($client->id);
 
-        DB::beginTransaction();
-        try {
             $voidCreditData = [
                 'company_id'  => $client->agent->branch->company->id,
                 'client_id'   => $client->id,
@@ -2568,72 +2802,63 @@ class TaskController extends Controller
 
             Log::info('Creating Credit record:', $voidCreditData);
             Credit::create($voidCreditData);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to create Credit record', [
-                'data'  => $voidCreditData,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
-        DB::commit();
 
-        $afterCredit = Credit::getTotalCreditsByClient($client->id);
-        Log::info("Void for task {$voidTask->reference}: Client credit before = {$oldCredit}, after = {$afterCredit}");
+            $afterCredit = Credit::getTotalCreditsByClient($client->id);
+            Log::info("Void for task {$voidTask->reference}: Client credit before = {$oldCredit}, after = {$afterCredit}");
 
-        // Use task's issued_date as transaction_date
-        $transactionDate = $voidTask->supplier_pay_date ? Carbon::parse($voidTask->supplier_pay_date) : Carbon::now();
+            // Use task's issued_date as transaction_date
+            $transactionDate = $voidTask->supplier_pay_date ? Carbon::parse($voidTask->supplier_pay_date) : Carbon::now();
 
-        $voidTransaction = Transaction::create([
-            'branch_id'        => $client->agent->branch_id,
-            'company_id'       => $client->agent->branch->company_id,
-            'entity_id'        => $client->id,
-            'entity_type'      => 'client',
-            'transaction_type' => 'debit',
-            'amount'           => $payment->amount,
-            'description'      => 'Void task: ' . $issuedTask->reference,
-            'reference_type'   => 'Refund',
-            'reference_number' => $payment->voucher_number,
-            'transaction_date' => $transactionDate,
-        ]);
-
-        if (!$voidTransaction) {
-            throw new \Exception("Failed to create refund transaction.");
-        }
-
-        $entries = JournalEntry::whereHas('invoiceDetail', function ($query) use ($issuedTask) {
-            $query->where('task_description', $issuedTask->reference);
-        })->get();
-
-        foreach ($entries as $entry) {
-            JournalEntry::create([
-                'transaction_id'   => $voidTransaction->id,
-                'company_id'       => $entry->company_id,
-                'branch_id'        => $entry->branch_id,
-                'account_id'       => $entry->account_id,
-                'task_id'          => $issuedTask->id,
+            $voidTransaction = Transaction::create([
+                'branch_id'        => $client->agent->branch_id,
+                'company_id'       => $client->agent->branch->company_id,
+                'entity_id'        => $client->id,
+                'entity_type'      => 'client',
+                'transaction_type' => 'debit',
+                'amount'           => $payment->amount,
+                'description'      => 'Void task: ' . $issuedTask->reference,
+                'reference_type'   => 'Refund',
+                'reference_number' => $payment->voucher_number,
                 'transaction_date' => $transactionDate,
-                'description'      => 'Void: ' . $entry->description,
-                'debit'            => $entry->credit,
-                'credit'           => $entry->debit,
-                'balance'          => ($entry->balance ?? 0) * -1,
-                'type'             => $entry->type,
-                'name'             => $entry->name,
-                'voucher_number'   => $entry->voucher_number,
             ]);
-        }
 
-        Log::info('Voided task refunded and reversed', [
-            'void_task'     => $voidTask->reference,
-            'original_task' => $issuedTask->reference,
-        ]);
+            if (!$voidTransaction) {
+                throw new \Exception("Failed to create refund transaction.");
+            }
 
-        DB::commit();
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Paid void task reversal journal completed.',
-            'data' => $issuedTask,
-        ], 201);
+            $entries = JournalEntry::whereHas('invoiceDetail', function ($query) use ($issuedTask) {
+                $query->where('task_description', $issuedTask->reference);
+            })->get();
+
+            foreach ($entries as $entry) {
+                JournalEntry::create([
+                    'transaction_id'   => $voidTransaction->id,
+                    'company_id'       => $entry->company_id,
+                    'branch_id'        => $entry->branch_id,
+                    'account_id'       => $entry->account_id,
+                    'task_id'          => $issuedTask->id,
+                    'transaction_date' => $transactionDate,
+                    'description'      => 'Void: ' . $entry->description,
+                    'debit'            => $entry->credit,
+                    'credit'           => $entry->debit,
+                    'balance'          => ($entry->balance ?? 0) * -1,
+                    'type'             => $entry->type,
+                    'name'             => $entry->name,
+                    'voucher_number'   => $entry->voucher_number,
+                ]);
+            }
+
+            Log::info('Voided task refunded and reversed', [
+                'void_task'     => $voidTask->reference,
+                'original_task' => $issuedTask->reference,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Paid void task reversal journal completed.',
+                'data' => $issuedTask,
+            ], 201);
+        });
     }
 
     public function show($id)
@@ -2697,6 +2922,13 @@ class TaskController extends Controller
             $taskArray['insurance_details'] = [];
         }
 
+        // W6.U "Task actions" -- client-side gating only (UX: hide/disable a button the user
+        // cannot use); the controller's own Gate::authorize()/precondition checks on the actual
+        // void/reissue routes are what actually enforce this, never this flag alone.
+        $taskArray['can_void'] = Gate::allows('void', $task);
+        $taskArray['can_reissue'] = Gate::allows('reissue', $task);
+        $taskArray['is_locked'] = (bool) ($task->invoiceDetail?->invoice?->is_locked);
+
         // Return the task data as JSON for the modal to load dynamically
         return response()->json($taskArray, 200);
     }
@@ -2712,57 +2944,21 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
 
-        $request->validate($this->getValidationRules($task), $this->getValidationMessages());
+        // W6.S item (3): every mutating TaskController action now authorizes via TaskPolicy.
+        // Kept OUTSIDE the try block below (unlike the redundant check applyTaskUpdate() also
+        // performs) so an AuthorizationException here still propagates all the way out of this
+        // action to Laravel's own exception handler -> a real 403 -- not caught-and-flashed by
+        // the generic `catch (Exception $e)` inside the try, which would otherwise turn it into a
+        // 302 redirect with an error message instead of a 403 status.
+        Gate::authorize('update', $task);
 
         DB::beginTransaction();
 
         try {
-            // 1. Capture state before changes
-            $oldValues = $this->captureOldValues($task);
-
-            // 2. Apply basic field updates
-            $this->applyBasicUpdates($task, $request);
-
-            // 2.5 Update detail fields
-            $this->updateDetailFieldsFromModal($task, $request);
-
-            // 3. Detect what changed
-            $changes = $this->detectChanges($task, $oldValues);
-
-            // 4. Run only relevant handlers
-            $this->handleAutoBilling($task, $changes);
-
-            if ($changes['supplier_pay_date']) {
-                $this->handleSupplierPayDateChange($task);
-            }
-
-            if ($changes['payment_method_account_id']) {
-                $this->handlePaymentMethodChange($task, $oldValues['payment_method_account_id']);
-            }
-
-            if ($changes['status']) {
-                $this->handleStatusChange($task, $oldValues['status']);
-            }
-
-            if ($changes['agent_id']) {
-                $this->handleAgentChange($task);
-            }
-
-            if ($changes['client_id']) {
-                $this->handleClientChange($task, $oldValues['client_name']);
-            }
-
-            if ($changes['total'] || $changes['price'] || $changes['tax'] || $changes['surcharge']) {
-                $this->handleAmountChange($task);
-            }
-
-            // 5. Cascade to children if needed (only for issued tasks)
-            if ($task->status === 'issued' && ($changes['agent_id'] || $changes['client_id'])) {
-                $this->cascadeToChildTasks($task, $changes);
-            }
-
-            // 6. Update enabled status
-            $this->updateEnabledStatus($task, $changes);
+            // W6.B (w6-brief.md "## Kinds" 5): the actual field-update/status-dispatch logic now
+            // lives in {@see self::applyTaskUpdate()}, shared verbatim with updateMulti() below --
+            // see that method's own docblock for why.
+            $this->applyTaskUpdate($task, $request);
 
             DB::commit();
             return redirect()->back()->with('success', 'Task updated successfully.');
@@ -2771,6 +2967,85 @@ class TaskController extends Controller
             Log::error('Task update failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * W6.B (w6-brief.md "## Kinds" 5 -- "updateMulti() no longer changes status itself --
+     * delegates and RETHROWS (no more success count on failure)"). Extracted from update()'s own
+     * body (ct-void-map.md §5 bug: "updateMulti() ... loop update($fakeRequest,$taskId) each with
+     * own nested txn; update() never rethrows -> updatedCount increments on failure") so BOTH
+     * update() and updateMulti() run the exact same field-update/status-dispatch logic through
+     * ONE shared, THROWING implementation:
+     *   - update() (the single-task HTTP action, unchanged behaviour) wraps this call in its own
+     *     top-level `DB::beginTransaction()`/`commit()`/`catch->rollBack()`, exactly as before.
+     *   - updateMulti() (the de-facto bulk path, ct-void-map.md §5) now calls this method
+     *     DIRECTLY, inside its OWN single outer transaction, with NO second
+     *     `DB::beginTransaction()` nested in the loop (the old bug: calling the public update()
+     *     action per task opened -- and, critically, silently swallowed the exception from, then
+     *     ignored the return value of -- a second transaction on every iteration). This method
+     *     itself never opens a transaction and never catches its own exceptions: a failure now
+     *     propagates straight out of updateMulti()'s loop to ITS OWN outer catch block, which
+     *     rolls back the whole batch and returns an error response -- `$updatedCount` is never
+     *     incremented past the failing task, and the response can no longer misreport a batch
+     *     with a real failure as "Updated N tasks successfully".
+     */
+    private function applyTaskUpdate(Task $task, Request $request): void
+    {
+        // Per-task authorization, preserved from update()'s own pre-refactor call chain: the OLD
+        // updateMulti() reached this same check transitively (it called the public update()
+        // action, which authorizes on ITS OWN $task argument) -- moved here so updateMulti()'s new
+        // direct call keeps that same per-task coverage rather than relying solely on its own
+        // coarse `Gate::authorize('update', Task::class)` check at the top of the method.
+        Gate::authorize('update', $task);
+
+        $request->validate($this->getValidationRules($task), $this->getValidationMessages());
+
+        // 1. Capture state before changes
+        $oldValues = $this->captureOldValues($task);
+
+        // 2. Apply basic field updates
+        $this->applyBasicUpdates($task, $request);
+
+        // 2.5 Update detail fields
+        $this->updateDetailFieldsFromModal($task, $request);
+
+        // 3. Detect what changed
+        $changes = $this->detectChanges($task, $oldValues);
+
+        // 4. Run only relevant handlers
+        $this->handleAutoBilling($task, $changes);
+
+        if ($changes['supplier_pay_date']) {
+            $this->handleSupplierPayDateChange($task);
+        }
+
+        if ($changes['payment_method_account_id']) {
+            $this->handlePaymentMethodChange($task, $oldValues['payment_method_account_id']);
+        }
+
+        if ($changes['status']) {
+            $this->handleStatusChange($task, $oldValues['status']);
+        }
+
+        if ($changes['agent_id']) {
+            $this->handleAgentChange($task);
+        }
+
+        if ($changes['client_id']) {
+            $this->handleClientChange($task, $oldValues['client_name']);
+        }
+
+        if ($changes['total'] || $changes['price'] || $changes['tax'] || $changes['surcharge']) {
+            $this->handleAmountChange($task);
+        }
+
+        // 5. Cascade to children if needed (only for issued tasks)
+        if ($task->status === 'issued' && ($changes['agent_id'] || $changes['client_id'])) {
+            $this->cascadeToChildTasks($task, $changes);
+        }
+
+        // 6. Update enabled status
+        $this->updateEnabledStatus($task, $changes);
     }
 
     public function updateAdminFinancial(Request $request, Task $task)
@@ -2794,68 +3069,167 @@ class TaskController extends Controller
             $task->total = $newTotal;
             $task->save();
 
-            $journalEntries = JournalEntry::with('transaction')
-                ->where('task_id', $task->id)
-                ->whereHas('transaction', function ($q) use ($task) {
-                    $q->where('description', 'like', '%' . $task->reference . '%');
-                })->get();
+            // W4.C (w4-brief.md -- "supplier cost posts in the sale's own period"; target-spec.md
+            // §B). This is a supplier-cost correction arriving AFTER the sale already posted --
+            // the exact "genuinely late-arriving or wrong cost" case W4.C's residual scope
+            // targets (W3d's SaleDraftBuilder already posts real cost IN the sale document for the
+            // normal case). OFF path: the pre-existing raw JournalEntry/Transaction mutation,
+            // matched via a description LIKE on the task's own reference, kept VERBATIM in this
+            // closure -- byte-identical to HEAD. ON path: replaced entirely by a period-correct
+            // delta document built by SupplierCostCorrectionDraftBuilder and posted through
+            // PostingSeam -- linked to the original sale by invoice_detail_id/idempotency key,
+            // never a raw in-place mutation matched by description string. See that builder's own
+            // docblock for the period rule (same-period vs. forward-dated correction) and for why
+            // no interim 'Dr 5221 Company Loss on Sales' accrual is ever emitted on this path.
+            $legacyLedgerCorrection = function () use ($task, $newTotal, $request) {
+                $journalEntries = JournalEntry::with('transaction')
+                    ->where('task_id', $task->id)
+                    ->whereHas('transaction', function ($q) use ($task) {
+                        $q->where('description', 'like', '%' . $task->reference . '%');
+                    })->get();
 
-            foreach ($journalEntries as $entry) {
-                $beforeTxAmt = $entry->transaction ? $entry->transaction->amount : null;
-                $beforeDebit = $entry->debit ?? 0;
-                $beforeCredit = $entry->credit ?? 0;
-                if ($entry->transaction) {
-                    $entry->transaction->amount = $newTotal;
-                    $entry->transaction->save();
+                foreach ($journalEntries as $entry) {
+                    $beforeTxAmt = $entry->transaction ? $entry->transaction->amount : null;
+                    $beforeDebit = $entry->debit ?? 0;
+                    $beforeCredit = $entry->credit ?? 0;
+                    if ($entry->transaction) {
+                        $entry->transaction->amount = $newTotal;
+                        $entry->transaction->save();
+                    }
+
+                    if ($beforeTxAmt === null || abs($beforeTxAmt - $newTotal) >= 0.0005) {
+                        SystemLog::create([
+                            'user_id' => Auth::user()->id,
+                            'model' => 'task',
+                            'current_value' => $beforeTxAmt ?? 'null',
+                            'new_value' => $newTotal,
+                            'remarks' => "Transaction #{$entry->transaction->id} amount changed | " . $request->remarks,
+                        ]);
+                    }
+
+                    if (($entry->debit ?? 0) > 0) {
+                        $entry->debit = $newTotal;
+                        $entry->credit = 0;
+                        $entry->balance = $newTotal;
+                    } else {
+                        $entry->credit = $newTotal;
+                        $entry->debit = 0;
+                        $entry->balance = $newTotal;
+                    }
+
+                    if (isset($entry->amount)) {
+                        $entry->amount = $newTotal;
+                    }
+                    $entry->save();
+
+                    if (abs($beforeDebit - $entry->debit) >= 0.0005) {
+                        SystemLog::create([
+                            'user_id' => Auth::user()->id,
+                            'model' => 'task',
+                            'current_value' => $beforeDebit,
+                            'new_value' => $entry->debit,
+                            'remarks' => "JE #{$entry->id} debit updated | " . $request->remarks,
+                        ]);
+                    }
+
+                    if (abs($beforeCredit - $entry->credit) >= 0.0005) {
+                        SystemLog::create([
+                            'user_id' => Auth::user()->id,
+                            'model' => 'task',
+                            'current_value' => $beforeCredit,
+                            'new_value' => $entry->credit,
+                            'remarks' => "JE #{$entry->id} credit updated | " . $request->remarks,
+                        ]);
+                    }
                 }
 
-                if ($beforeTxAmt === null || abs($beforeTxAmt - $newTotal) >= 0.0005) {
-                    SystemLog::create([
-                        'user_id' => Auth::user()->id,
-                        'model' => 'task',
-                        'current_value' => $beforeTxAmt ?? 'null',
-                        'new_value' => $newTotal,
-                        'remarks' => "Transaction #{$entry->transaction->id} amount changed | " . $request->remarks,
-                    ]);
-                }
+                return null;
+            };
 
-                if (($entry->debit ?? 0) > 0) {
-                    $entry->debit = $newTotal;
-                    $entry->credit = 0;
-                    $entry->balance = $newTotal;
-                } else {
-                    $entry->credit = $newTotal;
-                    $entry->debit = 0;
-                    $entry->balance = $newTotal;
-                }
+            $invoiceDetail = $task->invoiceDetail;
+            // Verify-fix: gate and builder input now share the SAME cost basis
+            // (invoiceDetail->supplier_price, falling back to the task's pre-mutation total when
+            // there is no invoiceDetail yet). Previously the gate compared against $task->total
+            // while the builder below compared against supplier_price -- if the two ever drifted
+            // apart in production, the gate could misfire (treat a real cost change as zero-delta
+            // and silently no-op, or vice versa).
+            $originalCost = (float) ($invoiceDetail->supplier_price ?? $oldTotal);
+            $costDelta = round((float) $newTotal - $originalCost, 3);
+            $companyIdForGate = (int) ($task->company_id ?? 0);
+            $engineOnForTask = app(PostingSeam::class)->isEnabledFor($companyIdForGate);
 
-                if (isset($entry->amount)) {
-                    $entry->amount = $newTotal;
+            if (abs($costDelta) < 0.0005) {
+                // No real cost change -- nothing for either path to correct in the ledger
+                // (SupplierCostCorrectionInput itself refuses a no-op delta -- see that class's
+                // own docblock). Matches HEAD's own unconditional-but-inert behaviour for a
+                // resubmitted/unchanged total.
+                //
+                // Engine ON: never call the raw legacy closure -- it mutates any pre-existing
+                // JournalEntry/Transaction matched by description LIKE the task's reference in
+                // place, regardless of engine state, which produced a real single-sided
+                // (unbalanced) Transaction in adversarial testing when a stale legacy pair
+                // existed for the task. There is nothing to (re)post for a zero-delta correction,
+                // so the ON path is a pure no-op -- same convention as
+                // InvoiceController::addInvoiceChargeJournalEntries()'s $chargeAmount <= 0 guard.
+                // Engine OFF: legacy closure runs exactly as before (byte-identical behaviour).
+                if (! $engineOnForTask) {
+                    $legacyLedgerCorrection();
                 }
-                $entry->save();
+            } elseif ($invoiceDetail && $invoiceDetail->invoice) {
+                $companyId = $companyIdForGate;
+                $branchId = (int) ($task->agent?->branch_id ?? 0);
+                $serviceType = (string) $task->type;
+                $postingBasis = SaleDraftBuilder::resolvePostingBasis($companyId, $serviceType);
+                $supplier = $task->supplier;
+                // $originalCost computed above (shared basis with the zero-delta gate).
 
-                if (abs($beforeDebit - $entry->debit) >= 0.0005) {
-                    SystemLog::create([
-                        'user_id' => Auth::user()->id,
-                        'model' => 'task',
-                        'current_value' => $beforeDebit,
-                        'new_value' => $entry->debit,
-                        'remarks' => "JE #{$entry->id} debit updated | " . $request->remarks,
-                    ]);
-                }
+                // P2.5.D fix (verify finding): resolve the same per-company recognition-timing
+                // override SaleDraftBuilder itself would have used to post this sale, and whether
+                // RevenueRecognitionService has already released it, so a late cost correction on
+                // an at_travel/still-deferred sale hits PREPAID_SUPPLIER_COST/DEFERRED_REVENUE
+                // instead of silently expensing the cost before the travel date — see
+                // SupplierCostCorrectionInput's own "P2.5.D fix" docblock note.
+                $recognitionTiming = SaleDraftBuilder::resolveRecognitionTiming($companyId, $serviceType);
+                $alreadyRecognized = ! app(RevenueRecognitionService::class)->isDeferredOutstanding($companyId, $task->id);
 
-                if (abs($beforeCredit - $entry->credit) >= 0.0005) {
-                    SystemLog::create([
-                        'user_id' => Auth::user()->id,
-                        'model' => 'task',
-                        'current_value' => $beforeCredit,
-                        'new_value' => $entry->credit,
-                        'remarks' => "JE #{$entry->id} credit updated | " . $request->remarks,
-                    ]);
+                $draft = (new SupplierCostCorrectionDraftBuilder)->build(new SupplierCostCorrectionInput(
+                    serviceType: $serviceType,
+                    postingBasis: $postingBasis,
+                    originalCostAmount: $originalCost,
+                    correctedCostAmount: (float) $newTotal,
+                    companyId: $companyId,
+                    branchId: $branchId,
+                    saleDocDate: Carbon::parse($invoiceDetail->invoice->invoice_date),
+                    correctionDate: Carbon::now(),
+                    invoiceId: $invoiceDetail->invoice_id,
+                    invoiceDetailId: $invoiceDetail->id,
+                    taskId: $task->id,
+                    supplierId: $supplier?->id,
+                    supplierName: $supplier?->name,
+                    taskReference: $task->reference,
+                    recognitionTiming: $recognitionTiming,
+                    alreadyRecognized: $alreadyRecognized,
+                ));
+
+                app(PostingSeam::class)->post($draft, $legacyLedgerCorrection, 'task.update_admin_financial');
+            } else {
+                // No invoice/invoiceDetail for the engine to link a correction to (e.g. a task
+                // never invoiced yet) -- there is no sale document a period-aware correction
+                // could target.
+                //
+                // Engine OFF: preserve legacy behaviour exactly.
+                // Engine ON: do NOT fall back to the raw legacy closure -- same unguarded-mutation
+                // hazard as the zero-delta branch above (a stale legacy JournalEntry/Transaction
+                // pair for this task, matched by description LIKE, would be mutated in place with
+                // no engine-aware document to anchor the correction to, again risking an
+                // unbalanced Transaction). With no invoice to link to, there is nothing the engine
+                // can post either, so this is a no-op on the ON path pending a real invoice/
+                // invoiceDetail relation to correct against.
+                if (! $engineOnForTask) {
+                    $legacyLedgerCorrection();
                 }
             }
 
-            $invoiceDetail = $task->invoiceDetail;
             if ($invoiceDetail) {
                 $selling = $invoiceDetail->task_price ?? 0;
                 $beforeSupplier = $invoiceDetail->supplier_price ?? 0;
@@ -3145,16 +3519,59 @@ class TaskController extends Controller
 
                     $names = array_map(fn($f) => $f->getClientOriginalName(), $batchFiles);
 
+                    // W6.I fix round (verify finding: import_hash never read/written in this
+                    // branch) -- content-hash dedupe REPLACES the filename-only match for every
+                    // file we can successfully hash: a same-named file with genuinely different
+                    // content is no longer wrongly rejected, and a same-content file delivered
+                    // under a renamed filename (including one previously uploaded inside a
+                    // *different* batch combination) is now caught via `source_hashes`.
+                    // Company-scoped (not supplier-scoped), matching the established scoping of
+                    // `file_uploads.import_hash` itself (unique per (company_id, import_hash) --
+                    // see that migration's own docblock). Filename matching survives ONLY as a
+                    // fallback for a file whose content could not be hashed, so an unhashable
+                    // file is never let through completely unchecked.
+                    // W6.I residual fix round: read+hash goes through FileUpload::hashFile()
+                    // so a read failure (or an empty file) can never be silently coerced into
+                    // a hash of the empty string -- it always yields null here, which falls
+                    // through to the filename fallback below plus a logged warning.
+                    $hashByName = [];
+                    foreach ($batchFiles as $bf) {
+                        $name = $bf->getClientOriginalName();
+                        $hashByName[$name] = FileUpload::hashFile($bf->getRealPath());
+                        if ($hashByName[$name] === null) {
+                            Log::warning('task_import.file_hash_failed', ['file_name' => $name]);
+                        }
+                    }
+                    $hashValues = array_values(array_unique(array_filter($hashByName, fn($h) => $h !== null)));
+                    $namesNeedingFallback = array_keys(array_filter($hashByName, fn($h) => $h === null));
+
                     $matches = FileUpload::with('user')
-                        ->where('supplier_id', $supplier->id)
                         ->where('company_id', $company->id)
-                        ->where(function ($q) use ($names) {
-                            foreach ($names as $n) {
-                                $q->orWhere('file_name', $n)
-                                    ->orWhereJsonContains('source_files', $n);
+                        ->where(function ($q) use ($hashValues, $namesNeedingFallback, $supplier) {
+                            $any = false;
+                            if ($hashValues) {
+                                $any = true;
+                                $q->where(function ($qq) use ($hashValues) {
+                                    foreach ($hashValues as $h) {
+                                        $qq->orWhere('import_hash', $h)
+                                            ->orWhereJsonContains('source_hashes', $h);
+                                    }
+                                });
+                            }
+                            if ($namesNeedingFallback) {
+                                $fallback = function ($qq) use ($namesNeedingFallback, $supplier) {
+                                    $qq->where('supplier_id', $supplier->id)
+                                        ->where(function ($qqq) use ($namesNeedingFallback) {
+                                            foreach ($namesNeedingFallback as $n) {
+                                                $qqq->orWhere('file_name', $n)
+                                                    ->orWhereJsonContains('source_files', $n);
+                                            }
+                                        });
+                                };
+                                $any ? $q->orWhere($fallback) : $q->where($fallback);
                             }
                         })
-                        ->get(['file_name', 'source_files', 'user_id']);
+                        ->get(['file_name', 'source_files', 'source_hashes', 'import_hash', 'user_id']);
 
                     foreach ($matches as $match) {
                         $matchUser = $match->user;
@@ -3166,12 +3583,21 @@ class TaskController extends Controller
                                     ? "File has been uploaded by another user : {$matchUser->name}. Please contact them to resolve this issue."
                                     : 'File has already been uploaded.'));
 
-                        if (!empty($match->file_name) && in_array($match->file_name, $names, true)) {
+                        $matchSourceHashes = is_array($match->source_hashes) ? $match->source_hashes : (json_decode($match->source_hashes, true) ?: []);
+                        foreach ($hashByName as $name => $hash) {
+                            if ($hash === null) continue;
+                            if ($match->import_hash === $hash || in_array($hash, $matchSourceHashes, true)) {
+                                $reasons[$name] = $message;
+                            }
+                        }
+
+                        // Filename fallback -- only for names we could not hash.
+                        if (!empty($match->file_name) && in_array($match->file_name, $namesNeedingFallback, true)) {
                             $reasons[$match->file_name] = $message;
                         }
-                        $arr = is_array($match->source_files) ? $match->source_files : (json_decode($match->source_files, true) ?: []);
-                        foreach ($arr as $n) {
-                            if (in_array($n, $names, true)) $reasons[$n] = $message;
+                        $matchSourceFiles = is_array($match->source_files) ? $match->source_files : (json_decode($match->source_files, true) ?: []);
+                        foreach ($matchSourceFiles as $n) {
+                            if (in_array($n, $namesNeedingFallback, true)) $reasons[$n] = $message;
                         }
                     }
 
@@ -3246,6 +3672,38 @@ class TaskController extends Controller
                         }
                     }
 
+                    // W6.I fix round -- content hash of the merged output (catches an exact
+                    // re-merge of the same files) plus each individual source file's own hash
+                    // (catches the same source file resurfacing later under a different name or
+                    // a different batch combination -- see `source_hashes` migration docblock).
+                    //
+                    // W6.I residual fix round: the single-file-in-batch shortcut hashes straight
+                    // from the source file's own path via FileUpload::hashFile() (never the
+                    // $mergedBytes read above), so a file_get_contents() read failure there can
+                    // never be silently coerced into a hash of the empty string. The genuine
+                    // multi-file merge path ($merger->merge()'s return value, not a filesystem
+                    // read) still goes through hashContent() directly.
+                    $mergedHash = null;
+                    if (count($batchFiles) === 1) {
+                        $mergedHash = FileUpload::hashFile($batchFiles[0]->getRealPath());
+                        if ($mergedHash === null) {
+                            Log::warning('task_import.merged_hash_failed', ['batch' => $batchIndex, 'message' => 'file read failed']);
+                        }
+                    } else {
+                        try {
+                            $mergedHash = FileUpload::hashContent($mergedBytes);
+                        } catch (\Throwable $e) {
+                            Log::warning('task_import.merged_hash_failed', ['batch' => $batchIndex, 'message' => $e->getMessage()]);
+                        }
+                    }
+                    $sourceHashesForRow = array_values(array_filter(
+                        array_intersect_key($hashByName, array_flip($successFiles)),
+                        fn($h) => $h !== null
+                    ));
+                    if (empty($sourceHashesForRow)) {
+                        $sourceHashesForRow = null;
+                    }
+
                     $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
                     if (Storage::exists($mergedPath) || FileUpload::where([
                         'file_name'   => $mergedName,
@@ -3266,6 +3724,8 @@ class TaskController extends Controller
                         'company_id'       => $company->id,
                         'status'           => 'pending',
                         'source_files'     => $successFiles,
+                        'import_hash'      => $mergedHash,
+                        'source_hashes'    => $sourceHashesForRow,
                     ]);
 
                     if (count($successFiles) === 1) {
@@ -3301,41 +3761,99 @@ class TaskController extends Controller
             $errorFile = [];
             $fileName = $file->getClientOriginalName();
 
-            $existingFileUpload = FileUpload::where([
-                'file_name' => $fileName,
-                'supplier_id' => $supplier->id,
-                'company_id' => $company->id,
-            ]);
+            // W6.I "Importer contract" item 3 (w6-brief.md; importer-status-contract.md's own
+            // "Bulk upload" finding): content-hash dedupe, REPLACING the filename-only check for
+            // this single-file path -- a same-named re-upload with genuinely different content is
+            // no longer silently treated as a dup (falls through to the create below), and a
+            // same-content re-upload under a renamed file is now caught here, company-scoped
+            // (never cross-supplier: two different suppliers may legitimately hand the agency
+            // byte-identical boilerplate).
+            //
+            // W6.I residual fix round: read+hash goes through FileUpload::hashFile() so a
+            // file_get_contents() read failure can never be silently coerced (via PHP's weak
+            // scalar typing, since neither this file nor the model declares strict_types) into
+            // a hash of the empty string -- it always yields null here, which falls through to
+            // the filename fallback below plus a logged warning.
+            $importHash = FileUpload::hashFile($file->getRealPath());
+            if ($importHash === null) {
+                Log::warning('task_import.file_hash_failed', ['file_name' => $fileName]);
+            }
 
-            if ($existingFileUpload->exists()) {
-                Log::info("File {$fileName} already exists for supplier {$supplier->name}, in company {$company->name}. Skipping upload.");
+            // W6.I residual fix round: this lookup must check BOTH `import_hash` and
+            // `source_hashes` -- exactly like the merge-supplier branch above does -- so
+            // content that was previously ingested only as one *source file* inside a merge
+            // batch (never as any row's own `import_hash`) is still caught here when the same
+            // bytes are later re-uploaded through this single-file path.
+            $existingByHash = $importHash !== null
+                ? FileUpload::where('company_id', $company->id)
+                    ->where(function ($q) use ($importHash) {
+                        $q->where('import_hash', $importHash)
+                            ->orWhereJsonContains('source_hashes', $importHash);
+                    })
+                    ->first()
+                : null;
 
-                $userUpload = $existingFileUpload->first()->user;
+            if ($existingByHash !== null) {
+                Log::info('task_import.duplicate_file_skipped', [
+                    'file_name' => $fileName,
+                    'company_id' => $company->id,
+                    'import_hash' => $importHash,
+                    'existing_file_upload_id' => $existingByHash->id,
+                ]);
 
-                if ($userUpload->id !== $user->id) {
-
-                    if ($userUpload->company !== null) {
-                        $message = "File has been uploaded by your admin. Please contact them to resolve this issue.";
-                    } else {
-                        $message = "File has been uploaded by another user : {$userUpload->name}. Please contact them to resolve this issue.";
-                    }
-
-                    Log::info("File {$fileName} already uploaded by another user: {$userUpload->name}.");
-
-                    $errorFile['file_name'] = $fileName;
-                    $errorFile['message'] = $message;
-
-                    $errorFilesWithMessage[] = $errorFile;
-                } else {
-                    Log::info("File {$fileName} already uploaded by the same user: {$user->name}.");
-
-                    $errorFile['file_name'] = $fileName;
-                    $errorFile['message'] = "File has already been uploaded by you";
-
-                    $errorFilesWithMessage[] = $errorFile;
-                }
+                $errorFile['file_name'] = $fileName;
+                $errorFile['message'] = 'This file\'s content was already imported (as "'.$existingByHash->file_name.'"). Skipped as a duplicate.';
+                $errorFilesWithMessage[] = $errorFile;
                 $error = true;
                 continue;
+            }
+
+            // W6.I fix round (verify finding: this filename-only check was left completely
+            // unchanged after the hash check above was added, so a same-named re-upload with
+            // DIFFERENT content was still silently rejected as a duplicate -- the exact
+            // regression the brief says this change must close). Content hash now fully
+            // REPLACES filename-only dedupe: this block only runs as a safety net when the
+            // content genuinely could not be hashed above ($importHash === null), so a file we
+            // successfully hashed (and which therefore already passed the hash check with no
+            // match) is never rejected again just because its name collides with an unrelated,
+            // differently-contented existing file.
+            if ($importHash === null) {
+                $existingFileUpload = FileUpload::where([
+                    'file_name' => $fileName,
+                    'supplier_id' => $supplier->id,
+                    'company_id' => $company->id,
+                ]);
+
+                if ($existingFileUpload->exists()) {
+                    Log::info("File {$fileName} already exists for supplier {$supplier->name}, in company {$company->name}. Skipping upload.");
+
+                    $userUpload = $existingFileUpload->first()->user;
+
+                    if ($userUpload->id !== $user->id) {
+
+                        if ($userUpload->company !== null) {
+                            $message = "File has been uploaded by your admin. Please contact them to resolve this issue.";
+                        } else {
+                            $message = "File has been uploaded by another user : {$userUpload->name}. Please contact them to resolve this issue.";
+                        }
+
+                        Log::info("File {$fileName} already uploaded by another user: {$userUpload->name}.");
+
+                        $errorFile['file_name'] = $fileName;
+                        $errorFile['message'] = $message;
+
+                        $errorFilesWithMessage[] = $errorFile;
+                    } else {
+                        Log::info("File {$fileName} already uploaded by the same user: {$user->name}.");
+
+                        $errorFile['file_name'] = $fileName;
+                        $errorFile['message'] = "File has already been uploaded by you";
+
+                        $errorFilesWithMessage[] = $errorFile;
+                    }
+                    $error = true;
+                    continue;
+                }
             }
 
             $file->move($filePath, $fileName);
@@ -3350,6 +3868,7 @@ class TaskController extends Controller
                     'supplier_id' => $supplier->id,
                     'company_id' => $company->id,
                     'status' => 'pending',
+                    'import_hash' => $importHash,
                 ]);
             } catch (Exception $e) {
                 Log::error("Failed to create file upload record for {$fileName}: " . $e->getMessage());
@@ -3831,26 +4350,30 @@ class TaskController extends Controller
 
         $supplierStatus = $reservation['service']['status'];
 
-        switch ($supplierStatus) {
-            case 'OK':
-                $status = 'issued';
-                break;
-            case 'AM':
-                $status = 'reissued';
-                break;
-            case 'RQ':
-                $status = 'confirmed';
-                break;
-            case 'XX':
-                $status = 'void';
-                break;
-            case 'XP':
-                $status = 'void';
-                break;
-            default:
-                $status = 'confirmed';
-                break;
-        }
+        // W6.S "Per-supplier status map" (w6-brief.md, owner addition 2026-08-28): the hard-coded
+        // OK/AM/RQ/XX/XP switch is DELETED -- replaced by TaskStatusService::mapStatus() against
+        // `supplier_status_maps` (channel 'magic'). Seeded default rows reproduce this exact
+        // switch's five cases; an unrecognized code (the switch's own `default: 'confirmed'`
+        // fallback) now becomes `needs_review` instead of silently defaulting to 'confirmed' --
+        // an intentional behaviour change per w6-brief.md item 4 ("Unknown raw status ... no
+        // financial dispatch"), not something this sub-wave preserves. The AM+total<=0->refund
+        // override lives in TaskStatusService::mapStatus() itself; the `$isRefund` block further
+        // below (which also mutates `$total`, not just `$status`) is left in place -- it computes
+        // the SAME condition against the SAME `$prices['total']['selling']['value']` field passed
+        // as context here, so it is a harmless no-op re-confirmation of what mapStatus() already
+        // decided, not a second source of truth.
+        $magicSupplierForMap = Supplier::where('name', 'Magic Holiday')->first();
+        $mappedMagicStatus = app(TaskStatusService::class)->mapStatus(
+            $magicSupplierForMap,
+            'magic',
+            (string) $supplierStatus,
+            (int) $companyId,
+            ['total' => $prices['total']['selling']['value'] ?? null]
+        );
+
+        $status = $mappedMagicStatus->isUnmapped()
+            ? 'needs_review'
+            : app(TaskStatusService::class)->toTaskStatusValue($mappedMagicStatus->canonicalStatus);
 
         $cancellationDate = null;
 
@@ -3866,14 +4389,15 @@ class TaskController extends Controller
             $cancellationDate = $reservation['service']['cancellationPolicy']['date'];
         }
 
-        if ($cancellationDate && ($supplierStatus == 'OK' || $supplierStatus == 'RQ')) {
+        // W6.U fix (previous verify criterion 11 FAIL): this block used to clobber $status
+        // AFTER TaskStatusService::mapStatus() had already decided it, unconditionally
+        // overriding any company-configured supplier_status_maps row (or needs_review/on_hold
+        // outcome) for the 'OK'/'RQ' raw codes whenever a cancellation-policy date was present.
+        // mapStatus() is the single source of truth for canonical status (w6-brief.md W6.S) --
+        // $cancellationDate is retained below only for `cancellation_deadline` storage
+        // (deadline_at source), it must never re-derive $status.
+        if ($cancellationDate) {
             $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
-
-            if (Date::now()->greaterThanOrEqualTo($cancellationDate)) {
-                $status = 'issued';
-            } else {
-                $status = 'confirmed';
-            }
         }
 
         $cancellationPolicy = json_encode($cancellationPolicy);
@@ -4463,43 +4987,48 @@ class TaskController extends Controller
 
     public function ReverseUnpaidVoidedTask(Task $voidTask, Task $originalTask)
     {
-        Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
+        // W6.S item (5) (ct-void-map.md §7 bug 3): this method used to end with a bare
+        // DB::commit() and no matching beginTransaction() of its own -- closing out whatever
+        // transaction the CALLER happened to have open. Wrapped in ONE DB::transaction() instead
+        // (same fix shape and rationale as voidTask() above); the write set itself is unchanged.
+        return DB::transaction(function () use ($voidTask, $originalTask) {
+            Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
-        // Use task's issued_date as transaction_date
-        $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
+            // Use task's issued_date as transaction_date
+            $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
-        $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-        $branchIdFromJournal = $journalEntries->first()?->branch_id;
+            $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
+            $branchIdFromJournal = $journalEntries->first()?->branch_id;
 
-        $transaction = Transaction::create([
-            'branch_id' => $originalTask->agent->branch_id ?? $branchIdFromJournal,
-            'company_id' => $originalTask->company_id,
-            'name' => $originalTask->client->full_name ?? null,
-            'entity_id' => $originalTask->company_id,
-            'entity_type' => 'company',
-            'transaction_type' => 'debit',
-            'amount' => $originalTask->total,
-            'description' => 'Void reversal: ' . $originalTask->reference,
-            'reference_type' => 'Payment',
-            'transaction_date' => $transactionDate,
-        ]);
-
-        foreach ($journalEntries as $entry) {
-            JournalEntry::create([
-                'transaction_id' => $transaction->id,
-                'company_id' => $entry->company_id,
-                'branch_id' => $entry->branch_id,
-                'account_id' => $entry->account_id,
-                'task_id' => $voidTask->id,
+            $transaction = Transaction::create([
+                'branch_id' => $originalTask->agent->branch_id ?? $branchIdFromJournal,
+                'company_id' => $originalTask->company_id,
+                'name' => $originalTask->client->full_name ?? null,
+                'entity_id' => $originalTask->company_id,
+                'entity_type' => 'company',
+                'transaction_type' => 'debit',
+                'amount' => $originalTask->total,
+                'description' => 'Void reversal: ' . $originalTask->reference,
+                'reference_type' => 'Payment',
                 'transaction_date' => $transactionDate,
-                'description' => 'Reversal: ' . $entry->description,
-                'name' => $entry->name,
-                'debit' => $entry->credit,
-                'credit' => $entry->debit,
-                'balance' => $entry->balance,
-                'type' => $entry->type,
             ]);
-        }
+
+            foreach ($journalEntries as $entry) {
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $entry->company_id,
+                    'branch_id' => $entry->branch_id,
+                    'account_id' => $entry->account_id,
+                    'task_id' => $voidTask->id,
+                    'transaction_date' => $transactionDate,
+                    'description' => 'Reversal: ' . $entry->description,
+                    'name' => $entry->name,
+                    'debit' => $entry->credit,
+                    'credit' => $entry->debit,
+                    'balance' => $entry->balance,
+                    'type' => $entry->type,
+                ]);
+            }
 
         // JournalEntry::create([
         //     'transaction_id' => $transaction->id,
@@ -4531,13 +5060,14 @@ class TaskController extends Controller
         //     'type' => 'payable',
         // ]);
 
-        Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
-        DB::commit();
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Unpaid void task reversal journal completed.',
-            'data' => $originalTask,
-        ], 201);
+            Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Unpaid void task reversal journal completed.',
+                'data' => $originalTask,
+            ], 201);
+        });
     }
 
     /**
@@ -5308,6 +5838,10 @@ class TaskController extends Controller
 
     public function switchInvoiceTask(Request $request, Task $task): RedirectResponse
     {
+        // W6.S item (3) (ct-void-map.md §6/§7 bug 2): this route had zero authorization before
+        // this sub-wave.
+        Gate::authorize('switchInvoice', $task);
+
         $user = Auth::user();
 
         Log::info('[TASK] Switch invoice task request', [
@@ -5360,6 +5894,37 @@ class TaskController extends Controller
                 'existing_invoice_detail_id' => $task->invoiceDetail->id,
             ]);
             return back()->with('error', 'This task already has an invoice linked.');
+        }
+
+        // W6.R (w6-brief.md Kind 4): "switchInvoiceTask() becomes a thin wrapper over this flow
+        // ... its previously logged-only profit delta now posts." Engine ON: delegate entirely to
+        // TaskStatusService::reissue() -- it owns its own DB::transaction() (do not also open the
+        // manual one below for this branch, and do not roll it back here either; reissue()'s own
+        // transaction already unwinds itself on failure). Engine OFF: the legacy raw
+        // invoiceDetail/JournalEntry re-pointing below runs completely unchanged (byte-for-byte
+        // parity vs HEAD, per every other OFF-path guarantee in this sub-wave).
+        if (app(PostingSeam::class)->isEnabledFor((int) $task->company_id)) {
+            try {
+                $result = app(TaskStatusService::class)->reissue($originalTask, $task);
+            } catch (Exception $e) {
+                Log::error('[TASK] Switch invoice failed - exception (engine)', [
+                    'task_id' => $task->id,
+                    'original_task_id' => $originalTask->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return back()->with('error', 'Failed to switch invoice: ' . $e->getMessage());
+            }
+
+            Log::info('[TASK] Switch invoice success (engine)', [
+                'old_task_id' => $originalTask->id,
+                'new_task_id' => $task->id,
+                'user_id' => $user->id,
+                'fare_difference' => $result['fare_difference'],
+            ]);
+
+            return back()->with('success', 'Invoice has been switched to the issued task successfully.');
         }
 
         try {
@@ -5592,8 +6157,88 @@ class TaskController extends Controller
         ));
     }
 
+    /**
+     * W6.B (w6-brief.md "## Kinds" 5 -- "BULK VOID"). `POST /tasks/bulk-void`, gated by
+     * `TaskPolicy::bulkVoid()` (registered ahead of this route by W6.S). Thin HTTP wrapper: all
+     * batching/transaction-shape logic lives in {@see \App\Services\TaskStatusService::bulkVoid()}
+     * -- this method only authorizes, validates the input shape, forwards `bulk_void_mode` (falls
+     * back to the caller's own company setting when omitted, inside the service), and translates
+     * the service's result array into a JSON response.
+     *
+     * Response shape: `{success, mode, results: [{task_id, success, error}], voided_count,
+     * failed_count}` -- `results` never carries the raw {@see TaskStatusService::void()} outcome
+     * array (accounting internals: `PostedDocument` objects, etc.) over the wire, only the
+     * success/error summary a bulk-void screen actually renders (W6.U, not this sub-wave).
+     *
+     * `atomic` mode: a thrown exception from the service (the whole batch rolled back -- see that
+     * method's own docblock) is caught HERE, not silently swallowed -- reported as a single
+     * top-level failure with `results: []`/`voided_count: 0`, never a partial list that would
+     * misrepresent an all-or-nothing rollback as if some tasks had actually voided.
+     */
+    public function bulkVoid(Request $request)
+    {
+        Gate::authorize('bulkVoid', Task::class);
+
+        $request->validate([
+            'task_ids' => ['required', 'array', 'min:1'],
+            'task_ids.*' => ['integer'],
+            'bulk_void_mode' => ['nullable', 'in:atomic,per_task_report'],
+            'fee' => ['nullable', 'numeric'],
+        ]);
+
+        $taskIds = $request->input('task_ids', []);
+        $mode = $request->input('bulk_void_mode');
+
+        $opts = ['user_id' => Auth::id()];
+        if ($mode !== null) {
+            $opts['mode'] = $mode;
+        }
+        if ($request->filled('fee')) {
+            $opts['fee'] = (float) $request->input('fee');
+        }
+
+        try {
+            $outcome = app(TaskStatusService::class)->bulkVoid($taskIds, $opts);
+        } catch (\Throwable $e) {
+            Log::error('task_status.bulk_void_request_failed', [
+                'task_ids' => $taskIds,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'mode' => $opts['mode'] ?? 'atomic',
+                'message' => $e->getMessage(),
+                'results' => [],
+                'voided_count' => 0,
+                'failed_count' => count($taskIds),
+            ], 422);
+        }
+
+        $results = array_map(function (array $row) {
+            return [
+                'task_id' => $row['task_id'],
+                'success' => $row['success'],
+                'error' => $row['error'],
+            ];
+        }, $outcome['results']);
+
+        $voidedCount = count(array_filter($results, fn ($r) => $r['success']));
+
+        return response()->json([
+            'success' => true,
+            'mode' => $outcome['mode'],
+            'results' => $results,
+            'voided_count' => $voidedCount,
+            'failed_count' => count($results) - $voidedCount,
+        ]);
+    }
+
     public function bulkUpdate(Request $request)
     {
+        // W6.S item (3): every mutating TaskController action now authorizes via TaskPolicy.
+        Gate::authorize('update', Task::class);
+
         /* $taskIds = json_decode($request->input('task_ids'), true); */
         $taskIds = $request->input('task_ids', []);
         $clientId = $request->input('bulk_client_id');
@@ -5631,7 +6276,8 @@ class TaskController extends Controller
                             $shouldEnable = true;
                         } else {
                             try {
-                                $this->processTaskFinancial($task);
+                                // W6.S item (1): single financial-dispatch call site.
+                                app(TaskStatusService::class)->dispatchFinancial($task);
                                 $shouldEnable = true;
                             } catch (\Exception $e) {
                                 $shouldEnable = false;
@@ -5641,6 +6287,13 @@ class TaskController extends Controller
                         $task->enabled = $shouldEnable;
                     }
                     $task->save();
+                } else {
+                    // W6.S item (5) (ct-void-map.md §7 bug 11): `$task` is null here whenever
+                    // `Task::find($id)` misses (a stale/deleted id in the submitted batch) -- the
+                    // code below used to dereference `$task->id` unconditionally regardless of
+                    // this branch, a guaranteed null-pointer fatal. Skip this id entirely; nothing
+                    // downstream in this loop iteration can run without a real task.
+                    continue;
                 }
 
                 $linkedTasks = Task::where('original_task_id', $task->id)->get();
@@ -5666,7 +6319,8 @@ class TaskController extends Controller
                             $shouldEnable = true;
                         } else {
                             try {
-                                $this->processTaskFinancial($linkTask);
+                                // W6.S item (1): single financial-dispatch call site.
+                                app(TaskStatusService::class)->dispatchFinancial($linkTask);
                                 $shouldEnable = true;
                             } catch (\Throwable $e) {
                                 $shouldEnable = false;
@@ -5685,6 +6339,9 @@ class TaskController extends Controller
 
     public function updateMulti(Request $request)
     {
+        // W6.S item (3): every mutating TaskController action now authorizes via TaskPolicy.
+        Gate::authorize('update', Task::class);
+
         Log::info('Bulk update request received', [
             'user_id' => Auth::id(),
             'request_data' => $request->all(),
@@ -5731,8 +6388,12 @@ class TaskController extends Controller
                     'supplier_pay_date' => $payload['supplier_pay_date'] ?? $task->supplier_pay_date,
                 ]);
 
-                // Use refactored update() - it only runs what's needed
-                $this->update($fakeRequest, $taskId);
+                // W6.B: delegate to the shared, THROWING applyTaskUpdate() directly -- no nested
+                // DB::beginTransaction() (update()'s own txn wrapper is not entered here at all),
+                // and no swallowed-then-ignored exception. A failure here now propagates straight
+                // to this method's own outer catch below, which rolls back the whole batch and
+                // returns an error -- see applyTaskUpdate()'s own docblock.
+                $this->applyTaskUpdate($task, $fakeRequest);
 
                 // Update details if provided
                 if ($hotelDetails && $task->hotelDetails) {
@@ -6078,7 +6739,10 @@ class TaskController extends Controller
             } else {
                 $this->revertFinancialsForTask($task);
             }
-            $this->processTaskFinancial($task);
+            // W6.S fix-round: route through TaskStatusService::dispatchFinancial() -- update()'s
+            // real dispatch site (update() itself only calls handleStatusChange()/
+            // updateEnabledStatus(), it never dispatches directly).
+            app(TaskStatusService::class)->dispatchFinancial($task);
         }
     }
 
@@ -6090,8 +6754,24 @@ class TaskController extends Controller
         $this->updateJournalEntriesBranch($task);
     }
 
+    /**
+     * W6.V (w6-brief.md "Consolidation + fixes": "handleClientChange ...: delete-by-description
+     * -> reverse() + repost via engine keys"). Engine ON: never mutates a posted JournalEntry's
+     * `name` in place -- {@see self::reverseAndRepostSale()} reverses the task's live sale document
+     * (targeted by its own `invoice-detail:{id}:sale` key) and posts a fresh one carrying the
+     * CURRENT client's name, exactly the same "never edit a posted row" convention every other
+     * engine-layer correction in this codebase already follows (InvoiceController::
+     * updateTaskPriceOnPath() being the closest existing precedent for this exact reverse+repost
+     * shape). Engine OFF: legacy body unchanged (byte-for-byte parity).
+     */
     private function handleClientChange(Task $task, $prevClientName): void
     {
+        if (app(PostingSeam::class)->isEnabledFor((int) $task->company_id)) {
+            $this->reverseAndRepostSale($task);
+
+            return;
+        }
+
         $journalEntries = JournalEntry::with('transaction')
             ->where('task_id', $task->id)
             ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
@@ -6105,8 +6785,30 @@ class TaskController extends Controller
         }
     }
 
+    /**
+     * W6.V ON path for {@see self::handleAmountChange()} -- see {@see self::handleClientChange()}'s
+     * own docblock for the shared rationale. Keeps `invoice_detail.task_price`/`markup_price` in
+     * sync with the task's own current `total` BEFORE reposting (mirrors
+     * InvoiceController::updateTaskPriceOnPath()'s own write order exactly), then reverses+reposts
+     * the live sale document with the NEW amount via {@see self::reverseAndRepostSale()}. Engine
+     * OFF: legacy body unchanged.
+     */
     private function handleAmountChange(Task $task): void
     {
+        if (app(PostingSeam::class)->isEnabledFor((int) $task->company_id)) {
+            $invoiceDetail = InvoiceDetail::where('task_id', $task->id)->first();
+
+            if ($invoiceDetail !== null) {
+                $invoiceDetail->task_price = $task->total;
+                $invoiceDetail->markup_price = (float) $task->total - (float) $invoiceDetail->supplier_price;
+                $invoiceDetail->save();
+            }
+
+            $this->reverseAndRepostSale($task);
+
+            return;
+        }
+
         $journalEntries = JournalEntry::with('transaction')
             ->where('task_id', $task->id)
             ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
@@ -6130,6 +6832,93 @@ class TaskController extends Controller
             }
             $entry->save();
         }
+    }
+
+    /**
+     * Shared ON-path body: reverse()+repost the task's own live sale document
+     * (`invoice-detail:{id}:sale`) via {@see PostingService::repost()}, rebuilding the lines
+     * through {@see SaleDraftBuilder} from the task's CURRENT `invoiceDetail`/`client`/`supplier`/
+     * `agent` state -- never a `->save()` on a posted JournalEntry row. A no-op when no invoice
+     * detail exists for this task, or when nothing has been posted under that key yet (nothing to
+     * reverse+repost -- the next real dispatch, e.g. issue(), will post the correct figures from
+     * scratch).
+     */
+    private function reverseAndRepostSale(Task $task): void
+    {
+        $companyId = (int) $task->company_id;
+        $invoiceDetail = InvoiceDetail::where('task_id', $task->id)->first();
+
+        if ($invoiceDetail === null) {
+            return;
+        }
+
+        $invoice = $invoiceDetail->invoice;
+
+        if ($invoice === null) {
+            return;
+        }
+
+        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+
+        $oldSale = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('idempotency_key', $saleKey)
+            ->where('posting_status', 'posted')
+            ->first();
+
+        if ($oldSale === null) {
+            return;
+        }
+
+        $agent = $task->agent;
+        $supplier = $task->supplier;
+        $serviceType = (string) $task->type;
+        $postingBasis = SaleDraftBuilder::resolvePostingBasis($companyId, $serviceType);
+        // P2.5.D fix (verify finding): this reverse+repost is a real SaleDraftInput construction
+        // site (client-name/amount edits on an issued task) and must resolve the same per-company
+        // recognition-timing override as every other feeder -- otherwise editing a task's client
+        // name or total silently drops a company's `at_travel` override and can flip an
+        // already-deferred sale back to SERVICE_REVENUE (or vice versa) on repost.
+        $recognitionTiming = SaleDraftBuilder::resolveRecognitionTiming($companyId, $serviceType);
+
+        $lines = (new SaleDraftBuilder)->buildLines(new SaleDraftInput(
+            serviceType: $serviceType,
+            sellAmount: (float) $invoiceDetail->task_price,
+            costAmount: (float) $invoiceDetail->supplier_price,
+            postingBasis: $postingBasis,
+            clientId: $task->client_id,
+            clientName: $task->client?->full_name,
+            supplierId: $supplier?->id,
+            supplierName: $supplier?->name,
+            agentId: $agent?->id,
+            agentName: $agent?->name,
+            invoiceId: $invoice->id,
+            invoiceDetailId: $invoiceDetail->id,
+            taskId: $task->id,
+            currency: (string) config('accounting.engine.base_currency'),
+            receivableDescription: 'Task record updated for ' . ($task->client?->full_name ?? ''),
+            payableDescription: 'Updated cost of ' . $task->reference . ' owed to supplier: ' . ($supplier?->name ?? 'Unknown Supplier'),
+            revenueDescription: 'Task record updated: ' . $task->reference,
+            marginPositiveDescription: 'Margin earned on ' . $task->reference,
+            marginNegativeDescription: 'Margin shortfall (sold below cost) on ' . $task->reference,
+            costDescription: 'Supplier cost booked for ' . $task->reference,
+            recognitionTiming: $recognitionTiming,
+        ));
+
+        $newDraft = new \App\Services\Accounting\DocumentDraft(
+            companyId: $companyId,
+            branchId: (int) ($agent->branch_id ?? 0),
+            docType: 'INV',
+            subType: 'SALE',
+            docDate: Carbon::parse($oldSale->transaction_date),
+            narration: 'Task record updated for ' . $task->reference,
+            lines: $lines,
+            idempotencyKey: $oldSale->idempotency_key,
+            invoiceId: $invoice->id,
+        );
+
+        app(PostingService::class)->repost($oldSale, $newDraft, $oldSale->transaction_date, Auth::id());
     }
 
     private function cascadeToChildTasks(Task $task, array $changes): void
@@ -6172,7 +6961,9 @@ class TaskController extends Controller
 
             if (!$hasJournal) {
                 Log::info('Processing financials for newly enabled task', ['task' => $task->reference]);
-                $this->processTaskFinancial($task);
+                // W6.S fix-round: route through TaskStatusService::dispatchFinancial() -- update()'s
+                // other real dispatch site.
+                app(TaskStatusService::class)->dispatchFinancial($task);
             }
         }
 
@@ -6458,5 +7249,398 @@ class TaskController extends Controller
                 ];
             })
         );
+    }
+
+    // =====================================================================================
+    // W6.U -- Task actions (void / void-with-fee / reissue), per w6-brief.md "W6.U -- UI".
+    // Thin HTTP wrappers only -- every posting decision lives in TaskStatusService; this layer
+    // authorizes, resolves the fee-override/approval gate, and translates results to
+    // JSON/redirect responses a screen can render.
+    // =====================================================================================
+
+    /**
+     * Fee/approval gate shared by {@see self::voidSingle()} and {@see self::reissueSingle()}
+     * (w6-brief.md "Void-with-fee": "an override input + an approval-required flag when
+     * refund_fee_override=needs_approval and the override differs from schedule"). Returns null
+     * when the caller may proceed straight to posting (no override, override matches schedule, or
+     * policy is 'free'); returns a JSON response (202, pending) when a
+     * {@see \App\Models\TaskPendingAction} row was just created instead and posting must wait for
+     * {@see self::approveFeeOverride()}.
+     */
+    private function feeApprovalGateOrNull(Task $task, string $action, ?float $fee, array $extraPayload = [])
+    {
+        if ($fee === null) {
+            return null;
+        }
+
+        $companyId = (int) $task->company_id;
+        $sellAmount = (float) ($task->invoiceDetail?->task_price ?? $task->price ?? 0.0);
+        $preview = app(TaskStatusService::class)->previewFee($companyId, (string) $task->type, $sellAmount);
+
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+        $isOverride = abs($fee - $preview['schedule_fee']) > $tolerance;
+
+        if (!$isOverride || $preview['override_policy'] !== 'needs_approval') {
+            return null;
+        }
+
+        $pendingAction = TaskPendingAction::create([
+            'company_id' => $companyId,
+            'task_id' => $task->id,
+            'action' => $action,
+            'payload' => array_merge(['fee' => $fee, 'schedule_fee' => $preview['schedule_fee']], $extraPayload),
+            'status' => TaskPendingAction::STATUS_PENDING,
+            'requested_by' => Auth::id(),
+        ]);
+
+        Log::info('task_action.fee_override_pending_approval', [
+            'task_id' => $task->id,
+            'pending_action_id' => $pendingAction->id,
+            'action' => $action,
+            'fee' => $fee,
+            'schedule_fee' => $preview['schedule_fee'],
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'pending_approval' => true,
+            'pending_action_id' => $pendingAction->id,
+            'message' => 'This fee override requires approval before it can be posted.',
+        ], 202);
+    }
+
+    /**
+     * `GET /tasks/{task}/void-fee-preview` -- pre-fills the void-with-fee screen's fee entry from
+     * the company fee schedule (w6-brief.md "Void-with-fee": "fee entry pre-filled from the
+     * company fee schedule ... for the task's service type").
+     */
+    public function voidFeePreview(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('void', $task);
+
+        $sellAmount = (float) ($task->invoiceDetail?->task_price ?? $task->price ?? 0.0);
+        $preview = app(TaskStatusService::class)->previewFee((int) $task->company_id, (string) $task->type, $sellAmount);
+
+        return response()->json(['success' => true] + $preview);
+    }
+
+    /**
+     * `POST /tasks/{task}/void` (w6-brief.md "Kinds" 1/3, "W6.U -- Task actions"). Covers both
+     * plain VOID (no `fee` in the payload) and VOID WITH FEE (a `fee` override present) -- the
+     * underlying engine call is the same {@see TaskStatusService::void()} either way, per
+     * w6-brief.md's own "Kinds" section (void() already accepts an optional fee override).
+     */
+    public function voidSingle(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('void', $task);
+
+        $request->validate([
+            'fee' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $fee = $request->filled('fee') ? (float) $request->input('fee') : null;
+
+        $gated = $this->feeApprovalGateOrNull($task, TaskPendingAction::ACTION_VOID_WITH_FEE, $fee);
+        if ($gated !== null) {
+            return $gated;
+        }
+
+        try {
+            $result = app(TaskStatusService::class)->void($task, [
+                'fee' => $fee,
+                'user_id' => Auth::id(),
+            ]);
+        } catch (Exception $e) {
+            Log::error('task_action.void_failed', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true] + $this->summarizeStatusResult($result));
+    }
+
+    /**
+     * `GET /tasks/{task}/reissue-preview?new_task_id=` (w6-brief.md "Reissue": "link-new-task
+     * picker, shows a DBN/CRN preview ... before submit"). Read-only -- posts nothing.
+     */
+    public function reissuePreview(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('reissue', $task);
+
+        $request->validate(['new_task_id' => ['required', 'integer', 'exists:tasks,id']]);
+
+        $newTask = Task::withoutGlobalScopes()->whereNull('deleted_at')->findOrFail($request->input('new_task_id'));
+
+        $preview = app(TaskStatusService::class)->previewReissue($task, $newTask);
+
+        return response()->json(['success' => true] + $preview);
+    }
+
+    /**
+     * `POST /tasks/{task}/reissue` (w6-brief.md "Kinds" 4). `new_task_id` is the task the picker
+     * resolved; `fee` is an optional reissue-fee override, gated the same way void-with-fee is.
+     */
+    public function reissueSingle(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('reissue', $task);
+
+        $request->validate([
+            'new_task_id' => ['required', 'integer', 'exists:tasks,id'],
+            'fee' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $newTask = Task::withoutGlobalScopes()->whereNull('deleted_at')->findOrFail($request->input('new_task_id'));
+        $fee = $request->filled('fee') ? (float) $request->input('fee') : null;
+
+        $gated = $this->feeApprovalGateOrNull($task, TaskPendingAction::ACTION_REISSUE_WITH_FEE, $fee, ['new_task_id' => $newTask->id]);
+        if ($gated !== null) {
+            return $gated;
+        }
+
+        try {
+            $result = app(TaskStatusService::class)->reissue($task, $newTask, [
+                'fee' => $fee,
+                'user_id' => Auth::id(),
+            ]);
+        } catch (Exception $e) {
+            Log::error('task_action.reissue_failed', ['task_id' => $task->id, 'new_task_id' => $newTask->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true] + $this->summarizeStatusResult($result));
+    }
+
+    /**
+     * `POST /tasks/pending-actions/{pendingAction}/approve` (w6-brief.md "Void-with-fee": "route
+     * to an approve step, gated by policy, before posting"). Only NOW does the stored fee override
+     * actually reach {@see TaskStatusService::void()}/`reissue()`.
+     */
+    public function approveFeeOverride(Request $request, TaskPendingAction $pendingAction): JsonResponse
+    {
+        Gate::authorize('approveFeeOverride', Task::class);
+
+        if ($pendingAction->status !== TaskPendingAction::STATUS_PENDING) {
+            return response()->json(['success' => false, 'message' => 'This request has already been decided.'], 422);
+        }
+
+        $task = Task::withoutGlobalScopes()->whereNull('deleted_at')->findOrFail($pendingAction->task_id);
+        $payload = $pendingAction->payload;
+
+        try {
+            if ($pendingAction->action === TaskPendingAction::ACTION_REISSUE_WITH_FEE) {
+                $newTask = Task::withoutGlobalScopes()->whereNull('deleted_at')->findOrFail($payload['new_task_id']);
+                $result = app(TaskStatusService::class)->reissue($task, $newTask, ['fee' => $payload['fee'], 'user_id' => Auth::id()]);
+            } else {
+                $result = app(TaskStatusService::class)->void($task, ['fee' => $payload['fee'], 'user_id' => Auth::id()]);
+            }
+        } catch (Exception $e) {
+            Log::error('task_action.approve_fee_override_failed', ['pending_action_id' => $pendingAction->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        $pendingAction->update([
+            'status' => TaskPendingAction::STATUS_APPROVED,
+            'decided_by' => Auth::id(),
+            'decided_at' => now(),
+        ]);
+
+        return response()->json(['success' => true] + $this->summarizeStatusResult($result));
+    }
+
+    /** `POST /tasks/pending-actions/{pendingAction}/reject` -- never posts anything. */
+    public function rejectFeeOverride(Request $request, TaskPendingAction $pendingAction): JsonResponse
+    {
+        Gate::authorize('approveFeeOverride', Task::class);
+
+        if ($pendingAction->status !== TaskPendingAction::STATUS_PENDING) {
+            return response()->json(['success' => false, 'message' => 'This request has already been decided.'], 422);
+        }
+
+        $pendingAction->update([
+            'status' => TaskPendingAction::STATUS_REJECTED,
+            'decided_by' => Auth::id(),
+            'decided_at' => now(),
+            'decision_note' => $request->input('reason'),
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Trims a {@see TaskStatusService::void()}/`reissue()` result array down to what a screen
+     * actually renders -- never the raw {@see \App\Services\Accounting\PostedDocument} objects
+     * (accounting internals) over the wire, same convention {@see self::bulkVoid()} already
+     * documents for its own response shape.
+     */
+    private function summarizeStatusResult(array $result): array
+    {
+        $summarize = static fn ($doc) => $doc === null ? null : ['id' => $doc->transaction->id ?? null];
+
+        return [
+            'idempotent' => $result['idempotent'] ?? false,
+            'ticket_status' => $result['ticket_status'] ?? null,
+            'invoice_status' => $result['invoice_status'] ?? null,
+            'fare_difference' => $result['fare_difference'] ?? null,
+            'crn' => $summarize($result['crn'] ?? null),
+            'reversal' => $summarize($result['reversal'] ?? null),
+            'new_sale' => $summarize($result['new_sale'] ?? null),
+            'fee' => $summarize($result['fee'] ?? null),
+            'commission_unearn' => $summarize($result['commission_unearn'] ?? null),
+            'commission_earn' => $summarize($result['commission_earn'] ?? null),
+            'disposition' => $summarize($result['disposition'] ?? null),
+        ];
+    }
+
+    // =====================================================================================
+    // W6.U -- Follow-up tab (owner addition, 2026-08-28). Lists on-hold/confirmed tasks and
+    // exposes issue/extend-deadline/cancel/note row actions, scoped by TaskPolicy::manageFollowUp()
+    // so an agent only ever acts on their own tasks.
+    // =====================================================================================
+
+    /** `GET /tasks/follow-up` -- the tab's own page. */
+    public function followUp(Request $request): View
+    {
+        Gate::authorize('viewFollowUp', Task::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $query = Task::query()->whereIn('status', ['on hold', 'confirmed'])->whereNotNull('deadline_at');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        if (!$user->hasRole('admin') && !$user->hasRole('accountant')) {
+            $query->where('agent_id', $user->agent?->id ?? 0);
+        }
+
+        $tasks = $query->with(['agent', 'client', 'supplier'])->orderBy('deadline_at', 'asc')->get();
+
+        $tasks->each(function (Task $task) {
+            $task->deposit_held = app(TaskStatusService::class)->depositHeld($task);
+        });
+
+        return view('tasks.follow-up', compact('tasks'));
+    }
+
+    /**
+     * `GET /tasks/follow-up/count` -- counter badge on the uploader tab (w6-brief.md: "Counter
+     * badge on the uploader tab showing the count of on hold+confirmed tasks").
+     */
+    public function followUpCount(Request $request): JsonResponse
+    {
+        Gate::authorize('viewFollowUp', Task::class);
+
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        $query = Task::query()->whereIn('status', ['on hold', 'confirmed'])->whereNotNull('deadline_at');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        if (!$user->hasRole('admin') && !$user->hasRole('accountant')) {
+            $query->where('agent_id', $user->agent?->id ?? 0);
+        }
+
+        return response()->json([
+            'success' => true,
+            'count' => (clone $query)->count(),
+            'past_deadline_count' => (clone $query)->where('deadline_at', '<', now())->count(),
+        ]);
+    }
+
+    /**
+     * `POST /tasks/{task}/follow-up/issue` -- flips status to 'issued' then routes through
+     * {@see TaskStatusService::dispatchFinancial()} (NOT issue() directly), the same ON/OFF
+     * routing decision every other status-flip call site in this controller already goes through
+     * (see toggleStatus()) -- issue() itself is the ON-path branch dispatchFinancial() picks,
+     * calling it unconditionally here would skip that routing decision on an OFF-engine company.
+     */
+    public function followUpIssue(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('manageFollowUp', $task);
+
+        $oldStatus = $task->status;
+
+        try {
+            $task->status = 'issued';
+            $task->save();
+
+            app(TaskStatusService::class)->dispatchFinancial($task);
+        } catch (Exception $e) {
+            Log::error('task_action.follow_up_issue_failed', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        app(TaskStatusService::class)->recordEvent('follow_up_issue', (int) $task->company_id, $task->id, $oldStatus, 'issued', null, null, [
+            'user_id' => Auth::id(),
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /** `POST /tasks/{task}/follow-up/extend` -- requires a reason, writes an audit row. */
+    public function followUpExtend(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('manageFollowUp', $task);
+
+        $request->validate([
+            'deadline_at' => ['required', 'date', 'after:now'],
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $previousDeadline = $task->deadline_at;
+        $task->deadline_at = $request->input('deadline_at');
+        $task->save();
+
+        app(TaskStatusService::class)->recordEvent('follow_up_extend_deadline', (int) $task->company_id, $task->id, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'reason' => $request->input('reason'),
+            'previous_deadline_at' => $previousDeadline?->toIso8601String(),
+            'new_deadline_at' => $task->deadline_at?->toIso8601String(),
+        ]);
+
+        return response()->json(['success' => true, 'deadline_at' => $task->deadline_at]);
+    }
+
+    /**
+     * `POST /tasks/{task}/follow-up/cancel` (w6-brief.md: "routes into TaskStatusService's cancel
+     * transition, no ledger unless a deposit exists -> disposition per
+     * invoice_overpay_cancel_policy").
+     */
+    public function followUpCancel(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('manageFollowUp', $task);
+
+        try {
+            app(TaskStatusService::class)->cancel($task, $request->input('reason'));
+        } catch (Exception $e) {
+            Log::error('task_action.follow_up_cancel_failed', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'status' => $task->fresh()->status]);
+    }
+
+    /** `POST /tasks/{task}/follow-up/note` -- free-text, stored against the task via task_status_events. */
+    public function followUpNote(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('manageFollowUp', $task);
+
+        $request->validate(['note' => ['required', 'string', 'max:1000']]);
+
+        app(TaskStatusService::class)->recordEvent('follow_up_note', (int) $task->company_id, $task->id, null, null, null, null, [
+            'user_id' => Auth::id(),
+            'note' => $request->input('note'),
+        ]);
+
+        return response()->json(['success' => true]);
     }
 }

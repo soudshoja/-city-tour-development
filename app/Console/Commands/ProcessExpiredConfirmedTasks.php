@@ -2,142 +2,45 @@
 
 namespace App\Console\Commands;
 
-use App\Events\CheckConfirmedOrIssuedTask;
-use App\Models\Task;
-use Carbon\Carbon;
-use Exception;
+use App\Services\TaskStatusService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
+/**
+ * W6.S "Hold/confirmed follow-up lifecycle" item 2 (w6-brief.md, owner addition 2026-08-28) +
+ * W6.V Kind 2 (AUTO_VOID). This command used to hard-code a Jazeera-only `confirmed` -> `void`
+ * raw status flip that bypassed processTaskFinancial() entirely (ct-void-map.md §7 bug 8 /
+ * importer-status-contract.md Table 1 row 'void'). That body is DELETED -- this command is now a
+ * thin CLI wrapper over TWO TaskStatusService methods, exactly matching w6-brief.md's own split:
+ *   - {@see TaskStatusService::expire()} -- never-issued/invoiced tasks -> status only (`expired`),
+ *     no ledger.
+ *   - {@see TaskStatusService::autoVoidExpiredInvoiced()} (W6.V) -- tasks that DO already carry an
+ *     invoiceDetail -> `sub_type='AUTO_VOID'` through {@see TaskStatusService::void()} (a real
+ *     ticket/client-leg reversal, commission un-earn, disposition -- never a raw status flip).
+ * Both run for ALL suppliers (no Jazeera-only special-case survives).
+ */
 class ProcessExpiredConfirmedTasks extends Command
 {
-    /**
-     * The name and signature of the console command.
-     */
-    protected $signature = 'tasks:process-expired-confirmed {--dry-run : Run without making changes}';
+    protected $signature = 'tasks:process-expired-confirmed {--company-id= : Process only tasks for one company}';
 
-    /**
-     * The console command description.
-     */
-    protected $description = 'Process expired confirmed tasks and change their status to void';
+    protected $description = 'Expire never-invoiced hold/confirmed tasks (TaskStatusService::expire()) and AUTO_VOID already-invoiced ones (TaskStatusService::autoVoidExpiredInvoiced()) past their deadline';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(TaskStatusService $taskStatusService): int
     {
-        $isDryRun = $this->option('dry-run');
-        
-        if ($isDryRun) {
-            $this->info('Running in dry-run mode - no changes will be made');
-        }
+        $companyId = $this->option('company-id');
+        $companyId = $companyId !== null ? (int) $companyId : null;
 
-        $now = Carbon::now();
-        $this->info("Processing expired confirmed tasks at: {$now}");
+        $this->info('Running TaskStatusService::expire()' . ($companyId ? " for company {$companyId}" : ' for all companies'));
 
-        $suppliersToBeExecute = [
-            'jazeera'
-        ];
+        $expiredCount = $taskStatusService->expire($companyId);
 
-        // Get all confirmed tasks that have expired
-        $expiredTasks = Task::where('status', 'confirmed')
-            ->whereNotNull('expiry_date')
-            ->where('expiry_date', '<', $now)
-            ->whereHas('supplier', function ($query) use ($suppliersToBeExecute) {
-                $query->where(function ($q) use ($suppliersToBeExecute) {
-                    foreach ($suppliersToBeExecute as $supplier) {
-                        $q->orWhere('name', 'like', '%' . $supplier . '%');
-                    }
-                });
-            })
-            ->whereDoesntHave('invoiceDetail')
-            ->with(['agent.branch', 'client', 'supplier'])
-            ->get();
+        $this->info("Expired {$expiredCount} task(s).");
 
-        if ($expiredTasks->isEmpty()) {
-            $this->info('No expired confirmed tasks found.');
-            return 0;
-        }
+        $this->info('Running TaskStatusService::autoVoidExpiredInvoiced()' . ($companyId ? " for company {$companyId}" : ' for all companies'));
 
-        $this->info("Found {$expiredTasks->count()} expired confirmed tasks to process");
-        $this->info("Tasks from suppliers: " . $expiredTasks->pluck('supplier.name')->unique()->implode(', '));
-        $this->line('');
+        $autoVoidedCount = $taskStatusService->autoVoidExpiredInvoiced($companyId);
 
-        $processedCount = 0;
-        $voidedCount = 0;
-        $errorCount = 0;
+        $this->info("Auto-voided {$autoVoidedCount} already-invoiced task(s).");
 
-        foreach ($expiredTasks as $task) {
-            try {
-                $this->processExpiredTask($task, $isDryRun);
-                $processedCount++;
-                
-                if (!$isDryRun) {
-                    $voidedCount++;
-                }
-            } catch (\Exception $e) {
-                $errorCount++;
-                Log::error("Failed to process expired task {$task->reference}: " . $e->getMessage(), [
-                    'task_id' => $task->id,
-                    'reference' => $task->reference,
-                    'expiry_date' => $task->expiry_date,
-                    'exception' => $e->getMessage()
-                ]);
-                $this->error("Error processing task {$task->reference}: " . $e->getMessage());
-            }
-        }
-
-        // Summary
-        $this->info("Processing complete:");
-        $this->line("- Total processed: {$processedCount}");
-        if (!$isDryRun) {
-            $this->line("- Voided: {$voidedCount}");
-        }
-        $this->line("- Errors: {$errorCount}");
-
-        return $errorCount > 0 ? 1 : 0;
-    }
-
-    /**
-     * Process a single expired confirmed task - simply change to void
-     */
-    private function processExpiredTask(Task $task, bool $isDryRun): void
-    {
-        $this->line("Processing task: {$task->reference} (expired: {$task->expiry_date})");
-        $this->info("  → Changing status from 'confirmed' to 'void'");
-        
-        if (!$isDryRun) {
-            $this->changeTaskToVoid($task);
-        }
-    }
-
-    /**
-     * Change task status to void
-     */
-    private function changeTaskToVoid(Task $task): void
-    {
-        DB::transaction(function () use ($task) {
-            $oldStatus = $task->status;
-            
-            try{
-                $task->status = 'void';
-                $task->save();
-            } catch (Exception $e){
-                
-                Log::error("Failed to change task status: " . $e->getMessage(), [
-                    'task_id' => $task->id,
-                    'reference' => $task->reference,
-                    'expiry_date' => $task->expiry_date
-                ]);
-                throw $e; // Re-throw to handle in the main loop
-            }
-
-            Log::info("Task status changed from '{$oldStatus}' to 'void' due to expiry", [
-                'task_id' => $task->id,
-                'reference' => $task->reference,
-                'expiry_date' => $task->expiry_date
-            ]);
-        });
+        return 0;
     }
 }

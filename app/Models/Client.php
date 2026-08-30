@@ -1,12 +1,12 @@
 <?php
 
-
 // app/Models/Agent.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\URL;
 
 class Client extends Model
 {
@@ -39,7 +39,7 @@ class Client extends Model
 
     public function getPhoneNumberAttribute()
     {
-        return trim(($this->country_code ?? '') . ($this->phone ?? ''));
+        return trim(($this->country_code ?? '').($this->phone ?? ''));
     }
 
     public function agent()
@@ -65,6 +65,25 @@ class Client extends Model
     public function credits()
     {
         return $this->hasMany(Credit::class);
+    }
+
+    /**
+     * A time-limited, unauthenticated link to this client's credit-ledger
+     * statement (routes/web.php's 'clients.credits.shared', served by
+     * ClientController::showCreditShared()) -- e.g. for sharing over
+     * WhatsApp/Resayil or email. The 'signed' route middleware verifies the
+     * signature (and therefore the client id and expiry) on every request,
+     * so this is the only key that needs protecting -- there is no separate
+     * token to store or revoke. Expiry is controlled by
+     * config('app.client_credit_link_ttl_minutes'), default 7 days.
+     */
+    public function creditStatementUrl(): string
+    {
+        return URL::temporarySignedRoute(
+            'clients.credits.shared',
+            now()->addMinutes((int) config('app.client_credit_link_ttl_minutes', 60 * 24 * 7)),
+            ['id' => $this->id]
+        );
     }
 
     public function subClients()

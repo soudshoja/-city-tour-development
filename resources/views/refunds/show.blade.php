@@ -150,6 +150,15 @@
     @endif
 @endif
 
+    @if (! ($isPublicRefundRequest ?? true))
+        {{-- W4.U §b — staff-only console: status timeline, gated actions, linked-docs panel.
+             Never rendered on the public/signed voucher variant (print:hidden as a second guard so
+             it also never leaks into a printed copy of this page). --}}
+        <div class="max-w-4xl mx-auto mb-4 print:hidden">
+            @include('refunds.partial.refund-console', ['refund' => $refund, 'linkedDocuments' => $linkedDocuments, 'batchSiblings' => $batchSiblings, 'accountingSettings' => $accountingSettings])
+        </div>
+    @endif
+
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         @if (session('status'))
             <div class="bg-green-100 text-green-700 p-4 rounded mb-4">{{ session('status') }}</div>

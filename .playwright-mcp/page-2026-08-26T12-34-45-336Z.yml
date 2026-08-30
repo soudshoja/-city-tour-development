@@ -1,0 +1,111 @@
+- generic [ref=f28e2]:
+  - banner [ref=f28e3]:
+    - generic [ref=f28e5]:
+      - generic [ref=f28e6]: Method Not Allowed
+      - button [ref=f28e13] [cursor=pointer]
+  - main [ref=f28e16]:
+    - generic [ref=f28e17]:
+      - generic [ref=f28e19]:
+        - generic [ref=f28e20]:
+          - generic [ref=f28e21]: Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException
+          - generic [ref=f28e22]: "The GET method is not supported for route logout. Supported methods: POST."
+        - generic [ref=f28e23]:
+          - generic [ref=f28e24]: GET development.citycommerce.group
+          - generic [ref=f28e26]: PHP 8.3.33 — Laravel 11.39.1
+      - generic [ref=f28e29]:
+        - generic [ref=f28e31]:
+          - button "Expand vendor frames" [ref=f28e33] [cursor=pointer]:
+            - generic [ref=f28e34]: Expand
+            - generic [ref=f28e35]: vendor frames
+          - generic [ref=f28e41]:
+            - generic [ref=f28e42]: 31 vendor frames collapsed
+            - button "public/index.php :17" [ref=f28e44] [cursor=pointer]:
+              - generic [ref=f28e48]:
+                - generic [ref=f28e49]: public/index.php
+                - generic [ref=f28e50]: :17
+        - text: 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 1188 1189 1190 1191 1192 1193 1194 1195 1196 1197 1198 1199 1200 1201 1202 1203 1204 1205
+        - generic [ref=f28e51]:
+          - generic [ref=f28e52]: public/index.php :17
+          - code [ref=f28e57]:
+            - table [ref=f28e58]:
+              - rowgroup [ref=f28e59]:
+                - row [ref=f28e60]:
+                  - cell "12" [ref=f28e61]
+                  - cell "// Register the Composer autoloader..." [ref=f28e63]
+                - row [ref=f28e64]:
+                  - cell "13" [ref=f28e65]
+                  - cell "require __DIR__.'/../vendor/autoload.php';" [ref=f28e67]
+                - row [ref=f28e68]:
+                  - cell "14" [ref=f28e69]
+                  - cell [ref=f28e71]
+                - row [ref=f28e72]:
+                  - cell "15" [ref=f28e73]
+                  - cell "// Bootstrap Laravel and handle the request..." [ref=f28e75]
+                - row [ref=f28e76]:
+                  - cell "16" [ref=f28e77]
+                  - cell "(require_once __DIR__.'/../bootstrap/app.php')" [ref=f28e79]
+                - row [ref=f28e80]:
+                  - cell "17" [ref=f28e81]
+                  - cell "->handleRequest(Request::capture());" [ref=f28e83]
+      - generic [ref=f28e84]:
+        - generic [ref=f28e85]: Request
+        - generic [ref=f28e86]: GET /logout
+        - generic [ref=f28e87]: Headers
+        - generic [ref=f28e88]:
+          - generic [ref=f28e89]:
+            - generic [ref=f28e90] [cursor=pointer]: accept
+            - code [ref=f28e93]: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+          - generic [ref=f28e94]:
+            - generic [ref=f28e95] [cursor=pointer]: accept-encoding
+            - code [ref=f28e98]: gzip, deflate, br, zstd
+          - generic [ref=f28e99]:
+            - generic [ref=f28e100] [cursor=pointer]: accept-language
+            - code [ref=f28e103]: en-GB,en-US;q=0.9,en;q=0.8
+          - generic [ref=f28e104]:
+            - generic [ref=f28e105] [cursor=pointer]: cookie
+            - code [ref=f28e108]: XSRF-TOKEN=eyJpdiI6IktWMFVkOUM5TU9GVVdzVjhoMFAwUEE9PSIsInZhbHVlIjoiYy9qWHRKQ3dXRzF3R29oSEVib2hTbm9CbkcyVm00ZFViOXYyMUJmc2dkRnF0TDcxcXF3L0pyWm01THM2SkFPMGtkZFN6R01vZnZCaXdxa1dKdWk0ZEhabXV4Z2VpT1JxRXpBVERHVjhRZnoxKzhYOGRFRE9oWlBNYzVDVzNLVkYiLCJtYWMiOiJkMDJhZDBkYjczZDViMzAxYzRiY2MxYTBmZTRkM2M2MmY5OGMxY2E1YjU2YzJiODExYzg1YTAwZjljNWI4MjIyIiwidGFnIjoiIn0%3D; city_tour_session=eyJpdiI6IkRNUlc3MzYrVTJXSS8yWjBsYzlKQUE9PSIsInZhbHVlIjoiVldsd2Y1eERuS05VdmUzZ01Fbk9RUzJHclVIZ0VLdE5ER3NLOXBXNDNxcEVYaGkveHkrbmF5NnU4Y3RKekV1UW5lSWp6UFFLTExmclpLN0trcC9pNEQyalhVOEJlb2pXSzRCaU00Y3Y0MytZTEdvNCsvTUtuRFY4Zk5OZXk1U3giLCJtYWMiOiJhZDg2YjBiZmJkMTI0ZGJmMzE3MWFjNmZkZWVkNmUxNzk5YTlkZDkyMzVkNTU5ZTVlMjhhM2IyOTIzOTgwMmVkIiwidGFnIjoiIn0%3D
+          - generic [ref=f28e109]:
+            - generic [ref=f28e110] [cursor=pointer]: host
+            - code [ref=f28e113]: development.citycommerce.group
+          - generic [ref=f28e114]:
+            - generic [ref=f28e115] [cursor=pointer]: user-agent
+            - code [ref=f28e118]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+          - generic [ref=f28e119]:
+            - generic [ref=f28e120] [cursor=pointer]: sec-ch-ua
+            - code [ref=f28e123]: "\"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\""
+          - generic [ref=f28e124]:
+            - generic [ref=f28e125] [cursor=pointer]: sec-ch-ua-mobile
+            - code [ref=f28e128]: "?0"
+          - generic [ref=f28e129]:
+            - generic [ref=f28e130] [cursor=pointer]: sec-ch-ua-platform
+            - code [ref=f28e133]: "\"Windows\""
+          - generic [ref=f28e134]:
+            - generic [ref=f28e135] [cursor=pointer]: upgrade-insecure-requests
+            - code [ref=f28e138]: "1"
+          - generic [ref=f28e139]:
+            - generic [ref=f28e140] [cursor=pointer]: sec-fetch-site
+            - code [ref=f28e143]: none
+          - generic [ref=f28e144]:
+            - generic [ref=f28e145] [cursor=pointer]: sec-fetch-mode
+            - code [ref=f28e148]: navigate
+          - generic [ref=f28e149]:
+            - generic [ref=f28e150] [cursor=pointer]: sec-fetch-user
+            - code [ref=f28e153]: "?1"
+          - generic [ref=f28e154]:
+            - generic [ref=f28e155] [cursor=pointer]: sec-fetch-dest
+            - code [ref=f28e158]: document
+          - generic [ref=f28e159]:
+            - generic [ref=f28e160] [cursor=pointer]: priority
+            - code [ref=f28e163]: u=0, i
+        - generic [ref=f28e164]: Body
+        - code [ref=f28e169]: No body data
+      - generic [ref=f28e170]:
+        - generic [ref=f28e171]: Application
+        - generic [ref=f28e172]: Routing
+        - code [ref=f28e176]: No routing data
+        - generic [ref=f28e177]: Database Queries
+        - generic [ref=f28e179]:
+          - generic [ref=f28e180]:
+            - text: mysql
+            - generic [ref=f28e181]: (3.39 ms)
+          - code [ref=f28e184]: "select * from `cache` where `key` in ('aicfg_overrides')"

@@ -27,10 +27,10 @@ class MyFatoorah
     protected $apiKey;
     protected $baseUrl;
 
-    public function __construct()
+    public function __construct(?int $companyId = null)
     {
         $configService = new GatewayConfigService();
-        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig($companyId);
 
         if ($myfatoorahConfig['status'] === 'error') {
             Log::error('[MYFATOORAH] Configuration error', [
@@ -68,6 +68,26 @@ class MyFatoorah
             Log::error('[MYFATOORAH] Company not found for payment', ['payment_id' => $payment->id]);
             return response()->json(['error' => 'Company not found for the agent.'], 404);
         }
+
+        // Re-resolve the gateway config scoped to the payment's own company --
+        // the constructor may have loaded config unscoped (companyId null,
+        // as PaymentController constructs this class with no args), so the
+        // credentials used for the actual charge must be re-fetched here to
+        // avoid leaking another company's MyFatoorah API key.
+        $configService = new GatewayConfigService();
+        $scopedConfig = $configService->getMyFatoorahConfig($company->id);
+
+        if ($scopedConfig['status'] === 'error') {
+            Log::error('[MYFATOORAH] Configuration error for company', [
+                'company_id' => $company->id,
+                'message' => $scopedConfig['message'],
+            ]);
+
+            return response()->json(['error' => $scopedConfig['message']], 500);
+        }
+
+        $this->apiKey = $scopedConfig['data']['api_key'];
+        $this->baseUrl = $scopedConfig['data']['base_url'];
 
         $invoiceNumber = $request->input('invoice_number');
 
@@ -124,21 +144,32 @@ class MyFatoorah
             ],
         ];
 
-        Log::info('[MYFATOORAH] ExecutePayment payload', ['payload' => $executePayload]);
+        Log::info('[MYFATOORAH] ExecutePayment payload', [
+            'payment_id' => $payment->id,
+            'voucher_number' => $payment->voucher_number,
+            'invoice_value' => $executePayload['InvoiceValue'],
+            'currency' => $executePayload['DisplayCurrencyIso'],
+        ]);
 
         $executeResponse = Http::withHeaders([
             'Authorization' => "Bearer $this->apiKey",
             'Content-Type' => 'application/json',
         ])->post("$this->baseUrl/ExecutePayment", $executePayload);
 
-        Log::info('[MYFATOORAH] ExecutePayment response', ['response' => $executeResponse->json()]);
+        Log::info('[MYFATOORAH] ExecutePayment response', [
+            'payment_id' => $payment->id,
+            'status' => $executeResponse->status(),
+            'invoice_id' => $executeResponse->json('Data.InvoiceId'),
+            'has_payment_url' => ! empty($executeResponse->json('Data.PaymentURL')),
+        ]);
 
         if (!$executeResponse->successful()) {
             $errorBody = $executeResponse->json();
             Log::error('[MYFATOORAH] ExecutePayment failed', [
-                'response' => $errorBody,
+                'payment_id' => $payment->id,
                 'status' => $executeResponse->status(),
-                'payment_id' => $payment->id
+                'message' => $errorBody['Message'] ?? null,
+                'validation_errors' => $errorBody['ValidationErrors'] ?? [],
             ]);
 
             return [
@@ -208,14 +239,22 @@ class MyFatoorah
             "KeyType" => $keyType
         ]);
 
-        Log::info('[MYFATOORAH] GetPaymentStatus response', ['response' => $response->json()]);
+        Log::info('[MYFATOORAH] GetPaymentStatus response', [
+            'key' => $key,
+            'key_type' => $keyType,
+            'status' => $response->status(),
+            'invoice_id' => $response->json('Data.InvoiceId'),
+            'invoice_status' => $response->json('Data.InvoiceStatus'),
+        ]);
 
         if (!$response->successful()) {
             $errorBody = $response->json();
 
             Log::error('[MYFATOORAH] GetPaymentStatus failed', [
                 'key' => $key,
-                'key_type' => $keyType
+                'key_type' => $keyType,
+                'status' => $response->status(),
+                'message' => $errorBody['Message'] ?? null,
             ]);
 
             return [

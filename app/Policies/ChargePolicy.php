@@ -4,15 +4,23 @@ namespace App\Policies;
 
 use App\Models\Charge;
 use App\Models\User;
+use App\Policies\Concerns\RequiresCompanyModule;
+use App\Support\Modules;
 use Illuminate\Auth\Access\Response;
 
 class ChargePolicy
 {
+    use RequiresCompanyModule;
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if($user->hasRole('admin')) return true;
 
         return $user->can('view charges');
@@ -23,6 +31,10 @@ class ChargePolicy
      */
     public function view(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         return false;
     }
 
@@ -31,6 +43,10 @@ class ChargePolicy
      */
     public function create(User $user): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) {
             return true;
         } elseif ($user->hasRole('company') || $user->hasRole('agent')) {
@@ -47,6 +63,10 @@ class ChargePolicy
      */
     public function createSystemGateway(User $user): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         return $user->hasRole('admin');
     }
 
@@ -55,6 +75,10 @@ class ChargePolicy
      */
     public function update(User $user, ?Charge $charge = null): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) {
             return true;
         } elseif ($user->hasRole('company') || $user->hasRole('agent')) {
@@ -71,6 +95,10 @@ class ChargePolicy
      */
     public function updateAll(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) {
             return true;
         }
@@ -87,6 +115,10 @@ class ChargePolicy
      */
     public function updateLimited(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) {
             return true;
         }
@@ -103,6 +135,10 @@ class ChargePolicy
      */
     public function delete(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if (!$charge->can_be_deleted) {
             return false;
         }
@@ -127,6 +163,10 @@ class ChargePolicy
      */
     public function updateCredentials(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if ($user->hasRole('admin') || $user->hasRole('company')) {
             return true;
         }
@@ -143,6 +183,10 @@ class ChargePolicy
      */
     public function toggleActive(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         if ($user->hasRole('admin')) {
             return true;
         }
@@ -155,6 +199,10 @@ class ChargePolicy
      */
     public function restore(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         return false;
     }
 
@@ -163,6 +211,10 @@ class ChargePolicy
      */
     public function forceDelete(User $user, Charge $charge): bool
     {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
+            return false;
+        }
+
         return false;
     }
 }

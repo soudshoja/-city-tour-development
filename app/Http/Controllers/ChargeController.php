@@ -187,7 +187,12 @@ class ChargeController extends Controller
             'description' => 'nullable|string|max:255',
             'type' => 'required|string|max:255',
             'charge_type' => 'required',
-            'paid_by' => 'required',
+            // W4.D: 'Client' is now an explicitly validated, supported bearer (previously any
+            // string passed through 'required' unchecked). Safe now that the gross-up posting
+            // (InvoiceController::createGatewayFeeRecoveryEntries()) exists — a client-borne
+            // gateway fee is correctly recovered (Dr RECEIVABLE_CONTROL / Cr GATEWAY_FEE_RECOVERY)
+            // instead of the deleted createGatewayProfitEntries()'s double-booked markup/rounding.
+            'paid_by' => 'required|in:Company,Client',
             'amount' => 'required|numeric',
             'self_charge' => 'required|numeric|gte:amount',
             'extra_charge' => 'nullable|numeric|min:0',
@@ -361,7 +366,9 @@ class ChargeController extends Controller
         if (Gate::allows('updateAll', $charge)) {
             $request->validate([
                 'description' => 'nullable|string|max:255',
-                'paid_by' => 'required',
+                // W4.D: see store()'s identical comment -- 'Client' is now explicitly validated
+                // and supported now that the gross-up posting exists.
+                'paid_by' => 'required|in:Company,Client',
                 'charge_type' => 'required',
                 'amount' => 'required|numeric|min:0',
                 'self_charge' => 'required|numeric|gte:amount',
@@ -401,7 +408,9 @@ class ChargeController extends Controller
                 'amount' => 'required|numeric|min:0',
                 'self_charge' => 'required|numeric|gte:amount',
                 'extra_charge' => 'nullable|numeric|min:0',
-                'paid_by' => 'required',
+                // W4.D: see store()'s identical comment -- 'Client' is now explicitly validated
+                // and supported now that the gross-up posting exists.
+                'paid_by' => 'required|in:Company,Client',
                 'charge_type' => 'required',
                 'description' => 'nullable|string|max:255',
             ]);

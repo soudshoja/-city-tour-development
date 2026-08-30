@@ -1,7 +1,7 @@
-<div x-data="{ 
-            showTaskModal: false, 
+<div x-data="{
+            showTaskModal: false,
             showTaxPopup: false,
-            taskData: null, 
+            taskData: null,
             loading: false,
             error: null,
             async fetchTaskDetails(id) {
@@ -9,6 +9,7 @@
                 this.loading = true;
                 this.error = null;
                 this.showTaskModal = true;
+                this.resetTaskActions();
                 try {
                     const response = await fetch(`/tasks/show/${id}`);
                     <!-- console.log('Response status:', response.status); -->
@@ -20,6 +21,163 @@
                     console.error('Error fetching task details:', error);
                 } finally {
                     this.loading = false;
+                }
+            },
+
+            // W6.U 'Task actions' (w6-brief.md 'W6.U -- UI'): void / void-with-fee / reissue,
+            // each a thin fetch() against TaskController -> TaskStatusService -> PostingSeam.
+            // Client-side gating (can_void/can_reissue/is_locked from show()'s own JSON) is UX
+            // only -- the routes themselves re-authorize and re-check preconditions.
+            actionPanel: null, // null | 'void' | 'void-fee' | 'reissue'
+            actionBusy: false,
+            actionError: null,
+            actionMessage: null,
+            feeAmount: null,
+            feeSchedule: null,
+            reissueSearch: '',
+            reissueResults: [],
+            reissueSelected: null,
+            reissuePreviewData: null,
+
+            resetTaskActions() {
+                this.actionPanel = null;
+                this.actionBusy = false;
+                this.actionError = null;
+                this.actionMessage = null;
+                this.feeAmount = null;
+                this.feeSchedule = null;
+                this.reissueSearch = '';
+                this.reissueResults = [];
+                this.reissueSelected = null;
+                this.reissuePreviewData = null;
+            },
+
+            openActionPanel(panel) {
+                this.actionError = null;
+                this.actionMessage = null;
+                this.actionPanel = this.actionPanel === panel ? null : panel;
+
+                if (this.actionPanel === 'void-fee' && this.taskData?.id) {
+                    this.loadFeePreview();
+                }
+            },
+
+            async loadFeePreview() {
+                try {
+                    const res = await fetch(`/tasks/${this.taskData.id}/void-fee-preview`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        this.feeSchedule = data;
+                        this.feeAmount = data.schedule_fee;
+                    }
+                } catch (e) {
+                    console.error('Error loading fee preview:', e);
+                }
+            },
+
+            async submitVoid(withFee) {
+                this.actionBusy = true;
+                this.actionError = null;
+                this.actionMessage = null;
+                try {
+                    const body = {};
+                    if (withFee) body.fee = this.feeAmount ?? 0;
+
+                    const res = await fetch(`/tasks/${this.taskData.id}/void`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await res.json();
+
+                    if (res.status === 202 && data.pending_approval) {
+                        this.actionMessage = data.message + ' (request #' + data.pending_action_id + ')';
+                        this.actionPanel = null;
+                    } else if (data.success) {
+                        this.actionMessage = 'Task voided.';
+                        this.taskData.status = data.ticket_status ?? 'void';
+                        this.taskData.ticket_status = data.ticket_status ?? 'void';
+                        this.actionPanel = null;
+                    } else {
+                        this.actionError = data.message || 'Failed to void task.';
+                    }
+                } catch (e) {
+                    this.actionError = 'Network error while voiding task.';
+                } finally {
+                    this.actionBusy = false;
+                }
+            },
+
+            async searchReissueTargets() {
+                if (!this.reissueSearch || this.reissueSearch.length < 2) {
+                    this.reissueResults = [];
+                    return;
+                }
+                try {
+                    const res = await fetch(`/tasks/search-original-tasks?id=${this.taskData.id}&search=${encodeURIComponent(this.reissueSearch)}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    this.reissueResults = await res.json();
+                } catch (e) {
+                    console.error('Error searching reissue targets:', e);
+                }
+            },
+
+            async selectReissueTarget(task) {
+                this.reissueSelected = task;
+                this.reissueResults = [];
+                this.reissueSearch = task.reference;
+
+                try {
+                    const res = await fetch(`/tasks/${this.taskData.id}/reissue-preview?new_task_id=${task.id}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if (data.success) this.reissuePreviewData = data;
+                } catch (e) {
+                    console.error('Error loading reissue preview:', e);
+                }
+            },
+
+            async submitReissue() {
+                if (!this.reissueSelected) {
+                    this.actionError = 'Pick a task to reissue into first.';
+                    return;
+                }
+                this.actionBusy = true;
+                this.actionError = null;
+                this.actionMessage = null;
+                try {
+                    const res = await fetch(`/tasks/${this.taskData.id}/reissue`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({ new_task_id: this.reissueSelected.id })
+                    });
+                    const data = await res.json();
+
+                    if (res.status === 202 && data.pending_approval) {
+                        this.actionMessage = data.message + ' (request #' + data.pending_action_id + ')';
+                        this.actionPanel = null;
+                    } else if (data.success) {
+                        this.actionMessage = 'Task reissued.';
+                        this.actionPanel = null;
+                    } else {
+                        this.actionError = data.message || 'Failed to reissue task.';
+                    }
+                } catch (e) {
+                    this.actionError = 'Network error while reissuing task.';
+                } finally {
+                    this.actionBusy = false;
                 }
             }
         }"
@@ -135,6 +293,30 @@
                                                       'text-gray-700 bg-gray-100 dark:bg-gray-700 dark:text-gray-300': !['confirmed', 'issued', 'pending', 'void'].includes(taskData?.status)
                                                   }"
                                             class="text-base font-bold capitalize px-3 py-1.5 rounded-full shadow-sm"></span>
+                                    </div>
+                                    <!-- W6.U: ticket_status / client_status badges alongside the legacy status badge above. -->
+                                    <div x-show="taskData?.ticket_status" class="flex items-start justify-between group/item hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
+                                        <span class="text-base text-gray-600 dark:text-gray-400 font-medium">Ticket status:</span>
+                                        <span x-text="taskData?.ticket_status"
+                                            :class="{
+                                                      'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-300': taskData?.ticket_status === 'issued',
+                                                      'text-gray-700 bg-gray-200 dark:bg-gray-700 dark:text-gray-300': taskData?.ticket_status === 'void',
+                                                      'text-indigo-700 bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-300': taskData?.ticket_status === 'reissued',
+                                                      'text-orange-700 bg-orange-100 dark:bg-orange-900/50 dark:text-orange-300': taskData?.ticket_status === 'refunded',
+                                                      'text-cyan-700 bg-cyan-100 dark:bg-cyan-900/50 dark:text-cyan-300': taskData?.ticket_status === 'emd'
+                                                  }"
+                                            class="text-sm font-bold capitalize px-3 py-1 rounded-full shadow-sm"></span>
+                                    </div>
+                                    <div x-show="taskData?.client_status" class="flex items-start justify-between group/item hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
+                                        <span class="text-base text-gray-600 dark:text-gray-400 font-medium">Client status:</span>
+                                        <span x-text="taskData?.client_status"
+                                            :class="{
+                                                      'text-slate-700 bg-slate-100 dark:bg-slate-700 dark:text-slate-300': taskData?.client_status === 'open',
+                                                      'text-amber-700 bg-amber-100 dark:bg-amber-900/50 dark:text-amber-300': taskData?.client_status === 'credited',
+                                                      'text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-300': taskData?.client_status === 'refunded',
+                                                      'text-violet-700 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300': taskData?.client_status === 'rebilled'
+                                                  }"
+                                            class="text-sm font-bold capitalize px-3 py-1 rounded-full shadow-sm"></span>
                                     </div>
                                     <div x-show="taskData?.passenger_name" class="flex items-start justify-between group/item hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
                                         <span class="text-base text-gray-600 dark:text-gray-400 font-medium">Passenger:</span>
@@ -492,6 +674,96 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- W6.U 'Task actions' (w6-brief.md 'W6.U -- UI'): void / void-with-fee / reissue. -->
+                    <div x-show="taskData?.can_void || taskData?.can_reissue" class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-red-100 dark:border-red-900/40">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                Task actions
+                            </h4>
+                            <span x-show="taskData?.is_locked" class="text-xs font-semibold text-amber-700 bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-1 rounded-full">Invoice locked</span>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button type="button" x-show="taskData?.can_void" :disabled="taskData?.is_locked"
+                                @click="openActionPanel('void')"
+                                :class="actionPanel === 'void' ? 'ring-2 ring-red-400' : ''"
+                                class="px-4 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed text-red-700 dark:bg-red-900/30 dark:text-red-300 font-semibold text-sm rounded-xl transition">
+                                Void
+                            </button>
+                            <button type="button" x-show="taskData?.can_void" :disabled="taskData?.is_locked"
+                                @click="openActionPanel('void-fee')"
+                                :class="actionPanel === 'void-fee' ? 'ring-2 ring-red-400' : ''"
+                                class="px-4 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed text-red-700 dark:bg-red-900/30 dark:text-red-300 font-semibold text-sm rounded-xl transition">
+                                Void with fee
+                            </button>
+                            <button type="button" x-show="taskData?.can_reissue" :disabled="taskData?.is_locked"
+                                @click="openActionPanel('reissue')"
+                                :class="actionPanel === 'reissue' ? 'ring-2 ring-indigo-400' : ''"
+                                class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-semibold text-sm rounded-xl transition">
+                                Reissue
+                            </button>
+                        </div>
+
+                        <div x-show="actionError" x-cloak class="mb-3 text-sm font-medium text-red-700 bg-red-50 dark:bg-red-900/30 dark:text-red-300 rounded-lg px-3 py-2" x-text="actionError"></div>
+                        <div x-show="actionMessage" x-cloak class="mb-3 text-sm font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg px-3 py-2" x-text="actionMessage"></div>
+
+                        <!-- Void confirm panel -->
+                        <div x-show="actionPanel === 'void'" x-cloak class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+                            <p class="text-sm text-gray-700 dark:text-gray-300">This reverses the ticket and the client's sale line for <strong x-text="taskData?.reference"></strong>. This cannot be undone (a correction afterwards would be a new reversal, not an edit).</p>
+                            <button type="button" :disabled="actionBusy" @click="submitVoid(false)" class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition">
+                                <span x-show="!actionBusy">Confirm void</span>
+                                <span x-show="actionBusy">Voiding...</span>
+                            </button>
+                        </div>
+
+                        <!-- Void-with-fee panel -->
+                        <div x-show="actionPanel === 'void-fee'" x-cloak class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+                            <div>
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Fee amount (KWD)</label>
+                                <input type="number" step="0.001" min="0" x-model.number="feeAmount" class="w-40 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm">
+                                <p x-show="feeSchedule" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Schedule fee: <span x-text="feeSchedule?.schedule_fee"></span> KWD.
+                                    <span x-show="feeSchedule?.override_policy === 'needs_approval'">A different amount will require approval before it posts.</span>
+                                </p>
+                            </div>
+                            <button type="button" :disabled="actionBusy" @click="submitVoid(true)" class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition">
+                                <span x-show="!actionBusy">Confirm void with fee</span>
+                                <span x-show="actionBusy">Voiding...</span>
+                            </button>
+                        </div>
+
+                        <!-- Reissue panel -->
+                        <div x-show="actionPanel === 'reissue'" x-cloak class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+                            <div class="relative">
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Link the new (replacement) task</label>
+                                <input type="text" x-model="reissueSearch" @input.debounce.300ms="searchReissueTargets()" placeholder="Search by reference or client"
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm">
+                                <div x-show="reissueResults.length > 0" x-cloak class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                    <template x-for="result in reissueResults" :key="result.id">
+                                        <button type="button" @click="selectReissueTarget(result)" class="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
+                                            <span x-text="result.reference"></span> &mdash; <span x-text="result.client_name"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div x-show="reissuePreviewData" x-cloak class="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3 text-sm">
+                                <div class="flex justify-between"><span>Old sell</span><span x-text="reissuePreviewData?.old_sell"></span></div>
+                                <div class="flex justify-between"><span>New sell</span><span x-text="reissuePreviewData?.new_sell"></span></div>
+                                <div class="flex justify-between font-bold border-t border-indigo-200 dark:border-indigo-800 mt-1 pt-1">
+                                    <span x-text="reissuePreviewData?.fare_difference?.type === 'dbn' ? 'Client owes (DBN)' : (reissuePreviewData?.fare_difference?.type === 'crn' ? 'Client credited (CRN)' : 'No fare difference')"></span>
+                                    <span x-text="reissuePreviewData?.fare_difference?.amount"></span>
+                                </div>
+                            </div>
+
+                            <button type="button" :disabled="actionBusy || !reissueSelected" @click="submitReissue()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition">
+                                <span x-show="!actionBusy">Confirm reissue</span>
+                                <span x-show="actionBusy">Reissuing...</span>
+                            </button>
                         </div>
                     </div>
 

@@ -1,0 +1,4 @@
+[    1780ms] [LOG] Active Tab: payment @ https://development.citycommerce.group/settings:5868
+[ 2620517ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/coa:0
+[ 2620956ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/reports/trial-balance:0
+[ 2621344ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://development.citycommerce.group/journal-entries/all:0

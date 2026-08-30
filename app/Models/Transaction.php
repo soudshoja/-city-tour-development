@@ -29,6 +29,7 @@ class Transaction extends Model
         'remarks_internal',
         'remarks_fl',
         'transaction_date',
+        'posting_date',
         'is_locked',
         'locked_by',
         'locked_at',
@@ -36,6 +37,9 @@ class Transaction extends Model
 
     protected $casts = [
         'transaction_date' => 'datetime',
+        // P2.5.B (p2_5-brief.md §P2.5.B): the period-bucketing date — see JournalEntry's own
+        // identical cast for the full rationale (BUG-C4 / three-date model).
+        'posting_date' => 'date',
         'is_locked' => 'boolean',
         'locked_at' => 'datetime',
     ];
@@ -116,5 +120,60 @@ class Transaction extends Model
     public function invoiceReceipt()    // one receipt per transaction
     {
         return $this->hasOne(InvoiceReceipt::class, 'transaction_id');
+    }
+
+    /**
+     * P2.5.E (p2_5-brief.md §P2.5.E): a lightweight override for unlocking a `Transaction`
+     * DIRECTLY. Checks this document's own journal lines for a reconciled leaf, and this
+     * document's own accounting period -- the same two leaf signals
+     * {@see \App\Models\JournalEntry::unlockBlockers()} checks on itself, and the same signals
+     * {@see \App\Services\Accounting\UnlockDependencyResolver} checks when it reaches THIS
+     * transaction while walking an Invoice's chain.
+     */
+    public function unlockBlockers(): array
+    {
+        $blockers = [];
+
+        $this->journalEntries()
+            ->withoutGlobalScope('company')
+            ->where('reconciled', '!=', 0)
+            ->get()
+            ->each(function (JournalEntry $line) use (&$blockers) {
+                $blockers[] = [
+                    'type' => 'reconciled_line',
+                    'id' => (int) $line->id,
+                    'number' => 'JE-'.$line->id,
+                    'status' => 'reconciled',
+                    'url' => \Illuminate\Support\Facades\Route::has('journal-entries.index')
+                        ? route('journal-entries.index', ['transactionId' => $this->id])
+                        : null,
+                    'hint' => 'This line is bank-reconciled -- unreconcile it (with a reason) before it can be unlocked, or correct via reverse + repost instead.',
+                    'log_center_url' => \App\Services\Accounting\AuditLogLinker::forSubject('journal_entry', (int) $line->id),
+                ];
+            });
+
+        $date = $this->posting_date ?? $this->transaction_date;
+        if ($date !== null && $this->company_id !== null) {
+            $status = app(\App\Services\Accounting\PeriodGuard::class)->statusFor((int) $this->company_id, $date);
+            if ($status !== AccountingPeriod::STATUS_OPEN) {
+                $year = (int) $date->format('Y');
+                $month = (int) $date->format('n');
+                $blockers[] = [
+                    'type' => 'period',
+                    'id' => $year * 100 + $month,
+                    'number' => sprintf('%04d-%02d', $year, $month),
+                    'status' => 'period_closed',
+                    'url' => \Illuminate\Support\Facades\Route::has('accounting.periods.index')
+                        ? route('accounting.periods.index', ['year' => $year])
+                        : null,
+                    'hint' => $status === AccountingPeriod::STATUS_LOCKED
+                        ? 'This period is locked -- reopen it (accounting.period.reopen, with a reason) before this document can be unlocked.'
+                        : 'This period is soft-closed -- an accounting.period.post-soft-closed override (with a reason) is required.',
+                    'log_center_url' => \App\Services\Accounting\AuditLogLinker::forSubject('accounting_period', $year * 100 + $month),
+                ];
+            }
+        }
+
+        return $blockers;
     }
 }

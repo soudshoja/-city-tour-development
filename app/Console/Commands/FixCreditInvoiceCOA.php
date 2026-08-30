@@ -330,6 +330,25 @@ class FixCreditInvoiceCOA extends Command
         $category = $item['category'];
         $scenario = $item['scenario'];
 
+        // W2c fix (orchestrator residual R-c). Design call E4's guard originally lived only
+        // inside createCreditPaymentCOA() below, which fixSplitPartialInvoice() never calls — it
+        // hand-rolls the identical Transaction/JournalEntry event directly with its own inline
+        // Transaction::create()/JournalEntry::create() calls (reference_type 'Payment',
+        // description "Credit Payment for {invoice_number}"), so an engine-ON company's
+        // split/partial invoices were never refused. Extended to this ONE dispatcher entry —
+        // both the 'credit' and 'split_partial' categories route through fixInvoice(), so both
+        // are now covered. The pre-existing guard inside createCreditPaymentCOA() is left in
+        // place as-is (defense in depth for any future direct caller of that method).
+        $companyId = $invoice->agent?->branch?->company_id;
+        if ($companyId && \App\Models\Company::find($companyId)?->posting_engine_enabled) {
+            throw new \Exception(
+                "Refusing to run FixCreditInvoiceCOA for invoice {$invoice->id}: the posting engine "
+                . "is enabled for company {$companyId}. This legacy maintenance command hand-rolls "
+                . "COA rows the engine now owns for this company; use the engine's own repost/reverse "
+                . "tooling instead."
+            );
+        }
+
         DB::transaction(function () use ($invoice, $category, $scenario, $item) {
             if ($category === 'credit') {
                 $this->fixCreditInvoice($invoice, $scenario);
@@ -715,6 +734,23 @@ class FixCreditInvoiceCOA extends Command
     {
         $companyId = $invoice->agent?->branch?->company_id;
         $branchId = $invoice->agent?->branch_id;
+
+        // Design call E4 (W2b build, KEY: pas-credit). This command hand-rolls
+        // Transaction/JournalEntry rows directly — once a company is cut over to the posting
+        // engine (PaymentApplicationService::createCreditPaymentCOA() / PostingSeam), those
+        // rows belong to the engine, which owns its own idempotency-key dedup and balance
+        // invariants that this command knows nothing about. Refuse rather than risk writing
+        // rows the engine cannot see or reconcile against. FixCreditInvoiceCOA itself is not
+        // cut over to the engine (P5.17 retirement is tracked separately) — this is only an
+        // entry guard, nothing else.
+        if ($companyId && \App\Models\Company::find($companyId)?->posting_engine_enabled) {
+            throw new \Exception(
+                "Refusing to run FixCreditInvoiceCOA for invoice {$invoice->id}: the posting engine "
+                . "is enabled for company {$companyId}. This legacy maintenance command hand-rolls "
+                . "COA rows the engine now owns for this company; use the engine's own repost/reverse "
+                . "tooling instead."
+            );
+        }
 
         $liabilityAccount = $this->getLiabilityAccount($companyId);
         $receivableAccount = $this->getReceivableAccount($companyId);

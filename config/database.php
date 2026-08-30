@@ -131,12 +131,22 @@ return [
         // would vanish the instant the rollback runs, defeating the entire point of "make this
         // visible to an admin". No other class should use this connection: it exists for exactly
         // one durability requirement, not as a general-purpose second database handle.
+        // P1 audit-isolation fix (Accounting Gap/18): this connection's database name is read
+        // from its OWN env key, DB_AUDIT_DATABASE, falling back to DB_DATABASE exactly as before
+        // when that key is unset -- production behaviour is byte-identical either way. The
+        // dedicated key exists so tests can point this connection at a per-agent database WITHOUT
+        // touching DB_DATABASE (which phpunit.xml force="true"s to the single SHARED
+        // "city_tour_test" for the unrelated `mysql`/default connection -- see that file). See
+        // tests/Concerns/GuardsTestDatabaseIsolation.php's deriveAuditDatabaseEnvironment(), which
+        // plants DB_AUDIT_DATABASE into $_SERVER/$_ENV/putenv() -- derived from the resolved
+        // DB_TEST_DATABASE -- before the application (and therefore this config file) is even
+        // built, so this env() call sees it on the very first read.
         'accounting_audit' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
+            'database' => env('DB_AUDIT_DATABASE', env('DB_DATABASE', 'laravel')),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),

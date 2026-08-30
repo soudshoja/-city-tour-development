@@ -1128,8 +1128,18 @@ class ClientController extends Controller
                 'transaction_date' => $payment->payment_date ?? now(),
             ]);
 
+            $trialBalanceService = app(\App\Services\TrialBalanceService::class);
+
             // ENTRY 1: DEBIT Asset (Payment Gateway Bank)
             if ($bankPaymentFee) {
+                // Asset account (debit-normal): ledger-derived balance replaces the
+                // hand-maintained actual_balance column as the 'balance' source — see
+                // TrialBalanceService::getCurrentAccountBalance()'s docblock. This read
+                // happens before the JournalEntry below is inserted, so it reflects the
+                // balance *prior to* this transaction, matching the actual_balance read
+                // it replaces.
+                $bankPaymentFeeLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $bankPaymentFee->id);
+
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $companyId,
@@ -1139,19 +1149,25 @@ class ClientController extends Controller
                     'description' => 'Client Pays by '.$client->full_name.' via (Assets): '.$bankPaymentFee->name,
                     'debit' => $assetAmount,
                     'credit' => 0,
-                    'balance' => $bankPaymentFee->actual_balance + $assetAmount,
+                    'balance' => $bankPaymentFeeLedgerBalance + $assetAmount,
                     'name' => $bankPaymentFee->name,
                     'type' => 'bank',
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $bankPaymentFee->id,
                 ]);
 
+                // Legacy actual_balance write kept in place — strangler posture, see
+                // TrialBalanceService::getCurrentAccountBalance()'s docblock.
                 $bankPaymentFee->actual_balance += $assetAmount;
                 $bankPaymentFee->save();
             }
 
             // ENTRY 2: DEBIT Expense (Gateway Fee) - ALWAYS
             if ($bankCOAFee && $accountingFee > 0) {
+                // Expense account (debit-normal): same ledger-derived replacement as
+                // ENTRY 1 above.
+                $bankCOAFeeLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $bankCOAFee->id);
+
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $companyId,
@@ -1162,12 +1178,14 @@ class ClientController extends Controller
                     'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$bankCOAFee->name,
                     'debit' => $accountingFee,
                     'credit' => 0,
-                    'balance' => $bankCOAFee->actual_balance + $accountingFee,
+                    'balance' => $bankCOAFeeLedgerBalance + $accountingFee,
                     'name' => $bankCOAFee->name,
                     'type' => 'charges',
                     'type_reference_id' => $bankCOAFee->id,
                 ]);
 
+                // Legacy actual_balance write kept in place — strangler posture, see
+                // TrialBalanceService::getCurrentAccountBalance()'s docblock.
                 $bankCOAFee->actual_balance += $accountingFee;
                 $bankCOAFee->save();
             }
@@ -1195,6 +1213,14 @@ class ClientController extends Controller
             }
 
             // ENTRY 4: CREDIT Liability (Client Advance)
+            // Liability account (credit-normal): ledger-derived balance, same rule as
+            // CheckMyFatoorahPayments.php's Payment Gateway account (same account tree —
+            // Liabilities -> Client -> Payment Gateway). A credit INCREASES a
+            // credit-normal account's balance, and this call site's arithmetic was
+            // already correctly using `+` on the legacy actual_balance column — only the
+            // source of the balance changes here, not the sign.
+            $clientAdvancePaymentGatewayLedgerBalance = $trialBalanceService->getCurrentAccountBalance($companyId, $clientAdvancePaymentGateway->id);
+
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'branch_id' => $agent->branch->id,
@@ -1204,13 +1230,15 @@ class ClientController extends Controller
                 'description' => 'Advance Payment in voucher number: '.$payment->voucher_number,
                 'debit' => 0,
                 'credit' => $clientCreditAmount,
-                'balance' => $clientAdvancePaymentGateway->actual_balance + $clientCreditAmount,
+                'balance' => $clientAdvancePaymentGatewayLedgerBalance + $clientCreditAmount,
                 'name' => $client->full_name,
                 'type' => 'advance',
                 'voucher_number' => $payment->voucher_number,
                 'type_reference_id' => $client->id,
             ]);
 
+            // Legacy actual_balance write kept in place — strangler posture, see
+            // TrialBalanceService::getCurrentAccountBalance()'s docblock.
             $clientAdvancePaymentGateway->actual_balance += $clientCreditAmount;
             $clientAdvancePaymentGateway->save();
 
@@ -1268,7 +1296,146 @@ class ClientController extends Controller
         }
 
         $agent = Agent::find($request->agent_id);
+        $companyId = (int) $agent->branch->company_id;
 
+        // W4.R bundled fix (w4-brief.md §5 "ClientController::refundProcess Dr/Cr fixed (money
+        // out = Dr 2632 / Cr bank|gateway clearing)"; ct-refund-map.md §4 — "orientation looks
+        // inverted for money out": the pre-existing body below debits 2632 (correct — it drains
+        // the client advance) but CREDITS "Refund Payable > Clients", ANOTHER liability account,
+        // not an asset — that reclassifies one liability into a different liability bucket
+        // without ever booking the cash actually leaving the company. Engine ON posts the
+        // corrected pair through PostingSeam instead; engine OFF keeps the pre-existing body
+        // completely unchanged (byte parity) as the `$legacy` closure below.
+        $legacy = function () use ($id, $request, $client, $agent) {
+            return $this->refundProcessLegacy($id, $request, $client, $agent);
+        };
+
+        if (app(\App\Services\Accounting\PostingSeam::class)->isEnabledFor($companyId)) {
+            $amount = round((float) $request->amount, 3);
+
+            // W4.R verify-fix round 3 (finding #2, MEDIUM): the idempotency key used to bake in
+            // `now()->format('YmdHis')` (wall-clock) — see PaymentIdempotencyKey::
+            // forClientRefundOut()'s own docblock for why that defeats idempotency on a genuine
+            // retry, and why (client, agent, amount) is the stable identity used instead.
+            $idempotencyKey = \App\Services\Accounting\PaymentIdempotencyKey::forClientRefundOut(
+                (int) $client->id,
+                (int) $agent->id,
+                $amount
+            );
+
+            $draft = new \App\Services\Accounting\DocumentDraft(
+                companyId: $companyId,
+                branchId: (int) $agent->branch_id,
+                docType: 'PV',
+                subType: 'CLIENT_REFUND', // transactions.sub_type is varchar(16)
+                docDate: now(),
+                narration: 'Client credit refund: '.$client->full_name,
+                lines: [
+                    new \App\Services\Accounting\LineDraft(
+                        purposeCode: 'CLIENT_ADVANCE',
+                        accountId: null,
+                        side: 'debit',
+                        amount: $amount,
+                        currency: config('accounting.engine.base_currency'),
+                        originalAmount: $amount,
+                        exchangeRate: 1.0,
+                        transactionType: 'CLIENT_CREDIT_REFUND_ADVANCE',
+                        partyAccountRef: $client->id,
+                        description: 'Client credit refund: '.$client->full_name,
+                        ledgerType: 'liability',
+                        partyName: $client->full_name,
+                    ),
+                    new \App\Services\Accounting\LineDraft(
+                        purposeCode: 'REFUND_PAYOUT_CASH_BANK',
+                        accountId: null,
+                        side: 'credit',
+                        amount: $amount,
+                        currency: config('accounting.engine.base_currency'),
+                        originalAmount: $amount,
+                        exchangeRate: 1.0,
+                        transactionType: 'CLIENT_CREDIT_REFUND_PAYOUT',
+                        partyAccountRef: $client->id,
+                        description: 'Client credit refund: '.$client->full_name,
+                        ledgerType: 'asset',
+                        partyName: $client->full_name,
+                    ),
+                ],
+                idempotencyKey: $idempotencyKey,
+            );
+
+            // W4.R verify-fix round 3 (finding #2, MEDIUM): the JV/PV write and the Credit
+            // dual-write below must commit or roll back TOGETHER — previously the PostingSeam
+            // call and the Credit::create() call were two independent statements with no shared
+            // transaction boundary, so a crash/exception between them could leave the PV posted
+            // with no corresponding Credit row (or vice versa if a future edit reordered them).
+            // Same guarantee RefundPostingService::post() already gives its own (a)-(f) documents
+            // (one outer DB::transaction()).
+            try {
+                return DB::transaction(function () use ($draft, $legacy, $companyId, $agent, $client, $amount, $idempotencyKey, $request) {
+                    // W4.R verify-fix round 3 (finding #2, MEDIUM): identical pre-check-before-post
+                    // guard to RefundPostingService::postDisposition()'s own `$dispositionAlreadyPosted`
+                    // — look up whether a transaction already exists under this exact
+                    // (companyId, idempotencyKey) pair BEFORE posting, so a retry (now that the key
+                    // is stable, see forClientRefundOut()'s docblock) skips the Credit dual-write
+                    // exactly as it skips creating a second PV (PostingService::post()'s own
+                    // idempotency-key short-circuit returns the pre-existing transaction instead of
+                    // writing a new one).
+                    $alreadyPosted = Transaction::withoutGlobalScopes()
+                        ->where('company_id', $companyId)
+                        ->where('idempotency_key', $idempotencyKey)
+                        ->whereNull('deleted_at')
+                        ->exists();
+
+                    app(\App\Services\Accounting\PostingSeam::class)->post($draft, $legacy, 'client.refund_process');
+
+                    // W4.R verify-fix (finding #4, HIGH): RefundClient is retired going forward
+                    // (read-only — see that model's own docblock, "folded into the Refund document
+                    // ... remove write paths"), and completeRefundClient()/deleteRefundClient() now
+                    // refuse to ever mutate a row, so a NEW 'pending' RefundClient row created here
+                    // could never be completed or deleted again — a permanent dead-end row, not
+                    // merely an orphan. This call site has no Refund document to fold into at all
+                    // (a standing client-credit payout, not a task-based refund), so no replacement
+                    // RefundClient row is written. Instead, dual-write App\Models\Credit (negative
+                    // amount) — the SAME "Credit is a VIEW of 2632 movements, write both in one txn"
+                    // rule RefundPostingService::postDisposition() now follows — so this method's
+                    // own balance gate (Credit::getTotalCreditsByClient() at the top of
+                    // refundProcess()) actually reflects the payout just posted above. Guarded by
+                    // `$alreadyPosted` so a retry (now idempotent, see above) never writes a second
+                    // Credit row for the same logical payout.
+                    if (! $alreadyPosted) {
+                        Credit::create([
+                            'company_id' => $companyId,
+                            'branch_id' => (int) $agent->branch_id,
+                            'client_id' => $client->id,
+                            'type' => Credit::REFUND,
+                            'description' => 'Client credit refund: '.$client->full_name,
+                            'amount' => -$amount,
+                        ]);
+                    }
+
+                    return [
+                        'status' => 'success',
+                        'message' => 'Credit refunded successfully',
+                        'data' => ['client_id' => $client->id, 'credit' => $request->amount],
+                    ];
+                });
+            } catch (\Throwable $e) {
+                Log::error('Client credit refund posting failed: '.$e->getMessage());
+
+                return ['status' => 'error', 'message' => 'Failed to process refund'];
+            }
+        }
+
+        return $legacy();
+    }
+
+    /**
+     * Pre-W4.R body of refundProcess(), extracted VERBATIM (byte parity) so it can serve as the
+     * OFF-path `$legacy` closure — see refundProcess()'s own docblock. Never called directly by a
+     * route; only via refundProcess()'s own PostingSeam::post() legacy fallback.
+     */
+    private function refundProcessLegacy($id, Request $request, Client $client, Agent $agent)
+    {
         DB::beginTransaction();
 
         try {
@@ -1443,14 +1610,49 @@ class ClientController extends Controller
     // get Credit balance of a client
     public function getCreditBalance($id)
     {
-        $credit = Credit::getTotalCreditsByClient($id);
+        $client = Client::findOrFail($id);
+        Gate::authorize('view', $client);
+
+        $credit = Credit::getTotalCreditsByClient($client->id);
 
         return response()->json(['credit' => $credit]);
     }
 
+    /**
+     * Authenticated staff view of a client's credit ledger. Requires a
+     * logged-in user who passes ClientPolicy::view() for this client (admin,
+     * or same-company/branch/agent staff) -- a cross-company user gets a 403
+     * via Gate::authorize(). See routes/web.php for why this used to be
+     * reachable with no auth at all.
+     */
     public function showCredit($id)
     {
         $client = Client::with('agent')->findOrFail($id);
+
+        Gate::authorize('view', $client);
+
+        return $this->renderCreditStatement($client, 'clients.credit');
+    }
+
+    /**
+     * Public, unauthenticated counterpart of showCredit(), reachable only
+     * through a Laravel temporary signed URL (see routes/web.php's
+     * 'clients.credits.shared' route and Client::creditStatementUrl()). The
+     * signature itself -- verified by the 'signed' route middleware before
+     * this method ever runs -- is the authorization here, so there is no
+     * ClientPolicy check to make: anyone holding a valid, unexpired link for
+     * this specific client id may view it, the same way invoice.show and
+     * payment.link.show already work for other client-facing documents.
+     */
+    public function showCreditShared($id)
+    {
+        $client = Client::with('agent')->findOrFail($id);
+
+        return $this->renderCreditStatement($client, 'clients.credit-shared');
+    }
+
+    private function renderCreditStatement(Client $client, string $view)
+    {
         $base = Credit::with(['client', 'invoice'])->where('client_id', $client->id);
 
         $totals = (clone $base)
@@ -1466,7 +1668,7 @@ class ClientController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('clients.credit', compact('client', 'credits', 'totalIn', 'totalOut', 'netBalance'));
+        return view($view, compact('client', 'credits', 'totalIn', 'totalOut', 'netBalance'));
     }
 
     public function assignAgents(Request $request, $id): JsonResponse

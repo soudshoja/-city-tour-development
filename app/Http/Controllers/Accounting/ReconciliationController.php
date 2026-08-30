@@ -1,0 +1,262 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Jobs\RunReconciliationAutoMatchJob;
+use App\Models\Branch;
+use App\Models\ReconciliationFixDraft;
+use App\Models\ReconciliationProposal;
+use App\Models\Role;
+use App\Services\Accounting\ReconciliationCenterService;
+use App\Services\Accounting\ReconciliationFixDraftService;
+use App\Services\Accounting\ReconciliationProposalService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
+
+/**
+ * P2.5.G (p2_5-brief.md §P2.5.G) — the Reconciliation Center v0 screen's HTTP surface. Every
+ * action delegates to the service layer ({@see ReconciliationCenterService},
+ * {@see ReconciliationProposalService}, {@see ReconciliationFixDraftService}) — no ledger/audit
+ * logic lives here. Company resolution mirrors {@see PeriodController}'s own convention
+ * (`getCompanyId($user)`, with an admin-only `?company_id=` override).
+ */
+class ReconciliationController extends Controller
+{
+    public function index(Request $request): View
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        return view('accounting.reconciliation.index', [
+            'companyId' => $companyId,
+            'canManage' => Gate::allows('manage', ReconciliationProposal::class),
+        ]);
+    }
+
+    public function grid(Request $request, ReconciliationCenterService $center): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        [$companyId, $asOf, $mode] = $this->resolveGridInput($request);
+
+        return response()->json(['success' => true, 'grid' => $center->grid($companyId, $asOf, $mode)]);
+    }
+
+    public function rowDetail(Request $request, string $rowKey, ReconciliationCenterService $center): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        [$companyId, $asOf, $mode] = $this->resolveGridInput($request);
+
+        $grid = $center->grid($companyId, $asOf, $mode);
+        $row = collect($grid['rows'])->firstWhere('key', $rowKey);
+        if ($row === null) {
+            return response()->json(['success' => false, 'message' => 'Unknown row.'], 404);
+        }
+
+        $accountIds = $row['account_ids'];
+
+        $isReviewOnly = $row['group'] === ReconciliationCenterService::GROUP_REVIEW_ONLY;
+
+        return response()->json([
+            'success' => true,
+            'row' => $row,
+            'proposals' => $center->proposalsFor($companyId, $accountIds),
+            // Recently-APPROVED proposals (most-recent-first, capped) — this is the only place a
+            // reconciled line's `book_journal_entry_id` is exposed to the Unmatch action, since
+            // drill-down panel (2) only ever lists still-UNMATCHED lines by design.
+            'recently_matched' => $isReviewOnly ? collect() : $center->proposalsFor($companyId, $accountIds, ReconciliationProposal::STATUS_APPROVED)->take(20)->values(),
+            'unmatched' => $isReviewOnly ? ['items' => [], 'buckets' => []] : $center->unmatchedFor($companyId, $accountIds, $row['group'], $asOf),
+            'history' => $center->historyFor($companyId, $accountIds),
+            'gap_explanation' => $isReviewOnly ? null : $center->explainGap($companyId, $row, $asOf),
+        ]);
+    }
+
+    public function approveProposal(Request $request, ReconciliationProposal $proposal, ReconciliationProposalService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $proposal = $service->approve($proposal, Auth::user());
+
+        return response()->json(['success' => true, 'proposal' => $proposal]);
+    }
+
+    public function rejectProposal(Request $request, ReconciliationProposal $proposal, ReconciliationProposalService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $data = $request->validate(['reason' => ['required', 'string', 'min:1']]);
+        $proposal = $service->reject($proposal, $data['reason'], Auth::user());
+
+        return response()->json(['success' => true, 'proposal' => $proposal]);
+    }
+
+    public function manualMatch(Request $request, ReconciliationProposalService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $data = $request->validate([
+            'account_id' => ['required', 'integer'],
+            'journal_entry_id' => ['required', 'integer'],
+            'matched_journal_entry_id' => ['nullable', 'integer'],
+            'reason' => ['required', 'string', 'min:1'],
+        ]);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $proposal = $service->manualMatch(
+            $companyId,
+            (int) $data['account_id'],
+            (int) $data['journal_entry_id'],
+            isset($data['matched_journal_entry_id']) ? (int) $data['matched_journal_entry_id'] : null,
+            $data['reason'],
+            Auth::user(),
+        );
+
+        return response()->json(['success' => true, 'proposal' => $proposal]);
+    }
+
+    public function manualUnmatch(Request $request, ReconciliationProposalService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $data = $request->validate([
+            'journal_entry_id' => ['required', 'integer'],
+            'reason' => ['required', 'string', 'min:1'],
+        ]);
+
+        try {
+            $line = $service->manualUnmatch((int) $data['journal_entry_id'], $data['reason'], Auth::user());
+        } catch (\App\Exceptions\Accounting\ReconciliationPeriodLockedException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
+        }
+
+        return response()->json(['success' => true, 'journal_entry' => $line]);
+    }
+
+    public function createFixDraft(Request $request, ReconciliationFixDraftService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $data = $request->validate([
+            'account_id' => ['required', 'integer'],
+            'kind' => ['required', 'string', 'in:'.implode(',', \App\Services\Accounting\ReconciliationFixDraftService::KNOWN_KINDS)],
+            'amount' => ['required', 'numeric'],
+            'narration' => ['required', 'string', 'min:1'],
+            'proposal_id' => ['nullable', 'integer'],
+            'branch_id' => ['nullable', 'integer'],
+        ]);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $branchId = $data['branch_id'] ?? $this->resolveBranchId($companyId);
+        abort_if($branchId === null, 422, 'No branch available to attach this draft to.');
+
+        $draft = $service->create(
+            $companyId,
+            (int) $branchId,
+            (int) $data['account_id'],
+            $data['kind'],
+            (float) $data['amount'],
+            $data['narration'],
+            isset($data['proposal_id']) ? (int) $data['proposal_id'] : null,
+            Auth::user(),
+        );
+
+        return response()->json(['success' => true, 'fix_draft' => $draft], 201);
+    }
+
+    public function postFixDraft(Request $request, ReconciliationFixDraft $fixDraft, ReconciliationFixDraftService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        try {
+            $draft = $service->post($fixDraft, Auth::user());
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'fix_draft' => $draft]);
+    }
+
+    public function discardFixDraft(Request $request, ReconciliationFixDraft $fixDraft, ReconciliationFixDraftService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $data = $request->validate(['reason' => ['required', 'string', 'min:1']]);
+        $draft = $service->discard($fixDraft, $data['reason'], Auth::user());
+
+        return response()->json(['success' => true, 'fix_draft' => $draft]);
+    }
+
+    public function runNow(Request $request): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        RunReconciliationAutoMatchJob::dispatch($companyId, Auth::id());
+
+        return response()->json(['success' => true, 'message' => 'Reconciliation run queued.']);
+    }
+
+    public function runStatus(Request $request, ReconciliationCenterService $center): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        return response()->json(['success' => true, 'run_status' => $center->runStatus($companyId)]);
+    }
+
+    /** @return array{0:int,1:Carbon,2:string} */
+    private function resolveGridInput(Request $request): array
+    {
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $asOf = $request->filled('date') ? Carbon::parse((string) $request->input('date')) : now();
+        $mode = $request->input('mode', 'day') === 'month' ? 'month' : 'day';
+
+        return [$companyId, $asOf, $mode];
+    }
+
+    private function resolveCompanyId(Request $request): ?int
+    {
+        $user = Auth::user();
+        if ($user === null) {
+            return null;
+        }
+
+        $queryCompanyId = $request->input('company_id');
+        if ($queryCompanyId !== null && ($user->hasRole('admin') || $user->role_id === Role::ADMIN)) {
+            return (int) $queryCompanyId;
+        }
+
+        return getCompanyId($user);
+    }
+
+    private function resolveBranchId(int $companyId): ?int
+    {
+        $user = Auth::user();
+        $userBranchId = $user?->branch?->id;
+        if ($userBranchId !== null) {
+            return (int) $userBranchId;
+        }
+
+        return Branch::where('company_id', $companyId)->value('id');
+    }
+}

@@ -285,7 +285,12 @@ class AccountingController extends Controller
 
     public function getAccountsByCompanyReceivable(Request $request)
     {
-        $accounts = Account::where('company_id', $request->company_id)
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
+
+        $accounts = Account::where('company_id', $companyId)
             ->whereIn('level', [4])
             ->where(function ($query) {
 
@@ -312,7 +317,12 @@ class AccountingController extends Controller
 
     public function getAccountsByCompanyPayable(Request $request)
     {
-        $accounts = Account::where('company_id', $request->company_id)
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
+
+        $accounts = Account::where('company_id', $companyId)
             ->whereIn('level', [4])
             ->where(function ($query) {
 
@@ -339,7 +349,12 @@ class AccountingController extends Controller
 
     public function getBranchByCompany(Request $request)
     {
-        $branches = Branch::where('company_id', $request->company_id)->get();
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
+
+        $branches = Branch::where('company_id', $companyId)->get();
 
         if ($branches->isEmpty()) {
             return response()->json(['message' => 'No branches found for this company'], 404);
@@ -350,7 +365,12 @@ class AccountingController extends Controller
 
     public function getAgentByBranchCompany(Request $request)
     {
-        $agents = Agent::where('company_id', $request->company_id)
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
+
+        $agents = Agent::where('company_id', $companyId)
             ->where('branch_id', $request->branch_id)
             ->get();
 
@@ -363,11 +383,16 @@ class AccountingController extends Controller
 
     public function getSupplierByCompany(Request $request)
     {
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
+
         // Get all parent account IDs where the name contains "Payable"
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
 
         // Retrieve suppliers linked to the selected company and parent accounts
-        $suppliers = Account::where('company_id', $request->company_id)
+        $suppliers = Account::where('company_id', $companyId)
             ->whereIn('parent_id', $parentIds)
             ->whereNotNull('name') // Ensure name exists for suppliers
             ->get();
@@ -381,11 +406,16 @@ class AccountingController extends Controller
 
     public function getAgentClientByCompany(Request $request)
     {
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
+
         // Get all parent account IDs where the name contains "Receivable"
         $parentIds = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
 
         // Retrieve agents linked to the selected company and parent accounts
-        $agents = Account::where('company_id', $request->company_id)
+        $agents = Account::where('company_id', $companyId)
             ->whereIn('parent_id', $parentIds)
             ->whereNotNull('name') // Ensure name exists for agents
             ->get();
@@ -399,7 +429,10 @@ class AccountingController extends Controller
 
     public function getBankAccountByCompany(Request $request)
     {
-        $companyId = $request->company_id;
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
 
         // Log company ID (optional)
         \Log::info("Fetching Bank Accounts for Company ID: " . $companyId);
@@ -428,17 +461,27 @@ class AccountingController extends Controller
 
     public function getInvoicesByJournalEntry(Request $request)
     {
+        $user = Auth::user();
+        $companyId = $user->role_id === Role::ADMIN
+            ? (int) $request->company_id
+            : getCompanyId($user);
 
         // Retrieve general ledger entries for the given company
-        $ledgerEntries = JournalEntry::where('company_id', $request->company_id)
+        $ledgerEntries = JournalEntry::where('company_id', $companyId)
             ->pluck('invoice_id'); // Get associated invoice IDs
 
         if ($ledgerEntries->isEmpty()) {
             return response()->json(['message' => 'No invoice record found for this company'], 404);
         }
 
-        // Retrieve invoices linked to the general ledger entries
-        $invoices = Invoice::whereIn('id', $ledgerEntries)->get();
+        // Retrieve invoices linked to the general ledger entries, re-scoped to the
+        // resolved company (invoice_id values are never cross-company in practice,
+        // but this keeps the endpoint self-contained even if that ever changes).
+        $invoices = Invoice::whereIn('id', $ledgerEntries)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->get();
 
         if ($invoices->isEmpty()) {
             return response()->json(['message' => 'No invoices found for this company'], 404);
@@ -882,6 +925,7 @@ class AccountingController extends Controller
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
+            'bank_account' => 'required|integer',
             'branch_id' => 'required|integer',
             'transaction_id' => 'nullable|integer',
             'description' => 'required|string|max:255',
@@ -894,6 +938,7 @@ class AccountingController extends Controller
             'type' => 'required|string|max:255',
             'invoice_detail_id' => 'nullable|integer',
             'type_reference_id' => 'nullable|integer',
+            'amount' => 'required|numeric|min:0',
         ]);
 
         $encryptionService = new EncryptionService();
@@ -902,50 +947,45 @@ class AccountingController extends Controller
         $validated['type_reference_id'] = $type_reference_number;
 
         //Account
-        if ($user->role_id === 1) {
-            $validated['company_id'] = 'required|integer';
-        } else {
-            $validated['company_id'] = $user->company->id;
-        }
-        $accountName = Account::find($request->account_id);
-        $bankaccountId = Account::find($request->bank_account);
+        // Only Role::COMPANY reaches this point (guard above), so the company is
+        // always the acting user's own company. getCompanyId() also resolves the
+        // ADMIN case correctly (via session company_id) should the guard above
+        // ever be relaxed.
+        $validated['company_id'] = getCompanyId($user);
+
+        $accountName = Account::find($validated['account_id']);
+        $bankaccountId = Account::find($validated['bank_account']);
         $bankaccountName = $bankaccountId->name;
 
         //Account_From (company_bank)
-        if ($user->role_id === 1) {
-            $companyName = Company::find($request->company_id)?->name;
-        } else {
-            $companyName = Company::find($user->company->id)?->name;
-        }
+        $companyName = Company::find($validated['company_id'])?->name;
 
-        if ($request->has('amount')) {
-            $validated['debit'] = $request->amount;
-            $validated['credit'] = "0.00";
-            $validated['balance'] = $request->amount;
-        }
+        $validated['debit'] = $validated['amount'];
+        $validated['credit'] = "0.00";
+        $validated['balance'] = $validated['amount'];
         $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $companyName;
-        JournalEntry::create($validated);
 
-        //update actual_balance 
-        Account::where('id', $request->bank_account)
-            ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
+        DB::transaction(function () use ($validated, $bankaccountName, $accountName, $request) {
+            JournalEntry::create($validated);
 
+            //update actual_balance
+            Account::where('id', $validated['bank_account'])
+                ->decrement('actual_balance', $validated['amount']);
 
-        //Account_To (supplier_name)
-        if ($request->has('amount')) {
+            //Account_To (supplier_name)
             $validated['debit'] = "0.00";
-            $validated['credit'] = $request->amount;
+            $validated['credit'] = $validated['amount'];
             $validated['balance'] = "0.00";
-        }
+            $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+            $validated['name'] = $accountName->name;
 
-        $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
-        $validated['name'] = $accountName->name;
-        JournalEntry::create($validated);
+            JournalEntry::create($validated);
 
-        //update actual_balance 
-        Account::where('id', $request->bank_account)
-            ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+            //update actual_balance
+            Account::where('id', $validated['account_id'])
+                ->increment('actual_balance', $validated['amount']);
+        });
 
         return redirect()->route('bank-payment.create')
             ->with('success', 'Entry added successfully!');

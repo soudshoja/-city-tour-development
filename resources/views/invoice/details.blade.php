@@ -22,6 +22,11 @@
 
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100">
     <div class="min-h-screen bg-gray-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
+        @if(session('warning'))
+        <div class="max-w-5xl mx-auto mb-4 flex items-center justify-between rounded bg-yellow-400 p-3.5 text-yellow-900" role="alert">
+            <p>{{ session('warning') }}</p>
+        </div>
+        @endif
         <div class="max-w-5xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden">
             <header class="px-8 py-6 bg-slate-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
                 <div class="flex justify-between items-start">

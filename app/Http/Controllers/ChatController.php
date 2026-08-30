@@ -28,6 +28,11 @@ use App\Models\InvoiceSequence;
 use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
 use App\Models\Transaction;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\SaleDraftBuilder;
+use App\Services\Accounting\SaleDraftInput;
+use App\Exceptions\Accounting\PostingException;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -40,9 +45,16 @@ class ChatController extends Controller
 
     protected $aiManager;
 
-    public function __construct(AIManager $aiManager)
+    /**
+     * THE ONE SEAM (R3 decision) — every posting call in this controller goes through this
+     * instance, never App\Services\Accounting\PostingService directly. See postChatInvoiceTaskEntries().
+     */
+    private PostingSeam $postingSeam;
+
+    public function __construct(AIManager $aiManager, PostingSeam $postingSeam)
     {
         $this->aiManager = $aiManager;
+        $this->postingSeam = $postingSeam;
     }
 
 
@@ -707,99 +719,36 @@ class ChatController extends Controller
                             'paid' => false,
                         ]);
 
-                        $transaction = Transaction::create([
-                            'branch_id' => $branchId,
-                            'entity_id' => $companyId,
-                            'entity_type' => 'company',
-                            'transaction_type' => 'credit',
-                            'amount' =>  $task['invprice'],
-                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
-                            'invoice_id' => $invoice->id,
-                            'reference_type' => 'Invoice',
-                        ]);
-
-
-                        if ($payableAccount) {
-                            $filteredPayableChildAccount = $payableAccount->children()
-                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
-                                ->first(); // Get the first matching child account
-                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
-                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
-                        } else {
-                            $PayablechildAccountId = null; // Handle case when no parent account is found
-                        }
-
-
-                        // Try to create payable account
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'account_id' =>  $payableAccount->id,
-                            'branch_id' => $branchId,
-                            'account_id' =>  $payableAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment : ' . $supplier->name,
-                            'debit' => $selectedtask->total,
-                            'credit' => 0,
-                            'balance' => $selectedtask->total,
-                            'name' => $supplier->name,
-                            'type' => 'payable',
-                            'type_reference_id' => $supplier->id
-                        ]);
-
-
-                        // Try to create receivable account
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'branch_id' => $branchId,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'account_id' =>  $receivableAccount->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'account_id' =>  $receivableAccount->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment received from: ' . $client->first_name,
-                            'debit' => 0,
-                            'credit' => $task['invprice'],
-                            'balance' => $task['invprice'],
-                            'name' =>  $client->first_name,
-                            'type' => 'receivable',
-                            'type_reference_id' => $client->id
-                        ]);
-
-
-
-                        $markup = $task['invprice'] - $selectedtask->total;
-                        // Try to create income
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'account_id' => $incomeAccount->id,
-                            'branch_id' => $branchId,
-                            'account_id' => $incomeAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Price markup by Agent: ' . $agent->name,
-                            'debit' => 0,
-                            'credit' => $markup,
-                            'balance' => $markup,
-                            'name' =>   $agent->name,
-                            'type' => 'income',
-                            'type_reference_id' => $agent->id
-                        ]);
-
+                        // R3 seam cutover (was: Transaction::create() + 3x JournalEntry::create()
+                        // inline here — the "unbalanced by construction" site, doc 11 R2.2a). See
+                        // postChatInvoiceTaskEntries()'s own docblock for the full business-event
+                        // writeup (what it books, which accounts, why HEAD was unbalanced).
+                        $this->postChatInvoiceTaskEntries(
+                            $task,
+                            $selectedtask,
+                            $supplier,
+                            $client,
+                            $agent,
+                            $invoice,
+                            $invoiceNumber,
+                            $invoiceDetail,
+                            $payableAccount,
+                            $receivableAccount,
+                            $incomeAccount,
+                            $companyId,
+                            $branchId
+                        );
 
                         $selectedtask->status = 'Assigned';
                         $selectedtask->save();
+                    } catch (PostingException $e) {
+                        // R3 decision: an engine correctness failure must stay LOUD — PostingSeam
+                        // has already Log::critical'd it with feeder/company/idempotency-key
+                        // context. Never let it fall into the generic catch below, which would
+                        // swallow it into a routine-looking JSON error and mask a real posting
+                        // defect (unbalanced draft, frozen/cross-tenant account, superseded
+                        // idempotency key…) as if it were an ordinary InvoiceDetail failure.
+                        throw $e;
                     } catch (Exception $e) {
                         Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                         return response()->json('Failed to create InvoiceDetails for task: ' . $task['description']);
@@ -821,10 +770,305 @@ class ChatController extends Controller
                 'due_date' => $invoice->due_date,
                 'clients' => $clients
             ]);
+        } catch (PostingException $e) {
+            // Same R3 rationale as the inner catch above: never let an engine correctness
+            // failure — already Log::critical'd by PostingSeam — be re-swallowed here into the
+            // generic "Invoice creation failed!" response on its way back up.
+            throw $e;
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json('Invoice creation failed!');
         }
+    }
+
+    /**
+     * Posts the ledger side of one invoiced task (business event: a client-facing task, sold via
+     * the AI chat "create invoice" action, is added to an invoice — the agency now owes the
+     * supplier its cost and is owed the sell price by the client, keeping the sell-cost spread as
+     * margin). Extracted from createInvoice()'s per-task loop so the R3 seam cutover (this
+     * method's whole reason for existing) has one call site instead of three inline
+     * JournalEntry::create() calls, and so it can be exercised directly by
+     * ChatControllerPostingTest without needing a full chat()/HTTP round trip per scenario.
+     *
+     * ── What HEAD booked, and why it was unbalanced (doc 11 R2.2a) ────────────────────────────
+     * Three JournalEntry rows sharing one Transaction: Dr "payable" account = $selectedtask->total
+     * (the supplier's cost — booked as a DEBIT, i.e. as if the agency were reducing what it owes
+     * the supplier), Cr "receivable" account = $task['invprice'] (the client's sell price —
+     * booked as a CREDIT, i.e. as if the agency were reducing what the client owes it), Cr
+     * "income" account = markup. Debit total = cost; credit total = invprice + markup =
+     * 2×invprice − cost — off by exactly 2×markup whenever markup ≠ 0 (file 11's own acceptance
+     * test names this: "whatsapp_invoice_is_balanced … now nets to zero (was −2×markup)"). The
+     * receivable/payable DIRECTIONS were inverted; the underlying 3-line shape is otherwise
+     * exactly doc 03's Finding 3 blueprint ("Dr customer receivable = SellValue; Cr supplier
+     * payable = cost; Cr income = SellValue − Payable") — HEAD had the right structure and the
+     * wrong signs.
+     *
+     * ── OFF path (flags off) ───────────────────────────────────────────────────────────────────
+     * $legacy runs the exact HEAD code (Transaction::create() + the 3 JournalEntry::create()
+     * calls, byte-identical, including the pre-existing dead-code $PayablechildAccountId
+     * computation and the invoiceDetail_id/branch_id/account_id duplicate array keys — none of
+     * that is this task's scope to fix) against the shared, invoice-level $legacyCompanyId /
+     * $legacyBranchId the surrounding loop already resolved once from the invoice's FIRST agent
+     * (createInvoice()'s $companyId/$branchId, unchanged).
+     *
+     * ── ON path (both flags on) ────────────────────────────────────────────────────────────────
+     * A balanced 2- or 3-line DocumentDraft, correcting HEAD's sign bug — built via
+     * {@see \App\Services\Accounting\SaleDraftBuilder::buildLines()} (W3d, sale-shape-audit.md /
+     * w3d-brief.md; the SAME shared builder InvoiceController::postSaleJournalEntries() now uses,
+     * so the two feeders can never diverge on this shape again):
+     *   - Dr RECEIVABLE_CONTROL = $task['invprice']  (pooled AR "Clients" — P1 ships no per-client
+     *     leaf yet, Accounting Gap/03 Finding 6; $client->id carried on partyAccountRef for when
+     *     it does).
+     *   - Cr SERVICE_PAYABLE/{$selectedtask->type} = $selectedtask->total (the per-service-type
+     *     supplier payable, e.g. "Suppliers (Flights)" — $supplier->id on partyAccountRef).
+     *   - SERVICE_REVENUE/{$selectedtask->type} margin leg (sell price − cost; W3d moved this OFF
+     *     MARKUP_INCOME — see config('accounting.purpose_codes')'s own docblock and
+     *     SaleDraftBuilder's class docblock for why the ordinary sale margin now belongs to the
+     *     per-service SERVICE_REVENUE leaf and MARKUP_INCOME is reserved for a distinct,
+     *     not-yet-modeled event; $agent->id on partyAccountRef) — W1.1 fix (C2): PostingService
+     *     rejects any LineDraft with amount <= 0, but HEAD's own validation permits selling AT or
+     *     BELOW cost ('tasks.*.invprice' => 'required|numeric|min:0'), so this leg's shape depends
+     *     on the markup's sign rather than always being a fixed credit:
+     *       - markup > 0 (tolerance: config('accounting.engine.balance_tolerance')): Cr
+     *         SERVICE_REVENUE = markup.
+     *       - markup == 0 (sold at cost): the leg is OMITTED entirely — Dr receivable already
+     *         equals Cr payable, so the document stays balanced as a 2-line JV.
+     *       - markup < 0 (sold below cost): Dr SERVICE_REVENUE = abs(markup) — a contra-income
+     *         debit — so the document still balances (Dr receivable + Dr margin(abs) = Cr
+     *         payable) instead of the whole sale being refused. This is w3d-brief.md's own "W4.A
+     *         rule: company-borne negative margin posts nothing extra" — no separate loss JV
+     *         belongs alongside this leg.
+     *     HEAD posted the fixed third line unconditionally and silently, regardless of sign.
+     *   - $supplier is nullable (W1.1 fix, C3): `tasks.supplier_id` carries no FK constraint
+     *     (unlike client_id/agent_id, which do) and Supplier has no SoftDeletes, so a dangling
+     *     supplier_id is reachable on a hard-deleted supplier. HEAD did NOT tolerate a null
+     *     $supplier — this app's error handler (HandleExceptions) converts the "read property on
+     *     null" warning into a thrown ErrorException, which createInvoice()'s own catch turns into
+     *     a clean 'Failed to create InvoiceDetails for task: …' abort with zero journal rows. This
+     *     method's typed signature stays nullable only so that same call is legal PHP instead of
+     *     a TypeError at the call boundary (TypeError extends Error, escaping both
+     *     PostingException/Exception catches in createInvoice() as an uncaught 500) — it does NOT
+     *     change the outcome for a null supplier on the OFF path, which still aborts loudly with 0
+     *     journal rows, exactly as HEAD did. See $legacy's own inline comment above its 'payable'
+     *     JournalEntry::create() call for why those reads stay HEAD-verbatim (no ?->).
+     * companyId/branchId for THIS draft are resolved from the TASK's own agent → branch → company
+     * chain (never Auth::user() — this must stay safe if ever queued), which is deliberately NOT
+     * the same $legacyCompanyId/$legacyBranchId the legacy closure uses when a chat-created
+     * invoice happens to mix agents from different branches — see this task's own report for why
+     * that divergence is a correctness IMPROVEMENT on the ON path, not a bug. When the task's
+     * agent has no branch this resolves to companyId 0 — PostingSeam::post() (W1.1 fix, C4) logs
+     * `accounting.company_unresolvable` at ERROR when the global flag is ON and still routes to
+     * legacy, rather than silently mis-reporting it as an ordinary flag-disabled decision.
+     *
+     * Idempotency key: 'chat:invoice_task:{invoiceDetail->id}' — the InvoiceDetail row just
+     * created for this exact task-on-this-invoice IS the stable source record for this document
+     * (never a timestamp), so retrying this exact posting step (e.g. a queued retry after a
+     * transient engine failure) can never double-post it.
+     */
+    public function postChatInvoiceTaskEntries(
+        $task,
+        Task $selectedtask,
+        ?Supplier $supplier,
+        ?Client $client,
+        ?Agent $agent,
+        Invoice $invoice,
+        string $invoiceNumber,
+        InvoiceDetail $invoiceDetail,
+        ?Account $payableAccount,
+        ?Account $receivableAccount,
+        ?Account $incomeAccount,
+        $legacyCompanyId,
+        $legacyBranchId
+    ) {
+        $legacy = function () use (
+            $task,
+            $selectedtask,
+            $supplier,
+            $client,
+            $agent,
+            $invoice,
+            $invoiceNumber,
+            $invoiceDetail,
+            $payableAccount,
+            $receivableAccount,
+            $incomeAccount,
+            $legacyCompanyId,
+            $legacyBranchId
+        ) {
+            $transaction = Transaction::create([
+                'branch_id' => $legacyBranchId,
+                'entity_id' => $legacyCompanyId,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' =>  $task['invprice'],
+                'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                'invoice_id' => $invoice->id,
+                'reference_type' => 'Invoice',
+            ]);
+
+            if ($payableAccount) {
+                $filteredPayableChildAccount = $payableAccount->children()
+                    ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
+                    ->first(); // Get the first matching child account
+                Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
+            } else {
+                $PayablechildAccountId = null; // Handle case when no parent account is found
+            }
+
+            // Try to create payable account
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $legacyCompanyId,
+                'branch_id' => $legacyBranchId,
+                'account_id' =>  $payableAccount->id,
+                'branch_id' => $legacyBranchId,
+                'account_id' =>  $payableAccount->id,
+                'invoice_id' =>  $invoice->id,
+                'invoiceDetail_id' =>  $invoiceDetail->id,
+                'invoiceDetail_id' =>  $invoiceDetail->id,
+                'transaction_date' => Carbon::now(),
+                // W1.1 fix (C3): the signature above is now ?Supplier, which is what actually
+                // closes the TypeError-at-call-boundary bug (a dangling tasks.supplier_id — that
+                // column carries no FK constraint, unlike client_id/agent_id — pointing at a
+                // hard-deleted row; Supplier has no SoftDeletes). This closure's own reads of
+                // $supplier below are deliberately left HEAD-verbatim (no ?->): HEAD did NOT
+                // tolerate a null $supplier here either — this app's own error handler
+                // (Illuminate\Foundation\Bootstrap\HandleExceptions) converts the resulting
+                // "Attempt to read property on null" warning into a thrown ErrorException, which
+                // createInvoice()'s own catch (Exception $e) turns into a clean, loud
+                // 'Failed to create InvoiceDetails for task: …' abort with zero journal rows
+                // written for this task. That is HEAD's actual (and correct) outcome for a null
+                // supplier, and this closure must keep reproducing it byte-for-byte; a null-safe
+                // read here would silently swap that loud abort for 3 unbalanced legacy rows.
+                'description' => 'Payment : ' . $supplier->name,
+                'debit' => $selectedtask->total,
+                'credit' => 0,
+                'balance' => $selectedtask->total,
+                'name' => $supplier->name,
+                'type' => 'payable',
+                'type_reference_id' => $supplier->id
+            ]);
+
+            // Try to create receivable account
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $legacyCompanyId,
+                'branch_id' => $legacyBranchId,
+                'branch_id' => $legacyBranchId,
+                'invoice_id' =>  $invoice->id,
+                'invoiceDetail_id' =>  $invoiceDetail->id,
+                'account_id' =>  $receivableAccount->id,
+                'invoiceDetail_id' =>  $invoiceDetail->id,
+                'account_id' =>  $receivableAccount->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Payment received from: ' . $client->first_name,
+                'debit' => 0,
+                'credit' => $task['invprice'],
+                'balance' => $task['invprice'],
+                'name' =>  $client->first_name,
+                'type' => 'receivable',
+                'type_reference_id' => $client->id
+            ]);
+
+            $markup = $task['invprice'] - $selectedtask->total;
+            // Try to create income
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $legacyCompanyId,
+                'branch_id' => $legacyBranchId,
+                'account_id' => $incomeAccount->id,
+                'branch_id' => $legacyBranchId,
+                'account_id' => $incomeAccount->id,
+                'invoice_id' =>  $invoice->id,
+                'invoiceDetail_id' =>  $invoiceDetail->id,
+                'invoiceDetail_id' =>  $invoiceDetail->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Price markup by Agent: ' . $agent->name,
+                'debit' => 0,
+                'credit' => $markup,
+                'balance' => $markup,
+                'name' =>   $agent->name,
+                'type' => 'income',
+                'type_reference_id' => $agent->id
+            ]);
+
+            return $transaction;
+        };
+
+        // Company/branch for the ON-path draft come from the RECORD chain (this task's own
+        // agent -> branch -> company), never Auth::user() — R3 note: this code path must stay
+        // safe if it is ever queued, and a controller today is no guarantee it stays one.
+        $taskBranch = $agent->branch;
+        $draftCompanyId = $taskBranch?->company_id;
+        $draftBranchId = $agent->branch_id;
+
+        // W3d (sale-shape-audit.md / w3d-brief.md): this method's own hand-rolled 3-line
+        // receivable/payable/sign-aware-margin array now comes from the SAME shared builder
+        // InvoiceController::postSaleJournalEntries() uses — see
+        // App\Services\Accounting\SaleDraftBuilder's own docblock for the exact lines each
+        // posting basis produces, the zero-margin omission, and the negative-margin sign
+        // handling (all UNCHANGED behaviour from this method's own pre-W3d array — only the
+        // margin leg's PURPOSE CODE moves, see next paragraph). The builder computes the
+        // receivable/cost spread (sellAmount − costAmount) internally from the two amounts
+        // below — this method no longer pre-computes a separate $markup local for it.
+        //
+        // SERVICE_REVENUE, not MARKUP_INCOME: w3d-brief.md decision 3 redefines the vocabulary
+        // config('accounting.purpose_codes')'s own MARKUP_INCOME note used to give this exact
+        // leg — the ordinary sell-minus-cost margin on a task-based sale now belongs to
+        // SERVICE_REVENUE/{type} (per-service, matching InvoiceController's own sale), not the
+        // single non-per-service MARKUP_INCOME (4132) leaf. MARKUP_INCOME is reserved for a
+        // genuinely distinct event (an explicit markup added on top of a fare the invoice
+        // already separates from cost) this chat flow does not model — see SaleDraftBuilder's
+        // class docblock.
+        $serviceType = (string) $selectedtask->type;
+        $postingBasis = SaleDraftBuilder::resolvePostingBasis((int) $draftCompanyId, $serviceType);
+        $recognitionTiming = SaleDraftBuilder::resolveRecognitionTiming((int) $draftCompanyId, $serviceType);
+
+        $lines = (new SaleDraftBuilder)->buildLines(new SaleDraftInput(
+            serviceType: $serviceType,
+            sellAmount: (float) $task['invprice'],
+            costAmount: (float) $selectedtask->total,
+            postingBasis: $postingBasis,
+            recognitionTiming: $recognitionTiming,
+            clientId: $client->id,
+            clientName: $client->first_name,
+            supplierId: $supplier?->id,
+            supplierName: $supplier?->name,
+            agentId: $agent->id,
+            agentName: $agent->name,
+            invoiceId: $invoice->id,
+            invoiceDetailId: $invoiceDetail->id,
+            taskId: $selectedtask->id,
+            currency: (string) config('accounting.engine.base_currency'),
+            receivableDescription: 'Payment received from: '.$client->first_name,
+            payableDescription: 'Payment : '.$supplier?->name,
+            revenueDescription: 'Invoice '.$invoiceNumber.' - task #'.$selectedtask->id.' ('.$selectedtask->reference.')',
+            marginPositiveDescription: 'Price markup by Agent: '.$agent->name,
+            marginNegativeDescription: 'Price markdown (sold below cost) by Agent: '.$agent->name,
+            costDescription: 'Supplier cost for task #'.$selectedtask->id,
+        ));
+
+        $draft = new DocumentDraft(
+            companyId: (int) $draftCompanyId,
+            branchId: (int) $draftBranchId,
+            docType: 'INV',
+            subType: null,
+            docDate: Carbon::now(),
+            narration: sprintf(
+                'Chat invoice %s - task #%s (%s)',
+                $invoiceNumber,
+                $selectedtask->id,
+                $selectedtask->reference
+            ),
+            lines: $lines,
+            idempotencyKey: 'chat:invoice_task:' . $invoiceDetail->id,
+            sourceType: 'Invoice',
+            sourceId: $invoiceDetail->id,
+            invoiceId: $invoice->id,
+        );
+
+        return $this->postingSeam->post($draft, $legacy, 'chat.invoice_task');
     }
 
 

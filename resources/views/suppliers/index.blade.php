@@ -5,6 +5,13 @@
             <div data-tooltip="Total suppliers" class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
                 <span class="text-xl font-bold text-white">{{ $suppliers->total() }}</span>
             </div>
+            {{-- W6.U: company-level defaults pages (channel-wide status-map rows / supplier_id-null
+                 charge rules) -- "every AIR import from any supplier maps X to Y" without
+                 touching each supplier individually. Same SupplierPolicy::update gate. --}}
+            @can('update', \App\Models\Supplier::class)
+                <a href="{{ route('suppliers.status-map.defaults') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50">Status map defaults</a>
+                <a href="{{ route('suppliers.charge-rules.defaults') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50">Charge rule defaults</a>
+            @endcan
         </div>
         <div class="flex items-center gap-5">
             <div data-tooltip-left="Reload" class="rotate refresh-icon relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300

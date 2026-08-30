@@ -356,16 +356,17 @@
                     <div class="md:col-span-2 xl:col-span-2 flex items-center justify-start xl:justify-center gap-1 flex-wrap">
                         @can('manageLocks', 'App\Models\User')
                             @if($invoice->is_locked)
-                                <form action="{{ route('invoice.unlock', $invoice->id) }}" method="POST" class="inline-block">
-                                    @csrf
-                                    <button type="submit" data-tooltip="Unlock invoice"
-                                        class="p-2 rounded-lg bg-yellow-50 text-yellow-600 hover:bg-yellow-100 hover:shadow-sm transition-all"
-                                        onclick="return confirm('Are you sure you want to unlock this invoice?')">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                            <path d="M7 10V7a5 5 0 0 1 9.33-2.5M5 10h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"/>
-                                        </svg>
-                                    </button>
-                                </form>
+                                {{-- P2.5.E (p2_5-brief.md §P2.5.E): unlock is no longer a bare
+                                confirm()+submit -- it now requires a reason and can be refused by
+                                the dependency chain, so it opens the shared dependency-tree modal
+                                instead (defined once, near the end of this page). --}}
+                                <button type="button" data-tooltip="Unlock invoice"
+                                    class="p-2 rounded-lg bg-yellow-50 text-yellow-600 hover:bg-yellow-100 hover:shadow-sm transition-all"
+                                    @click="$dispatch('open-unlock-modal', { id: {{ $invoice->id }}, number: @js($invoice->invoice_number) })">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M7 10V7a5 5 0 0 1 9.33-2.5M5 10h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"/>
+                                    </svg>
+                                </button>
                             @else
                                 <form action="{{ route('invoice.lock', $invoice->id) }}" method="POST" class="inline-block">
                                     @csrf
@@ -1035,6 +1036,289 @@
         }
     </script>
 
+    {{-- ═══════════════════════════════════════════════════════════════════════════════════════
+         P2.5.E (p2_5-brief.md §P2.5.E; period-lock-design.md §8.2 -- dependency-aware unlock).
+         ONE shared modal for the whole page (per-invoice "Unlock" buttons above dispatch a window
+         event carrying {id, number} rather than each row owning its own modal instance -- cheaper
+         and keeps the fetch/submit logic in one place). Design pass: frontend-design-pro skill
+         invoked for this component -- see this build's own report for what it changed (states,
+         severity colour system, the "reverse + repost is normal" banner wording/placement, the
+         disabled-submit-while-blocked rule, focus/aria treatment).
+    ═══════════════════════════════════════════════════════════════════════════════════════ --}}
+    <div
+        x-data="unlockInvoiceModal()"
+        x-on:open-unlock-modal.window="openFor($event.detail.id, $event.detail.number)"
+        x-cloak
+        x-show="open"
+        class="fixed inset-0 z-50 overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+        :aria-hidden="(!open).toString()"
+    >
+        <div class="fixed inset-0 bg-gray-900/60 dark:bg-black/70 transition-opacity" @click="close()"></div>
+
+        <div class="relative min-h-full flex items-center justify-center p-4">
+            <div
+                x-show="open"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
+                @click.stop
+                @keydown.escape.window="close()"
+            >
+                {{-- Header --}}
+                <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div class="min-w-0">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-50">Unlock invoice</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" x-show="number" x-text="'Invoice ' + number"></p>
+                    </div>
+                    <button type="button" class="shrink-0 text-gray-400 hover:text-red-500 transition-colors p-1 rounded" @click="close()" aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Body --}}
+                <div class="px-5 py-4 max-h-[65vh] overflow-y-auto space-y-4">
+
+                    {{-- Persistent hint: unlock is the exception, reverse+repost is normal --}}
+                    <div class="flex gap-2.5 items-start rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-2.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-500 mt-0.5 shrink-0">
+                            <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <p class="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                            Unlock is for a genuine mistake caught before anything downstream happened. For a normal correction, <span class="font-semibold">reverse and repost</span> the entry instead &mdash; the original stays intact for the audit trail.
+                        </p>
+                    </div>
+
+                    {{-- Loading skeleton --}}
+                    <template x-if="loading">
+                        <div class="space-y-2 animate-pulse" aria-busy="true" aria-label="Checking dependencies">
+                            <div class="h-14 bg-gray-100 dark:bg-gray-700/60 rounded-lg"></div>
+                            <div class="h-14 bg-gray-100 dark:bg-gray-700/60 rounded-lg"></div>
+                            <div class="h-14 bg-gray-100 dark:bg-gray-700/60 rounded-lg w-4/5"></div>
+                        </div>
+                    </template>
+
+                    {{-- Fetch error --}}
+                    <template x-if="!loading && error">
+                        <div class="text-center py-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto text-red-400 mb-2">
+                                <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v5M12 16h.01"/>
+                            </svg>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Couldn&rsquo;t check this invoice&rsquo;s dependencies</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="error"></p>
+                            <button type="button" class="unlock-btn-secondary mt-3" @click="fetchBlockers()">Try again</button>
+                        </div>
+                    </template>
+
+                    {{-- Clear: safe to unlock --}}
+                    <template x-if="!loading && !error && blockers && blockers.length === 0">
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-3 py-2.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald-600 shrink-0">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                                </svg>
+                                <p class="text-xs font-medium text-emerald-800 dark:text-emerald-300">No dependencies found &mdash; safe to unlock.</p>
+                            </div>
+                            <div>
+                                <label for="unlock-reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Reason <span class="text-red-500">*</span>
+                                </label>
+                                <textarea id="unlock-reason" x-model="reason" rows="3" maxlength="1000"
+                                    placeholder="Why does this invoice need to be unlocked?"
+                                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"></textarea>
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">Recorded on the audit trail together with this unlock.</p>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Populated dependency tree --}}
+                    <template x-if="!loading && !error && blockers && blockers.length > 0">
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-2.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 px-3 py-2.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-amber-600 mt-0.5 shrink-0">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+                                </svg>
+                                <p class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                                    <span class="font-semibold" x-text="blockers.length"></span>
+                                    <span x-text="blockers.length === 1 ? 'dependency needs' : 'dependencies need'"></span>
+                                    to be resolved before this invoice can be unlocked.
+                                </p>
+                            </div>
+
+                            <ol class="unlock-tree" aria-label="Dependency chain blocking this unlock">
+                                <template x-for="(item, index) in blockers" :key="item.type + '-' + item.id + '-' + index">
+                                    <li class="unlock-tree-item">
+                                        <div class="flex items-start gap-3">
+                                            <span class="unlock-type-chip" :class="typeChipClass(item.type)" x-text="typeLabel(item.type)"></span>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="text-sm font-medium text-gray-800 dark:text-gray-100" x-text="item.number || ('#' + item.id)"></span>
+                                                    <span class="unlock-status-pill" :class="statusPillClass(item.status)" x-text="statusLabel(item.status)"></span>
+                                                    <a x-show="item.url" :href="item.url" target="_blank" rel="noopener" class="unlock-view-link">
+                                                        View
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
+                                                        </svg>
+                                                    </a>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="item.hint"></p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ol>
+                        </div>
+                    </template>
+
+                    <template x-if="submitError">
+                        <p class="text-xs text-red-600 dark:text-red-400" role="alert" x-text="submitError"></p>
+                    </template>
+                </div>
+
+                {{-- Footer --}}
+                <div class="flex items-center justify-end gap-2 px-5 py-3.5 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" class="unlock-btn-secondary" @click="close()" :disabled="submitting">Cancel</button>
+                    <button type="button"
+                        class="unlock-btn-primary"
+                        :disabled="submitting || loading || !!error || !blockers || blockers.length > 0 || !reason.trim()"
+                        @click="submit()">
+                        <svg x-show="submitting" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" class="animate-spin">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25"/>
+                            <path fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span x-text="submitting ? 'Unlocking…' : 'Unlock invoice'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function unlockInvoiceModal() {
+            return {
+                open: false,
+                id: null,
+                number: null,
+                loading: false,
+                error: null,
+                blockers: null,
+                reason: '',
+                submitting: false,
+                submitError: null,
+
+                openFor(id, number) {
+                    this.id = id;
+                    this.number = number;
+                    this.open = true;
+                    this.reason = '';
+                    this.submitError = null;
+                    this.blockers = null;
+                    this.fetchBlockers();
+                },
+
+                close() {
+                    if (this.submitting) return;
+                    this.open = false;
+                },
+
+                async fetchBlockers() {
+                    this.loading = true;
+                    this.error = null;
+                    try {
+                        const response = await fetch(`/invoice/${this.id}/unlock-blockers`, {
+                            headers: { 'Accept': 'application/json' },
+                        });
+                        const data = await response.json();
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Could not check this invoice\'s dependencies.');
+                        }
+                        this.blockers = data.blockers || [];
+                    } catch (e) {
+                        this.error = e.message || 'Something went wrong.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async submit() {
+                    if (this.submitting || this.loading || this.error || !this.blockers || this.blockers.length > 0 || !this.reason.trim()) {
+                        return;
+                    }
+                    this.submitting = true;
+                    this.submitError = null;
+                    try {
+                        const response = await fetch(`/invoice/${this.id}/unlock`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({ reason: this.reason }),
+                        });
+                        const data = await response.json();
+
+                        if (response.status === 409) {
+                            // A dependency appeared between the preview fetch and this submit —
+                            // re-render the tree with the FRESH list the server just refused on.
+                            this.blockers = data.blockers || [];
+                            this.submitError = data.message || 'A new dependency appeared — review the list above.';
+                            return;
+                        }
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Could not unlock this invoice.');
+                        }
+
+                        location.reload();
+                    } catch (e) {
+                        this.submitError = e.message || 'Something went wrong.';
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+
+                typeLabel(type) {
+                    return ({
+                        application: 'Application', allocation: 'Allocation', receipt: 'Receipt',
+                        reconciled_line: 'Reconciled line', period: 'Period', reversal: 'Reversal',
+                    })[type] || type;
+                },
+                typeChipClass(type) {
+                    return ({
+                        application: 'unlock-chip-sky',
+                        allocation: 'unlock-chip-sky',
+                        receipt: 'unlock-chip-violet',
+                        reconciled_line: 'unlock-chip-rose',
+                        period: 'unlock-chip-amber',
+                        reversal: 'unlock-chip-slate',
+                    })[type] || 'unlock-chip-slate';
+                },
+                statusLabel(status) {
+                    return ({
+                        locked: 'Locked', reconciled: 'Reconciled',
+                        period_closed: 'Period closed', posted: 'Posted',
+                    })[status] || status;
+                },
+                statusPillClass(status) {
+                    return ({
+                        locked: 'unlock-pill-red',
+                        reconciled: 'unlock-pill-blue',
+                        period_closed: 'unlock-pill-purple',
+                        posted: 'unlock-pill-gray',
+                    })[status] || 'unlock-pill-gray';
+                },
+            };
+        }
+    </script>
+
     <style>
         @keyframes fade-in {
             from { opacity: 0; transform: translateY(10px); }
@@ -1043,5 +1327,94 @@
         .animate-fade-in {
             animation: fade-in 0.2s ease-out;
         }
+
+        /* P2.5.E — unlock dependency-tree modal */
+        .unlock-tree { list-style: none; margin: 0; padding: 0; }
+        .unlock-tree-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .unlock-tree-item:last-child { border-bottom: none; }
+        .dark .unlock-tree-item { border-color: rgba(255, 255, 255, 0.08); }
+
+        .unlock-type-chip {
+            flex-shrink: 0;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            line-height: 1.4;
+            white-space: nowrap;
+            margin-top: 1px;
+        }
+        .unlock-chip-sky { background: #e0f2fe; color: #0369a1; }
+        .unlock-chip-violet { background: #ede9fe; color: #6d28d9; }
+        .unlock-chip-rose { background: #ffe4e6; color: #be123c; }
+        .unlock-chip-amber { background: #fef3c7; color: #92400e; }
+        .unlock-chip-slate { background: #e2e8f0; color: #334155; }
+        .dark .unlock-chip-sky { background: rgba(56, 189, 248, 0.15); color: #7dd3fc; }
+        .dark .unlock-chip-violet { background: rgba(167, 139, 250, 0.15); color: #c4b5fd; }
+        .dark .unlock-chip-rose { background: rgba(251, 113, 133, 0.15); color: #fda4af; }
+        .dark .unlock-chip-amber { background: rgba(245, 158, 11, 0.15); color: #fcd34d; }
+        .dark .unlock-chip-slate { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }
+
+        .unlock-status-pill {
+            font-size: 0.65rem;
+            font-weight: 500;
+            padding: 1px 8px;
+            border-radius: 9999px;
+        }
+        .unlock-pill-red { background: #fef2f2; color: #dc2626; }
+        .unlock-pill-blue { background: #eff6ff; color: #2563eb; }
+        .unlock-pill-purple { background: #faf5ff; color: #9333ea; }
+        .unlock-pill-gray { background: #f3f4f6; color: #6b7280; }
+        .dark .unlock-pill-red { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+        .dark .unlock-pill-blue { background: rgba(59, 130, 246, 0.12); color: #60a5fa; }
+        .dark .unlock-pill-purple { background: rgba(168, 85, 247, 0.12); color: #c084fc; }
+        .dark .unlock-pill-gray { background: rgba(156, 163, 175, 0.12); color: #9ca3af; }
+
+        .unlock-view-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #2563eb;
+        }
+        .unlock-view-link:hover { text-decoration: underline; }
+        .dark .unlock-view-link { color: #60a5fa; }
+
+        .unlock-btn-secondary {
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #374151;
+            transition: background-color 0.15s;
+        }
+        .unlock-btn-secondary:hover { background: #f3f4f6; }
+        .unlock-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .dark .unlock-btn-secondary { background: #374151; border-color: #4b5563; color: #e5e7eb; }
+        .dark .unlock-btn-secondary:hover { background: #4b5563; }
+
+        .unlock-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            background: #16a34a;
+            color: #fff;
+            transition: background-color 0.15s, opacity 0.15s;
+        }
+        .unlock-btn-primary:hover:not(:disabled) { background: #15803d; }
+        .unlock-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
     </style>
 </x-app-layout>

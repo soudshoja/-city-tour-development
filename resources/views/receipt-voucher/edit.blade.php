@@ -1,507 +1,320 @@
 <x-app-layout>
-    <style>
-        /* Table Styling */
-        .bank-payment-table {
-            font-size: 12px;
-            border: 1px solid #ddd;
-            /* Light grey border */
-            width: 100%;
-            text-align: center;
-        }
+    @php
+        $r = $invoiceReceipt;
+        $company = $companies instanceof \App\Models\Company ? $companies : ($companies?->first());
+        $statusStyles = [
+            'pending' => 'bg-amber-50 text-amber-700 border-amber-200',
+            'approved' => 'bg-green-50 text-green-700 border-green-200',
+            'reversed' => 'bg-gray-100 text-gray-600 border-gray-300',
+            'rejected' => 'bg-gray-100 text-gray-600 border-gray-300',
+            'bounced' => 'bg-red-50 text-red-700 border-red-200',
+        ];
+        $statusStyle = $statusStyles[$r->status] ?? 'bg-gray-100 text-gray-600 border-gray-300';
+        $chequeOutstanding = $r->cheque_no && ! $r->cheque_clearance_date && $r->status === 'approved';
+        $chequeCleared = $r->cheque_no && $r->cheque_clearance_date && $r->status === 'approved';
+        $fieldsDisabled = ! $canEditFields;
+    @endphp
 
-        .bank-payment-table th,
-        .bank-payment-table td {
-            padding: 2px !important;
-            vertical-align: middle;
-            border: 1px solid #ddd !important;
-            /* Light grey border for all cells */
-            min-width: 80px;
-            /* Ensuring a consistent column width */
-            text-align: center;
-            /* Center content */
-        }
-
-        /* Centering input fields */
-        .bank-payment-table input,
-        .bank-payment-table select {
-            font-size: 12px;
-            padding: 1px 5px;
-            height: 28px;
-            width: 100%;
-            /* Make inputs fill the cell */
-            border: 1px solid #ccc;
-            /* Slightly darker grey for inputs */
-            border-radius: 6px;
-            /* Rounded corners */
-            text-align: left;
-            /* Center text inside input fields */
-        }
-
-        /* Button Styling */
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-
-        /* Add New Record Button */
-        .add-record-container {
-            margin-top: 15px;
-            /* Adds spacing after table */
-            text-align: right;
-            /* Align button to right */
-        }
-
-        .btn-lightblue {
-            background-color: lightblue;
-            box-shadow: none !important;
-            border: none;
-        }
-    </style>
-
-    <div class="panel h-full overflow-hidden border-0 p-0">
-        <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
-            <div class="flex items-center justify-between text-white">
-                <p class="text-2xl">Receipt Voucher</p>
+    <div class="mx-auto max-w-4xl">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-2xl font-semibold text-gray-900">Receipt voucher {{ $r->voucher_number }}</h1>
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {{ $statusStyle }}">{{ ucfirst($r->status) }}</span>
+                    @if ($isLocked)
+                        <span class="inline-flex items-center rounded-full border border-gray-500 bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-white" title="Locked by an accountant; edit/reverse are disabled">Locked</span>
+                    @endif
+                    @if ($isReconciled)
+                        <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700" title="A line on this voucher is reconciled; edit/reverse are disabled">Reconciled</span>
+                    @endif
+                </div>
+                <p class="mt-1 text-sm text-gray-500">KWD {{ number_format((float) $r->amount, 3) }} &middot; {{ optional($r->doc_date)->format('d M Y') }}</p>
             </div>
+            <a href="{{ route('receipt-voucher.index') }}" class="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Back to receipt vouchers
+            </a>
         </div>
 
-        <div class="flex flex-col gap-2.5 xl:flex-row">
-            <div class="panel flex-1 px-0 py-6 ltr:lg:mr-6 rtl:lg:ml-6">
-                <div class="flex flex-wrap justify-between px-4">
+        @if (session('success'))
+            <div class="mb-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700">{{ session('success') }}</div>
+        @endif
+        @if (session('error'))
+            <div class="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ session('error') }}</div>
+        @endif
 
-                    <div class="mb-6 w-full lg:w-1/2">
-                        <div class="mt-6 space-y-1 text-gray-800 dark:text-gray-400">
-                            <x-application-logo class="custom-logo-size" />
-                            @if ($companies)
-                                <div class="pl-2">
-                                    <h3>{{ $companies->name }}</h3>
-                                    <p>{!! nl2br(e($companies->address)) !!}</p>
-                                    <p>{{ $companies->email }}</p>
-                                    <p>{{ $companies->phone }}</p>
-                                </div>
-                            @endif
-                            <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
-                        </div>
+        @if ($isLocked || $isReconciled)
+            <div class="mb-6 rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                This voucher {{ $isLocked ? 'is locked' : '' }}{{ $isLocked && $isReconciled ? ' and has' : ($isReconciled ? 'has' : '') }}{{ $isReconciled ? ' a reconciled line' : '' }}. Editing and reversal are disabled
+                @if ($isReconciled) until the line is un-reconciled @endif
+                @if ($isLocked) — contact your accountant to unlock it @endif.
+            </div>
+        @endif
+
+        <!-- Actions --------------------------------------------------------------------------------- -->
+        <div class="mb-6 flex flex-wrap items-center gap-2">
+            @if ($r->isPending() && $canApprove)
+                <form method="POST" action="{{ route('receipt-voucher.approve', $r->id) }}">
+                    @csrf
+                    <button type="submit" class="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">Approve &amp; post</button>
+                </form>
+            @endif
+
+            @if ($chequeOutstanding && $canReconcile)
+                <form method="POST" action="{{ route('receipt-voucher.clear', $r->id) }}" class="flex items-center gap-2">
+                    @csrf
+                    <select name="bank_account_id" required class="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Clear into bank…</option>
+                        @foreach ($bankAccounts as $bank)
+                            <option value="{{ $bank->id }}">[{{ $bank->code }}] {{ $bank->name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">Clear cheque</button>
+                </form>
+            @endif
+
+            @if ($chequeCleared && $canReconcile)
+                <button type="button" onclick="document.getElementById('bounce-panel').classList.toggle('hidden')"
+                        class="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100">
+                    Bounce cheque
+                </button>
+            @endif
+
+            @if ($r->status === 'approved' && $canReverse)
+                <form method="POST" action="{{ route('receipt-voucher.destroy', $r->id) }}" onsubmit="return confirm('Reverse this posted receipt voucher? This cannot be undone and creates a reversing entry.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Reverse</button>
+                </form>
+            @elseif ($r->isPending())
+                <form method="POST" action="{{ route('receipt-voucher.destroy', $r->id) }}" onsubmit="return confirm('Delete this draft receipt voucher?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Delete draft</button>
+                </form>
+            @endif
+        </div>
+
+        @if ($chequeCleared && $canReconcile)
+            <div id="bounce-panel" class="mb-6 hidden rounded-lg border border-red-200 bg-red-50 p-4">
+                <form method="POST" action="{{ route('receipt-voucher.bounce', $r->id) }}" class="flex flex-wrap items-end gap-3">
+                    @csrf
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-red-700">Bounce fee to recharge the client (optional)</label>
+                        <input type="number" step="0.001" min="0" name="bounce_fee_amount" class="w-40 rounded-md border-red-300 text-sm focus:border-red-500 focus:ring-red-500">
                     </div>
+                    <button type="submit" class="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Confirm bounce</button>
+                </form>
+            </div>
+        @endif
 
-                    <div class="mb-6 w-full lg:w-1/2 lg:max-w-fit mt-5">
-                        <div class="flex items-center gap-x-6">
-                            <label for="receiptvoucherref" class="mb-0 flex-1">Ref <span class="text-red-500">*</span></label>
-                            <input required readonly id="receiptvoucherref" value="{{ old('receiptvoucherref', $receiptvoucher->reference_number) }}" type="text"
-                                name="receiptvoucherref" class="form-input w-2/3 bg-gray-100 text-gray-800 border-gray-300" />
-                        </div>
-                        <div class="flex items-center gap-x-4 mt-4">
-                            <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment Type <span class="text-red-500">*</span></label>
-                            <input value="{{ old('reference_type', $receiptvoucher->reference_type) }}" type="text"
-                                readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300" value="{{ $receiptvoucher->reference_type }}" />
-                        </div>
+        @if ($r->cheque_image_path)
+            <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+                <p class="mb-2 text-sm font-medium text-gray-700">Cheque image on file</p>
+                <a href="{{ route('receipt-voucher.cheque-image', $r->id) }}" target="_blank" rel="noopener" class="text-sm text-blue-600 hover:underline">View uploaded cheque image</a>
+            </div>
+        @endif
 
-                        @if ($receiptvoucher->reference_type === 'Refund')
-                            <div class="flex items-center gap-x-4 mt-4">
-                                <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Refund Number</label>
-                                <input type="text" readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300"
-                                    value="{{ trim(\Illuminate\Support\Str::after($receiptvoucher->description, '|')) }}" />
-                            </div>
-                        @endif
+        <!-- Editable fields --------------------------------------------------------------------------- -->
+        <form method="POST" action="{{ route('receipt-voucher.update', $r->id) }}" enctype="multipart/form-data">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="company_id" value="{{ $r->company_id }}">
 
-                        <div class="flex items-center gap-x-6 mt-4">
-                            <label for="branch_id" class="mb-0 flex-1">Branch <span class="text-red-500">*</span></label>
-                            <select readonly id="branch_id" name="branch_id" class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300">
+            <div class="space-y-6">
+                <section class="rounded-lg border border-gray-200 bg-white p-6">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Document details</h2>
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="branch_id" class="mb-1 block text-sm font-medium text-gray-700">Branch</label>
+                            <select id="branch_id" name="branch_id" required {{ $fieldsDisabled ? 'disabled' : '' }}
+                                    class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
                                 @foreach ($branches as $branch)
-                                    <option value="{{ $branch->id }}"
-                                        {{ old('branch_id', $receiptvoucher->branch_id) == $branch->id ? 'selected' : '' }}>
-                                        {{ $branch->name }}
-                                    </option>
+                                    <option value="{{ $branch->id }}" {{ (int) $r->branch_id === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                                 @endforeach
                             </select>
                         </div>
-
-                        <div class="mt-4 flex items-center gap-x-6">
-                            <label for="docdate" class="mb-0 flex-1">Doc Date <span class="text-red-500">*</span></label>
-                            <input readonly id="docdate" type="date" name="docdate" class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300"
-                                value="{{ old('docdate', isset($receiptvoucher->date) ? \Carbon\Carbon::parse($receiptvoucher->date)->format('Y-m-d') : '') }}" />
+                        <div>
+                            <label for="docdate" class="mb-1 block text-sm font-medium text-gray-700">Document date</label>
+                            <input id="docdate" type="date" name="docdate" required value="{{ optional($r->doc_date)->toDateString() }}" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-
-                <div class="mt-8 px-4">
-                    <div class="flex flex-col justify-between lg:flex-row gap-x-4">
-                        <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
-                            <div class="text-lg font-semibold">Receipt Voucher</div>
-                            <div class="mt-4 flex items-center gap-x-4">
-                                <label for="pay_to" class="mb-0 w-1/3 ">Receive From<span class="text-red-500">*</span></label>
-                                <input readonly id="pay_to" type="text" name="pay_to" list="supplierList" placeholder="Enter Payee Name"
-                                    value="{{ old('pay_to', $receiptvoucher->name) }}" class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" />
-                                <datalist id="supplierList">
-                                    @foreach ($suppliers as $supplier)
-                                        <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
-                                            {{ $supplier->name }}
-                                        </option>
+                <section class="rounded-lg border border-gray-200 bg-white p-6">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Receipt</h2>
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="type" class="mb-1 block text-sm font-medium text-gray-700">Receipt type</label>
+                            <select id="type" name="type" required {{ $fieldsDisabled ? 'disabled' : '' }}
+                                    class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                <option value="account" {{ $r->type === 'account' ? 'selected' : '' }}>Account payment</option>
+                                <option value="invoice" {{ $r->type === 'invoice' ? 'selected' : '' }}>Invoice payment</option>
+                                <option value="credit" {{ $r->type === 'credit' ? 'selected' : '' }}>Client credit top-up</option>
+                                <option value="import" {{ $r->type === 'import' ? 'selected' : '' }}>Imported historical receipt</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="amount" class="mb-1 block text-sm font-medium text-gray-700">Amount (KWD)</label>
+                            <input id="amount" type="number" step="0.001" min="0.001" name="amount" required value="{{ $r->amount }}" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        </div>
+                        @if ($r->type === 'account')
+                            <div>
+                                <label for="account_id" class="mb-1 block text-sm font-medium text-gray-700">Account</label>
+                                <select id="account_id" name="account_id" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                        class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                    @foreach ($accpayreceives as $acc)
+                                        <option value="{{ $acc->id }}" {{ (int) $r->account_id === $acc->id ? 'selected' : '' }}>[{{ $acc->code }}] {{ $acc->name }}</option>
                                     @endforeach
-                                </datalist>
+                                </select>
                             </div>
+                        @else
+                            <div>
+                                <label for="client_id" class="mb-1 block text-sm font-medium text-gray-700">Client</label>
+                                <select id="client_id" name="client_id" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                        class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                    <option value="">None</option>
+                                    @foreach ($clients as $client)
+                                        <option value="{{ $client->id }}" {{ (int) $r->client_id === $client->id ? 'selected' : '' }}>{{ $client->full_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                    </div>
+                </section>
+
+                @if ($r->type === 'invoice')
+                    @php $existingAllocations = is_array($r->allocations) && $r->allocations !== [] ? $r->allocations : ($r->invoice_id ? [['invoice_id' => $r->invoice_id, 'amount' => $r->amount]] : []); @endphp
+                    <section class="rounded-lg border border-gray-200 bg-white p-6">
+                        <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Applied to invoices</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach ($existingAllocations as $i => $alloc)
+                                <div class="flex flex-wrap items-end gap-3 rounded-md border border-gray-100 bg-gray-50 p-3">
+                                    <div class="min-w-[16rem] flex-1">
+                                        <label class="mb-1 block text-xs font-medium text-gray-600">Invoice</label>
+                                        <select name="allocations[{{ $i }}][invoice_id]" required {{ $fieldsDisabled ? 'disabled' : '' }}
+                                                class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                            @foreach ($unpaidInvoices as $inv)
+                                                <option value="{{ $inv->id }}" {{ (int) $alloc['invoice_id'] === $inv->id ? 'selected' : '' }}>
+                                                    {{ $inv->invoice_number ?? ('#'.$inv->id) }} — {{ $inv->client->full_name ?? 'No client' }} — KWD {{ number_format((float) $inv->amount, 3) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="w-40">
+                                        <label class="mb-1 block text-xs font-medium text-gray-600">Amount (KWD)</label>
+                                        <input type="number" step="0.001" min="0.001" name="allocations[{{ $i }}][amount]" value="{{ $alloc['amount'] }}" required {{ $fieldsDisabled ? 'disabled' : '' }}
+                                               class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
+                        <p class="mt-3 text-xs text-gray-500">Remainder disposition: <span class="font-medium">{{ ucfirst($overpayPolicy) }}</span>. Current remainder: KWD {{ number_format((float) $r->remainder_amount, 3) }}.</p>
+                    </section>
+                @endif
 
-                        <div class="w-full lg:w-1/2">
-                            <div class="text-lg font-semibold">Remarks</div>
-
-                            <div class="mt-4 flex items-center gap-x-4">
-                                <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks<span class="text-red-500">*</span></label>
-                                <input readonly id="remarks_create" type="text" name="remarks_create"
-                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" placeholder="Enter Remarks"
-                                    value="{{ old('remarks_create', trim(\Illuminate\Support\Str::before($receiptvoucher->description, '|'))) }}" />
-
+                <section class="rounded-lg border border-gray-200 bg-white p-6">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Instrument</h2>
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="bank_account_id" class="mb-1 block text-sm font-medium text-gray-700">Bank account</label>
+                            <select id="bank_account_id" name="bank_account_id" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                    class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                <option value="">Cash in hand</option>
+                                @foreach ($bankAccounts as $bank)
+                                    <option value="{{ $bank->id }}" {{ (int) $r->bank_account_id === $bank->id ? 'selected' : '' }}>[{{ $bank->code }}] {{ $bank->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="cheque_no" class="mb-1 block text-sm font-medium text-gray-700">Cheque no.</label>
+                            <input id="cheque_no" type="text" name="cheque_no" value="{{ $r->cheque_no }}" maxlength="100" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        </div>
+                        <div>
+                            <label for="cheque_date" class="mb-1 block text-sm font-medium text-gray-700">Cheque date</label>
+                            <input id="cheque_date" type="date" name="cheque_date" value="{{ optional($r->cheque_date)->toDateString() }}" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        </div>
+                        <div>
+                            <label for="bank_info" class="mb-1 block text-sm font-medium text-gray-700">Bank reference</label>
+                            <input id="bank_info" type="text" name="bank_info" value="{{ $r->bank_info }}" maxlength="200" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        </div>
+                        <div>
+                            <label for="auth_no" class="mb-1 block text-sm font-medium text-gray-700">Authorization no.</label>
+                            <input id="auth_no" type="text" name="auth_no" value="{{ $r->auth_no }}" maxlength="100" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        </div>
+                        @unless ($fieldsDisabled)
+                            <div>
+                                <label for="cheque_image" class="mb-1 block text-sm font-medium text-gray-700">Replace cheque image</label>
+                                <input id="cheque_image" type="file" name="cheque_image" accept="image/png,image/jpeg,application/pdf"
+                                       class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
                             </div>
+                        @endunless
+                    </div>
+                </section>
 
-                            <div class="mt-4 flex items-center gap-x-4">
-                                <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal Remarks</label>
-                                <input readonly id="internal_remarks" type="text" name="internal_remarks" class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
-                                    placeholder="Enter Internal Remarks" value="{{ old('internal_remarks', $receiptvoucher->remarks_internal) }}" />
-                            </div>
-
-                            <div class="mt-4 flex items-center gap-x-4">
-                                <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks FL</label>
-                                <input readonly id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300"
-                                    placeholder="Enter Remarks FL" value="{{ old('remarks_fl', $receiptvoucher->remarks_fl) }}" />
-                            </div>
+                <section class="rounded-lg border border-gray-200 bg-white p-6">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Remarks</h2>
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="remarks_create" class="mb-1 block text-sm font-medium text-gray-700">Remarks</label>
+                            <input id="remarks_create" type="text" name="remarks_create" value="{{ $r->remarks }}" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        </div>
+                        <div>
+                            <label for="internal_remarks" class="mb-1 block text-sm font-medium text-gray-700">Internal remarks</label>
+                            <input id="internal_remarks" type="text" name="internal_remarks" value="{{ $r->remarks_internal }}" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                   class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="overflow-x-auto">
-                    <table class="table table-bordered bank-payment-table mt-10 w-full">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Invoice Number</th>
-                                <th>A/C</th>
-                                <th>Remarks</th>
-                                <th>Currency</th>
-                                <th>Exchange Rate</th>
-                                <th>Amount</th>
-                                <th>Debit</th>
-                                <th>Credit</th>
-                                <th>Cheque No</th>
-                                <th>Cheque Date</th>
-                                <th>Bank Name</th>
-                                <th>Auth No</th>
-                                <th>Branch</th>
-                                <th>Balance</th>
+                @unless ($fieldsDisabled)
+                    <div class="flex items-center justify-end gap-3">
+                        <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                            {{ $r->isPending() ? 'Save changes' : 'Save (reverse and repost)' }}
+                        </button>
+                    </div>
+                @endunless
+            </div>
+        </form>
+
+        @if ($journalEntries->isNotEmpty())
+            <section class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Posted journal lines</h2>
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead>
+                            <tr class="text-left text-xs font-medium uppercase text-gray-500">
+                                <th class="py-2 pr-4">Account</th>
+                                <th class="py-2 pr-4 text-right">Debit</th>
+                                <th class="py-2 pr-4 text-right">Credit</th>
+                                <th class="py-2 pr-4">Reconciled</th>
                             </tr>
                         </thead>
-                        <tbody id="paymentTable">
-                            @foreach ($JournalEntrys as $index => $entry)
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach ($journalEntries as $line)
                                 <tr>
-                                    <td>
-                                        {{ $entry->transaction->invoiceReceipt?->invoice?->invoice_number ?? $entry->reference_number }}
-                                        <input type="hidden" readonly name="items[{{ $index }}][invoice_number]"
-                                            value="{{ $entry->transaction->invoiceReceipt?->invoice?->invoice_number ?? $entry->reference_number }}">
-                                    </td>
-                                    <td>
-                                        {{ $entry->account ? '[' . $entry->account->root->name . '] [' . $entry->account->code . '] ' . $entry->account->name : 'N/A' }}
-                                        <input readonly type="hidden" name="items[{{ $index }}][account_id]"
-                                            value="{{ old("items.$index.account_id", $entry->account_id) }}" />
-                                        @if ($entry->reconciled == 2)
-                                            <button type="button" class="btn btn-lightblue btn-sm p-10"
-                                                onclick="fetchJournalEntries({{ $entry->id }})">
-                                                View Reconciled Item
-                                            </button>
-
-                                            <button type="button" class="mt-1 btn btn-warning text-black btn-sm p-10"
-                                                onclick="declineReconcileJournalEntries({{ $entry->id }})">
-                                                Decline & Remove Reconcile
-                                            </button>
+                                    <td class="py-2 pr-4">{{ $line->account?->name ?? $line->account_id }}</td>
+                                    <td class="py-2 pr-4 text-right tabular-nums">{{ number_format((float) $line->debit, 3) }}</td>
+                                    <td class="py-2 pr-4 text-right tabular-nums">{{ number_format((float) $line->credit, 3) }}</td>
+                                    <td class="py-2 pr-4">
+                                        @if ((int) $line->reconciled === 1)
+                                            <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">Reconciled</span>
+                                        @else
+                                            <span class="text-gray-400">—</span>
                                         @endif
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][description]"
-                                            value="{{ old("items.$index.description", $entry->description) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][currency]"
-                                            value="{{ old("items.$index.currency", $entry->currency) }}" />
-                                    </td>
-                                    <td><input readonly type="text"
-                                            name="items[{{ $index }}][exchange_rate]"
-                                            value="{{ old("items.$index.exchange_rate", $entry->exchange_rate) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][amount]"
-                                            value="{{ old("items.$index.amount", $entry->amount) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][debit]"
-                                            value="{{ old("items.$index.debit", $entry->debit) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][credit]"
-                                            value="{{ old("items.$index.credit", $entry->credit) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][cheque_no]"
-                                            value="{{ old("items.$index.cheque_no", $entry->cheque_no) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][cheque_date]"
-                                            value="{{ old("items.$index.cheque_date", $entry->cheque_date) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][bank_name]"
-                                            value="{{ old("items.$index.bank_name", $entry->bank_name) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][auth_no]"
-                                            value="{{ old("items.$index.auth_no", $entry->auth_no) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][branch_name]"
-                                            value="{{ old("items.$index.branch_name", $entry->branch_name) }}" />
-                                    </td>
-                                    <td><input readonly type="text" name="items[{{ $index }}][balance]"
-                                            value="{{ old("items.$index.balance", $entry->balance) }}" />
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-
-                <div class="panel overflow-hidden mt-10">
-                    <div class="relative">
-                        <div class="grid grid-cols-2 gap-6 md:grid-cols-3">
-                            <div class="mt-2">
-                                <div class="text-primary">Total Debit</div>
-                                <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_debit">0.000</span>
-                                </div>
-                            </div>
-
-                            <div class="mt-2">
-                                <div class="text-primary">Total Credit</div>
-                                <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_credit">0.000</span>
-                                </div>
-                            </div>
-
-                            <div class="mt-2">
-                                <div class="text-primary">Difference</div>
-                                <div class="mt-2 text-2xl font-semibold">
-                                    <span id="total_difference">0.000</span>
-                                </div>
-                            </div>
-
-                        </div>
-                        <div class="absolute -bottom-12 right-12 h-36 w-36">
-                            <svg id="correct" width="36" height="36" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-success opacity-20">
-                                <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="1.5" />
-                                <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-
-                            <svg id="false" width="36" height="36" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-danger opacity-20">
-                                <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="1.5" />
-                                <path d="M12 7V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                <circle cx="12" cy="16" r="1" fill="currentColor" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-center w-full">
-                    <a href="{{ route('receipt-voucher.index') }}"
-                        class="btn btn-info px-6 py-2 w-48 rounded-lg text-center">Receipt Voucher List</a>
-                </div>
-            </div>
-        </div>
+            </section>
+        @endif
     </div>
-
-    <div id="journalEntriesModal"
-        class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-3xl shadow-xl">
-            <h2 class="text-lg font-bold mb-4">Reconciled Journal Entries</h2>
-
-            <div id="journal-entries-content" class="text-sm overflow-x-auto">
-                <p class="text-gray-500">Loading entries...</p>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="closeJournalEntriesModal()"
-                    class="bg-gray-300 px-4 py-2 rounded w-full sm:w-auto">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const suppliers = @json($suppliers);
-        const accpayreceives = @json($accpayreceives);
-
-        document.addEventListener("DOMContentLoaded", function() {
-            const totalDebitEl = document.getElementById("total_debit");
-            const totalCreditEl = document.getElementById("total_credit");
-            const totalDifferenceEl = document.getElementById("total_difference");
-            const addItemButton = document.getElementById("addItem");
-
-            let items = [];
-
-            // Update a specific field (when editing a row)
-            window.updateField = function(index, field, value) {
-                if (["debit", "credit", "amount", "exchange_rate", "balance"].includes(field)) {
-                    items[index][field] = parseFloat(value) || 0;
-                } else {
-                    items[index][field] = value;
-                }
-                updateTotals();
-            };
-
-            // Update totals
-            function updateTotals() {
-                let totalDebit = 0;
-                let totalCredit = 0;
-
-                document.querySelectorAll('input[name^="items"]').forEach(function(input) {
-                    if (input.name.includes('[debit]')) {
-                        totalDebit += parseFloat(input.value) || 0;
-                    }
-                    if (input.name.includes('[credit]')) {
-                        totalCredit += parseFloat(input.value) || 0;
-                    }
-                });
-
-                const diff = totalDebit - totalCredit;
-
-                totalDebitEl.textContent = totalDebit.toFixed(3);
-                totalCreditEl.textContent = totalCredit.toFixed(3);
-                totalDifferenceEl.textContent = diff.toFixed(3);
-
-                const correctIcon = document.getElementById('correct');
-                const falseIcon = document.getElementById('false');
-
-                if (correctIcon && falseIcon) {
-                    correctIcon.style.display = (diff === 0) ? 'block' : 'none';
-                    falseIcon.style.display = (diff !== 0) ? 'block' : 'none';
-                }
-            }
-
-            // Event: Update totals on input change
-            document.addEventListener('input', function(e) {
-                if (e.target.matches(
-                        'input[name^="items"][name$="[debit]"], input[name^="items"][name$="[credit]"]')) {
-                    updateTotals();
-                }
-            });
-
-            // Ensure totals update when everything is loaded
-            window.addEventListener('load', function() {
-                updateTotals();
-            });
-        });
-
-        function fetchJournalEntries(entryId) {
-            console.log(entryId);
-
-            const content = document.getElementById('journal-entries-content');
-            content.innerHTML = '<p class="text-gray-500">Loading entries...</p>';
-
-            if (!entryId) {
-                content.innerHTML = '<p class="text-gray-500">No entries found.</p>';
-                openJournalEntriesModal();
-                return;
-            }
-
-            fetch(`/bank-payments/fetch-journals-view?id=${entryId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length === 0) {
-                        content.innerHTML = '<p class="text-gray-500">No entries found.</p>';
-                    } else {
-                        let totalDebit = 0;
-                        let totalCredit = 0;
-                        let count = 1;
-                        let table = `
-                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-50">
-                        <table class="min-w-full table-auto text-sm">
-                            <thead class="bg-gray-100 sticky top-0">
-                                <tr>
-                                    <th class="border px-2 py-1">#</th>
-                                    <th class="border px-2 py-1">Date</th>
-                                    <th class="border px-2 py-1">Name</th>
-                                    <th class="border px-2 py-1">Description</th>
-                                    <th class="border px-2 py-1 text-right">Debit</th>
-                                    <th class="border px-2 py-1 text-right">Credit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-                        data.forEach(entry => {
-                            totalDebit += parseFloat(entry.debit);
-                            totalCredit += parseFloat(entry.credit);
-                            table += `
-                        <tr>
-                            <td class="border px-2 py-1">${count}</td>
-                            <td class="border px-2 py-1">${entry.transaction_date}</td>
-                            <td class="border px-2 py-1">${entry.name}</td>
-                            <td class="border px-2 py-1">${entry.description}</td>
-                            <td class="border px-2 py-1 text-right">${parseFloat(entry.debit).toFixed(3)}</td>
-                            <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(3)}</td>
-                        </tr>
-                    `;
-                            count++;
-                        });
-
-                        // Total row
-                        table += `
-                        <tr class="font-semibold bg-gray-50">
-                            <td class="border px-2 py-1 text-right" colspan="4">Total</td>
-                            <td class="border px-2 py-1 text-right">${totalDebit.toFixed(3)}</td>
-                            <td class="border px-2 py-1 text-right">${totalCredit.toFixed(3)}</td>
-                        </tr>
-                    </tbody>
-                    </table>
-                </div>
-                `;
-
-                        content.innerHTML = table;
-                    }
-                    openJournalEntriesModal();
-                })
-                .catch(error => {
-                    console.error('Error fetching journal entries:', error);
-                    content.innerHTML = '<p class="text-red-500">Error loading entries.</p>';
-                    openJournalEntriesModal();
-                });
-        }
-
-        function openJournalEntriesModal() {
-            document.getElementById('journalEntriesModal').classList.remove('hidden');
-        }
-
-        function closeJournalEntriesModal() {
-            document.getElementById('journalEntriesModal').classList.add('hidden');
-        }
-
-        function declineReconcileJournalEntries(transactionId) {
-
-            console.log(transactionId);
-            if (!confirm('Are you sure you want to decline & remove this reconciliation?')) {
-                return;
-            }
-
-            fetch(`/bank-payments/${transactionId}/decline-reconcile`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Reconciliation declined successfully.');
-                        location.reload(); // reload to reflect changes
-                    } else {
-                        alert('Failed to decline reconciliation.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while declining reconciliation.');
-                });
-        }
-    </script>
 </x-app-layout>

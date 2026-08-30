@@ -47,6 +47,19 @@ class Charge extends Model
         'can_charge_invoice' => 'boolean',
         'is_system_default' => 'boolean',
         'can_be_deleted' => 'boolean',
+        // Only api_key (TEXT column) is safe to encrypt with the built-in cast
+        // width-wise. tran_portal_password / terminal_resource_key are VARCHAR(255)
+        // (migration 2025_11_16_155129_add_knet_credential_in_charges_table.php) and
+        // Laravel's encrypted payload for a realistic secret exceeds 255 chars, so
+        // casting them here would truncate/corrupt data on write. They need a
+        // migration widening them to TEXT before they can be safely encrypted --
+        // that migration is out of scope for this wave (boundary: database/migrations/**
+        // is owned by the accounting session). Flagged as a required follow-up.
+        //
+        // api_key uses a custom fault-tolerant cast (not the built-in 'encrypted')
+        // so that existing plaintext rows keep reading correctly across the deploy
+        // that introduces this cast -- see App\Casts\FaultTolerantEncrypted.
+        'api_key' => \App\Casts\FaultTolerantEncrypted::class,
     ];
 
     public function getAmountAttribute($value)

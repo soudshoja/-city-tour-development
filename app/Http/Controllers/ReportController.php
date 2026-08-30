@@ -31,6 +31,7 @@ use App\Models\Charge;
 use Exception;
 use Illuminate\Support\Str;
 use App\Services\TrialBalanceService;
+use App\Services\Accounting\DeferredRevenueScheduleReport;
 
 class ReportController extends Controller
 {
@@ -590,6 +591,8 @@ class ReportController extends Controller
 
     public function profitLoss(Request $request)
     {
+        Gate::authorize('viewProfitLoss', Report::class);
+
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
@@ -625,8 +628,19 @@ class ReportController extends Controller
             $descendantsCache[$parent->id] = $this->getAllDescendants($parent->id, $childrenMap);
         }
 
+        // P2.5.B fix (BUG-C4, doc 08; p2_5-brief.md §P2.5.B): this used to bucket by created_at
+        // (when the row was inserted) rather than posting_date (which accounting period the entry
+        // actually belongs to) — a document entered on a different day than its own accounting
+        // date (a late-arriving cost, a correction posted today against an earlier month, or any
+        // document PeriodGuard has shifted forward per period-lock-design.md §8.1) would land in
+        // the wrong month's P&L. COALESCE(posting_date, transaction_date), not a bare
+        // posting_date: posting_date is backfilled for every pre-existing row by this wave's own
+        // migration and always set by PostingService::post() going forward, but a legacy call
+        // site this build's strangler cutover has not yet migrated (doc 11 §C2's 131-site census)
+        // would otherwise leave a new row's posting_date NULL and silently invisible to this
+        // report — transaction_date is the correct, non-regressive fallback for exactly that row.
         $journalEntries = JournalEntry::where('company_id', $companyId)
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$from, $to])
             ->get();
 
         $entriesByAccount = $journalEntries->groupBy('account_id');
@@ -677,14 +691,16 @@ class ReportController extends Controller
         $yearStart = \Carbon\Carbon::createFromDate($year, 1, 1)->startOfYear();
         $yearEnd = \Carbon\Carbon::createFromDate($year, 12, 31)->endOfYear();
 
+        // P2.5.B fix (BUG-C4) — same COALESCE(posting_date, transaction_date) rationale as the
+        // monthly query above.
         $yearlyEntries = JournalEntry::where('company_id', $companyId)
             ->whereIn('account_id', $relevantAccountIds)
-            ->whereBetween('created_at', [$yearStart, $yearEnd])
+            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
             ->get();
 
         $entriesByMonthAndAccount = [];
         foreach ($yearlyEntries as $entry) {
-            $monthKey = $entry->created_at->format('n');
+            $monthKey = ($entry->posting_date ?? $entry->transaction_date)->format('n');
             $accountId = $entry->account_id;
 
             if (!isset($entriesByMonthAndAccount[$monthKey])) {
@@ -1544,6 +1560,16 @@ class ReportController extends Controller
         return abort(404);  // Or redirect with a message
     }
 
+    /**
+     * P2.5.B note (p2_5-brief.md §P2.5.B): this method's `transactions.created_at` filter below is
+     * DELIBERATELY left as-is, not converted to `posting_date` — it lists gateway settlement
+     * transactions by when this system recorded the settlement event (a real-clock-time question:
+     * "what settled between these two calendar timestamps"), not a P&L/trial-balance/ledger/
+     * agent-statement query bucketing an entry into an accounting period (BUG-C4's actual concern
+     * — see `profitLoss()`/`SupplierController::getTotalDebitCredit()`'s own P2.5.B fixes for that
+     * shape). Out of this wave's scope on that basis, reviewed and excluded on purpose rather than
+     * missed.
+     */
     public function settlementsReport(Request $request)
     {
         $user = Auth::user();
@@ -1604,19 +1630,20 @@ class ReportController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
+        // A falsy/orphaned companyId used to fall through with no company
+        // filter applied at all, silently returning every company's journal
+        // entries for the requested date. Fail closed instead.
+        abort_unless($companyId, 403);
+
         if (!$date) {
             return response()->json(['entries' => []]);
         }
 
-        $query = JournalEntry::whereDate('transaction_date', $date)
+        $entries = JournalEntry::whereDate('transaction_date', $date)
+            ->where('company_id', $companyId)
             ->with('account')
-            ->orderBy('id', 'desc');
-
-        if ($companyId) {
-            $query->where('company_id', $companyId);
-        }
-
-        $entries = $query->get()
+            ->orderBy('id', 'desc')
+            ->get()
             ->map(function ($entry) {
                 return [
                     'id' => $entry->id,
@@ -4178,6 +4205,30 @@ class ReportController extends Controller
         return response()->json([
             'count' => $unbalanced->count(),
             'transactions' => $unbalanced,
+        ]);
+    }
+
+    /**
+     * P2.5.D (p2_5-brief.md §P2.5.D): "deferred revenue schedule (by release month)". JSON-only —
+     * no dedicated Blade view in this sub-wave (the P2.5.C/F/G waves each own their own screen;
+     * this lane's own report documents that gap). Same role gate as trialBalance()/
+     * trialBalanceValidation() above.
+     */
+    public function deferredRevenueSchedule(Request $request, DeferredRevenueScheduleReport $report): JsonResponse
+    {
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$companyId) {
+            return response()->json(['error' => 'Company not selected'], 400);
+        }
+
+        return response()->json([
+            'schedule' => $report->byReleaseMonth($companyId),
         ]);
     }
 }

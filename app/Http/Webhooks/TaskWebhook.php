@@ -20,7 +20,9 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\TaskController;
 use App\Http\Traits\NotificationTrait;
 use App\Models\Company;
+use App\Models\TaskWebhookDedupe;
 use App\Models\Wallet;
+use App\Services\TaskStatusService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Validation\ValidationException;
@@ -29,9 +31,34 @@ class TaskWebhook
 {
     use NotificationTrait;
 
+    /**
+     * W6.S item (4) (w6-brief.md "Consolidation + fixes" -- "require signature auth ... + payload_hash
+     * dedupe"). The route itself carries `verify.webhook.signature` (see routes/api.php), which
+     * attaches a verified `webhook_client` request attribute ONLY when a valid signature was
+     * presented -- see App\Http\Middleware\VerifyWebhookSignature's own docblock/behaviour, which
+     * this sub-wave consumes as-is and does not modify (HmacMiddlewareTest's 4 pre-existing
+     * failures belong to another track). This method's own top-of-body check below is what turns
+     * "the middleware verified a signature IF one was presented" into "a signature is MANDATORY
+     * for this specific endpoint" -- without touching the shared middleware's own
+     * skip-when-absent behaviour (other, unrelated webhook endpoints may legitimately want that).
+     */
     public function webhook(Request $request): JsonResponse
     {
         Log::info('[WEBHOOK] Task request received', ['request' => $request->all()]);
+
+        if (! $request->attributes->get('webhook_client')) {
+            Log::warning('[WEBHOOK] Rejected -- no verified signature', ['ip' => $request->ip()]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'A verified webhook signature is required for this endpoint.',
+            ], 401);
+        }
+
+        $dedupe = $this->checkPayloadDedupe($request);
+        if ($dedupe !== null) {
+            return $dedupe;
+        }
 
         try {
             $this->validateWebhookRequest($request);
@@ -57,6 +84,8 @@ class TaskWebhook
             $this->processIataWallet($task);
 
             DB::commit();
+
+            $this->recordPayloadDedupe($request, $task->id);
 
             return response()->json([
                 'status' => 'success',
@@ -87,6 +116,55 @@ class TaskWebhook
                 'message' => 'Task creation failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * W6.S item (4) -- payload_hash dedupe. Deliberately a dedicated table
+     * (`task_webhook_dedupes`), not `webhook_audit_logs.payload_hash` (a traceability-only field
+     * the shared HMAC middleware already writes on every request, verified or not -- not this
+     * sub-wave's to repurpose). Returns a 200 idempotent no-op JsonResponse when this exact
+     * payload was already accepted for this webhook client; null when it is new (caller proceeds
+     * normally, and MUST call {@see recordPayloadDedupe()} once processing succeeds).
+     */
+    private function checkPayloadDedupe(Request $request): ?JsonResponse
+    {
+        $client = $request->attributes->get('webhook_client');
+        $payloadHash = hash('sha256', $request->getContent());
+
+        $existing = TaskWebhookDedupe::where('webhook_client_id', $client?->id)
+            ->where('payload_hash', $payloadHash)
+            ->first();
+
+        if ($existing === null) {
+            return null;
+        }
+
+        Log::info('[WEBHOOK] Duplicate payload skipped', [
+            'webhook_client_id' => $client?->id,
+            'payload_hash' => $payloadHash,
+            'original_task_id' => $existing->task_id,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Duplicate payload -- already processed, no new task created.',
+            'data' => [
+                'task_id' => $existing->task_id,
+                'duplicate' => true,
+            ],
+        ], 200);
+    }
+
+    private function recordPayloadDedupe(Request $request, int $taskId): void
+    {
+        $client = $request->attributes->get('webhook_client');
+
+        TaskWebhookDedupe::create([
+            'webhook_client_id' => $client?->id,
+            'payload_hash' => hash('sha256', $request->getContent()),
+            'task_id' => $taskId,
+            'created_at' => now(),
+        ]);
     }
 
     private function validateWebhookRequest(Request $request): void
@@ -265,21 +343,31 @@ class TaskWebhook
         $this->setExpiryForConfirmed($request);
     }
 
+    /**
+     * W6.S "Per-supplier status map" (w6-brief.md, owner addition 2026-08-28): the hard-coded
+     * Jazeera/FlyDubai/VFS branch AND the `emd`->`issued` rewrite are both DELETED -- replaced by
+     * TaskStatusService::mapStatus() against `supplier_status_maps` (channel 'webhook'). Scoped to
+     * raw statuses 'confirmed'/'on hold' only, matching TaskController::store()'s own identical
+     * narrowing (see that call site's own comment for why) -- every other status (including `emd`,
+     * which now stays `emd`, no rewrite) passes through unchanged, exactly like the legacy branch's
+     * own `default => $request->status` case.
+     */
     private function applyStatusMapping(Request $request, ?string $supplierName): void
     {
-        $supplierNameLower = strtolower($supplierName ?? '');
-
-        if (in_array($supplierNameLower, ['jazeera airways', 'fly dubai', 'vfs'])) {
-            $status = match ($request->status) {
-                'confirmed' => 'issued',
-                'on hold' => 'confirmed',
-                default => $request->status,
-            };
-            $request->merge(['status' => $status]);
+        if (! in_array($request->status, ['confirmed', 'on hold'], true)) {
+            return;
         }
 
-        if (strtolower($request->input('status')) === 'emd') {
-            $request->merge(['status' => 'issued']);
+        $supplier = $request->supplier_id ? Supplier::find($request->supplier_id) : null;
+        $mapped = app(TaskStatusService::class)->mapStatus(
+            $supplier,
+            'webhook',
+            (string) $request->status,
+            (int) $request->company_id
+        );
+
+        if (! $mapped->isUnmapped()) {
+            $request->merge(['status' => app(TaskStatusService::class)->toTaskStatusValue($mapped->canonicalStatus)]);
         }
     }
 
@@ -291,34 +379,27 @@ class TaskWebhook
         }
     }
 
+    /**
+     * W6.S item (1) (w6-brief.md "Consolidation + fixes" -- "Duplicate logic in TaskWebhook
+     * deleted"). Delegates to the SAME TaskStatusService::linkOriginalTask() TaskController::
+     * store() now calls -- see that method's own docblock for the exact (including the
+     * pre-existing where()/orWhere() clause-grouping quirk) behaviour reproduced here.
+     */
     private function linkOriginalTask(Request $request): void
     {
-        if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
-            $originalTask = Task::where('reference', $request->original_reference)
-                ->orWhere('reference', $request->reference)
-                ->where('passenger_name', $request->passenger_name)
-                ->where('company_id', $request->company_id)
-                ->whereIn('status', ['issued', 'reissued'])
-                ->first();
+        $passengerName = $request->client_name ?? $request->passenger_name;
 
-            if ($originalTask) {
-                $request->merge(['original_task_id' => $originalTask->id]);
-                Log::info('[WEBHOOK] Linked original task', ['original_task_id' => $originalTask->id]);
-            }
-        }
+        $originalTask = app(TaskStatusService::class)->linkOriginalTask(
+            (string) $request->status,
+            $request->reference,
+            $request->original_reference,
+            $passengerName,
+            (int) $request->company_id
+        );
 
-        if ($request->status === 'issued') {
-            $passengerName = $request->client_name ?? $request->passenger_name;
-            $confirmedTask = Task::where('reference', $request->reference)
-                ->where('company_id', $request->company_id)
-                ->where('status', 'confirmed')
-                ->where('passenger_name', $passengerName)
-                ->first();
-
-            if ($confirmedTask) {
-                $request->merge(['original_task_id' => $confirmedTask->id]);
-                Log::info('[WEBHOOK] Linked to confirmed task', ['confirmed_task_id' => $confirmedTask->id]);
-            }
+        if ($originalTask) {
+            $request->merge(['original_task_id' => $originalTask->id]);
+            Log::info('[WEBHOOK] Linked original task via TaskStatusService', ['original_task_id' => $originalTask->id]);
         }
     }
 
@@ -561,8 +642,8 @@ class TaskWebhook
                 'task_id' => $task->id,
                 'agent_id' => $task->agent_id ?? 'none'
             ]);
-            // $this->processTaskFinancial($task);
-            app(TaskController::class)->processTaskFinancial($task);
+            // W6.S item (1): single financial-dispatch call site.
+            app(TaskStatusService::class)->dispatchFinancial($task);
         } else {
             $reason = $offline ? 'incomplete' : 'not offline supplier';
             Log::warning('[WEBHOOK] Financial processing skipped', [

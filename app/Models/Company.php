@@ -5,6 +5,7 @@
 
 namespace App\Models;
 
+use App\Support\Modules;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,6 +32,11 @@ class Company extends Model
         'snapchat',
         'tiktok',
         'whatsapp',
+        'posting_engine_enabled',
+    ];
+
+    protected $casts = [
+        'posting_engine_enabled' => 'boolean',
     ];
 
     public function branches()
@@ -89,5 +95,61 @@ class Company extends Model
     public function paymentMethodChoses()
     {
         return $this->hasMany(PaymentMethodChose::class);
+    }
+
+    /**
+     * Per-request memo of hasModule() lookups, keyed by "{companyId}:{module}".
+     * Laravel boots a fresh Application per HTTP request under classic
+     * php-fpm/Nginx, so this resets naturally between real requests without
+     * any explicit invalidation. See forgetModuleCache() for when a single
+     * request/test needs to force a re-read (e.g. right after writing a
+     * `module.*` setting).
+     *
+     * @var array<string, bool>
+     */
+    protected static array $moduleCache = [];
+
+    /**
+     * Whether this company has the given package module switched on.
+     *
+     * Reads the company-scoped `settings` table via the existing
+     * Setting::getByKey() accessor, using the `module.{$module}` key
+     * convention (see App\Support\Modules::settingKey()).
+     *
+     * Fail-safe default: a module with NO settings row at all is treated
+     * as ON. This is deliberate — every company that predates this
+     * entitlement layer (all 3 live companies as of Phase 1) has zero
+     * `module.*` rows, and must keep working exactly as it did before this
+     * flag existed. A brand-new package company is never left to this
+     * default: App\Support\Entitlements\ApplyCompanyModulePreset writes an
+     * EXPLICIT row for every module (5 on, `accounting` off) so its access
+     * never depends on this method's default. In other words: "unset"
+     * means "not migrated to the module system yet, so don't restrict
+     * it" — not "this company's preset says on".
+     */
+    public function hasModule(string $module): bool
+    {
+        $cacheKey = "{$this->id}:{$module}";
+
+        if (array_key_exists($cacheKey, static::$moduleCache)) {
+            return static::$moduleCache[$cacheKey];
+        }
+
+        $raw = Setting::getByKey($this->id, Modules::settingKey($module), null);
+
+        $enabled = is_null($raw) ? true : (bool) $raw;
+
+        return static::$moduleCache[$cacheKey] = $enabled;
+    }
+
+    /**
+     * Clear the per-request hasModule() memo. Call this after writing to a
+     * company's `module.*` settings within the same request/process that
+     * will immediately re-check entitlements — most notably in tests,
+     * which reuse one PHP process across many "requests".
+     */
+    public static function forgetModuleCache(): void
+    {
+        static::$moduleCache = [];
     }
 }

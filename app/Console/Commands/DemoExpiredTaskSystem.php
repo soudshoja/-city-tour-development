@@ -19,7 +19,7 @@ class DemoExpiredTaskSystem extends Command
     /**
      * The console command description.
      */
-    protected $description = 'Demonstrate the expired confirmed task processing system (converts expired confirmed tasks to void)';
+    protected $description = 'Demonstrate the expired confirmed task processing system (W6.S: converts expired on-hold/confirmed tasks to the new "expired" status via TaskStatusService::expire())';
 
     /**
      * Execute the console command.

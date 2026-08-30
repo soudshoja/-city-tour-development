@@ -100,6 +100,7 @@ return [
     //Sidebar Navigation
         'agent_loss' => 'خسارة الوكيل',
         'notifications' => 'الإشعارات',
+        'accounting' => 'المحاسبة',
 
     //Terms Modal
         'no_templates_for' => 'لا توجد قوالب لـ',

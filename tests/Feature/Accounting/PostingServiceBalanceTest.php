@@ -13,6 +13,7 @@ use App\Models\Account;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\IdempotencyKeyRejection;
+use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounting\DocumentDraft;
@@ -37,9 +38,36 @@ use Tests\Support\AccountingTestCase;
  */
 class PostingServiceBalanceTest extends AccountingTestCase
 {
+    /**
+     * W0 kill-switch gate (PostingEngineDisabledException): every test in this file exercises
+     * PostingService's business rules directly, with no company/global flag ever set, which means
+     * every one of them now hits the gate's refusal before reaching the rule under test. Both
+     * flags are enabled here so this suite keeps testing the rule it names, not the new gate —
+     * the gate itself is proven separately in PostingEngineGateTest.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['accounting.engine.enabled' => true]);
+    }
+
+    protected function tearDown(): void
+    {
+        // Defensive reset so config mutated by this file can never leak into another test in the
+        // suite (Laravel's config() array is process-global for the duration of the test run) —
+        // same pattern as AccountObserverGateTest.
+        config(['accounting.engine.enabled' => false]);
+
+        parent::tearDown();
+    }
+
     private function makeCompany(): Company
     {
-        $company = Company::factory()->create();
+        // posting_engine_enabled defaults to false (migration 2026_08_24_120005) — set true here
+        // so this file's existing acceptance tests, which never touch the flag themselves, keep
+        // exercising the business rule they name instead of the W0 gate.
+        $company = tap(Company::factory()->create(), fn (Company $c) => $c->forceFill(['posting_engine_enabled' => true])->save());
         $this->trackCompanyForInvariants($company->id);
 
         return $company;
@@ -51,6 +79,44 @@ class PostingServiceBalanceTest extends AccountingTestCase
             'company_id' => $company->id,
             'user_id' => User::factory()->create()->id,
         ]);
+    }
+
+    /**
+     * Minimal real Invoice + InvoiceDetail (+ Task) row set for the W1.1 line-attribution tests
+     * below. `transactions.invoice_id` AND `journal_entries.invoice_id` / `.invoice_detail_id`
+     * all carry REAL foreign keys (migrations 2025_06_24_122434_update_transactions_table_for_
+     * payment_tracking.php and 2025_03_17_161405_update_foreign_in_general_ledgers_table.php —
+     * the latter easy to miss since it still names the pre-rename `general_ledgers` table), so an
+     * arbitrary made-up int for either column would fail with a QueryException, not silently
+     * write — a fake `invoice_detail_id` is exactly what the first draft of this test caught.
+     * `invoices.client_id` is also NOT NULL in this DB, so an agent/client pair is required too,
+     * mirroring ChatControllerPostingTest::makeChatFixtures()'s identical need.
+     * `journal_entries.task_id` (added by a later, separate migration with no `->constrained()`)
+     * has no such FK — the Task row here exists only because `invoice_details.task_id` itself is
+     * a real, NOT NULL FK to `tasks`.
+     *
+     * @return array{0: \App\Models\Invoice, 1: \App\Models\InvoiceDetail, 2: \App\Models\Task}
+     */
+    private function makeInvoiceWithDetailFor(Company $company, Branch $branch): array
+    {
+        $agentType = \App\Models\AgentType::firstOrCreate(['name' => 'Sales']);
+        $agent = \App\Models\Agent::factory()->create([
+            'branch_id' => $branch->id,
+            'user_id' => User::factory()->create()->id,
+            'type_id' => $agentType->id,
+        ]);
+        $client = \App\Models\Client::factory()->create(['agent_id' => $agent->id]);
+        $invoice = \App\Models\Invoice::factory()->create([
+            'agent_id' => $agent->id,
+            'client_id' => $client->id,
+        ]);
+        $task = \App\Models\Task::factory()->create(['company_id' => $company->id]);
+        $invoiceDetail = \App\Models\InvoiceDetail::factory()->create([
+            'invoice_id' => $invoice->id,
+            'task_id' => $task->id,
+        ]);
+
+        return [$invoice, $invoiceDetail, $task];
     }
 
     /**
@@ -1265,7 +1331,9 @@ class PostingServiceBalanceTest extends AccountingTestCase
      */
     public function test_reverse_excludes_a_soft_deleted_original_line(): void
     {
-        $company = Company::factory()->create();
+        // Deliberately NOT $this->makeCompany() (see docblock above) — but the W0 gate still
+        // requires posting_engine_enabled=true for post()/reverse() to run at all.
+        $company = tap(Company::factory()->create(), fn (Company $c) => $c->forceFill(['posting_engine_enabled' => true])->save());
         $branch = $this->makeBranch($company);
 
         $debitAccount = Account::factory()->create(['company_id' => $company->id]);
@@ -1347,5 +1415,245 @@ class PostingServiceBalanceTest extends AccountingTestCase
         $this->expectException(NonLeafAccountException::class);
 
         app(PostingService::class)->post($draft);
+    }
+
+    /**
+     * W1.1 fix (M3/C5 — line attribution): a draft whose LineDrafts carry the new attribution
+     * fields (invoiceId, invoiceDetailId, taskId, ledgerType, partyName, voucherNumber,
+     * partyAccountRef) must have every one of those values written to its like-named
+     * journal_entries column — the exact engine gap that broke AccountingController's per-client/
+     * supplier/agent ledger filter (`type_reference_id`) and its receipt-voucher screen
+     * (`whereIn('type', [...])`) once a feeder went ON. DocumentDraft::$paymentReference must
+     * likewise reach `transactions.payment_reference`.
+     *
+     * W1.2 fix (Task A): DocumentDraft::$paymentId must likewise reach `transactions.payment_id`
+     * (the other real header-level gap: the myfatoorah legacy closure writes
+     * `Transaction::create(['payment_id' => $payment->id, ...])`, and PostingService::post()'s
+     * own header write used to drop it — W1 lead report §3 myfatoorah, G19 delta).
+     */
+    public function test_post_writes_line_attribution_when_the_draft_provides_it(): void
+    {
+        $company = $this->makeCompany();
+        $branch = $this->makeBranch($company);
+
+        $debitAccount = Account::factory()->create(['company_id' => $company->id]);
+        $creditAccount = Account::factory()->create(['company_id' => $company->id]);
+        [$invoice, $invoiceDetail, $task] = $this->makeInvoiceWithDetailFor($company, $branch);
+        // Real Payment row for the transactions.payment_id FK (migration
+        // 2025_06_24_122434_update_transactions_table_for_payment_tracking.php). `payments`
+        // also carries a `chk_payment_owner` CHECK constraint (migration
+        // 2026_04_01_155631_add_column_in_payments_table.php: client_id XOR settlement_id, one
+        // must be NOT NULL) — $invoice->client_id (real, from makeInvoiceWithDetailFor() above)
+        // satisfies it without inventing a separate client fixture.
+        $payment = Payment::factory()->create([
+            'agent_id' => null,
+            'client_id' => $invoice->client_id,
+            'invoice_id' => null,
+            'account_id' => null,
+            'created_by' => null,
+        ]);
+
+        $draft = new DocumentDraft(
+            companyId: $company->id,
+            branchId: $branch->id,
+            docType: 'INV',
+            subType: null,
+            docDate: now(),
+            narration: 'Line attribution fixture',
+            lines: [
+                new LineDraft(
+                    purposeCode: '',
+                    accountId: $debitAccount->id,
+                    side: 'debit',
+                    amount: 130.000,
+                    currency: 'KWD',
+                    originalAmount: 130.000,
+                    exchangeRate: 1.0,
+                    transactionType: 'CUSTOMERDEBITED',
+                    partyAccountRef: 555,
+                    invoiceId: $invoice->id,
+                    invoiceDetailId: $invoiceDetail->id,
+                    taskId: $task->id,
+                    ledgerType: 'receivable',
+                    partyName: 'Attributed Client Name',
+                    voucherNumber: 'RV-LEGACY-001',
+                ),
+                new LineDraft(
+                    purposeCode: '',
+                    accountId: $creditAccount->id,
+                    side: 'credit',
+                    amount: 130.000,
+                    currency: 'KWD',
+                    originalAmount: 130.000,
+                    exchangeRate: 1.0,
+                    transactionType: 'INCOME',
+                ),
+            ],
+            idempotencyKey: 'test:attribution:present:'.uniqid(),
+            invoiceId: $invoice->id,
+            paymentReference: 'GATEWAY-REF-123',
+            paymentId: $payment->id,
+        );
+
+        $posted = app(PostingService::class)->post($draft);
+
+        $this->assertSame(
+            'GATEWAY-REF-123',
+            DB::table('transactions')->where('id', $posted->transaction->id)->value('payment_reference'),
+            'DocumentDraft::$paymentReference must reach transactions.payment_reference.'
+        );
+        $this->assertSame(
+            $payment->id,
+            (int) DB::table('transactions')->where('id', $posted->transaction->id)->value('payment_id'),
+            'DocumentDraft::$paymentId must reach transactions.payment_id.'
+        );
+
+        $attributedLine = DB::table('journal_entries')
+            ->where('transaction_id', $posted->transaction->id)
+            ->where('account_id', $debitAccount->id)
+            ->first();
+
+        $this->assertNotNull($attributedLine);
+        $this->assertSame($invoice->id, (int) $attributedLine->invoice_id);
+        $this->assertSame($invoiceDetail->id, (int) $attributedLine->invoice_detail_id);
+        $this->assertSame($task->id, (int) $attributedLine->task_id);
+        $this->assertSame(555, (int) $attributedLine->type_reference_id, 'partyAccountRef must write type_reference_id.');
+        $this->assertSame('receivable', $attributedLine->type, 'ledgerType must win over transactionType for the legacy `type` column.');
+        $this->assertSame('Attributed Client Name', $attributedLine->name, 'partyName must win over the resolved account name.');
+        $this->assertSame('RV-LEGACY-001', $attributedLine->voucher_number, 'voucherNumber must win over the document\'s own formatted number.');
+
+        $unattributedLine = DB::table('journal_entries')
+            ->where('transaction_id', $posted->transaction->id)
+            ->where('account_id', $creditAccount->id)
+            ->first();
+
+        $this->assertNotNull($unattributedLine);
+        $this->assertNull($unattributedLine->invoice_id, 'A line that does not set invoiceId must stay NULL, not inherit the header/other line\'s value.');
+        $this->assertNull($unattributedLine->invoice_detail_id);
+        $this->assertNull($unattributedLine->task_id);
+        $this->assertNull($unattributedLine->type_reference_id);
+        $this->assertSame('INCOME', $unattributedLine->type, 'ledgerType null must fall back to transactionType — W1\'s existing behaviour.');
+        $this->assertSame($creditAccount->name, $unattributedLine->name, 'partyName null must fall back to the resolved account name — W1\'s existing behaviour.');
+        $this->assertSame($posted->documentNumber, $unattributedLine->voucher_number, 'voucherNumber null must fall back to the document\'s own formatted number — W1\'s existing behaviour.');
+    }
+
+    /**
+     * W1.1 fix: the flip side of the test above — a draft built with NONE of the new attribution
+     * fields (this file's own `balancedDraft()` helper, used by dozens of other tests in this
+     * suite) must behave EXACTLY as it did before this fix round: every attribution column NULL
+     * (never a crash — every one of these columns is nullable) and `type`/`name`/`voucher_number`
+     * on their pre-existing fallbacks. This is what keeps every other test in this file green
+     * unchanged.
+     */
+    public function test_post_leaves_line_attribution_null_when_the_draft_omits_it(): void
+    {
+        $company = $this->makeCompany();
+        $branch = $this->makeBranch($company);
+
+        $debitAccount = Account::factory()->create(['company_id' => $company->id]);
+        $creditAccount = Account::factory()->create(['company_id' => $company->id]);
+
+        $draft = $this->balancedDraft($company, $branch, $debitAccount, $creditAccount, 40.000, 'JV', 'test:attribution:absent:'.uniqid());
+
+        $posted = app(PostingService::class)->post($draft);
+
+        $this->assertNull(
+            DB::table('transactions')->where('id', $posted->transaction->id)->value('payment_reference'),
+            'A draft that never sets paymentReference must leave transactions.payment_reference NULL.'
+        );
+        $this->assertNull(
+            DB::table('transactions')->where('id', $posted->transaction->id)->value('payment_id'),
+            'A draft that never sets paymentId must leave transactions.payment_id NULL.'
+        );
+
+        $lines = DB::table('journal_entries')->where('transaction_id', $posted->transaction->id)->get();
+        $this->assertCount(2, $lines);
+
+        foreach ($lines as $line) {
+            $this->assertNull($line->invoice_id);
+            $this->assertNull($line->invoice_detail_id);
+            $this->assertNull($line->task_id);
+            $this->assertNull($line->type_reference_id);
+            $this->assertSame($posted->documentNumber, $line->voucher_number);
+        }
+
+        $debitLine = $lines->firstWhere('account_id', $debitAccount->id);
+        $creditLine = $lines->firstWhere('account_id', $creditAccount->id);
+        $this->assertSame('TEST_DEBIT', $debitLine->type);
+        $this->assertSame('TEST_CREDIT', $creditLine->type);
+        $this->assertSame($debitAccount->name, $debitLine->name);
+        $this->assertSame($creditAccount->name, $creditLine->name);
+    }
+
+    /**
+     * W1.1 fix: reverse() must not repeat the exact defect this fix round closes for feeders one
+     * level up — its own swapped-line reconstruction used to hard-code `partyAccountRef: null`
+     * regardless of what the ORIGINAL line carried. A reversal of a properly-attributed document
+     * must stay findable on the same per-client/supplier/agent ledger filter and receipt-voucher
+     * screen as the document it reverses.
+     */
+    public function test_reverse_carries_over_original_line_attribution(): void
+    {
+        $company = $this->makeCompany();
+        $branch = $this->makeBranch($company);
+
+        $debitAccount = Account::factory()->create(['company_id' => $company->id]);
+        $creditAccount = Account::factory()->create(['company_id' => $company->id]);
+        [$invoice, $invoiceDetail, $task] = $this->makeInvoiceWithDetailFor($company, $branch);
+
+        $draft = new DocumentDraft(
+            companyId: $company->id,
+            branchId: $branch->id,
+            docType: 'INV',
+            subType: null,
+            docDate: now(),
+            narration: 'Reversal attribution fixture',
+            lines: [
+                new LineDraft(
+                    purposeCode: '',
+                    accountId: $debitAccount->id,
+                    side: 'debit',
+                    amount: 60.000,
+                    currency: 'KWD',
+                    originalAmount: 60.000,
+                    exchangeRate: 1.0,
+                    transactionType: 'CUSTOMERDEBITED',
+                    partyAccountRef: 321,
+                    invoiceId: $invoice->id,
+                    invoiceDetailId: $invoiceDetail->id,
+                    taskId: $task->id,
+                    ledgerType: 'receivable',
+                    partyName: 'Reversal Fixture Client',
+                ),
+                new LineDraft(
+                    purposeCode: '',
+                    accountId: $creditAccount->id,
+                    side: 'credit',
+                    amount: 60.000,
+                    currency: 'KWD',
+                    originalAmount: 60.000,
+                    exchangeRate: 1.0,
+                    transactionType: 'INCOME',
+                ),
+            ],
+            idempotencyKey: 'test:attribution:reverse:'.uniqid(),
+        );
+
+        $service = app(PostingService::class);
+        $posted = $service->post($draft);
+        $reversed = $service->reverse($posted->transaction, now(), null);
+
+        $reversedAttributedLine = DB::table('journal_entries')
+            ->where('transaction_id', $reversed->transaction->id)
+            ->where('account_id', $debitAccount->id)
+            ->first();
+
+        $this->assertNotNull($reversedAttributedLine);
+        $this->assertSame($invoice->id, (int) $reversedAttributedLine->invoice_id);
+        $this->assertSame($invoiceDetail->id, (int) $reversedAttributedLine->invoice_detail_id);
+        $this->assertSame($task->id, (int) $reversedAttributedLine->task_id);
+        $this->assertSame(321, (int) $reversedAttributedLine->type_reference_id);
+        $this->assertSame('receivable', $reversedAttributedLine->type, 'reverse() already carried type via transactionType — must stay correct.');
+        $this->assertSame('Reversal Fixture Client', $reversedAttributedLine->name);
     }
 }

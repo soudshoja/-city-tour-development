@@ -140,6 +140,58 @@ trait AccountingInvariants
     }
 
     /**
+     * assertNoDuplicateAccountCodes — no two non-deleted accounts share the same non-null `code`
+     * within a company (the exact defect class W1.3's `EnsureSystemLeaves::
+     * fixDuplicateGatewayFeeCode()` HIGH finding was: a bare renumber with no collision check
+     * could hand two different accounts the same code, and nothing in this suite could see it).
+     *
+     * Tolerates exactly ONE known, pre-existing, explicitly deferred duplicate that CoaSeeder
+     * itself still ships: code '2130' shared by 'Suppliers (Hotels)' and 'Suppliers (Ferry)'
+     * (the sibling of the '4130' duplicate W1.3 task A's Gateway-Fee-Recovery renumber fixed for
+     * new companies; '2130' itself is explicitly deferred — see CoaSeeder's own history and
+     * AccountCodeGenerator's `while (codeExists)` retry, which exists BECAUSE of this exact
+     * pre-existing pair). Any OTHER duplicate — a new code collision this invariant did not
+     * previously know to tolerate — fails loudly, naming the code and every account that shares
+     * it, so this check stays able to catch a genuinely new defect instead of being silenced by
+     * the one pre-existing exception it has to carry.
+     */
+    protected function assertNoDuplicateAccountCodes(int $companyId): void
+    {
+        $duplicates = DB::table('accounts')
+            ->select('code')
+            ->selectRaw('COUNT(*) as n')
+            ->selectRaw('GROUP_CONCAT(name ORDER BY id) as names')
+            ->where('company_id', $companyId)
+            ->whereNotNull('code')
+            ->whereNull('deleted_at')
+            ->groupBy('code')
+            ->having('n', '>', 1)
+            ->get();
+
+        foreach ($duplicates as $duplicate) {
+            $names = explode(',', (string) $duplicate->names);
+            sort($names);
+
+            $isKnownDeferredPair = (string) $duplicate->code === '2130'
+                && $names === ['Suppliers (Ferry)', 'Suppliers (Hotels)'];
+
+            if ($isKnownDeferredPair) {
+                continue;
+            }
+
+            Assert::assertTrue(false, sprintf(
+                'Found %d accounts sharing code "%s" for company %d: %s. Only the known, explicitly '
+                    .'deferred CoaSeeder duplicate (code 2130, "Suppliers (Hotels)"/"Suppliers (Ferry)") is '
+                    .'tolerated by this invariant — every other duplicate code is a defect.',
+                $duplicate->n,
+                $duplicate->code,
+                $companyId,
+                $duplicate->names
+            ));
+        }
+    }
+
+    /**
      * assertCompanyLedgerBalanced — the aggregate trial-balance check, reusing
      * the verified-correct TrialBalanceService::generate(...)['totals']['is_balanced']
      * (app/Services/TrialBalanceService.php:57). Its threshold is
@@ -173,6 +225,7 @@ trait AccountingInvariants
         $this->assertNoOrphanLines($companyId);
         $this->assertNoNegativeAmounts($companyId);
         $this->assertTenantConsistency($companyId);
+        $this->assertNoDuplicateAccountCodes($companyId);
         $this->assertCompanyLedgerBalanced($companyId);
     }
 }

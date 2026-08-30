@@ -447,7 +447,7 @@
                 <tr class="text-sm text-gray-700 text-center">
                     <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A' }}</td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
+                        <a href="{{ ($isPublicInvoiceRequest ?? false) ? $invoice->publicUrl('split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) : route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>

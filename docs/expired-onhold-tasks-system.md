@@ -1,6 +1,19 @@
 # Expired Confirmed Tasks Processing System
 
-## Overview
+> **SUPERSEDED (W6.S, 2026-08-29).** Everything below describes the PRE-W6.S design (Jazeera-only,
+> event/listener architecture, "confirmed" -> "void"). It no longer matches the code. Current
+> behaviour: `App\Services\TaskStatusService::expire()` runs for ALL suppliers, flips an eligible
+> `on hold`/`confirmed` task (never issued/invoiced, past `deadline_at`/`expiry_date` + the
+> per-company `hold_expire_grace_hours` grace period, gated by `hold_auto_expire`) to the NEW
+> `expired` status (`void` stays reserved for a real cancellation of an issued ticket), writes a
+> `task_status_events` audit row, and never touches the ledger. The
+> `CheckConfirmedOrIssuedTask`/`ProcessTaskFinancials` event/listener pair this doc describes was
+> deleted as dead code (zero emitters) -- see `App\Services\TaskStatusService::dispatchFinancial()`
+> for financial dispatch's single live call site. `ProcessExpiredConfirmedTasks` no longer has a
+> `--dry-run` flag; it takes `--company-id=` instead. See `tests/Unit/Services/TaskStatusServiceTest.php`
+> and `tests/Feature/ExpiredConfirmedTasksTest.php` for the current contract.
+
+## Overview (historical, pre-W6.S)
 
 This system automatically manages task status transitions for tasks with "confirmed" status based on their expiry dates. When tasks remain "confirmed" after their expiry date, they are automatically changed to "void" status with proper financial processing.
 

@@ -42,10 +42,25 @@ abstract class AccountingTestCase extends TestCase
     {
         // Run before parent::tearDown() tears down the application container
         // that DB::table()/app(TrialBalanceService::class) need.
-        foreach ($this->invariantCompanyIds as $companyId) {
-            $this->assertAccountingInvariants($companyId);
+        //
+        // Residual 8 fix: this loop used to run with no try/finally, so an invariant assertion
+        // FAILURE (a real PHPUnit\Framework\ExpectationFailedException, not a PHP error) threw
+        // out of tearDown() before parent::tearDown() ever ran — and RefreshDatabase's own
+        // tearDown is what rolls back the per-test database transaction. Skipping it left that
+        // transaction open on the connection RefreshDatabase's connection pool hands to the NEXT
+        // test, which would then appear to deadlock ~50s later (MySQL's innodb_lock_wait_timeout)
+        // against a lock this test's own never-rolled-back transaction was still holding — a
+        // bogus DeadlockException on a completely unrelated later test, and at least one wrong
+        // diagnosis in a build report chased exactly that symptom to the wrong cause. Wrapping the
+        // loop in try/finally guarantees parent::tearDown() (and therefore the rollback) always
+        // runs, whether or not an invariant failed, so a genuine invariant failure is reported
+        // exactly once, on the test that caused it, and never leaks into any test that runs after.
+        try {
+            foreach ($this->invariantCompanyIds as $companyId) {
+                $this->assertAccountingInvariants($companyId);
+            }
+        } finally {
+            parent::tearDown();
         }
-
-        parent::tearDown();
     }
 }

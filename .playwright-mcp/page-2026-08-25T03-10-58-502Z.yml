@@ -1,0 +1,16 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "Let's you sign in it ..." [level=2] [ref=e6]
+    - paragraph [ref=e7]: It's great to have you back!!
+    - generic [ref=e8]:
+      - textbox "Your Email" [active] [ref=e10]
+      - generic [ref=e15]:
+        - textbox "Your Password" [ref=e16]
+        - generic [ref=e24] [cursor=pointer]
+      - link "Forgot your password?" [ref=e29] [cursor=pointer]:
+        - /url: https://development.citycommerce.group/forgot-password
+      - generic [ref=e30]:
+        - checkbox "Keep me logged in" [ref=e31]
+        - generic [ref=e32]: Keep me logged in
+      - button "Login" [ref=e34] [cursor=pointer]
+  - img "Illustration" [ref=e36]

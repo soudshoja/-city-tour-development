@@ -21,11 +21,10 @@ use App\Support\Modules;
  *     manual settings change, or to upgrade a legacy company onto the
  *     module system deliberately (rather than leaving it to the default).
  *
- * Deliberately NOT invoked anywhere yet as part of Phase 1 — none of the 3
- * live companies has this applied, and none should be until a human
- * decides to move a specific company onto the package. See
- * Company::hasModule() for why that is safe to leave as-is in the
- * meantime.
+ * Not invoked automatically anywhere — a company only gets rows when a
+ * human decides to move it onto the package. The
+ * `php artisan company:set-module` command (App\Console\Commands * SetCompanyModule) calls apply() with a one-key override to flip a
+ * single module without disturbing the other five.
  */
 class ApplyCompanyModulePreset
 {

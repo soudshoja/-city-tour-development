@@ -156,14 +156,40 @@ class ModuleEntitlementPolicyTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // 2. Legacy company (no settings rows at all) is unaffected
+    // 2. Legacy company (no settings rows at all): package modules keep
+    //    working, accounting does not
     // ------------------------------------------------------------------
 
-    public function test_legacy_company_with_no_module_settings_is_completely_unaffected(): void
+    /**
+     * A company with zero `settings` rows keeps every module the product
+     * actually sells, because Company::hasModule() fails OPEN for those.
+     * Accounting is the exception: config('modules.default_disabled')
+     * makes it fail CLOSED, so a legacy company that was never granted it
+     * does not see it. TravelERP ships without accounting, and a company
+     * predating the entitlement layer was never sold it either — leaving
+     * it visible there is precisely the leak the list exists to close.
+     */
+    public function test_legacy_company_keeps_package_modules_but_not_accounting(): void
     {
         // No setAccountingModule() call at all: this company has zero rows
-        // in `settings`, exactly like all 3 live companies today.
+        // in `settings`, exactly like every pre-entitlement company.
         $this->assertSame(0, Setting::where('company_id', $this->company->id)->count());
+
+        $this->assertPackageAbilitiesAllowed();
+        $this->assertAccountingAbilities(false);
+    }
+
+    /**
+     * ...and the grant path still works from that same zero-row state, so
+     * the one company that genuinely runs accounting can be given it with
+     * a single explicit row (`php artisan company:set-module {id}
+     * accounting --on`).
+     */
+    public function test_legacy_company_can_be_granted_accounting_explicitly(): void
+    {
+        $this->assertAccountingAbilities(false);
+
+        $this->setAccountingModule(true);
 
         $this->assertAccountingAbilities(true);
         $this->assertPackageAbilitiesAllowed();

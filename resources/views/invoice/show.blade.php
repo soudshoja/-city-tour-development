@@ -421,46 +421,10 @@
                     <td class="px-4 py-2 border">
                         {{ $partial->client->full_name }}
 
-                        <!-- @if ($creditBalance > 0 && $partial->status === 'unpaid')
-                        <br>Credit Balance: {{ number_format($creditBalance, 3) }} |
-                        <button @click="open = true" type="button" class="text-blue-600 underline text">
-                            Use now to pay this payment split?
-                        </button>
-                        @endif -->
-
-                        <!-- Modal -->
-                        <div x-show="open" x-cloak
-                            class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                            <div @click.away="open = false"
-                                class="bg-white p-6 rounded shadow max-w-md w-full">
-                                <h2 class="text-lg font-semibold mb-4">Confirm Credit Use</h2>
-                                <p class="text-sm mb-6">Use credit balance to pay this invoice split?</p>
-                                <div class="flex justify-end space-x-3">
-                                    <button @click="open = false"
-                                        class="px-4 py-2 text-sm bg-gray-300 rounded">No</button>
-                                    @php
-                                    $checkBalance =
-                                    $partial->amount >= $creditBalance
-                                    ? $creditBalance
-                                    : $partial->amount;
-                                    @endphp
-
-                                    <form method="POST"
-                                        action="{{ route('credits.useCreditNow', [
-                                                    'invoice' => $partial->invoice_id,
-                                                    'invoicePartial' => $partial->id,
-                                                    'balanceCredit' => $checkBalance,
-                                                ]) }}">
-                                        @csrf
-                                        <button type="submit"
-                                            class="px-4 py-2 text-sm bg-blue-600 text-white rounded">
-                                            Yes
-                                        </button>
-                                    </form>
-
-                                </div>
-                            </div>
-                        </div>
+                        {{-- "Pay with credit now" trigger + modal removed: it posted to
+                        credits.useCreditNow, a route whose controller method never
+                        existed (CreditController has no useCreditNow()) -- see routes/web.php
+                        CREDITS group comment. --}}
                     </td>
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}

@@ -12,9 +12,13 @@ use Tests\TestCase;
 
 /**
  * Proves the ROUTE-LAYER half of the accounting URL-bypass fix: typing an
- * accounting URL directly must now 404 for a package client (company with
- * `module.accounting` off), while every package-module URL — and every
- * legacy company, package-preset or not — keeps working exactly as before.
+ * accounting URL directly must now 404 for a company with `module.accounting`
+ * off — whether that's a package client with an explicit preset, or a
+ * LEGACY company with no `module.*` rows at all, since accounting fails
+ * CLOSED by default (config('modules.default_disabled') — see
+ * Company::hasModule()). Every package-module URL, meanwhile, keeps working
+ * exactly as before for both kinds of company — the accounting gate must
+ * never bleed into them.
  *
  * This exercises real HTTP requests through the full middleware stack
  * (App\Http\Middleware\EnsureModuleEnabled, aliased 'module' in
@@ -134,17 +138,6 @@ class AccountingRouteGateTest extends TestCase
         $this->get(route('reports.settlements'))->assertNotFound();
     }
 
-    private function assertAccountingRoutesOk(): void
-    {
-        $this->get(route('coa.index'))->assertOk();
-        $this->get(route('reports.trial-balance'))->assertOk();
-        $this->get(route('reports.profit-loss'))->assertOk();
-        $this->get(route('journal-entries.index', ['transactionId' => 1]))->assertOk();
-        $this->get(route('receipt-voucher.index'))->assertOk();
-        $this->get(route('bank-payments.index'))->assertOk();
-        $this->get(route('reports.settlements'))->assertOk();
-    }
-
     private function assertPackageRoutesOk(): void
     {
         // tasks.index depends on TaskController::index() finding a
@@ -205,18 +198,22 @@ class AccountingRouteGateTest extends TestCase
 
     // ------------------------------------------------------------------
     // 3. A legacy company (no module.* settings rows at all — exactly the
-    //    3 real companies as of Phase 1) is completely unaffected: every
-    //    accounting AND package route still returns 200, same as before
-    //    this change existed.
+    //    3 real companies as of Phase 1) now gets the SAME fail-closed
+    //    accounting default as a package client — it was never sold
+    //    accounting either, so leaving it open would be exactly the leak
+    //    config('modules.default_disabled') exists to close. Every
+    //    package-module route is still completely unaffected: those keep
+    //    returning 200 exactly as before this change existed, for legacy
+    //    companies same as package ones.
     // ------------------------------------------------------------------
 
-    public function test_legacy_company_user_is_unaffected_on_every_route(): void
+    public function test_legacy_company_user_is_denied_accounting_but_unaffected_on_package_routes(): void
     {
         [$user] = $this->createCompanyOwner(applyPackagePreset: false);
 
         $this->actingAs($user);
 
-        $this->assertAccountingRoutesOk();
+        $this->assertAccountingRoutes404();
         $this->assertPackageRoutesOk();
     }
 }

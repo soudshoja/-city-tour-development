@@ -53,6 +53,12 @@ class DotwAIResponse
     public const SEARCH_EXPIRED = 'SEARCH_EXPIRED';
     public const SESSION_EMPTY  = 'SESSION_EMPTY';
 
+    // Accounting Gap blocker 8 (16-phase1-verification-findings-2026-08.md):
+    // returned when an endpoint requires a verified webhook signature
+    // (see App\Modules\DotwAI\Http\Controllers\StatementController) and none
+    // was presented or it failed verification.
+    public const UNAUTHORIZED = 'UNAUTHORIZED';
+
     /**
      * Default Arabic/English error messages and suggested actions per error code.
      *
@@ -148,6 +154,11 @@ class DotwAIResponse
         self::SESSION_EMPTY => [
             'whatsappMessage' => "لا توجد جلسة نشطة. يرجى البحث عن فندق أولاً.\nNo active session found. Please start by searching for a hotel.",
             'suggestedAction' => 'Ask the user what hotel they would like to search for.',
+        ],
+
+        self::UNAUTHORIZED => [
+            'whatsappMessage' => "عذرا، حدث خطأ في التحقق من الطلب.\nSorry, we could not verify this request.",
+            'suggestedAction' => 'This request must be signed with a verified webhook signature. Contact technical support.',
         ],
     ];
 

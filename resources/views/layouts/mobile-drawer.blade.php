@@ -1,3 +1,17 @@
+@php
+    // Same check as resources/views/layouts/menu.blade.php (its @php block,
+    // ~line 11) — computed the identical way so the Jazeera Airways Credit
+    // wallet section below (ledger-derived; populated from a
+    // JournalEntry::where('name', 'Jazeera Airways Credit') query in
+    // DashboardController::index()) never renders for a company without the
+    // accounting module. This partial is @included on EVERY page (via
+    // layouts.navigation), so this check runs on every page load, not just
+    // the dashboard.
+    $drawerUser = auth()->user();
+    $drawerCompanyId = $drawerUser ? getCompanyId($drawerUser) : null;
+    $drawerCompany = $drawerCompanyId ? \App\Models\Company::find($drawerCompanyId) : null;
+    $hasAccountingModule = $drawerCompany && $drawerCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+@endphp
 <div x-data="{
     mobileDrawerOpen: false,
     activeMenu: null,
@@ -451,6 +465,7 @@
                                 </div>
                                 <div class="iata-info profile-wallet-info"></div>
                             </div>
+                            @if ($hasAccountingModule)
                             <div class="jazeera-section profile-wallet-jazeera-section">
                                 <div class="profile-wallet-header-row">
                                     <h5 class="profile-wallet-heading">
@@ -460,6 +475,7 @@
                                 </div>
                                 <div class="jazeera-info profile-wallet-info"></div>
                             </div>
+                            @endif
                             </div>
                         </div>
                     </div>

@@ -57,7 +57,18 @@ Route::prefix('api/dotwai')->middleware(['dotwai.resolve'])->group(function () {
     Route::post('cancel_booking', [BookingController::class, 'cancelBooking']);
 
     // Statement endpoint (Phase 20)
-    Route::get('statement', [StatementController::class, 'getStatement']);
+    // Accounting Gap blocker 8 (16-phase1-verification-findings-2026-08.md): the only
+    // DotwAI endpoint that reads journal entries and credit transactions, so unlike its
+    // sibling routes it additionally requires a verified HMAC signature -- reusing the
+    // same 'verify.webhook.signature' middleware already wired to POST /api/task/webhook
+    // (see routes/api.php), not a new bespoke scheme. Pass ?client_id={webhook_client_id}
+    // plus the X-Signature-SHA256 / X-Signature-Timestamp headers (see
+    // App\Services\WebhookSigningService) to call this route. That middleware only
+    // VERIFIES a signature when one is presented -- StatementController::getStatement()
+    // is what turns it into a hard requirement for this endpoint, exactly like
+    // App\Http\Webhooks\TaskWebhook::webhook() does for its own route.
+    Route::get('statement', [StatementController::class, 'getStatement'])
+        ->middleware('verify.webhook.signature');
 
     // Booking status, history, and voucher resend endpoints (Phase 21)
     Route::get('booking_status', [BookingController::class, 'bookingStatus']);

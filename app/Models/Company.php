@@ -116,16 +116,27 @@ class Company extends Model
      * Setting::getByKey() accessor, using the `module.{$module}` key
      * convention (see App\Support\Modules::settingKey()).
      *
-     * Fail-safe default: a module with NO settings row at all is treated
-     * as ON. This is deliberate — every company that predates this
-     * entitlement layer (all 3 live companies as of Phase 1) has zero
-     * `module.*` rows, and must keep working exactly as it did before this
-     * flag existed. A brand-new package company is never left to this
+     * A module with NO settings row at all resolves one of two ways,
+     * decided by config('modules.default_disabled'):
+     *
+     * - NOT in that list (the common case): treated as ON. This is
+     *   deliberate — every company that predates this entitlement layer
+     *   has zero `module.*` rows, and must keep working exactly as it did
+     *   before this flag existed. "Unset" means "not migrated to the
+     *   module system yet, so don't restrict it" — not "this company's
+     *   preset says on".
+     *
+     * - IN that list (`accounting` today): treated as OFF. These are the
+     *   modules the product does not sell, so no company is entitled to
+     *   one without an explicit grant. Failing open for those would expose
+     *   the module to exactly the pre-entitlement companies that were
+     *   never sold it. See config/modules.php for the reasoning and for
+     *   how to grant one.
+     *
+     * Either way, a brand-new package company is never left to this
      * default: App\Support\Entitlements\ApplyCompanyModulePreset writes an
      * EXPLICIT row for every module (5 on, `accounting` off) so its access
-     * never depends on this method's default. In other words: "unset"
-     * means "not migrated to the module system yet, so don't restrict
-     * it" — not "this company's preset says on".
+     * never depends on which branch above applies.
      */
     public function hasModule(string $module): bool
     {
@@ -137,7 +148,9 @@ class Company extends Model
 
         $raw = Setting::getByKey($this->id, Modules::settingKey($module), null);
 
-        $enabled = is_null($raw) ? true : (bool) $raw;
+        $enabled = is_null($raw)
+            ? ! in_array($module, (array) config('modules.default_disabled', []), true)
+            : (bool) $raw;
 
         return static::$moduleCache[$cacheKey] = $enabled;
     }

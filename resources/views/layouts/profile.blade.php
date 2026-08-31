@@ -1,3 +1,17 @@
+@php
+    // Same check as resources/views/layouts/menu.blade.php (its @php block,
+    // ~line 11) — computed the identical way so the Jazeera Airways Credit
+    // wallet section below (ledger-derived; populated from a
+    // JournalEntry::where('name', 'Jazeera Airways Credit') query in
+    // DashboardController::index()) never renders for a company without the
+    // accounting module. This partial is @included on EVERY page (via
+    // layouts.navigation / layouts.sidebar), so this check runs on every
+    // page load, not just the dashboard.
+    $profileUser = auth()->user();
+    $profileCompanyId = $profileUser ? getCompanyId($profileUser) : null;
+    $profileCompany = $profileCompanyId ? \App\Models\Company::find($profileCompanyId) : null;
+    $hasAccountingModule = $profileCompany && $profileCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+@endphp
 <!-- Backdrop overlay for sidebar modals -->
 <div
     x-show="toggle || iataWallet || open"
@@ -101,6 +115,7 @@
                         <!-- Initial content will be loaded by checkAndLoadWalletData() -->
                     </div>
                 </div>
+                @if ($hasAccountingModule)
                 <div class="jazeera-section profile-wallet-jazeera-section">
                     <div class="profile-wallet-header-row">
                         <h5 class="profile-wallet-heading">
@@ -111,6 +126,7 @@
 
                     <div class="jazeera-info profile-wallet-info"></div>
                 </div>
+                @endif
             </div>
 
         </div>
@@ -364,6 +380,7 @@ function displayWalletData(data, context) {
     }
 }
 
+@if ($hasAccountingModule)
 function reloadJazeeraData() {
     // console.log('Reload Jazeera Airways Credit data');
     creditData = null;
@@ -461,6 +478,7 @@ function displayJazeeraData(apiData) {
         `;
     });
 }
+@endif
 
 }
 </script>

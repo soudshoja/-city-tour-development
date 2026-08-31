@@ -238,48 +238,11 @@
                  @endif
 
 
-                 <!-- <div x-data="{ open: false }">
-                     @if ($creditBalance > 0)
-                         <div class="flex items-center gap-2">
-                             <button @click="open = true" type="button"
-                                 class="city-light-yellow hover:text-[#004c9e]
-                                 rounded-full flex items-center justify-center peer-checked:ring-2
-                                 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border
-                                 border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f]
-                                 hover:shadow-xl hover:text-black">
-                                 Pay Now with Credit (Balance: {{ number_format($creditBalance, 3) }} KWD)
-                             </button>
-                         </div>
-                     @endif
-
-                     <div x-show="open" x-cloak
-                         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                         <div @click.away="open = false" class="bg-white p-6 rounded shadow max-w-md w-full">
-                             <h2 class="text-lg font-semibold mb-4">Confirm Credit Use</h2>
-                             <p class="text-sm mb-6">Use credit balance to pay this invoice split?</p>
-                             <div class="flex justify-end space-x-3">
-                                 <button @click="open = false"
-                                     class="px-4 py-2 text-sm bg-gray-300 rounded">No</button>
-                                 @php
-                                     $checkBalance =
-                                         $invoicePartial->amount >= $creditBalance
-                                             ? $creditBalance
-                                             : $invoicePartial->amount;
-                                 @endphp
-                                 <form method="POST"
-                                     action="{{ route('credits.useCreditNow', [
-                                         'invoice' => $invoicePartial->invoice_id,
-                                         'invoicePartial' => $invoicePartial->id,
-                                         'balanceCredit' => $checkBalance,
-                                     ]) }}">
-                                     @csrf
-                                     <button type="submit"
-                                         class="px-4 py-2 text-sm bg-blue-600 text-white rounded">Yes</button>
-                                 </form>
-                             </div>
-                         </div>
-                     </div>
-                 </div> -->
+                 {{-- "Pay with credit now" modal removed: it posted to credits.useCreditNow,
+                 a route whose controller method never existed (CreditController has no
+                 useCreditNow()) -- it was already dead behind this HTML comment, but Blade
+                 still compiled the route() call inside it on every render. See routes/web.php
+                 CREDITS group comment. --}}
 
 
                  <div class="flex items-center gap-2">

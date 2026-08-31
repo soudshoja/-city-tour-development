@@ -560,9 +560,18 @@ Route::middleware(['auth'])->group(function () {
         Route::group([
             'prefix' => 'ajax',
             'as' => 'ajax.',
-            'middleware' => ['module:accounting'],
         ], function () {
-            Route::get('/dashboard-stats', [ReportController::class, 'getDashboardStats'])->name('dashboard-stats');
+            // Split like every other mixed-module route in this 'reports.'
+            // group (see the big comment above): dashboard-stats mixes
+            // ledger-derived values (accounting) with profitAgentWise
+            // (agent_profit, computed from invoice_details — not the
+            // ledger). A package client with agent_profit but not
+            // accounting must be able to fetch the latter without ever
+            // hitting the former's 404, so each value now has its own
+            // route gated to its own module instead of one endpoint gated
+            // module:accounting that silently withheld an unrelated value.
+            Route::get('/dashboard-stats', [ReportController::class, 'getDashboardStats'])->name('dashboard-stats')->middleware('module:accounting');
+            Route::get('/dashboard-stats/profit-agent', [ReportController::class, 'getDashboardProfitAgentStat'])->name('dashboard-stats-profit-agent')->middleware('module:agent_profit');
         });
     });
 
@@ -936,22 +945,33 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // CREDITS
-    // CreditPolicy is classified as an accounting-module policy (see the
-    // Company/Policy discovery), and creditTopup() posts real Transaction +
-    // JournalEntry rows against COA accounts with zero authorization today —
-    // gate the whole controller as accounting. NOTE: this also hides the
-    // client credit-balance read (index/filter) from package clients, which
-    // is arguably Customer CRM information rather than accounting; flagged
-    // as an open product decision in the report rather than split here.
+    // Ruling R1: client credits are split BY VERB, not gated as one
+    // accounting-module block. index()/filter() only read the client's
+    // credit-balance ledger (Credit::with('client') / Gate::authorize('view',
+    // $client)) — that's Customer CRM information, not accounting, so it
+    // gates on module:crm. creditTopup() posts real Transaction + JournalEntry
+    // rows against COA accounts, i.e. it moves money, so it gates on
+    // module:payment_gateway. Neither is module:accounting: accounting is
+    // never sold and must stay invisible regardless of which of these two
+    // sellable modules a company bought.
+    //
+    // useCreditNow() was dropped entirely rather than re-scoped:
+    // CreditController has no such method (confirmed 2026-08-31; see
+    // Accounting Gap/16-phase1-verification-findings-2026-08.md section H),
+    // so the route only ever 500'd on submit. The dead "pay with credit"
+    // modal markup that posted to it in invoice/show(.blade.php),
+    // show-arabic, split, and split-arabic was removed in the same change —
+    // those views call route('credits.useCreditNow', ...) unconditionally
+    // while rendering (not just on click), so deleting the route without
+    // touching the views would have turned every split-payment invoice page
+    // into a 500 (RouteNotFoundException).
     Route::group([
         'prefix' => 'credits',
         'as' => 'credits.',
-        'middleware' => ['module:accounting'],
     ], function () {
-        Route::get('/', [CreditController::class, 'index'])->name('index');
-        Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
-        Route::post('/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}', [CreditController::class, 'useCreditNow'])->name('useCreditNow');
-        Route::post('/topup', [CreditController::class, 'creditTopup'])->name('topup');
+        Route::get('/', [CreditController::class, 'index'])->name('index')->middleware('module:crm');
+        Route::get('/filter', [CreditController::class, 'filter'])->name('filter')->middleware('module:crm');
+        Route::post('/topup', [CreditController::class, 'creditTopup'])->name('topup')->middleware('module:payment_gateway');
     });
 
     Route::group([
@@ -987,10 +1007,16 @@ Route::middleware(['auth'])->group(function () {
 
         // W4.U §a — Accounting settings tab (invoice_overpay_cancel_policy, refund fee schedule,
         // unclaimed_writeback_months, commissionable_fee_types, posting_basis, bearer matrix,
-        // refund notification toggles). Gated by SettingPolicy::viewAccountingSettings()/
-        // manageAccountingSettings() inside the controller actions themselves.
-        Route::get('/accounting-settings', [SettingController::class, 'getAccountingSettings'])->name('accounting-settings');
-        Route::post('/accounting-settings', [SettingController::class, 'storeAccountingSettings'])->name('accounting-settings.store');
+        // refund notification toggles). Authorization is SettingPolicy::viewAccountingSettings()/
+        // manageAccountingSettings() inside the controller actions; the module middleware here
+        // is about VISIBILITY, not permission. Without it the policy denies with a 403, which
+        // confirms the screen exists to a client whose package does not include accounting —
+        // every other accounting surface 404s instead (see EnsureModuleEnabled's docblock), and
+        // these two routes must not be the pair that gives the module away.
+        Route::middleware(['module:accounting'])->group(function () {
+            Route::get('/accounting-settings', [SettingController::class, 'getAccountingSettings'])->name('accounting-settings');
+            Route::post('/accounting-settings', [SettingController::class, 'storeAccountingSettings'])->name('accounting-settings.store');
+        });
     });
 
     Route::group([

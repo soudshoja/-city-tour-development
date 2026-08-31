@@ -4,6 +4,9 @@ namespace Tests\Feature\Security;
 
 use App\Models\Account;
 use App\Models\Branch;
+use App\Models\Company;
+use App\Models\Setting;
+use App\Support\Modules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Security\Concerns\CreatesTenantFixtures;
 use Tests\TestCase;
@@ -17,6 +20,16 @@ use Tests\TestCase;
  * every one of them derives the company from the acting user (or, for
  * Role::ADMIN, still honours the request value -- admins already manage
  * an explicit "current company" via session).
+ *
+ * The whole AccountingController AJAX group also carries the newer
+ * 'module:accounting' route gate (see EnsureModuleEnabled), and accounting
+ * now fails CLOSED for a company with no `module.*` rows
+ * (config('modules.default_disabled') -- see Company::hasModule()).
+ * CreatesTenantFixtures::createTenant() builds exactly that kind of
+ * legacy-shaped company, so the CALLING tenant in each test below is
+ * granted `module.accounting` explicitly via grantAccountingModule() --
+ * otherwise the route 404s at the middleware before the tenant-isolation
+ * check this suite actually tests ever runs.
  */
 class AccountingAjaxTenantIsolationTest extends TestCase
 {
@@ -29,10 +42,31 @@ class AccountingAjaxTenantIsolationTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Grants `module.accounting` to $company so its requests clear the
+     * 'module:accounting' route gate and reach the tenant-isolation logic
+     * under test, rather than being turned away earlier by the fail-closed
+     * default (see config/modules.php).
+     */
+    private function grantAccountingModule(Company $company): void
+    {
+        Setting::updateOrCreate(
+            ['company_id' => $company->id, 'key' => Modules::settingKey(Modules::ACCOUNTING)],
+            ['type' => 'boolean', 'value' => true]
+        );
+
+        Company::forgetModuleCache();
+    }
+
     public function test_get_branches_by_company_ignores_another_companys_id(): void
     {
         $tenantA = $this->createTenant();
         $tenantB = $this->createTenant();
+        // Only the caller (tenant A) needs the grant -- the module gate
+        // resolves purely off the *requesting* user's company, never the
+        // company_id param under test, so tenant B is deliberately left as
+        // a legacy (no module rows) company.
+        $this->grantAccountingModule($tenantA['company']);
 
         // A second branch for company B, so a leak would be unambiguous.
         Branch::factory()->create(['company_id' => $tenantB['company']->id, 'user_id' => $tenantB['user']->id]);
@@ -52,6 +86,9 @@ class AccountingAjaxTenantIsolationTest extends TestCase
     {
         $tenantA = $this->createTenant();
         $tenantB = $this->createTenant();
+        // Only the caller (tenant A) needs the grant -- same reasoning as
+        // the branches test above.
+        $this->grantAccountingModule($tenantA['company']);
 
         $parentA = Account::create(['name' => 'Bank Accounts', 'level' => 3, 'actual_balance' => 0, 'budget_balance' => 0, 'variance' => 0, 'company_id' => $tenantA['company']->id]);
         Account::create(['name' => 'Company A Main Bank', 'level' => 4, 'actual_balance' => 100, 'budget_balance' => 0, 'variance' => 0, 'company_id' => $tenantA['company']->id, 'parent_id' => $parentA->id]);
@@ -72,6 +109,9 @@ class AccountingAjaxTenantIsolationTest extends TestCase
     {
         $tenantA = $this->createTenant();
         $tenantB = $this->createTenant();
+        // Only the caller (tenant A) needs the grant -- same reasoning as
+        // the branches test above.
+        $this->grantAccountingModule($tenantA['company']);
 
         $assetsA = Account::create(['name' => 'Assets', 'level' => 1, 'actual_balance' => 0, 'budget_balance' => 0, 'variance' => 0, 'company_id' => $tenantA['company']->id]);
         Account::create(['name' => 'Company A Receivable', 'level' => 4, 'actual_balance' => 0, 'budget_balance' => 0, 'variance' => 0, 'company_id' => $tenantA['company']->id, 'parent_id' => $assetsA->id]);
@@ -92,6 +132,13 @@ class AccountingAjaxTenantIsolationTest extends TestCase
     {
         $tenantA = $this->createTenant();
         $tenantB = $this->createTenant();
+
+        // Same grant as the three sibling tests above, and for the same reason: without it
+        // accounting fails closed for a legacy fixture company, the request 404s at the
+        // module middleware, and this test's own branch treats that blanket 404 as if it
+        // were the controller's legitimate "no invoices" 404 -- so the HF-7 isolation
+        // assertion below never executes and the test passes while proving nothing.
+        $this->grantAccountingModule($tenantA['company']);
 
         $invoiceA = \App\Models\Invoice::factory()->create([
             'client_id' => $tenantA['client']->id,
@@ -132,15 +179,28 @@ class AccountingAjaxTenantIsolationTest extends TestCase
         $response = $this->actingAs($tenantA['user'])
             ->getJson(route('get.invoices.by.JournalEntry', ['company_id' => $tenantB['company']->id]));
 
-        // Either company A has no journal-linked invoices of its own (404,
-        // the endpoint's documented "not found" shape) or it returns only
-        // its own invoice -- either way company B's invoice must never
-        // appear.
-        if ($response->status() === 200) {
-            $ids = collect($response->json('invoices'))->pluck('id');
-            $this->assertFalse($ids->contains($invoiceB->id));
-        } else {
-            $response->assertNotFound();
+        // The isolation assertion this test exists for can only run on a 200. The endpoint
+        // has TWO separate "not found" exits (AccountingController::getInvoicesByJournalEntry
+        // returns 404 both when the company has no journal entries and when those entries
+        // resolve to no invoices), and the fixture currently lands on one of them -- so the
+        // assertion below never executed and this test passed while proving nothing.
+        //
+        // Deliberately NOT re-asserting the 404 here. Treating the endpoint's blanket "not
+        // found" as evidence of tenant isolation is exactly the false green that hid this:
+        // if getInvoicesByJournalEntry() ever regressed to trusting $request->company_id for
+        // non-admins (the original HF-7 bug), a 404-asserting test would stay green through
+        // the regression. Marked incomplete instead, so the missing coverage is visible in
+        // every run until the fixture is built out to reach a 200.
+        if ($response->status() !== 200) {
+            $this->markTestIncomplete(sprintf(
+                'Fixture cannot reach the endpoint 200 path (got %d), so the HF-7 cross-tenant '
+                .'assertion below never runs. Build the fixture out until company A has a '
+                .'journal-linked invoice this endpoint returns.',
+                $response->status()
+            ));
         }
+
+        $ids = collect($response->json('invoices'))->pluck('id');
+        $this->assertFalse($ids->contains($invoiceB->id), 'Company B invoice leaked to company A.');
     }
 }

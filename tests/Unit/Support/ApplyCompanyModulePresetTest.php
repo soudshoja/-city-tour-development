@@ -105,7 +105,21 @@ class ApplyCompanyModulePresetTest extends TestCase
         (new ApplyCompanyModulePreset())->apply($companyA);
 
         $this->assertFalse($companyA->hasModule(Modules::ACCOUNTING));
-        $this->assertTrue($companyB->hasModule(Modules::ACCOUNTING));
+
+        // Proving B was untouched can no longer lean on
+        // hasModule(ACCOUNTING) alone: accounting now fails CLOSED by
+        // default, and the preset also sets it to false, so a leaked
+        // apply() would land B on the exact same false value as an
+        // untouched B -- the two cases would be indistinguishable through
+        // hasModule() for ANY preset module, since every preset value
+        // above now simply matches its module's own default (open or
+        // closed). The settings-row count is the only assertion that
+        // still discriminates "isolated" from "leaked": a leak would have
+        // written B's own copy of the preset rows.
         $this->assertSame(0, Setting::where('company_id', $companyB->id)->count());
+        // Belt-and-braces behavioural check: a module that still fails
+        // open reads exactly as it would for any company nobody ever
+        // touched.
+        $this->assertTrue($companyB->hasModule(Modules::TASK_UPLOADER));
     }
 }

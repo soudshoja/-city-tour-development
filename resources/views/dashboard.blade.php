@@ -12,7 +12,16 @@
     </style>
     <div class="">
         @php
-        
+            // Same check as resources/views/layouts/menu.blade.php (its @php
+            // block, ~line 11) — computed the identical way so the accounting
+            // stat cards below never render for a company without the
+            // accounting module (they link to routes gated by
+            // App\Http\Middleware\EnsureModuleEnabled / module:accounting).
+            $dashboardUser = auth()->user();
+            $dashboardCompanyId = $dashboardUser ? getCompanyId($dashboardUser) : null;
+            $dashboardCompany = $dashboardCompanyId ? \App\Models\Company::find($dashboardCompanyId) : null;
+            $hasAccountingModule = $dashboardCompany && $dashboardCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+
             if (auth()->user()->hasRole('admin')) {
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3';
             } elseif (auth()->user()->hasRole('company')) {
@@ -128,7 +137,7 @@
                     </div>
                 @endif
 
-                @if (!empty($jazeeraCredit) && count($jazeeraCredit) > 0)
+                @if ($hasAccountingModule && !empty($jazeeraCredit) && count($jazeeraCredit) > 0)
                     <div class="flex-1 min-w-[45%] ml-0 md:ml-8">
                         <div class="mb-3">
                             <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Jazeera Airways Credit</h2>
@@ -248,6 +257,7 @@
                 </div>
             </div>
             <div class="my-5 w-full p-10 pt-5 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full" id="dashboard-stats-container">
+                @if ($hasAccountingModule)
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <a href="{{ route('reports.payable-supplier') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
@@ -268,6 +278,7 @@
                         <span class="absolute top-2 right-2 text-green-400 dark:text-green-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                 </div>
+                @endif
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                     <a href="{{ route('reports.profit-agent') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
@@ -278,6 +289,7 @@
                         </p>
                         <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
+                    @if ($hasAccountingModule)
                     <a href="{{ route('reports.total-bank') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Total Bank</p>
@@ -296,6 +308,7 @@
                         </p>
                         <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
+                    @endif
                 </div>
             </div>
         @endif
@@ -521,13 +534,19 @@
     } // end if (earningsEl)
 
         document.addEventListener('DOMContentLoaded', () => {
+@if ($hasAccountingModule)
+            // Ledger-derived credit data (and the call reading it) only
+            // exists for a company with the accounting module — this whole
+            // block is Blade-guarded (not just JS-guarded) so neither the
+            // data nor the function-call text ever reaches the response
+            // body for a company without it.
             const jazeeraData = @json($jazeeraCredit ?? []);
-            // console.log('Jazeera Airways Credit Data:', jazeeraData);
 
             displayJazeeraData({
                 records: jazeeraData,
                 total: jazeeraData.reduce((sum, e) => sum + parseFloat(e.balance || 0), 0)
             });
+@endif
 
             loadDashboardStats();
         });
@@ -536,19 +555,53 @@
             const statsContainer = document.getElementById('dashboard-stats-container');
             if (!statsContainer) return;
 
-            fetch('{{ route("reports.ajax.dashboard-stats") }}')
-                .then(response => response.json())
-                .then(data => {
+            // Profit Agent Wise is agent_profit-module data (invoice_details,
+            // not the ledger) and its tile always renders here regardless of
+            // $hasAccountingModule below, so it is fetched from its own
+            // module:agent_profit route and errors are isolated to its own
+            // tile. Previously this shared one endpoint + one blanket
+            // .stat-loading catch with the accounting tiles below, so a
+            // package client without accounting (whose fetch 404'd on the
+            // module:accounting route) had "Error" written into this
+            // unrelated, legitimately-owned tile too.
+            fetchStat('{{ route("reports.ajax.dashboard-stats-profit-agent") }}', 'stat-profit-agent', data => {
+                updateStatElement('stat-profit-agent', data.profitAgentWise);
+            });
+
+            // The remaining tiles are ledger-derived and only rendered at
+            // all when $hasAccountingModule (see the @@if blocks above), so
+            // only fetch the accounting-gated endpoint for those companies —
+            // a company without accounting never fires this request, so it
+            // can never see this endpoint's 404 either.
+            const hasAccountingModule = @json($hasAccountingModule);
+            if (!hasAccountingModule) return;
+
+            fetchStat('{{ route("reports.ajax.dashboard-stats") }}',
+                ['stat-payable-supplier', 'stat-total-receivable', 'stat-total-bank', 'stat-gateway-receivable'],
+                data => {
                     updateStatElement('stat-payable-supplier', data.payableSupplier, data.payableSupplier < 0);
                     updateStatElement('stat-total-receivable', data.totalReceivable);
-                    updateStatElement('stat-profit-agent', data.profitAgentWise);
                     updateStatElement('stat-total-bank', data.totalBank);
                     updateStatElement('stat-gateway-receivable', data.gatewayReceivable);
-                })
+                });
+        }
+
+        // Fetches one dashboard-stats endpoint and, on failure, marks only
+        // that endpoint's own tile(s) as 'Error' — never every '.stat-loading'
+        // placeholder on the page, so one gated endpoint's 404 can't blank a
+        // tile owned by a different, unrelated module (see loadDashboardStats).
+        function fetchStat(url, elementIds, onSuccess) {
+            fetch(url)
+                .then(response => response.json())
+                .then(onSuccess)
                 .catch(error => {
-                    // console.error('Failed to load dashboard stats:', error);
-                    document.querySelectorAll('.stat-loading').forEach(el => {
-                        el.textContent = 'Error';
+                    // console.error('Failed to load dashboard stat(s):', url, error);
+                    (Array.isArray(elementIds) ? elementIds : [elementIds]).forEach(id => {
+                        const element = document.getElementById(id);
+                        if (!element) return;
+                        element.querySelectorAll('.stat-loading').forEach(el => {
+                            el.textContent = 'Error';
+                        });
                     });
                 });
         }

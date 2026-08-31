@@ -3513,12 +3513,17 @@ class ReportController extends Controller
     {
         $companyId = getCompanyId(Auth::user());
 
+        // Ledger-derived values only — this route is gated module:accounting
+        // (see routes/web.php). profitAgentWise is NOT ledger-derived (it's
+        // an agent_profit-module figure from invoice_details) and is served
+        // by getDashboardProfitAgentStat() on its own module:agent_profit
+        // route instead, so a company without accounting never needs this
+        // endpoint to see it.
         $emptyStats = [
             'payableSupplier' => 0,
             'totalReceivable' => 0,
             'totalBank' => 0,
             'gatewayReceivable' => 0,
-            'profitAgentWise' => 0,
         ];
 
         if (!$companyId) {
@@ -3530,6 +3535,26 @@ class ReportController extends Controller
             'totalReceivable' => $this->getAccountBalance('Accounts Receivable', $companyId),
             'totalBank' => $this->getAccountBalance('Bank Accounts', $companyId),
             'gatewayReceivable' => $this->getAccountBalance('Payment Gateway', $companyId),
+        ]);
+    }
+
+    /**
+     * Profit Agent Wise dashboard tile — belongs to the agent_profit
+     * module, not accounting (getProfitAgentSum() reads invoice_details/
+     * agents, never the ledger). Kept on its own route/method so a package
+     * client that bought agent_profit but not accounting can fetch this
+     * value without depending on (or 404ing against) the accounting-gated
+     * dashboard-stats route above.
+     */
+    public function getDashboardProfitAgentStat(): JsonResponse
+    {
+        $companyId = getCompanyId(Auth::user());
+
+        if (!$companyId) {
+            return response()->json(['profitAgentWise' => 0]);
+        }
+
+        return response()->json([
             'profitAgentWise' => $this->getProfitAgentSum($companyId),
         ]);
     }

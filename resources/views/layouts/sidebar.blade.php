@@ -81,6 +81,7 @@
         </div>
         @endcan
 
+        @can('viewAny', App\Models\CurrencyExchange::class)
         <div class="flex flex-col items-center"
             x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">
 
@@ -214,6 +215,7 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
         <x-sidebar-company

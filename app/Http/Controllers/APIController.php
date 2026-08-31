@@ -3,16 +3,41 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Models\Company;
 use App\Models\Client;
 use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Country;
 use App\Models\Hotel;
+use App\Models\WebhookClient;
 
 class APIController extends Controller
 {
-    public function getTaskStructure(Request $request) 
+    /**
+     * getClient/getAgent/getCompany/getSupplier are gated by the `verify.webhook.signature`
+     * middleware (see routes/api.php), which -- per its own docblock -- only verifies a signature
+     * IF one was presented; it never REQUIRES one. This turns that into a hard requirement for
+     * these endpoints, mirroring App\Http\Webhooks\TaskWebhook::webhook()'s own top-of-method
+     * check. Returns the verified WebhookClient (which carries the caller's company_id for
+     * scoping) or null if no signature was verified.
+     */
+    private function requireWebhookClient(Request $request): ?WebhookClient
+    {
+        $client = $request->attributes->get('webhook_client');
+
+        return $client instanceof WebhookClient ? $client : null;
+    }
+
+    private function webhookAuthRequiredResponse(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'A verified webhook signature is required for this endpoint.',
+        ], 401);
+    }
+
+    public function getTaskStructure(Request $request)
     {
         $request->validate ([
             'task_type' => 'required|string',
@@ -138,16 +163,27 @@ class APIController extends Controller
 
     public function getClient(Request $request)
     {
+        $webhookClient = $this->requireWebhookClient($request);
+        if (! $webhookClient) {
+            return $this->webhookAuthRequiredResponse();
+        }
+
         $request->validate([
             'client_name' => 'nullable|string',
         ]);
 
-        $query = Client::query();
+        // Column allowlist -- passport_no, old_passport_no, civil_no and date_of_birth (all
+        // present on Client's own $fillable) are deliberately excluded. This is a pre-flight
+        // ID/name-lookup helper for task-webhook validation, not a client-record export; none of
+        // that identity data is needed to confirm a client_id/name exists before posting a task.
+        $query = Client::query()
+            ->select(['id', 'name', 'first_name', 'middle_name', 'last_name', 'email', 'phone', 'country_code', 'agent_id', 'company_id', 'status'])
+            ->where('company_id', $webhookClient->company_id);
 
         // If search term provided, filter by name
         if ($request->filled('client_name')) {
             $searchName = $request->client_name;
-            
+
             $query->where(function ($q) use ($searchName) {
                 $q->where('name', 'LIKE', "%{$searchName}%")
                     ->orWhere('first_name', 'LIKE', "%{$searchName}%")
@@ -176,11 +212,21 @@ class APIController extends Controller
 
     public function getAgent(Request $request)
     {
+        $webhookClient = $this->requireWebhookClient($request);
+        if (! $webhookClient) {
+            return $this->webhookAuthRequiredResponse();
+        }
+
         $request->validate([
             'agent_name' => 'nullable|string',
         ]);
 
-        $query = Agent::query();
+        // Column allowlist -- commission, salary and target (agent compensation) are deliberately
+        // excluded; not needed to validate an agent_id/name before posting a task.
+        // Agent has no company_id of its own; scoped via branch -> company_id.
+        $query = Agent::query()
+            ->select(['id', 'name', 'email', 'phone_number', 'country_code', 'branch_id', 'type_id'])
+            ->whereHas('branch', fn ($q) => $q->where('company_id', $webhookClient->company_id));
 
         if ($request->filled('agent_name')) {
             $searchName = $request->agent_name;
@@ -206,18 +252,30 @@ class APIController extends Controller
 
     public function getCompany(Request $request)
     {
+        $webhookClient = $this->requireWebhookClient($request);
+        if (! $webhookClient) {
+            return $this->webhookAuthRequiredResponse();
+        }
+
         $request->validate([
             'company_name' => 'nullable|string',
         ]);
 
-        $query = Company::query();
+        // A webhook client belongs to exactly one company (WebhookClient::company_id) -- it may
+        // only ever see that one company's own record, never another tenant's. Column allowlist --
+        // iata_client_id/iata_client_secret (IATA API credentials), gds_office_id and user_id
+        // (internal owner reference) are deliberately excluded.
+        $query = Company::query()
+            ->select(['id', 'name', 'code', 'email', 'phone', 'address', 'iata_code', 'country_id', 'status'])
+            ->where('id', $webhookClient->company_id);
 
         if ($request->filled('company_name')) {
             $searchName = $request->company_name;
-            
-            $query->where(function ($q) use ($searchName) {
-                $q->where('name', 'LIKE', "%{$searchName}%")->get();
-            });
+
+            // NOTE: pre-existing bug fixed in passing -- this used to call ->get() *inside* the
+            // where(Closure) callback, executing (and discarding the result of) an extra,
+            // unconstrained query on every request. Replaced with a plain ->where().
+            $query->where('name', 'LIKE', "%{$searchName}%");
         }
 
         $companies = $query->get();
@@ -236,18 +294,30 @@ class APIController extends Controller
 
     public function getSupplier(Request $request)
     {
+        $webhookClient = $this->requireWebhookClient($request);
+        if (! $webhookClient) {
+            return $this->webhookAuthRequiredResponse();
+        }
+
         $request->validate([
             'supplier_name' => 'nullable|string',
         ]);
 
-        $query = Supplier::query();
+        // Suppliers aren't directly company-scoped -- they're shared platform-wide and linked to
+        // companies via the supplier_companies pivot -- so this uses the pre-existing
+        // Supplier::scopeActiveForCompany() (same scope InvoiceController/TaskWebhook use
+        // elsewhere) rather than inventing a new query. Column allowlist -- payment_terms and
+        // auth_type (commercial/internal) are deliberately excluded.
+        $query = Supplier::query()
+            ->select(['id', 'name', 'email', 'phone', 'address', 'city', 'state', 'country_id', 'website', 'contact_person', 'is_online', 'has_hotel', 'has_flight', 'has_visa', 'has_insurance', 'has_tour', 'has_cruise', 'has_car', 'has_rail', 'has_esim', 'has_event', 'has_lounge', 'has_ferry'])
+            ->activeForCompany($webhookClient->company_id);
 
         if ($request->filled('supplier_name')) {
             $searchName = $request->supplier_name;
-            
-            $query->where(function ($q) use ($searchName) {
-                $q->where('name', 'LIKE', "%{$searchName}%")->get();
-            });
+
+            // NOTE: same pre-existing get()-inside-where(Closure) bug as getCompany(), fixed the
+            // same way.
+            $query->where('name', 'LIKE', "%{$searchName}%");
         }
 
         $suppliers = $query->get();

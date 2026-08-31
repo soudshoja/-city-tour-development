@@ -119,6 +119,19 @@ class PackageClientSeesNoAccountingTest extends TestCase
         'get.agents.clients.by.company',
         'get.bank.accounts.by.company',
         'get.invoices.by.JournalEntry',
+        // IDOR fix (ReceiptVoucherController/routes/web.php): 'show' is now correctly swept
+        // into this enumeration (it used to carry its own withoutMiddleware(['module:accounting'])
+        // exemption, which is why it was never here before -- only the new signed
+        // 'receipt-voucher.show.public' twin keeps that exemption today). Its own firstOrFail()
+        // is keyed on a POSTED voucher's transaction.reference_number, but $fixtures['invoiceReceipt']
+        // above is deliberately left STATUS_PENDING with no transaction_id (that pending-row shape
+        // is exactly what receipt-voucher.edit/.cheque-image need to exercise) -- so this route
+        // 404s on a genuine "no such posted voucher" lookup miss, unrelated to the module gate.
+        // Fabricating a fully-posted Transaction fixture here is unrelated domain-fixture
+        // engineering, not proof of the module gate; the DENIED-company must-404 loop above
+        // already fully covers this route correctly either way (its 404 there is unambiguous:
+        // 'module:accounting' aborts before the controller/query ever runs).
+        'receipt-voucher.show',
     ];
 
     /** The 7 "hero" routes AccountingRouteGateTest already proves render a
@@ -301,9 +314,12 @@ class PackageClientSeesNoAccountingTest extends TestCase
      * (unlike the Router's own request-time `gatherRouteMiddleware()`) does
      * NOT apply that exclusion on its own, so without this a route
      * deliberately carved OUT of the module gate (e.g.
-     * receipt-voucher.show, the customer-facing
-     * `/receipt-voucher/{companyId}/{voucherNumber}` public link, which
-     * explicitly does `->withoutMiddleware(['auth', 'module:accounting'])`)
+     * receipt-voucher.show.public, the customer-facing SIGNED
+     * `/receipt-voucher/{companyId}/{voucherNumber}/public` link, which
+     * explicitly does `->withoutMiddleware(['auth', 'module:accounting'])`
+     * — its authenticated 'receipt-voucher.show' twin carries no such
+     * exemption any more and IS correctly swept in below, see
+     * EXCLUDED_FROM_GRANTED_NOT_404's own note on it)
      * would be wrongly swept into this enumeration — found via a failing
      * run of this very test asserting a route the gate was never meant to
      * cover.

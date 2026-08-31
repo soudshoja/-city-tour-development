@@ -1106,14 +1106,24 @@ Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('se
 // wrap above, and ReceiptVoucherController has no constructor middleware
 // either — before this change every one of these routes (not just `.show`)
 // had ZERO auth protection, not merely a missing module gate. 'auth' is
-// added here alongside 'module:accounting' to close that. `.show` keeps its
-// existing ->withoutMiddleware(['auth']) exemption (it's the client-facing
-// shareable voucher link, same pattern as invoice.show/payment.link.show) —
-// widening that exemption to also skip the module check would 404 it for
-// EVERY company whenever an anonymous visitor opens the link (no user means
-// no company to check), which would break today's legacy behavior. Closing
-// that specific gap for package-client companies is left to whoever wraps
-// the stray links into this route from the Invoice views (see report).
+// added here alongside 'module:accounting' to close that.
+//
+// IDOR fix: `.show` used to keep a blanket ->withoutMiddleware(['auth',
+// 'module:accounting']) exemption on a bare {companyId}/{voucherNumber} pair
+// (a single-digit company id and a sequential reference number) with NO
+// signature check at all -- an anonymous visitor could enumerate every
+// receipt voucher in the system (real KWD amounts, invoice amount, client
+// name, status). Split into two routes, mirroring InvoiceController's own
+// invoice.show/.public and RefundController's refunds.show/.public splits
+// exactly: 'show' now requires the ordinary authenticated session, tenant-
+// checked in ReceiptVoucherController::show() itself (same-company or
+// unscoped admin -- see that method's own docblock); 'show.public' is the
+// SIGNED-only variant for the client-facing shareable voucher link
+// (InvoiceReceipt::publicUrl()), never requiring auth. It also keeps
+// skipping 'module:accounting' -- an anonymous client opening their own link
+// has no session/company to check the module against, and a link that
+// legitimately went out must not start 404ing the moment a company's
+// accounting module is toggled off.
 Route::group([
     'prefix' => 'receipt-voucher',
     'as' => 'receipt-voucher.',
@@ -1139,7 +1149,11 @@ Route::group([
     // public-disk Storage::url() link. Registered BEFORE the `show` catch-all two-segment route
     // below so `/receipt-voucher/{id}/cheque-image` cannot be swallowed by `/{companyId}/{voucherNumber}`.
     Route::get('/{id}/cheque-image', [ReceiptVoucherController::class, 'chequeImage'])->name('cheque-image');
-    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show')->withoutMiddleware(['auth', 'module:accounting']);
+    Route::get('/{companyId}/{voucherNumber}', [ReceiptVoucherController::class, 'show'])->name('show');
+    Route::get('/{companyId}/{voucherNumber}/public', [ReceiptVoucherController::class, 'show'])
+        ->name('show.public')
+        ->withoutMiddleware(['auth', 'module:accounting'])
+        ->middleware('signed');
 });
 
 // Same pre-existing gap as receipt-voucher above: BankPaymentController has

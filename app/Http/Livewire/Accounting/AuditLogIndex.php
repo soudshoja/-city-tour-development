@@ -14,6 +14,7 @@ use App\Models\Refund;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Support\CsvSafe;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -342,11 +343,14 @@ class AuditLogIndex extends Component
             $out = fopen('php://output', 'w');
             fputcsv($out, ['id', 'created_at', 'action', 'actor_type', 'actor_id', 'subject_type', 'subject_id', 'transaction_id', 'posting_period', 'reason', 'route', 'ip']);
             foreach ($rows as $row) {
-                fputcsv($out, [
+                // SEC-1: every cell is routed through CsvSafe before fputcsv() so a stored
+                // reason/route/ip (or any other column) beginning with = + - @ / tab / CR can
+                // never be re-opened as a live formula in the exporting user's spreadsheet app.
+                fputcsv($out, CsvSafe::row([
                     $row->id, optional($row->created_at)->toDateTimeString(), $row->action,
                     $row->actor_type, $row->actor_id, $row->subject_type, $row->subject_id,
                     $row->transaction_id, $row->posting_period, $row->reason, $row->route, $row->ip,
-                ]);
+                ]));
             }
             fclose($out);
         }, 'accounting-audit-log-'.now()->format('Ymd-His').'.csv');

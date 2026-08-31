@@ -121,4 +121,36 @@ class InvoiceReceipt extends Model
     {
         return $this->status === self::STATUS_APPROVED;
     }
+
+    /**
+     * A time-limited, unauthenticated link to this receipt voucher's public-facing view -- e.g.
+     * for sharing over WhatsApp/email, or for the "View Receipt" link embedded in an invoice's
+     * own public page (see resources/views/invoice/show.blade.php). Reachable ONLY via the
+     * signed 'receipt-voucher.show.public' route (routes/web.php), which validates the signature
+     * (and therefore companyId/voucherNumber, plus expiry) before ReceiptVoucherController::
+     * show() ever runs -- mirrors Invoice::publicUrl()/Refund::publicUrl() exactly, including
+     * reuse of the SAME app.invoice_link_ttl_minutes config key rather than a second, near-
+     * identical TTL env var for a sibling client-facing document link.
+     *
+     * Keyed on the TRANSACTION's reference_number, not this row's own `voucher_number` column --
+     * `voucher_number` is stamped once as the `RV-DRAFT-{id}` placeholder at creation and never
+     * updated (see ReceiptVoucherController::createReceiptVoucher()); the real, sequence-assigned
+     * voucher number only ever lives on `transaction.reference_number`, which is exactly what
+     * show()'s own lookup is keyed on. Callers must ensure `transaction` is loaded/loadable and
+     * the voucher has actually been posted (a still-pending voucher has no transaction yet).
+     */
+    public function publicUrl(): ?string
+    {
+        $referenceNumber = $this->transaction?->reference_number;
+
+        if ($referenceNumber === null || $this->company_id === null) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'receipt-voucher.show.public',
+            now()->addMinutes((int) config('app.invoice_link_ttl_minutes', 60 * 24 * 7)),
+            ['companyId' => $this->company_id, 'voucherNumber' => $referenceNumber]
+        );
+    }
 }

@@ -1166,6 +1166,19 @@ class BankPaymentController extends Controller
             'pay_from_account.required' => 'Please select a bank account to pay from.',
         ]);
 
+        // Tenant-lock hardening: the rule above only validates that company_id EXISTS, never that
+        // it belongs to the authenticated user -- a logged-in user of company A could otherwise
+        // POST company_id = B and create/update a bank payment (a money document that posts
+        // journal entries) against company B, and every Account::withoutGlobalScopes() lookup
+        // below trusts $companyId completely once tenant scoping is bypassed like that. Overwrite
+        // the request-supplied value with the caller's own resolved company right after
+        // validation and before anything below reads it. getCompanyId() already returns the
+        // admin's session-selected company for Role::ADMIN (see app/Helper/helper.php), so an
+        // admin acting on another company still works via that existing convention -- same as
+        // assertSameCompanyOrUnscopedAdmin() elsewhere in this controller. Mirrors
+        // ReceiptVoucherController::validateVoucherRequest()'s identical fix.
+        $validated['company_id'] = getCompanyId(Auth::user());
+
         $companyId = (int) $validated['company_id'];
         $branchId = (int) $validated['branch_id'];
 

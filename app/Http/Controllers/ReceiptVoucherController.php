@@ -776,6 +776,20 @@ class ReceiptVoucherController extends Controller
         return back()->with('success', 'Cheque bounce recorded.');
     }
 
+    /**
+     * IDOR fix (routes/web.php's own comment above the 'receipt-voucher' group has the full
+     * history): this used to be a bare firstOrFail() on a guessable {companyId}/{voucherNumber}
+     * pair reachable with NO auth and NO signature check at all, so an anonymous caller could
+     * enumerate every receipt voucher in the system. Mirrors InvoiceController's own
+     * isPublicInvoiceRequest()/authorizeStaffInvoiceAccess() split and RefundController's
+     * identical isPublicRefundRequest() split exactly: the SIGNED '.public' route (validated by
+     * the `signed` route middleware before this method ever runs) needs no further authorization
+     * check here; the authenticated internal route is gated by ReceiptVoucherPolicy::view() PLUS
+     * this controller's own assertSameCompanyOrUnscopedAdmin() (already used by chequeImage()) --
+     * ReceiptVoucherPolicy::view() falls through to viewAny() for every non-agent role, which is
+     * role-only and does NOT by itself confirm the voucher belongs to the caller's own company,
+     * exactly the gap a cross-company leak needs.
+     */
     public function show($companyId, $voucherNumber)
     {
         $invoiceReceipt = InvoiceReceipt::with([
@@ -788,7 +802,23 @@ class ReceiptVoucherController extends Controller
             })
             ->firstOrFail();
 
+        if (! $this->isPublicVoucherRequest()) {
+            Gate::authorize('view', $invoiceReceipt);
+            $this->assertSameCompanyOrUnscopedAdmin(Auth::user(), (int) $invoiceReceipt->company_id);
+        }
+
         return view('receipt-voucher.show', compact('invoiceReceipt'));
+    }
+
+    /**
+     * True when the current request came in through the signed 'receipt-voucher.show.public'
+     * route rather than the authenticated 'receipt-voucher.show' route. Mirrors
+     * InvoiceController::isPublicInvoiceRequest() / RefundController::isPublicRefundRequest()
+     * exactly.
+     */
+    private function isPublicVoucherRequest(): bool
+    {
+        return str_ends_with((string) request()->route()?->getName(), '.public');
     }
 
     // ────────────────────────────────────────────────────────────────────────────────────────
@@ -886,7 +916,24 @@ class ReceiptVoucherController extends Controller
 
         switch ($r->type) {
             case InvoiceReceiptType::ACCOUNT->value:
-                $account = Account::withoutGlobalScopes()->findOrFail($r->account_id);
+                // Tenant isolation (security fix): validateVoucherRequest() only checks
+                // 'exists:accounts,id' on account_id, never that the account belongs to THIS
+                // voucher's own company -- so without this, a Receipt Voucher could be pointed
+                // at another tenant's account and post real money (a debit/credit journal-entry
+                // pair) into that other company's chart of accounts. Mirrors
+                // BankPaymentController::validateVoucherRequest()'s identical
+                // company-scoped account lookup; scoped to $companyId (this voucher's own,
+                // resolved above from $r->company_id, itself already locked to the caller's
+                // company by validateVoucherRequest()'s own fix).
+                $account = Account::withoutGlobalScopes()
+                    ->where('id', $r->account_id)
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if (! $account) {
+                    throw ValidationException::withMessages(['account_id' => 'The selected account does not belong to this company.']);
+                }
+
                 $narration = "Receipt Voucher - Account: {$account->name}";
                 $lines[] = $debitLine($narration);
                 $lines[] = new LineDraft(
@@ -1523,6 +1570,17 @@ class ReceiptVoucherController extends Controller
         if (in_array($validated['type'], ['credit', 'import'], true) && empty($validated['client_id'])) {
             throw ValidationException::withMessages(['client_id' => 'A client is required for this receipt voucher type.']);
         }
+
+        // Tenant-lock hardening: the rule above only validates that company_id EXISTS, never that
+        // it belongs to the authenticated user -- a logged-in user of company A could otherwise
+        // POST company_id = B and create/update a receipt voucher (a money document that posts
+        // journal entries) against company B. Overwrite the request-supplied value with the
+        // caller's own resolved company right after validation and before anything below reads
+        // it. getCompanyId() already returns the admin's session-selected company for Role::ADMIN
+        // (see app/Helper/helper.php), so an admin acting on another company still works via that
+        // existing convention -- same as assertSameCompanyOrUnscopedAdmin() elsewhere in this
+        // controller.
+        $validated['company_id'] = getCompanyId(Auth::user());
 
         $companyId = (int) $validated['company_id'];
 

@@ -28,6 +28,7 @@ class CreditController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $companyId = getCompanyId($user);
 
         $allCreditRecords = Credit::with('client');
 
@@ -75,10 +76,33 @@ class CreditController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        $agents = Agent::all();
-        $agentId = $agents->pluck('id')->toArray();
-        $clients = Client::whereIn('agent_id', $agentId)->get();
-        $invoices = Invoice::all();
+        // Tenant isolation (security fix, W41): this feeds the /credits view's dropdowns
+        // (credits.index.blade.php's agent/client topup-modal selects) but was completely
+        // unscoped -- Agent::all() / Client::whereIn('agent_id', <every agent id system-wide>) /
+        // Invoice::all() -- while $allCreditRecords just above IS correctly scoped for
+        // Role::COMPANY. Any Role::COMPANY user opening /credits therefore received every other
+        // company's agents, clients and invoices. Scope via the agent -> branch -> company chain
+        // this app treats as a client/invoice's tenant (not the denormalized/nullable
+        // clients.company_id column), mirroring InvoiceController::index()'s
+        // `Agent::whereHas('branch', ...)` / `Invoice::whereHas('agent.branch', ...)` and
+        // AccountingController.php:740/766's identical queries. $companyId is falsy only for an
+        // ADMIN with no company selected (getCompanyId()'s established "unscoped admin" case --
+        // see assertSameCompanyOrUnscopedAdmin() below), which keeps seeing everything, matching
+        // ReceiptVoucherController::create()'s same fallback-to-`::all()` convention. `invoices`
+        // is accepted by the view via compact() but never rendered by credits/index.blade.php, so
+        // narrowing it changes no visible behaviour.
+        $agents = $companyId
+            ? Agent::whereHas('branch', fn ($q) => $q->where('company_id', $companyId))->get()
+            : Agent::all();
+
+        $clients = $companyId
+            ? Client::whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))->get()
+            : Client::whereIn('agent_id', Agent::pluck('id'))->get();
+
+        $invoices = $companyId
+            ? Invoice::whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))->get()
+            : Invoice::all();
+
         $currencies = Currency::all();
 
         return view('credits.index', compact('allCreditRecords', 'totalCredits', 'totalCreditsAmount', 'agents', 'clients', 'invoices', 'currencies'));
@@ -150,9 +174,38 @@ class CreditController extends Controller
             'account_id'    => 'nullable|exists:accounts,id',
         ]);
 
-        $client = Client::with('agent')->findOrFail($request->client_id);
+        $user = Auth::user();
+        $client = Client::with('agent.branch.company')->findOrFail($request->client_id);
         $agent = Agent::with('branch.company')->findOrFail($request->agent_id);
-        $topupBy = auth()->user()->getRoleNames()->first();
+
+        // Tenant isolation (security fix, W40): 'exists:clients,id' / 'exists:agents,id' only
+        // prove the ids are *real* rows, not that they belong to the caller's own company -- and
+        // the company_id written onto every row below is taken from $agent->branch->company->id,
+        // i.e. from the ATTACKER-SUPPLIED agent. Without this check, any authenticated user could
+        // post a client_id/agent_id pair belonging to a different company and inject real
+        // Credit/Transaction/JournalEntry rows into that company's books. Resolve the client's
+        // company the same way ClientPolicy::view() does (via its agent -> branch -> company
+        // chain, not the denormalized/nullable clients.company_id column) so this matches the
+        // authorization semantics already established for Client elsewhere in the app.
+        $clientCompanyId = $client->agent?->branch?->company?->id;
+        $agentCompanyId = $agent->branch?->company?->id;
+
+        // Client and agent must belong to the SAME company -- this alone stops a caller from
+        // mixing a legitimately-owned client with another company's agent (the company_id that
+        // ends up on every row below comes from the agent side only).
+        abort_unless(
+            $clientCompanyId && $agentCompanyId && (int) $clientCompanyId === (int) $agentCompanyId,
+            403,
+            'Unauthorized action.'
+        );
+
+        // Mirrors ReceiptVoucherController::assertSameCompanyOrUnscopedAdmin() /
+        // BankPaymentController's identical copy: everyone except an admin with no company
+        // selected must match their own company exactly. Since client/agent company was just
+        // proven equal above, checking either one here also covers the other.
+        $this->assertSameCompanyOrUnscopedAdmin($user, (int) $agentCompanyId);
+
+        $topupBy = $user->getRoleNames()->first();
 
         DB::beginTransaction();
 
@@ -266,6 +319,31 @@ class CreditController extends Controller
             DB::rollBack();
             logger()->error('Topup failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Topup failed. Please try again.');
+        }
+    }
+
+    /**
+     * Mirrors ReceiptVoucherController::assertSameCompanyOrUnscopedAdmin() /
+     * BankPaymentController's identical copy: an admin acting with no company selected
+     * (getCompanyId() falsy) is the app's established "unscoped" admin case and may act across
+     * companies; every other caller -- including an admin who HAS a company selected via
+     * session -- must match exactly. Aborts 403 rather than returning a bool, same as the other
+     * two copies.
+     */
+    private function assertSameCompanyOrUnscopedAdmin($user, int $recordCompanyId): void
+    {
+        $companyId = getCompanyId($user);
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId && (int) $companyId !== $recordCompanyId) {
+                abort(403, 'Unauthorized action.');
+            }
+
+            return;
+        }
+
+        if ((int) $companyId !== $recordCompanyId) {
+            abort(403, 'Unauthorized action.');
         }
     }
 }

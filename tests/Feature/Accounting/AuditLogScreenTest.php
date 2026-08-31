@@ -216,6 +216,133 @@ class AuditLogScreenTest extends AccountingTestCase
             ->assertFileDownloaded();
     }
 
+    /**
+     * SEC-1 (.planning/accounting-waves/p2_5/p2_5-followups.md): CSV formula injection. A stored
+     * reason/route/ip beginning with a character a spreadsheet app treats as a formula trigger
+     * (= + - @, or a leading tab) must be re-opened as inert text, never executed, once neutralized
+     * by {@see \App\Support\CsvSafe}. Ordinary values -- including the numeric id column -- must
+     * round-trip byte-for-byte unchanged.
+     */
+    public function test_export_csv_neutralizes_formula_injection_payloads_and_leaves_normal_values_untouched(): void
+    {
+        [$company, $admin] = $this->makeCompanyAndAdmin();
+
+        $equalsRow = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'reopen',
+            'actor_type' => 'system',
+            'reason' => '=cmd()',
+            'created_at' => now(),
+        ]);
+        $plusRow = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'reopen',
+            'actor_type' => 'system',
+            'route' => '+SUM(A1)',
+            'created_at' => now(),
+        ]);
+        $minusRow = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'reopen',
+            'actor_type' => 'system',
+            'ip' => '-2+3',
+            'created_at' => now(),
+        ]);
+        $atRow = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'reopen',
+            'actor_type' => 'system',
+            'reason' => '@foo',
+            'created_at' => now(),
+        ]);
+        $tabRow = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'reopen',
+            'actor_type' => 'system',
+            'route' => "\tmalicious",
+            'created_at' => now(),
+        ]);
+        $normalRow = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'reopen',
+            'actor_type' => 'system',
+            'reason' => 'quarter-end audit correction',
+            'route' => 'accounting.audit-log.index',
+            'ip' => '127.0.0.1',
+            'created_at' => now(),
+        ]);
+
+        $component = Livewire::actingAs($admin)
+            ->test(\App\Http\Livewire\Accounting\AuditLogIndex::class)
+            ->call('exportCsv');
+
+        $component->assertFileDownloaded();
+
+        $csv = base64_decode((string) data_get($component->effects, 'download.content'));
+        $lines = array_values(array_filter(explode("\n", $csv), fn ($line) => $line !== ''));
+        $header = str_getcsv(array_shift($lines));
+
+        $byId = [];
+        foreach ($lines as $line) {
+            $fields = array_combine($header, str_getcsv($line));
+            $byId[(int) $fields['id']] = $fields;
+        }
+
+        $this->assertSame("'=cmd()", $byId[$equalsRow->id]['reason']);
+        $this->assertSame("'+SUM(A1)", $byId[$plusRow->id]['route']);
+        $this->assertSame("'-2+3", $byId[$minusRow->id]['ip']);
+        $this->assertSame("'@foo", $byId[$atRow->id]['reason']);
+        $this->assertSame("'\tmalicious", $byId[$tabRow->id]['route']);
+
+        // Normal values -- including the numeric id column -- pass through unchanged.
+        $this->assertSame((string) $normalRow->id, $byId[$normalRow->id]['id']);
+        $this->assertSame('quarter-end audit correction', $byId[$normalRow->id]['reason']);
+        $this->assertSame('accounting.audit-log.index', $byId[$normalRow->id]['route']);
+        $this->assertSame('127.0.0.1', $byId[$normalRow->id]['ip']);
+    }
+
+    /**
+     * SEC-1 regression guard for the OTHER named unguarded writer ({@see
+     * \App\Console\Commands\AccountingAuditLogPurge}'s retention archive) -- confirms both writers
+     * named in the finding share the same {@see \App\Support\CsvSafe} fix, not just the Log Center's
+     * on-demand export.
+     */
+    public function test_purge_archive_csv_neutralizes_formula_injection_payloads(): void
+    {
+        $company = Company::factory()->create();
+        $this->trackCompanyForInvariants($company->id);
+
+        \App\Models\Setting::create([
+            'company_id' => $company->id,
+            'key' => 'accounting.audit_log_retention_months',
+            'value' => 1,
+            'type' => 'integer',
+        ]);
+
+        $old = AccountingAuditLog::create([
+            'company_id' => $company->id,
+            'action' => 'post',
+            'actor_type' => 'system',
+            'reason' => '=cmd()',
+            'created_at' => now()->subMonths(3),
+        ]);
+
+        $this->artisan(\App\Console\Commands\AccountingAuditLogPurge::class, ['--company' => $company->id])
+            ->assertExitCode(0);
+
+        $archiveDir = storage_path("app/{$company->id}/accounting-audit-log-archive");
+        $files = glob($archiveDir.'/*.csv') ?: [];
+        $this->assertNotEmpty($files, 'purge command did not write an archive CSV');
+
+        $csv = file_get_contents(end($files));
+        $lines = array_values(array_filter(explode("\n", $csv), fn ($line) => $line !== ''));
+        $header = str_getcsv(array_shift($lines));
+        $row = array_combine($header, str_getcsv($lines[0]));
+
+        $this->assertSame((string) $old->id, $row['id']);
+        $this->assertSame("'=cmd()", $row['reason']);
+    }
+
     public function test_saving_and_loading_a_preset_round_trips_the_filter_state(): void
     {
         [, $admin] = $this->makeCompanyAndAdmin();

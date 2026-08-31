@@ -653,7 +653,11 @@
                                 </a>
                             @elseif ($partial->charge && !$partial->charge->is_system_default)
                                 @if($partial->invoiceReceipt?->transaction?->reference_number)
-                                    <a href="{{ route('receipt-voucher.show', ['companyId' => $companyId,
+                                    {{-- IDOR fix: receipt-voucher.show now requires an authenticated, same-company
+                                        session -- on the public/signed invoice page (isPublicInvoiceRequest) an
+                                        anonymous viewer must instead get the signed InvoiceReceipt::publicUrl(),
+                                        same convention as $invoice->publicUrl() elsewhere on this page. --}}
+                                    <a href="{{ ($isPublicInvoiceRequest ?? false) ? $partial->invoiceReceipt->publicUrl() : route('receipt-voucher.show', ['companyId' => $companyId,
                                         'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 underline" target="_blank">
                                         {{ $partial->invoiceReceipt->transaction->reference_number }}
                                     </a>

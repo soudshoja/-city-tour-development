@@ -143,13 +143,30 @@ class AdminUsersController extends Controller
 
     public function storeRole(Request $request)
     {
+        // SECURITY: this method had NO authorization check at all -- any authenticated user of
+        // any role could reassign any other user's role, including promoting themselves/others to
+        // Admin. Gated the same way its sibling GET (editRole(), which renders the very form that
+        // posts here -- see resources/views/users/edit.blade.php) already gates itself, rather
+        // than inventing a new pattern.
+        if (! in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'role_id' => 'required|integer|exists:roles,id',
             'user_id' => 'required|integer|exists:users,id',
             'company_id' => 'required|integer|exists:companies,id',
         ]);
 
+        // Mirrors editRole()'s own "cannot touch Admin users unless you are Admin" rule exactly
+        // (same condition, same message) -- editRole() is the GET that renders the very form this
+        // method receives, and already enforces this on the TARGET user's tier.
         $user = User::find($request->user_id);
+
+        if ($user->role_id == Role::ADMIN && Auth::user()->role_id != Role::ADMIN) {
+            abort(403, 'Cannot change role of Admin users.');
+        }
+
         $role = Role::where('id', $request->role_id)
             ->where('company_id', $request->company_id)
             ->first();
@@ -166,12 +183,25 @@ class AdminUsersController extends Controller
 
     public function newCompany()
     {
+        // SECURITY: no authorization check (found while auditing this controller for the
+        // storeRole()/updateInfo() fixes above). Gated with the same CompanyPolicy::create()
+        // ability ('create company' permission) as store() below, which this form posts to.
+        Gate::authorize('create', Company::class);
+
         $countries = Country::all(); // Fetch all countries from the `countries` table
         return view('admin.addnewCompany', compact('countries'));
     }
 
     public function create()
     {
+        // SECURITY: no authorization check (found while auditing this controller for the
+        // storeRole()/updateInfo() fixes above). This is exactly the action already gated in the
+        // UI by `@can('create', App\Models\User::class)` (resources/views/layouts/sidebar.blade.php)
+        // -- the sidebar hid the link from unauthorized users, but the route itself enforced
+        // nothing, so it was reachable directly. Matches that existing gate rather than inventing
+        // a new one.
+        Gate::authorize('create', User::class);
+
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
@@ -192,6 +222,14 @@ class AdminUsersController extends Controller
 
     public function store(Request $request)
     {
+        // SECURITY: no authorization check (found while auditing this controller for the
+        // storeRole()/updateInfo() fixes above). Creates a brand-new Company + Branch + a full COA
+        // (CoaSeeder::run() below) -- unambiguously a platform/tenant-onboarding action, not
+        // something any authenticated agent/client should be able to trigger. Gated with the
+        // pre-existing CompanyPolicy::create() ability ('create company' permission,
+        // registered in AppServiceProvider), same as newCompany() above (the display form for
+        // this same action).
+        Gate::authorize('create', Company::class);
 
         Log::info('Store function called with request data:', $request->all());
 
@@ -255,6 +293,17 @@ class AdminUsersController extends Controller
 
     public function ShowCompanies(Request $request)
     {
+        // SECURITY: no authorization check (found while auditing this controller for the
+        // storeRole()/updateInfo() fixes above) -- lists EVERY company on the platform
+        // (cross-tenant) to any authenticated user of any role. Not linked from any nav/view
+        // (route name 'companies.index' has zero references anywhere in resources/views), but the
+        // route itself was still live and directly reachable. Gated with the pre-existing
+        // CompanyPolicy::viewAny() ability ('view company' permission) -- the closest existing
+        // precedent in THIS controller for a cross-company capability is setCompany()'s
+        // Role::ADMIN-only check below, but 'view company' already exists as the purpose-built
+        // permission for "list companies" and is reused instead of inventing a role_id check.
+        Gate::authorize('viewAny', Company::class);
+
         // Retrieve all companies with their related nationality
         $companies = Company::with('nationality')->get(); // Eager load the nationality relationship
 
@@ -267,6 +316,22 @@ class AdminUsersController extends Controller
 
     public function updateInfo(Request $request, User $user)
     {
+        // SECURITY: this method had NO authorization check at all -- any authenticated user of
+        // any role could update any other user's name/email/phone AND reset their password
+        // (line below: Hash::make($request->input('info-new-password'))), including an Admin's.
+        // Gated identically to storeRole() above -- same sibling admin-only page (edit.blade.php,
+        // rendered by editRole()), same check. Not a self-service profile route: `users.updateInfo`
+        // is referenced from exactly one Blade view (users/edit.blade.php), which is itself only
+        // reachable via editRole()'s own admin/company gate; the app's actual self-profile edit
+        // flow is the separate resources/views/profile/partials/update-profile-information-form.
+        if (! in_array(Auth::user()->role_id, [Role::ADMIN, Role::COMPANY])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($user->role_id == Role::ADMIN && Auth::user()->role_id != Role::ADMIN) {
+            abort(403, 'Cannot modify Admin users.');
+        }
+
         $request->validate([
             'name' => 'required|string',
             'email' => 'required|email|unique:users,email,' . $user->id,

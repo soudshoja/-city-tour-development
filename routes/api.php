@@ -172,11 +172,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/{id}/transactions', [PaymentController::class, 'getTransactions']);
 });
 
-Route::post('/get-client', [APIController::class, 'getClient']);
+// SECURITY (dev-branch hardening, see APIController::getClient/getAgent/getCompany/getSupplier
+// docblocks): these four returned whole, unfiltered DB rows -- including Client.passport_no,
+// Client.civil_no, Client.date_of_birth and Company.iata_client_secret -- to ANY caller, with no
+// auth at all. `git log` on APIController.php shows they were added by "feat: n8n supplier api"
+// as pre-flight ID-validation helpers for `POST /api/task/webhook` (see
+// resources/views/docs/developer-documentation.blade.php's "Utility Endpoints" section, which
+// describes them exactly that way), so they share that same endpoint's caller: an n8n/webhook
+// integration identified via a WebhookClient. Gated with the exact same `verify.webhook.signature`
+// middleware + explicit "no webhook_client resolved -> 401" controller-side check used by
+// App\Http\Webhooks\TaskWebhook::webhook() (see that method's own docblock for why the middleware
+// alone -- which only verifies a signature IF one is presented -- is not sufficient on its own).
+// No `{webhook_client_id}` route segment here (unlike task/webhook): none of these four accept a
+// `client_id` body field that would collide with the middleware's `?client_id=` query-string
+// convention (see VerifyWebhookSignature::handle()), so the query-string form is used directly and
+// the URL path is unchanged for any future caller.
+Route::middleware('verify.webhook.signature')->group(function () {
+    Route::post('/get-client', [APIController::class, 'getClient']);
+    Route::post('/get-agent', [APIController::class, 'getAgent']);
+    Route::post('/get-company', [APIController::class, 'getCompany']);
+    Route::post('/get-supplier', [APIController::class, 'getSupplier']);
+});
+
+// Left unauthenticated deliberately: pure reference/schema data, no PII, not tenant-scoped.
+// - getTaskStructure returns a static list of field NAMES (no DB query at all).
+// - getCountry (`countries` table: name/iso codes/dialing code/currency) and getHotel (`hotels`
+//   table: name/address/city/phone/website/rating/description) are global lookup/directory tables
+//   with no client, financial or credential columns -- see their migrations. Neither carries a
+//   company_id, so there is no tenant to scope them to.
 Route::post('/get-task-structure', [APIController::class, 'getTaskStructure']);
-Route::post('/get-agent', [APIController::class, 'getAgent']);
-Route::post('/get-company', [APIController::class, 'getCompany']);
-Route::post('/get-supplier', [APIController::class, 'getSupplier']);
 Route::post('/get-country', [APIController::class, 'getCountry']);
 Route::post('/get-hotel', [APIController::class, 'getHotel']);
 

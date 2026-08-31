@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\AccountingAuditLog;
 use App\Models\Company;
 use App\Models\Setting;
+use App\Support\CsvSafe;
 use Illuminate\Console\Command;
 
 /**
@@ -74,10 +75,13 @@ class AccountingAuditLogPurge extends Command
             fputcsv($handle, ['id', 'created_at', 'action', 'actor_id', 'subject_type', 'subject_id', 'transaction_id', 'before', 'after', 'reason']);
             $query->orderBy('id')->chunk(500, function ($rows) use ($handle) {
                 foreach ($rows as $row) {
-                    fputcsv($handle, [
+                    // SEC-1: same CsvSafe neutralization as the Log Center's own exportCsv() —
+                    // this archive writer feeds the same accounting_audit_log.reason (and now
+                    // before/after JSON) into a CSV a human can open in a spreadsheet app.
+                    fputcsv($handle, CsvSafe::row([
                         $row->id, $row->created_at, $row->action, $row->actor_id, $row->subject_type,
                         $row->subject_id, $row->transaction_id, json_encode($row->before), json_encode($row->after), $row->reason,
-                    ]);
+                    ]));
                 }
             });
             fclose($handle);

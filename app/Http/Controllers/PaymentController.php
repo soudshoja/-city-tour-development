@@ -1979,8 +1979,27 @@ class PaymentController extends Controller
         $trackId = $request->input('track_id');
         $companyId = getCompanyId(Auth::user());
 
-        $client = Client::findOrFail($request->client_id);
-        $agent = Agent::findOrFail($request->agent_id);
+        $client = Client::with('agent.branch.company')->findOrFail($request->client_id);
+        $agent = Agent::with('branch.company')->findOrFail($request->agent_id);
+
+        // Tenant isolation (security fix): $companyId above is already correctly the CALLER's
+        // own company, but client_id/agent_id themselves were never checked against it -- an
+        // authenticated user could otherwise import a gateway payment (written straight to
+        // status: 'completed' below, no approval step) against another company's client/agent,
+        // landing real money in the wrong tenant's books. Mirrors the client/agent-company
+        // check used by paymentStoreLinkProcess()/multiPaymentMethodProcess() elsewhere in this
+        // class, checked directly against $companyId since that value is already the verified
+        // caller company here (no separate "unscoped admin" branch needed).
+        $clientCompanyId = $client->agent?->branch?->company?->id;
+        $agentCompanyId = $agent->branch?->company?->id;
+
+        abort_unless(
+            $clientCompanyId && $agentCompanyId
+                && (int) $clientCompanyId === (int) $companyId
+                && (int) $agentCompanyId === (int) $companyId,
+            403,
+            'Unauthorized action.'
+        );
 
         // Resolve payment method
         $methodName = $request->input('payment_method_name');
@@ -2515,10 +2534,19 @@ class PaymentController extends Controller
 
     public function assignClientToImport(Request $request, $paymentId): RedirectResponse
     {
-        $payment = Payment::where('id', $paymentId)
-            ->where('is_imported', true)
-            ->whereNull('client_id')
-            ->firstOrFail();
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+
+        // Tenant isolation (security fix): scope the base row lookup to the caller's own
+        // company -- mirrors paymentUpdateLink()'s identical fix. $paymentId is otherwise a
+        // guessable integer with no company check at all.
+        $unscopedAdmin = $user->role_id == Role::ADMIN && ! $companyId;
+
+        $paymentQuery = Payment::where('is_imported', true)->whereNull('client_id');
+        if (! $unscopedAdmin) {
+            $paymentQuery->where('company_id', $companyId);
+        }
+        $payment = $paymentQuery->where('id', $paymentId)->firstOrFail();
 
         $rules = ['client_id' => 'required|integer|exists:clients,id'];
         $messages = ['client_id.in' => 'The client you assigned does not assigned to this agent.'];
@@ -2532,6 +2560,16 @@ class PaymentController extends Controller
             $agentId = $payment->agent_id;
         }
 
+        // Tenant isolation (security fix): agent_id was previously validated only
+        // exists:agents,id -- proving the id is a real row, never that it belongs to the
+        // caller's own company. Without this, a caller could supply another company's
+        // agent_id for a still-unassigned payment (or exploit one already carrying a
+        // foreign agent_id) and the client allow-list below would be built from -- and the
+        // payment ultimately reassigned into -- that other company's roster.
+        $agentForCheck = Agent::with('branch.company')->find($agentId);
+        abort_unless($agentForCheck, 404, 'Agent not found.');
+        $this->assertSameCompanyOrUnscopedAdmin($user, (int) $agentForCheck->branch?->company?->id);
+
         $clients = Client::where('agent_id', $agentId)
             ->orWhereHas('agents', fn ($q) => $q->where('agent_id', $agentId))
             ->pluck('id')
@@ -2544,14 +2582,13 @@ class PaymentController extends Controller
         $client = Client::findOrFail($request->client_id);
 
         if (! $payment->agent_id && $request->agent_id) {
-            $agent = Agent::with('branch.company')->findOrFail($request->agent_id);
+            $agent = $agentForCheck;
             $payment->agent_id = $agent->id;
             $payment->created_by = $agent->user_id ?? Auth::id();
             $payment->pay_to = $agent->branch?->company?->name;
             $payment->save();
         }
 
-        $companyId = getCompanyId(Auth::user());
         $voucherNumber = $this->nextVoucherNumber($companyId);
 
         $payment->update([
@@ -2872,26 +2909,22 @@ class PaymentController extends Controller
             return ['status' => 'error', 'message' => 'Amount is required in Quick mode'];
         }
 
-        if (! $request->company_id) {
-            $companyId = null;
-            $user = Auth::user();
-
-            if ($user->role_id == Role::COMPANY) {
-                $companyId = $user->company->id;
-            } elseif ($user->role_id == Role::BRANCH) {
-                $companyId = $user->branch->company->id;
-            } elseif ($user->role_id == Role::AGENT) {
-                $companyId = $user->agent->branch->company->id;
-            }
-        } else {
-            $companyId = $request->company_id;
-        }
-
-        $company = $companyId ? Company::find($companyId) : null;
-        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
-
-        $client = Client::find($request->client_id);
-        $agent = Agent::find($request->agent_id);
+        // Tenant isolation (security fix, W41): this is a second front door into payment
+        // creation reachable whenever `payment_gateway` is non-null on POST
+        // payment/link/store (the `payment_gateway == null` branch already routes through the
+        // hardened multiPaymentMethodProcess() instead -- see paymentStoreLink() above).
+        // Previously `company_id` was taken straight from request input with only
+        // 'exists:companies,id', and Client::find()/Agent::find() had no company check at all,
+        // so any authenticated user could inject a real Payment row into another company's
+        // books by supplying that company's client_id/agent_id (and/or company_id) pair.
+        // Resolve client/agent WITH their company relations, require them to belong to the
+        // SAME company, then require the caller to match that company (or be an unscoped
+        // admin) -- mirrors multiPaymentMethodProcess()'s identical fix elsewhere in this same
+        // class. company_id is now always DERIVED from the verified agent, never trusted from
+        // request input, closing the request->company_id bypass entirely.
+        $user = Auth::user();
+        $client = Client::with('agent.branch.company')->find($request->client_id);
+        $agent = Agent::with('branch.company')->find($request->agent_id);
 
         if (! $client) {
             return ['status' => 'error', 'message' => 'Client cannot be found'];
@@ -2900,6 +2933,22 @@ class PaymentController extends Controller
         if (! $agent) {
             return ['status' => 'error', 'message' => 'Agent cannot be found'];
         }
+
+        $clientCompanyId = $client->agent?->branch?->company?->id;
+        $agentCompanyId = $agent->branch?->company?->id;
+
+        abort_unless(
+            $clientCompanyId && $agentCompanyId && (int) $clientCompanyId === (int) $agentCompanyId,
+            403,
+            'Unauthorized action.'
+        );
+
+        $this->assertSameCompanyOrUnscopedAdmin($user, (int) $agentCompanyId);
+
+        $companyId = $agentCompanyId;
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
         try {
             $voucherNumber = $this->nextVoucherNumber($companyId);
@@ -5022,17 +5071,52 @@ class PaymentController extends Controller
             'request_data' => $request->all(),
         ]);
 
-        $payment = Payment::find($paymentId);
+        // Tenant isolation (security fix, WORST of this pass): Payment::find($paymentId) had NO
+        // company scoping at all -- any authenticated user could load and mutate ANY company's
+        // payment row by guessing an integer id, then overwrite client_id/agent_id/amount
+        // straight from request input with no exists: validation and no company check at all.
+        // (a) Scope the base row lookup itself to the caller's own company -- mirrors
+        // assertSameCompanyOrUnscopedAdmin()'s own "unscoped admin" carve-out, applied at the
+        // query level so a cross-company id 404s exactly like a genuinely nonexistent one
+        // instead of confirming the row exists via a 403.
+        $user = Auth::user();
+        $companyId = getCompanyId($user);
+        $unscopedAdmin = $user->role_id == Role::ADMIN && ! $companyId;
+
+        $paymentQuery = Payment::query();
+        if (! $unscopedAdmin) {
+            $paymentQuery->where('company_id', $companyId);
+        }
+        $payment = $paymentQuery->find($paymentId);
 
         if (! $payment) {
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
+        // (b) Validate the fields this action overwrites -- previously client_id/agent_id/amount
+        // were written straight from request input with no exists: validation whatsoever.
+        $request->validate([
+            'client_id' => 'nullable|integer|exists:clients,id',
+            'agent_id' => 'nullable|integer|exists:agents,id',
+            'amount' => 'nullable|numeric|min:0',
+        ]);
+
         if ($clientId = $request->client_id) {
-            $client = Client::find($clientId);
+            $client = Client::with('agent.branch.company')->find($clientId);
             if (! $client) {
                 return redirect()->back()->with('error', 'Client not found.');
             }
+
+            // (c) The standard tenant assertion: the client being attached must belong to the
+            // SAME company as the payment row already scoped above. Mirrors
+            // CreditController::creditTopup()'s / multiPaymentMethodProcess()'s identical
+            // client-company check.
+            $clientCompanyId = $client->agent?->branch?->company?->id;
+            abort_unless(
+                $clientCompanyId && (int) $clientCompanyId === (int) $payment->company_id,
+                403,
+                'Unauthorized action.'
+            );
 
             $payment->client_id = $clientId;
         } else {
@@ -5043,6 +5127,19 @@ class PaymentController extends Controller
         }
 
         if ($request->agent_id) {
+            $agent = Agent::with('branch.company')->find($request->agent_id);
+            if (! $agent) {
+                return redirect()->back()->with('error', 'Agent not found.');
+            }
+
+            // (c) Same tenant assertion for the agent being attached.
+            $agentCompanyId = $agent->branch?->company?->id;
+            abort_unless(
+                $agentCompanyId && (int) $agentCompanyId === (int) $payment->company_id,
+                403,
+                'Unauthorized action.'
+            );
+
             $payment->agent_id = $request->agent_id;
         }
         if ($request->dial_code) {
@@ -7590,8 +7687,8 @@ class PaymentController extends Controller
             'items.*.currency' => 'required_with:items|string|max:10',
         ]);
 
-        $agent = Agent::find($request->input('agent_id'));
-        $client = Client::find($request->input('client_id'));
+        $agent = Agent::with('branch.company')->find($request->input('agent_id'));
+        $client = Client::with('agent.branch.company')->find($request->input('client_id'));
 
         $company = $agent->branch->company;
 
@@ -7603,6 +7700,29 @@ class PaymentController extends Controller
                 'message' => 'Company not found for the specified agent',
             ];
         }
+
+        // Tenant isolation (security fix, W41): same shape as CreditController::creditTopup()'s
+        // W40 fix -- 'exists:clients,id' / 'exists:agents,id' only prove the ids are *real* rows,
+        // not that they belong to the caller's own company, and the company_id written onto the
+        // resulting Payment row (below) is taken from $agent->branch->company->id, i.e. from the
+        // ATTACKER-SUPPLIED agent. Without this check, any authenticated user could post a
+        // client_id/agent_id pair belonging to a different company and inject a real Payment row
+        // into that company's books. Resolve the client's company via its agent -> branch ->
+        // company chain (not the denormalized/nullable clients.company_id column), require the
+        // client to resolve to the SAME company as the agent, then require the caller to match
+        // that company too (or be an unscoped admin) -- see assertSameCompanyOrUnscopedAdmin()
+        // below, mirrored from CreditController/ReceiptVoucherController/BankPaymentController.
+        $user = Auth::user();
+        $clientCompanyId = $client->agent?->branch?->company?->id;
+        $agentCompanyId = $company->id;
+
+        abort_unless(
+            $clientCompanyId && (int) $clientCompanyId === (int) $agentCompanyId,
+            403,
+            'Unauthorized action.'
+        );
+
+        $this->assertSameCompanyOrUnscopedAdmin($user, (int) $agentCompanyId);
 
         $voucherNumber = $this->nextVoucherNumber($company->id);
 
@@ -8795,5 +8915,30 @@ class PaymentController extends Controller
             new PaymentLinkExport($payments),
             $filename
         );
+    }
+
+    /**
+     * Mirrors CreditController::assertSameCompanyOrUnscopedAdmin() /
+     * ReceiptVoucherController's / BankPaymentController's identical copies: an admin acting
+     * with no company selected (getCompanyId() falsy) is the app's established "unscoped" admin
+     * case and may act across companies; every other caller -- including an admin who HAS a
+     * company selected via session -- must match exactly. Aborts 403 rather than returning a
+     * bool, same as the other three copies.
+     */
+    private function assertSameCompanyOrUnscopedAdmin($user, int $recordCompanyId): void
+    {
+        $companyId = getCompanyId($user);
+
+        if ($user->role_id == Role::ADMIN) {
+            if ($companyId && (int) $companyId !== $recordCompanyId) {
+                abort(403, 'Unauthorized action.');
+            }
+
+            return;
+        }
+
+        if ((int) $companyId !== $recordCompanyId) {
+            abort(403, 'Unauthorized action.');
+        }
     }
 }

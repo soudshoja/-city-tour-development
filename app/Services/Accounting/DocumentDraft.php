@@ -119,7 +119,17 @@ final class DocumentDraft
 {
     public function __construct(
         public readonly int $companyId,
-        public readonly int $branchId,
+        // W7.Y fix (gate item 5, low): widened int -> ?int. Type-widening only, same class of
+        // additive change as $sourceType/$sourceId's own documented deviation above -- every
+        // existing caller that passes a real int is unaffected. `transactions.branch_id` and
+        // `journal_entries.branch_id` are BOTH already nullable columns (migration
+        // 2026_08_24_120006_make_journal_entries_branch_id_nullable.php), and
+        // SequenceService::next()'s own $branchId parameter is already `?int` -- this class was
+        // the one remaining place in the chain still forcing a caller with a genuinely unknown
+        // branch (e.g. PaymentReleaseToCompanyBankAccProcess, when a company has no branches) to
+        // fabricate a `(int) null === 0` sentinel instead of preserving NULL, matching what its
+        // own legacy closure has always written for the identical case.
+        public readonly ?int $branchId,
         public readonly string $docType,          // INV/RV/PV/JV/CRN/DBN/OJV/REV
         public readonly ?string $subType,
         public readonly \DateTimeInterface $docDate,   // this IS transaction_date — the ONE period column (BUG-C4)

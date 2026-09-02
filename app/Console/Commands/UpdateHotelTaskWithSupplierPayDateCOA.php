@@ -6,9 +6,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Log;
 use App\Models\Task;
-use App\Http\Controllers\TaskController;
 use App\Models\Transaction;
 use App\Models\Supplier;
+use App\Services\TaskStatusService;
 use Carbon\Carbon;
 
 use function Laravel\Prompts\error;
@@ -89,10 +89,13 @@ class UpdateHotelTaskWithSupplierPayDateCOA extends Command
                 $task->updated_at = now();
                 $task->save();
 
-                $response = new TaskController();
-                
+                // W7.Y fix (gate item 4, BLOCKER): route through TaskStatusService::
+                // dispatchFinancial() instead of calling TaskController::processTaskFinancial()
+                // directly -- see UpdateHotelTaskStatus.php's own identical fix for the full
+                // reasoning (dispatchFinancial() already intercepts status='issued' on the ON
+                // path; OFF path is byte-identical to what ran before).
                 try {
-                    $response->processTaskFinancial($task);
+                    app(TaskStatusService::class)->dispatchFinancial($task);
                     Log::info('Processed COA for Task ID ' . $task->id);
                 } catch (\Throwable $e) {
                     Log::error('Failed to process COA for Task ID ' . $task->id . ' : ' . $e->getMessage());

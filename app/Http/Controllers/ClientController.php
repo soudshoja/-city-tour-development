@@ -31,6 +31,11 @@ use App\Models\Company;
 use App\Models\InvoicePartial;
 use App\Models\Notification;
 use App\Models\PaymentMethod;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LineDraft;
+use App\Services\Accounting\PaymentIdempotencyKey;
+use App\Services\Accounting\PostedDocument;
+use App\Services\Accounting\PostingSeam;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -998,6 +1003,62 @@ class ClientController extends Controller
         ]);
     }
 
+    /**
+     * W7.X cutover (w7-final-gate.md §1a, BLOCKER 1). Previously wrote raw
+     * `Transaction`/`JournalEntry`/`->actual_balance` unconditionally, with zero `PostingSeam`
+     * awareness, from all 13 live call sites (11 in `PaymentController`'s gateway callbacks +
+     * `CheckMyFatoorahPayments`'s topup branch) whenever a payment's `process === 'topup'`. Those
+     * call sites are OUT OF SCOPE here (frozen, per w7-final-gate.md) -- notably
+     * `PaymentController.php:2110` does `(new ClientController)->addCredit($payment)`, a bare
+     * `new`, not container resolution, which is why this method resolves `PostingSeam` inline via
+     * `app(PostingSeam::class)` inside the method body (matching CheckMyFatoorahPayments's own
+     * convention) rather than through constructor DI -- a required constructor dependency would
+     * break that frozen call site outright.
+     *
+     * STEP 1-3 (charge calc, fee-bearer split, `Credit` row) are UNCHANGED and run unconditionally
+     * for both paths -- `Credit` row written before the branch, same convention W7.K's
+     * `CreditController::creditTopup()` already established ("credits app-ledger: on engine ON,
+     * Credit row is a VIEW of 2632 movements, never a second source of truth").
+     *
+     * STEP 4 (the actual ledger write) now routes through `PostingSeam::post()`:
+     *   - OFF: `$legacy` below is STEP 4's ORIGINAL body, moved verbatim (byte parity vs HEAD),
+     *     still resolving accounts by name/FK -- the accepted OFF-path convention every other W1-W7
+     *     cutover uses.
+     *   - ON: posts the "correct double-entry per the blueprint" for a client wallet top-up -- Dr
+     *     the appropriate clearing/cash purpose leaf (`GATEWAY_CLEARING_{GATEWAY}` when
+     *     `$payment->payment_gateway` is set, else `CASH_IN_HAND`) for the NET amount (gross
+     *     `$clientCreditAmount` minus `$accountingFee`) / Cr `CLIENT_ADVANCE` for the full (gross)
+     *     `$clientCreditAmount` -- the same clearing/advance shape
+     *     {@see \App\Http\Controllers\CreditController::buildCreditTopupDraft()} (W7.K) and
+     *     {@see \App\Console\Commands\CheckMyFatoorahPayments}'s own MYFATOORAH engine draft both
+     *     already use for a plain client advance, PLUS a third Dr `GATEWAY_FEE_EXPENSE_{GATEWAY}`
+     *     leg for `$accountingFee` whenever a real gateway is involved and the fee is > 0 (net +
+     *     fee = gross, so the document still balances). Verify-fix (lead finding): an EARLIER
+     *     revision of this method debited clearing for the FULL gross amount with no fee leg at
+     *     all, which left a permanent `$accountingFee` residual stuck in
+     *     `GATEWAY_CLEARING_{GATEWAY}` every cycle -- `PaymentReleaseToCompanyBankAccProcess`'s own
+     *     ON-path draft only ever credits that same purpose leaf for the NET amount (mirroring what
+     *     its shared, path-independent `$totalAmount` computation reads off the 'charges'-type
+     *     `JournalEntry` this method's own fee leg now writes), so nothing on the ON path ever
+     *     relieved the gross-vs-net gap. The 3-line shape below is the SAME split
+     *     {@see \App\Http\Controllers\PaymentController}'s own W2 cutover already established for
+     *     an inbound gateway payment ("Dr GATEWAY_CLEARING_{gateway} (+ Dr
+     *     GATEWAY_FEE_EXPENSE_{gateway} when the gateway actually charges a fee)"), applied here to
+     *     the topup side of the same clearing leaf. Purpose codes only, never `Account::where('name',
+     *     ...)` -- `PostingService` resolves every leg from `system_accounts` internally.
+     *   - Idempotency key: `PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id,
+     *     $clientCreditAmount)` -- the SAME (client, agent, amount)-derived key W7.K's
+     *     `CreditController::creditTopup()` uses, so a double gateway callback (the exact scenario
+     *     this method's own top-of-method `$existingCredit` payment_id dedupe ALSO already guards
+     *     against, independently) can never post the ledger twice through the engine either.
+     *   - `DocumentDraft::$paymentId` is deliberately left unset (null): setting it would collide
+     *     with `transactions`' `(payment_id, reference_type)` unique index against a SEPARATE
+     *     engine document a frozen call site (`CheckMyFatoorahPayments`'s own MYFATOORAH draft, a
+     *     few lines below its `addCredit()` call) could still post for the very same `$payment` --
+     *     see that file's own `$alreadyPosted` comment for why its legacy-shaped guard cannot
+     *     recognise an engine-posted `addCredit()` document. `sourceId` (informational only, no FK)
+     *     carries `$credit->id` instead, matching W7.K's own `sourceId: $credit->id` convention.
+     */
     public function addCredit(Payment $payment)
     {
         // Phantom-credit guard: an invoice-linked gateway payment is settled directly against
@@ -1070,6 +1131,26 @@ class ClientController extends Controller
             $paidBy = $payment->paymentMethod?->paid_by ?? $chargeResult['paid_by'] ?? 'Company';
 
             $payment->gateway_fee = $accountingFee;
+            // W7.Y fix (gate item 3): persist g (the client-facing gateway fee -- what the client
+            // was actually charged AT the gateway, ChargeService::calculate()'s own 'total_charge'
+            // via 'gatewayFee' here, ON TOP OF $payment->amount staying the base A) onto the SAME
+            // `service_charge` column PaymentController's own 11 gateway-callback call sites
+            // already populate with this exact value (`$payment->service_charge = ($chargeResult
+            // ['paid_by'] === 'Company') ? 0 : $chargeResult['gatewayFee']`, or the equivalent
+            // `$finalPaidAmount - $payment->amount`) BEFORE calling addCredit() -- an established,
+            // repo-wide convention this "fresh compute" branch was the one place NOT already
+            // following (only the "imported payment" branch above reads it back). Populating it
+            // here too means it is always current for whichever branch actually ran -- NOT,
+            // however, so PaymentReleaseToCompanyBankAccProcess can read it back: that command
+            // never touches `service_charge` at all. Release-side recovery instead reads the
+            // 'income'-type JournalEntry row (ENTRY3 here / the ON-path's GATEWAY_FEE_RECOVERY
+            // line) posted for the same voucher_number and adds its credit back onto the release
+            // total (see that command's own fee-recovery lookup, item 3 CRITICAL CONSISTENCY
+            // REQUIREMENT). Company-borne
+            // payments always have $gatewayFee === 0 here (ChargeService::calculate()'s
+            // 'gatewayFee' is `$clientPays`, which is 0 unless $paidBy === 'Client'), so this never
+            // changes behaviour for the majority (company-bears) case.
+            $payment->service_charge = $gatewayFee;
             $payment->save();
         }
 
@@ -1098,13 +1179,13 @@ class ClientController extends Controller
         // STEP 3: Create Credit record
         DB::beginTransaction();
         try {
-            Credit::create([
-                'company_id'  => $companyId,
-                'client_id'   => $client->id,
-                'type'        => 'Topup',
-                'payment_id'  => $payment->id,
-                'description' => 'Topup Credit via ' . $payment->voucher_number,
-                'amount'      => $clientCreditAmount,
+            $credit = Credit::create([
+                'company_id' => $companyId,
+                'client_id' => $client->id,
+                'type' => 'Topup',
+                'payment_id' => $payment->id,
+                'description' => 'Topup Credit via '.$payment->voucher_number,
+                'amount' => $clientCreditAmount,
                 'gateway_fee' => $accountingFee,
             ]);
         } catch (\Exception $e) {
@@ -1114,9 +1195,226 @@ class ClientController extends Controller
         }
         DB::commit();
 
-        // STEP 4: Create Journal Entries (ALL IN ONE TRANSACTION)
+        // STEP 4: Post the ledger movement through the seam (W7.X — see method docblock).
         DB::beginTransaction();
         try {
+            // ── Legacy closure: STEP 4's ORIGINAL body, moved verbatim behind the seam. Runs
+            // only when the seam routes to legacy (engine off globally, off for this company, or
+            // a flag-flip race). Every row, column, and value this writes is byte-identical to
+            // HEAD. ──────────────────────────────────────────────────────────────────────────
+            $legacy = function () use ($agent, $client, $payment, $companyId, $chargeRecord, $assetAmount, $accountingFee, $clientCreditAmount, $recordIncome, $paidBy) {
+                return $this->legacyAddCreditLedgerWrite(
+                    $agent, $client, $payment, $companyId, $chargeRecord, $assetAmount, $accountingFee, $clientCreditAmount, $recordIncome, $paidBy
+                );
+            };
+
+            // W7.Y fix (gate item 1, BLOCKER): forClientCreditTopup() now requires $payment->id as
+            // its own discriminator -- see that method's own docblock for why two genuinely
+            // different Payment rows for the same (client, agent, amount) tuple must never
+            // collapse onto one document, and why CreditController::creditTopup()'s manual flow
+            // now uses the SEPARATE forManualClientCreditTopup() factory instead so the two flows
+            // can never collide with each other either.
+            $idempotencyKey = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, $payment->id, (float) $clientCreditAmount);
+
+            $gatewayKey = $payment->payment_gateway ? strtoupper($payment->payment_gateway) : null;
+            $clearingPurposeCode = $gatewayKey ? "GATEWAY_CLEARING_{$gatewayKey}" : 'CASH_IN_HAND';
+            $clearingTransactionType = $gatewayKey ? 'GATEWAYDEBITED' : 'RECEIPT';
+            $narration = 'Client Advance via '.$payment->voucher_number;
+
+            // Verify-fix (lead finding, w7-final-gate.md §1a BLOCKER 1): splitting the fee here
+            // is NOT optional cosmetics -- it is what keeps GATEWAY_CLEARING_{gateway} netting to
+            // zero across a topup+release cycle. PaymentReleaseToCompanyBankAccProcess's own
+            // shared $totalAmount computation (this file's sibling command) sums
+            // `payment->amount - <the 'charges'-type JournalEntry's debit>` UNCONDITIONALLY --
+            // regardless of which path posted that fee row -- and then CREDITS
+            // GATEWAY_CLEARING_{gateway} for that NET figure on release. If this draft debited
+            // clearing for the FULL (gross) $clientCreditAmount instead, every cycle would leave
+            // a permanent $accountingFee residual stuck as a debit balance in
+            // GATEWAY_CLEARING_{gateway} -- never relieved by any other ON-path posting. Debiting
+            // clearing for the NET amount and adding a separate GATEWAY_FEE_EXPENSE_{gateway} debit
+            // leg for the fee (net + fee = gross = the CLIENT_ADVANCE credit, so the document
+            // still balances on its own) is the exact 3-line shape
+            // {@see \App\Http\Controllers\PaymentController}'s own W2 cutover already established
+            // for this identical problem (its own "Dr GATEWAY_CLEARING_{gateway} (+ Dr
+            // GATEWAY_FEE_EXPENSE_{gateway} when the gateway actually charges a fee)" comment,
+            // same conditional-third-line-when-fee>0 policy, same `ledgerType: 'charges'` so the
+            // release command's raw `journal_entries.type = 'charges'` lookup finds this row on
+            // the ON path exactly like it already finds legacy's ENTRY2. Only added when a real
+            // gateway is involved AND accountingFee > 0 -- PostingService rejects a zero-amount
+            // line, and CASH_IN_HAND topups have no gateway fee concept at all.
+            $splitFee = $gatewayKey !== null && $accountingFee > 0;
+
+            // W7.Y fix (gate item 3, BLOCKER): the LOCKED bearer matrix
+            // (.planning/accounting-waves/bearer-matrix-design.md:44, O1 row "gateway_fee") requires
+            // a FOURTH line -- Cr GATEWAY_FEE_RECOVERY -- when the CLIENT bears the gateway fee,
+            // which this draft previously dropped entirely (it posted the identical 3-line
+            // company-bears shape regardless of $paidBy, silently discarding $gatewayFee/g -- only
+            // ever surfaced in the response array, never in a ledger line). $gatewayFee (g) is
+            // ChargeService::calculate()'s own 'gatewayFee' == 'total_charge' -- what the client
+            // was ACTUALLY charged at the gateway ON TOP OF the base amount (PaymentController's
+            // own `$finalAmount = $amount + $clientPays` sent as the gateway's own InvoiceValue/
+            // UnitPrice), while `$payment->amount`/`$clientCreditAmount` stay the base A the whole
+            // way through this method. $accountingFee (f) is the real processor cost, always
+            // recognised via the GATEWAY_FEE_EXPENSE_{gateway} leg above regardless of bearer.
+            //
+            // Double-entry, A = clientCreditAmount, f = accountingFee, g = gatewayFee:
+            //   Company bears (unchanged): Dr clearing (A-f) . Dr fee expense (f) . Cr advance (A).
+            //   Client bears (NEW):        Dr clearing (A+g-f) . Dr fee expense (f) . Cr advance (A)
+            //                               . Cr GATEWAY_FEE_RECOVERY (g).
+            // Both shapes balance on their own (company: (A-f)+f = A; client: (A+g-f)+f = A+g =
+            // A+g, matching Cr advance(A) + Cr recovery(g)).
+            $clientBearsFee = $splitFee && $paidBy === 'Client' && (float) $gatewayFee > 0;
+
+            $netClearingAmount = match (true) {
+                $clientBearsFee => (float) $clientCreditAmount + (float) $gatewayFee - (float) $accountingFee,
+                $splitFee => (float) $clientCreditAmount - (float) $accountingFee,
+                default => (float) $clientCreditAmount,
+            };
+
+            $lines = [
+                new LineDraft(
+                    purposeCode: $clearingPurposeCode,
+                    accountId: null,
+                    side: 'debit',
+                    amount: $netClearingAmount,
+                    currency: (string) config('accounting.engine.base_currency'),
+                    originalAmount: $netClearingAmount,
+                    exchangeRate: 1.0,
+                    transactionType: $clearingTransactionType,
+                    partyAccountRef: $client->id,
+                    description: $narration,
+                    ledgerType: 'bank',
+                    partyName: $client->full_name,
+                    voucherNumber: $payment->voucher_number,
+                ),
+            ];
+
+            if ($splitFee) {
+                $lines[] = new LineDraft(
+                    purposeCode: "GATEWAY_FEE_EXPENSE_{$gatewayKey}",
+                    accountId: null,
+                    side: 'debit',
+                    amount: (float) $accountingFee,
+                    currency: (string) config('accounting.engine.base_currency'),
+                    originalAmount: (float) $accountingFee,
+                    exchangeRate: 1.0,
+                    transactionType: 'CCCHARGES',
+                    description: ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$gatewayKey,
+                    ledgerType: 'charges',
+                    voucherNumber: $payment->voucher_number,
+                );
+            }
+
+            $lines[] = new LineDraft(
+                purposeCode: 'CLIENT_ADVANCE',
+                accountId: null,
+                side: 'credit',
+                amount: (float) $clientCreditAmount,
+                currency: (string) config('accounting.engine.base_currency'),
+                originalAmount: (float) $clientCreditAmount,
+                exchangeRate: 1.0,
+                transactionType: 'CUSTOMERCREDITED',
+                partyAccountRef: $client->id,
+                description: $narration,
+                ledgerType: 'advance',
+                partyName: $client->full_name,
+                voucherNumber: $payment->voucher_number,
+            );
+
+            // W7.Y fix (gate item 3, BLOCKER): the fourth line -- Cr GATEWAY_FEE_RECOVERY (g) --
+            // only when the client actually bears the fee. Purpose code, transactionType and
+            // ledgerType mirror the ESTABLISHED pattern
+            // {@see \App\Http\Controllers\InvoiceController::createGatewayFeeRecoveryEntries()}
+            // already uses for the identical purpose code on the invoice-payment side (that
+            // method's own 'GATEWAY_FEE_RECOVERY' / 'GATEWAYFEERECOVERY' / 'income' triple) --
+            // reused verbatim here rather than re-derived, so both feeders' fee-recovery lines
+            // stay consistent on every accounting screen.
+            if ($clientBearsFee) {
+                $lines[] = new LineDraft(
+                    purposeCode: 'GATEWAY_FEE_RECOVERY',
+                    accountId: null,
+                    side: 'credit',
+                    amount: (float) $gatewayFee,
+                    currency: (string) config('accounting.engine.base_currency'),
+                    originalAmount: (float) $gatewayFee,
+                    exchangeRate: 1.0,
+                    transactionType: 'GATEWAYFEERECOVERY',
+                    partyAccountRef: $client->id,
+                    description: 'Gateway Fee Recovery from Client: '.$client->full_name,
+                    ledgerType: 'income',
+                    partyName: $client->full_name,
+                    voucherNumber: $payment->voucher_number,
+                );
+            }
+
+            $draft = new DocumentDraft(
+                companyId: (int) $companyId,
+                branchId: (int) $agent->branch->id,
+                docType: 'RV',
+                subType: 'TOPUP',
+                docDate: $payment->payment_date ?? now(),
+                narration: $narration,
+                lines: $lines,
+                idempotencyKey: $idempotencyKey,
+                sourceType: 'Receipt',
+                sourceId: $credit->id,
+                userId: Auth::id(),
+                paymentReference: $payment->payment_reference ?? null,
+            );
+
+            $seam = app(PostingSeam::class);
+            $posted = $seam->post($draft, $legacy, 'client.add_credit');
+
+            // PostingSeam::post() returns: the legacy closure's own return value (a Transaction
+            // model) on the OFF path; a PostedDocument on the ON path; or a bare `null` — ONLY on
+            // the OFF path, and only when the engine had already posted this exact
+            // (company_id, idempotency_key) pair before a kill-switch flip. Every feeder must
+            // tolerate it — same resolution PaymentController's own gateway-payment cutover uses.
+            if ($posted === null) {
+                $alreadyPosted = Transaction::withoutGlobalScopes()
+                    ->where('company_id', $companyId)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->whereNull('deleted_at')
+                    ->first(['id']);
+
+                $transactionId = $alreadyPosted?->id;
+            } elseif ($posted instanceof PostedDocument) {
+                $transactionId = $posted->transaction->id;
+            } else {
+                $transactionId = $posted->id;
+            }
+
+            DB::commit();
+
+            return [
+                'status' => 'success',
+                'message' => 'Credit added successfully',
+                'data' => [
+                    'client_id' => $client->id,
+                    'credit' => $clientCreditAmount,
+                    'gateway_fee' => $gatewayFee,
+                    'accounting_fee' => $accountingFee,
+                    'paid_by' => $paidBy,
+                    'asset_amount' => $assetAmount,
+                    'transaction_id' => $transactionId,
+                ],
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error adding JournalEntry: '.$e->getMessage());
+
+            return ['status' => 'error', 'message' => 'Failed to add JournalEntry: '.$e->getMessage()];
+        }
+    }
+
+    /**
+     * The ORIGINAL, byte-identical body of {@see addCredit()}'s STEP 4 — extracted verbatim into
+     * its own method so it can be passed as a `\Closure` to `PostingSeam::post()` without an
+     * inline closure duplicating ~130 lines inline. Every line, value, and account-resolution-by-
+     * name call is exactly what HEAD ran. NEVER called on the ON path.
+     */
+    private function legacyAddCreditLedgerWrite($agent, $client, $payment, $companyId, $chargeRecord, $assetAmount, $accountingFee, $clientCreditAmount, $recordIncome, $paidBy)
+    {
             $bankPaymentFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_bank_id) : null;
             $bankCOAFee = $chargeRecord ? Account::find($chargeRecord->acc_fee_id) : null;
             $incomeAccount = Account::where('name', 'Gateway Fee Recovery')->where('company_id', $companyId)->first();
@@ -1275,26 +1573,7 @@ class ClientController extends Controller
             $clientAdvancePaymentGateway->actual_balance += $clientCreditAmount;
             $clientAdvancePaymentGateway->save();
 
-            DB::commit();
-
-            return [
-                'status' => 'success',
-                'message' => 'Credit added successfully',
-                'data' => [
-                    'client_id' => $client->id,
-                    'credit' => $clientCreditAmount,
-                    'gateway_fee' => $gatewayFee,
-                    'accounting_fee' => $accountingFee,
-                    'paid_by' => $paidBy,
-                    'asset_amount' => $assetAmount,
-                    'transaction_id' => $transaction->id,
-                ],
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error adding JournalEntry: ' . $e->getMessage());
-            return ['status' => 'error', 'message' => 'Failed to add JournalEntry: ' . $e->getMessage()];
-        }
+            return $transaction;
     }
 
     public function refund($id, Request $request)

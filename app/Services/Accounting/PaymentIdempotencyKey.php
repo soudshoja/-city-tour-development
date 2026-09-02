@@ -295,14 +295,98 @@ final class PaymentIdempotencyKey
      * guard for anyway (see that method's own comment) — never a change to the OFF/legacy path,
      * which has no dedup today and keeps none.
      *
-     * KEY SHAPE: `client-credit-topup:{clientId}:agent:{agentId}:{normalisedAmount}`.
+     * KEY SHAPE: `client-credit-topup:{clientId}:agent:{agentId}:payment:{paymentId}:{normalisedAmount}`.
+     *
+     * ── W7.Y fix (gate item 1, BLOCKER): a real `Payment` row's id is available BEFORE this key
+     * is computed at every call site that uses this factory ({@see
+     * \App\Http\Controllers\ClientController::addCredit()} — a gateway-driven topup, always fed
+     * an existing `Payment`) — unlike {@see forManualClientCreditTopup()}'s own no-row-yet
+     * problem (see that method's docblock), so there is no reason to keep this factory scoped to
+     * (client, agent, amount) alone once a stable id exists to key on. Without `$paymentId`, two
+     * GENUINELY different gateway payments for the SAME (client, agent, amount) tuple — the
+     * ordinary case of a client topping up the identical amount on two different days — collapsed
+     * onto ONE key: the second payment's own Credit row still posted (unconditional, per-payment
+     * write), but its ledger document was silently swallowed by `PostingSeam`'s "already posted
+     * this key" guard, understating `CLIENT_ADVANCE` by the second payment's full amount forever.
+     * Embedding `$paymentId` closes this without touching the SAME-payment dedupe this key was
+     * always also responsible for (a double gateway callback for the identical `Payment` row still
+     * collapses to one document — the id is identical both times).
+     *
+     * Deliberately namespaced apart from {@see forManualClientCreditTopup()}'s own `:manual:`
+     * segment — a gateway-fed topup and an admin-manual topup are different real-world business
+     * events even when they happen to share (client, agent, amount), and must never resolve to the
+     * same PostingService idempotency lookup.
      */
-    public static function forClientCreditTopup(int $clientId, int $agentId, float $amount): string
+    public static function forClientCreditTopup(int $clientId, int $agentId, int $paymentId, float $amount): string
     {
         $decimals = (int) config('accounting.engine.base_decimals', 3);
         $normalisedAmount = number_format(round($amount, $decimals), $decimals, '.', '');
 
-        return sprintf('client-credit-topup:%d:agent:%d:%s', $clientId, $agentId, $normalisedAmount);
+        return sprintf('client-credit-topup:%d:agent:%d:payment:%d:%s', $clientId, $agentId, $paymentId, $normalisedAmount);
+    }
+
+    /**
+     * W7.Y fix (gate item 1, BLOCKER): split out of the old bare {@see forClientCreditTopup()}
+     * shape, which {@see \App\Http\Controllers\CreditController::creditTopup()} (W7.K) also used —
+     * this is that call site's OWN factory now, keeping the ORIGINAL (client, agent, amount)-only
+     * shape (see the class's own W7.K docblock section for why credit_id can never be used here:
+     * the key is computed BEFORE the `Credit` row this request is about to create exists, so
+     * keying on that row's id could never dedupe a genuine retry). Namespaced with a literal
+     * `:manual:` segment so this admin-manual topup path can never collide with
+     * {@see forClientCreditTopup()}'s own (now payment-scoped) gateway-topup keys for the same
+     * (client, agent, amount) tuple — closing the cross-flow collision half of gate item 1 (the
+     * same-flow, "themselves across days" half is closed by `forClientCreditTopup()`'s new
+     * `$paymentId` segment above; this factory's own tradeoff — two genuinely separate manual
+     * top-ups of the identical tuple collapsing into one if submitted before the first's document
+     * exists — is unchanged and remains an accepted, documented tradeoff, not a new gap).
+     *
+     * KEY SHAPE: `client-credit-topup:manual:{clientId}:agent:{agentId}:{normalisedAmount}`.
+     */
+    public static function forManualClientCreditTopup(int $clientId, int $agentId, float $amount): string
+    {
+        $decimals = (int) config('accounting.engine.base_decimals', 3);
+        $normalisedAmount = number_format(round($amount, $decimals), $decimals, '.', '');
+
+        return sprintf('client-credit-topup:manual:%d:agent:%d:%s', $clientId, $agentId, $normalisedAmount);
+    }
+
+    /**
+     * W7.X (w7-final-gate.md §1a, BLOCKER 2 — `PaymentReleaseToCompanyBankAccProcess`'s daily
+     * gateway-clearing-to-bank settlement cron). The business event is "this exact SET of
+     * completed-but-unreleased payments, for this company/gateway/date group, settled to the bank
+     * in one run" — same "key on the SET" convention {@see forGatewayPayment()}'s own docblock
+     * establishes for the identical reason: keying on (companyId, gateway, date) ALONE would
+     * collapse every run's group for that gateway/date into one key forever, so a LATER, genuinely
+     * separate batch of payments that lands `completed=0`/`status=completed` for the SAME
+     * gateway/date (the command's own `WHERE` clause has no upper bound on when a payment can
+     * reach that state) would be silently skipped by `PostingSeam`'s S1 "already posted this key"
+     * guard — never posted, and never released (`$payment->completed` stays 0 forever, since the
+     * command's own re-run guard is exactly that WHERE clause). Keying on the payment SET instead
+     * means only a genuine re-run of the IDENTICAL batch (the real "did a kill-switch flip mid-run,
+     * or did the scheduler double-fire" case this key exists to guard against) collapses to one
+     * document; two distinct batches for the same gateway/date always produce distinct keys.
+     *
+     * KEY SHAPE: `payment-release:company:{companyId}:gateway:{gateway}:date:{date}:payments:{sorted,comma ids}`.
+     * `$gateway` normalised the same way {@see forGatewayPayment()} normalises it; `$date` is taken
+     * verbatim (already a `Y-m-d` string at this feeder's own call site — grouped by that exact
+     * format, so it is already stable/comparable as a string, needing no further normalisation).
+     *
+     * @param  int[]  $paymentIds
+     */
+    public static function forPaymentReleaseGroup(int $companyId, string $gateway, string $date, array $paymentIds): string
+    {
+        $normalisedGateway = strtolower(trim($gateway));
+
+        $sortedPaymentIds = array_values(array_unique(array_map('intval', $paymentIds), SORT_NUMERIC));
+        sort($sortedPaymentIds, SORT_NUMERIC);
+
+        return sprintf(
+            'payment-release:company:%d:gateway:%s:date:%s:payments:%s',
+            $companyId,
+            $normalisedGateway,
+            $date,
+            implode(',', $sortedPaymentIds)
+        );
     }
 
     /**

@@ -214,7 +214,28 @@ class CheckMyFatoorahPayments extends Command
                         ->where('idempotency_key', $idempotencyKey)
                         ->exists());
 
-                if (!$alreadyPosted && $companyId !== null) {
+                if ($process === 'topup') {
+                    // W7.Y fix (gate item 2, BLOCKER): addCredit() above already fully owns
+                    // posting for a topup payment, on BOTH flag states -- see that method's own
+                    // STEP 4 docblock. This command must NOT ALSO post its own MYFATOORAH draft
+                    // for the same payment. On the OFF path this was already harmless (addCredit()'s
+                    // legacy closure writes payment_id + reference_type='Payment', which
+                    // $alreadyPosted's FIRST clause below already recognises, so the block below
+                    // would never have run for a topup anyway once addCredit() succeeded) -- but on
+                    // the ON path addCredit()'s own engine draft deliberately leaves
+                    // DocumentDraft::$paymentId UNSET (null; see that method's own comment on why:
+                    // avoiding a collision with THIS command's draft on the
+                    // (payment_id, reference_type) unique index), and posts under its own
+                    // 'client-credit-topup:...' idempotency-key namespace -- entirely different
+                    // from this command's 'gateway:myfatoorah:payment:...' namespace. Neither
+                    // clause of $alreadyPosted below can therefore ever recognise addCredit()'s
+                    // ON-path document, so without this explicit branch every topup reconciled by
+                    // this command posted a SECOND, spurious MYFATOORAH document — double-crediting
+                    // CLIENT_ADVANCE (or RECEIVABLE_CONTROL) by the full payment amount on top of
+                    // addCredit()'s own correct one. See CheckMyFatoorahPaymentsSeamTest's
+                    // "process => topup" coverage for the reconciliation proof (webhook-lost topup,
+                    // reconciled by this command on ON, posts exactly ONE document).
+                } elseif (!$alreadyPosted && $companyId !== null) {
                     // ── Legacy closure: VERBATIM HEAD behaviour, moved unmodified behind the
                     // seam. Runs only when the seam routes to legacy (engine off globally, off for
                     // this company, or a flag-flip race — see PostingSeam::post()'s own docblock).

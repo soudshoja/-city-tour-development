@@ -5,11 +5,14 @@ namespace Tests\Feature\Accounting;
 use App\Exceptions\Accounting\FrozenAccountException;
 use App\Models\Account;
 use App\Models\Company;
+use App\Models\Credit;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
 use App\Models\MyFatoorahPayment;
 use App\Models\Payment;
 use App\Models\Transaction;
+use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\PaymentIdempotencyKey;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1059,5 +1062,143 @@ class CheckMyFatoorahPaymentsSeamTest extends TestCase
         $debitLine = JournalEntry::where('transaction_id', $txn->id)->where('debit', '>', 0)->first();
         $this->assertNotNull($debitLine);
         $this->assertEqualsWithDelta((float) $debitLine->debit, (float) $creditLine->credit, 0.0005, 'Document must be balanced.');
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────────────────
+    // W7.Y fix (gate item 2, BLOCKER): `process === 'topup'` branch coverage. Previously ZERO --
+    // every fixture above uses `'process' => 'invoice'`. addCredit() (called a few lines above
+    // this command's own posting block, for `process === 'topup'`) fully owns posting for a
+    // topup payment on BOTH flag states; this command must NOT ALSO post its own MYFATOORAH
+    // draft for the same payment -- see CheckMyFatoorahPayments::handle()'s own new branch.
+    // ────────────────────────────────────────────────────────────────────────────────────────
+
+    private function fakeMyFatoorahPaidTopupResponse(string $invoiceReference, float $amount, string $authCode, int $invoiceId = 999): void
+    {
+        Http::fake([
+            '*/getPaymentStatus' => Http::response([
+                'IsSuccess' => true,
+                'Data' => [
+                    'InvoiceStatus' => 'Paid',
+                    'InvoiceValue' => $amount,
+                    'InvoiceId' => $invoiceId,
+                    'InvoiceReference' => $invoiceReference,
+                    'InvoiceTransactions' => [['AuthorizationId' => $authCode]],
+                    'UserDefinedField' => json_encode(['process' => 'topup']),
+                ],
+            ], 200),
+        ]);
+    }
+
+    /**
+     * The exact scenario item 2 names: a topup payment whose gateway webhook was lost, later
+     * reconciled by this command's own status-check cron, engine ON. Must post EXACTLY ONE
+     * document (addCredit()'s own), crediting CLIENT_ADVANCE exactly the payment amount ONCE --
+     * not twice (addCredit()'s document + a spurious second MYFATOORAH draft from this command).
+     */
+    public function test_flags_on_topup_branch_addcredit_owns_posting_no_second_document(): void
+    {
+        config(['accounting.engine.enabled' => true]);
+
+        $tenant = $this->createTenant();
+        $company = $tenant['company'];
+        CoaSeeder::run($company->id);
+        (new SystemAccountsSeeder())->run();
+        Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
+
+        $payment = Payment::factory()->create([
+            'agent_id' => $tenant['agent']->id,
+            'client_id' => $tenant['client']->id,
+            'invoice_id' => null,
+            'account_id' => null,
+            'created_by' => $tenant['user']->id,
+            'payment_gateway' => 'MyFatoorah',
+            'payment_reference' => 'MF-INV-TOPUP-ON-1',
+            'voucher_number' => 'V-TOPUP-ON-1',
+            'status' => 'initiate',
+            'amount' => 40.000,
+            // Nonzero gateway_fee up front -> addCredit()'s own "imported payment" branch, whose
+            // bearer is pinned to $payment->paymentMethod?->paid_by ?? 'Company' (no PaymentMethod
+            // row here) -- deterministic 'Company' bearer, keeping this fixture focused on item 2's
+            // own double-post question rather than re-exercising item 3's bearer split.
+            'gateway_fee' => 3.000,
+            'service_charge' => 0,
+        ]);
+
+        $this->fakeMyFatoorahPaidTopupResponse('MF-REF-TOPUP-ON-1', 40.000, 'AUTH-TOPUP-ON-1');
+
+        $exitCode = $this->artisan('app:myfatoorah-check-status', ['invoiceId' => 'MF-INV-TOPUP-ON-1'])->run();
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame('completed', $payment->fresh()->status);
+
+        // addCredit()'s own key -- exactly ONE document under it.
+        $addCreditKey = PaymentIdempotencyKey::forClientCreditTopup($tenant['client']->id, $tenant['agent']->id, $payment->id, 40.0);
+        $this->assertSame(
+            1,
+            DB::table('transactions')->where('company_id', $company->id)->where('idempotency_key', $addCreditKey)->count(),
+            'addCredit() must have posted its own document.'
+        );
+
+        // The command's OWN myfatoorah key must NEVER have posted a second document for a topup.
+        $commandKey = "gateway:myfatoorah:payment:{$payment->id}:partials:none";
+        $this->assertSame(
+            0,
+            DB::table('transactions')->where('company_id', $company->id)->where('idempotency_key', $commandKey)->count(),
+            'The command must not post its own MYFATOORAH draft for a topup payment -- addCredit() owns posting.'
+        );
+
+        $this->assertSame(1, Credit::where('payment_id', $payment->id)->where('type', Credit::TOPUP)->count());
+        $this->assertSame(
+            1,
+            DB::table('transactions')->where('company_id', $company->id)->count(),
+            'Exactly ONE document total for this payment -- no spurious second MYFATOORAH draft.'
+        );
+
+        $clientAdvance = app(AccountResolver::class)->resolve('CLIENT_ADVANCE', $company->id);
+        $net = (float) DB::table('journal_entries')->where('account_id', $clientAdvance->id)->sum('credit')
+            - (float) DB::table('journal_entries')->where('account_id', $clientAdvance->id)->sum('debit');
+        $this->assertEqualsWithDelta(40.0, $net, 0.0005, 'CLIENT_ADVANCE must be credited exactly ONCE by the topup amount, never twice.');
+    }
+
+    /**
+     * OFF-path sanity companion: the topup branch's early-exit is unconditional (not
+     * engine-flag-gated), so this must hold on OFF too -- addCredit()'s own legacy closure posts,
+     * and the command's legacy $legacy closure must never ALSO run for this payment.
+     */
+    public function test_flags_off_topup_branch_addcredit_owns_posting_no_second_document(): void
+    {
+        config(['accounting.engine.enabled' => false]);
+
+        $tenant = $this->createTenant();
+        $company = $tenant['company'];
+        $this->makeLegacyPaymentGatewayAccount($company);
+
+        $payment = Payment::factory()->create([
+            'agent_id' => $tenant['agent']->id,
+            'client_id' => $tenant['client']->id,
+            'invoice_id' => null,
+            'account_id' => null,
+            'created_by' => $tenant['user']->id,
+            'payment_gateway' => 'MyFatoorah',
+            'payment_reference' => 'MF-INV-TOPUP-OFF-1',
+            'voucher_number' => 'V-TOPUP-OFF-1',
+            'status' => 'initiate',
+            'amount' => 25.000,
+            'gateway_fee' => 2.000,
+            'service_charge' => 0,
+        ]);
+
+        $this->fakeMyFatoorahPaidTopupResponse('MF-REF-TOPUP-OFF-1', 25.000, 'AUTH-TOPUP-OFF-1');
+
+        $exitCode = $this->artisan('app:myfatoorah-check-status', ['invoiceId' => 'MF-INV-TOPUP-OFF-1'])->run();
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame('completed', $payment->fresh()->status);
+
+        $this->assertSame(1, Credit::where('payment_id', $payment->id)->where('type', Credit::TOPUP)->count());
+        // addCredit()'s own legacy Transaction (payment_id + reference_type='Payment') -- exactly
+        // one, no second one from this command's own legacy closure.
+        $this->assertSame(1, DB::table('transactions')->where('payment_id', $payment->id)->where('reference_type', 'Payment')->count());
+        $this->assertSame(1, DB::table('transactions')->where('company_id', $company->id)->count());
     }
 }

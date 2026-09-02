@@ -238,7 +238,7 @@ class CreditControllerW7KTest extends AccountingTestCase
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
-        $key = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, 55.5);
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 55.5);
         $posted = Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('idempotency_key', $key)->first();
         $this->assertNotNull($posted, 'ON path must post a real engine document under the stable request-identity key.');
         $this->assertSame('RV', $posted->doc_type);
@@ -286,7 +286,7 @@ class CreditControllerW7KTest extends AccountingTestCase
 
         $response->assertRedirect();
 
-        $key = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, 20.0);
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 20.0);
         $posted = Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('idempotency_key', $key)->firstOrFail();
 
         $this->assertSame(
@@ -318,7 +318,7 @@ class CreditControllerW7KTest extends AccountingTestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error');
-        $key = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, 20.0);
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 20.0);
         $this->assertNull(Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('idempotency_key', $key)->first());
     }
 
@@ -326,7 +326,7 @@ class CreditControllerW7KTest extends AccountingTestCase
      * Mirrors RefundControllerW4RTest::test_client_refund_process_on_path_double_submission_
      * posts_exactly_one_pv_and_one_credit() -- same class of fix (w4-brief.md verify-fix round
      * 3, finding #2), applied one lifecycle step earlier. See PaymentIdempotencyKey::
-     * forClientCreditTopup()'s own docblock for why credit_id could never have supported this.
+     * forManualClientCreditTopup()'s own docblock for why credit_id could never have supported this.
      */
     public function test_on_path_double_submission_posts_exactly_one_document(): void
     {
@@ -341,7 +341,7 @@ class CreditControllerW7KTest extends AccountingTestCase
         $this->actingAs($admin)->post(route('credits.topup'), $payload)->assertRedirect();
         $this->actingAs($admin)->post(route('credits.topup'), $payload)->assertRedirect();
 
-        $key = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, 33.0);
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 33.0);
         $this->assertSame(
             1,
             Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('idempotency_key', $key)->count(),
@@ -360,7 +360,7 @@ class CreditControllerW7KTest extends AccountingTestCase
         $credit = Credit::create(['company_id' => $company->id, 'client_id' => $client->id, 'branch_id' => $branch->id, 'type' => Credit::TOPUP, 'amount' => 10]);
 
         $controller = app(\App\Http\Controllers\CreditController::class);
-        $key = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, 10.0);
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 10.0);
 
         $draft = $controller->buildCreditTopupDraft($credit, $company->id, $branch->id, $client, 10.0, null, $key);
         app(\App\Services\Accounting\PostingSeam::class)->post($draft, fn () => null, 'credit.create.test');
@@ -396,7 +396,7 @@ class CreditControllerW7KTest extends AccountingTestCase
             'amount' => 15,
         ])->assertRedirect();
 
-        $key = PaymentIdempotencyKey::forClientCreditTopup($client->id, $agent->id, 15.0);
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 15.0);
         $posted = Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('idempotency_key', $key)->firstOrFail();
 
         $reversal = app(PostingService::class)->reverse($posted, now(), $admin->id);

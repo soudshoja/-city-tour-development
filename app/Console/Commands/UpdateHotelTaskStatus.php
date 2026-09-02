@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Log;
 use App\Models\Task;
-use App\Http\Controllers\TaskController;
+use App\Services\TaskStatusService;
 class UpdateHotelTaskStatus extends Command
 {
     protected $signature = 'app:update-hotel-status';
@@ -43,10 +43,20 @@ class UpdateHotelTaskStatus extends Command
 
                 $task->updated_at = now();
                 $task->save();
-            
-                $response = new TaskController();
+
+                // W7.Y fix (gate item 4, BLOCKER): was `(new TaskController())->
+                // processTaskFinancial($task)` directly -- bypassing TaskStatusService::
+                // dispatchFinancial()'s engine-ON interception entirely, regardless of the flag,
+                // for this scheduled (every 15 min) hotel-deadline sweep. dispatchFinancial()
+                // already intercepts `status === 'issued'` (set just above) when the engine is ON
+                // for this task's company, routing through issue() instead; OFF falls straight
+                // through to the unchanged processTaskFinancial() -- byte-identical to what this
+                // call site did before. Container-resolved (matches every other W6/W7 dispatch
+                // call site) rather than `new`, since (unlike ClientController::addCredit(), which
+                // has a frozen `new` caller elsewhere) nothing calls this command's own handle()
+                // via a bare `new`.
                 try {
-                    $response->processTaskFinancial($task);
+                    app(TaskStatusService::class)->dispatchFinancial($task);
                     Log::info("Processed COA for Task ID {$task->id}");
                 } catch (\Throwable $e) {
                     Log::error("Failed to process COA for Task ID {$task->id}: ".$e->getMessage());

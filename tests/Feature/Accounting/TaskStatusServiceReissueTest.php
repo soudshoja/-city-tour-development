@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Accounting;
 
+use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentType;
 use App\Models\Branch;
@@ -186,6 +187,93 @@ class TaskStatusServiceReissueTest extends AccountingTestCase
         );
 
         return app(PostingService::class)->post($draft)->transaction;
+    }
+
+    /**
+     * Posts a real client cash payment against the old task's invoice (Dr CASH_IN_HAND /
+     * Cr RECEIVABLE_CONTROL) -- used ALONGSIDE the raw `InvoiceReceipt` row every reissue-disposition
+     * test already creates (that row is what {@see TaskStatusService::paidAmountForTask()} actually
+     * reads to compute `$paidBefore`; it carries no ledger entries of its own). Without this real
+     * ledger payment too, AR never carries a genuine paid-then-reversed balance, so a net-balance
+     * assertion could not distinguish correct disposition polarity from the backwards shape --
+     * see {@see \Tests\Feature\Accounting\RefundPostingServiceTest}'s identical helper/comment.
+     */
+    private function postRealPayment(Company $company, Agent $agent, Invoice $invoice, InvoiceDetail $invoiceDetail, Task $task, float $amount): Transaction
+    {
+        $draft = new DocumentDraft(
+            companyId: $company->id,
+            branchId: (int) $agent->branch_id,
+            docType: 'RV',
+            subType: 'INVOICE',
+            docDate: now(),
+            narration: 'Client payment',
+            lines: [
+                new LineDraft(
+                    purposeCode: 'CASH_IN_HAND',
+                    accountId: null,
+                    side: 'debit',
+                    amount: $amount,
+                    currency: config('accounting.engine.base_currency'),
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'RECEIPT',
+                    partyAccountRef: null,
+                    invoiceId: $invoice->id,
+                ),
+                new LineDraft(
+                    purposeCode: 'RECEIVABLE_CONTROL',
+                    accountId: null,
+                    side: 'credit',
+                    amount: $amount,
+                    currency: config('accounting.engine.base_currency'),
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'CUSTOMERCREDITED',
+                    partyAccountRef: $task->client_id,
+                    invoiceId: $invoice->id,
+                    invoiceDetailId: $invoiceDetail->id,
+                    taskId: $task->id,
+                ),
+            ],
+            idempotencyKey: 'reissue-test:payment:'.$invoiceDetail->id,
+            invoiceId: $invoice->id,
+        );
+
+        return app(PostingService::class)->post($draft)->transaction;
+    }
+
+    private function accountByCode(int $companyId, string $code): Account
+    {
+        return Account::withoutGlobalScopes()->where('company_id', $companyId)->where('code', $code)->firstOrFail();
+    }
+
+    /** Dr-Cr net -- for an asset-normal account (e.g. 1351 Accounts Receivable Control). Same helper TaskStatusServiceDepositVoidTest already uses for voidDisposition()'s own net-balance tests. */
+    private function netDebit(int $companyId, string $code): float
+    {
+        $account = $this->accountByCode($companyId, $code);
+        $debit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('debit');
+        $credit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('credit');
+
+        return round($debit - $credit, 3);
+    }
+
+    /** Cr-Dr net -- for a liability/income-normal account (e.g. 2632 Client Advance). */
+    private function netCredit(int $companyId, string $code): float
+    {
+        return round(-1 * $this->netDebit($companyId, $code), 3);
+    }
+
+    /** Dr-Cr net for an arbitrary Account instance (a company-configured payout leaf with no fixed code, e.g. REFUND_PAYOUT_CASH_BANK). */
+    private function netDebitForAccount(Account $account): float
+    {
+        $debit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('debit');
+        $credit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('credit');
+
+        return round($debit - $credit, 3);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -540,7 +628,12 @@ class TaskStatusServiceReissueTest extends AccountingTestCase
         $this->trackCompanyForInvariants($company->id);
 
         $oldTask = $this->makeIssuedTask($company, $agent, $client, $supplier, ['price' => 500.0]);
-        [$invoice] = $this->issueTask($oldTask);
+        [$invoice, $invoiceDetail] = $this->issueTask($oldTask);
+
+        // W7.P: a REAL ledger payment (Dr CASH_IN_HAND / Cr AR), alongside the raw InvoiceReceipt
+        // row below that paidAmountForTask() actually reads -- see postRealPayment()'s own
+        // docblock for why both are needed for the net-balance assertions to mean anything.
+        $this->postRealPayment($company, $agent, $invoice, $invoiceDetail, $oldTask, 500.0);
 
         InvoiceReceipt::create([
             'type' => 'credit',
@@ -560,6 +653,72 @@ class TaskStatusServiceReissueTest extends AccountingTestCase
         $this->assertNotNull($result['disposition']);
         $this->assertEqualsWithDelta(200.0, (float) $result['disposition']->lines[0]->amount, 0.001);
         $this->assertSame(1, Credit::where('client_id', $client->id)->where('type', Credit::REFUND)->count());
+
+        // W7.P net-balance assertions (refund-disposition-polarity-audit.md "Side note"): after
+        // sale -> full payment -> reissue-downgrade-credit, AR must net to exactly 0 (paid in
+        // full, old sale reversed, new cheaper sale posted, overpay disposed of) and 2632 must
+        // net to a CREDIT of exactly the overpay (200). Before this fix these were -400 (AR
+        // doubly wrong) and +200 debit (2632 wrongly a debit balance) respectively, the same
+        // shape voidDisposition()'s own pre-W6.U2 repro measured.
+        $this->assertEqualsWithDelta(0.0, $this->netDebit($company->id, '1351'), 0.0005, 'AR (1351) must net to 0 after sale -> full payment -> reissue-downgrade-credit.');
+        $this->assertEqualsWithDelta(200.0, $this->netCredit($company->id, '2632'), 0.0005, 'CLIENT_ADVANCE (2632) must net to a CREDIT of exactly the overpay (200).');
+    }
+
+    /**
+     * W7.P refund_out variant of the test above: same running-balance scenario (sale 500, paid in
+     * full, reissue-downgrade to 300, 200 overpay) but with `invoice_overpay_cancel_policy`
+     * flipped to `refund_out` -- proves the SAME fix also corrects the payout-leaf leg, not just
+     * the default 2632 credit leg.
+     */
+    public function test_reissue_disposition_refund_out_nets_ar_zero_and_credits_the_payout_leaf(): void
+    {
+        [$company, $agent, $client, $supplier] = $this->makeCompanyAgentClientSupplier();
+        $this->enableEngine($company);
+        $this->trackCompanyForInvariants($company->id);
+
+        Setting::create([
+            'company_id' => $company->id,
+            'key' => 'accounting.refund.invoice_overpay_cancel_policy',
+            'value' => 'refund_out',
+            'type' => 'string',
+        ]);
+
+        $payoutLeaf = Account::factory()->create(['company_id' => $company->id]);
+        DB::table('system_accounts')->insert([
+            'company_id' => $company->id,
+            'purpose_code' => 'REFUND_PAYOUT_CASH_BANK',
+            'service_type' => null,
+            'account_id' => $payoutLeaf->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $oldTask = $this->makeIssuedTask($company, $agent, $client, $supplier, ['price' => 500.0]);
+        [$invoice, $invoiceDetail] = $this->issueTask($oldTask);
+
+        $this->postRealPayment($company, $agent, $invoice, $invoiceDetail, $oldTask, 500.0);
+
+        InvoiceReceipt::create([
+            'type' => 'credit',
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'task_id' => $oldTask->id,
+            'client_id' => $client->id,
+            'amount' => 500.0,
+            'status' => 'approved',
+        ]);
+
+        $newTask = $this->makeReissueTargetTask($oldTask, ['price' => 300.0]);
+
+        $result = $this->service->reissue($oldTask->fresh(), $newTask->fresh());
+
+        $this->assertNotNull($result['disposition']);
+        $this->assertEqualsWithDelta(200.0, (float) $result['disposition']->lines[0]->amount, 0.001);
+        // refund_out never touches 2632 -- no Credit row.
+        $this->assertSame(0, Credit::where('client_id', $client->id)->where('type', Credit::REFUND)->count());
+
+        $this->assertEqualsWithDelta(0.0, $this->netDebit($company->id, '1351'), 0.0005, 'AR (1351) must net to 0 for the refund_out reissue disposition too.');
+        $this->assertEqualsWithDelta(-200.0, $this->netDebitForAccount($payoutLeaf->fresh()), 0.0005, 'The payout leaf must net to a CREDIT of 200 (money paid out), not a debit.');
     }
 
     public function test_reissue_disposition_is_a_noop_when_the_client_now_owes_more(): void

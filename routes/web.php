@@ -440,6 +440,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/payable-details/payable-store', [AccountingController::class, 'storePayableDetail'])->name('payable-details.payable-store');
         Route::get('/receivable-details/receivable-create', [AccountingController::class, 'createReceivableDetail'])->name('receivable-details.receivable-create');
         Route::post('/receivable-details/receivable-store', [AccountingController::class, 'storeReceivableDetail'])->name('receivable-details.receivable-store');
+        // W7.A: reversal for the manual-JV screens above -- PostingService::reverse() is the sole
+        // undo mechanism, matching every other engine feeder (see AccountingController's own docblock).
+        Route::post('/manual-journal/{transaction}/reverse', [AccountingController::class, 'reverseManualJournal'])->name('manual-journal.reverse');
         Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
         Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
         Route::get('/get-branches-by-company', [AccountingController::class, 'getBranchByCompany'])->name('get.branches.by.company');

@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\JournalEntry;
 use App\Models\Refund;
 use App\Models\RefundDetail;
 use App\Models\Supplier;
@@ -210,6 +211,93 @@ class RefundPostingServiceTest extends AccountingTestCase
             'total_refund_charge' => 0,
             'total_nett_refund' => 0,
         ], $overrides));
+    }
+
+    /**
+     * Posts a real client cash payment against the invoice, exactly the Dr instrument / Cr
+     * RECEIVABLE_CONTROL shape ReceiptVoucherController posts for a Cash/Bank receipt allocated
+     * to an invoice -- used by the W7.P net-balance tests below to put the refund/disposition
+     * scenario through the SAME running-balance shape the polarity audit's own worked example
+     * used (sale -> full cash payment -> refund), rather than the disposition-only tests above
+     * (which never model a payment at all and so cannot distinguish correct from backwards
+     * polarity by looking at AR's final net).
+     */
+    private function postRealPayment(Company $company, Agent $agent, Invoice $invoice, InvoiceDetail $invoiceDetail, Task $task, float $amount): Transaction
+    {
+        $draft = new DocumentDraft(
+            companyId: $company->id,
+            branchId: (int) $agent->branch_id,
+            docType: 'RV',
+            subType: 'INVOICE',
+            docDate: now(),
+            narration: 'Client payment',
+            lines: [
+                new LineDraft(
+                    purposeCode: 'CASH_IN_HAND',
+                    accountId: null,
+                    side: 'debit',
+                    amount: $amount,
+                    currency: config('accounting.engine.base_currency'),
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'RECEIPT',
+                    partyAccountRef: null,
+                    invoiceId: $invoice->id,
+                ),
+                new LineDraft(
+                    purposeCode: 'RECEIVABLE_CONTROL',
+                    accountId: null,
+                    side: 'credit',
+                    amount: $amount,
+                    currency: config('accounting.engine.base_currency'),
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'CUSTOMERCREDITED',
+                    partyAccountRef: $task->client_id,
+                    invoiceId: $invoice->id,
+                    invoiceDetailId: $invoiceDetail->id,
+                    taskId: $task->id,
+                ),
+            ],
+            idempotencyKey: 'refund-test:payment:'.$invoiceDetail->id,
+            invoiceId: $invoice->id,
+        );
+
+        return app(PostingService::class)->post($draft)->transaction;
+    }
+
+    private function accountByCode(int $companyId, string $code): Account
+    {
+        return Account::withoutGlobalScopes()->where('company_id', $companyId)->where('code', $code)->firstOrFail();
+    }
+
+    /** Dr-Cr net -- for an asset-normal account (e.g. 1351 Accounts Receivable Control). */
+    private function netDebit(int $companyId, string $code): float
+    {
+        $account = $this->accountByCode($companyId, $code);
+        $debit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('debit');
+        $credit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('credit');
+
+        return round($debit - $credit, 3);
+    }
+
+    /** Cr-Dr net -- for a liability/income-normal account (e.g. 2632 Client Advance). */
+    private function netCredit(int $companyId, string $code): float
+    {
+        return round(-1 * $this->netDebit($companyId, $code), 3);
+    }
+
+    /** Dr-Cr / Cr-Dr net for an arbitrary Account instance (used for a company-configured payout leaf with no fixed code, e.g. REFUND_PAYOUT_CASH_BANK). */
+    private function netDebitForAccount(Account $account): float
+    {
+        $debit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('debit');
+        $credit = (float) JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('account_id', $account->id)->sum('credit');
+
+        return round($debit - $credit, 3);
     }
 
     // ────────────────────────────────────────────────────────────────────────────────────────
@@ -853,6 +941,12 @@ class RefundPostingServiceTest extends AccountingTestCase
         $this->trackCompanyForInvariants($company->id);
 
         $this->postRealSale($company, $agent, $client, $supplier, $task, $invoice, $invoiceDetail, 100.000, 60.000);
+        // W7.P: full cash payment BEFORE the refund -- the exact running-balance scenario the
+        // polarity audit's own worked example and this fix's docblock use. Without this step AR
+        // never carries a genuine credit balance for the disposition to clear, so a net-balance
+        // assertion could not distinguish correct polarity from the backwards shape (see this
+        // test's own net assertions below).
+        $this->postRealPayment($company, $agent, $invoice, $invoiceDetail, $task, 100.000);
 
         $refund = $this->makeRefund($company, $agent, $invoice, ['method' => 'Credit']);
         RefundDetail::create([
@@ -882,6 +976,16 @@ class RefundPostingServiceTest extends AccountingTestCase
             ->first();
         $this->assertNotNull($clientAdvance, 'CLIENT_ADVANCE (2632) leaf must exist.');
         $this->assertSame(1, DB::table('journal_entries')->where('transaction_id', $disposition->id)->where('account_id', $clientAdvance->id)->count());
+
+        // W7.P net-balance assertions (refund-disposition-polarity-audit.md): after
+        // sale -> full payment -> credit-disposition refund, AR must net to exactly 0 (the sale
+        // was fully paid then fully reversed) and 2632 must net to a CREDIT of the full client
+        // amount (the correct liability-side balance for "client is owed 100 in credit"). Before
+        // the W7.P fix these were -200 (AR doubly wrong) and +100 debit (2632 wrongly a debit
+        // balance) respectively -- see this method's own docblock and
+        // refund-disposition-polarity-audit.md §5 for the measured pre-fix numbers.
+        $this->assertEqualsWithDelta(0.0, $this->netDebit($company->id, '1351'), 0.0005, 'AR (1351) must net to 0 after sale -> full payment -> credit-disposition refund.');
+        $this->assertEqualsWithDelta(100.0, $this->netCredit($company->id, '2632'), 0.0005, 'CLIENT_ADVANCE (2632) must net to a CREDIT of the full refunded amount.');
 
         // W4.R verify-fix (finding #1, HIGH): the 'credit' disposition must dual-write
         // App\Models\Credit alongside the 2632 JV -- w4-brief.md §4 "Credit row is a VIEW of 2632
@@ -1094,6 +1198,9 @@ class RefundPostingServiceTest extends AccountingTestCase
         ]);
 
         $this->postRealSale($company, $agent, $client, $supplier, $task, $invoice, $invoiceDetail, 100.000, 60.000);
+        // W7.P: full cash payment BEFORE the refund -- see test_disposition_defaults_to_credit_2632's
+        // own comment for why the net-balance assertions below need this step to mean anything.
+        $this->postRealPayment($company, $agent, $invoice, $invoiceDetail, $task, 100.000);
 
         // method left null -> falls through to the company-option default, not a method-driven
         // branch (Cash/Bank/Online each shortcut the company option -- see postDisposition()).
@@ -1116,6 +1223,13 @@ class RefundPostingServiceTest extends AccountingTestCase
 
         $disposition = Transaction::withoutGlobalScopes()->where('idempotency_key', 'refund:'.$refund->id.':disposition')->first();
         $this->assertSame(1, DB::table('journal_entries')->where('transaction_id', $disposition->id)->where('account_id', $payoutLeaf->id)->count(), 'Money must move through the configured payout leaf.');
+
+        // W7.P net-balance assertions: refund_out must clear AR back to 0 (same as the credit
+        // case) and CREDIT the payout leaf by the paid-out amount (money leaving the company,
+        // Cr cash/bank) -- never the reverse (a debit to the payout leaf, which would mean the
+        // company received money it is supposedly paying out).
+        $this->assertEqualsWithDelta(0.0, $this->netDebit($company->id, '1351'), 0.0005, 'AR (1351) must net to 0 for the refund_out disposition too.');
+        $this->assertEqualsWithDelta(-100.0, $this->netDebitForAccount($payoutLeaf->fresh()), 0.0005, 'The payout leaf must net to a CREDIT of 100 (money paid out), not a debit.');
 
         $this->assertNull(\App\Models\Credit::where('refund_id', $refund->id)->first(), 'refund_out never touches 2632 -- no Credit row should be written.');
     }

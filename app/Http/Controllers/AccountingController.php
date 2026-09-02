@@ -22,10 +22,132 @@ use App\Models\Payment;
 use App\Models\CoaCategory;
 use App\Exports\LedgerExport;
 use App\Services\EncryptionService;
+use App\Exceptions\Accounting\PostingException;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LineDraft;
+use App\Services\Accounting\PostedDocument;
+use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\PostingService;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
+/**
+ * ── W7.A (w7-brief.md §W7.A) — the three raw-write "manual JV" screens closed ────────────────────
+ * `storePayableDetail()`, `storeReceivableDetail()`, `storeBankPayment()` each used to write a
+ * `Transaction` (or nothing, for the third) plus two `JournalEntry` rows directly, with zero
+ * `PostingSeam` wiring -- the last reachable raw ledger writers named by the W6 final gate
+ * (`.planning/accounting-waves/w6/w6-final-gate.md`) for this file.
+ *
+ * All three ARE the manual-journal-voucher screens: each posts a user-picked debit account against
+ * a user-picked credit account for one amount -- a plain two-line `JV`. Cut over identically:
+ *   - OFF (either global flag or `companies.posting_engine_enabled` false): `PostingSeam::post()`
+ *     runs the EXACT legacy body (own `PY-`/`EX-`/`RV-`/`IN-` reference-number mint, raw
+ *     `Transaction::create()` + two `JournalEntry::create()` calls) verbatim, in a `$legacy`
+ *     closure -- byte-identical to HEAD, bugs and all (see `storeBankPayment()`'s own docblock for
+ *     the one pre-existing bug this deliberately preserves on the OFF path only).
+ *   - ON: a `DocumentDraft` (`doc_type='JV'`) with two explicit-`accountId` `LineDraft`s (this is
+ *     the manual-entry screen -- the user picks both accounts by hand, so `purposeCode` is
+ *     deliberately empty on both lines, matching the established convention
+ *     `BankPaymentController::clear()` already uses for the identical shape) goes through
+ *     `PostingSeam::post()`. `PostingService::post()` itself supplies every guarantee the brief
+ *     asks for -- balanced-or-rejected (`UnbalancedDocumentException`), leaf-only accounts
+ *     (`NonLeafAccountException` -- a group account is refused, never silently posted to),
+ *     same-company accounts (`CrossTenantAccountException`), and `PeriodGuard::assertOpen()`
+ *     (`PeriodLockedException`) -- so this controller adds no duplicate checks of its own; it only
+ *     needs to catch the resulting {@see PostingException} and turn it into a 422/redirect-with-
+ *     errors via `ValidationException`. The engine also mints the real serial (`JV-...`) via
+ *     `SequenceService`, replacing the three routes' own three DIFFERENT ad-hoc numbering schemes.
+ *   - Idempotency: `jv:{companyId}:{clientToken}` where `$clientToken` is the value of a hidden
+ *     `client_uuid` form field (minted once per page render -- see `payable-create.blade.php` /
+ *     `receivable-create.blade.php`'s own `@php(Str::uuid())` line) so a double-click/network-retry
+ *     resubmit carries the SAME token and therefore the SAME key -- `PostingSeam`'s own step-1
+ *     idempotency lookup (S1, see that class's docblock) then returns the already-posted document
+ *     instead of writing a second one. A caller with no such field (e.g. a raw API POST, or the
+ *     unrouted `storeBankPayment()` below) still gets a genuine, request-content-derived key rather
+ *     than a wall-clock one -- see {@see self::manualJournalIdempotencyKey()}.
+ *   - Reversal: {@see self::reverseManualJournal()} (new -- HEAD has no reverse/edit/delete action
+ *     for any of these three screens at all) is the ONLY way to undo a posted manual JV;
+ *     `PostingService::reverse()` is the sole reversal mechanism, matching every other engine
+ *     feeder in this codebase -- there is no raw delete/undo path.
+ *
+ * `createBankPayment()`/`storeBankPayment()` have no registered route AND no view template
+ * (`resources/views/accounting/bank-payment/create.blade.php` does not exist) -- confirmed dead
+ * code, exactly as `tests/Feature/Security/BankPaymentIntegrityTest.php`'s own docblock already
+ * documented for the HF-3 hotfix. Cut over anyway (the W6 gate's "sole ledger writer" audit is a
+ * static grep, not a route-reachability one, and the method-level raw writes are real regardless of
+ * whether anything currently calls them), but no route/view work was done for it -- see that
+ * method's own docblock.
+ */
 class AccountingController extends Controller
 {
+    public function __construct(
+        private readonly PostingSeam $seam,
+        private readonly PostingService $postingService,
+    ) {}
+
+    /**
+     * A stable idempotency key for a manual-JV POST that carries no `client_uuid` hidden-field
+     * token (a raw API caller, or `storeBankPayment()`'s unrouted request shape) -- keyed off the
+     * request's own stable inputs (company, branch, both accounts, amount, description, the
+     * caller-supplied transaction date), NEVER a wall-clock value, matching every factory in
+     * {@see \App\Services\Accounting\PaymentIdempotencyKey} (see that class's own docblock for the
+     * "why never a timestamp" rationale this mirrors). Two calls with an IDENTICAL tuple collapse
+     * into one post -- the same accepted tradeoff `PaymentIdempotencyKey::forClientRefundOut()`'s
+     * own docblock documents for a request with no persisted id to key off yet.
+     */
+    private function manualJournalIdempotencyKey(
+        int $companyId,
+        int $branchId,
+        int $debitAccountId,
+        int $creditAccountId,
+        float $amount,
+        string $description,
+        string $transactionDate,
+        ?string $clientToken,
+    ): string {
+        if ($clientToken !== null && $clientToken !== '') {
+            return sprintf('jv:%d:%s', $companyId, $clientToken);
+        }
+
+        $decimals = (int) config('accounting.engine.base_decimals', 3);
+        $normalisedAmount = number_format(round($amount, $decimals), $decimals, '.', '');
+
+        return sprintf(
+            'jv:%d:fallback:%d:%d:%d:%s:%s:%s',
+            $companyId,
+            $branchId,
+            $debitAccountId,
+            $creditAccountId,
+            $normalisedAmount,
+            sha1($description),
+            $transactionDate
+        );
+    }
+
+    /**
+     * Normalises {@see PostingSeam::post()}'s three possible return shapes into the `Transaction`
+     * that now carries this document, for every one of this file's manual-JV call sites -- the
+     * exact `match(true)` pattern `BankPaymentController::postVoucher()` already establishes (see
+     * that method's own comment for the S1/null branch's full reasoning): OFF path returns the
+     * legacy closure's own `Transaction`; ON path returns a `PostedDocument`; `null` only when the
+     * engine already posted this exact key before a kill-switch flip mid-flight, in which case the
+     * live document is re-read by its idempotency key rather than assumed lost.
+     */
+    private function resolvePostedTransaction(mixed $posted, DocumentDraft $draft): Transaction
+    {
+        return match (true) {
+            $posted instanceof PostedDocument => $posted->transaction,
+            $posted instanceof Transaction => $posted,
+            $posted === null => Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where('company_id', $draft->companyId)
+                ->where('idempotency_key', $draft->idempotencyKey)
+                ->firstOrFail(),
+            default => throw new \RuntimeException('Unexpected PostingSeam::post() return type: '.get_debug_type($posted)),
+        };
+    }
+
+
     public function index()
     {
         Gate::authorize('viewAny', Account::class);
@@ -583,6 +705,10 @@ class AccountingController extends Controller
         return $ids;
     }
 
+    /**
+     * W7.A. Manual JV, money OUT: Dr the user-picked payable/expense account, Cr the user-picked
+     * bank account. See class docblock for the full OFF/ON contract.
+     */
     public function storePayableDetail(Request $request)
     {
         $user = Auth::user();
@@ -599,10 +725,12 @@ class AccountingController extends Controller
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0.001',
             'type' => 'required|in:payable,expenses',
+            'client_uuid' => 'nullable|string|max:64',
         ]);
 
         $companyId = getCompanyId($user);
-        $amount = $request->amount;
+        $amount = round((float) $request->amount, 3);
+        $branchId = (int) $request->branch_id;
 
         $bankAccount = Account::find($request->bank_account);
         if (!$bankAccount) {
@@ -614,8 +742,11 @@ class AccountingController extends Controller
             return redirect()->back()->with('error', 'Account not found.');
         }
 
-        DB::beginTransaction();
-        try {
+        $docDate = Carbon::parse($request->transaction_date);
+
+        // Legacy body moved VERBATIM (own PY-/EX- reference-number mint, raw Transaction::create()
+        // + two JournalEntry::create() calls) -- runs unchanged on the OFF path, never on ON.
+        $legacy = function () use ($request, $companyId, $branchId, $amount, $bankAccount, $selectedAccount, $docDate) {
             $prefix = $request->type === 'payable' ? 'PY' : 'EX';
             $lastTransaction = Transaction::where('company_id', $companyId)
                 ->where('reference_number', 'like', $prefix . '-%')
@@ -633,21 +764,21 @@ class AccountingController extends Controller
                 'entity_id' => $companyId,
                 'entity_type' => 'company',
                 'company_id' => $companyId,
-                'branch_id' => $request->branch_id,
+                'branch_id' => $branchId,
                 'transaction_type' => 'debit', // Money going OUT
                 'amount' => $amount,
-                'date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'date' => $docDate->format('Y-m-d H:i:s'),
                 'description' => $request->description,
                 'reference_number' => $referenceNumber,
                 'reference_type' => 'Payment', // Money going OUT
                 'name' => $bankAccount->name,
-                'transaction_date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'transaction_date' => $docDate->format('Y-m-d H:i:s'),
             ]);
 
             $baseData = [
                 'transaction_id' => $transaction->id,
                 'company_id' => $companyId,
-                'branch_id' => $request->branch_id,
+                'branch_id' => $branchId,
                 'transaction_date' => $request->transaction_date,
                 'type' => $request->type,
                 'type_reference_id' => $selectedAccount->id,
@@ -671,15 +802,61 @@ class AccountingController extends Controller
                 'balance' => 0,
             ]));
 
-            DB::commit();
+            return $transaction;
+        };
 
-            return redirect()->route('payable-details.payable-create')
-                ->with('success', 'Entry added successfully! Reference: ' . $referenceNumber);
-        } catch (\Exception $e) {
+        $narration = (string) $request->description;
+        $idempotencyKey = $this->manualJournalIdempotencyKey(
+            $companyId, $branchId, $selectedAccount->id, $bankAccount->id, $amount,
+            $narration, (string) $request->transaction_date, $request->input('client_uuid'),
+        );
+
+        $draft = new DocumentDraft(
+            companyId: $companyId,
+            branchId: $branchId,
+            docType: 'JV',
+            subType: 'JV_PAYABLE',
+            docDate: $docDate,
+            narration: $narration,
+            lines: [
+                new LineDraft(
+                    purposeCode: '', accountId: $selectedAccount->id, side: 'debit', amount: $amount,
+                    currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
+                    transactionType: 'MANUAL_JV_DEBIT', description: $narration,
+                    ledgerType: (string) $request->type, partyAccountRef: $selectedAccount->id,
+                ),
+                new LineDraft(
+                    purposeCode: '', accountId: $bankAccount->id, side: 'credit', amount: $amount,
+                    currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
+                    transactionType: 'MANUAL_JV_CREDIT', description: $narration,
+                ),
+            ],
+            idempotencyKey: $idempotencyKey,
+            userId: Auth::id(),
+        );
+
+        DB::beginTransaction();
+        try {
+            $posted = $this->seam->post($draft, $legacy, 'accounting.manual-jv.payable');
+            $transaction = $this->resolvePostedTransaction($posted, $draft);
+            DB::commit();
+        } catch (PostingException $e) {
+            DB::rollBack();
+            Log::critical('accounting.manual_jv_payable_failed', [
+                'company_id' => $companyId,
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages(['amount' => [$e->getMessage()]]);
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Payable Entry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
+
+        return redirect()->route('payable-details.payable-create')
+            ->with('success', 'Entry added successfully! Reference: ' . $transaction->reference_number);
     }
 
     public function createReceivableDetail()
@@ -783,6 +960,10 @@ class AccountingController extends Controller
         ));
     }
 
+    /**
+     * W7.A. Manual JV, money IN: Dr the user-picked bank account, Cr the user-picked
+     * receivable/income account. See class docblock for the full OFF/ON contract.
+     */
     public function storeReceivableDetail(Request $request)
     {
         $user = Auth::user();
@@ -801,10 +982,13 @@ class AccountingController extends Controller
             'name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0.001',
             'type' => 'required|in:receivable,income',
+            'client_uuid' => 'nullable|string|max:64',
         ]);
 
         $companyId = getCompanyId($user);
-        $amount = $request->amount;
+        $amount = round((float) $request->amount, 3);
+        $branchId = (int) $request->branch_id;
+        $invoiceId = $request->invoice_id !== null ? (int) $request->invoice_id : null;
 
         $bankAccount = Account::find($request->bank_account);
         if (!$bankAccount) {
@@ -816,8 +1000,11 @@ class AccountingController extends Controller
             return redirect()->back()->with('error', 'Account not found.');
         }
 
-        DB::beginTransaction();
-        try {
+        $docDate = Carbon::parse($request->transaction_date);
+
+        // Legacy body moved VERBATIM (own RV-/IN- reference-number mint, raw Transaction::create()
+        // + two JournalEntry::create() calls) -- runs unchanged on the OFF path, never on ON.
+        $legacy = function () use ($request, $companyId, $branchId, $invoiceId, $amount, $bankAccount, $selectedAccount, $docDate) {
             $prefix = $request->type === 'receivable' ? 'RV' : 'IN';
             $lastTransaction = Transaction::where('company_id', $companyId)
                 ->where('reference_number', 'like', $prefix . '-%')
@@ -835,23 +1022,23 @@ class AccountingController extends Controller
                 'entity_id' => $companyId,
                 'entity_type' => 'company',
                 'company_id' => $companyId,
-                'branch_id' => $request->branch_id,
+                'branch_id' => $branchId,
                 'transaction_type' => 'credit',
                 'amount' => $amount,
-                'date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'date' => $docDate->format('Y-m-d H:i:s'),
                 'description' => $request->description,
-                'invoice_id' => $request->invoice_id,
+                'invoice_id' => $invoiceId,
                 'reference_number' => $referenceNumber,
                 'reference_type' => 'Receipt',
                 'name' => $bankAccount->name,
-                'transaction_date' => Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s'),
+                'transaction_date' => $docDate->format('Y-m-d H:i:s'),
             ]);
 
             $baseData = [
                 'transaction_id' => $transaction->id,
                 'company_id' => $companyId,
-                'branch_id' => $request->branch_id,
-                'invoice_id' => $request->invoice_id,
+                'branch_id' => $branchId,
+                'invoice_id' => $invoiceId,
                 'transaction_date' => $request->transaction_date,
                 'type' => $request->type,
                 'type_reference_id' => $selectedAccount->id,
@@ -875,15 +1062,63 @@ class AccountingController extends Controller
                 'balance' => 0,
             ]));
 
-            DB::commit();
+            return $transaction;
+        };
 
-            return redirect()->route('receivable-details.receivable-create')
-                ->with('success', 'Entry added successfully! Reference: ' . $referenceNumber);
-        } catch (\Exception $e) {
+        $narration = (string) $request->description;
+        $idempotencyKey = $this->manualJournalIdempotencyKey(
+            $companyId, $branchId, $bankAccount->id, $selectedAccount->id, $amount,
+            $narration, (string) $request->transaction_date, $request->input('client_uuid'),
+        );
+
+        $draft = new DocumentDraft(
+            companyId: $companyId,
+            branchId: $branchId,
+            docType: 'JV',
+            subType: 'JV_RECEIVABLE',
+            docDate: $docDate,
+            narration: $narration,
+            lines: [
+                new LineDraft(
+                    purposeCode: '', accountId: $bankAccount->id, side: 'debit', amount: $amount,
+                    currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
+                    transactionType: 'MANUAL_JV_DEBIT', description: $narration,
+                ),
+                new LineDraft(
+                    purposeCode: '', accountId: $selectedAccount->id, side: 'credit', amount: $amount,
+                    currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
+                    transactionType: 'MANUAL_JV_CREDIT', description: $narration,
+                    ledgerType: (string) $request->type, partyAccountRef: $selectedAccount->id,
+                    partyName: (string) $request->name,
+                ),
+            ],
+            idempotencyKey: $idempotencyKey,
+            invoiceId: $invoiceId,
+            userId: Auth::id(),
+        );
+
+        DB::beginTransaction();
+        try {
+            $posted = $this->seam->post($draft, $legacy, 'accounting.manual-jv.receivable');
+            $transaction = $this->resolvePostedTransaction($posted, $draft);
+            DB::commit();
+        } catch (PostingException $e) {
+            DB::rollBack();
+            Log::critical('accounting.manual_jv_receivable_failed', [
+                'company_id' => $companyId,
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages(['amount' => [$e->getMessage()]]);
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Receivable Entry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
+
+        return redirect()->route('receivable-details.receivable-create')
+            ->with('success', 'Entry added successfully! Reference: ' . $transaction->reference_number);
     }
 
     public function createBankPayment()
@@ -914,6 +1149,29 @@ class AccountingController extends Controller
         return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
     }
 
+    /**
+     * W7.A. Manual JV, transfer: Dr the user-picked target account, Cr the user-picked bank
+     * account -- "Sent payment FROM bank TO account" (see the legacy description strings below).
+     *
+     * UNREACHABLE ON EITHER PROD OR LOCAL (confirmed: no route in routes/web.php names this
+     * action, and `resources/views/accounting/bank-payment/create.blade.php` does not exist --
+     * matching `tests/Feature/Security/BankPaymentIntegrityTest.php`'s own docblock, which already
+     * documented this for the HF-3 hotfix and exercises this method by calling it directly). Cut
+     * over anyway per the W6 gate's static "no raw ledger writer survives" audit; no route/view
+     * work was done since there is nothing live to wire.
+     *
+     * PRE-EXISTING BUG preserved verbatim in the `$legacy` closure only (never on the ON path):
+     * HEAD's own two `JournalEntry::create($validated)` calls both write `account_id =
+     * $validated['account_id']` -- the SECOND call never overwrites it to `$validated['bank_account']`
+     * despite building a debit/credit pair that reads as "one leg per account" -- so both
+     * `journal_entries` rows land on the SAME (target) account and self-cancel; only the raw
+     * `actual_balance` increment/decrement calls actually move money between the two accounts.
+     * `BankPaymentIntegrityTest` already pins this exact `actual_balance` shape (bank debited,
+     * counterparty credited) without asserting which account_id either journal_entries row carries,
+     * so the legacy closure below is untouched byte-for-byte to keep that test green. The ON path
+     * does NOT reproduce this bug: its two lines target the two DIFFERENT accounts the user
+     * actually picked, exactly like `storePayableDetail()`/`storeReceivableDetail()` above.
+     */
     public function storeBankPayment(Request $request)
     {
         $user = Auth::user();
@@ -939,6 +1197,7 @@ class AccountingController extends Controller
             'invoice_detail_id' => 'nullable|integer',
             'type_reference_id' => 'nullable|integer',
             'amount' => 'required|numeric|min:0',
+            'client_uuid' => 'nullable|string|max:64',
         ]);
 
         $encryptionService = new EncryptionService();
@@ -952,6 +1211,8 @@ class AccountingController extends Controller
         // ADMIN case correctly (via session company_id) should the guard above
         // ever be relaxed.
         $validated['company_id'] = getCompanyId($user);
+        $companyId = (int) $validated['company_id'];
+        $branchId = (int) $validated['branch_id'];
 
         $accountName = Account::find($validated['account_id']);
         $bankaccountId = Account::find($validated['bank_account']);
@@ -960,34 +1221,145 @@ class AccountingController extends Controller
         //Account_From (company_bank)
         $companyName = Company::find($validated['company_id'])?->name;
 
-        $validated['debit'] = $validated['amount'];
-        $validated['credit'] = "0.00";
-        $validated['balance'] = $validated['amount'];
-        $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
-        $validated['name'] = $companyName;
+        $amount = round((float) $validated['amount'], 3);
 
-        DB::transaction(function () use ($validated, $bankaccountName, $accountName, $request) {
-            JournalEntry::create($validated);
+        // Legacy body moved VERBATIM, including the PRE-EXISTING BUG documented in this method's
+        // own docblock -- runs unchanged on the OFF path, never on ON. HEAD never creates a
+        // Transaction header row here at all (journal_entries.transaction_id is whatever the
+        // caller supplied, or null) -- this closure's return value is therefore deliberately
+        // discarded by the caller below rather than normalised through
+        // self::resolvePostedTransaction(), which assumes a real header row exists.
+        $legacy = function () use ($validated, $bankaccountName, $accountName, $request) {
+            $legacyData = $validated;
+            $legacyData['debit'] = $legacyData['amount'];
+            $legacyData['credit'] = "0.00";
+            $legacyData['balance'] = $legacyData['amount'];
+            $legacyData['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+            $legacyData['name'] = Company::find($legacyData['company_id'])?->name;
 
-            //update actual_balance
-            Account::where('id', $validated['bank_account'])
-                ->decrement('actual_balance', $validated['amount']);
+            DB::transaction(function () use ($legacyData, $bankaccountName, $accountName, $request) {
+                JournalEntry::create($legacyData);
 
-            //Account_To (supplier_name)
-            $validated['debit'] = "0.00";
-            $validated['credit'] = $validated['amount'];
-            $validated['balance'] = "0.00";
-            $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
-            $validated['name'] = $accountName->name;
+                //update actual_balance
+                Account::where('id', $legacyData['bank_account'])
+                    ->decrement('actual_balance', $legacyData['amount']);
 
-            JournalEntry::create($validated);
+                //Account_To (supplier_name)
+                $legacyData['debit'] = "0.00";
+                $legacyData['credit'] = $legacyData['amount'];
+                $legacyData['balance'] = "0.00";
+                $legacyData['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+                $legacyData['name'] = $accountName->name;
 
-            //update actual_balance
-            Account::where('id', $validated['account_id'])
-                ->increment('actual_balance', $validated['amount']);
-        });
+                JournalEntry::create($legacyData);
+
+                //update actual_balance
+                Account::where('id', $legacyData['account_id'])
+                    ->increment('actual_balance', $legacyData['amount']);
+            });
+
+            return null;
+        };
+
+        $narration = (string) $request->description;
+        $docDate = Carbon::parse($request->transaction_date);
+        $idempotencyKey = $this->manualJournalIdempotencyKey(
+            $companyId, $branchId, (int) $validated['account_id'], (int) $validated['bank_account'],
+            $amount, $narration, (string) $request->transaction_date, $request->input('client_uuid'),
+        );
+
+        $draft = new DocumentDraft(
+            companyId: $companyId,
+            branchId: $branchId,
+            docType: 'JV',
+            subType: 'JV_TRANSFER',
+            docDate: $docDate,
+            narration: $narration,
+            lines: [
+                new LineDraft(
+                    purposeCode: '', accountId: (int) $validated['account_id'], side: 'debit', amount: $amount,
+                    currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
+                    transactionType: 'MANUAL_JV_DEBIT', description: $narration,
+                ),
+                new LineDraft(
+                    purposeCode: '', accountId: (int) $validated['bank_account'], side: 'credit', amount: $amount,
+                    currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
+                    transactionType: 'MANUAL_JV_CREDIT', description: $narration,
+                ),
+            ],
+            idempotencyKey: $idempotencyKey,
+            userId: Auth::id(),
+        );
+
+        DB::beginTransaction();
+        try {
+            // Return value deliberately discarded -- see $legacy's own comment above for why (no
+            // Transaction header row exists on the OFF path to normalise via
+            // self::resolvePostedTransaction(), and the success message below carries no reference
+            // number, unlike the other two manual-JV routes).
+            $this->seam->post($draft, $legacy, 'accounting.manual-jv.transfer');
+            DB::commit();
+        } catch (PostingException $e) {
+            DB::rollBack();
+            Log::critical('accounting.manual_jv_transfer_failed', [
+                'company_id' => $companyId,
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages(['amount' => [$e->getMessage()]]);
+        }
 
         return redirect()->route('bank-payment.create')
             ->with('success', 'Entry added successfully!');
+    }
+
+    /**
+     * W7.A (new -- HEAD has no reverse/edit/delete action for any of the three manual-JV screens
+     * above). The only way to undo a posted manual JV: `PostingService::reverse()`, the sole
+     * reversal mechanism every other engine feeder in this codebase uses -- there is no raw
+     * delete/undo path, matching the brief's "Reversal of a manual JV via engine reverse()".
+     *
+     * Engine-only by construction: `PostingService::reverse()` calls `post()` internally for the
+     * reversal document, which re-runs the same W0 kill-switch gate `PostingSeam` checks -- a
+     * company with the engine OFF gets a clear refusal here rather than a raw
+     * `PostingEngineDisabledException`.
+     */
+    public function reverseManualJournal(Request $request, int $transaction)
+    {
+        $user = Auth::user();
+
+        if (!in_array($user->role_id, [Role::COMPANY, Role::ACCOUNTANT, Role::ADMIN])) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $companyId = getCompanyId($user);
+
+        $original = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('id', $transaction)
+            ->where('company_id', $companyId)
+            ->where('doc_type', 'JV')
+            ->whereIn('sub_type', ['JV_PAYABLE', 'JV_RECEIVABLE', 'JV_TRANSFER'])
+            ->first();
+
+        if ($original === null) {
+            return redirect()->back()->with('error', 'Manual journal voucher not found for this company.');
+        }
+
+        try {
+            $this->postingService->reverse($original, now(), Auth::id());
+        } catch (PostingException $e) {
+            Log::critical('accounting.manual_jv_reverse_failed', [
+                'company_id' => $companyId,
+                'transaction_id' => $transaction,
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages(['transaction' => [$e->getMessage()]]);
+        }
+
+        return redirect()->back()->with('success', 'Manual journal voucher reversed.');
     }
 }

@@ -276,6 +276,36 @@ final class PaymentIdempotencyKey
     }
 
     /**
+     * W7.K (CreditController::creditTopup() through the seam, w7-brief.md §W7.K): the SAME
+     * "no row exists yet at key-computation time" shape {@see forClientRefundOut()} solves, one
+     * step earlier in the credit lifecycle — a plain client credit top-up creates its OWN new
+     * `Credit` row per request (no external document, e.g. a Refund or Payment, feeds it), so
+     * there is nothing with a stable, pre-existing id to key off. Deliberately NOT the literal
+     * `credit:{credit_id}:create` shape a first pass at the brief suggested: `credit_id` is the
+     * row THIS very request is about to create, so keying off it can never dedupe a genuine
+     * retry — the second submission simply creates Credit #2 and mints key
+     * "credit:2:create", distinct from the first submission's "credit:1:create", and both post —
+     * reproducing, one method away, the exact wall-clock-key defect
+     * {@see forClientRefundOut()}'s own docblock documents and w4-brief.md's verify-fix round 3
+     * (finding #2) fixed for the payout side of this same balance. Same resolution: key off the
+     * request's own stable inputs (client, agent, amount) instead, accepting the same tradeoff
+     * forClientRefundOut() already accepts codebase-wide — two GENUINELY separate top-ups of the
+     * identical (client, agent, amount) tuple collapse into one if submitted before the first
+     * one's document exists, which CreditController::creditTopup() only invokes this pre-post
+     * guard for anyway (see that method's own comment) — never a change to the OFF/legacy path,
+     * which has no dedup today and keeps none.
+     *
+     * KEY SHAPE: `client-credit-topup:{clientId}:agent:{agentId}:{normalisedAmount}`.
+     */
+    public static function forClientCreditTopup(int $clientId, int $agentId, float $amount): string
+    {
+        $decimals = (int) config('accounting.engine.base_decimals', 3);
+        $normalisedAmount = number_format(round($amount, $decimals), $decimals, '.', '');
+
+        return sprintf('client-credit-topup:%d:agent:%d:%s', $clientId, $agentId, $normalisedAmount);
+    }
+
+    /**
      * @return array{0: string, 1: int}
      */
     private static function extractSourceAndId(mixed $application): array

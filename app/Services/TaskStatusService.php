@@ -2390,6 +2390,20 @@ class TaskStatusService
      * fee amount (and, at the margin, could wrongly fire a disposition when the client still owed
      * money net of the fee). $feeAmount is read the same way voidDisposition() reads $feeDoc's own
      * line amount; overpay is clamped at 0 before the tolerance check, mirroring that method exactly.
+     *
+     * ── W7.P fix round (refund-disposition-polarity-audit.md "Side note") -- POLARITY CORRECTED
+     * ───────────────────────────────────────────────────────────────────────────────────────────
+     * The two line `side` values below are FLIPPED relative to the shape this method shipped with
+     * before this fix (`Cr RECEIVABLE_CONTROL` / `Dr {creditPurpose}`) -- the SAME backwards
+     * template {@see self::voidDisposition()} carried before its own W6.U2 fix, and
+     * {@see \App\Services\Accounting\RefundPostingService::postDisposition()} carried before its
+     * own W7.P fix (this method's own audit flagged this exact method as unfixed by W6.U2 and
+     * worth the same scrutiny). Same running-balance shape as voidDisposition()'s own worked
+     * example: after the old sale's reversal, AR sits at a CREDIT balance for the un-recouped
+     * overpay; clearing that requires a further DEBIT to `RECEIVABLE_CONTROL`, not another credit
+     * -- so the correct shape is `Dr RECEIVABLE_CONTROL / Cr {creditPurpose}`, matching
+     * {@see self::voidDisposition()}'s corrected shape exactly. The OLD shape doubled the AR
+     * credit balance instead of clearing it and left 2632/the payout leaf on the wrong side.
      */
     private function reissueDisposition(
         Task $oldTask,
@@ -2427,7 +2441,7 @@ class TaskStatusService
             new LineDraft(
                 purposeCode: 'RECEIVABLE_CONTROL',
                 accountId: null,
-                side: 'credit',
+                side: 'debit', // W7.P fix — was 'credit' (BACKWARDS, see method docblock).
                 amount: $overpay,
                 currency: $currency,
                 originalAmount: $overpay,
@@ -2445,7 +2459,7 @@ class TaskStatusService
         $lines[] = new LineDraft(
             purposeCode: $creditPurpose,
             accountId: null,
-            side: 'debit',
+            side: 'credit', // W7.P fix — was 'debit' (BACKWARDS, see method docblock).
             amount: $overpay,
             currency: $currency,
             originalAmount: $overpay,

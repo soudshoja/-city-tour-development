@@ -34,6 +34,11 @@ use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
 use App\Models\KnowledgeBase;
 use App\Models\Role;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\PostingService;
+use App\Services\Accounting\SaleDraftBuilder;
+use App\Services\Accounting\SaleDraftInput;
 use DateTime;
 use Exception;
 use PDO;
@@ -510,97 +515,125 @@ class MobileController extends Controller
                             'paid' => false,
                         ]);
 
-                        $transaction = Transaction::create([
-                            'branch_id' => $branchId,
-                            'entity_id' => $companyId,
-                            'entity_type' => 'company',
-                            'transaction_type' => 'credit',
-                            'amount' =>  $task['price'],
-                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
-                            'invoice_id' => $invoice->id,
-                            'reference_type' => 'Invoice',
-                        ]);
+                        // W7.M (.planning/accounting-waves/w7/w7-brief.md sub-wave M): OFF-path
+                        // body extracted verbatim from HEAD (byte-identical raw JournalEntry/
+                        // Transaction writes, including the pre-existing duplicate array keys and
+                        // the dead $PayablechildAccountId computation) -- see
+                        // .planning/accounting-waves/w7/w7m-build.md for the map. Never invoked
+                        // when the engine is ON for this company; see the SaleDraftBuilder call
+                        // below for the ON-path replacement.
+                        $legacy = function () use ($invoiceNumber, $invoice, $invoiceDetail, $selectedtask, $supplier, $client, $agent, $companyId, $branchId, $payableAccount, $receivableAccount, $incomeAccount, $task) {
+                            $transaction = Transaction::create([
+                                'branch_id' => $branchId,
+                                'entity_id' => $companyId,
+                                'entity_type' => 'company',
+                                'transaction_type' => 'credit',
+                                'amount' =>  $task['price'],
+                                'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                                'invoice_id' => $invoice->id,
+                                'reference_type' => 'Invoice',
+                            ]);
 
+                            Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
+                            if ($payableAccount) {
+                                $filteredPayableChildAccount = $payableAccount->children()
+                                    ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
+                                    ->first(); // Get the first matching child account
+                                Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                                $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
+                            } else {
+                                $PayablechildAccountId = null; // Handle case when no parent account is found
+                            }
 
-                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
-                        if ($payableAccount) {
-                            $filteredPayableChildAccount = $payableAccount->children()
-                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
-                                ->first(); // Get the first matching child account
-                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
-                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
-                        } else {
-                            $PayablechildAccountId = null; // Handle case when no parent account is found
-                        }
+                            // Try to create payable account
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'company_id' => $companyId,
+                                'branch_id' => $branchId,
+                                'account_id' =>  $payableAccount->id,
+                                'branch_id' => $branchId,
+                                'account_id' =>  $payableAccount->id,
+                                'invoice_id' =>  $invoice->id,
+                                'invoiceDetail_id' =>  $invoiceDetail->id,
+                                'invoiceDetail_id' =>  $invoiceDetail->id,
+                                'transaction_date' => Carbon::now(),
+                                'description' => 'Payment: ' . $supplier->name,
+                                'debit' => $selectedtask->total,
+                                'credit' => 0,
+                                'balance' => $selectedtask->total,
+                                'name' => $supplier->name,
+                                'type' => 'payable',
+                                'type_reference_id' => $supplier->id
+                            ]);
 
+                            // Try to create receivable account
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'company_id' => $companyId,
+                                'branch_id' => $branchId,
+                                'branch_id' => $branchId,
+                                'invoice_id' =>  $invoice->id,
+                                'invoiceDetail_id' =>  $invoiceDetail->id,
+                                'account_id' =>  $receivableAccount->id,
+                                'invoiceDetail_id' =>  $invoiceDetail->id,
+                                'account_id' =>  $receivableAccount->id,
+                                'transaction_date' => Carbon::now(),
+                                'description' => 'Payment received from: ' . $client->full_name,
+                                'debit' => 0,
+                                'credit' => $task['price'],
+                                'balance' => $task['price'],
+                                'name' =>  $client->full_name,
+                                'type' => 'receivable',
+                                'type_reference_id' => $client->id
+                            ]);
 
-                        // Try to create payable account
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'account_id' =>  $payableAccount->id,
-                            'branch_id' => $branchId,
-                            'account_id' =>  $payableAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment: ' . $supplier->name,
-                            'debit' => $selectedtask->total,
-                            'credit' => 0,
-                            'balance' => $selectedtask->total,
-                            'name' => $supplier->name,
-                            'type' => 'payable',
-                            'type_reference_id' => $supplier->id
-                        ]);
+                            $markup = $task['price'] - $selectedtask->total;
+                            // Try to create income
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'company_id' => $companyId,
+                                'branch_id' => $branchId,
+                                'account_id' => $incomeAccount->id,
+                                'branch_id' => $branchId,
+                                'account_id' => $incomeAccount->id,
+                                'invoice_id' =>  $invoice->id,
+                                'invoiceDetail_id' =>  $invoiceDetail->id,
+                                'invoiceDetail_id' =>  $invoiceDetail->id,
+                                'transaction_date' => Carbon::now(),
+                                'description' => 'Price markup by Agent: ' . $agent->name,
+                                'debit' => 0,
+                                'credit' => $markup,
+                                'balance' => $markup,
+                                'name' =>   $agent->name,
+                                'type' => 'income',
+                                'type_reference_id' => $agent->id
+                            ]);
 
+                            return null;
+                        };
 
-                        // Try to create receivable account
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'branch_id' => $branchId,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'account_id' =>  $receivableAccount->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'account_id' =>  $receivableAccount->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment received from: ' . $client->full_name,
-                            'debit' => 0,
-                            'credit' => $task['price'],
-                            'balance' => $task['price'],
-                            'name' =>  $client->full_name,
-                            'type' => 'receivable',
-                            'type_reference_id' => $client->id
-                        ]);
-
-
-
-                        $markup = $task['price'] - $selectedtask->total;
-                        // Try to create income
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'account_id' => $incomeAccount->id,
-                            'branch_id' => $branchId,
-                            'account_id' => $incomeAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Price markup by Agent: ' . $agent->name,
-                            'debit' => 0,
-                            'credit' => $markup,
-                            'balance' => $markup,
-                            'name' =>   $agent->name,
-                            'type' => 'income',
-                            'type_reference_id' => $agent->id
-                        ]);
-
+                        // W7.M ON-path: the SAME shared line-builder InvoiceController::
+                        // postSaleJournalEntries()/updateTaskPriceOnPath() and ChatController's
+                        // sale feeder use -- so a mobile-created sale is indistinguishable, on the
+                        // ledger, from a web-created one for the same service type/company. This
+                        // 3-line raw shape (payable = cost, receivable = sell, income = markup) IS
+                        // exactly SaleDraftBuilder's agent-basis shape; resolvePostingBasis() is
+                        // still consulted (never hardcoded to 'agent') so a company configured for
+                        // principal-basis on this service type gets that shape here too, matching
+                        // every other sale feeder in this app.
+                        $this->postMobileTaskSale(
+                            $invoice,
+                            $invoiceDetail,
+                            $selectedtask,
+                            $supplier,
+                            $client,
+                            $agent,
+                            (int) $companyId,
+                            $branchId,
+                            (float) $task['price'],
+                            'Invoice:' . $invoiceNumber . ' Generated',
+                            $legacy
+                        );
 
                         $selectedtask->status = 'Assigned';
                         $selectedtask->save();
@@ -677,10 +710,40 @@ class MobileController extends Controller
             }
     
             // 🔹 Delete related records before updating
-            InvoiceDetail::where('invoice_id', $invoice->id)->delete();
-            Transaction::where('invoice_id', $invoice->id)->delete();
-            JournalEntry::where('invoice_id', $invoice->id)->delete();
-    
+            //
+            // W7.M: HEAD hard-deleted the invoice's live Transaction/JournalEntry rows here --
+            // exactly the "in-place mutation/deletion of a posted document" the engine's own
+            // contract forbids (see PostingSeam.php's docblock and W4.0's identical fix for
+            // InvoiceController::updateTaskPrice()). OFF path keeps that legacy delete-and-recreate
+            // behaviour byte-identical; ON path instead reverse()s each existing InvoiceDetail's own
+            // sale document by its 'invoice-detail:{id}:sale' idempotency key -- a real reversal
+            // document, never a delete -- BEFORE the InvoiceDetail business rows themselves are
+            // replaced below. journal_entries.invoice_detail_id carries no FK/cascade (verified
+            // against the migration chain), so removing the InvoiceDetail rows next cannot touch the
+            // now-reversed ledger rows.
+            $engineOwnsInvoiceUpdate = app(PostingSeam::class)->isEnabledFor((int) $companyId);
+
+            if ($engineOwnsInvoiceUpdate) {
+                foreach (InvoiceDetail::where('invoice_id', $invoice->id)->get() as $oldDetail) {
+                    $oldSaleTransaction = Transaction::withoutGlobalScopes()
+                        ->whereNull('deleted_at')
+                        ->where('company_id', $companyId)
+                        ->where('idempotency_key', 'invoice-detail:' . $oldDetail->id . ':sale')
+                        ->where('posting_status', 'posted')
+                        ->first();
+
+                    if ($oldSaleTransaction !== null) {
+                        app(PostingService::class)->reverse($oldSaleTransaction, Carbon::now(), Auth::id(), false);
+                    }
+                }
+
+                InvoiceDetail::where('invoice_id', $invoice->id)->delete();
+            } else {
+                InvoiceDetail::where('invoice_id', $invoice->id)->delete();
+                Transaction::where('invoice_id', $invoice->id)->delete();
+                JournalEntry::where('invoice_id', $invoice->id)->delete();
+            }
+
             // 🔹 Update invoice
             $invoice->update([
                 'agent_id' => $agentId,
@@ -715,51 +778,81 @@ class MobileController extends Controller
                         'paid' => false,
                     ]);
     
-                    // Create a new Transaction
-                    $transaction = Transaction::create([
-                        'branch_id' => $branchId,
-                        'entity_id' => $companyId,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'credit',
-                        'amount' =>  $task['invprice'],
-                        'description' => 'Invoice:' . $invoiceNumber . ' Updated',
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Invoice',
-                    ]);
-    
-                    // Update General Ledger Entries
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $branchId,
-                        'company_id' => $companyId,
-                        'invoice_id' =>  $invoice->id,
-                        'account_id' =>  $supplier->id, // Example: assign supplier account
-                        'invoiceDetail_id' =>  $invoiceDetail->id,
-                        'transaction_date' => Carbon::now(),
-                        'description' => 'Updated Payment: ' . $supplier->name,
-                        'debit' => $selectedtask->total,
-                        'credit' => 0,
-                        'balance' => $selectedtask->total,
-                        'name' => $supplier->name,
-                        'type' => 'payable',
-                    ]);
-    
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $branchId,
-                        'company_id' => $companyId,
-                        'invoice_id' =>  $invoice->id,
-                        'account_id' =>  $client->id, // Example: assign client account
-                        'invoiceDetail_id' =>  $invoiceDetail->id,
-                        'transaction_date' => Carbon::now(),
-                        'description' => 'Updated Payment received from: ' . $client->full_name,
-                        'debit' => 0,
-                        'credit' => $task['invprice'],
-                        'balance' => $task['invprice'],
-                        'name' =>  $client->full_name,
-                        'type' => 'receivable',
-                    ]);
-    
+                    // W7.M: OFF-path body extracted verbatim from HEAD -- including the
+                    // pre-existing bug where account_id is set to $supplier->id/$client->id
+                    // directly (not a resolved GL leaf) and the income/markup leg is entirely
+                    // absent (this legacy body never balances: debit=cost, credit=sell, no
+                    // third leg). Not fixed here -- byte-parity is the OFF-path contract; see
+                    // .planning/accounting-waves/w7/w7m-build.md.
+                    $legacy = function () use ($invoiceNumber, $invoice, $invoiceDetail, $selectedtask, $supplier, $client, $companyId, $branchId, $task) {
+                        $transaction = Transaction::create([
+                            'branch_id' => $branchId,
+                            'entity_id' => $companyId,
+                            'entity_type' => 'company',
+                            'transaction_type' => 'credit',
+                            'amount' =>  $task['invprice'],
+                            'description' => 'Invoice:' . $invoiceNumber . ' Updated',
+                            'invoice_id' => $invoice->id,
+                            'reference_type' => 'Invoice',
+                        ]);
+
+                        // Update General Ledger Entries
+                        JournalEntry::create([
+                            'transaction_id' => $transaction->id,
+                            'branch_id' => $branchId,
+                            'company_id' => $companyId,
+                            'invoice_id' =>  $invoice->id,
+                            'account_id' =>  $supplier->id, // Example: assign supplier account
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Updated Payment: ' . $supplier->name,
+                            'debit' => $selectedtask->total,
+                            'credit' => 0,
+                            'balance' => $selectedtask->total,
+                            'name' => $supplier->name,
+                            'type' => 'payable',
+                        ]);
+
+                        JournalEntry::create([
+                            'transaction_id' => $transaction->id,
+                            'branch_id' => $branchId,
+                            'company_id' => $companyId,
+                            'invoice_id' =>  $invoice->id,
+                            'account_id' =>  $client->id, // Example: assign client account
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Updated Payment received from: ' . $client->full_name,
+                            'debit' => 0,
+                            'credit' => $task['invprice'],
+                            'balance' => $task['invprice'],
+                            'name' =>  $client->full_name,
+                            'type' => 'receivable',
+                        ]);
+
+                        return null;
+                    };
+
+                    // W7.M ON-path: same shared SaleDraftBuilder shape as store()'s ON path (see
+                    // that method's own comment) -- this is a genuine sale correction, posted
+                    // freshly under the NEW InvoiceDetail row's own idempotency key (the old
+                    // detail's sale document was already reversed above, never repost()'d onto
+                    // it: this loop can add/drop/replace tasks wholesale, not just correct one
+                    // detail's amount, so there is no single "old key" to repost onto per new
+                    // line).
+                    $this->postMobileTaskSale(
+                        $invoice,
+                        $invoiceDetail,
+                        $selectedtask,
+                        $supplier,
+                        $client,
+                        $agent,
+                        (int) $companyId,
+                        $branchId,
+                        (float) $task['invprice'],
+                        'Invoice:' . $invoiceNumber . ' Updated',
+                        $legacy
+                    );
+
                     // Update Task Status
                     $selectedtask->status = 'Assigned';
                     $selectedtask->save();
@@ -779,7 +872,78 @@ class MobileController extends Controller
             return response()->json('Invoice update failed!', 500);
         }
     }
-    
+
+    /**
+     * W7.M (.planning/accounting-waves/w7/w7-brief.md sub-wave M) shared ON-path sale poster
+     * for store()/updateInvoice(). Both raw-write blocks the sub-wave brief pointed at
+     * (~L513-600 / ~L705-740 at the pre-W7.M line numbers) turned out, on inspection, to be a
+     * SALE document (payable=cost / receivable=sell / income=markup -- exactly
+     * SaleDraftBuilder's agent-basis shape), not a receipt/RV event -- see
+     * .planning/accounting-waves/w7/w7m-build.md for the full map and the reasoning for
+     * deviating from the brief's initial "reuse the RV path" framing. This method builds the
+     * SAME shape InvoiceController::postSaleJournalEntries()/updateTaskPriceOnPath() and
+     * ChatController's sale feeder already build from, through the same PostingSeam, under the
+     * same 'invoice-detail:{id}:sale' idempotency-key convention -- so a mobile-created or
+     * mobile-corrected invoice line is indistinguishable, on the ledger, from a web-created one.
+     *
+     * PostingSeam::post() itself decides legacy vs. engine per $companyId -- this method always
+     * builds $lines/$draft (cheap, pure) and always calls post(); $legacy only actually runs on
+     * the OFF path.
+     */
+    private function postMobileTaskSale(
+        Invoice $invoice,
+        InvoiceDetail $invoiceDetail,
+        Task $selectedtask,
+        ?Supplier $supplier,
+        ?Client $client,
+        ?Agent $agent,
+        int $companyId,
+        ?int $branchId,
+        float $sellAmount,
+        string $narration,
+        \Closure $legacy
+    ): mixed {
+        $serviceType = (string) $selectedtask->type;
+        $costAmount = (float) ($selectedtask->total ?? 0.0);
+        $postingBasis = SaleDraftBuilder::resolvePostingBasis($companyId, $serviceType);
+        $recognitionTiming = SaleDraftBuilder::resolveRecognitionTiming($companyId, $serviceType);
+
+        $lines = (new SaleDraftBuilder)->buildLines(new SaleDraftInput(
+            serviceType: $serviceType,
+            sellAmount: $sellAmount,
+            costAmount: $costAmount,
+            postingBasis: $postingBasis,
+            recognitionTiming: $recognitionTiming,
+            clientId: $client->id ?? null,
+            clientName: $client->full_name ?? null,
+            supplierId: $supplier->id ?? null,
+            supplierName: $supplier->name ?? null,
+            agentId: $agent->id ?? null,
+            agentName: $agent->name ?? null,
+            invoiceId: $invoice->id,
+            invoiceDetailId: $invoiceDetail->id,
+            taskId: $selectedtask->id ?? null,
+            currency: (string) config('accounting.engine.base_currency'),
+            receivableDescription: 'Payment received from: ' . ($client->full_name ?? ''),
+            payableDescription: 'Cost of ' . ($selectedtask->reference ?? '') . ' owed to supplier: ' . ($supplier->name ?? 'Unknown Supplier'),
+            marginPositiveDescription: 'Price markup by Agent: ' . ($agent->name ?? ''),
+            marginNegativeDescription: 'Margin shortfall (sold below cost) by Agent: ' . ($agent->name ?? ''),
+        ));
+
+        $draft = new DocumentDraft(
+            companyId: $companyId,
+            branchId: (int) ($branchId ?? 0),
+            docType: 'INV',
+            subType: 'SALE',
+            docDate: Carbon::now(),
+            narration: $narration,
+            lines: $lines,
+            idempotencyKey: 'invoice-detail:' . $invoiceDetail->id . ':sale',
+            invoiceId: $invoice->id,
+        );
+
+        return app(PostingSeam::class)->post($draft, $legacy, 'mobile.invoice.sale');
+    }
 
     public function deleteInvoice(Request $request, string $id)
     {

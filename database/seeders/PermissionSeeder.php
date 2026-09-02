@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Permission;
-use App\Models\Role;
+use Illuminate\Database\Seeder;
 
 class PermissionSeeder extends Seeder
 {
@@ -91,6 +89,7 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'update currency exchange', 'group' => 'currency exchange']);
         Permission::firstOrCreate(['name' => 'delete currency exchange', 'group' => 'currency exchange']);
         Permission::firstOrCreate(['name' => 'view credit', 'group' => 'credit']);
+        Permission::firstOrCreate(['name' => 'create credit', 'group' => 'credit']); // W7.K: gates CreditController::creditTopup()'s new CreditPolicy::create() ability.
         Permission::firstOrCreate(['name' => 'view payment', 'group' => 'payment']);
         Permission::firstOrCreate(['name' => 'view refund', 'group' => 'refund']);
         Permission::firstOrCreate(['name' => 'view reconcile report', 'group' => 'report']);

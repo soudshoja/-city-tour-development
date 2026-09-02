@@ -146,6 +146,9 @@
                     <form action="{{ route('receivable-details.receivable-store') }}" method="POST" class="space-y-6">
                         @csrf
                         <input type="hidden" name="company_id" value="{{ $companyId }}">
+                        {{-- W7.A: minted once per page render so a double-click/network-retry resubmit --}}
+                        {{-- carries the SAME token -> the SAME idempotency key -> posts once. --}}
+                        <input type="hidden" name="client_uuid" value="{{ \Illuminate\Support\Str::uuid() }}">
 
                         <div>
                             <label class="block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">

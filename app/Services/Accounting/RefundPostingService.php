@@ -875,6 +875,34 @@ final class RefundPostingService
      * Credit::create() dual-write is separately guarded so a retry after an already-completed
      * post() writes the JV's no-op AND skips the Credit row — see the `$dispositionAlreadyPosted`
      * check below.
+     *
+     * ── W7.P fix round (refund-disposition-polarity-audit.md, verdict BACKWARDS) — POLARITY
+     * CORRECTED ─────────────────────────────────────────────────────────────────────────────────
+     * The two line `side` values below are FLIPPED relative to the shape this method shipped with
+     * before this fix (`Cr RECEIVABLE_CONTROL` / `Dr {creditPurpose}`) — the exact mistake
+     * `TaskStatusService::voidDisposition()` was independently fixed for in W6.U2 (see that
+     * method's own docblock), never propagated back here (W4 was explicitly untouched by that
+     * fix round; this fix closes that gap). Worked through by running-balance T-account
+     * arithmetic (100 sale / 100 full cash payment / 100 credit-disposition refund):
+     *   1. Sale: `Dr AR 100 / Cr Revenue 100` — AR=+100.
+     *   2. Full payment: `Dr CASH_IN_HAND 100 / Cr AR 100` — AR=0.
+     *   3. CRN (`postCrnForDetail()`, `reverse()` of the sale): `Cr AR 100 / Dr Revenue 100` —
+     *      AR=0-100=-100 (a CREDIT balance — "the company now owes this client $100 back", the
+     *      normal intermediate state after reversing a sale that was already paid off).
+     *   4. THIS disposition must clear that -100 credit balance back to zero and land the $100
+     *      obligation in 2632. Clearing a CREDIT balance in an asset-normal account (AR) requires
+     *      a further DEBIT, not another credit — so the correct shape is `Dr RECEIVABLE_CONTROL /
+     *      Cr {creditPurpose}`, producing AR=-100+100=0 and 2632=0-100=-100 (i.e. 2632 nets to a
+     *      CREDIT of 100, the correct liability-side balance for "client is owed 100 in credit").
+     *      The OLD shape (`Cr RECEIVABLE_CONTROL / Dr {creditPurpose}`) instead ADDED a third
+     *      credit on top of an already-credit AR balance (driving it to -200, exactly what the
+     *      audit's throwaway test measured) and DEBITED 2632 (driving it to +100 — a debit balance
+     *      on a liability account, i.e. a negative liability, instead of the correct +100 credit).
+     *   Verified identically for `refund_out` (`Dr AR / Cr REFUND_PAYOUT_CASH_BANK` correctly pays
+     *   cash out, leaving AR at 0 and the payout leaf credited by the paid-out amount) and for
+     *   `apply` (both lines share `RECEIVABLE_CONTROL`, so the flip is polarity-neutral at the
+     *   pooled control-account level but still corrects per-invoice attribution direction — see
+     *   the audit's §6).
      */
     private function postDisposition(
         Refund $refund,
@@ -944,7 +972,7 @@ final class RefundPostingService
             new LineDraft(
                 purposeCode: 'RECEIVABLE_CONTROL',
                 accountId: null,
-                side: 'credit',
+                side: 'debit', // W7.P fix — was 'credit' (BACKWARDS, see method docblock).
                 amount: $clientNet,
                 currency: config('accounting.engine.base_currency'),
                 originalAmount: $clientNet,
@@ -959,10 +987,11 @@ final class RefundPostingService
 
         $creditPurpose = match ($disposition) {
             Refund::DISPOSITION_REFUND_OUT => 'REFUND_PAYOUT_CASH_BANK',
-            // "apply to an open invoice" is a wash at the pooled RECEIVABLE_CONTROL leaf (the same
-            // control account absorbs both the credit above and this debit) — the two lines are
-            // still individually attributed (invoiceId below) so per-invoice ledger filters can
-            // tell them apart even though the control account's own balance nets to zero.
+            // "apply to an open invoice" is a wash at the pooled RECEIVABLE_CONTROL leaf (AR above
+            // is debited to clear the CRN's credit balance, and this second line credits the same
+            // control account to record the disposition) — the two lines are still individually
+            // attributed (invoiceId below) so per-invoice ledger filters can tell them apart even
+            // though the control account's own balance nets to zero.
             Refund::DISPOSITION_APPLY => 'RECEIVABLE_CONTROL',
             default => 'CLIENT_ADVANCE',
         };
@@ -978,7 +1007,7 @@ final class RefundPostingService
         $lines[] = new LineDraft(
             purposeCode: $creditPurpose,
             accountId: null,
-            side: 'debit',
+            side: 'credit', // W7.P fix — was 'debit' (BACKWARDS, see method docblock).
             amount: $clientNet,
             currency: config('accounting.engine.base_currency'),
             originalAmount: $clientNet,

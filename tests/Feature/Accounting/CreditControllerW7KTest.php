@@ -15,6 +15,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostingService;
+use App\Support\Modules;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
@@ -116,6 +117,44 @@ class CreditControllerW7KTest extends AccountingTestCase
 
         $response->assertForbidden();
         $this->assertSame(0, Credit::where('client_id', $client->id)->count(), 'A 403 must refuse before any write.');
+    }
+
+    /**
+     * Amendment 2 (README-DELIVERY.md / apply-wave report): CreditPolicy::create() shipped
+     * gating on Modules::ACCOUNTING, which is never sold and defaults OFF for every soud
+     * company (config/modules.php's default_disabled) -- that would 403 this action for every
+     * package client regardless of what they actually purchased. It now gates on
+     * Modules::PAYMENT_GATEWAY instead, matching the route's own module:payment_gateway
+     * middleware (routes/web.php's `credits` group). Proves a company with accounting OFF
+     * (the untouched default -- no Setting row written for it) and payment_gateway ON (also
+     * the untouched default) can still reach creditTopup() without a 403.
+     */
+    public function test_credit_topup_reachable_with_accounting_off_and_payment_gateway_on(): void
+    {
+        [$company, $branch, $admin] = $this->makeCompanyWithAdmin();
+        [$agent, $client] = $this->makeAgentAndClient($branch);
+
+        $this->assertFalse($company->hasModule(Modules::ACCOUNTING), 'accounting must be OFF by default for this test to prove anything.');
+        $this->assertTrue($company->hasModule(Modules::PAYMENT_GATEWAY), 'payment_gateway must be ON by default for this test to prove anything.');
+
+        // buildCreditTopupDraft() resolves CASH_IN_HAND unconditionally even on the OFF path
+        // (see test_off_path_matches_legacy_exactly()'s identical comment/setup above) --
+        // company_id -> posting_engine_enabled stays false, so PostingSeam::isEnabledFor()
+        // still routes to $legacy() below; only the mapping lookup itself needs to resolve.
+        (new SystemAccountsSeeder)->run();
+        config(['accounting.engine.enabled' => false]);
+
+        session(['company_id' => $company->id]);
+
+        $response = $this->actingAs($admin)->post(route('credits.topup'), [
+            'client_id' => $client->id,
+            'agent_id' => $agent->id,
+            'amount' => 40,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+        $this->assertSame(1, Credit::where('client_id', $client->id)->count());
     }
 
     // ────────────────────────────────────────────────────────────────────────────────────────

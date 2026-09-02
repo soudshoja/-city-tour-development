@@ -31,10 +31,20 @@ class CreditPolicy
      * `credits` route group comment in routes/web.php: "creditTopup() posts real Transaction +
      * JournalEntry rows against COA accounts with zero authorization today"). Mirrors
      * `viewAny()`'s module-gate-first shape.
+     *
+     * soud amendment: akeed gated this on Modules::ACCOUNTING, which is never sold and stays
+     * default-disabled for every soud company (accounting is invisible infrastructure, not a
+     * package module -- see the routes/web.php `credits` group's own "Ruling R1" comment a few
+     * lines above the `/topup` route: "Neither is module:accounting: accounting is never sold
+     * and must stay invisible regardless of which of these two sellable modules a company
+     * bought"). Gating create() on ACCOUNTING would 403 this action for every package client
+     * regardless of what they actually purchased. creditTopup() moves money through a payment
+     * instrument, exactly like the route's own module:payment_gateway middleware already
+     * decides -- gate the ability the same way the route gates reachability.
      */
     public function create(User $user): bool
     {
-        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+        if (! $this->moduleEnabled($user, Modules::PAYMENT_GATEWAY)) {
             return false;
         }
 

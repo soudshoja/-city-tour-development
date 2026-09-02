@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
 
 class PermissionSeeder extends Seeder
@@ -114,5 +115,22 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'manage agent loss', 'group' => 'setting']);
         Permission::firstOrCreate(['name' => 'view notification', 'group' => 'setting']);
         Permission::firstOrCreate(['name' => 'manage notification', 'group' => 'setting']);
+
+        // soud amendment (CreditPolicy::create() gate fix, W7.K): this seeder only ever
+        // creates Permission rows -- role-to-permission grants for every other permission it
+        // defines are done per-company through the runtime role-management UI, not here. No
+        // existing 'admin'/'company'-named Role row anywhere in this codebase already holds
+        // 'view credit' (or any other credit permission) to mirror, so per the fallback rule
+        // ("if none hold any credit permission, assign it to the ADMIN and COMPANY roles"),
+        // grant 'create credit' directly to every existing role literally named 'admin' or
+        // 'company' (global and per-company rows alike -- CompanyRolesSeeder creates one pair
+        // per company). Idempotent: givePermissionTo() no-ops if the role already has it.
+        $createCredit = Permission::where('name', 'create credit')->first();
+
+        if ($createCredit !== null) {
+            Role::whereIn('name', ['admin', 'company'])->get()->each(
+                fn (Role $role) => $role->hasPermissionTo($createCredit) ? null : $role->givePermissionTo($createCredit)
+            );
+        }
     }
 }

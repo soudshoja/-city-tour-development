@@ -1188,4 +1188,71 @@ class RefundPostingServiceTest extends AccountingTestCase
         // still balances after every one of these documents -- the strongest cross-document
         // correctness check available.
     }
+
+    // ────────────────────────────────────────────────────────────────────────────────────────
+    // P2.5.I (p2_5-brief.md §P2.5.I): "commission_unearned event-driven from W4.R's un-earn
+    // post" -- additive event dispatch appended to postCommissionUnearnForDetail()'s call site
+    // (see this class's OWN test_commission_unearn_reverses_the_live_commission_jv() above,
+    // which proves the reversal itself; this test proves the NEW listener side-effect on top of
+    // that same reversal, reusing the identical fixture helpers).
+    // ────────────────────────────────────────────────────────────────────────────────────────
+
+    public function test_commission_unearn_creates_a_reminder_via_the_event_listener(): void
+    {
+        [$company, $agent, $client, $supplier, $task, $invoice, $invoiceDetail] = $this->makeFixture();
+        $this->enableEngine($company);
+        $this->trackCompanyForInvariants($company->id);
+
+        $this->postRealSale($company, $agent, $client, $supplier, $task, $invoice, $invoiceDetail, 100.000, 60.000);
+        $commissionTransaction = $this->postRealCommission($company, $agent, $invoice, $invoiceDetail, $task, 6.000);
+
+        $refund = $this->makeRefund($company, $agent, $invoice);
+        RefundDetail::create([
+            'refund_id' => $refund->id,
+            'task_id' => $task->id,
+            'client_id' => $client->id,
+            'original_invoice_price' => 100.000,
+            'original_task_cost' => 60.000,
+            'refund_fee_to_client' => 0,
+            'supplier_charge' => 0,
+            'total_refund_to_client' => 100.000,
+        ]);
+
+        app(RefundPostingService::class)->post($refund->fresh(), null);
+
+        $reminder = \App\Models\Reminder::where('reminder_kind', \App\Models\Reminder::KIND_COMMISSION_UNEARNED)
+            ->where('agent_id', $agent->id)
+            ->first();
+
+        $this->assertNotNull($reminder, 'The event listener must create a commission_unearned reminder row.');
+        $this->assertSame('agent', $reminder->target_type);
+        $this->assertSame($client->id, $reminder->client_id);
+        $this->assertSame($invoice->id, $reminder->invoice_id);
+        $this->assertSame('pending', $reminder->status);
+        $this->assertNotNull($reminder->dedupe_key);
+        $this->assertStringStartsWith('commission_unearned:', $reminder->dedupe_key);
+        $this->assertTrue((bool) $reminder->send_to_agent);
+
+        // Idempotent: re-dispatching the SAME (reversal) transaction id's event must not
+        // duplicate the row. reverse() posts a NEW reversal transaction distinct from
+        // $commissionTransaction (linked via reversal_of_transaction_id) -- that reversal's own
+        // id is what the real dispatch site uses as CommissionUnearned::$transactionId.
+        $reversalTransactionId = (int) Transaction::withoutGlobalScopes()
+            ->where('reversal_of_transaction_id', $commissionTransaction->id)
+            ->value('id');
+        event(new \App\Events\Accounting\CommissionUnearned(
+            companyId: $company->id,
+            agentId: $agent->id,
+            clientId: $client->id,
+            invoiceId: $invoice->id,
+            transactionId: $reversalTransactionId,
+            amount: 6.000,
+        ));
+
+        $this->assertSame(
+            1,
+            \App\Models\Reminder::where('reminder_kind', \App\Models\Reminder::KIND_COMMISSION_UNEARNED)->count(),
+            'A second event for the same transaction id must not create a duplicate reminder (dedupe_key).'
+        );
+    }
 }

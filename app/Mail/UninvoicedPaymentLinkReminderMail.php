@@ -6,6 +6,11 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * app/Mail/UninvoicedPaymentLinkReminderMail.php, 2026-08-31). Email leg of
+ * App\Console\Commands\SendAgentUninvoicedPaymentLinkReminders.
+ */
 class UninvoicedPaymentLinkReminderMail extends Mailable
 {
     use Queueable, SerializesModels;

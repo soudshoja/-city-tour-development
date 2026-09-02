@@ -13,9 +13,16 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 
 /**
- * Fires the in-app + email + WhatsApp notifications for a TaskActionRequest
- * lifecycle event: created, escalated (2-day reminder), approved, denied,
- * auto-approved.
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * app/Services/TaskActionRequestNotifier.php, 2026-08-31). See the 2026_08_31_130000 migration's
+ * own docblock and routes/console.php's P2.5.I prod-drift comment block for scope: only
+ * notifyEscalation() has a caller in this repo today (NotifyStaleTaskActionRequests) — the
+ * create/approve/deny call sites (notifyOnCreation/notifyOnApprove/notifyOnDeny) belong to the
+ * separate cross-agent acknowledgment workflow that was not ported, and are kept here verbatim
+ * only so this class matches its prod source exactly ("port ... as-is").
+ *
+ * Fires the in-app + email + WhatsApp notifications for a TaskActionRequest lifecycle event:
+ * created, escalated (2-day reminder), approved, denied, auto-approved.
  *
  * All notification text comes from resources/lang/en/task_action_requests.php.
  */

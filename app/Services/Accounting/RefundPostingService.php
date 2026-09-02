@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Accounting;
 
+use App\Events\Accounting\CommissionUnearned;
 use App\Models\Credit;
 use App\Models\Refund;
 use App\Models\RefundDetail;
@@ -126,6 +127,24 @@ final class RefundPostingService
                 $unearn = $this->postCommissionUnearnForDetail($refund, $detail, $companyId, $docDate, $userId);
                 if ($unearn !== null) {
                     $unearnDocs[] = $unearn;
+
+                    // P2.5.I (p2_5-brief.md §P2.5.I): "commission_unearned event-driven from
+                    // W4.R's un-earn post" -- additive dispatch only, no change to the posting
+                    // above. agent_id/client_id come from the task the refund detail targets (the
+                    // same party the un-earned commission was originally posted against);
+                    // amount is the un-earn reversal's own transaction total (the debit and
+                    // credit lines of a reversal are always equal, so total_debit is the
+                    // commission amount un-earned).
+                    if ($detail->task !== null && $detail->task->agent_id !== null && $detail->task->client_id !== null) {
+                        event(new CommissionUnearned(
+                            companyId: $companyId,
+                            agentId: (int) $detail->task->agent_id,
+                            clientId: (int) $detail->task->client_id,
+                            invoiceId: $detail->task->invoiceDetail?->invoice_id,
+                            transactionId: (int) $unearn->transaction->id,
+                            amount: (float) $unearn->transaction->total_debit,
+                        ));
+                    }
                 }
 
                 $commissionEarn = $this->postCommissionEarnForRefundDetail($refund, $detail, $companyId, $docDate, $userId);

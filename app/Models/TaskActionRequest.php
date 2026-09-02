@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * app/Models/TaskActionRequest.php, 2026-08-31). See the 2026_08_31_130000 migration's own
+ * docblock and routes/console.php's P2.5.I prod-drift comment block for scope.
+ */
 class TaskActionRequest extends Model
 {
     use HasFactory;

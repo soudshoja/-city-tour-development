@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+{{--
+    P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+    resources/views/notifications/pdf/uninvoiced-payment-links.blade.php, 2026-08-31).
+    Rendered both as a WhatsApp-attached PDF (App\Console\Commands\SendAgentUninvoicedPaymentLinkReminders,
+    isPdf=true) and as the HTML body of App\Mail\UninvoicedPaymentLinkReminderMail (isPdf=false).
+--}}
 @php
     $locale = $locale ?? 'en';
     $rtl = $locale === 'ar';

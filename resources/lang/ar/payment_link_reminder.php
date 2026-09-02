@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * resources/lang/ar/payment_link_reminder.php, 2026-08-31).
+ */
+
 return [
     'subject' => 'تذكير بروابط الدفع غير المُفوترة - :count عملية معلّقة',
     'whatsapp_caption' => "*تذكير بروابط الدفع غير المُفوترة*\n\n"

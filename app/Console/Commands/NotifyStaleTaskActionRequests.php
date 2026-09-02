@@ -9,6 +9,15 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 /**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * app/Console/Commands/NotifyStaleTaskActionRequests.php, 2026-08-31; see p2_5-brief.md
+ * §P2.5.I "port ... as-is" and routes/console.php's own P2.5.I prod-drift comment block for the
+ * new Schedule:: entry and for why this command's producer feature -- the cross-agent
+ * refund/void/reissue owner-acknowledgment workflow that writes task_action_requests rows -- was
+ * not ported: it is a separate, much larger epic outside P2.5.I's reminder-engine scope. Nothing
+ * in this repo creates task_action_requests rows yet, so today this command runs on schedule and
+ * always finds 0 stale requests -- a real, additive no-op, not a fabricated stand-in.
+ *
  * Once-per-firing reminder for pending TaskActionRequests older than 2 days.
  * Notifies admin + accountant so they can decide on the owner's behalf.
  *

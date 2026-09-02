@@ -472,6 +472,17 @@ Route::middleware(['auth'])->group(function () {
         ->middleware(['module:accounting'])
         ->name('accounting.audit-log.index');
 
+    // P2.5.I (p2_5-brief.md §P2.5.I) -- reminder log screen. Same split as every other screen in
+    // this file: the route middleware only gates module visibility, per-action authorization is
+    // Gate::authorize('view'|'manage', Reminder::class) inside the Livewire component itself
+    // (App\Policies\ReminderPolicy). The per-kind on/off + channel + offsets + quiet-hours form
+    // lives in the existing Accounting settings tab (resources/views/settings/partial/
+    // accounting.blade.php), not a second standalone screen -- this route is deep-linked from
+    // there.
+    Route::get('accounting/reminders-log', fn () => view('accounting.reminders-log.index'))
+        ->middleware(['module:accounting'])
+        ->name('accounting.reminders.log');
+
     // P2.5.G (p2_5-brief.md §P2.5.G) — Reconciliation Center v0. Per-action authorization is
     // Gate::authorize('view'|'manage', ReconciliationProposal::class) inside the controller itself
     // (App\Policies\ReconciliationProposalPolicy) — the route middleware only gates module

@@ -15,6 +15,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * app/Console/Commands/SendAgentUninvoicedPaymentLinkReminders.php, 2026-08-31; see
+ * p2_5-brief.md §P2.5.I "port ... as-is"). Ran on prod ONLY via a direct crontab line
+ * (`0 9,16 * * * ... reminder:uninvoiced-payment-links`) with no equivalent command or
+ * Schedule:: entry in this repo before this port -- see routes/console.php for the new
+ * ->twiceDaily(9, 16) entry that now drives it via `php artisan schedule:run`, and that
+ * file's own DEPLOY NOTE for the matching direct-crontab-line removal this enables
+ * (user-go, never executed by an agent).
+ *
+ * Rebuild note (feat/accounting-dev-line): the dedup guard below (DEDUP_WINDOW_HOURS /
+ * dedupCacheKey / wasRecentlyReminded / markReminded) is City Travelers' own Fix 5
+ * (pre-pilot defect list) and is NOT part of the prod-drift port above; it is re-spliced
+ * back in on top of the verbatim port because the two changes are independent and both
+ * are real fixes.
+ */
 class SendAgentUninvoicedPaymentLinkReminders extends Command
 {
     protected $signature = 'reminder:uninvoiced-payment-links
@@ -110,7 +126,16 @@ class SendAgentUninvoicedPaymentLinkReminders extends Command
                 continue;
             }
 
-            $locale = in_array($agent->language ?? 'en', ['en', 'ar'], true) ? $agent->language : 'en';
+            // P2.5.I port fix: prod's own `? $agent->language : 'en'` re-read the raw (possibly
+            // null) attribute in the ternary's true-branch after already null-coalescing it for
+            // the in_array() check -- harmless on prod, where agents.language is a real column
+            // that is rarely null, but Akeed's agents table has no language column at all, so
+            // $agent->language is ALWAYS null and this threw "must be of type string, null given"
+            // on every single agent (caught by the outer try/catch below, so the command "ran"
+            // but silently sent nothing to anyone -- found via this port's own test suite).
+            // Coalescing on both sides makes the two branches agree, matching the line's own
+            // clearly-intended behavior.
+            $locale = in_array($agent->language ?? 'en', ['en', 'ar'], true) ? ($agent->language ?? 'en') : 'en';
             $windowLabel = $cutoff->format('d/m/Y') . ' - ' . now()->format('d/m/Y');
 
             $this->info("  {$agent->name}: {$payments->count()} uninvoiced payment(s) [{$windowLabel}] lang={$locale} ch={$channel}");

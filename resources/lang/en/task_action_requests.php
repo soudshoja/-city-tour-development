@@ -1,6 +1,10 @@
 <?php
 
 /**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * resources/lang/en/task_action_requests.php, 2026-08-31). Only 'en' exists on prod (no 'ar'
+ * counterpart there either) — ported as-is, not translated.
+ *
  * Notification text for cross-agent refund/void/reissue acknowledgment requests.
  *
  * Placeholders are Laravel-style :variables. Available everywhere:

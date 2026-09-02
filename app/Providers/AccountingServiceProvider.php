@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Events\Accounting\CommissionUnearned;
 use App\Events\Accounting\GatewayRefundStatusChanged;
 use App\Listeners\Accounting\HandleGatewayRefundStatusChanged;
+use App\Listeners\Reminders\CreateCommissionUnearnedReminder;
 use App\Models\Account;
 use App\Observers\AccountObserver;
 use Illuminate\Support\Facades\Event;
@@ -46,6 +48,14 @@ class AccountingServiceProvider extends ServiceProvider
         Event::listen(
             GatewayRefundStatusChanged::class,
             HandleGatewayRefundStatusChanged::class
+        );
+
+        // P2.5.I (p2_5-brief.md §P2.5.I): "commission_unearned event-driven from W4.R's un-earn
+        // post" -- same explicit-registration convention as the pair above (no auto-discovery in
+        // this codebase).
+        Event::listen(
+            CommissionUnearned::class,
+            CreateCommissionUnearnedReminder::class
         );
     }
 }

@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * P2.5.I prod-drift port (verbatim from /home/citycomm/tour.citycommerce.group
+ * resources/lang/en/payment_link_reminder.php, 2026-08-31) -- feeds
+ * App\Console\Commands\SendAgentUninvoicedPaymentLinkReminders /
+ * App\Mail\UninvoicedPaymentLinkReminderMail / notifications.pdf.uninvoiced-payment-links.
+ */
+
 return [
     'subject' => 'Uninvoiced Payment Link Reminder - :count payment(s) pending',
     'whatsapp_caption' => "*Uninvoiced Payment Link Reminder*\n\n"

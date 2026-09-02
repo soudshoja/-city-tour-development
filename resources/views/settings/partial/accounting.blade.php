@@ -208,6 +208,80 @@
                 <p class="main-set-percentage-note">Off by default. The owner agent always receives the reminder regardless of this setting.</p>
             </div>
 
+            <!-- Reminder engine (P2.5.I) -------------------------------------------------------- -->
+            {{--
+                P2.5.I (p2_5-brief.md §P2.5.I). Read/written through App\Services\Reminders\
+                ReminderOptions, the same 'accounting.reminders.*' Setting-key namespace every
+                generator (App\Services\Reminders\Generators\*) and the commission_unearned
+                listener resolve at run time -- this form is the one and only writer those classes
+                read back from, same convention statement_mode/hold_reminder_offsets_hours above
+                already use. Ticketing-deadline OFFSETS stay in the "Task lifecycle" section above
+                (hold_reminder_offsets_hours/hold_client_nudge, W6.U) rather than duplicated here --
+                this section only adds that kind's on/off + channel, alongside every other kind's.
+                'task_unassigned'/'task_uninvoiced' are deliberately absent: their real on/off +
+                channel already lives in AgentNotificationSetting / the separate
+                notification.unassigned_task.* Setting keys, consulted directly by
+                SendAgentUninvoicedTaskReminders/SendUnassignedTaskReminders -- a toggle here would
+                control nothing real, so this section does not offer one.
+            --}}
+            <div class="main-set-mb-4">
+                <h4 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem;">Reminders</h4>
+                <p class="main-set-percentage-note main-set-mb-2">Automatic reminder generation, per kind. Each row controls whether that reminder is generated at all, and how it is delivered.</p>
+                <div class="main-set-table-container">
+                    <table class="main-set-table">
+                        <thead>
+                            <tr>
+                                <th>Reminder</th>
+                                <th>Enabled</th>
+                                <th>Channel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="kind in reminderKinds" :key="'reminder-'+kind">
+                                <tr>
+                                    <td>
+                                        <span x-text="reminderLabels[kind]"></span>
+                                        <p class="main-set-percentage-note" style="margin:0;" x-text="reminderDescriptions[kind]"></p>
+                                    </td>
+                                    <td>
+                                        <label style="display:flex;align-items:center;gap:0.5rem;">
+                                            <input type="checkbox" x-model="settings.reminders.enabled[kind]" @cannot('manageAccountingSettings', 'App\Models\Setting') disabled @endcannot>
+                                        </label>
+                                    </td>
+                                    <td>
+                                        <select x-model="settings.reminders.channel[kind]" class="main-set-select" @cannot('manageAccountingSettings', 'App\Models\Setting') disabled @endcannot>
+                                            <option value="whatsapp">WhatsApp</option>
+                                            <option value="email">Email</option>
+                                            <option value="both">Both</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <label class="main-set-form-label" style="margin-top:0.75rem;">Overdue-invoice re-notify offsets</label>
+                <input type="text" placeholder="1,3,7,14,30" x-model="settings.reminders.overdue_invoice_offsets_days" class="main-set-number-input" style="max-width:14rem;" @cannot('manageAccountingSettings', 'App\Models\Setting') disabled @endcannot>
+                <p class="main-set-percentage-note">Comma-separated days-past-due; a fresh nudge goes out at each milestone (e.g. "1,3,7,14,30" = a reminder 1, 3, 7, 14, and 30 days after the due date).</p>
+
+                <label class="main-set-form-label" style="margin-top:0.75rem;">Daily reminder run time</label>
+                <input type="time" x-model="settings.reminders.daily_run_time" class="main-set-number-input" style="max-width:10rem;" @cannot('manageAccountingSettings', 'App\Models\Setting') disabled @endcannot>
+                <p class="main-set-percentage-note">When the overdue-invoice and statement-balance reminders are generated each day.</p>
+
+                <label class="main-set-form-label" style="margin-top:0.75rem;">Quiet hours</label>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <input type="time" x-model="settings.reminders.quiet_start" class="main-set-number-input" style="max-width:8rem;" @cannot('manageAccountingSettings', 'App\Models\Setting') disabled @endcannot>
+                    <span class="main-set-text-sm main-set-text-gray-600">to</span>
+                    <input type="time" x-model="settings.reminders.quiet_end" class="main-set-number-input" style="max-width:8rem;" @cannot('manageAccountingSettings', 'App\Models\Setting') disabled @endcannot>
+                </div>
+                <p class="main-set-percentage-note">A reminder that would otherwise be scheduled inside this window is pushed to the end of it instead. Leave both blank to disable (the default).</p>
+
+                <p class="main-set-percentage-note" style="margin-top:0.75rem;">
+                    <a href="{{ route('accounting.reminders.log') }}" style="text-decoration:underline;">View the reminder log</a> — every reminder sent, pending, failed, or cancelled, with a resend action.
+                </p>
+            </div>
+
             <!-- Bearer matrix ------------------------------------------------------------------- -->
             {{--
                 W4.U verify-fix (MEDIUM): this matrix originally shipped three rows
@@ -286,6 +360,24 @@
             bearerLabels: {
                 commission_clawback: 'Commission clawback',
             },
+            // P2.5.I (p2_5-brief.md §P2.5.I). Kinds matching
+            // App\Http\Controllers\SettingController::REMINDER_SETTING_KINDS (server-side truth);
+            // 'custom' and the two task-digest kinds are excluded -- see the markup's own comment.
+            reminderKinds: ['overdue_invoice', 'statement_balance', 'ticketing_deadline', 'commission_unearned', 'payment_link_uninvoiced'],
+            reminderLabels: {
+                overdue_invoice: 'Overdue invoices',
+                statement_balance: 'Outstanding statement balance',
+                ticketing_deadline: 'Ticketing deadlines',
+                commission_unearned: 'Commission un-earned on refund',
+                payment_link_uninvoiced: 'Paid but not yet invoiced',
+            },
+            reminderDescriptions: {
+                overdue_invoice: 'Nudges the client and agent again at each day-past-due milestone below.',
+                statement_balance: 'One nudge a day while a client carries an outstanding balance.',
+                ticketing_deadline: 'Warns the agent as a hold approaches its ticketing deadline (offsets configured above).',
+                commission_unearned: 'Tells the agent when a refund reverses a commission they had already earned.',
+                payment_link_uninvoiced: 'Tells the agent a payment came in that still needs an invoice.',
+            },
             settings: {
                 invoice_overpay_cancel_policy: 'credit',
                 unclaimed_writeback_months: 12,
@@ -303,6 +395,14 @@
                 hold_reminder_offsets_hours: '24,2',
                 hold_client_nudge: false,
                 statement_mode: 'open_items',
+                reminders: {
+                    enabled: {},
+                    channel: {},
+                    overdue_invoice_offsets_days: '1,3,7,14,30',
+                    daily_run_time: '09:00',
+                    quiet_start: '',
+                    quiet_end: '',
+                },
             },
 
             init() {

@@ -7,6 +7,7 @@ use App\Models\AgentCharge;
 use App\Models\AgentLoss;
 use App\Models\AgentNotificationSetting;
 use App\Services\Accounting\VoucherOptions;
+use App\Services\Reminders\ReminderOptions;
 use Database\Seeders\SettingSeeder;
 use App\Models\Charge;
 use App\Models\Company;
@@ -1435,8 +1436,41 @@ class SettingController extends Controller
                 // resolves at request time, same convention the vouchers pair above already
                 // follows for its own resolver class.
                 'statement_mode' => \App\Services\Accounting\StatementOptions::mode($companyId),
+                // P2.5.I (p2_5-brief.md §P2.5.I). Read through the SAME
+                // `App\Services\Reminders\ReminderOptions` keys the generators and the
+                // commission_unearned listener resolve at run time -- same "this endpoint is the
+                // one and only writer" convention statement_mode/vouchers above already follow.
+                'reminders' => $this->reminderSettingsPayload($companyId),
             ],
         ]);
+    }
+
+    /**
+     * P2.5.I (p2_5-brief.md §P2.5.I). {@see self::REMINDER_SETTING_KINDS} is the same list
+     * `resources/views/settings/partial/accounting.blade.php`'s `reminderKinds` array must be
+     * kept in sync with (server-side truth; the blade comment points back here).
+     */
+    private const REMINDER_SETTING_KINDS = ['overdue_invoice', 'statement_balance', 'ticketing_deadline', 'commission_unearned', 'payment_link_uninvoiced'];
+
+    private function reminderSettingsPayload(int $companyId): array
+    {
+        $enabled = [];
+        $channel = [];
+        foreach (self::REMINDER_SETTING_KINDS as $kind) {
+            $enabled[$kind] = ReminderOptions::enabled($companyId, $kind);
+            $channel[$kind] = ReminderOptions::channel($companyId, $kind);
+        }
+
+        $quiet = ReminderOptions::quietHours($companyId);
+
+        return [
+            'enabled' => $enabled,
+            'channel' => $channel,
+            'overdue_invoice_offsets_days' => implode(',', ReminderOptions::overdueInvoiceOffsetsDays($companyId)),
+            'daily_run_time' => ReminderOptions::dailyRunTime($companyId),
+            'quiet_start' => $quiet['start'] ?? '',
+            'quiet_end' => $quiet['end'] ?? '',
+        ];
     }
 
     /**
@@ -1501,6 +1535,17 @@ class SettingController extends Controller
             // W6.U "Reminders" -- comma-separated positive hour offsets, e.g. "24,2".
             'hold_reminder_offsets_hours' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
             'hold_client_nudge' => ['nullable', 'boolean'],
+            // P2.5.I (p2_5-brief.md §P2.5.I). 'nullable' for the whole block, same
+            // partial-payload tolerance every other section of this shared form gives.
+            'reminders' => ['nullable', 'array'],
+            'reminders.enabled' => ['nullable', 'array'],
+            'reminders.enabled.*' => ['boolean'],
+            'reminders.channel' => ['nullable', 'array'],
+            'reminders.channel.*' => ['in:' . implode(',', ReminderOptions::CHANNELS)],
+            'reminders.overdue_invoice_offsets_days' => ['nullable', 'string', 'regex:/^\d+(,\s*\d+)*$/'],
+            'reminders.daily_run_time' => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
+            'reminders.quiet_start' => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
+            'reminders.quiet_end' => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
         ]);
 
         // P2.5.F writer (b): "company option changes" named explicitly. One consolidated row per
@@ -1609,6 +1654,50 @@ class SettingController extends Controller
                     ['key' => 'accounting.hold_client_nudge', 'company_id' => $companyId],
                     ['value' => (bool) $validated['hold_client_nudge'], 'type' => 'boolean', 'description' => 'Also send the client a nudge message when a ticketing-deadline reminder fires']
                 );
+            }
+
+            // P2.5.I (p2_5-brief.md §P2.5.I) -- written under App\Services\Reminders\
+            // ReminderOptions' own key namespace so the very next reminder:generate/process:reminder
+            // run reads back exactly what this form just saved, same convention VoucherOptions/
+            // StatementOptions above already follow for their own resolver classes.
+            $reminderSettings = $validated['reminders'] ?? [];
+            foreach (self::REMINDER_SETTING_KINDS as $kind) {
+                if (array_key_exists($kind, $reminderSettings['enabled'] ?? [])) {
+                    Setting::updateOrCreate(
+                        ['key' => "accounting.reminders.{$kind}.enabled", 'company_id' => $companyId],
+                        ['value' => (bool) $reminderSettings['enabled'][$kind], 'type' => 'boolean', 'description' => "Whether the {$kind} reminder is generated"]
+                    );
+                }
+                if (array_key_exists($kind, $reminderSettings['channel'] ?? [])) {
+                    Setting::updateOrCreate(
+                        ['key' => "accounting.reminders.{$kind}.channel", 'company_id' => $companyId],
+                        ['value' => $reminderSettings['channel'][$kind], 'type' => 'string', 'description' => "Delivery channel for the {$kind} reminder"]
+                    );
+                }
+            }
+            if (! empty($reminderSettings['overdue_invoice_offsets_days'])) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.reminders.overdue_invoice.offsets_days', 'company_id' => $companyId],
+                    ['value' => $reminderSettings['overdue_invoice_offsets_days'], 'type' => 'string', 'description' => 'Comma-separated days-past-due at which an overdue-invoice reminder re-fires']
+                );
+            }
+            if (! empty($reminderSettings['daily_run_time'])) {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.reminders.daily_run_time', 'company_id' => $companyId],
+                    ['value' => $reminderSettings['daily_run_time'], 'type' => 'string', 'description' => 'Time of day the daily-cadence reminder generators run']
+                );
+            }
+            // Quiet hours: both filled -> "HH:MM-HH:MM"; either blank -> delete the row so
+            // ReminderOptions::quietHours() falls back to its own null (disabled) default.
+            $quietStart = $reminderSettings['quiet_start'] ?? '';
+            $quietEnd = $reminderSettings['quiet_end'] ?? '';
+            if ($quietStart !== '' && $quietEnd !== '') {
+                Setting::updateOrCreate(
+                    ['key' => 'accounting.reminders.quiet_hours', 'company_id' => $companyId],
+                    ['value' => "{$quietStart}-{$quietEnd}", 'type' => 'string', 'description' => 'Window inside which no reminder is scheduled; a would-be scheduled reminder shifts to the end of it']
+                );
+            } elseif (array_key_exists('reminders', $validated)) {
+                Setting::where('company_id', $companyId)->where('key', 'accounting.reminders.quiet_hours')->delete();
             }
 
             foreach ($serviceTypes as $type) {

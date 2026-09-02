@@ -351,29 +351,68 @@ class ReminderController extends Controller
         }
     }
 
+    /**
+     * P2.5.I fix (p2_5-brief.md §P2.5.I): pre-P2.5.I this wrote four columns that do not exist on
+     * `reminders` at all (`invoice_number`, `max_reminder`, `sent_reminder`, `next_reminder_at`)
+     * and left `scheduled_at` NULL -- every row created here was silently unfillable-guarded down
+     * to nothing useful and, with a null `scheduled_at`, could never be selected as "due" by
+     * SendReminders' `where('scheduled_at', '<=', Carbon::now())` filter, so none of these rows
+     * ever fired (doc 22 §16.7's verified fact). Rewritten to write only real, fillable columns --
+     * the same shape ReminderController::store()'s own single-target flow already uses -- with a
+     * real `scheduled_at = now()` so a created row is immediately due, `reminder_kind =
+     * 'overdue_invoice'` (matching {@see \App\Services\Reminders\Generators\OverdueInvoiceReminderGenerator}'s
+     * own kind for the same "client owes on an unpaid invoice" case), and a `dedupe_key` so a
+     * second click of this same bulk action does not create a duplicate pending row per invoice.
+     */
     public function bulk(Request $request)
     {
+        $request->validate([
+            'send_to_client' => 'nullable',
+            'send_to_agent' => 'nullable',
+            'frequency' => 'required|in:once,auto',
+            'value' => 'required_if:frequency,auto|nullable|integer|min:1',
+            'unit' => 'required_if:frequency,auto|nullable|in:hours,days',
+        ]);
+
         $invoices = Invoice::where('status', 'unpaid')->get();
+        $created = 0;
 
         foreach ($invoices as $invoice) {
+            if ($invoice->agent_id === null || $invoice->client_id === null) {
+                continue;
+            }
+
+            $dedupeKey = 'bulk:overdue_invoice:'.$invoice->id;
+            if (Reminder::where('dedupe_key', $dedupeKey)->exists()) {
+                continue;
+            }
+
+            $companyId = $invoice->agent?->branch?->company_id;
+
             Reminder::create([
+                'company_id' => $companyId,
                 'target_type' => 'invoice',
+                'reminder_kind' => 'overdue_invoice',
                 'invoice_id' => $invoice->id,
                 'client_id' => $invoice->client_id,
                 'agent_id' => $invoice->agent_id,
-                'invoice_number' => $invoice->invoice_number,
                 'send_to_client' => $request->has('send_to_client'),
                 'send_to_agent' => $request->has('send_to_agent'),
                 'frequency' => $request->frequency,
                 'value' => $request->value,
-                'unit' => $request->unit,
-                'max_reminder' => $request->max_reminder ?? 1,
-                'sent_reminder' => 0,
-                'next_reminder_at' => now(),
+                // `unit` has no ->nullable() and a schema default ('hours') -- an explicit NULL
+                // here (frequency='once' never submits it, per this form's own validation) would
+                // override that default with a NOT NULL violation rather than falling back to it,
+                // so the key is included only when the request actually supplied one.
+                ...($request->filled('unit') ? ['unit' => $request->unit] : []),
+                'scheduled_at' => now(),
+                'status' => 'pending',
                 'is_active' => true,
+                'dedupe_key' => $dedupeKey,
             ]);
+            $created++;
         }
 
-        return redirect()->back()->with('success', $invoices->count().' reminders created!');
+        return redirect()->back()->with('success', $created.' reminder(s) created!');
     }
 }

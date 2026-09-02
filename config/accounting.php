@@ -935,4 +935,52 @@ return [
         'unsettled_tolerance' => 0.001,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Reminder engine v2 (P2.5.I)
+    |--------------------------------------------------------------------------
+    | p2_5-brief.md §P2.5.I; doc 22 §16.7. Config-level defaults for every reminder_kind this wave
+    | ships a generator for, overridable per company via App\Services\Reminders\ReminderOptions
+    | (Setting::getByKey(), same 'settings' table / key-namespacing convention StatementOptions and
+    | VoucherOptions already use). `commission_unearned` has no cadence/offsets entry -- it is
+    | event-driven (fired from RefundPostingService's un-earn post, see
+    | App\Events\Accounting\CommissionUnearned), never swept by reminder:generate.
+    | `task_unassigned`/`task_uninvoiced` are reserved target_type='task' kind labels only -- both
+    | are already served today by standalone, already-scheduled direct-send commands
+    | (reminder:unassigned-tasks / reminder:uninvoiced-tasks) that predate this wave and do not
+    | route through the `reminders` table at all; P2.5.I does not duplicate them with a second,
+    | table-backed generator (see this wave's own build report for the reasoning).
+    */
+    'reminders' => [
+        'kinds' => [
+            'overdue_invoice', 'statement_balance', 'ticketing_deadline', 'commission_unearned',
+            'payment_link_uninvoiced', 'task_unassigned', 'task_uninvoiced', 'custom',
+        ],
+        // Kinds a company may toggle off individually; default enabled state per kind.
+        'default_enabled' => [
+            'overdue_invoice' => true,
+            'statement_balance' => true,
+            'ticketing_deadline' => true,
+            'commission_unearned' => true,
+            'payment_link_uninvoiced' => true,
+            'task_unassigned' => true,
+            'task_uninvoiced' => true,
+            'custom' => true,
+        ],
+        'default_channel' => 'whatsapp',
+        // Daily-cadence generators run once, at this fixed time -- same "single fixed time for
+        // every company" simplification P2.5.G's nightly reconciliation schedule already
+        // documents (see routes/console.php's accounting:reconcile entry); a real per-company
+        // timezone run is a later refinement, not a P2.5.I dependency.
+        'daily_run_time' => '09:00',
+        // Days-past-due-date at which `overdue_invoice` fires again for the same invoice (each
+        // offset is its own dedupe_key, so re-running the generator on an off day is a no-op, not
+        // a resend).
+        'overdue_invoice_offsets_days' => [1, 3, 7, 14, 30],
+        // Quiet hours: no reminder is ever scheduled inside this company-local window
+        // (HH:MM-HH:MM); a generator that would land inside it shifts scheduled_at forward to the
+        // window's end. Null (both empty) disables the shift entirely -- the P2.5.I default.
+        'quiet_hours' => ['start' => null, 'end' => null],
+    ],
+
 ];

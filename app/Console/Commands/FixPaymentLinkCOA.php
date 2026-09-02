@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use Illuminate\Console\Command;
 use App\Models\Payment;
 use App\Models\JournalEntry;
 use App\Models\Transaction;
 use App\Models\Account;
+use App\Models\Company;
 use App\Models\Credit;
 use App\Models\Charge;
 use App\Services\ChargeService;
@@ -15,7 +17,9 @@ use Illuminate\Support\Facades\Log;
 
 class FixPaymentLinkCOA extends Command
 {
-    protected $signature = 'fix:payment-link-coa 
+    use RefusesWhenPostingEngineEnabled;
+
+    protected $signature = 'fix:payment-link-coa
                             {--dry-run : Show what would be fixed without making changes}
                             {--payment-id= : Fix specific payment ID only}
                             {--company-id= : Fix payments for specific company only}
@@ -24,6 +28,8 @@ class FixPaymentLinkCOA extends Command
     protected $description = 'Fix incorrect COA entries for payment link topups';
 
     private $accountsToRecalculate = [];
+
+    private array $warnedCompanies = [];
 
     public function handle()
     {
@@ -63,7 +69,7 @@ class FixPaymentLinkCOA extends Command
         $this->info("Found {$payments->count()} topup payments to analyze");
         $this->newLine();
 
-        $stats = ['total' => $payments->count(), 'fixed' => 0, 'skipped' => 0, 'errors' => 0, 'details' => []];
+        $stats = ['total' => $payments->count(), 'fixed' => 0, 'skipped' => 0, 'refused' => 0, 'errors' => 0, 'details' => []];
 
         $this->output->progressStart($payments->count());
 
@@ -73,6 +79,8 @@ class FixPaymentLinkCOA extends Command
                 if ($result['action'] === 'fixed') {
                     $stats['fixed']++;
                     $stats['details'][] = $result;
+                } elseif ($result['action'] === 'refused') {
+                    $stats['refused']++;
                 } else {
                     $stats['skipped']++;
                 }
@@ -97,6 +105,7 @@ class FixPaymentLinkCOA extends Command
             ['Total Payments', $stats['total']],
             ['✅ Fixed', $stats['fixed']],
             ['⏭️  Skipped', $stats['skipped']],
+            ['🚫 Refused (engine ON)', $stats['refused']],
             ['❌ Errors', $stats['errors']],
         ]);
 
@@ -132,7 +141,10 @@ class FixPaymentLinkCOA extends Command
             $this->info('✅ Fix completed!');
         }
 
-        return Command::SUCCESS;
+        // 'fixed' + 'skipped' (no-op-but-eligible) both count as "processed" for the
+        // RefusesWhenPostingEngineEnabled exit-code rule -- only a run where EVERY payment was
+        // refused (engine ON for every candidate company) reports failure.
+        return $this->exitCodeForPostingEngineRefusals($stats['fixed'] + $stats['skipped'], $stats['refused'], Command::SUCCESS);
     }
 
     /**
@@ -216,6 +228,19 @@ class FixPaymentLinkCOA extends Command
     {
         $companyId = $payment->agent->branch->company->id;
         $client = $payment->client;
+
+        // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+        // own precedent, ~lines 343/746): once a company is cut over to the posting engine, this
+        // command's hand-rolled payment-link COA fixes belong to the engine instead -- refuse per
+        // company rather than corrupt rows the engine cannot see. Warned only once per company.
+        if ($this->isPostingEngineEnabledForCompany($companyId)) {
+            if (!isset($this->warnedCompanies[$companyId])) {
+                $this->warnedCompanies[$companyId] = true;
+                $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'fix:payment-link-coa');
+            }
+
+            return ['action' => 'refused'];
+        }
 
         // Get accounts
         $liabilitiesAccount = Account::where('name', 'like', 'Liabilities%')

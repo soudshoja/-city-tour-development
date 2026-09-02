@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\AI\AIManager;
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Http\Controllers\TaskController;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use App\Models\Agent;
 use App\Models\Client;
+use App\Models\Company;
 use App\Models\Payment;
 use App\Models\Credit;
 use App\Models\Account;
@@ -24,11 +26,15 @@ use Exception;
 
 class CreateClientCredit extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
     protected $signature = 'create:client-credit
                             {--dry-run : Show expected process without making changes}
                             {--proceed : Skip dry run and make changes onto database}
                            ';
     protected $description = 'Create the missing client credit for existing paid payment';
+
+    private array $warnedCompanies = [];
 
     public function handle()
     {
@@ -85,10 +91,15 @@ class CreateClientCredit extends Command
 
             $processed = 0;
             $errors = 0;
+            $refused = 0;
 
             foreach ($payments as $creditPayment) {
                 try {
-                    $this->processCredit($creditPayment);
+                    $result = $this->processCredit($creditPayment);
+                    if (is_array($result) && ($result['status'] ?? null) === 'refused') {
+                        $refused++;
+                        continue;
+                    }
                     $processed++;
                     $this->info("Processed credit: {$creditPayment->voucher_number}");
                 } catch (Exception $e) {
@@ -102,11 +113,12 @@ class CreateClientCredit extends Command
 
             $this->info("\nProcessing complete:");
             $this->info("Successfully processed {$processed} credits for paid payment");
+            $this->info("Skipped (engine ON): {$refused}");
             if ($errors > 0) {
                 $this->warn("Errors encoutered: {$errors} during credit processing");
             }
 
-            return 0;
+            return $this->exitCodeForPostingEngineRefusals($processed, $refused);
         } catch (Exception $e) {
             $this->error('Command failed: ' . $e->getMessage());
             Log::error('Creating new credit for exisitng paid payment command failed', [
@@ -148,6 +160,25 @@ class CreateClientCredit extends Command
             return [
                 'status' => 'error',
                 'message' => 'Client or Agent not found',
+            ];
+        }
+
+        $companyId = (int) $agent->branch?->company_id;
+
+        // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+        // own precedent, ~lines 343/746): once a company is cut over to the posting engine, this
+        // command's hand-rolled Credit + Transaction/JournalEntry writes belong to the engine
+        // instead -- refuse per company rather than corrupt rows the engine cannot see. Warned
+        // only once per company.
+        if ($companyId && $this->isPostingEngineEnabledForCompany($companyId)) {
+            if (!isset($this->warnedCompanies[$companyId])) {
+                $this->warnedCompanies[$companyId] = true;
+                $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'create:client-credit');
+            }
+
+            return [
+                'status' => 'refused',
+                'message' => "Posting engine enabled for company {$companyId}",
             ];
         }
 

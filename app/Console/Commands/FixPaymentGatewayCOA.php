@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
+use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
 use App\Models\Payment;
@@ -13,7 +15,9 @@ use Illuminate\Support\Facades\Log;
 
 class FixPaymentGatewayCOA extends Command
 {
-    protected $signature = 'fix:payment-gateway-coa 
+    use RefusesWhenPostingEngineEnabled;
+
+    protected $signature = 'fix:payment-gateway-coa
                             {--type=all : Type to fix: invoice, topup, or all}
                             {--company= : Specific company ID}
                             {--invoice= : Specific invoice ID}
@@ -28,6 +32,9 @@ class FixPaymentGatewayCOA extends Command
     private int $fixedInvoices = 0;
     private int $fixedPayments = 0;
     private int $fixedEntries = 0;
+    private int $consideredCount = 0;
+    private int $refusedCount = 0;
+    private array $warnedCompanies = [];
     private array $changes = [];
 
     public function handle()
@@ -56,7 +63,31 @@ class FixPaymentGatewayCOA extends Command
 
         $this->printSummary($isDryRun);
 
-        return 0;
+        return $this->exitCodeForPostingEngineRefusals($this->consideredCount, $this->refusedCount);
+    }
+
+    /**
+     * Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's own
+     * precedent, ~lines 343/746): once a company is cut over to the posting engine, this
+     * command's hand-rolled journal-entry fee/net-amount fixes belong to the engine instead --
+     * refuse per company rather than corrupt rows the engine cannot see. Shared by both
+     * processInvoice() and processTopup() below. Warned only once per company.
+     */
+    private function refuseIfEngineOn(int $companyId): bool
+    {
+        if (! $this->isPostingEngineEnabledForCompany($companyId)) {
+            $this->consideredCount++;
+
+            return false;
+        }
+
+        $this->refusedCount++;
+        if (! isset($this->warnedCompanies[$companyId])) {
+            $this->warnedCompanies[$companyId] = true;
+            $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'fix:payment-gateway-coa');
+        }
+
+        return true;
     }
 
     /**
@@ -112,6 +143,8 @@ class FixPaymentGatewayCOA extends Command
     {
         $companyId = $invoice->agent?->branch?->company_id;
         if (!$companyId) return;
+
+        if ($this->refuseIfEngineOn($companyId)) return;
 
         // Get all paid partials for this invoice
         $paidPartials = $invoice->invoicePartials->where('status', 'paid');
@@ -306,6 +339,8 @@ class FixPaymentGatewayCOA extends Command
         $companyId = $payment->agent?->branch?->company_id;
         if (!$companyId) return;
 
+        if ($this->refuseIfEngineOn($companyId)) return;
+
         $gateway = $payment->payment_gateway;
         $methodId = $payment->payment_method_id;
         $originalAmount = (float) $payment->amount;
@@ -460,6 +495,7 @@ class FixPaymentGatewayCOA extends Command
         $this->info("Invoices fixed: {$this->fixedInvoices}");
         $this->info("Payments fixed: {$this->fixedPayments}");
         $this->info("Journal entries fixed: {$this->fixedEntries}");
+        $this->info("Skipped (engine ON): {$this->refusedCount}");
 
         if ($isDryRun && !empty($this->changes)) {
             $this->newLine();

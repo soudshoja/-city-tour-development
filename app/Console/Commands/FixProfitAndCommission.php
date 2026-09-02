@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentCharge;
+use App\Models\Company;
 use App\Models\Credit;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
@@ -20,7 +22,9 @@ use Illuminate\Support\Facades\Log;
 
 class FixProfitAndCommission extends Command
 {
-    protected $signature = 'fix:profit-commission 
+    use RefusesWhenPostingEngineEnabled;
+
+    protected $signature = 'fix:profit-commission
                             {--company= : Specific company ID}
                             {--invoice= : Specific invoice ID}
                             {--agent= : Specific agent ID}
@@ -32,6 +36,8 @@ class FixProfitAndCommission extends Command
     protected $description = 'Calculate profit, commission and fix COA entries';
 
     private int $processedInvoices = 0;
+    private int $refusedInvoices = 0;
+    private array $warnedCompanies = [];
     private int $updatedDetails = 0;
     private int $createdExpenseEntries = 0;
     private int $createdLiabilityEntries = 0;
@@ -113,18 +119,33 @@ class FixProfitAndCommission extends Command
 
         $this->printSummary($dryRun);
 
-        return 0;
+        return $this->exitCodeForPostingEngineRefusals($this->processedInvoices, $this->refusedInvoices);
     }
 
     private function processInvoice(Invoice $invoice, bool $dryRun): void
     {
-        $this->processedInvoices++;
-
         $agent = $invoice->agent;
         if (!$agent) return;
 
         $companyId = $agent->branch?->company_id;
         if (!$companyId) return;
+
+        // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+        // own precedent, ~lines 343/746): once a company is cut over to the posting engine, this
+        // command's hand-rolled profit/commission JournalEntry writes belong to the engine
+        // instead -- refuse per company rather than corrupt rows the engine cannot see. Warned
+        // only once per company (many invoices share a company) via $warnedCompanies.
+        if ($this->isPostingEngineEnabledForCompany($companyId)) {
+            $this->refusedInvoices++;
+            if (!isset($this->warnedCompanies[$companyId])) {
+                $this->warnedCompanies[$companyId] = true;
+                $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'fix:profit-commission');
+            }
+
+            return;
+        }
+
+        $this->processedInvoices++;
 
         $settings = AgentCharge::getForAgent($agent->id, $companyId);
         $totalAccountingFee = $this->getTotalAccountingFee($invoice, $companyId);
@@ -428,6 +449,7 @@ class FixProfitAndCommission extends Command
         $this->info('  Summary');
         $this->info('═══════════════════════════════════════════════════════════');
         $this->info("Invoices processed:        {$this->processedInvoices}");
+        $this->info("Invoices skipped (engine ON): {$this->refusedInvoices}");
         $this->info("Invoice details updated:   {$this->updatedDetails}");
         $this->info("COA Expense created/fixed: {$this->createdExpenseEntries}/{$this->fixedExpenseEntries}");
         $this->info("COA Liability created/fixed: {$this->createdLiabilityEntries}/{$this->fixedLiabilityEntries}");

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,8 @@ use Exception;
 
 class FixOldProfit extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
     protected $signature = 'fix:old-profit-data
                             {--dry-run : Show the expected process without making changes to the database}
                             {--proceed : Skip dry run mode and make changes onto database}
@@ -58,6 +61,15 @@ class FixOldProfit extends Command
             if (!$company) {
                 $this->error('Company with ID ' . $companyId . 'is not found within the system database');
                 return 0;
+            }
+
+            // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+            // own precedent, ~lines 343/746): once this company is cut over to the posting
+            // engine, this command's hand-rolled JournalEntry markup/commission fixes belong to
+            // the engine instead -- this command targets exactly one company per invocation
+            // (--companyId is required), so a refusal here means the whole run processed nothing.
+            if ($this->refusePostingEngineEnabledCompany((int) $companyId, $company->name, 'fix:old-profit-data')) {
+                return $this->exitCodeForPostingEngineRefusals(0, 1);
             }
 
             $supplier = Supplier::find($supplierId);

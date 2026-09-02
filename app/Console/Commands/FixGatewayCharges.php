@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
+use App\Models\Company;
 use App\Models\Payment;
 use App\Models\Charge;
 use App\Models\Account;
@@ -13,6 +15,10 @@ use Illuminate\Support\Facades\DB;
 
 class FixGatewayCharges extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
+    private array $warnedCompanies = [];
+
     protected $signature = 'fees:fix-gateway-charges
         {--company= : Company ID}
         {--gateway= : Filter gateway (tap|myfatoorah|hesabe|upayment)}
@@ -50,7 +56,8 @@ class FixGatewayCharges extends Command
             'ERR_CALC' => 0,
             'SKIP_NO_ACC_FEE_ID' => 0,
             'SKIP_NO_CHARGES_ACCOUNT' => 0,
-            'SKIP_NO_COMPANY' => 0
+            'SKIP_NO_COMPANY' => 0,
+            'SKIP_ENGINE_ON' => 0,
         ];
         $processed = 0;
         $bar = $this->output->createProgressBar($count);
@@ -77,19 +84,24 @@ class FixGatewayCharges extends Command
             $stats['NO_CHANGE']
         ));
         $this->line(sprintf(
-            "Skipped → NO_JE: %d | ERR_CALC: %d | NO_ACC_FEE_ID: %d | NO_CHARGES_ACCOUNT: %d | NO_COMPANY: %d | UNSUPPORTED: %d",
+            "Skipped → NO_JE: %d | ERR_CALC: %d | NO_ACC_FEE_ID: %d | NO_CHARGES_ACCOUNT: %d | NO_COMPANY: %d | ENGINE_ON: %d | UNSUPPORTED: %d",
             $stats['SKIP_NO_JE'],
             $stats['ERR_CALC'],
             $stats['SKIP_NO_ACC_FEE_ID'],
             $stats['SKIP_NO_CHARGES_ACCOUNT'],
-            $stats['SKIP_NO_COMPANY']
+            $stats['SKIP_NO_COMPANY'],
+            $stats['SKIP_ENGINE_ON']
         ));
 
         if ($dryRun) {
             $this->warn('This was a dry-run. Re-run without --dry-run to apply changes.');
         }
 
-        return self::SUCCESS;
+        // 'CHANGE' + 'NO_CHANGE' both count as "processed" (an eligible payment this run actually
+        // looked at and decided whether to touch) for the RefusesWhenPostingEngineEnabled
+        // exit-code rule -- only a run where EVERY otherwise-eligible payment was refused for
+        // being on an engine-ON company reports failure.
+        return $this->exitCodeForPostingEngineRefusals($stats['CHANGE'] + $stats['NO_CHANGE'], $stats['SKIP_ENGINE_ON'], self::SUCCESS);
     }
 
     protected function fixOne(Payment $payment, bool $dryRun, array &$stats): void
@@ -97,6 +109,20 @@ class FixGatewayCharges extends Command
         $companyId = $payment->agent?->branch?->company?->id;
         if (!$companyId) {
             $stats['SKIP_NO_COMPANY']++;
+            return;
+        }
+
+        // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+        // own precedent, ~lines 343/746): once a company is cut over to the posting engine, this
+        // command's hand-rolled charges-JE fee fixes belong to the engine instead -- refuse per
+        // company rather than corrupt rows the engine cannot see. Warned only once per company.
+        if ($this->isPostingEngineEnabledForCompany($companyId)) {
+            $stats['SKIP_ENGINE_ON']++;
+            if (!isset($this->warnedCompanies[$companyId])) {
+                $this->warnedCompanies[$companyId] = true;
+                $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'fees:fix-gateway-charges');
+            }
+
             return;
         }
 

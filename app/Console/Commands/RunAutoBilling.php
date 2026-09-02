@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Exceptions\Accounting\PostingException;
 use App\Models\AutoBilling;
 use App\Models\Task;
@@ -11,6 +12,7 @@ use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
 use App\Models\InvoiceSequence;
 use App\Models\Client;
+use App\Models\Company;
 use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Services\ChargeService;
@@ -26,9 +28,12 @@ use Illuminate\Support\Facades\DB;
 class RunAutoBilling extends Command
 {
     use EmailNotificationTrait;
+    use RefusesWhenPostingEngineEnabled;
 
     protected $signature = 'autobill:generate-invoices {--dry-run : Show eligible/ineligible tasks without creating invoices}';
     protected $description = 'Automatically generate invoices for all active AutoBilling rules at their scheduled times.';
+
+    private array $warnedCompanies = [];
 
     public function handle()
     {
@@ -56,7 +61,28 @@ class RunAutoBilling extends Command
 
         $invoiceController = new InvoiceController();
 
+        $processedRules = 0;
+        $refusedRules = 0;
+
         foreach ($rules as $rule) {
+            // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+            // own precedent, ~lines 343/746): once a company is cut over to the posting engine,
+            // this command's hand-rolled Invoice/Transaction/InvoiceDetail/InvoicePartial writes
+            // (all created directly below, NOT through PostingSeam) belong to the engine instead
+            // -- refuse per company rather than half-create rows the engine cannot see. Warned
+            // only once per company.
+            $ruleCompanyId = (int) $rule->company_id;
+            if ($this->isPostingEngineEnabledForCompany($ruleCompanyId)) {
+                $refusedRules++;
+                if (!isset($this->warnedCompanies[$ruleCompanyId])) {
+                    $this->warnedCompanies[$ruleCompanyId] = true;
+                    $this->refusePostingEngineEnabledCompany($ruleCompanyId, Company::find($ruleCompanyId)?->name, 'autobill:generate-invoices');
+                }
+                $bar->advance();
+                continue;
+            }
+
+            $processedRules++;
             DB::beginTransaction();
 
             try {
@@ -397,8 +423,9 @@ class RunAutoBilling extends Command
 
         $this->newLine();
         $this->info("✅ AutoBilling completed for {$rules->count()} rule(s) in {$duration}s.");
+        $this->info("🚫 Skipped (engine ON): {$refusedRules} rule(s).");
         Log::info("=== [AutoBilling] Command finished in {$duration}s ===");
 
-        return Command::SUCCESS;
+        return $this->exitCodeForPostingEngineRefusals($processedRules, $refusedRules, Command::SUCCESS);
     }
 }

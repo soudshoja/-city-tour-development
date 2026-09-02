@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use Illuminate\Console\Command;
 use App\Models\Task;
 use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Models\Account;
+use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\Agent;
@@ -17,6 +19,8 @@ use Exception;
 
 class UpdateOldTaskToTransaction extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
     /**
      * The name and signature of the console command.
      *
@@ -30,6 +34,8 @@ class UpdateOldTaskToTransaction extends Command
      * @var string
      */
     protected $description = 'Find old tasks without transaction/journal entries and create them. Only processes tasks with status != confirmed and supplier_pay_date as transaction_date.';
+
+    private array $warnedCompanies = [];
 
     public function handle()
     {
@@ -83,8 +89,24 @@ class UpdateOldTaskToTransaction extends Command
             // Process each task
             $processed = 0;
             $errors = 0;
-            
+            $refused = 0;
+
             foreach ($tasksToProcess as $task) {
+                // Guard added for the RefusesWhenPostingEngineEnabled sweep (see
+                // FixCreditInvoiceCOA's own precedent, ~lines 343/746): once a company is cut
+                // over to the posting engine, this command's hand-rolled Transaction/JournalEntry
+                // writes belong to the engine instead -- refuse per company rather than corrupt
+                // rows the engine cannot see. Warned only once per company.
+                $companyId = (int) $task->company_id;
+                if ($this->isPostingEngineEnabledForCompany($companyId)) {
+                    $refused++;
+                    if (!isset($this->warnedCompanies[$companyId])) {
+                        $this->warnedCompanies[$companyId] = true;
+                        $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'app:update-old-task-to-transaction');
+                    }
+                    continue;
+                }
+
                 try {
                     $this->processTask($task);
                     $processed++;
@@ -95,15 +117,16 @@ class UpdateOldTaskToTransaction extends Command
                     Log::error("Task processing failed: {$task->reference}", ['error' => $e->getMessage()]);
                 }
             }
-            
+
             $this->info("\nProcessing complete:");
             $this->info("Successfully processed: {$processed} tasks");
+            $this->info("Skipped (engine ON): {$refused} tasks");
             if ($errors > 0) {
                 $this->warn("Errors encountered: {$errors} tasks");
             }
-            
-            return 0;
-            
+
+            return $this->exitCodeForPostingEngineRefusals($processed, $refused);
+
         } catch (Exception $e) {
             $this->error('Command failed: ' . $e->getMessage());
             Log::error('Update old task to transaction command failed', ['error' => $e->getMessage()]);

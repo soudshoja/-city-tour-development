@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentCharge;
 use App\Models\AgentLoss;
 use App\Models\Charge;
+use App\Models\Company;
 use App\Models\Credit;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
@@ -18,6 +20,8 @@ use Illuminate\Support\Facades\Log;
 
 class FixInvoiceCoa extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
     protected $signature = 'fix:invoice-coa
                             {--company= : Specific company ID}
                             {--invoice= : Specific invoice ID}
@@ -30,6 +34,8 @@ class FixInvoiceCoa extends Command
     protected $description = 'Fix profit, commission and all COA journal entries for invoices';
 
     private int $processedInvoices = 0;
+    private int $refusedInvoices = 0;
+    private array $warnedCompanies = [];
     private int $updatedDetails = 0;
     private int $createdEntries = 0;
     private int $fixedEntries = 0;
@@ -87,18 +93,33 @@ class FixInvoiceCoa extends Command
         $this->newLine(2);
         $this->printSummary($dryRun);
 
-        return 0;
+        return $this->exitCodeForPostingEngineRefusals($this->processedInvoices, $this->refusedInvoices);
     }
 
     private function processInvoice(Invoice $invoice, bool $dryRun): void
     {
-        $this->processedInvoices++;
-
         $agent = $invoice->agent;
         if (!$agent) return;
 
         $companyId = $agent->branch?->company_id;
         if (!$companyId) return;
+
+        // Guard added for the RefusesWhenPostingEngineEnabled sweep (see FixCreditInvoiceCOA's
+        // own precedent, ~lines 343/746): once a company is cut over to the posting engine, this
+        // command's hand-rolled profit/commission/journal-entry fixes belong to the engine
+        // instead -- refuse per company rather than corrupt rows the engine cannot see. Warned
+        // only once per company (many invoices share a company).
+        if ($this->isPostingEngineEnabledForCompany($companyId)) {
+            $this->refusedInvoices++;
+            if (!isset($this->warnedCompanies[$companyId])) {
+                $this->warnedCompanies[$companyId] = true;
+                $this->refusePostingEngineEnabledCompany($companyId, Company::find($companyId)?->name, 'fix:invoice-coa');
+            }
+
+            return;
+        }
+
+        $this->processedInvoices++;
 
         $transactionId = JournalEntry::where('invoice_id', $invoice->id)->value('transaction_id');
         if (!$transactionId) return;
@@ -622,6 +643,7 @@ class FixInvoiceCoa extends Command
     {
         $this->info('═══════════════════════════════════════════════════');
         $this->info("Invoices processed:      {$this->processedInvoices}");
+        $this->info("Invoices skipped (engine ON): {$this->refusedInvoices}");
         $this->info("Details updated:         {$this->updatedDetails}");
         $this->info("Journal entries created: {$this->createdEntries}");
         $this->info("Journal entries fixed:   {$this->fixedEntries}");

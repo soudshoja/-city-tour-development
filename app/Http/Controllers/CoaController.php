@@ -22,6 +22,9 @@ use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use App\Exceptions\Accounting\AccountValidationException;
+use App\Services\Accounting\AccountService;
+use App\Services\Accounting\AccountingLog;
 
 class CoaController extends Controller
 {
@@ -162,7 +165,9 @@ class CoaController extends Controller
 
     public function addCategory(Request $request)
     {
-        if (Auth::user()->company == null) {
+        $companyId = getCompanyId(Auth::user());
+
+        if (!$companyId) {
             return response()->json(['success' => false, 'message' => 'User not authorized'], 404);
         }
 
@@ -177,38 +182,44 @@ class CoaController extends Controller
             'client' => 'required_if:entity,client|integer',
             'agent' => 'required_if:entity,agent|integer',
             'branch' => 'required_if:entity,branch|integer',
-            // 'account_type' => 'required|string|max:255',
-            // 'budget_balance' => 'required|numeric',
-            // 'actual_balance' => 'required|numeric',
-            // 'variance' => 'required|numeric',
         ]);
 
-        $existingCode = Account::where('code', $request->code)->first();
-
-        if ($existingCode) {
-            return redirect()->back()->with('error', 'Code already exists');
-        }
-
+        // COA UI lane (2026-08-31): was a hand-rolled Account::create() with no parent-chain,
+        // depth, or company-scope validation and a plain SELECT-then-INSERT code-uniqueness check
+        // (a genuine race — two concurrent submissions could both pass it and collide). Routed
+        // through AccountService::create(), which enforces the blueprint's nine COA rules
+        // (parent/company scope, depth <= 6, is_group promotion, ...) and — since this screen's
+        // "New Account" modal has always let an operator type an explicit code — the same
+        // company-scoped code-uniqueness check createSystemLeaf() enforces, under a row lock, so
+        // the race is closed too. See AccountService::create()'s own docblock addition for the
+        // explicit-code opt-in.
         try {
-            $category = new Account();
-            $category->name = $request->name;
-            $category->code = $request->code;
-            $category->label = $request->label;
-            $category->level = $request->level;
-            $category->parent_id = $request->parent_id;
-            $category->variance = 0;
-            $category->budget_balance = 0;
-            $category->actual_balance = 0;
-            $category->company_id = Auth::user()->company->id;
-            $category->root_id  = $request->root_id;
-
-            $category->save();
-        } catch (Exception $e) {
-
-            logger('Error creating category: ' . $e->getMessage());
-
-            return redirect()->back()->with('error', 'Error creating category');
+            $account = app(AccountService::class)->create([
+                'company_id' => $companyId,
+                'parent_id' => (int) $request->parent_id,
+                'name' => $request->name,
+                'code' => $request->code,
+            ]);
+        } catch (AccountValidationException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
+
+        // 'label' is a plain COA display field outside AccountService's nine rules (and outside
+        // its $attrs contract) — set directly on the already-validated, already-persisted account,
+        // the same way this method always has.
+        if ($request->filled('label')) {
+            $account->label = $request->label;
+            $account->save();
+        }
+
+        AccountingLog::write(
+            action: 'account_create',
+            companyId: $companyId,
+            subjectType: 'account',
+            subjectId: $account->id,
+            after: $account->fresh()->toArray(),
+            actorId: Auth::id(),
+        );
 
         return redirect()->back()->with('success', 'Category created successfully');
     }
@@ -500,13 +511,13 @@ class CoaController extends Controller
             }],
         ]);
 
-        // Get the authenticated user
-        $user = Auth::user();
+        // Single-tenant lock (code/CLAUDE.md): resolve company via the helper, not
+        // Company::where('user_id', ...) — that lookup silently 404'd for every user whose role
+        // does not itself own a company row (agent/branch/accountant), which getCompanyId()
+        // already handles correctly.
+        $companyId = getCompanyId(Auth::user());
 
-        // Retrieve the company associated with the user
-        $company = Company::where('user_id', $user->id)->first();
-
-        if (!$company) {
+        if (!$companyId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found.',
@@ -518,7 +529,7 @@ class CoaController extends Controller
 
         // Find the parent account ID based on the type and company
         $parentAccount = Account::where('name', $type)
-            ->where('company_id', $company->id)
+            ->where('company_id', $companyId)
             ->first();
 
         if (!$parentAccount) {
@@ -528,16 +539,33 @@ class CoaController extends Controller
             ], 404);
         }
 
-        // Create the new account under the correct parent_id
-        $newAccount = Account::create([
-            'name' => $request->accountName,
-            'parent_id' => $parentAccount->id,
-            'company_id' => $company->id,
-            'level' => 2,
-            'actual_balance' => 0,
-            'budget_balance' => 0,
-            'variance' => 0,
-        ]);
+        // COA UI lane (2026-08-31): was a bare Account::create() with no code, no depth check, no
+        // is_group promotion, no parent/company-scope validation. Routed through
+        // AccountService::create(), which derives root_id/account_type/level from the resolved
+        // root, generates a real code (AccountCodeGenerator — the raw path above never set one at
+        // all), and promotes the parent to is_group=true, matching every other account this
+        // service creates.
+        try {
+            $newAccount = app(AccountService::class)->create([
+                'company_id' => $companyId,
+                'parent_id' => $parentAccount->id,
+                'name' => $request->accountName,
+            ]);
+        } catch (AccountValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        AccountingLog::write(
+            action: 'account_create',
+            companyId: $companyId,
+            subjectType: 'account',
+            subjectId: $newAccount->id,
+            after: $newAccount->toArray(),
+            actorId: Auth::id(),
+        );
 
         return response()->json([
             'success' => true,
@@ -548,58 +576,174 @@ class CoaController extends Controller
 
     public function dstry($id)
     {
-        $account = Account::find($id);
+        Gate::authorize('delete', CoaCategory::class);
 
-        if ($account) {
-            $account->delete();
-            return response()->json([
-                'success' => true,
-                'message' => 'Account deleted successfully.',
-            ], 200);
-        } else {
+        $companyId = getCompanyId(Auth::user());
+
+        $account = Account::where('id', $id)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$account) {
             return response()->json([
                 'success' => false,
                 'message' => 'Account not found.',
             ], 404);
         }
+
+        // COA UI lane (2026-08-31): the raw ->delete() below used to run unconditionally — no
+        // company scope, no Gate, and no check for the two things that actually make deleting a
+        // real accounts row destructive: a child that would be left with a dangling parent_id, or
+        // a foreign key another table still points at (journal_entries.account_id has no ON
+        // DELETE CASCADE — this used to be a raw FK explosion, not a friendly error). Every case
+        // below refuses with a message an operator can act on instead.
+        if (Account::where('parent_id', $account->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "\"{$account->name}\" has child accounts and cannot be deleted. Move or delete its children first.",
+            ], 422);
+        }
+
+        if (JournalEntry::where('account_id', $account->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "\"{$account->name}\" has journal entries posted against it and cannot be deleted.",
+            ], 422);
+        }
+
+        if (DB::table('system_accounts')->where('account_id', $account->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "\"{$account->name}\" is mapped as a system posting target and cannot be deleted. Remap the purpose code(s) from Purpose Mapping first.",
+            ], 422);
+        }
+
+        $before = $account->toArray();
+        $accountId = $account->id;
+
+        $account->delete();
+
+        AccountingLog::write(
+            action: 'account_destroy',
+            companyId: $companyId,
+            subjectType: 'account',
+            subjectId: $accountId,
+            before: $before,
+            actorId: Auth::id(),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Account deleted successfully.',
+        ], 200);
     }
 
     public function updateCode(Request $request, $id)
     {
+        Gate::authorize('update', CoaCategory::class);
+
         // Validate the incoming request to ensure a code is provided
         $request->validate([
             'code' => 'required|string|max:255',
         ]);
 
-        // Find the asset and liability by ID
-        $asset = Account::find($id);
-        $liability = Account::find($id); // Assuming liabilities are also stored in the Account model
+        $companyId = getCompanyId(Auth::user());
 
-        if (!$asset) {
+        $account = Account::where('id', $id)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$account) {
             return response()->json([
                 'success' => false,
-                'message' => 'Asset not found.',
+                'message' => 'Account not found.',
             ], 404);
         }
 
-        if (!$liability) {
+        $newCode = trim((string) $request->code);
+
+        // COA UI lane (2026-08-31): the raw path used to write the code straight through with no
+        // uniqueness check at all (and, oddly, re-fetched and re-saved the SAME row twice under
+        // two differently-named variables — dead duplication, removed). Same company-scoped
+        // collision guard AccountService::createSystemLeaf()'s own codeOwner check uses.
+        $collision = Account::where('company_id', $companyId)
+            ->where('code', $newCode)
+            ->where('id', '!=', $account->id)
+            ->first();
+
+        if ($collision) {
             return response()->json([
                 'success' => false,
-                'message' => 'Liability not found.',
-            ], 404);
+                'message' => "Code \"{$newCode}\" is already used by \"{$collision->name}\" (#{$collision->id}).",
+            ], 422);
         }
 
-        // Update the asset's code
-        $asset->code = $request->code;
-        $asset->save();
+        $before = ['code' => $account->code];
 
-        // Update the liability's code
-        $liability->code = $request->code; // Assuming the same code update for liability
-        $liability->save();
+        $account->code = $newCode;
+        $account->save();
+
+        AccountingLog::write(
+            action: 'account_update_code',
+            companyId: $companyId,
+            subjectType: 'account',
+            subjectId: $account->id,
+            before: $before,
+            after: ['code' => $newCode],
+            actorId: Auth::id(),
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Code updated successfully ',
+        ]);
+    }
+
+    /**
+     * COA UI lane (2026-08-31, scope item 3): disable/enable toggle on accounts.disabled — makes
+     * AccountResolver's/PostingService's FrozenAccountException operationally reachable (previously
+     * nothing in the UI could ever set this column, so a "disabled" account only ever existed via
+     * direct DB write or import). Company-scoped, Gate-authorized, audited, symmetric (same action
+     * flips either direction — the before/after in the audit row is what distinguishes a disable
+     * from a re-enable).
+     */
+    public function toggleDisabled($id)
+    {
+        Gate::authorize('update', CoaCategory::class);
+
+        $companyId = getCompanyId(Auth::user());
+
+        $account = Account::where('id', $id)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$account) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Account not found.',
+            ], 404);
+        }
+
+        $wasDisabled = (bool) $account->disabled;
+        $account->disabled = !$wasDisabled;
+        $account->save();
+
+        AccountingLog::write(
+            action: $account->disabled ? 'account_disable' : 'account_enable',
+            companyId: $companyId,
+            subjectType: 'account',
+            subjectId: $account->id,
+            before: ['disabled' => $wasDisabled],
+            after: ['disabled' => $account->disabled],
+            actorId: Auth::id(),
+        );
+
+        return response()->json([
+            'success' => true,
+            'disabled' => $account->disabled,
+            'message' => $account->disabled
+                ? "\"{$account->name}\" is now disabled and can no longer receive postings."
+                : "\"{$account->name}\" is now enabled.",
         ]);
     }
 

@@ -424,6 +424,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', [CoaController::class, 'deleteTransaction'])->name('deleteTransaction');
         Route::get('/opening-balances', [CoaController::class, 'openingBalances'])->name('opening-balances');
         Route::post('/opening-balances', [CoaController::class, 'saveOpeningBalances'])->name('opening-balances.save');
+        // COA UI lane (2026-08-31, scope item 3): disable/enable toggle on accounts.disabled.
+        // Additive, same group/middleware as every other coa.* mutation above.
+        Route::post('/{id}/toggle-disabled', [CoaController::class, 'toggleDisabled'])->name('toggle-disabled');
     });
 
     // AccountingController — company ledger summary/transaction browser + the
@@ -474,6 +477,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounting/audit-log', fn () => view('accounting.audit-log.index'))
         ->middleware(['module:accounting'])
         ->name('accounting.audit-log.index');
+
+    // COA UI lane (2026-08-31): purpose-mapping repair screen — closes the audit finding that
+    // system_accounts purpose mappings have no UI, so a gap only ever surfaced at runtime as an
+    // uncaught UnmappedPurposeException. Same split as every other accounting screen in this file:
+    // the route middleware only gates module visibility; per-action authorization is
+    // Gate::authorize('viewAny'|'update', CoaCategory::class) inside the Livewire component itself
+    // (App\Policies\COAPolicy — the same policy CoaController's own coa.* screens already use).
+    Route::get('accounting/purpose-mapping', fn () => view('accounting.purpose-mapping.index'))
+        ->middleware(['module:accounting'])
+        ->name('accounting.purpose-mapping.index');
 
     // P2.5.I (p2_5-brief.md §P2.5.I) -- reminder log screen. Same split as every other screen in
     // this file: the route middleware only gates module visibility, per-action authorization is

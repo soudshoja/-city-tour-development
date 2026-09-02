@@ -51,6 +51,8 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('admin.dotw-api-token-index', \App\Http\Livewire\Admin\DotwApiTokenIndex::class);
         // P2.5.F (p2_5-brief.md §P2.5.F): the Accounting Log Center.
         Livewire::component('accounting.audit-log-index', \App\Http\Livewire\Accounting\AuditLogIndex::class);
+        // COA UI lane (2026-08-31): the purpose-mapping repair screen.
+        Livewire::component('accounting.purpose-mapping-index', \App\Http\Livewire\Accounting\PurposeMappingIndex::class);
 
         \App\Services\AiConfigOverride::apply();
 

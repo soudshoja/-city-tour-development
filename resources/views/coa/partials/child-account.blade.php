@@ -1,7 +1,7 @@
-<li x-data="{ open: false, showAddCategoryForm: false }" class="relative w-full flex flex-col">
+<li x-data="{ open: false, showAddCategoryForm: false, disabled: @js((bool) $account->disabled), togglingDisabled: false }" class="relative w-full flex flex-col">
     <div class="group grid grid-cols-12 gap-2 items-center py-3 px-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gradient-to-r hover:from-{{ $color }}-50/50
         hover:to-transparent dark:hover:from-{{ $color }}-900/20 dark:hover:to-transparent transition-all duration-200 cursor-pointer relative"
-        :class="{ 'bg-{{ $color }}-50/30 dark:bg-{{ $color }}-900/10': open }"
+        :class="{ 'bg-{{ $color }}-50/30 dark:bg-{{ $color }}-900/10': open, 'opacity-60': disabled }"
         @click="if (!showAddCategoryForm) open = !open">
 
         <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-{{ $color }}-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-r"
@@ -18,8 +18,13 @@
             @endif
 
             <span class="text-gray-800 dark:text-gray-200 truncate group-hover:text-{{ $color }}-700 dark:group-hover:text-{{ $color }}-300 transition-colors duration-200"
-                :class="{ 'text-{{ $color }}-700 dark:text-{{ $color }}-300': open }">
+                :class="{ 'text-{{ $color }}-700 dark:text-{{ $color }}-300': open, 'line-through decoration-gray-400': disabled }">
                 {{ $account->name }}
+            </span>
+
+            <span x-show="disabled" x-cloak
+                class="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex-shrink-0">
+                Disabled
             </span>
 
             @if ($account->ledger)
@@ -134,6 +139,29 @@
                     </svg>
                 </button>
             @endif
+
+            {{-- COA UI lane (2026-08-31, scope item 3): disable/enable toggle. Makes
+                 AccountResolver's/PostingService's FrozenAccountException operationally reachable
+                 -- previously nothing in the UI could ever set accounts.disabled. --}}
+            <button type="button" :disabled="togglingDisabled"
+                @click.stop="
+                    togglingDisabled = true;
+                    fetch('{{ route('coa.toggle-disabled', '__id__') }}'.replace('__id__', '{{ $account->id }}'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    }).then(r => r.json()).then(data => {
+                        togglingDisabled = false;
+                        if (data.success) { disabled = data.disabled; }
+                        if (typeof showMessage === 'function') { showMessage(data.message); }
+                    }).catch(() => { togglingDisabled = false; });
+                "
+                class="p-1.5 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                :class="disabled ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                :title="disabled ? 'Enable account' : 'Disable account'">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.36 6.64a9 9 0 1 1-12.73 0M12 3v9" />
+                </svg>
+            </button>
         </div>
     </div>
 

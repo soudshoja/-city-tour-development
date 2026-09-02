@@ -336,6 +336,22 @@ class EnsureSystemLeaves extends Command
         ],
     ];
 
+    /**
+     * COA UI lane (2026-08-31): read-only accessor onto self::LEAVES for
+     * App\Http\Livewire\Accounting\PurposeMappingIndex, so the purpose-mapping repair screen's
+     * "create system leaf" action can invoke {@see AccountService::createSystemLeaf()} with the
+     * exact same decided (parentChain, leafName, code) this command itself uses, rather than a
+     * second, hand-copied table that could drift from this one. Deliberately does not touch or
+     * duplicate any of the write logic above — the screen still calls createSystemLeaf() directly
+     * per spec, this just hands it the same spec array.
+     *
+     * @return array<int, array{leafName: string, code: string, parentChain: array<int, string>, purposeCode: string, core: bool}>
+     */
+    public static function leafSpecs(): array
+    {
+        return self::LEAVES;
+    }
+
     public function handle(AccountService $accountService): int
     {
         $dryRun = (bool) $this->option('dry-run');

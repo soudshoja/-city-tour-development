@@ -17,6 +17,13 @@ use App\Models\Branch;
 use App\Http\Controllers\JournalEntryController;
 use App\Models\JournalEntry;
 use App\Http\Controllers\Controller;
+use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LineDraft;
+use App\Services\Accounting\PaymentIdempotencyKey;
+use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\VoucherSubTypeGuard;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +33,11 @@ use Illuminate\Support\Facades\Log;
 
 class CreditController extends Controller
 {
+    public function __construct(
+        private PostingSeam $seam,
+        private AccountResolver $accountResolver,
+    ) {}
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -181,6 +193,31 @@ class CreditController extends Controller
         }));
     }
 
+    /**
+     * W7.K cutover (w7-brief.md §W7.K, w6-final-gate.md's CreditController finding). The route
+     * group (routes/web.php, `credits` prefix) previously ran this action with "zero
+     * authorization" and unconditional raw `Transaction`/`JournalEntry` writes -- the last
+     * reachable raw ledger writer in this controller per the W6 sole-writer audit.
+     *
+     * OFF path (engine disabled for this company): `$legacy` below is the ORIGINAL method body
+     * verbatim (byte parity vs HEAD), still resolving accounts by name -- the "accepted
+     * convention, record only" carve-out w4-brief.md §W4.0 documents for every other OFF-path
+     * legacy closure in this cutover.
+     *
+     * ON path: posts Dr instrument (the request's optional `account_id`, validated under the
+     * Bank Accounts group, else CASH_IN_HAND) / Cr CLIENT_ADVANCE (2632) -- the exact
+     * `RV`/`TOPUP` shape {@see \App\Http\Controllers\ReceiptVoucherController::buildVoucherDraft()}
+     * already builds for `InvoiceReceiptType::CREDIT` (see that method's own "same Dr instrument
+     * / Cr CLIENT_ADVANCE (2632) shape as a plain client credit" comment) -- reused here rather
+     * than re-derived, per w7-brief.md's "Credit creation ... via the RV CREDIT path" instruction.
+     *
+     * The `credits` app-ledger `Credit` row is written UNCONDITIONALLY, before the branch, in
+     * both paths -- per w4-brief.md's "credits app-ledger: on engine ON, Credit row is a VIEW of
+     * 2632 movements, never a second source of truth (write both in one txn until P3 dedup)" --
+     * every existing balance read (`Credit::getAvailableBalanceByPayment()`,
+     * `PaymentApplicationService`'s credit-application path) depends on this row regardless of
+     * which ledger path posted the movement.
+     */
     public function creditTopup(Request $request)
     {
         $request->validate([
@@ -223,121 +260,255 @@ class CreditController extends Controller
         // proven equal above, checking either one here also covers the other.
         $this->assertSameCompanyOrUnscopedAdmin($user, (int) $agentCompanyId);
 
+        Gate::authorize('create', Credit::class);
+
         $topupBy = $user->getRoleNames()->first();
+        // Simplification, not a behavior change (README-DELIVERY.md REVIEW-REQUIRED guidance):
+        // soud's abort_unless above already proved client and agent share a company, so reuse
+        // that already-validated $agentCompanyId instead of recomputing it fresh from $agent.
+        $companyId = (int) $agentCompanyId;
+        $branchId = (int) $agent->branch->id;
+        $amount = round((float) $request->amount, 3);
 
         DB::beginTransaction();
 
         try {
-            Credit::create([
-                'company_id'        => $agent->branch->company->id,
-                'client_id'         => $client->id,
-                'branch_id'         => $agent->branch->id,
-                'type'              => 'Topup',
-                'description'       => 'Manual Topup for ' . $client->full_name,
-                'amount'            => $request->amount,
-                'topup_by'          => ucfirst($topupBy),
+            // W7.K idempotency guard, ON path only -- see PaymentIdempotencyKey::
+            // forManualClientCreditTopup()'s own docblock (W7.Y fix, gate item 1 -- split out of
+            // the bare forClientCreditTopup() this call site used to share with
+            // ClientController::addCredit()'s gateway topup) for why the key is derived from
+            // (client, agent, amount) rather than the not-yet-created Credit row's id, and why
+            // this guard is scoped to isEnabledFor() so the OFF/legacy path's pre-existing (out
+            // of this sub-wave's scope) lack of dedup is left completely untouched.
+            $idempotencyKey = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, $amount);
+
+            if ($this->seam->isEnabledFor($companyId)) {
+                $existing = Transaction::withoutGlobalScopes()
+                    ->whereNull('deleted_at')
+                    ->where('company_id', $companyId)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->first();
+
+                if ($existing !== null) {
+                    DB::commit();
+
+                    // R2 fix (P2-EXIT-REPORT.md §7, residual register): this branch used to
+                    // return the SAME `->with('success', ...)` flash as a genuine first-time
+                    // topup, even though nothing was posted (no new Credit row, no new
+                    // Transaction/JournalEntry) -- an idempotent replay of an already-processed
+                    // manual topup request silently vanished from the user's point of view: they
+                    // saw a green "successfully topped up" banner with no way to tell the second
+                    // click did nothing. Surface it as a distinct, honest outcome instead --
+                    // mirrors this same method's own `catch` block a few lines down and
+                    // RefundController::store()'s "Refund already exists ..." duplicate-guard
+                    // idiom (`->with('error', ...)`), the established pattern in this controller
+                    // family for "refused before any write, tell the user plainly why."
+                    return redirect()->back()->with(
+                        'error',
+                        'This client credit top-up was already processed (duplicate request) -- no additional credit was added.'
+                    );
+                }
+            }
+
+            $credit = Credit::create([
+                'company_id' => $companyId,
+                'client_id' => $client->id,
+                'branch_id' => $branchId,
+                'type' => 'Topup',
+                'description' => 'Manual Topup for '.$client->full_name,
+                'amount' => $request->amount,
+                'topup_by' => ucfirst($topupBy),
             ]);
 
-            Transaction::create([
-                'branch_id'         => $agent->branch->id,
-                'company_id'        => $agent->branch->company->id,
-                'entity_id'         => $agent->branch->company->id,
-                'entity_type'       => 'Company',
-                'transaction_type'  => 'credit',
-                'amount'            => $request->amount,
-                'description'       => 'Company Advance to Client: ' . $client->full_name,
-                'reference_type'    => 'Payment',
-                'transaction_date' => now(),
-            ]);
+            $legacy = function () use ($agent, $client, $request) {
+                Transaction::create([
+                    'branch_id' => $agent->branch->id,
+                    'company_id' => $agent->branch->company->id,
+                    'entity_id' => $agent->branch->company->id,
+                    'entity_type' => 'Company',
+                    'transaction_type' => 'credit',
+                    'amount' => $request->amount,
+                    'description' => 'Company Advance to Client: '.$client->full_name,
+                    'reference_type' => 'Payment',
+                    'transaction_date' => now(),
+                ]);
 
-            $transaction = Transaction::create([
-                'branch_id'         => $agent->branch->id,
-                'company_id'        => $agent->branch->company->id,
-                'entity_id'         => $client->id,
-                'entity_type'       => 'Client',
-                'transaction_type'  => 'debit',
-                'amount'            => $request->amount,
-                'description'       => 'Client Credit of ' . $client->full_name,
-                'reference_type'    => 'Payment',
-                'transaction_date' => now(),
-            ]);
+                $transaction = Transaction::create([
+                    'branch_id' => $agent->branch->id,
+                    'company_id' => $agent->branch->company->id,
+                    'entity_id' => $client->id,
+                    'entity_type' => 'Client',
+                    'transaction_type' => 'debit',
+                    'amount' => $request->amount,
+                    'description' => 'Client Credit of '.$client->full_name,
+                    'reference_type' => 'Payment',
+                    'transaction_date' => now(),
+                ]);
 
-            $liabilitiesAccount = Account::where('name', 'Liabilities')
-                ->where('company_id', $agent->branch->company->id)
-                ->first();
+                $liabilitiesAccount = Account::where('name', 'Liabilities')
+                    ->where('company_id', $agent->branch->company->id)
+                    ->first();
 
-            $clientAdvance = Account::where('name', 'Client')
-                ->where('root_id', $liabilitiesAccount->id ?? null)
-                ->where('company_id', $agent->branch->company->id)
-                ->first();
+                $clientAdvance = Account::where('name', 'Client')
+                    ->where('root_id', $liabilitiesAccount->id ?? null)
+                    ->where('company_id', $agent->branch->company->id)
+                    ->first();
 
-            $paymentGateway = Account::where('name', 'Payment Gateway')
+                $paymentGateway = Account::where('name', 'Payment Gateway')
                     ->where('company_id', $agent->branch->company_id)
                     ->where('parent_id', $clientAdvance->id)
                     ->first();
-            if (!$paymentGateway) {
-                throw new Exception('Payment Gateway account not found');
-            }
+                if (! $paymentGateway) {
+                    throw new Exception('Payment Gateway account not found');
+                }
 
-            if ($paymentGateway) {
-                JournalEntry::create([
-                    'transaction_id'      => $transaction->id,
-                    'branch_id'           => $agent->branch->id,
-                    'company_id'          => $agent->branch->company->id,
-                    'account_id'          => $paymentGateway->id,
-                    'transaction_date'    => now(),
-                    'description'         => 'Advance Payment for: ' . $client->full_name,
-                    'debit'               => 0,
-                    'credit'              => $request->amount,
-                    'balance'             => $paymentGateway->actual_balance - $request->amount,
-                    'name'                => $client->full_name,
-                    'type'                => 'receivable',
-                    'voucher_number'      => 'MTU-' . now()->timestamp,
-                    'type_reference_id'   => $paymentGateway->id,
-                ]);
+                if ($paymentGateway) {
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $agent->branch->id,
+                        'company_id' => $agent->branch->company->id,
+                        'account_id' => $paymentGateway->id,
+                        'transaction_date' => now(),
+                        'description' => 'Advance Payment for: '.$client->full_name,
+                        'debit' => 0,
+                        'credit' => $request->amount,
+                        'balance' => $paymentGateway->actual_balance - $request->amount,
+                        'name' => $client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => 'MTU-'.now()->timestamp,
+                        'type_reference_id' => $paymentGateway->id,
+                    ]);
 
-                $paymentGateway->actual_balance -= $request->amount;
-                $paymentGateway->save();
-            }
+                    $paymentGateway->actual_balance -= $request->amount;
+                    $paymentGateway->save();
+                }
 
-            $receivableRoot = Account::where('name', 'Assets')
-                ->where('company_id', $agent->branch->company->id)
-                ->first();
+                $receivableRoot = Account::where('name', 'Assets')
+                    ->where('company_id', $agent->branch->company->id)
+                    ->first();
 
-            $clientReceivable = Account::where('name', 'Clients')
-                ->where('root_id', $receivableRoot->id ?? null)
-                ->where('company_id', $agent->branch->company->id)
-                ->first();
+                $clientReceivable = Account::where('name', 'Clients')
+                    ->where('root_id', $receivableRoot->id ?? null)
+                    ->where('company_id', $agent->branch->company->id)
+                    ->first();
 
-            if ($clientReceivable) {
-                JournalEntry::create([
-                    'transaction_id'      => $transaction->id,
-                    'branch_id'           => $agent->branch->id,
-                    'company_id'          => $agent->branch->company->id,
-                    'account_id'          => $clientReceivable->id,
-                    'transaction_date'    => now(),
-                    'description'         => 'Manual Topup Receivable: ' . $client->full_name,
-                    'debit'               => $request->amount,
-                    'credit'              => 0,
-                    'balance'             => $clientReceivable->actual_balance + $request->amount,
-                    'name'                => $client->full_name,
-                    'type'                => 'receivable',
-                    'voucher_number'      => 'MTU-' . now()->timestamp,
-                    'type_reference_id'   => $clientReceivable->id,
-                ]);
+                if ($clientReceivable) {
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $agent->branch->id,
+                        'company_id' => $agent->branch->company->id,
+                        'account_id' => $clientReceivable->id,
+                        'transaction_date' => now(),
+                        'description' => 'Manual Topup Receivable: '.$client->full_name,
+                        'debit' => $request->amount,
+                        'credit' => 0,
+                        'balance' => $clientReceivable->actual_balance + $request->amount,
+                        'name' => $client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => 'MTU-'.now()->timestamp,
+                        'type_reference_id' => $clientReceivable->id,
+                    ]);
 
-                $clientReceivable->actual_balance += $request->amount;
-                $clientReceivable->save();
-            }
+                    $clientReceivable->actual_balance += $request->amount;
+                    $clientReceivable->save();
+                }
+
+                return $transaction;
+            };
+
+            $requestedAccountId = $request->filled('account_id') ? (int) $request->account_id : null;
+
+            $draft = $this->buildCreditTopupDraft(
+                $credit,
+                $companyId,
+                $branchId,
+                $client,
+                $amount,
+                $requestedAccountId,
+                $idempotencyKey,
+            );
+
+            $this->seam->post($draft, $legacy, 'credit.create');
 
             DB::commit();
 
             return redirect()->back()->with('success', 'Client credit successfully topped up.');
         } catch (Exception $e) {
             DB::rollBack();
-            logger()->error('Topup failed: ' . $e->getMessage());
+            logger()->error('Topup failed: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Topup failed. Please try again.');
         }
+    }
+
+    /**
+     * Pure draft builder -- no side effects, no writes. Public (not routed) so it can be
+     * exercised directly by tests, the same way {@see \App\Http\Controllers\ReceiptVoucherController::buildVoucherDraft()}
+     * is exercised only indirectly via HTTP in that controller's own suite; this one is exposed
+     * directly because {@see creditTopup()}'s own idempotency guard makes a true HTTP-level retry
+     * of the SAME logical top-up a deliberate no-op (see that method's own comment), which would
+     * otherwise make "post the same draft twice" impossible to exercise from outside.
+     *
+     * RV always debits the instrument leg -- a Receipt Voucher is money coming IN -- mirroring
+     * ReceiptVoucherController::buildVoucherDraft()'s own documented rule.
+     */
+    public function buildCreditTopupDraft(
+        Credit $credit,
+        int $companyId,
+        int $branchId,
+        Client $client,
+        float $amount,
+        ?int $requestedAccountId,
+        string $idempotencyKey,
+    ): DocumentDraft {
+        VoucherSubTypeGuard::assertValid('RV', 'TOPUP');
+
+        $narration = 'Receipt Voucher - Client credit top-up: '.$client->full_name;
+
+        $instrumentAccount = $requestedAccountId !== null
+            ? $this->accountResolver->assertUnderBankGroup($requestedAccountId, $companyId)
+            : $this->accountResolver->resolve('CASH_IN_HAND', $companyId);
+
+        $lines = [
+            new LineDraft(
+                purposeCode: '',
+                accountId: $instrumentAccount->id,
+                side: 'debit',
+                amount: $amount,
+                currency: 'KWD',
+                originalAmount: $amount,
+                exchangeRate: 1.0,
+                transactionType: 'RECEIPT',
+                description: $narration,
+                partyAccountRef: $client->id,
+            ),
+            new LineDraft(
+                purposeCode: 'CLIENT_ADVANCE',
+                accountId: null,
+                side: 'credit',
+                amount: $amount,
+                currency: 'KWD',
+                originalAmount: $amount,
+                exchangeRate: 1.0,
+                transactionType: 'CLIENT_ADVANCE',
+                description: $narration,
+                partyAccountRef: $client->id,
+            ),
+        ];
+
+        return new DocumentDraft(
+            companyId: $companyId,
+            branchId: $branchId,
+            docType: 'RV',
+            subType: 'TOPUP',
+            docDate: Carbon::now(),
+            narration: $narration,
+            lines: $lines,
+            idempotencyKey: $idempotencyKey,
+            sourceType: 'Receipt',
+            sourceId: $credit->id,
+            userId: Auth::id(),
+        );
     }
 
     /**

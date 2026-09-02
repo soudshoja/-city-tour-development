@@ -120,7 +120,15 @@ class SendAgentUninvoicedPaymentLinkReminders extends Command
 
             $isExplicit = $setting->exists;
             $channel = $isExplicit ? $setting->channel : AgentNotificationSetting::CHANNEL_BOTH;
-            $isActive = $isExplicit ? (bool) $setting->is_active : true;
+            // soud: unlike the prod-only crontab line this was ported from, this command is now
+            // wired into routes/console.php's shared twiceDaily(9, 16) schedule -- reachable by
+            // every company on every environment, not just the single prod tenant it was written
+            // for. An agent with no explicit AgentNotificationSetting row must default to OFF,
+            // matching the "all kinds ship OFF; opt in per company" rule applied to
+            // config/accounting.php's reminders.default_enabled (see that file and
+            // ReminderOptions::enabled()) -- this command bypasses that config entirely, so it
+            // needs its own default flipped here.
+            $isActive = $isExplicit ? (bool) $setting->is_active : false;
 
             if (!$isActive) {
                 continue;

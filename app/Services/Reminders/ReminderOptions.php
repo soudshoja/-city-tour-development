@@ -30,7 +30,11 @@ final class ReminderOptions
         $value = $companyId > 0 ? Setting::getByKey($companyId, "accounting.reminders.{$kind}.enabled", null) : null;
 
         if ($value === null) {
-            return (bool) config("accounting.reminders.default_enabled.{$kind}", true);
+            // soud: fail-safe default is OFF, not the akeed-original true -- a kind missing from
+            // config/accounting.php's reminders.default_enabled (e.g. a new KINDS entry added
+            // without a matching default_enabled key) must never silently start sending, per the
+            // same "all kinds ship OFF; opt in per company" rule applied to that config array.
+            return (bool) config("accounting.reminders.default_enabled.{$kind}", false);
         }
 
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);

@@ -957,15 +957,16 @@ return [
             'payment_link_uninvoiced', 'task_unassigned', 'task_uninvoiced', 'custom',
         ],
         // Kinds a company may toggle off individually; default enabled state per kind.
+        // soud: all kinds ship OFF; opt in per company. See PLAN-ACCOUNTING-DELIVERY-V2-2026-09-01.md
         'default_enabled' => [
-            'overdue_invoice' => true,
-            'statement_balance' => true,
-            'ticketing_deadline' => true,
-            'commission_unearned' => true,
-            'payment_link_uninvoiced' => true,
-            'task_unassigned' => true,
-            'task_uninvoiced' => true,
-            'custom' => true,
+            'overdue_invoice' => false,
+            'statement_balance' => false,
+            'ticketing_deadline' => false,
+            'commission_unearned' => false,
+            'payment_link_uninvoiced' => false,
+            'task_unassigned' => false,
+            'task_uninvoiced' => false,
+            'custom' => false,
         ],
         'default_channel' => 'whatsapp',
         // Daily-cadence generators run once, at this fixed time -- same "single fixed time for

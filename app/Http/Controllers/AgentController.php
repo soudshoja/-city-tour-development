@@ -97,6 +97,8 @@ class AgentController extends Controller
     {
         $agent = Agent::with('agentType', 'branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
 
+        Gate::authorize('view', $agent);
+
         // Paginate all sections when viewing the main page (agentsShow)
         $tasks = Task::with('agent', 'invoiceDetail')
             ->leftJoin('invoice_details', 'tasks.id', '=', 'invoice_details.task_id')
@@ -304,6 +306,15 @@ class AgentController extends Controller
     public function update(Request $request, $id)
     {
         $agent = Agent::find($id);
+
+        if (! $agent) {
+            abort(404);
+        }
+
+        // AP-1: authorize before any read/write below — must fail closed
+        // for a cross-tenant caller before $user is even resolved.
+        Gate::authorize('update', $agent);
+
         $user = User::find($agent->user_id);
         // W1.1/W1.2 fix (salary feeder, S2): populated only once we're inside the
         // $salaryChanged branch below, and read back in the PostingException
@@ -515,8 +526,16 @@ class AgentController extends Controller
             'commission' => 'required|numeric|min:0',
         ]);
 
+        $agent = Agent::findOrFail($id);
+
+        // AP-1: authorize before the try/catch below — that block catches
+        // the generic \Exception (which Illuminate\Auth\Access\
+        // AuthorizationException extends) and would otherwise swallow a
+        // 403 into the same "Failed to update agent commission" redirect
+        // as any other failure.
+        Gate::authorize('update', $agent);
+
         try {
-            $agent = Agent::findOrFail($id);
             $agent->commission = $request->commission / 100;
             $agent->save();
 
@@ -529,6 +548,8 @@ class AgentController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Agent::class);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
@@ -841,24 +862,38 @@ class AgentController extends Controller
 
     public function getTasks($id)
     {
+        $agent = Agent::findOrFail($id);
+
+        Gate::authorize('view', $agent);
+
         $tasks = Task::where('agent_id', $id)->get();
         return response()->json(['tasks' => $tasks]);
     }
 
     public function getClients($id)
     {
+        $agent = Agent::findOrFail($id);
+
+        Gate::authorize('view', $agent);
+
         $clients = Client::where('agent_id', $id)->get();
         return response()->json(['clients' => $clients]);
     }
 
     public function getInvoices($id)
     {
+        $agent = Agent::findOrFail($id);
+
+        Gate::authorize('view', $agent);
+
         $invoices = Invoice::where('agent_id', $id)->get();
         return response()->json(['invoices' => $invoices]);
     }
 
     public function upload()
     {
+        Gate::authorize('create', Agent::class);
+
         $agents = Agent::all();
 
         return view('agents.agentsUpload', compact('agents'));
@@ -866,6 +901,8 @@ class AgentController extends Controller
 
     public function import(Request $request)
     {
+        Gate::authorize('create', Agent::class);
+
         $request->validate([
             'excel_file' => 'required|mimes:xlsx',
         ]);
@@ -908,6 +945,8 @@ class AgentController extends Controller
 
     public function exportCsv()
     {
+        Gate::authorize('viewAny', Agent::class);
+
         // Fetch all agents data
         $agents = Agent::with('branch')->get();
 

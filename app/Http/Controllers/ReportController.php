@@ -1375,6 +1375,8 @@ class ReportController extends Controller
 
     public function getProfitAgent()
     {
+        Gate::authorize('viewProfitAgent', Report::class);
+
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
@@ -1422,6 +1424,8 @@ class ReportController extends Controller
 
     public function profitAgent()
     {
+        Gate::authorize('viewProfitAgent', Report::class);
+
         $profitAgent = $this->getProfitAgent();
 
         return view('reports.profit-agent', [

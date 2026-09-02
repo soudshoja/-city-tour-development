@@ -143,9 +143,12 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Agents list
+    // AP-2: module-gated as defence in depth alongside AgentPolicy's own
+    // Modules::AGENT_PROFIT check (see AgentPolicy / RequiresCompanyModule).
     Route::group([
         'prefix' => 'agents',
         'as' => 'agents.',
+        'middleware' => ['module:agent_profit'],
     ], function () {
         Route::get('/', [AgentController::class, 'index'])->name('index');
         // Route::get('/new', [AgentController::class, 'new'])->name('new');
@@ -519,7 +522,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report')->middleware('module:accounting');
         Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report')->middleware('module:accounting');
         Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier')->middleware('module:accounting');
-        Route::get('/profit-agent', [ReportController::class, 'profitAgent'])->name('profit-agent');
+        Route::get('/profit-agent', [ReportController::class, 'profitAgent'])->name('profit-agent')->middleware('module:agent_profit');
         Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable')->middleware('module:accounting');
         Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank')->middleware('module:accounting');
         Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable')->middleware('module:accounting');
@@ -1190,7 +1193,16 @@ Route::get('/download-agent', [ExportController::class, 'downloadAgent'])->name(
 Route::get('/download-task', [ExportController::class, 'downloadTask'])->name('download.tasks');
 Route::get('/download-client', [ExportController::class, 'downloadClient'])->name('download.client');
 Route::get('export-companies', [CompanyController::class, 'exportCsv'])->name('companies.exportCsv');
-Route::get('export-agents', [AgentController::class, 'exportCsv'])->name('agents.exportCsv');
+// AP-2 (extended): this route sits outside the top-level Route::middleware(['auth'])
+// wrap above (like the receipt-voucher/bank-payment groups nearby) and had no auth
+// or module gate at all -- unauthenticated, cross-tenant CSV export of every agent
+// (name/email/phone/company). AgentController::exportCsv() now also calls
+// Gate::authorize('viewAny', Agent::class) itself (AP-1), which alone denies a guest
+// (AgentPolicy::viewAny(User $user) has a non-nullable param), but 'auth' is added
+// here too so a guest gets the normal login redirect instead of a raw 403.
+Route::get('export-agents', [AgentController::class, 'exportCsv'])
+    ->middleware(['auth', 'module:agent_profit'])
+    ->name('agents.exportCsv');
 Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv');
 
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');

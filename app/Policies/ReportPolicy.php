@@ -73,6 +73,22 @@ class ReportPolicy
         return $user->can('view settlement');
     }
 
+    // AP-3: reports/profit-agent (ReportController::profitAgent() /
+    // getProfitAgent()) had no authorization at all — any authenticated
+    // user could load every agent's profit figures regardless of company
+    // or module. Reuses the existing 'view agent' permission (same one
+    // AgentPolicy gates the agent screens on) rather than adding a new
+    // permission name for what is the same underlying capability viewed
+    // through a report instead of the agent detail page.
+    public function viewProfitAgent(User $user)
+    {
+        if (! $this->moduleEnabled($user, Modules::AGENT_PROFIT)) {
+            return false;
+        }
+
+        return $user->can('view agent');
+    }
+
     public function viewCreditors(User $user)
     {
         if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {

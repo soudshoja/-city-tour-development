@@ -65,53 +65,11 @@ class ReportController extends Controller
         return view('reports.index', compact('agents', 'clients'));
     }
 
-    public function agentReport()
-    {
-        return view('reports.maintenance'); // Show the maintenance page
-
-        $user = Auth::user();
-        $companyId = getCompanyId($user);
-
-        $agentsQuery = DB::table('transactions')
-            ->join('companies', 'transactions.company_id', '=', 'companies.id')
-            ->join('agents', 'companies.id', '=', 'agents.company_id')
-            ->select(
-                'agents.name as agent_name',
-                DB::raw('COUNT(transactions.id) as total_transactions'),
-                DB::raw('SUM(CASE WHEN transactions.transaction_type = "debit" THEN transactions.amount ELSE 0 END) as total_debit'),
-                DB::raw('SUM(CASE WHEN transactions.transaction_type = "credit" THEN transactions.amount ELSE 0 END) as total_credit')
-            );
-
-        if ($companyId) {
-            $agentsQuery->where('transactions.company_id', $companyId);
-        }
-
-        $agents = $agentsQuery->groupBy('agents.name')->get();
-
-        $agentLedgersQuery = DB::table('journal_entries')
-            ->join('transactions', 'journal_entries.transaction_id', '=', 'transactions.id')
-            ->join('clients', 'clients.id', '=', 'transactions.client_id')
-            ->join('agents', 'agents.id', '=', 'clients.agent_id')
-            ->select(
-                'agents.name as agent_name',
-                'journal_entries.transaction_date',
-                'journal_entries.description',
-                'journal_entries.debit',
-                'journal_entries.credit',
-                'journal_entries.balance'
-            );
-
-        if ($companyId) {
-            $agentLedgersQuery->where('journal_entries.company_id', $companyId);
-        }
-
-        $agentLedgers = $agentLedgersQuery
-            ->orderBy('agent_name')
-            ->orderBy('journal_entries.transaction_date')
-            ->get();
-
-        return view('reports.agent', compact('agents', 'agentLedgers'));
-    }
+    // AP-9: agentReport()/reports.agent removed -- this was a dead stub
+    // (unconditionally returned the maintenance view) whose unreachable code
+    // beneath queried journal_entries directly, which is not package-safe as a
+    // client-visible report. See spec §4/§5: excluded from the Agent Profit
+    // Calculation module surface.
 
     /**
      * Enhanced Client Report Method - Task-wise View

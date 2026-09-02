@@ -156,7 +156,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/upload', [AgentController::class, 'upload'])->name('upload');
         Route::post('/upload', [AgentController::class, 'import'])->name('import');
         Route::get('/{id}', [AgentController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [AgentController::class, 'edit'])->name('edit');
+        // AP-7: 'edit' route removed -- AgentController::edit is fully commented out
+        // (replaced by the detail-page modal), so hitting this route fatally errored.
         Route::put('/{id}', [AgentController::class, 'update'])->name('update');
         Route::put('/update-commision/{id}', [AgentController::class, 'updateCommission'])->name('update-commission');
         // Route::post('/create-profile', [AgentController::class, 'createAgentProfile'])->name('create.profile');
@@ -506,13 +507,15 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'reports.',
     ], function () {
         // NOTE: this prefix mixes pure accounting reports with the
-        // Agent Profit Calculation module's reports (agent/profit-agent) and
+        // Agent Profit Calculation module's report (profit-agent) and
         // the Task Uploader/Customer CRM/Payment Gateway modules' reports
         // (tasks/client/payment-gateways) — those must stay reachable for
         // package clients, so module:accounting is chained per-route below
         // instead of applied to the whole group.
         Route::get('/', [ReportController::class, 'index'])->name('index')->middleware('module:accounting');
-        Route::get('/agent', [ReportController::class, 'agentReport'])->name('agent');
+        // AP-9: 'agent' route removed -- ReportController::agentReport() was a dead
+        // stub (unconditionally returned the maintenance view; the unreachable code
+        // beneath it queried journal_entries directly, which is not package-safe).
         Route::match(['get', 'post'], '/client', [ReportController::class, 'clientReport'])->name('client');
         Route::match(['get', 'post'], '/client/pdf', [ReportController::class, 'clientReportPdf'])->name('client.pdf');
         Route::get('/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');

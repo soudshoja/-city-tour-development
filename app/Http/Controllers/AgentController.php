@@ -289,18 +289,8 @@ class AgentController extends Controller
         ];
     }
 
-    // public function edit($id)
-    // {
-    //     $agent = Agent::find($id);
-    //     $branches = collect();
-
-    //     $user = auth()->user();
-    //     if ($user->role_id == Role::COMPANY) {
-    //         $branches = Branch::where('company_id', $user->company->id)->get();
-    //     }
-
-    //     return view('agents.agentsEdit', compact('agent', 'branches'));
-    // }
+    // AP-7: dead edit() stub removed along with the agents.edit route --
+    // the detail-page modal replaced this flow.
 
 
     public function update(Request $request, $id)

@@ -210,23 +210,32 @@
             <x-icons.chevron-down class="w-4 h-4" />
         </a>
         <menu>
-            <!-- <menuitem><a href="{{ route('reports.summary') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Summary</a>
-            </menuitem>
-            <menuitem><a href="{{ route('reports.accsummary') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounts</a>
-            </menuitem>
-            <menuitem><a href="{{ route('reports.performance') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Performance</a>
-            </menuitem>
-            <menuitem><a href="{{ route('reports.agent') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Agent
-                Reports</a>
-            </menuitem>
-            <menuitem><a href="{{ route('reports.client') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
-                Reports</a>
-            </menuitem> -->
+            {{--
+                AP-9: this block was wrapped in an HTML comment (<!-- ... -->), which
+                Blade does not treat as a comment -- every {{ route(...) }} call inside
+                it still compiled to real PHP and still ran at render time. It only
+                stayed silent because every route it referenced already existed. The
+                reports.agent route (AgentController's dead maintenance-page stub) has
+                now been deleted (AP-9), so leaving this block in place would throw
+                RouteNotFoundException on every page render. Converted to a real Blade
+                comment and left dead rather than restored, since reports.summary /
+                .accsummary / .performance / .client are unrelated to this change and
+                were already switched off upstream of here.
+
+                <menuitem><a href="{{ route('reports.summary') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Summary</a>
+                </menuitem>
+                <menuitem><a href="{{ route('reports.accsummary') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounts</a>
+                </menuitem>
+                <menuitem><a href="{{ route('reports.performance') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Performance</a>
+                </menuitem>
+                <menuitem><a href="{{ route('reports.client') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
+                    Reports</a>
+                </menuitem>
+            --}}
             @can('viewAny', 'App\Models\Report')
             @if($hasAccountingModule)
             <menuitem>

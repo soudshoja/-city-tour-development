@@ -34,9 +34,10 @@
                             <div class="pl-4 mt-1 space-y-1">
                                 @foreach($invoice->transactions as $transaction)
                                 <div class="flex items-center justify-between gap-2">
-                                    <a href="{{ route('journal-entries.index', $transaction->id) }}" target="_blank" class="text-blue-600 dark:text-blue-400 text-sm hover:underline">
-                                        Transaction ID: {{ $transaction->id }}
-                                    </a>
+                                    {{-- AP-4: was a route('journal-entries.index', ...) link into the
+                                         accounting UI. A hidden module must be invisible, not merely
+                                         locked, so this is now plain text instead of a link. --}}
+                                    <span class="text-sm">Transaction ID: {{ $transaction->id }}</span>
                                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $transaction->created_at }}</span>
                                 </div>
                                 @endforeach

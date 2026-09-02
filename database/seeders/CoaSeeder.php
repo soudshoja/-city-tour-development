@@ -90,6 +90,24 @@ class CoaSeeder extends Seeder
 
             ['code' => '1950', 'name' => 'Temporary Accounts', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1951', 'name' => 'Temporary Opening', 'level' => 3, 'parent' => 'Temporary Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            // P2-exit purpose-mapping gap fix (residual register §8 pre-flip checklist, 2026-09-01):
+            // the SUSPENSE purpose code (config('accounting.purpose_codes.global')) had NO leaf
+            // anywhere in the seed COA -- SystemAccountsSeeder::resolveControls()'s own
+            // mapByName($companyId, ..., 'SUSPENSE', null, 'Suspense') call was permanently
+            // unreachable for every company, old or new, since 'Suspense' never existed to find.
+            // A peer of 'Temporary Opening' (1951) under the existing 'Temporary Accounts' (1950)
+            // pool -- the pool's own existing semantic ("temporary/clearing" balances) fits a
+            // suspense account exactly, and re-uses an anchor every CoaSeeder chart, old or new,
+            // already seeds rather than minting a new top-level group for one leaf.
+            // CODE 1953, NOT 1952: 1952 is config('accounting.period_close.airline_memo_control_code')
+            // -- a DIFFERENT, already-reserved-but-not-yet-seeded code (see that config's own
+            // docblock) -- 1953 is the next free code in this family, verified unused by any
+            // account of any company in akeed_verify_snapshot (companies 1/2/3) and unused
+            // anywhere in this code-space. See App\Console\Commands\EnsureSystemLeaves::LEAVES
+            // (purposeCode SUSPENSE) for the matching backfill on an EXISTING company, and
+            // SystemAccountsSeeder::resolveControls()'s own SUSPENSE mapByName() call this leaf
+            // now finally resolves.
+            ['code' => '1953', 'name' => 'Suspense', 'level' => 3, 'parent' => 'Temporary Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             // Liabilities (Level 2 and deeper)
             ['code' => '2100', 'name' => 'Accounts Payable', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

@@ -334,6 +334,20 @@ class EnsureSystemLeaves extends Command
             'purposeCode' => 'PREPAID_SUPPLIER_COST',
             'core' => true,
         ],
+        // P2-exit purpose-mapping gap fix (residual register §8 pre-flip checklist, 2026-09-01):
+        // the SUSPENSE purpose code had NO leaf anywhere in the seed COA -- see CoaSeeder's own
+        // comment on this row for the full rationale (why 'Temporary Accounts' / why code 1953,
+        // not the reserved-but-unseeded 1952). CORE: 'Temporary Accounts' (1950) is a level-2
+        // pool directly under 'Assets' — expected to already exist on every CoaSeeder chart, old
+        // or new, same reasoning as CHEQUES_IN_HAND above for its own 'Assets' anchor. Verified
+        // present for all 3 companies in akeed_verify_snapshot.
+        [
+            'leafName' => 'Suspense',
+            'code' => '1953',
+            'parentChain' => ['Temporary Accounts', 'Assets'],
+            'purposeCode' => 'SUSPENSE',
+            'core' => true,
+        ],
     ];
 
     /**

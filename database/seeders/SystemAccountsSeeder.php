@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Account;
 use App\Models\Company;
+use App\Models\Supplier;
 use App\Models\SystemAccount;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Log;
@@ -856,13 +857,13 @@ class SystemAccountsSeeder extends Seeder
 
         foreach ($serviceTypes as $serviceType) {
             if (isset($payableNames[$serviceType])) {
-                $this->mapByName($companyId, $companyLabel, 'SERVICE_PAYABLE', $serviceType, $payableNames[$serviceType]);
+                $this->mapSupplierPoolLeaf($companyId, $companyLabel, 'SERVICE_PAYABLE', $serviceType, $payableNames[$serviceType], true);
             } else {
                 $this->skip($companyId, $companyLabel, 'SERVICE_PAYABLE', $serviceType, "no naming convention known for service_type '{$serviceType}'");
             }
 
             if (isset($costNames[$serviceType])) {
-                $this->mapByName($companyId, $companyLabel, 'SERVICE_COST', $serviceType, $costNames[$serviceType]);
+                $this->mapSupplierPoolLeaf($companyId, $companyLabel, 'SERVICE_COST', $serviceType, $costNames[$serviceType], false);
             } else {
                 $this->skip($companyId, $companyLabel, 'SERVICE_COST', $serviceType, "no naming convention known for service_type '{$serviceType}'");
             }
@@ -879,6 +880,203 @@ class SystemAccountsSeeder extends Seeder
                 );
             }
         }
+    }
+
+    /**
+     * R3 / purpose-mapping gap fix (P2-exit residual register §8 pre-flip checklist, 2026-09-01):
+     * SERVICE_PAYABLE/SERVICE_COST resolver for the "Suppliers (X)"/"X Cost" pool leaf, aware that
+     * {@see \App\Http\Controllers\SupplierCompanyController::activateSupplierProcess()} mints a
+     * PER-SUPPLIER child under that pool the moment any supplier is activated for this
+     * service_type — turning what used to be a bare leaf into a GROUP account. A bare mapByName()
+     * call (this method's predecessor) could therefore only ever map this purpose code up until
+     * the FIRST supplier activation for that type; every activation after that made the pool fail
+     * the leaf test and the purpose code permanently unmapped (UnmappedPurposeException on the
+     * engine's very first flight/hotel sale) — the gap this method closes.
+     *
+     * Resolution order, never guessing:
+     *   1. Pool leaf not found at all -> skip (unchanged from mapByName()'s own "no account named"
+     *      report).
+     *   2. Pool leaf has NO children yet -> map onto the pool itself, byte-identical to the old
+     *      mapByName() behaviour (the common case for every service_type with no supplier
+     *      activated yet).
+     *   3. Pool leaf HAS children (>=1 supplier activated) -> resolve the ONE supplier both (a)
+     *      flagged `has_{$serviceType}` on `suppliers` and (b) actively linked to this company via
+     *      `supplier_companies.is_active` — {@see \App\Models\Supplier::scopeActiveForCompany()},
+     *      the SAME two facts SupplierCompanyController itself reads before minting the child
+     *      account in the first place. Exactly one such supplier is required: more than one is a
+     *      genuine, unresolvable business ambiguity (which supplier's own sub-ledger is "the"
+     *      engine posting target for this service_type?) — reported as a gap, same as every other
+     *      ambiguous mapByChain()/mapByName() call in this file, never silently picking a winner.
+     *      Real-data check (akeed_verify_snapshot, company_id=1, 2026-09-01): 19 active 'hotel'
+     *      suppliers and 40 active 'flight' suppliers exist for that company today — this method
+     *      correctly reports the gap there rather than guessing; closing it for that company's
+     *      real data is a supplier-data remediation decision for the owner (already flagged in
+     *      the P2-exit report's pre-flip checklist §8), not an engineering judgment call this
+     *      method can make.
+     *   4. Exactly one active supplier resolved -> find ITS OWN child account under the pool
+     *      (`Account::where('parent_id', $pool->id)->where('name', $supplier->name)`, i.e. the
+     *      exact row SupplierCompanyController created). If that leaf itself has no children, map
+     *      onto it directly (today's real shape for company_id=1's DOTW hotel account, which has
+     *      zero children in akeed_verify_snapshot).
+     *   5. $descendToCurrencyChild (SERVICE_PAYABLE only — see R3): if the supplier's own account
+     *      DOES have children, they are
+     *      {@see \App\Http\Controllers\TaskController::getOrCreateCurrencySpecificAccount()}'s own
+     *      per-currency split, named "{$supplier->name} ({$currency})". Every engine-posted sale
+     *      document books its supplier-payable line in `config('accounting.engine.base_currency')`
+     *      (KWD) — {@see \App\Services\Accounting\SaleDraftBuilder}, always — matching legacy's own
+     *      `processIssuedTask()`, which converts every original-currency liability line to the
+     *      task's already-converted KWD total before posting it (see that method's own "Using
+     *      converted amount for accounting balance" log line) — so the ONE reachable child that
+     *      matters for the engine path is the leaf carrying `accounts.currency = base_currency`.
+     *      Exactly one such child is required; zero or more than one is reported as a gap, never
+     *      guessed. SERVICE_COST never reaches this branch — legacy's cost-side pool leaf
+     *      (`getOrCreateCurrencySpecificAccount()` is only ever called with the PAYABLE leaf) never
+     *      grows currency children, so an unexpected non-leaf cost-side supplier account is an
+     *      unmodelled chart-shape surprise, reported as its own distinct gap instead.
+     */
+    private function mapSupplierPoolLeaf(
+        int $companyId,
+        string $companyLabel,
+        string $purposeCode,
+        string $serviceType,
+        string $poolName,
+        bool $descendToCurrencyChild
+    ): void {
+        $pool = Account::query()
+            ->where('company_id', $companyId)
+            ->where('name', $poolName)
+            ->first();
+
+        if ($pool === null) {
+            $this->skip($companyId, $companyLabel, $purposeCode, $serviceType, "no account named '{$poolName}' found");
+
+            return;
+        }
+
+        if (! $pool->children()->exists()) {
+            // No per-supplier split has happened yet for this company/service_type — unchanged
+            // behaviour, the pool leaf itself is still the correct (and only) mappable target.
+            $this->upsert($companyId, $companyLabel, $purposeCode, $serviceType, $pool);
+
+            return;
+        }
+
+        $activeSuppliers = Supplier::query()
+            ->where("has_{$serviceType}", true)
+            ->activeForCompany($companyId)
+            ->get();
+
+        if ($activeSuppliers->count() !== 1) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                $serviceType,
+                sprintf(
+                    "'%s' (id=%d) has %d child account(s) (per-supplier sub-ledger, ".
+                    'App\Http\Controllers\SupplierCompanyController) and %d active supplier(s) '.
+                    "flagged has_%s for this company — refusing to guess which supplier's leaf is ".
+                    'the engine posting target; needs exactly one active supplier to resolve '.
+                    'unambiguously (owner supplier-data remediation, P2-exit pre-flip checklist §8)',
+                    $poolName,
+                    $pool->id,
+                    $pool->children()->count(),
+                    $activeSuppliers->count(),
+                    $serviceType
+                )
+            );
+
+            return;
+        }
+
+        $supplier = $activeSuppliers->first();
+
+        $supplierAccounts = Account::query()
+            ->where('company_id', $companyId)
+            ->where('parent_id', $pool->id)
+            ->where('name', $supplier->name)
+            ->get();
+
+        if ($supplierAccounts->count() !== 1) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                $serviceType,
+                sprintf(
+                    "expected exactly one child of '%s' named '%s' (the sole active supplier), found %d",
+                    $poolName,
+                    $supplier->name,
+                    $supplierAccounts->count()
+                )
+            );
+
+            return;
+        }
+
+        $supplierLeaf = $supplierAccounts->first();
+
+        if (! $supplierLeaf->children()->exists()) {
+            $this->upsert($companyId, $companyLabel, $purposeCode, $serviceType, $supplierLeaf);
+
+            return;
+        }
+
+        if (! $descendToCurrencyChild) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                $serviceType,
+                "supplier leaf '{$supplier->name}' (id={$supplierLeaf->id}) under '{$poolName}' unexpectedly ".
+                'has children — not a currency split this seeder knows how to descend into on the cost side'
+            );
+
+            return;
+        }
+
+        $baseCurrency = (string) config('accounting.engine.base_currency');
+
+        $currencyChildren = Account::query()
+            ->where('company_id', $companyId)
+            ->where('parent_id', $supplierLeaf->id)
+            ->where('currency', $baseCurrency)
+            ->get();
+
+        if ($currencyChildren->count() !== 1) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                $serviceType,
+                sprintf(
+                    "supplier leaf '%s' (id=%d) has %d child account(s) but %d carrying currency='%s' — refusing to guess",
+                    $supplier->name,
+                    $supplierLeaf->id,
+                    $supplierLeaf->children()->count(),
+                    $currencyChildren->count(),
+                    $baseCurrency
+                )
+            );
+
+            return;
+        }
+
+        $currencyLeaf = $currencyChildren->first();
+
+        if ($currencyLeaf->children()->exists()) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                $serviceType,
+                "'{$currencyLeaf->name}' (id={$currencyLeaf->id}) is a group account, not a leaf"
+            );
+
+            return;
+        }
+
+        $this->upsert($companyId, $companyLabel, $purposeCode, $serviceType, $currencyLeaf);
     }
 
     /**

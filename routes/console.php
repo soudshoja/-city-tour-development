@@ -10,10 +10,38 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:tbo-task')->everyMinute()->runInBackground();
 Schedule::command('app:update-exchange-rate')->daily()->runInBackground();
-Schedule::command('perform:payment-release-to-company-bankacc-process')
+// Fix (verified against PaymentReleaseToCompanyBankAccProcess.php:55): this entry named
+// a command that does not exist ('perform:...' -- grep of app/ finds zero hits), so it
+// silently failed every scheduled run (Sunday-Thursday at midnight) since this line was
+// written. The real signature is 'app:payment-release-to-company-bankacc-process'.
+Schedule::command('app:payment-release-to-company-bankacc-process')
     ->cron('0 0 * * 0-4') // Sunday (0) to Thursday (4) at 12:00 AM
     ->runInBackground();
 Schedule::command('app:process-files')->everyMinute()->runInBackground();
+
+// Agent Profit Calculation module (AP): ProcessAgentCommission was only scheduled in the
+// dead app/Console/Kernel.php (monthlyOn(1, '00:10')), which is never loaded -- monthly
+// agent commissions have never auto-run. Cadence matched from that Kernel entry.
+Schedule::command('app:calculate-agent-commission')
+    ->monthlyOn(1, '00:10')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/agent-commission.log'))
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('app:calculate-agent-commission monthly run failed');
+    });
+
+// Agent Profit Calculation module (AP): ProcessExpiredConfirmedTasks (the confirmed ->
+// auto-void trigger) was also only scheduled in the dead Kernel.php (everyFiveMinutes()),
+// so confirmed tasks have never auto-voided. Cadence matched from that Kernel entry.
+Schedule::command('tasks:process-expired-confirmed')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/expired-confirmed-tasks.log'))
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('tasks:process-expired-confirmed run failed');
+    });
 
 // P2.5.G (p2_5-brief.md §P2.5.G; reconciliation-design.md §9): nightly internal auto-
 // reconciliation — "registered in routes/console.php, running daily; per-company timing via

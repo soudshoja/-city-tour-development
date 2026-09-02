@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Mockery;
 use Tests\Support\AccountingTestCase;
@@ -54,6 +55,44 @@ use Tests\Support\AccountingTestCase;
  */
 class AgentControllerSalaryPostingTest extends AccountingTestCase
 {
+    /**
+     * AP-1 regression fix (Agent Profit authorization wave, feat/travelerp-launch):
+     * AgentController::update() now calls Gate::authorize('update', $agent) as its first real
+     * statement (see AgentPolicy::update()). Before that, this whole method ran no authorization
+     * check at all.
+     *
+     * This suite calls the controller directly — `app(AgentController::class)->update(...)`,
+     * bypassing HTTP routing/auth entirely — specifically to exercise the posting engine in
+     * isolation from the web/auth layer (see class docblock). Authenticating a REAL user here
+     * (e.g. via actingAs()) to satisfy the new check would do the opposite of what this suite
+     * needs: every model using the App\Traits\BelongsToCompany trait (Account included) adds a
+     * global query scope keyed to the CURRENTLY AUTHENTICATED user's resolved company whenever
+     * Auth::check() is true. Several tests below deliberately exercise a SECOND company
+     * (cross-company branch moves, and the ON/OFF-path comparison test) while the first
+     * company's chart is still in scope — an authenticated admin scoped to company A would
+     * silently corrupt every Account lookup CoaSeeder/SystemAccountsSeeder/PostingSeam make for
+     * company B for as long as that admin stayed "logged in" (proven empirically: it turns a
+     * resolvable SALARY_EXPENSE purpose code into an UnmappedPurposeException with no other
+     * change). A Gate::before() callback satisfies Gate::authorize() without ever authenticating
+     * anyone, so Auth::check() stays false and BelongsToCompany's scope stays inert throughout.
+     * This suite is about posting-engine behaviour, not authorization — the latter is covered
+     * separately by tests/Feature/Security/AgentProfitTenantIsolationTest.php, which does use
+     * real actingAs() users (single-company scenarios only, so the scope issue above never
+     * applies there).
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The closure MUST declare a (nullable) first parameter -- Gate::callBeforeCallbacks()
+        // skips a before-callback for a guest (no authenticated user, which is exactly the
+        // state this suite stays in throughout) unless reflection on the callback's first
+        // parameter shows it accepts null (Gate::parameterAllowsGuests()). A zero-arg closure
+        // has no first parameter to inspect and is silently skipped, which looks identical to
+        // "not registered" from the outside -- verified empirically before landing this.
+        Gate::before(fn ($user = null) => true);
+    }
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);

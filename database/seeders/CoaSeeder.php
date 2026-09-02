@@ -51,7 +51,19 @@ class CoaSeeder extends Seeder
             // (tour/cruise/car/event — this build's `at_travel` defaults), not per-type like those
             // two pre-existing, still-unused leaves — see config('accounting.purpose_codes')'s own
             // comment on this purpose code for the full reasoning.
-            ['code' => '1430', 'name' => 'Prepaid Supplier Cost', 'level' => 3, 'parent' => 'Supplier Advances/Prepayments', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            // CODE 1431, NOT 1430 (COA BLOCKER FIX, 2026-08-31): a real-data audit against
+            // akeed_verify_snapshot (production-shaped, all 3 companies) found every company's
+            // chart already carries a REAL, in-use account at code 1430 — "Unbilled Supplier
+            // Cost", also a direct child of this same "Supplier Advances/Prepayments" (1400)
+            // parent — that predates this leaf and must not be touched or renumbered.
+            // EnsureSystemLeaves::processCompany() runs every CORE leaf in ONE transaction with
+            // this one last, so the code collision (createSystemLeaf()'s own codeOwner check)
+            // aborted the ENTIRE company run, not just this leaf. Owner-ratified decision: keep
+            // the real "Unbilled Supplier Cost" account untouched and move OUR leaf to the next
+            // free code under the same parent — 1431 was verified free (no account of any
+            // company owns it, and no CoaSeeder/EnsureSystemLeaves/SystemAccountsSeeder row
+            // claims it) both in akeed_verify_snapshot and in this code-space.
+            ['code' => '1431', 'name' => 'Prepaid Supplier Cost', 'level' => 3, 'parent' => 'Supplier Advances/Prepayments', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             ['code' => '1500', 'name' => 'Stock Assets', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1510', 'name' => 'Stock In Hand', 'level' => 3, 'parent' => 'Stock Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

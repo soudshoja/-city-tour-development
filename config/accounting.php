@@ -227,7 +227,21 @@ return [
     | - gateways: GATEWAY_CLEARING is minted per payment gateway as
     |   GATEWAY_CLEARING_{key} (service_type NULL) — see file 11's Open
     |   Questions on GATEWAY_CLEARING disambiguation. Keys/labels mirror
-    |   CLAUDE.md's payment gateway list.
+    |   CLAUDE.md's payment gateway list. Resolved by
+    |   SystemAccountsSeeder::resolveGatewayClearing() under the "Payment Gateway" (1300, Assets)
+    |   pool, matched by name to a per-gateway child when one exists — CoaSeeder seeds none of
+    |   these by default; App\Console\Commands\EnsureSystemLeaves optionally backfills 'Knet'
+    |   (1311) / 'uPayment' (1312) as OPTIONAL leaves (TASK 3, COA blocker fix, 2026-08-31; the
+    |   other three gateways have no equivalent backfill leaf yet — a company missing their
+    |   dedicated child still resolves via the bare-pool fallback below, or reports a gap).
+    |   UNLIKE GATEWAY_FEE_EXPENSE below, an unmatched gateway here never falls back to an
+    |   arbitrary "neutral" leaf child of the pool — real production data
+    |   (akeed_verify_snapshot, company_id=1) proved this pool can hold genuinely unrelated
+    |   payment-instrument leaves ('Cash', 'Cheques', 'Deema', 'Tabby', ...) that are not any
+    |   configured gateway at all, so the only safe fallback once the pool has any children is (a)
+    |   the bare-pool leaf itself, when the pool has NO children yet, or (b) preserving an
+    |   existing mapping already validly pointing at the pool — never guessing onto an unrelated
+    |   sibling. See resolveGatewayClearing()'s own docblock for the full rule.
     | - GATEWAY_FEE_EXPENSE (added W2, PaymentController::createInvoicePaymentCOA() feeder,
     |   KEY: coa-seam / B1 — PROPOSED, minted from this SAME 'gateways' map as
     |   GATEWAY_FEE_EXPENSE_{key}, service_type NULL): the gateway processing-fee expense leg
@@ -485,13 +499,16 @@ return [
             //     in the first place — see SaleDraftBuilder::buildAgentBasisLines() — so this code
             //     is only ever reached from buildPrincipalBasisLines()) — an asset, released to
             //     SERVICE_COST/{type} on the same schedule as DEFERRED_REVENUE above. Resolves to
-            //     the 'Prepaid Supplier Cost' (1430) leaf under 'Supplier Advances/Prepayments'
-            //     (1400) — a peer of the existing 'Prepaid Flights' (1410) / 'Prepaid Hotels'
-            //     (1420) leaves, generic across every principal-basis service type rather than
-            //     per-type like those two (no feeder before this wave ever posted to either of
-            //     them — a pre-existing, unused pair — and duplicating that per-type split for a
-            //     brand new leaf was judged unnecessary complexity for a single shared "money paid
-            //     to a supplier ahead of the service" concept).
+            //     the 'Prepaid Supplier Cost' (1431 — COA BLOCKER FIX, 2026-08-31: NOT 1430, which
+            //     a real-data audit found already occupied by a genuine, pre-existing "Unbilled
+            //     Supplier Cost" account under the same parent in every akeed_verify_snapshot
+            //     company; see CoaSeeder's own comment on this row) leaf under 'Supplier
+            //     Advances/Prepayments' (1400) — a peer of the existing 'Prepaid Flights' (1410) /
+            //     'Prepaid Hotels' (1420) leaves, generic across every principal-basis service type
+            //     rather than per-type like those two (no feeder before this wave ever posted to
+            //     either of them — a pre-existing, unused pair — and duplicating that per-type
+            //     split for a brand new leaf was judged unnecessary complexity for a single shared
+            //     "money paid to a supplier ahead of the service" concept).
             'PREPAID_SUPPLIER_COST',
         ],
 

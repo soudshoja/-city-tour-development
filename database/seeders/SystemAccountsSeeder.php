@@ -348,7 +348,10 @@ class SystemAccountsSeeder extends Seeder
         // leaves — NEW/USER-DECIDED codes (CoaSeeder's own comments on rows 2650/1430), resolved
         // by CODE like every other new leaf above, not by bare name.
         $this->mapByCode($companyId, $companyLabel, 'DEFERRED_REVENUE', null, '2650', 'Deferred Revenue');
-        $this->mapByCode($companyId, $companyLabel, 'PREPAID_SUPPLIER_COST', null, '1430', 'Prepaid Supplier Cost');
+        // COA BLOCKER FIX (2026-08-31): code is 1431, NOT 1430 — see CoaSeeder's own comment on
+        // this row (a real "Unbilled Supplier Cost" account already occupies 1430 in production
+        // data for every company).
+        $this->mapByCode($companyId, $companyLabel, 'PREPAID_SUPPLIER_COST', null, '1431', 'Prepaid Supplier Cost');
     }
 
     /**
@@ -356,6 +359,19 @@ class SystemAccountsSeeder extends Seeder
      * names. All resolve under the single "Payment Gateway" leaf rooted under Assets unless a
      * company has already split it into per-gateway children (matched by substring on the
      * gateway's label), in which case each matched gateway maps to its own child leaf.
+     *
+     * TASK 3 FIX (COA blocker, 2026-08-31): a gateway still unmatched after the per-name loop
+     * below used to be skipped-and-reported outright the instant the pool had ANY children at
+     * all, even a single unrelated one — the exact bug class residual-1/R-4 already fixed one
+     * pool family over, on resolveGatewayFeeExpense(). Once EnsureSystemLeaves backfills
+     * dedicated 'Knet'/'uPayment' children under this pool (App\Console\Commands\
+     * EnsureSystemLeaves::LEAVES, GATEWAY_CLEARING_KNET/GATEWAY_CLEARING_UPAYMENT), the per-name
+     * loop below matches them exactly like 'Tap'/'MyFatoorah'/'Hesabe' already do — no change
+     * needed there. What DOES need fixing is the fallback for a gateway that STILL has no
+     * dedicated child (e.g. a company EnsureSystemLeaves has not yet been run against, or one
+     * missing MyFatoorah/Hesabe/Tap's own child): see the fallback branch below for why this
+     * method deliberately does NOT copy resolveGatewayFeeExpense()'s "neutral leaf" fallback
+     * verbatim.
      */
     private function resolveGatewayClearing(int $companyId, string $companyLabel): void
     {
@@ -421,7 +437,7 @@ class SystemAccountsSeeder extends Seeder
                         "'{$child->name}' (id={$child->id}) is a group account, not a leaf"
                     );
                 } else {
-                    $this->upsert($companyId, $companyLabel, "GATEWAY_CLEARING_{$code}", null, $child);
+                    $this->upsertGatewayClearing($companyId, $companyLabel, $code, $child);
                 }
 
                 unset($unmatched[$code]);
@@ -432,24 +448,99 @@ class SystemAccountsSeeder extends Seeder
             return;
         }
 
-        // No per-gateway split found for the remaining gateways — fall back to the pooled
-        // leaf itself, but only if it is genuinely a leaf (no children of its own at all).
-        if ($pool->children()->exists()) {
+        if (! $pool->children()->exists()) {
+            // No per-gateway split ever happened for this company — the pool itself is the leaf.
             foreach ($unmatched as $code => $label) {
-                $this->skip(
-                    $companyId,
-                    $companyLabel,
-                    "GATEWAY_CLEARING_{$code}",
-                    null,
-                    "'Payment Gateway' has children but none match '{$label}', and the pooled account itself is a group account, not a leaf"
-                );
+                $this->upsertGatewayClearing($companyId, $companyLabel, $code, $pool);
             }
 
             return;
         }
 
+        // TASK 3 FIX (COA blocker, 2026-08-31): the pool has children but at least one gateway
+        // still has no dedicated child of its own. Unlike resolveGatewayFeeExpense()'s own
+        // "neutral (non-gateway-named) leaf child of the pool" fallback (rule 2 of that method's
+        // docblock), this method does NOT fall back onto an arbitrary non-gateway-named sibling
+        // here. Real production data (akeed_verify_snapshot, company_id=1) proved this exact
+        // 'Payment Gateway' pool can hold GENUINELY unrelated payment-instrument leaves that are
+        // not any of the five configured gateways at all — 'Cash', 'Cheques', 'Bank Transfer KFH
+        // CO', 'Deema', 'Tabby', 'Taly' all sit as direct children of that company's pool
+        // alongside 'Tap'/'MyFatoorah'/'Hesabe'. A "neutral leaf, oldest id first" fallback here
+        // would silently point a gateway's CLEARING account at one of those unrelated leaves
+        // (e.g. 'Tabby', the oldest-id neutral child) — a real mis-mapping risk the 5140/Expenses
+        // pool one family over never runs, because CoaSeeder guarantees that pool ONLY ever holds
+        // gateway-named children by construction. The only safe fallback left is: preserve an
+        // EXISTING mapping already validly pointing at the pool itself (set by the bare-pool
+        // branch above on an earlier run, before this pool grew any children — the exact
+        // "validly mapped to the pooled fallback leaf" state R-4 protects one pool family over);
+        // otherwise, report the gap. Never guessed onto an unrelated account.
         foreach ($unmatched as $code => $label) {
-            $this->upsert($companyId, $companyLabel, "GATEWAY_CLEARING_{$code}", null, $pool);
+            $purposeCode = "GATEWAY_CLEARING_{$code}";
+
+            $existing = SystemAccount::query()
+                ->where('company_id', $companyId)
+                ->where('purpose_code', $purposeCode)
+                ->where('service_type', null)
+                ->first();
+
+            if ($existing !== null && (int) $existing->account_id === (int) $pool->id) {
+                // Re-upserts the SAME account_id — a no-op write, and upsertGatewayClearing()
+                // prints no CHANGED line for it, since old === new. This IS "stays on the pool".
+                $this->upsertGatewayClearing($companyId, $companyLabel, $code, $pool);
+
+                continue;
+            }
+
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                null,
+                "'Payment Gateway' has children but none match '{$label}', none of the remaining children "
+                .'are an eligible fallback (this pool may hold unrelated, non-gateway payment-instrument '
+                .'leaves), and this purpose code is not already mapped to the pool itself — refusing to guess'
+            );
+        }
+    }
+
+    /**
+     * Wraps upsert() for GATEWAY_CLEARING_{gateway} specifically, mirroring
+     * upsertGatewayFeeExpense() below one pool family over (task 3, COA blocker fix,
+     * 2026-08-31): reads this purpose code's CURRENT mapped account_id (if any) BEFORE writing,
+     * then prints a CHANGED line naming the old and new account whenever the write actually moves
+     * the mapping to a different account_id — most notably the day EnsureSystemLeaves backfills
+     * dedicated 'Knet'/'uPayment' children under a company's pool and a gateway that used to
+     * resolve to the bare pool itself (the "already mapped to pool" preserve rule above) moves
+     * onto its own brand-new dedicated leaf instead. Silent when there was no prior mapping (a
+     * fresh mapping is not a "change") or when the new target is the same account as before (the
+     * preserve rule's own no-op re-upsert).
+     */
+    private function upsertGatewayClearing(int $companyId, string $companyLabel, string $code, Account $account): void
+    {
+        $purposeCode = "GATEWAY_CLEARING_{$code}";
+
+        $oldAccountId = SystemAccount::query()
+            ->where('company_id', $companyId)
+            ->where('purpose_code', $purposeCode)
+            ->where('service_type', null)
+            ->value('account_id');
+
+        $this->upsert($companyId, $companyLabel, $purposeCode, null, $account);
+
+        if ($oldAccountId !== null && (int) $oldAccountId !== (int) $account->id) {
+            $oldAccount = Account::withoutGlobalScopes()->find($oldAccountId);
+
+            $this->info(sprintf(
+                '  CHANGED [%s] %s: #%d (%s / %s) -> #%d (%s / %s)',
+                $companyLabel,
+                $purposeCode,
+                $oldAccountId,
+                $oldAccount->code ?? '—',
+                $oldAccount->name ?? 'unknown (deleted)',
+                $account->id,
+                $account->code ?? '—',
+                $account->name
+            ));
         }
     }
 

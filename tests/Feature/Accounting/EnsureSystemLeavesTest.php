@@ -520,6 +520,101 @@ class EnsureSystemLeavesTest extends AccountingTestCase
     }
 
     /**
+     * TASK 3 (COA blocker fix, 2026-08-31), mirrors
+     * test_first_run_creates_and_maps_all_four_leaves_second_run_creates_nothing above for the
+     * GATEWAY_CLEARING side: 'Knet' (1311) / 'uPayment' (1312) are OPTIONAL leaves this command
+     * backfills as children of the 'Payment Gateway' (1300, Assets) pool. Unlike the fee-expense
+     * pair, CoaSeeder never seeds these for a fresh company either (task 3's own scope is
+     * EnsureSystemLeaves only), so a plain makeOldCompany() already lacks them — no special
+     * fixture deletion needed. Before the backfill, GATEWAY_CLEARING_KNET/UPAYMENT resolve onto
+     * the bare pool itself (SystemAccountsSeeder's own bare-pool branch); after it, they must move
+     * onto their own new dedicated leaves, while MyFatoorah/Hesabe/Tap — which still have no
+     * dedicated child of their own — stay safely mapped to the pool (the "already mapped to pool"
+     * preserve rule resolveGatewayClearing() now carries, mirroring GATEWAY_FEE_EXPENSE's own R-4
+     * fix one pool family over).
+     */
+    public function test_creates_and_maps_gateway_clearing_knet_and_upayment_leaves(): void
+    {
+        $company = $this->makeOldCompany();
+        $this->trackCompanyForInvariants($company->id);
+
+        $this->assertSame(
+            0,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1311')->count(),
+            'Precondition: CoaSeeder never seeds a dedicated Knet clearing child.'
+        );
+        $this->assertSame(
+            0,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1312')->count(),
+            'Precondition: CoaSeeder never seeds a dedicated uPayment clearing child.'
+        );
+
+        $pool = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('name', 'Payment Gateway')
+            ->where('level', 2)
+            ->firstOrFail();
+
+        $this->assertSame(
+            $pool->id,
+            DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', 'GATEWAY_CLEARING_KNET')->value('account_id'),
+            'Precondition: before the backfill, GATEWAY_CLEARING_KNET resolves onto the bare pool.'
+        );
+        $this->assertSame(
+            $pool->id,
+            DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', 'GATEWAY_CLEARING_UPAYMENT')->value('account_id'),
+            'Precondition: before the backfill, GATEWAY_CLEARING_UPAYMENT resolves onto the bare pool.'
+        );
+
+        Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+
+        $knet = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Knet')->first();
+        $upayment = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'uPayment')->first();
+
+        $this->assertNotNull($knet, 'AccountService::createSystemLeaf() must have created the Knet clearing leaf.');
+        $this->assertNotNull($upayment, 'AccountService::createSystemLeaf() must have created the uPayment clearing leaf.');
+        $this->assertSame('Payment Gateway', $knet->parent->name);
+        $this->assertSame('Assets', $knet->root->name);
+        $this->assertSame('Payment Gateway', $upayment->parent->name);
+        $this->assertSame('Assets', $upayment->root->name);
+        $this->assertSame('1311', $knet->code);
+        $this->assertSame('1312', $upayment->code);
+        $this->assertFalse((bool) $knet->is_group, 'A newly created leaf via AccountService::createSystemLeaf() must be a leaf (is_group=false), never a group.');
+        $this->assertFalse((bool) $upayment->is_group);
+        $this->assertNoDuplicateAccountCodes($company->id);
+
+        $mappedKnet = DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', 'GATEWAY_CLEARING_KNET')->value('account_id');
+        $mappedUpayment = DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', 'GATEWAY_CLEARING_UPAYMENT')->value('account_id');
+
+        $this->assertSame($knet->id, $mappedKnet, 'GATEWAY_CLEARING_KNET must move off the bare pool onto its own new dedicated leaf.');
+        $this->assertSame($upayment->id, $mappedUpayment, 'GATEWAY_CLEARING_UPAYMENT must move off the bare pool onto its own new dedicated leaf.');
+
+        // MyFatoorah/Hesabe/Tap have no dedicated clearing child of their own and must stay
+        // exactly where they already validly were (the pool) — never silently disturbed by
+        // Knet/uPayment's own brand-new children landing in the same pool.
+        foreach (['MYFATOORAH', 'HESABE', 'TAP'] as $code) {
+            $this->assertSame(
+                $pool->id,
+                DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', "GATEWAY_CLEARING_{$code}")->value('account_id'),
+                "GATEWAY_CLEARING_{$code} has no dedicated child of its own and must stay mapped to the pool."
+            );
+        }
+
+        // Idempotent second run: creates nothing further.
+        Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+        $this->assertSame(
+            1,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Knet')->count(),
+            'Second run must not create a duplicate Knet clearing leaf.'
+        );
+        $this->assertSame(
+            1,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'uPayment')->count(),
+            'Second run must not create a duplicate uPayment clearing leaf.'
+        );
+    }
+
+    /**
      * RESIDUAL R-3 FIX (W2.2) acceptance test — the LEAD's own scenario: a chart with NO 'Payment
      * Gateway Charges' (5140) pool at all (the KNET/uPayment leaves are OPTIONAL/best-effort,
      * since their parent is not guaranteed to exist on a legacy chart), but WITH the two CORE
@@ -900,6 +995,111 @@ class EnsureSystemLeavesTest extends AccountingTestCase
                 && str_contains($context['message'] ?? '', (string) $occupier->id)
                 && str_contains($context['message'] ?? '', $occupier->name);
         })->once();
+    }
+
+    /**
+     * Task 2 (COA blocker fix, 2026-08-31): processCompany()'s new PRE-VALIDATION pass must
+     * surface EVERY CORE leaf collision for a company TOGETHER, in one run — not just whichever
+     * one self::LEAVES happens to reach first before the old flow aborted the whole per-company
+     * transaction. Two DIFFERENT CORE leaves — 'Salaries & Wages Payable' (code 2201, under
+     * 'Accrued Expenses') and 'Markup Income' (code 4132, under 'Commission & Service Fee
+     * Income') — are the only two CORE leaves makeOldCompany() actually removes (every other
+     * CORE leaf in self::LEAVES is already seeded by the real, current CoaSeeder and would just
+     * resolve idempotently, not collide), so they double as this suite's two simultaneous
+     * collisions: each is pre-occupied by an unrelated account before the command runs. The
+     * single FAILED log line this produces must name BOTH occupying accounts (id, name, and
+     * colliding code), proving both collisions were collected and reported in the same pass
+     * rather than the operator needing two separate runs to discover the second one.
+     */
+    public function test_two_simultaneous_core_leaf_collisions_are_both_reported_together(): void
+    {
+        $company = $this->makeOldCompany();
+
+        $accruedExpenses = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('name', 'Accrued Expenses')
+            ->firstOrFail();
+        $commissionServiceFee = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('name', 'Commission & Service Fee Income')
+            ->firstOrFail();
+
+        DB::table('accounts')->insert([
+            'company_id' => $company->id,
+            'parent_id' => $accruedExpenses->id,
+            'name' => 'Some Occupying Payable',
+            'code' => '2201',
+            'level' => $accruedExpenses->level + 1,
+            'root_id' => $accruedExpenses->root_id,
+            'account_type' => $accruedExpenses->account_type,
+            'report_type' => $accruedExpenses->report_type,
+            'is_group' => false,
+            'currency' => 'KWD',
+            'actual_balance' => 0,
+            'opening_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $payableOccupier = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('name', 'Some Occupying Payable')
+            ->firstOrFail();
+
+        DB::table('accounts')->insert([
+            'company_id' => $company->id,
+            'parent_id' => $commissionServiceFee->id,
+            'name' => 'Some Occupying Income',
+            'code' => '4132',
+            'level' => $commissionServiceFee->level + 1,
+            'root_id' => $commissionServiceFee->root_id,
+            'account_type' => $commissionServiceFee->account_type,
+            'report_type' => $commissionServiceFee->report_type,
+            'is_group' => false,
+            'currency' => 'KWD',
+            'actual_balance' => 0,
+            'opening_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $incomeOccupier = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('name', 'Some Occupying Income')
+            ->firstOrFail();
+
+        Log::spy();
+
+        $exitCode = Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+
+        $this->assertSame(1, $exitCode, 'A company with any CORE leaf collision must fail.');
+
+        // Neither colliding code was actually created as its intended leaf — the accounts at
+        // 2201/4132 are still the unrelated occupiers, never overwritten or duplicated.
+        $this->assertSame(
+            0,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Salaries & Wages Payable')->count()
+        );
+        $this->assertSame(
+            0,
+            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Markup Income')->count()
+        );
+
+        Log::shouldHaveReceived('error')
+            ->withArgs(function (string $message, array $context) use ($payableOccupier, $incomeOccupier) {
+                $logged = $context['message'] ?? '';
+
+                return $message === 'accounting.ensure_system_leaves_failed'
+                    && str_contains($logged, (string) $payableOccupier->id)
+                    && str_contains($logged, $payableOccupier->name)
+                    && str_contains($logged, '2201')
+                    && str_contains($logged, (string) $incomeOccupier->id)
+                    && str_contains($logged, $incomeOccupier->name)
+                    && str_contains($logged, '4132');
+            })
+            ->once();
     }
 
     /**

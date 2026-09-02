@@ -229,6 +229,42 @@ class EnsureSystemLeaves extends Command
             'purposeCode' => 'GATEWAY_FEE_EXPENSE_UPAYMENT',
             'core' => false,
         ],
+        // TASK 3 (COA blocker fix, 2026-08-31): GATEWAY_CLEARING_KNET / GATEWAY_CLEARING_UPAYMENT's
+        // own target leaves — the ASSET-side clearing-account mirror of the two EXPENSE-side
+        // leaves immediately above, one pool family over ('Payment Gateway', 1300, Assets — NOT
+        // 'Payment Gateway Charges', 5140, Expenses). OPTIONAL, not core: same reasoning as KNET/
+        // uPayment Charges above — a company without those payment rails must not fail its whole
+        // backfill over a missing dedicated child. Parent chain anchors on the 'Payment Gateway'
+        // account rooted under 'Assets' — the SAME pool SystemAccountsSeeder::
+        // resolveGatewayClearing() resolves against — NOT the unrelated, same-named 'Payment
+        // Gateway' account rooted under Liabilities > Advances > Client (CLIENT_ADVANCE's own
+        // target); this chain walk's ancestor check excludes that one the same way
+        // resolveGatewayClearing()'s own rootNameOf() filter does.
+        //
+        // CODE 1311 / 1312, NOT the pool's own 'code+1' convention (1301/1302): a real-data audit
+        // (akeed_verify_snapshot, company_id=1) found this pool's three existing gateway-named
+        // children — 'Tap', 'MyFatoorah', 'Hesabe' — all mistakenly sharing the SAME code '1310'
+        // (a pre-existing production data-entry bug, out of this task's scope to fix) — evidence
+        // the intended code family for a gateway-named child of this pool is '131x', not '130x'.
+        // 1311/1312 are the next free codes in that family, verified unused by any account of any
+        // company in akeed_verify_snapshot and unused anywhere in this code-space. Leaf names
+        // ('Knet' / 'uPayment') match config('accounting.purpose_codes.gateways')'s own labels
+        // exactly, the same naming convention 'Tap'/'MyFatoorah'/'Hesabe' already establish for
+        // this pool's children.
+        [
+            'leafName' => 'Knet',
+            'code' => '1311',
+            'parentChain' => ['Payment Gateway', 'Assets'],
+            'purposeCode' => 'GATEWAY_CLEARING_KNET',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'uPayment',
+            'code' => '1312',
+            'parentChain' => ['Payment Gateway', 'Assets'],
+            'purposeCode' => 'GATEWAY_CLEARING_UPAYMENT',
+            'core' => false,
+        ],
         // W5.L (w5-brief.md §W5.L item 4) — four voucher/instrument anchor leaves. See
         // config('accounting.purpose_codes')'s own docblock note for the full rationale behind
         // each leaf choice; SystemAccountsSeeder::resolveControls() maps the purpose codes back.
@@ -273,8 +309,9 @@ class EnsureSystemLeaves extends Command
         // P2.5.D (p2_5-brief.md §P2.5.D; doc 22 §15.6) — the two `at_travel` revenue-recognition
         // leaves. Both CORE: 'Liabilities' and 'Supplier Advances/Prepayments' > 'Assets' are
         // expected to already exist on every CoaSeeder chart, old or new (the former is a
-        // level-1 root; the latter's parent leaf, 'Supplier Advances/Prepayments', predates this
-        // wave and is unused by any feeder before it — see CoaSeeder's own comment on row 1430).
+        // level-1 root; the latter's parent leaf, 'Supplier Advances/Prepayments' (1400), predates
+        // this wave and already parents a real, in-use account at 1430 — see CoaSeeder's own
+        // comment on row 1431, the COA BLOCKER FIX that moved this build's own leaf off 1430).
         [
             'leafName' => 'Deferred Revenue',
             'code' => '2650',
@@ -283,8 +320,16 @@ class EnsureSystemLeaves extends Command
             'core' => true,
         ],
         [
+            // COA BLOCKER FIX (2026-08-31): code is 1431, NOT 1430 — see CoaSeeder's own comment
+            // on this row. Real-data audit (akeed_verify_snapshot, all 3 companies) found 1430
+            // already occupied by a genuine, pre-existing "Unbilled Supplier Cost" account under
+            // the same "Supplier Advances/Prepayments" parent; createSystemLeaf()'s codeOwner
+            // collision check made this leaf (LEAVES' own last entry) abort the whole company's
+            // transaction, taking every earlier CORE leaf down with it. Owner-ratified: leave the
+            // real account untouched, use the next free code under the same parent (1431 —
+            // verified unused in real data and in this code-space).
             'leafName' => 'Prepaid Supplier Cost',
-            'code' => '1430',
+            'code' => '1431',
             'parentChain' => ['Supplier Advances/Prepayments', 'Assets'],
             'purposeCode' => 'PREPAID_SUPPLIER_COST',
             'core' => true,
@@ -382,7 +427,7 @@ class EnsureSystemLeaves extends Command
 
         if (! $dryRun && $companiesNeedingRemap !== []) {
             $this->newLine();
-            $this->info('  Re-running SystemAccountsSeeder mapping (MARKUP_INCOME, SALARY_PAYABLE, GATEWAY_FEE_EXPENSE_KNET, GATEWAY_FEE_EXPENSE_UPAYMENT) for every processed company...');
+            $this->info('  Re-running SystemAccountsSeeder mapping (MARKUP_INCOME, SALARY_PAYABLE, GATEWAY_FEE_EXPENSE_KNET, GATEWAY_FEE_EXPENSE_UPAYMENT, GATEWAY_CLEARING_KNET, GATEWAY_CLEARING_UPAYMENT) for every processed company...');
             // SystemAccountsSeeder::run() maps EVERY company in one pass (file's own docblock) —
             // there is no per-company / per-purpose-code entry point. Safe and idempotent to run
             // for the whole set even when --company scoped this run to one, or when some
@@ -476,6 +521,18 @@ class EnsureSystemLeaves extends Command
      * leaf, because it says nothing about whether the pool exists and swallowing it would hide a
      * real infrastructure problem behind "optional".
      *
+     * COLLISION PRE-VALIDATION (COA blocker fix, 2026-08-31, task 2): BEFORE any of the above —
+     * before DB::beginTransaction() even opens — every leaf in self::LEAVES is probed read-only
+     * for the same code/name collisions createSystemLeaf() itself would refuse on (see
+     * preValidateLeaves()/detectLeafCollision()'s own docblocks). If ANY CORE leaf has a
+     * collision, this method throws immediately with the COMPLETE list of every collision found
+     * (core and optional alike) — never opening a transaction for a company already known to
+     * fail, and never leaving a second, later CORE collision hidden behind the first one the old
+     * single-collision-at-a-time flow used to report. This does not change the OUTCOME for any
+     * previously-passing scenario (a lone CORE collision still fails the company with the same
+     * AccountValidationException class the caller's catch block already handles) — it only
+     * widens what the operator sees in one run when there is more than one.
+     *
      * @return array{created: int, skipped: int, optionalSkipped: int, renumbered: int, refused: int}
      */
     private function processCompany(
@@ -485,6 +542,20 @@ class EnsureSystemLeaves extends Command
         bool $dryRun,
         bool $fixDuplicateCode
     ): array {
+        $preValidationProblems = $this->preValidateLeaves($companyId);
+        $corePreValidationProblems = array_values(array_filter(
+            $preValidationProblems,
+            static fn (array $problem): bool => $problem['core']
+        ));
+
+        if ($corePreValidationProblems !== []) {
+            // No transaction was ever opened for this company — nothing to roll back. Propagates
+            // to handle()'s own residual-11 Throwable catch, which logs, prints the FAILED line,
+            // counts this company as failed, and moves on to the next company, exactly as any
+            // other AccountValidationException from this method already does.
+            throw new AccountValidationException($this->formatPreValidationFailure($companyLabel, $preValidationProblems));
+        }
+
         $result = ['created' => 0, 'skipped' => 0, 'optionalSkipped' => 0, 'renumbered' => 0, 'refused' => 0];
 
         /** @var array<int, array{0: string, 1: string}> $messages ['info'|'line'|'error', text] */
@@ -569,6 +640,207 @@ class EnsureSystemLeaves extends Command
         }
 
         return $result;
+    }
+
+    /**
+     * PRE-VALIDATION pass (COA blocker fix, 2026-08-31, task 2): probes EVERY leaf in
+     * self::LEAVES read-only, collecting a problem entry for every one that would collide the
+     * same way AccountService::createSystemLeaf() itself would refuse it — never stopping at the
+     * first. processCompany() calls this before opening its transaction; see that method's own
+     * docblock addition for why (two CORE collisions used to report only the first, because
+     * processCompany()'s old flow aborted the whole company transaction the instant createSystemLeaf()
+     * threw for whichever leaf happened to be first in self::LEAVES).
+     *
+     * Deliberately does NOT replace the real per-leaf createSystemLeaf() calls inside the
+     * transaction below — this is an additional, read-only probe that runs first so every problem
+     * is visible together; the real call is still what actually creates (or, for an optional
+     * leaf's collision, skips) each leaf.
+     *
+     * @return array<int, array{leaf: string, code: string, core: bool, message: string}>
+     */
+    private function preValidateLeaves(int $companyId): array
+    {
+        $problems = [];
+
+        foreach (self::LEAVES as $spec) {
+            $message = $this->detectLeafCollision($companyId, $spec['parentChain'], $spec['leafName'], $spec['code']);
+
+            if ($message !== null) {
+                $problems[] = [
+                    'leaf' => $spec['leafName'],
+                    'code' => $spec['code'],
+                    'core' => $spec['core'],
+                    'message' => $message,
+                ];
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Mirrors the two collision checks AccountService::createSystemLeaf() applies AFTER
+     * resolving its parent chain (see that method's own "existing" and "codeOwner" checks): an
+     * account already occupying $name under the resolved parent but carrying a DIFFERENT code
+     * than $code, or $code already belonging to a DIFFERENT account entirely. Read-only — never
+     * writes, and returns null (no problem) whenever createSystemLeaf() would either succeed or
+     * return the existing account idempotently, exactly matching that method's own idempotency
+     * contract so a healthy second run is never flagged as a false collision.
+     *
+     * Deliberately scoped to code/name collisions ONLY, per this fix's own brief — NOT
+     * chain-resolution failures (a missing or ambiguous parent chain link). A chain that does not
+     * resolve is a different failure class than a collision; the real createSystemLeaf() call
+     * inside processCompany()'s transaction already reports that correctly on its own, and
+     * duplicating it here (with a second, parallel implementation of the same "no account
+     * matches"/"ambiguous" messages) would not improve on it. When the chain does not resolve,
+     * this method simply reports no problem and defers entirely to that existing path.
+     */
+    private function detectLeafCollision(int $companyId, array $parentChain, string $name, string $code): ?string
+    {
+        $parent = $this->resolveParentByChainForValidation($companyId, $parentChain);
+
+        if ($parent === null) {
+            return null;
+        }
+
+        $existing = Account::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('parent_id', $parent->id)
+            ->where('name', $name)
+            ->first();
+
+        if ($existing !== null) {
+            if ((string) $existing->code === $code) {
+                // Idempotent — createSystemLeaf() would return this account unchanged, not throw.
+                return null;
+            }
+
+            return sprintf(
+                'account "%s" already exists under "%s" (id=%d) with code "%s", not the requested "%s".',
+                $name,
+                $parent->name,
+                $existing->id,
+                $existing->code,
+                $code
+            );
+        }
+
+        $codeOwner = Account::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('code', $code)
+            ->first();
+
+        if ($codeOwner !== null) {
+            return sprintf(
+                'code "%s" is already used by account #%d ("%s") for company_id=%d.',
+                $code,
+                $codeOwner->id,
+                $codeOwner->name,
+                $companyId
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Read-only counterpart of AccountService::resolveParentByChain() — same immediate-parent-
+     * name-first, then-ancestor-chain-match algorithm, reimplemented here rather than shared
+     * (that method is private to AccountService, and the class's own docblock already establishes
+     * this codebase's convention of reimplementing this exact small walk per class — see
+     * SystemAccountsSeeder::ancestorChainMatches() and AccountService::ancestorChainMatches()
+     * themselves). Returns null instead of throwing on a missing or ambiguous chain — this pass
+     * is a probe, not an enforcement point; see detectLeafCollision()'s own docblock for why a
+     * chain that does not resolve is out of THIS method's scope.
+     *
+     * @param  array<int, string>  $parentChain
+     */
+    private function resolveParentByChainForValidation(int $companyId, array $parentChain): ?Account
+    {
+        if ($parentChain === []) {
+            return null;
+        }
+
+        $immediateParentName = trim($parentChain[0]);
+        $ancestorChain = array_slice($parentChain, 1);
+
+        $candidates = Account::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('name', $immediateParentName)
+            ->get()
+            ->filter(fn (Account $account) => $this->ancestorChainMatchesForValidation($account, $ancestorChain))
+            ->values();
+
+        if ($candidates->count() !== 1) {
+            return null;
+        }
+
+        return $candidates->first();
+    }
+
+    /**
+     * Mirrors AccountService::ancestorChainMatches() (and SystemAccountsSeeder's own copy of the
+     * same walk) — walks parent_id explicitly through withoutGlobalScopes() queries so this probe
+     * can never be scoped to a different company than $companyId regardless of auth context.
+     *
+     * @param  array<int, string>  $ancestorChain
+     */
+    private function ancestorChainMatchesForValidation(Account $account, array $ancestorChain): bool
+    {
+        $currentParentId = $account->parent_id;
+
+        foreach ($ancestorChain as $expectedName) {
+            if ($currentParentId === null) {
+                return false;
+            }
+
+            $current = Account::query()->withoutGlobalScopes()->find($currentParentId);
+
+            if ($current === null || $current->name !== $expectedName) {
+                return false;
+            }
+
+            $currentParentId = $current->parent_id;
+        }
+
+        return true;
+    }
+
+    /**
+     * Formats preValidateLeaves()'s complete problem list into a single AccountValidationException
+     * message — EVERY collision found for this company (core and optional alike), each on its own
+     * line, so an operator sees all of them in one run instead of fixing one and discovering the
+     * next only on re-run. Includes optional-leaf problems too (not just the CORE ones that
+     * triggered this failure) purely for visibility — they do not change the pass/fail decision,
+     * which processCompany() already made before calling this (only reached when at least one
+     * CORE problem exists).
+     *
+     * @param  array<int, array{leaf: string, code: string, core: bool, message: string}>  $problems
+     */
+    private function formatPreValidationFailure(string $companyLabel, array $problems): string
+    {
+        $lines = array_map(
+            static fn (array $problem): string => sprintf(
+                "    - '%s' (code=%s)%s: %s",
+                $problem['leaf'],
+                $problem['code'],
+                $problem['core'] ? '' : ' [optional]',
+                $problem['message']
+            ),
+            $problems
+        );
+
+        return sprintf(
+            'accounting:ensure-system-leaves: pre-validation found %d leaf collision(s) for company \'%s\' — '
+            .'every collision below is reported together, not just the first (a CORE leaf collision refuses '
+            ."the whole company; no changes were written for it):\n%s",
+            count($problems),
+            $companyLabel,
+            implode("\n", $lines)
+        );
     }
 
     /**

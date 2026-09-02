@@ -22,6 +22,7 @@ use App\Models\Task;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounting\PaymentIdempotencyKey;
+use Carbon\Carbon;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
@@ -560,6 +561,15 @@ class PaymentControllerCoaSeamTest extends AccountingTestCase
      * PostingService correctly refuses it as a DuplicatePaymentReferenceException rather than
      * silently posting a second document that would leave `transactions.payment_id` pointing
      * at whichever one committed last.
+     *
+     * TRANSACTIONS-CUTOVER SPLIT: this unique index is now scoped to POST-CUTOVER rows only
+     * (payment_ref_dedup_key is NULL, and never collides, for any row with created_at before
+     * 2026-09-01 00:00:00 — see migration
+     * 2026_08_24_000002_add_post_cutover_dedup_key_to_transactions_table.php). Both
+     * createInvoicePaymentCOA() calls below are frozen to a fixed post-cutover instant so their
+     * header INSERTs actually collide, exactly as this test's own docblock above requires — see
+     * PostingServiceRepostPaymentIdTest's equivalent test for the fuller version of this same
+     * reasoning (why PeriodGuard's assertOpen() is unaffected by freezing Carbon::now() here).
      */
     public function test_on_path_second_call_same_payment_different_partials_is_refused(): void
     {
@@ -596,18 +606,25 @@ class PaymentControllerCoaSeamTest extends AccountingTestCase
         ]);
 
         $controller = app(PaymentController::class);
-        $first = $this->invokePrivate($controller, 'createInvoicePaymentCOA', [
-            $payment, 50.00, 'MyFatoorah', [$partial1->id], 'REF-ON-3c',
-        ]);
-        $this->assertTrue($first['success'] ?? false, $first['message'] ?? 'unexpected failure');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-02 00:00:00'));
 
         try {
-            $this->invokePrivate($controller, 'createInvoicePaymentCOA', [
-                $payment, 50.00, 'MyFatoorah', [$partial2->id], 'REF-ON-3d',
+            $first = $this->invokePrivate($controller, 'createInvoicePaymentCOA', [
+                $payment, 50.00, 'MyFatoorah', [$partial1->id], 'REF-ON-3c',
             ]);
-            $this->fail('Expected a DuplicatePaymentReferenceException to propagate.');
-        } catch (PostingException $e) {
-            $this->assertInstanceOf(\App\Exceptions\Accounting\DuplicatePaymentReferenceException::class, $e);
+            $this->assertTrue($first['success'] ?? false, $first['message'] ?? 'unexpected failure');
+
+            try {
+                $this->invokePrivate($controller, 'createInvoicePaymentCOA', [
+                    $payment, 50.00, 'MyFatoorah', [$partial2->id], 'REF-ON-3d',
+                ]);
+                $this->fail('Expected a DuplicatePaymentReferenceException to propagate.');
+            } catch (PostingException $e) {
+                $this->assertInstanceOf(\App\Exceptions\Accounting\DuplicatePaymentReferenceException::class, $e);
+            }
+        } finally {
+            Carbon::setTestNow();
         }
 
         $this->assertSame(1, Transaction::where('company_id', $company->id)->where('payment_id', $payment->id)->count());

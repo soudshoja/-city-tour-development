@@ -446,8 +446,25 @@ final class PostingService
      *  2026_08_24_000001_add_dedup_unique_indexes_for_payment_race_hotfixes.php — verified
      *  against that migration's literal call, not guessed). Used by
      *  isPaymentReferenceTypeRaceViolation() to distinguish a genuine collision on THIS index
-     *  from the idempotency-key race isIdempotencyKeyRaceViolation() already recovers from. */
+     *  from the idempotency-key race isIdempotencyKeyRaceViolation() already recovers from.
+     *
+     *  TRANSACTIONS-CUTOVER SPLIT: this raw two-column index turned out to be inapplicable to
+     *  CT-shaped history (2,007 real violations, 98% a legitimate notification-row-vs-ledger-row
+     *  design collision, not double money — see DuplicatePaymentReferenceException's own
+     *  docblock) and was replaced by the generated-column index named below. This constant is
+     *  kept, unchanged, so isPaymentReferenceTypeRaceViolation() still recognises the raw index
+     *  on any environment that carries it from a prior partial migration state. */
     private const PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX = 'transactions_payment_id_reference_type_unique';
+
+    /** Migration 2026_08_24_000002_add_post_cutover_dedup_key_to_transactions_table.php's
+     *  replacement for PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX above: a unique index over the
+     *  nullable STORED generated column `payment_ref_dedup_key`, which is NULL for any row dated
+     *  before 2026-09-01 00:00:00 (all historic rows exempt, by construction) and
+     *  `payment_id:reference_type` for any row on or after it (full enforcement) — see that
+     *  migration's own docblock for the complete reasoning. isPaymentReferenceTypeRaceViolation()
+     *  matches this name IN ADDITION TO, not instead of, PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX
+     *  above, so detection succeeds on either index name. */
+    private const PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX_GENERATED = 'transactions_payment_ref_dedup_key_unique';
 
     /** W3-prereq lane B fix (doc 17 §3.3/§4): the exact name Laravel's schema builder gives
      *  `$table->unique(['company_id', 'doc_type', 'reference_number'], 'transactions_company_
@@ -2170,6 +2187,13 @@ final class PostingService
      * sibling method) — see DuplicatePaymentReferenceException's own docblock for why a collision
      * on this index can never be resolved by "return the existing document" the way an
      * idempotency-key race can.
+     *
+     * TRANSACTIONS-CUTOVER SPLIT: matches EITHER PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX (the old
+     * raw two-column index above, still possibly present from a prior partial migration state)
+     * OR PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX_GENERATED (the new generated-column index that
+     * replaced it) — see both constants' own docblocks. Whichever one a given environment
+     * actually has installed is the one that will appear in the driver's error message; checking
+     * both means this detection needs no environment-specific branching.
      */
     private function isPaymentReferenceTypeRaceViolation(QueryException $e): bool
     {
@@ -2177,7 +2201,8 @@ final class PostingService
             return false;
         }
 
-        return str_contains($e->getMessage(), self::PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX);
+        return str_contains($e->getMessage(), self::PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX)
+            || str_contains($e->getMessage(), self::PAYMENT_REFERENCE_TYPE_UNIQUE_INDEX_GENERATED);
     }
 
     /**

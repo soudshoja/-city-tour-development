@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostingService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Feature\Security\Concerns\CreatesTenantFixtures;
@@ -218,6 +219,21 @@ class PostingServiceRepostPaymentIdTest extends AccountingTestCase
         $this->assertNotSame($reversalId, $replacementId);
     }
 
+    /**
+     * TRANSACTIONS-CUTOVER SPLIT: the unique index this test exercises is now scoped to
+     * POST-CUTOVER rows only (payment_ref_dedup_key is NULL, and therefore never collides, for
+     * any row with created_at before 2026-09-01 00:00:00 — see migration
+     * 2026_08_24_000002_add_post_cutover_dedup_key_to_transactions_table.php). PostingService
+     * never stamps created_at itself (it is Eloquent's own auto-timestamp, taken from
+     * Carbon::now() at INSERT time — verified: PostingService has no created_at/updated_at
+     * write of its own), so without freezing time here both header INSERTs below would land
+     * before the cutover, both would compute a NULL dedup key, and the two would coexist
+     * WITHOUT colliding — silently defeating the very behaviour this test exists to pin. Frozen
+     * to a fixed post-cutover instant for exactly the two post() calls under test (docDate above
+     * is captured from a real `now()` call in draft(), BEFORE this freeze, so PeriodGuard's
+     * assertOpen() — keyed off docDate, not off Carbon::now() — is unaffected: see
+     * PeriodGuard::assertOpen(), "no row = open").
+     */
     public function test_a_genuine_collision_on_the_payment_reference_type_index_throws_a_typed_exception_not_a_raw_query_exception(): void
     {
         $tenant = $this->makeEnabledTenant();
@@ -235,7 +251,6 @@ class PostingServiceRepostPaymentIdTest extends AccountingTestCase
             idempotencyKey: 'test:d3:first:'.uniqid(),
             paymentId: $payment->id,
         );
-        app(PostingService::class)->post($firstDraft);
 
         // A SECOND, unrelated document for the SAME payment_id + reference_type ('Receipt', for
         // an 'RV' docType — resolveReferenceType()) but a DIFFERENT idempotency key: a feeder
@@ -252,9 +267,17 @@ class PostingServiceRepostPaymentIdTest extends AccountingTestCase
             paymentId: $payment->id,
         );
 
-        $this->expectException(DuplicatePaymentReferenceException::class);
+        Carbon::setTestNow(Carbon::parse('2026-09-02 00:00:00'));
 
-        app(PostingService::class)->post($secondDraft);
+        try {
+            app(PostingService::class)->post($firstDraft);
+
+            $this->expectException(DuplicatePaymentReferenceException::class);
+
+            app(PostingService::class)->post($secondDraft);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     /**

@@ -349,6 +349,51 @@ class CreditControllerW7KTest extends AccountingTestCase
         );
     }
 
+    /**
+     * R2 (P2-EXIT-REPORT.md §7 residual register): the idempotency-hit branch used to redirect
+     * with the SAME `success` flash as a genuine first-time topup even though the replay posted
+     * nothing -- a duplicate manual topup vanished silently from the user's perspective. Asserts
+     * the SECOND (duplicate) request surfaces a distinct, non-success outcome while still
+     * producing exactly one Credit row and one posted document -- no double ledger effect, no
+     * silent success.
+     */
+    public function test_on_path_duplicate_submission_surfaces_a_non_success_message_and_does_not_double_post(): void
+    {
+        [$company, $branch, $admin] = $this->makeCompanyWithAdmin();
+        [$agent, $client] = $this->makeAgentAndClient($branch);
+
+        $this->enableEngine($company);
+        $this->trackCompanyForInvariants($company->id);
+
+        $payload = ['client_id' => $client->id, 'agent_id' => $agent->id, 'amount' => 33];
+
+        $first = $this->actingAs($admin)->post(route('credits.topup'), $payload);
+        $first->assertRedirect();
+        $first->assertSessionHas('success');
+
+        $second = $this->actingAs($admin)->post(route('credits.topup'), $payload);
+        $second->assertRedirect();
+        $second->assertSessionMissing('success');
+        $second->assertSessionHas('error');
+        $this->assertStringContainsString(
+            'already processed',
+            session('error'),
+            'The duplicate-replay outcome must be surfaced plainly, not disguised as a fresh success.'
+        );
+
+        $key = PaymentIdempotencyKey::forManualClientCreditTopup($client->id, $agent->id, 33.0);
+        $this->assertSame(
+            1,
+            Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('idempotency_key', $key)->count(),
+            'The duplicate request must not post a second document.'
+        );
+        $this->assertSame(
+            1,
+            Credit::where('client_id', $client->id)->where('type', Credit::TOPUP)->count(),
+            'The duplicate request must not create a second Credit row.'
+        );
+    }
+
     public function test_build_credit_topup_draft_posted_twice_through_the_engine_directly_is_idempotent(): void
     {
         [$company, $branch] = $this->makeCompanyWithAdmin();

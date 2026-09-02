@@ -270,7 +270,28 @@ class LockManagementController extends Controller
 
     /**
      * Unlock records for a specific month + specific record type.
-     * Cascade handled by Lockable trait.
+     *
+     * R7 fix (P2-EXIT-REPORT.md §7 residual register; `p2_5/p25e-verify.md` finding 1): this
+     * method used to call {@see \App\Http\Traits\Lockable::bulkUnlock()} directly — a raw
+     * `is_locked=false` mass-update with NO dependency-chain check
+     * ({@see \App\Http\Traits\Lockable::unlockBlockers()}) and NO `accounting.record.unlock`
+     * permission check, gated only by the pre-existing `Gate::authorize('manageLocks', ...)`
+     * above and a free-text `reason` that was logged but never validated against anything. That
+     * routed around every gate P2.5.E built (the same dependency-aware-unlock guarantee
+     * {@see \App\Http\Controllers\InvoiceController}'s single-record `invoice.unlock` action
+     * already enforces) for every record locked in the chosen month, in one click — including
+     * invoices whose receipts are bank-reconciled.
+     *
+     * Now walks each matching locked record through {@see \App\Http\Traits\Lockable::unlock()}
+     * individually instead: the SAME per-record authorization
+     * ({@see \App\Http\Traits\Lockable::assertUnlockAuthorized()}) and dependency-chain check the
+     * single-record path uses apply uniformly here too. `assertUnlockAuthorized()` is also
+     * checked once up front (on a throwaway model instance — the method reads only `$user`, never
+     * `$this`) so an unauthorized caller fails fast with one clear error instead of a
+     * per-record exception storm. A record whose chain is not clear (e.g. a reconciled receipt,
+     * a closed period) is left locked and reported back by number, never unlocked
+     * unconditionally; cascade to related tables still runs per record via `unlock()`'s own
+     * `applyCascade()` call, matching the single-record path exactly.
      */
     public function unlockByMonth(Request $request)
     {
@@ -296,12 +317,31 @@ class LockManagementController extends Controller
         }
 
         $config = $allTypes[$typeKey];
+        $modelClass = $config['model'];
+
+        // Fail fast, once, before touching any record -- mirrors Lockable::unlock()'s own
+        // ordering rationale ("an unauthorized caller should not learn anything about the
+        // record's dependency chain before reaching it").
+        (new $modelClass)->assertUnlockAuthorized($user);
+
         $query = $this->scopedQuery($config, $companyId, $agentIds)
             ->where('is_locked', true)
             ->whereBetween($config['date_column'], [$startOfMonth, $endOfMonth]);
 
-        // Uses Lockable::bulkUnlock() — cascades automatically
-        $count = $config['model']::bulkUnlock($query);
+        $numberColumn = $config['number_column'] ?? null;
+        $unlockedCount = 0;
+        $blockedIdentifiers = [];
+
+        foreach ($query->get() as $record) {
+            try {
+                $record->unlock($request->reason, $user->id);
+                $unlockedCount++;
+            } catch (\App\Exceptions\Accounting\UnlockDependencyBlockedException $e) {
+                $blockedIdentifiers[] = $numberColumn !== null
+                    ? ($record->{$numberColumn} ?? ('#' . $record->getKey()))
+                    : ('#' . $record->getKey());
+            }
+        }
 
         Log::info('Month type unlock applied', [
             'unlocked_by' => $user->id,
@@ -309,9 +349,21 @@ class LockManagementController extends Controller
             'month' => $request->month,
             'record_type' => $typeKey,
             'reason' => $request->reason,
-            'count' => $count,
+            'count' => $unlockedCount,
+            'blocked_count' => count($blockedIdentifiers),
+            'blocked' => $blockedIdentifiers,
         ]);
 
-        return redirect()->back()->with('success', "{$count} {$config['label']} unlocked for " . $startOfMonth->format('F Y') . ".");
+        $message = "{$unlockedCount} {$config['label']} unlocked for " . $startOfMonth->format('F Y') . ".";
+
+        if ($blockedIdentifiers !== []) {
+            $message .= ' ' . count($blockedIdentifiers)
+                . ' could not be unlocked (dependency not clear -- resolve individually): '
+                . implode(', ', $blockedIdentifiers) . '.';
+
+            return redirect()->back()->with('warning', $message);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }

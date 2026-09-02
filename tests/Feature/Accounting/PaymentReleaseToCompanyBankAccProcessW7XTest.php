@@ -292,6 +292,148 @@ class PaymentReleaseToCompanyBankAccProcessW7XTest extends AccountingTestCase
         return $payment;
     }
 
+    /**
+     * R5 (P2-EXIT-REPORT.md §7 residual register): a real INVOICE-payment fixture, shaped after
+     * {@see \App\Http\Controllers\InvoiceController::createGatewayFeeRecoveryEntries()}'s own
+     * legacy closure (its `type='income'`, `voucher_number=$payment->voucher_number`, `credit =
+     * $grossUpAmount = round($accountingFee + $markupProfit + $roundingProfit, 3)` shape) -- as
+     * opposed to {@see self::makeClientBearsReleasablePayment()} above, which mirrors the TOPUP
+     * path (`ClientController::addCredit()`'s ENTRY3). The release command's own docblock claims
+     * its fee-recovery add-back "GENERALIZES to client-borne INVOICE payments too, not just
+     * topups" via the identical `type='income'`/`voucher_number` lookup shape; this fixture is
+     * the first one in this suite that actually posts an Invoice-attached payment through that
+     * exact shape rather than a topup-shaped one.
+     *
+     * Deliberately makes `grossUpAmount` (7.5 = accountingFee 5 + markupProfit 2 + roundingProfit
+     * 0.5) DIFFERENT from the raw gateway fee (5) read off the 'charges' row -- so a test built on
+     * this fixture can only pass if the release command's add-back reads back the REAL posted
+     * income-leg credit (the grossUp identity), not merely re-adds the raw fee it already
+     * subtracted. amount=100 (A), charges-fee=5 (f), grossUp=7.5 (g):
+     * netAmount = A - f = 95; totalAmount = netAmount + g = 102.5.
+     */
+    private function makeInvoicePaymentClientBearsReleasablePayment(Agent $agent, Client $client, int $companyId, string $date): Payment
+    {
+        $invoice = \App\Models\Invoice::factory()->create([
+            'client_id' => $client->id,
+            'agent_id' => $agent->id,
+            'currency' => 'KWD',
+            'sub_amount' => 100.0,
+            'amount' => 100.0,
+            'status' => 'paid',
+        ]);
+
+        $payment = Payment::factory()->create([
+            'agent_id' => $agent->id,
+            'client_id' => $client->id,
+            'invoice_id' => $invoice->id,
+            'account_id' => null,
+            'created_by' => $agent->user_id,
+            'amount' => 100.0,
+            'gateway_fee' => 5.0,
+            'payment_gateway' => 'Tap',
+            'payment_method_id' => null,
+            'status' => 'completed',
+            'completed' => 0,
+            'payment_date' => $date,
+        ]);
+
+        $transaction = Transaction::create([
+            'branch_id' => $agent->branch_id,
+            'company_id' => $companyId,
+            'entity_id' => $client->id,
+            'entity_type' => 'client',
+            'transaction_type' => 'credit',
+            'amount' => 100.0,
+            'description' => 'Invoice payment via '.$payment->voucher_number,
+            'invoice_id' => $invoice->id,
+            'payment_id' => $payment->id,
+            'transaction_date' => $date,
+        ]);
+
+        $tapCharges = Account::where('company_id', $companyId)->where('name', 'TAP Charges')->firstOrFail();
+        $incomeAccount = Account::where('company_id', $companyId)->where('name', 'Gateway Fee Recovery')->firstOrFail();
+        $receivableAccount = Account::where('company_id', $companyId)->where('name', 'Clients')
+            ->whereHas('root', fn ($q) => $q->where('name', 'Assets'))->firstOrFail();
+
+        // 'charges'-type row the release command's own totalAmount loop reads to compute
+        // netAmount = payment->amount - journalEntry->debit = 100 - 5 = 95.
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $companyId,
+            'branch_id' => $agent->branch_id,
+            'account_id' => $tapCharges->id,
+            'voucher_number' => $payment->voucher_number,
+            'invoice_id' => $invoice->id,
+            'transaction_date' => $date,
+            'description' => 'Client Pays Gateway Fee: '.$tapCharges->name,
+            'debit' => 5.0,
+            'credit' => 0,
+            'balance' => 0,
+            'name' => $tapCharges->name,
+            'type' => 'charges',
+        ]);
+
+        // 'income'-type row -- EXACT shape createGatewayFeeRecoveryEntries()'s legacy closure
+        // posts: credit = grossUpAmount (7.5), NOT the raw gateway fee (5). This is the row the
+        // release command's own $feeRecoveryEntry lookup (type='income', matched on
+        // voucher_number, orderBy('id')->first()) must read back.
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $companyId,
+            'branch_id' => $agent->branch_id,
+            'account_id' => $incomeAccount->id,
+            'voucher_number' => $payment->voucher_number,
+            'invoice_id' => $invoice->id,
+            'transaction_date' => $date,
+            'description' => 'Gateway fee recovered from client on invoice '.$invoice->invoice_number,
+            'debit' => 0,
+            'credit' => 7.5,
+            'balance' => 0,
+            'name' => $incomeAccount->name,
+            'type' => 'income',
+        ]);
+
+        // Offsetting DEBIT leg (Clients/receivable) -- EXACT shape createGatewayFeeRecoveryEntries()'s
+        // legacy closure posts alongside the income credit above (its own "DEBIT: Clients
+        // (receivable)" leg), same grossUpAmount. Together these two legs are self-balanced.
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $companyId,
+            'branch_id' => $agent->branch_id,
+            'account_id' => $receivableAccount->id,
+            'voucher_number' => $payment->voucher_number,
+            'invoice_id' => $invoice->id,
+            'transaction_date' => $date,
+            'description' => 'Gateway fee recovered from client on invoice '.$invoice->invoice_number,
+            'debit' => 7.5,
+            'credit' => 0,
+            'balance' => 0,
+            'name' => $receivableAccount->name,
+            'type' => 'receivable',
+        ]);
+
+        // Fixture-only balancing leg for the 'charges' debit above -- deliberately a SEPARATE
+        // 'income' row with NO voucher_number (mirrors makeReleasablePayment()'s own "Offsetting
+        // leg" convention above), so it can never be mistaken by the guarded
+        // where('voucher_number', $payment->voucher_number) lookup for the real grossUp credit.
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $companyId,
+            'branch_id' => $agent->branch_id,
+            'account_id' => $incomeAccount->id,
+            'voucher_number' => null,
+            'transaction_date' => $date,
+            'description' => 'Fixture-only balancing leg (not a real fee-recovery event)',
+            'debit' => 0,
+            'credit' => 5.0,
+            'balance' => 0,
+            'name' => $incomeAccount->name,
+            'type' => 'income',
+        ]);
+
+        return $payment;
+    }
+
     // ────────────────────────────────────────────────────────────────────────────────────────
     // OFF path -- byte parity vs the pre-W7.X legacy body.
     // ────────────────────────────────────────────────────────────────────────────────────────
@@ -374,6 +516,51 @@ class PaymentReleaseToCompanyBankAccProcessW7XTest extends AccountingTestCase
         // A - f = 95. See this test's own docblock.
         $this->assertEqualsWithDelta(100.0, (float) $bankLine->debit, 0.0005);
         $this->assertEqualsWithDelta(100.0, (float) $clearingLine->credit, 0.0005);
+    }
+
+    /**
+     * R5 (P2-EXIT-REPORT.md §7 residual register): pins the release command's income-JE
+     * credit add-back arithmetic for a real INVOICE payment (as opposed to the topup-shaped
+     * fixture the test above uses) -- the exact gap `p2_5/p25e-verify.md` and the exit report's
+     * own R5 entry flag as untested. Uses {@see self::makeInvoicePaymentClientBearsReleasablePayment()},
+     * whose grossUpAmount (7.5) is deliberately NOT equal to the raw gateway fee (5) it posts on
+     * the separate 'charges' row -- so this test can only pass if the release command reads back
+     * the REAL posted grossUp income credit (the "what the client was actually charged at the
+     * gateway" identity `PaymentReleaseToCompanyBankAccProcess::handle()`'s own docblock derives),
+     * not a re-derivation of the bearer formula from the raw fee alone.
+     *
+     * netAmount = amount(100) - charges-fee(5) = 95; totalAmount = netAmount + grossUp(7.5) = 102.5.
+     */
+    public function test_off_path_invoice_payment_release_adds_back_the_real_grossup_income_credit(): void
+    {
+        [$company, $branch] = $this->makeCompany();
+        [$agent, $client] = $this->makeAgentAndClient($branch);
+        $this->makeTapCharge($company->id);
+        config(['accounting.engine.enabled' => false]);
+
+        $date = Carbon::now()->format('Y-m-d');
+        $payment = $this->makeInvoicePaymentClientBearsReleasablePayment($agent, $client, $company->id, $date);
+
+        Artisan::call('app:payment-release-to-company-bankacc-process');
+
+        $this->assertSame(1, (int) $payment->fresh()->completed);
+
+        $groupTransactions = Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('entity_type', 'company')->get();
+        $this->assertSame(1, $groupTransactions->count());
+
+        $bankAccount = Account::where('company_id', $company->id)->where('name', 'Kuwait International Bank')->firstOrFail();
+        $paymentGatewayAsset = Account::where('company_id', $company->id)->where('name', 'Payment Gateway')
+            ->whereHas('root', fn ($q) => $q->where('name', 'Assets'))->firstOrFail();
+
+        $bankLine = JournalEntry::where('account_id', $bankAccount->id)->where('type', 'receivable')->first();
+        $clearingLine = JournalEntry::where('account_id', $paymentGatewayAsset->id)->where('type', 'receivable')->first();
+
+        $this->assertNotNull($bankLine);
+        $this->assertNotNull($clearingLine);
+        // DELIBERATE (the grossUp identity, not the raw fee): totalAmount = (A - f) + g
+        //   = (100 - 5) + 7.5 = 102.5, NOT (A - f) + f = 100 and NOT A - f = 95.
+        $this->assertEqualsWithDelta(102.5, (float) $bankLine->debit, 0.0005, 'The release settlement must add back the real posted grossUp income credit (7.5), not the raw fee (5) it already subtracted.');
+        $this->assertEqualsWithDelta(102.5, (float) $clearingLine->credit, 0.0005);
     }
 
     // ────────────────────────────────────────────────────────────────────────────────────────

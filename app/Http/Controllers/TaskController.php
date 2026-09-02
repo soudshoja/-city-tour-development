@@ -5287,7 +5287,13 @@ class TaskController extends Controller
                 return response()->json(['status' => 'noop', 'message' => 'Void reversal already recorded for this task.'], 200);
             }
 
-            // Original task's supplier_pay_date so the reversal lands in the issuance period (was `supplier_date` — undefined attribute).
+            // Original task's supplier_pay_date so the reversal lands in the issuance period.
+            // R4 fix (P2-EXIT-REPORT.md §7 residual register): this used to read the undefined
+            // property `$originalTask->supplier_date` (Eloquent silently resolves an unknown
+            // attribute to null rather than throwing, so the ternary's guard on
+            // `supplier_pay_date` never actually protected the value it parsed) -- a pre-existing
+            // typo, independently fixed on both lines. The correct, populated column is
+            // `supplier_pay_date`, matching the analogous line in voidTask() a few methods up.
             $transactionDate = $originalTask->supplier_pay_date
                 ? Carbon::parse($originalTask->supplier_pay_date)
                 : Carbon::now();

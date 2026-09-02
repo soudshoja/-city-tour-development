@@ -48,7 +48,7 @@ class InvoicePolicy
             return false;
         }
 
-        if($user->roles('admin')) return true;
+        if($user->hasRole('admin')) return true;
 
         return $user->can('update invoice');
     }

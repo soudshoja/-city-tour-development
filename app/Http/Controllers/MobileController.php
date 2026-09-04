@@ -611,6 +611,20 @@ class MobileController extends Controller
                 }
             }
 
+            // SECURITY: audit trail for this endpoint (POST /api/invoice) --
+            // moved behind auth:sanctum in routes/api.php; log every create,
+            // not just failures, since it writes invoices + journal entries
+            // directly. No generic AuditLog model exists in this app (only
+            // AccountingAuditLog, which is accounting-engine-only and out of
+            // scope here; see the accounting boundary), so this is a
+            // structured Log:: entry.
+            Log::info('audit.api_invoice_created', [
+                'invoice_id' => $invoice->id,
+                'user_id' => $request->user()?->id,
+                'company_id' => $companyId,
+                'ip' => $request->ip(),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully!',

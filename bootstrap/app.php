@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AccountantView;
 use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\RestrictDuskRoutesToSuperAdmin;
 use App\Http\Middleware\VerifyWebhookSignature;
 use App\Http\Middleware\ResayilFrameHeaders;
 use App\Modules\ResailAI\Middleware\VerifyResailAIToken;
@@ -51,6 +52,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            // SECURITY: gates Laravel\Dusk\DuskServiceProvider's own
+            // `_dusk/login/{userId}/{guard?}` (registers unauthenticated on
+            // every non-production env, incl. any reachable dev/staging box)
+            // down to an authenticated platform super admin. See the
+            // middleware's own docblock for why this has to be a 'web' group
+            // addition rather than a route-level one.
+            RestrictDuskRoutesToSuperAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

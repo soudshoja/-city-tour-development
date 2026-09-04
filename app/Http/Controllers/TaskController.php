@@ -4054,9 +4054,22 @@ class TaskController extends Controller
 
     public function exportCsv()
     {
+        // SECURITY: this endpoint was unscoped, so any authenticated user of
+        // any company could download every task/client row in the system.
+        // Route now requires 'auth'; scope the query too -- an unscoped
+        // platform ADMIN (support tool) still sees everything, everyone else
+        // is confined to their own company (getCompanyId() convention, see
+        // AdminUsersController).
+        $user = Auth::user();
+        $tasksQuery = Task::with('agent');
 
-        // Fetch all agents data
-        $tasks = Task::with('agent')->get();
+        if ((int) $user->role_id !== Role::ADMIN) {
+            $companyId = getCompanyId($user);
+            abort_unless($companyId, 403);
+            $tasksQuery->where('company_id', $companyId);
+        }
+
+        $tasks = $tasksQuery->get();
 
         // Create a CSV file in memory
         $csvFileName = 'tasks.csv';

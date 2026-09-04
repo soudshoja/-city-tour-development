@@ -1361,7 +1361,9 @@ class PaymentController extends Controller
                 ->where('name', 'Hesabe')
                 ->pluck('api_key')
                 ->first();
-            Log::info('API key received from database', ['api_key' => $apiKey]);
+            Log::info('API key received from database', [
+                'api_key' => $apiKey ? '...'.substr($apiKey, -4) : null,
+            ]);
 
             if (!$apiKey) {
                 return response()->json([
@@ -1549,7 +1551,7 @@ class PaymentController extends Controller
 
         Log::info('getPaymentStatusMyFatoorah called with invoice_id: ', [
             'invoice_id' => $invoiceId,
-            'apiKey' => $apiKey,
+            'apiKey' => $apiKey ? '...'.substr($apiKey, -4) : null,
             'baseUrl' => $baseUrl,
         ]);
 
@@ -3434,7 +3436,7 @@ class PaymentController extends Controller
 
             Log::info('MyFatoorah ExecutePayment request', [
                 'payload' => $executePayload,
-                'api_key' => $apiKey,
+                'api_key' => $apiKey ? '...'.substr($apiKey, -4) : null,
                 'base_url' => $baseUrl,
             ]);
 
@@ -3484,7 +3486,9 @@ class PaymentController extends Controller
                 ->where('name', 'Hesabe')
                 ->pluck('api_key')
                 ->first();
-            Log::info('API key received from database', ['api_key' => $apiKey]);
+            Log::info('API key received from database', [
+                'api_key' => $apiKey ? '...'.substr($apiKey, -4) : null,
+            ]);
 
             if (!$apiKey) {
                 return redirect()->back()->with('error', 'API key of ' . ucwords($paymentGateway) . ' gateway for company ' . $company->name . ' does not exist. Contact support team for more details');

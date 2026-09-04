@@ -387,6 +387,26 @@ class WhatsappController extends Controller
     {
         Log::debug('Resayil Webhook Received:', $request->all());
 
+        // Security fix (sec/resayil-webhook): company identity comes ONLY
+        // from which Resayil account/secret delivered this webhook
+        // (attached by VerifyResayilWebhookSecret), never from the request
+        // body. See IncomingMediaController::handleResayilWebhook for the
+        // fuller version of this same fix.
+        /** @var \App\Models\ResayilAccount|null $resayilAccount */
+        $resayilAccount = $request->attributes->get('resayil_account');
+        $companyId = $resayilAccount->company_id ?? null;
+
+        $payloadDeviceId = $request->input('device.id');
+        if ($resayilAccount && $resayilAccount->resayil_device_id && $payloadDeviceId
+            && !hash_equals((string) $resayilAccount->resayil_device_id, (string) $payloadDeviceId)) {
+            Log::warning('[ResayilWebhook] device mismatch — ignored', [
+                'company_id' => $companyId,
+                'expected_device' => $resayilAccount->resayil_device_id,
+                'payload_device' => $payloadDeviceId,
+            ]);
+            return response()->json(['message' => 'Webhook ignored'], 200);
+        }
+
         $phone = $request->input('phone') ?? $request->input('messages.0.from');
 
         // Check if this is a media (image) message
@@ -421,6 +441,7 @@ class WhatsappController extends Controller
                 // Save to DB
                 IncomingMedia::create([
                     'phone' => $phone,
+                    'company_id' => $companyId,
                     'media_id' => $mediaId,
                     'mime_type' => $mimeType,
                     'caption' => $caption,

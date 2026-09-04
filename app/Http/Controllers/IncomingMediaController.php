@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Models\ResayilAccount;
+use App\Models\Setting;
 use Carbon\Carbon;
 use Exception;
 
@@ -26,6 +28,32 @@ class IncomingMediaController extends Controller
         Log::info("=== WEBHOOK START [{$webhookId}] ===", [
             'request_data' => $request->all()
         ]);
+
+        // Security fix (sec/resayil-webhook): company identity comes ONLY from
+        // which Resayil account/secret delivered this webhook (attached by
+        // VerifyResayilWebhookSecret), never from any field in the request
+        // body. Every agent/client/IncomingMedia lookup and write below must
+        // be scoped to $companyId.
+        /** @var ResayilAccount|null $resayilAccount */
+        $resayilAccount = $request->attributes->get('resayil_account');
+        $companyId = $resayilAccount->company_id ?? null;
+
+        // Cross-check: when the payload carries the device that produced it,
+        // it must match the device this secret was issued for. A mismatch
+        // means this secret's URL is receiving traffic from a device it was
+        // never paired to — ignore rather than trust the secret alone.
+        // (resayil_device_id is populated only after a manual QR pairing
+        // step, so this is a no-op — not a bypass — until that's done.)
+        $payloadDeviceId = $request->input('device.id');
+        if ($resayilAccount && $resayilAccount->resayil_device_id && $payloadDeviceId
+            && !hash_equals((string) $resayilAccount->resayil_device_id, (string) $payloadDeviceId)) {
+            Log::warning("Resayil webhook device mismatch — ignored [{$webhookId}]", [
+                'company_id' => $companyId,
+                'expected_device' => $resayilAccount->resayil_device_id,
+                'payload_device' => $payloadDeviceId,
+            ]);
+            return response()->json(['message' => 'Webhook ignored'], 200);
+        }
 
         $type = $request->input('data.type');
         $phone = $request->input('data.fromNumber')
@@ -60,7 +88,13 @@ class IncomingMediaController extends Controller
                         return $g !== '' && ($g === $groupWid || ($groupName !== '' && $g === $groupName));
                     });
                 if ($groupSupplier) {
-                    $posterAgent = Agent::where('phone_number', $phone)->first(); // null when a supplier posts
+                    // Scoped to the webhook's own company — see the company
+                    // resolution note above handleResayilWebhook().
+                    $posterAgent = Agent::where('phone_number', $phone)
+                        ->whereHas('branch', function ($q) use ($companyId) {
+                            $q->where('company_id', $companyId);
+                        })
+                        ->first(); // null when a supplier posts
                     $mediaArr = (array) $request->input('data.media', []);
                     $doc = [
                         'message_id' => $request->input('data.id'),
@@ -90,8 +124,15 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'Group message ignored'], 200);
         }
 
-        // Check if sender is an agent - if not, ignore the webhook completely
-        $agent = Agent::where('phone_number', $phone)->first();
+        // Check if sender is an agent of THIS webhook's company - if not,
+        // ignore the webhook completely. Scoping by company_id here is what
+        // stops another company's agent (or anyone else) from being matched
+        // just because they share a phone number with one of ours.
+        $agent = Agent::where('phone_number', $phone)
+            ->whereHas('branch', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            })
+            ->first();
         if (!$agent) {
             Log::info("Non-agent contact ignored", [
                 'phone' => $phone,
@@ -134,8 +175,16 @@ class IncomingMediaController extends Controller
         $agentId = $agent->id;
         $agentPhone = $agent->phone_number;
         $agentEmail = $agent->email;
-        $fallbackPhone = config('app.agent_default_phone', '+96522210017');
-        $fallbackEmail = config('app.agent_default_email', 'ops@citytravelers.co');
+        // Security fix (sec/resayil-webhook): these used to hardcode City
+        // Travelers' own phone/email as a fallback for EVERY company's
+        // webhook traffic. Now sourced per-company from Setting (mirrors the
+        // notification.autobill.* key pattern) and left null — never another
+        // company's number — when unset.
+        $fallbackPhone = $companyId ? Setting::getByKey($companyId, 'notification.agent_default_phone') : null;
+        $fallbackEmail = $companyId ? Setting::getByKey($companyId, 'notification.agent_default_email') : null;
+        if (!$fallbackPhone && !$fallbackEmail) {
+            Log::info("No agent_default_phone/email configured for company [{$webhookId}]", ['company_id' => $companyId]);
+        }
 
         try {
             Log::info("Sender is an agent: {$agent->name} ({$phone})");
@@ -461,6 +510,7 @@ class IncomingMediaController extends Controller
                             // Create IncomingMedia record first (within transaction)
                             $incomingMedia = IncomingMedia::create([
                                 'phone' => $phone,
+                                'company_id' => $companyId,
                                 'media_id' => $mediaId,
                                 'mime_type' => $mimeType,
                                 'caption' => $caption,
@@ -476,7 +526,11 @@ class IncomingMediaController extends Controller
                                 'media_id' => $mediaId
                             ]);
 
-                            // Check for duplicate clients using the same logic as ClientController
+                            // Check for duplicate clients using the same logic as ClientController.
+                            // $currentAgent was already resolved scoped to the webhook's own
+                            // company above, so this re-derivation is always consistent with the
+                            // outer $companyId — kept as its own read so this block stays
+                            // self-contained if $agentId's source ever changes.
                             $currentAgent = Agent::find($agentId);
                             $companyId = $currentAgent->branch->company_id ?? null;
                             $existingClient = null;

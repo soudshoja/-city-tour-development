@@ -632,12 +632,33 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
 
     public function test_hesabe_webhook_engine_failure_propagates_and_leaves_payment_uncompleted(): void
     {
-        Http::fake();
+        // A real base_url is required for handleHesabeWebhook()'s mandatory
+        // transaction-enquiry HTTP call to reach the fake below at all (an
+        // empty/null base_url produces a schemeless URL the client can't send).
+        config(['services.hesabe.base_url' => 'https://fake-hesabe.test']);
         $tenant = $this->makeTenant();
         $company = $tenant['company'];
         [$invoice] = $this->makeInvoice($tenant, 100.00);
         $payment = $this->makePayment($tenant, $invoice, 100.00);
         $this->enableEngineWithoutSystemAccounts($company);
+
+        // handleHesabeWebhook() now confirms the transaction via Hesabe's own
+        // GET /api/transaction/{token} enquiry before writing anything (see
+        // HesabeWebhookVerificationTest) -- fake that enquiry to report the
+        // SUCCESSFUL, amount-matching transaction the request body claims, so
+        // this test still exercises the posting-engine-failure path below it.
+        Http::fake([
+            'fake-hesabe.test/api/transaction/*' => Http::response([
+                'status' => true,
+                'data' => [
+                    'token' => 'HTOK-ENGFAIL',
+                    'amount' => '100.000',
+                    'reference_number' => $payment->voucher_number,
+                    'status' => 'SUCCESSFUL',
+                ],
+            ], 200),
+            '*' => Http::response([], 200),
+        ]);
 
         $request = Request::create('/payment/hesabe-webhook', 'POST', [
             'reference_number' => $payment->voucher_number,
@@ -647,7 +668,7 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
             'payment_type' => 'card',
             'service_type' => 'invoice',
             'datetime' => now()->toDateTimeString(),
-            // token deliberately omitted: skips Hesabe::getPaymentStatus() entirely.
+            'token' => 'HTOK-ENGFAIL',
         ]);
 
         $controller = app(PaymentController::class);
@@ -665,7 +686,10 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
 
     public function test_hesabe_webhook_flags_off_matches_baseline_behaviour(): void
     {
-        Http::fake();
+        // A real base_url is required for handleHesabeWebhook()'s mandatory
+        // transaction-enquiry HTTP call to reach the fake below at all (an
+        // empty/null base_url produces a schemeless URL the client can't send).
+        config(['services.hesabe.base_url' => 'https://fake-hesabe.test']);
         $tenant = $this->makeTenant();
         $company = $tenant['company'];
         [$invoice] = $this->makeInvoice($tenant, 100.00);
@@ -678,6 +702,23 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
             'name' => 'Hesabe', 'type' => ChargeType::PAYMENT_GATEWAY->value, 'amount' => 0,
             'charge_type' => 'Flat Rate', 'self_charge' => 0, 'extra_charge' => 0, 'paid_by' => 'Company',
             'company_id' => $company->id, 'acc_fee_bank_id' => $gatewayAsset->id, 'acc_fee_id' => $gatewayExpense->id,
+        ]);
+
+        // handleHesabeWebhook() now confirms the transaction via Hesabe's own
+        // GET /api/transaction/{orderReference}?isOrderReference=1 enquiry (no
+        // token in this request) before writing anything -- fake it to confirm
+        // the SUCCESSFUL, amount-matching transaction the request body claims.
+        Http::fake([
+            'fake-hesabe.test/api/transaction/*' => Http::response([
+                'status' => true,
+                'data' => [
+                    'token' => 'HTOK-BASELINE',
+                    'amount' => '100.000',
+                    'reference_number' => $payment->voucher_number,
+                    'status' => 'SUCCESSFUL',
+                ],
+            ], 200),
+            '*' => Http::response([], 200),
         ]);
 
         $request = Request::create('/payment/hesabe-webhook', 'POST', [

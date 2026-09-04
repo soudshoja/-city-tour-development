@@ -40,7 +40,6 @@ Route::group([
 });
 
 Route::get('/invoice/create', [MobileController::class, 'create'])->name('invoice.create');
-Route::post('/invoice', [MobileController::class, 'store']);
 Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
 Route::get('/invoice/by/{Id}', [MobileController::class, 'getInvoiceById']);
 Route::post('/invoice/partial', [MobileController::class, 'savePartial']);
@@ -185,6 +184,11 @@ Route::post('/task/webhook/{webhook_client_id}', [TaskWebhook::class, 'webhook']
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/{id}/partials', [PaymentController::class, 'getPartials']);
     Route::get('/payments/{id}/transactions', [PaymentController::class, 'getTransactions']);
+    // SECURITY: was public -- created invoices + journal entries (see
+    // MobileController::store()) for anyone who could reach the API, no
+    // auth at all. Read-side invoice/payment-link routes are deliberately
+    // left untouched (owner wants invoices viewable by direct URL).
+    Route::post('/invoice', [MobileController::class, 'store']);
 });
 
 // SECURITY (dev-branch hardening, see APIController::getClient/getAgent/getCompany/getSupplier

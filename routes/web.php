@@ -1443,7 +1443,7 @@ Route::get('export-agents', [AgentController::class, 'exportCsv'])
     ->name('agents.exportCsv');
 Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv')->middleware('auth');
 
-Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
+Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv')->middleware('auth');
 
 // todolist routes
 route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.index');

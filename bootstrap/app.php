@@ -4,6 +4,7 @@ use App\Http\Middleware\AccountantView;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\VerifyWebhookSignature;
 use App\Http\Middleware\ResayilFrameHeaders;
+use App\Http\Middleware\VerifyResayilWebhookSecret;
 use App\Modules\ResailAI\Middleware\VerifyResailAIToken;
 use App\Modules\DotwAI\Http\Middleware\ResolveDotwAIContext;
 use Illuminate\Foundation\Application;
@@ -48,6 +49,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // for the drawer + full-page embed. Applied only to the Resayil
             // route(s) in routes/web.php, not app-wide.
             'resayil.frame' => ResayilFrameHeaders::class,
+            // Security fix (sec/resayil-webhook): resolves the inbound
+            // Resayil webhook to a company from the per-company secret in
+            // the URL path — see VerifyResayilWebhookSecret.
+            'verify.resayil.webhook' => VerifyResayilWebhookSecret::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,

@@ -102,8 +102,22 @@ Route::get('/version', function () {
 // resolved here. Broke `php artisan route:cache` (Laravel refuses two routes with the same name),
 // one of this merge's required gates, so removed here; a Blade view() route belongs in web.php
 // (an "api" route returning HTML was never right anyway), which keeps the working copy.
-Route::post('/webhook/resayil/media', [IncomingMediaController::class, 'handleResayilWebhook'])
+// Security fix (sec/resayil-webhook): Resayil's register-webhook body has no
+// signature/secret of its own — see the resayil-whatsapp-api skill,
+// references/webhooks.md. Company identity now comes from a per-company
+// secret embedded in the URL (VerifyResayilWebhookSecret resolves it and
+// attaches `resayil_account` to the request); the handler must never
+// resolve company from the request body.
+Route::post('/webhook/resayil/media/{secret}', [IncomingMediaController::class, 'handleResayilWebhook'])
+    ->middleware('verify.resayil.webhook')
     ->name('webhook.resayil.media');
+
+// Legacy secret-less path: fail closed (404) so any still-registered old
+// Resayil webhook (pre-dating this fix) errors visibly in Resayil's
+// delivery logs instead of silently continuing to write cross-tenant data.
+Route::post('/webhook/resayil/media', function () {
+    return response()->json(['message' => 'Not Found'], 404);
+})->name('webhook.resayil.media.legacy');
 Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
 
 Route::prefix('/whatsapp/hotel')->group(function () {

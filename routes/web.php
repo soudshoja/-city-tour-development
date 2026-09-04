@@ -1475,7 +1475,16 @@ Route::group(['prefix' => 'docs', 'as' => 'docs.'], function () {
 });
 
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
-Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
+// Security fix (sec/resayil-webhook): see routes/api.php's
+// /webhook/resayil/media/{secret} comment — same fix, same middleware.
+Route::post('/webhook/resayil/{secret}', [WhatsappController::class, 'handleResayilWebhook'])
+    ->middleware('verify.resayil.webhook')
+    ->name('whatsapp.resayil-webhook');
+
+// Legacy secret-less path: fail closed (404).
+Route::post('/webhook/resayil', function () {
+    return response()->json(['message' => 'Not Found'], 404);
+})->name('whatsapp.resayil-webhook.legacy');
 
 Route::group([
     'prefix' => 'resayil',

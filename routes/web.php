@@ -293,7 +293,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel')->withoutMiddleware(['auth'])->middleware('throttle:60,1');
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
-        Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
+        Route::post('/upload/passport', [TaskController::class, 'clientPassport'])->name('upload.passport');
         Route::delete('/{id}', [TaskController::class, 'destroy'])->name('destroy');
         Route::post('/columns/save', [TaskController::class, 'saveColumnPrefs'])->name('columns.save');
         Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
@@ -865,7 +865,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
-        Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
         Route::get('/failed', [PaymentController::class, 'failed'])->name('failed')->withoutMiddleware(['auth']);
         Route::get('/outstanding', [PaymentController::class, 'outstanding'])->name('outstanding');
@@ -913,7 +912,6 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'clients.',
     ], function () {
         Route::get('/', [ClientController::class, 'index'])->name('index');
-        Route::get('/create', [ClientController::class, 'create'])->name('create');
         Route::post('/', [ClientController::class, 'store'])->name('store');
         Route::get('/{id}', [ClientController::class, 'show'])->name('show');
         // Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
